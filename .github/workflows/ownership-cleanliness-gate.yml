@@ -1,0 +1,28 @@
+name: ownership-cleanliness-gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  ownership-cleanliness-gate:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run ownership cleanliness gate
+        shell: pwsh
+        run: .\tools\kgw_final_clean_ownership_gate.ps1 -Mode Check -RunBuild -SkipTests

@@ -1,0 +1,1068 @@
+:root {
+  --kgw-global-bg: #0f172a;
+  --kgw-global-header: #0b1220;
+  --kgw-global-panel: #111827;
+  --kgw-global-panel-2: #172033;
+  --kgw-global-table: #172033;
+  --kgw-global-border: rgba(148, 163, 184, 0.24);
+  --kgw-global-text: #ffffff;
+  --kgw-global-muted: #aebbd0;
+  --kgw-global-accent: #7dd3fc;
+  --kgw-global-button: #1e293b;
+
+  font-family: Arial, Helvetica, sans-serif;
+  color-scheme: dark;
+}
+
+html[data-kgw-theme="superhero"] {
+  --kgw-global-bg: #2b3f53;
+  --kgw-global-header: #26394b;
+  --kgw-global-panel: #334b62;
+  --kgw-global-panel-2: #3a536b;
+  --kgw-global-table: #38516a;
+  --kgw-global-border: rgba(148, 173, 196, 0.48);
+  --kgw-global-text: #ffffff;
+  --kgw-global-muted: #d2dfeb;
+  --kgw-global-accent: #79d8ff;
+  --kgw-global-button: #4d6278;
+}
+
+html[data-kgw-theme="kaspa"] {
+  --kgw-global-bg: #071612;
+  --kgw-global-header: #081f1a;
+  --kgw-global-panel: #0d2a22;
+  --kgw-global-panel-2: #12382e;
+  --kgw-global-table: #143f34;
+  --kgw-global-border: rgba(94, 234, 212, 0.30);
+  --kgw-global-text: #ffffff;
+  --kgw-global-muted: #b7d8d2;
+  --kgw-global-accent: #70e000;
+  --kgw-global-button: #164e40;
+}
+
+html[data-kgw-theme="slate"] {
+  --kgw-global-bg: #111827;
+  --kgw-global-header: #0f172a;
+  --kgw-global-panel: #1f2937;
+  --kgw-global-panel-2: #273244;
+  --kgw-global-table: #273244;
+  --kgw-global-border: rgba(203, 213, 225, 0.26);
+  --kgw-global-text: #ffffff;
+  --kgw-global-muted: #cbd5e1;
+  --kgw-global-accent: #93c5fd;
+  --kgw-global-button: #374151;
+}
+
+html[data-kgw-theme="midnight"] {
+  --kgw-global-bg: #050816;
+  --kgw-global-header: #050816;
+  --kgw-global-panel: #0b1022;
+  --kgw-global-panel-2: #121a33;
+  --kgw-global-table: #121a33;
+  --kgw-global-border: rgba(99, 102, 241, 0.30);
+  --kgw-global-text: #ffffff;
+  --kgw-global-muted: #bfc6e6;
+  --kgw-global-accent: #818cf8;
+  --kgw-global-button: #1e1b4b;
+}
+
+html[data-kgw-theme="blue"] {
+  --kgw-global-bg: #061526;
+  --kgw-global-header: #061526;
+  --kgw-global-panel: #0b2a4a;
+  --kgw-global-panel-2: #123a63;
+  --kgw-global-table: #123a63;
+  --kgw-global-border: rgba(96, 165, 250, 0.34);
+  --kgw-global-text: #ffffff;
+  --kgw-global-muted: #c8dff7;
+  --kgw-global-accent: #38bdf8;
+  --kgw-global-button: #1d4ed8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--kgw-global-bg);
+  color: var(--kgw-global-text);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.kgw-shell {
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: 104px 34px minmax(0, 1fr) 28px;
+  background: var(--kgw-global-bg);
+  color: var(--kgw-global-text);
+  overflow: hidden;
+}
+
+.kgw-header {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 104px;
+  padding: 12px 20px;
+  background: var(--kgw-global-header);
+  border-bottom: 1px solid var(--kgw-global-border);
+}
+
+.kgw-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.kgw-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #86d89a;
+  color: #071612;
+  font-size: 28px;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+
+.kgw-title-block {
+  min-width: 0;
+}
+
+.kgw-title-block h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.1;
+  color: var(--kgw-global-text);
+  white-space: nowrap;
+}
+
+.kgw-title-block p {
+  margin: 5px 0 0;
+  color: var(--kgw-global-muted);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.kgw-top-controls {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  min-width: 0;
+}
+
+.kgw-top-control {
+  display: grid;
+  gap: 5px;
+  min-width: 148px;
+}
+
+.kgw-top-control span {
+  font-size: 11px;
+  line-height: 1;
+  color: var(--kgw-global-muted);
+}
+
+.kgw-top-control select {
+  height: 39px;
+  min-height: 39px;
+  width: 148px;
+  border-radius: 9px;
+  border: 1px solid var(--kgw-global-border);
+  background: color-mix(in srgb, var(--kgw-global-bg) 82%, black 18%);
+  color: var(--kgw-global-text);
+  padding: 4px 14px;
+  outline: none;
+}
+
+.kgw-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 22px 6px;
+  background: color-mix(in srgb, var(--kgw-global-header) 82%, black 18%);
+  border-bottom: 2px solid var(--kgw-global-border);
+  overflow: visible;
+}
+
+.kgw-tab-button {
+  height: 31px;
+  min-height: 31px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--kgw-global-border);
+  background: color-mix(in srgb, var(--kgw-global-button) 82%, black 18%);
+  color: var(--kgw-global-text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.kgw-tab-button.active,
+.kgw-tab-button[aria-selected="true"] {
+  border-color: var(--kgw-global-accent);
+  box-shadow: 0 0 0 1px var(--kgw-global-accent) inset;
+}
+
+.kgw-main {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--kgw-global-bg);
+}
+
+.kgw-main > .page {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  transform: none;
+  overflow: hidden;
+  display: none;
+  visibility: hidden;
+  opacity: 0;
+  z-index: 0;
+  background: transparent;
+}
+
+.kgw-main > .page.active {
+  display: block;
+  visibility: visible;
+  opacity: 1;
+  z-index: 10;
+}
+
+.kgw-main > .page[hidden]:not(.active) {
+  display: none !important;
+}
+
+.kgw-main > #log.active,
+.kgw-main > #settings.active {
+  overflow: auto;
+}
+
+footer,
+.app-footer,
+.status-footer,
+.bottom-footer,
+.global-footer,
+.global-status,
+.status-bar,
+.footer-bar,
+.bottom-status,
+.bottom-status-bar,
+.app-status-bar,
+#statusBar,
+#globalStatusBar,
+#footerStatusBar,
+#appStatusBar,
+[data-role="status-bar"],
+[data-ui="status-bar"] {
+  display: none !important;
+}
+
+/* KGW STRICT TAB ISOLATION START */
+
+#kgwMain,
+.kgw-main {
+  position: relative !important;
+  isolation: isolate !important;
+  contain: layout paint size !important;
+  overflow: hidden !important;
+  min-height: 0 !important;
+  height: 100% !important;
+}
+
+#kgwMain > .page,
+.kgw-main > .page {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  transform: none !important;
+  box-sizing: border-box !important;
+}
+
+#kgwMain > .page:not(.active),
+.kgw-main > .page:not(.active),
+#kgwMain > .page[hidden]:not(.active),
+.kgw-main > .page[hidden]:not(.active),
+#kgwMain > [data-kgw-shell-hidden="true"],
+.kgw-main > [data-kgw-shell-hidden="true"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+#kgwMain > .page.active,
+.kgw-main > .page.active,
+#kgwMain > [data-kgw-shell-active="true"],
+.kgw-main > [data-kgw-shell-active="true"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  z-index: 50 !important;
+}
+
+/* Prevent duplicate legacy roots from leaking visually if they are outside the shell. */
+body > #explorer,
+body > #kaspa-node,
+body > #kaspa-bridge,
+body > #analysis,
+body > #top-addresses,
+body > #log,
+body > #settings {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* KGW STRICT TAB ISOLATION END */
+
+/* KGW GLOBAL READY SOCIAL BAR START */
+
+.kgw-shell-bottom-bar {
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  background: color-mix(in srgb, var(--kgw-global-header, #0b1220) 88%, black 12%);
+  border-top: 1px solid var(--kgw-global-border, rgba(148, 163, 184, 0.24));
+  color: var(--kgw-global-text, #ffffff);
+  font-size: 13px;
+  line-height: 1;
+  overflow: hidden;
+  z-index: 100;
+}
+
+.kgw-shell-ready-status {
+  min-width: 0;
+  color: var(--kgw-global-text, #ffffff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kgw-shell-social-links {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.kgw-shell-link-button {
+  border: 0;
+  background: transparent;
+  color: var(--kgw-global-accent, #7dd3fc);
+  padding: 2px 4px;
+  margin: 0;
+  height: 22px;
+  min-height: 22px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.kgw-shell-link-button:hover,
+.kgw-shell-link-button:focus-visible {
+  background: color-mix(in srgb, var(--kgw-global-accent, #7dd3fc) 18%, transparent);
+  outline: none;
+}
+
+.kgw-shell-link-separator {
+  color: var(--kgw-global-muted, #aebbd0);
+  opacity: 0.9;
+}
+
+/*
+  Tab-local legacy footers are hidden because the official Ready/links bar
+  now belongs to the shell and appears in every tab.
+*/
+#kgwMain .page .kgw-shell-bottom-bar,
+#kgwMain .page .status-footer,
+#kgwMain .page .bottom-footer,
+#kgwMain .page .app-footer,
+#kgwMain .page .global-footer,
+#kgwMain .page .footer-bar,
+#kgwMain .page .bottom-status,
+#kgwMain .page .bottom-status-bar,
+#kgwMain .page .app-status-bar,
+#kgwMain .page [data-role="status-bar"],
+#kgwMain .page [data-ui="status-bar"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* KGW GLOBAL READY SOCIAL BAR END */
+
+/* KGW REAL HEADER METRICS CLOCK CSS START */
+
+/* Compact real title area */
+.kgw-header-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  gap: 22px;
+  align-items: center;
+  margin-top: 3px;
+  margin-inline-start: 18px;
+  padding-inline-start: 18px;
+  border-inline-start: 1px solid rgba(125, 150, 185, 0.42);
+  min-width: 0;
+}
+
+.kgw-header-metric {
+  display: grid;
+  grid-template-rows: 12px 17px;
+  gap: 0;
+  min-width: 78px;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.kgw-header-metric-label {
+  font-size: 9.5px;
+  line-height: 11px;
+  opacity: 0.62;
+  color: #b8c7da;
+}
+
+.kgw-header-metric-value {
+  font-size: 12.5px;
+  line-height: 16px;
+  font-weight: 800;
+}
+
+.kgw-header-metric-price .kgw-header-metric-value {
+  color: #45d5ff;
+}
+
+.kgw-header-metric-hashrate .kgw-header-metric-value {
+  color: #6de36d;
+}
+
+.kgw-header-metric-difficulty .kgw-header-metric-value {
+  color: #ffbc3f;
+}
+
+@media (max-width: 1250px) {
+  .kgw-header-metrics {
+    gap: 10px;
+    margin-inline-start: 10px;
+    padding-inline-start: 10px;
+  }
+
+  .kgw-header-metric {
+    min-width: 62px;
+  }
+
+  .kgw-header-metric-label {
+    font-size: 9px;
+  }
+
+  .kgw-header-metric-value {
+    font-size: 10.5px;
+  }
+
+  .kgw-header-clock {
+    display: none;
+  }
+}
+
+#kgwHeaderMetrics [title],
+[data-kgw-metric-key][title] {
+  cursor: help;
+}
+/* KGW REAL HEADER CLOCK + TOOLTIPS END */
+
+
+/* TX_LOAD_ADDRESS_PYTHON_STYLE_CSS
+   Match the Python layout:
+   label + address input, balance block beside it, action buttons on same row.
+   The datalist remains native and follows the input width.
+*/
+#explorer fieldset.kgw-python-load-address-owner,
+.explorer-python-root fieldset.kgw-python-load-address-owner {
+  position: relative;
+  min-height: 88px;
+  box-sizing: border-box;
+  padding: 24px 12px 14px 12px;
+  overflow: visible;
+}
+
+#explorer fieldset.kgw-python-load-address-owner > legend,
+.explorer-python-root fieldset.kgw-python-load-address-owner > legend {
+  position: absolute;
+  top: -11px;
+  left: 18px;
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+/* Label text stays before the input like the Python screenshot. */
+#explorer fieldset.kgw-python-load-address-owner label,
+.explorer-python-root fieldset.kgw-python-load-address-owner label {
+  display: inline-block;
+  margin-right: 8px;
+  white-space: nowrap;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+/* Input width: long enough for address, but it stops before the balance block. */
+#explorer #explorerAddress,
+.explorer-python-root #explorerAddress {
+  width: calc(100vw - 455px) !important;
+  min-width: 520px !important;
+  max-width: 1060px !important;
+  height: 32px;
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+/* Keep datalist normal. Do not stretch it with custom page-wide containers. */
+#explorer #explorerAddressOptions,
+.explorer-python-root #explorerAddressOptions {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+/* Balance block: first line KAS, second line name + selected currency value. */
+#explorer #explorerBalanceValue,
+.explorer-python-root #explorerBalanceValue {
+  position: absolute;
+  left: calc(100vw - 450px);
+  top: 20px;
+  width: 290px;
+  color: #6ed7f2;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#explorer fieldset.kgw-python-load-address-owner::after,
+.explorer-python-root fieldset.kgw-python-load-address-owner::after {
+  content: "Balance:";
+  position: absolute;
+  left: calc(100vw - 540px);
+  top: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+#explorer #explorerAddressNameValue,
+.explorer-python-root #explorerAddressNameValue {
+  position: absolute;
+  left: calc(100vw - 540px);
+  top: 49px;
+  width: 190px;
+  color: rgba(215, 233, 255, 0.92);
+  font-size: 12px;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#explorer #explorerBalanceUsdValue,
+.explorer-python-root #explorerBalanceUsdValue {
+  position: absolute;
+  left: calc(100vw - 350px);
+  top: 49px;
+  width: 170px;
+  color: rgba(215, 233, 255, 0.72);
+  font-size: 12px;
+  line-height: 1.1;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Buttons stay in the Load Address row, not in the Filter row. */
+#explorer .kgw-python-load-address-button,
+.explorer-python-root .kgw-python-load-address-button {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  min-width: 82px;
+  height: 33px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* Force the four action buttons to sit after the balance block on the same line. */
+#explorer #explorerFetch,
+.explorer-python-root #explorerFetch {
+  margin-left: 305px;
+}
+
+@media (max-width: 1300px) {
+  #explorer #explorerAddress,
+  .explorer-python-root #explorerAddress {
+    width: calc(100vw - 510px) !important;
+    min-width: 420px !important;
+  }
+
+  #explorer #explorerBalanceValue,
+  .explorer-python-root #explorerBalanceValue {
+    left: calc(100vw - 500px);
+    width: 260px;
+  }
+
+  #explorer fieldset.kgw-python-load-address-owner::after,
+  .explorer-python-root fieldset.kgw-python-load-address-owner::after {
+    left: calc(100vw - 585px);
+  }
+
+  #explorer #explorerAddressNameValue,
+  .explorer-python-root #explorerAddressNameValue {
+    left: calc(100vw - 585px);
+    width: 165px;
+  }
+
+  #explorer #explorerBalanceUsdValue,
+  .explorer-python-root #explorerBalanceUsdValue {
+    left: calc(100vw - 420px);
+    width: 150px;
+  }
+
+  #explorer #explorerFetch,
+  .explorer-python-root #explorerFetch {
+    margin-left: 270px;
+  }
+}
+
+/* KGW_PHASE7B_R7_GLOBAL_HEADER_SIZE_GUARD */
+#kgwHeaderMetrics,
+#kgwHeaderMetrics *,
+[data-kgw-metric-key],
+[data-kgw-metric-key] *,
+.header-metrics,
+.header-metrics *,
+.kgw-header-metrics,
+.kgw-header-metrics * {
+  font-size: 12px !important;
+  line-height: 1.15 !important;
+  box-sizing: border-box !important;
+}
+
+#kgwHeaderMetrics,
+.header-metrics,
+.kgw-header-metrics {
+  min-height: 38px !important;
+  max-height: 42px !important;
+  overflow: hidden !important;
+}
+
+header select,
+.kgw-header select,
+.app-header select,
+.header-top select,
+.header-top-right select,
+.kgw-shell-header select,
+#languageSelect,
+#currencySelect,
+#themeSelect {
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  font-size: 13px !important;
+  box-sizing: border-box !important;
+}
+
+/* KGW_IN_APP_LOGO_IMAGE_START */
+/*
+ * In-app brand logo image.
+ *
+ * Ownership:
+ * - Frontend visual logo only.
+ * - Replaces the old literal K inside .kgw-logo.
+ * - Does not affect Tauri bundle/executable icons.
+ *
+ * Fine-tune:
+ * - Keep the existing green circular badge.
+ * - Center the ICO image visually.
+ * - Slightly increase icon size without changing the header layout.
+ */
+
+.kgw-logo {
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.kgw-logo .kgw-logo-image {
+  display: block;
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+  object-position: center center;
+  transform: translateX(1px);
+  pointer-events: none;
+  user-select: none;
+}
+/* KGW_IN_APP_LOGO_IMAGE_END */
+
+/* KGW_NODE_BRIDGE_OUTER_SCROLLBAR_AUTO_FIX_START */
+#kgwMain > #kaspa-node.active,
+#kgwMain > #kaspa-bridge.active,
+.kgw-main > #kaspa-node.active,
+.kgw-main > #kaspa-bridge.active {
+  overflow: hidden !important;
+  scrollbar-gutter: auto !important;
+}
+
+#kaspa-node.node-v6-root,
+#kaspa-bridge.bridge-v7-root {
+  overflow: hidden !important;
+  scrollbar-gutter: auto !important;
+}
+/* KGW_NODE_BRIDGE_OUTER_SCROLLBAR_AUTO_FIX_END */
+
+/* KGW_MAIN_TAB_SCROLL_OWNER_FIX_START */
+#kgwMain,
+.kgw-main,
+main {
+  min-height: 0 !important;
+  scrollbar-gutter: auto !important;
+}
+
+#kgwMain > #kaspa-node.active,
+#kgwMain > #kaspa-bridge.active,
+.kgw-main > #kaspa-node.active,
+.kgw-main > #kaspa-bridge.active {
+  min-height: 0 !important;
+  overflow: hidden !important;
+  scrollbar-gutter: auto !important;
+}
+/* KGW_MAIN_TAB_SCROLL_OWNER_FIX_END */
+
+/* KGW_HEADER_CLOCK_OWNERSHIP_CONTRACT_START */
+/*
+  Header clock ownership contract.
+
+  Problem fixed:
+  The clock/date in the top header could suddenly grow because it had no stable
+  sizing boundary and could inherit broader header/font rules.
+
+  Ownership:
+  - This global header contract owns clock/date sizing only.
+  - Tab files must not resize the header clock.
+  - Node/Bridge/Explorer tabs must not define clock/date font sizes.
+*/
+
+:root {
+  --kgw-header-clock-font-size: clamp(20px, 2.1vw, 32px);
+  --kgw-header-clock-date-size: clamp(11px, 0.9vw, 14px);
+  --kgw-header-clock-line-height: 1;
+  --kgw-header-clock-width: clamp(128px, 13vw, 180px);
+}
+
+/*
+  Structural fallback:
+  The clock in this app appears in the top header center.
+  These selectors are intentionally scoped to header-like containers only.
+*/
+header [class*="clock" i],
+header [id*="clock" i],
+header [class*="time" i],
+header [id*="time" i],
+.app-header [class*="clock" i],
+.app-header [id*="clock" i],
+.app-header [class*="time" i],
+.app-header [id*="time" i],
+.kgw-header [class*="clock" i],
+.kgw-header [id*="clock" i],
+.kgw-header [class*="time" i],
+.kgw-header [id*="time" i],
+.topbar [class*="clock" i],
+.topbar [id*="clock" i],
+.topbar [class*="time" i],
+.topbar [id*="time" i] {
+  max-height: 38px !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  font-size: var(--kgw-header-clock-font-size) !important;
+  line-height: 1 !important;
+  font-variant-numeric: tabular-nums !important;
+  transform: none !important;
+}
+
+header [class*="date" i],
+header [id*="date" i],
+.app-header [class*="date" i],
+.app-header [id*="date" i],
+.kgw-header [class*="date" i],
+.kgw-header [id*="date" i],
+.topbar [class*="date" i],
+.topbar [id*="date" i] {
+  max-height: 18px !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  font-size: var(--kgw-header-clock-date-size) !important;
+  line-height: 1.1 !important;
+  font-variant-numeric: tabular-nums !important;
+  transform: none !important;
+}
+
+/* Header metric stability: price/hashrate/difficulty must not resize the clock area */
+header,
+.app-header,
+.kgw-header,
+.topbar {
+  font-size-adjust: none;
+}
+
+header [class*="metric" i],
+.app-header [class*="metric" i],
+.kgw-header [class*="metric" i],
+.topbar [class*="metric" i] {
+  min-height: 24px;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+/* KGW_HEADER_CLOCK_OWNERSHIP_CONTRACT_END */
+
+
+/* KGW_COMPACT_HEADER_TABS_LAYOUT_V1
+   Keep translated tab labels inside the available shell width without vertical overlap. */
+.kgw-header {
+  min-height: 92px !important;
+  padding: 10px 18px !important;
+  grid-template-columns: minmax(330px, 1fr) auto !important;
+  gap: 14px !important;
+}
+
+.kgw-title-block h1 {
+  font-size: 24px !important;
+  line-height: 1.05 !important;
+}
+
+.kgw-header-metrics {
+  gap: 16px !important;
+  margin-top: 2px !important;
+  margin-inline-start: 14px !important;
+  padding-inline-start: 14px !important;
+}
+
+.kgw-header-metric {
+  min-width: 70px !important;
+  grid-template-rows: 11px 16px !important;
+}
+
+.kgw-header-metric-label {
+  font-size: 9px !important;
+  line-height: 10px !important;
+}
+
+.kgw-header-metric-value {
+  font-size: 11.5px !important;
+  line-height: 15px !important;
+}
+
+.kgw-tabs {
+  min-height: 38px !important;
+  gap: 6px !important;
+  padding: 0 16px 5px !important;
+  align-items: center !important;
+  overflow: hidden !important;
+}
+
+.kgw-tab-button {
+  height: 28px !important;
+  min-height: 28px !important;
+  max-width: 150px !important;
+  padding: 2px 11px !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.kgw-tab-button[data-tab="top-addresses"] {
+  max-width: 164px !important;
+}
+
+@media (max-width: 1250px) {
+  .kgw-tab-button {
+    max-width: 128px !important;
+    padding-inline: 9px !important;
+    font-size: 14px !important;
+  }
+}
+
+
+/* KGW_FINAL_COMPACT_TRANSLATED_TABS_V1
+   Final owner for translated shell tab sizing.
+   Long localized labels must not collide with the header line or neighboring tabs. */
+.kgw-tabs {
+  box-sizing: border-box !important;
+  min-height: 44px !important;
+  height: 44px !important;
+  padding: 6px 18px 6px !important;
+  gap: 5px !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: thin !important;
+}
+
+.kgw-tab-button {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  max-width: 122px !important;
+  padding: 0 9px !important;
+  font-size: 13.5px !important;
+  line-height: 28px !important;
+  border-radius: 7px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.kgw-tab-button[data-tab="kaspa-node"],
+.kgw-tab-button[data-tab="kaspa-bridge"],
+.kgw-tab-button[data-tab="top-addresses"] {
+  max-width: 136px !important;
+}
+
+.kgw-tab-button[data-tab="analysis"],
+.kgw-tab-button[data-tab="settings"] {
+  max-width: 116px !important;
+}
+
+.kgw-tab-button[data-tab="log"] {
+  max-width: 82px !important;
+}
+
+@media (max-width: 1280px) {
+  .kgw-tabs {
+    padding-inline: 12px !important;
+    gap: 4px !important;
+  }
+
+  .kgw-tab-button {
+    max-width: 112px !important;
+    padding-inline: 8px !important;
+    font-size: 13px !important;
+  }
+
+  .kgw-tab-button[data-tab="kaspa-node"],
+  .kgw-tab-button[data-tab="kaspa-bridge"],
+  .kgw-tab-button[data-tab="top-addresses"] {
+    max-width: 126px !important;
+  }
+}
+
+/* KGW_HEADER_CLOCK_SINGLE_OWNER_R36_START */
+#kgwHeaderClock,
+.kgw-header-clock {
+  display: flex !important;
+  flex: 0 0 112px !important;
+  width: 112px !important;
+  min-width: 112px !important;
+  max-width: 112px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 1px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  contain: layout paint style !important;
+}
+
+#kgwHeaderClockTime,
+.kgw-header-clock-time {
+  display: block !important;
+  width: 100% !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  max-height: 20px !important;
+  font-size: 18px !important;
+  line-height: 20px !important;
+  font-weight: 800 !important;
+  letter-spacing: 1px !important;
+  font-variant-numeric: tabular-nums !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  transform: none !important;
+}
+
+#kgwHeaderClockDate,
+.kgw-header-clock-date {
+  display: block !important;
+  width: 100% !important;
+  height: 12px !important;
+  min-height: 12px !important;
+  max-height: 12px !important;
+  font-size: 10px !important;
+  line-height: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  font-variant-numeric: tabular-nums !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  transform: none !important;
+}
+/* KGW_HEADER_CLOCK_SINGLE_OWNER_R36_END */

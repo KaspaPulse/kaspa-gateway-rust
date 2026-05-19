@@ -1,0 +1,116 @@
+<section id="explorer" class="page explorer-python-root" data-tab-panel="explorer">
+  <div class="explorer-py-shell">
+    <fieldset class="explorer-py-card explorer-py-load-card kgw-r4-load-card">
+      <legend class="kgw-r6-hidden-load-legend" aria-label="Load Address" data-i18n-aria-label="actions.load.address"></legend>
+
+      <div class="kgw-r4-load-row">
+        <label for="explorerAddress" class="kgw-r4-address-label kgw-r5-visually-hidden-label" aria-label="Kaspa Address" data-i18n-aria-label="explorer.kaspa.address"></label>
+        <input
+          id="explorerAddress"
+          class="explorer-address-input kgw-r7-address-select"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="kaspa:..."
+          data-i18n-placeholder="ui.analysis.search.by.address.transaction"
+        />
+        <div id="explorerAddressDropdown" class="kgw-explorer-address-dropdown" role="listbox" aria-label="Saved addresses" hidden></div>
+        <datalist id="explorerAddressOptions">
+          <option value="" data-i18n="ui.explorer.select.saved.address">Select saved address...</option>
+        </datalist>
+
+        <div class="explorer-balance-box kgw-r4-balance-box" aria-live="polite">
+          <div id="explorerAddressNameValue" class="explorer-wallet-name kgw-r4-wallet-name" hidden></div>
+          <span class="kgw-r4-balance-label" data-kgw-no-i18n="true"></span>
+          <strong id="explorerBalanceValue" class="kgw-r4-balance-value">N/A</strong>
+          <span id="explorerBalanceUsdValue" class="explorer-wallet-fiat kgw-r4-fiat-value"></span>
+        </div>
+
+        <div class="kgw-r4-actions">
+          <button id="explorerFetch" class="kgw-r4-action-button" type="button" data-explorer-action="fetch" data-i18n="actions.fetch">Fetch</button>
+          <button id="explorerForceFetch" class="kgw-r4-action-button" type="button" data-explorer-action="force-fetch" data-i18n="common.force.fetch">Force Fetch</button>
+          <button id="explorerOpenExplorer" class="kgw-r4-action-button" type="button" data-explorer-action="open-explorer" data-i18n="tabs.explorer">Explorer</button>
+          <button id="explorerCancel" class="kgw-r4-action-button" type="button" data-explorer-action="cancel" disabled data-i18n="actions.cancel">Cancel</button>
+        </div>
+      </div>
+    </fieldset>
+<fieldset class="explorer-py-card explorer-py-filter-card">
+      <legend class="kgw-r5-hidden-legend" aria-label="Filter" data-i18n-aria-label="actions.filter"></legend>
+
+      <div class="explorer-py-filter-grid">
+        <label for="explorerFromDate" data-i18n="common.from.date">From Date:</label>
+        <div class="explorer-date-combo">
+          <input id="explorerFromDate" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="YYYY-MM-DD" / data-i18n-placeholder="ui.explorer.yyyy.mm.dd">
+          <button id="explorerFromDatePicker" type="button" class="explorer-mini-button" title="Open calendar" data-i18n-title="ui.explorer.open.calendar">▣</button>
+          <input id="explorerFromDateNative" type="date" class="explorer-native-date" tabindex="-1" aria-hidden="true" />
+        </div>
+
+        <label for="explorerToDate" data-i18n="common.to.date">To Date:</label>
+        <div class="explorer-date-combo">
+          <input id="explorerToDate" type="text" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="YYYY-MM-DD" / data-i18n-placeholder="ui.explorer.yyyy.mm.dd">
+          <button id="explorerToDatePicker" type="button" class="explorer-mini-button" title="Open calendar" data-i18n-title="ui.explorer.open.calendar">▣</button>
+          <input id="explorerToDateNative" type="date" class="explorer-native-date" tabindex="-1" aria-hidden="true" />
+        </div>
+
+        <select id="explorerDirectionFilter">
+          <option value="ALL" data-i18n="common.all">ALL</option>
+          <option value="incoming" data-i18n="incoming">incoming</option>
+          <option value="outgoing" data-i18n="outgoing">outgoing</option>
+          <option value="unknown" data-i18n="status.unknown">unknown</option>
+        </select>
+
+        <select id="explorerTypeFilter">
+          <option value="ALL" data-i18n="common.all">ALL</option>
+          <option value="transfer" data-i18n="transfer">transfer</option>
+          <option value="coinbase" data-i18n="coinbase">coinbase</option>
+          <option value="unknown" data-i18n="status.unknown">unknown</option>
+        </select>
+
+        <input id="explorerSearch" type="text" placeholder="Search by Address/Transaction..." / data-i18n-placeholder="ui.analysis.search.by.address.transaction">
+
+        <button id="explorerApplyFilter" type="button" data-i18n="actions.filter">Filter</button>
+        <button id="explorerResetFilter" type="button" data-i18n="ui.analysis.reset.filter">Reset Filter</button>
+      </div>
+    </fieldset>
+
+    <div class="explorer-table-zone">
+      <table id="explorerTransactionsTable" class="python-results-table">
+        <thead>
+          <tr>
+            <th data-i18n="ui.explorer.date.time.sort">Date/Time ↕</th>
+            <th data-i18n="ui.explorer.transaction.id.sort">Transaction ID ↕</th>
+            <th data-i18n="ui.explorer.direction.sort">Direction ↕</th>
+            <th data-i18n="ui.explorer.amount.kas.sort">Amount (KAS) ↕</th>
+            <th data-i18n="ui.explorer.value.usd.sort">Value (USD) ↕</th>
+            <th data-i18n="ui.explorer.type.sort">Type ↕</th>
+          </tr>
+        </thead>
+        <tbody id="explorerTransactionsBody">
+          <tr class="explorer-empty-row">
+            <td colspan="6" data-i18n="actions.load.an.address.to.see.transactions">Load an address to see transactions.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div id="explorerExportControls" class="explorer-py-bottom-bar">
+      <div class="explorer-export-left">
+        <strong data-i18n="actions.export.results">Export Results:</strong>
+        <button id="explorerExportCsv" type="button" data-i18n="ui.analysis.save.as.csv">Save as CSV</button>
+        <button id="explorerExportHtml" type="button" data-i18n="ui.analysis.save.as.html">Save as HTML</button>
+        <button id="explorerExportPdf" type="button" data-i18n="ui.analysis.save.as.pdf">Save as PDF</button>
+      </div>
+
+      <div class="explorer-font-right">
+        <label for="explorerTableFontSize" data-i18n="ui.explorer.transaction.table.font.size">Transaction Table Font Size:</label>
+        <div class="explorer-font-spinbox">
+          <input id="explorerTableFontSize" type="text" inputmode="numeric" value="11" autocomplete="off" spellcheck="false" />
+          <button id="explorerTableFontDecrease" type="button" class="explorer-mini-button" title="Decrease font size" data-i18n-title="ui.explorer.decrease.font.size">−</button>
+          <button id="explorerTableFontIncrease" type="button" class="explorer-mini-button" title="Increase font size" data-i18n-title="ui.explorer.increase.font.size">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="explorerStatus" hidden data-i18n="status.ready">Ready</div>
+  </div>
+</section>

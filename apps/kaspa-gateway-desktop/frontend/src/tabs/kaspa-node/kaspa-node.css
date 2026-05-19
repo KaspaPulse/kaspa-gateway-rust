@@ -1,0 +1,432 @@
+#kaspa-node.node-v6-root {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden !important;
+  color: #fff;
+  font-size: 10px;
+}
+
+#kaspa-node,
+#kaspa-node * {
+  box-sizing: border-box !important;
+}
+
+#kaspa-node .node-v6-shell {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 32px minmax(0, 1fr);
+  gap: 5px;
+  padding: 6px 9px;
+  overflow: hidden !important;
+}
+
+#kaspa-node .node-v6-network-tabs,
+#kaspa-node .node-v6-inner-tabs,
+#kaspa-node .node-v6-section-tabs {
+  display: flex;
+  align-items: end;
+  gap: 3px;
+  height: 30px;
+  min-height: 30px;
+  border-bottom: 1px solid rgba(125,150,185,.35);
+  overflow: hidden;
+}
+
+#kaspa-node .node-v6-network-tab,
+#kaspa-node .node-v6-inner-tab,
+#kaspa-node .node-v6-section-tab {
+  height: 27px !important;
+  min-height: 27px !important;
+  width: auto !important;
+  min-width: 96px !important;
+  padding: 2px 10px !important;
+  background: #111a2d;
+  color: #fff;
+  border: 1px solid rgba(125,150,185,.55);
+  border-bottom: none;
+  cursor: pointer;
+  font-size: 10px !important;
+  font-weight: 700;
+}
+
+#kaspa-node .node-v6-network-tab {
+  min-width: 118px !important;
+}
+
+#kaspa-node .node-v6-network-tab.active,
+#kaspa-node .node-v6-inner-tab.active,
+#kaspa-node .node-v6-section-tab.active {
+  background: #123252;
+  border-color: #7dcfff;
+}
+
+#kaspa-node .node-v6-network-panels,
+#kaspa-node .node-v6-network-panel,
+#kaspa-node .node-v6-inner-panel,
+#kaspa-node .node-v6-sections,
+#kaspa-node .node-v6-section {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden !important;
+}
+
+#kaspa-node .node-v6-network-panel.active {
+  display: grid;
+  grid-template-rows: 30px minmax(0, 1fr);
+  gap: 5px;
+}
+
+#kaspa-node .node-v6-inner-panel.active {
+  display: grid;
+  grid-template-rows: 72px 52px 30px minmax(0, 1fr);
+  gap: 6px;
+}
+
+#kaspa-node .node-v6-command {
+  position: relative;
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  padding: 6px 14px 6px 9px;
+  border: 1px solid rgba(125,150,185,.42);
+  background: rgba(9,18,38,.30);
+  overflow: hidden !important;
+}
+
+#kaspa-node .node-v6-command-title {
+  font-weight: 700;
+  line-height: 13px;
+}
+
+#kaspa-node .node-v6-command textarea {
+  height: 58px !important;
+  min-height: 58px !important;
+  max-height: 58px !important;
+  width: 100% !important;
+  resize: none !important;
+  overflow: auto !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  padding: 6px 42px 6px 8px !important;
+  background: #3b3b3b;
+  color: #fff;
+  border: 1px solid rgba(175,190,210,.45);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 10px !important;
+  line-height: 12px !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+}
+
+#kaspa-node .node-v6-copy {
+  position: absolute;
+  top: 15px;
+  right: 24px;
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 !important;
+  border-radius: 6px;
+  font-size: 17px !important;
+  background: rgba(10,20,38,.88);
+  border: 1px solid rgba(130,170,215,.65);
+}
+
+#kaspa-node .node-v6-toolbar {
+  display: grid;
+  grid-template-columns: minmax(560px, 1.35fr) minmax(560px, 1fr);
+  gap: 6px;
+  padding: 6px 7px;
+  border: 1px solid rgba(125,150,185,.42);
+  background: rgba(9,18,38,.30);
+  overflow: hidden !important;
+}
+
+#kaspa-node .node-v6-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-content: start;
+}
+
+#kaspa-node .node-v6-status {
+  display: grid;
+  grid-template-columns: 86px 86px repeat(3, minmax(120px, 1fr));
+  gap: 5px;
+  align-items: center;
+  overflow: hidden;
+}
+
+#kaspa-node button {
+  height: 23px !important;
+  min-height: 23px !important;
+  max-height: 23px !important;
+  width: auto !important;
+  min-width: 68px !important;
+  padding: 2px 7px !important;
+  color: #fff;
+  background: #666;
+  border: 1px solid rgba(235,235,235,.70);
+  cursor: pointer;
+  white-space: pre-wrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px !important;
+}
+
+#kaspa-node .good {
+  background: #4caf50;
+}
+
+#kaspa-node .warn {
+  color: #ffd21f;
+  border-color: #d7a800;
+}
+
+#kaspa-node .danger {
+  color: #ff4d4d;
+  border-color: #ff4d4d;
+}
+
+#kaspa-node .node-v6-grid {
+  height: 100%;
+  min-height: 0;
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(130px, 1fr));
+  grid-auto-rows: 58px;
+  gap: 7px;
+  align-content: start;
+  overflow: hidden !important;
+}
+
+#kaspa-node .node-v6-card {
+  min-width: 0;
+  min-height: 0;
+  height: 58px;
+  max-height: 58px;
+  padding: 6px 7px;
+  border: 1px solid rgba(125,150,185,.42);
+  background: rgba(9,18,38,.30);
+  display: grid;
+  grid-template-rows: 17px 24px;
+  gap: 4px;
+  overflow: hidden !important;
+}
+
+#kaspa-node .node-v6-card.check {
+  grid-template-rows: 1fr;
+  align-items: center;
+}
+
+#kaspa-node .node-v6-card.span2 {
+  grid-column: span 2;
+}
+
+#kaspa-node .node-v6-card.buttons {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+#kaspa-node .node-v6-card span,
+#kaspa-node .node-v6-status span,
+#kaspa-node label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: pre-wrap;
+  text-overflow: ellipsis;
+  line-height: 13px;
+}
+
+#kaspa-node label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#kaspa-node input[type="text"],
+#kaspa-node select {
+  height: 24px !important;
+  min-height: 24px !important;
+  max-height: 24px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 2px 6px !important;
+  background: #3b3b3b;
+  color: #fff;
+  border: 1px solid rgba(175,190,210,.45);
+  font-size: 10px !important;
+}
+
+#kaspa-node input[type="checkbox"] {
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px !important;
+  margin: 0 !important;
+}
+
+#kaspa-node .node-v6-log-toolbar {
+  height: 30px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+#kaspa-node .node-v6-log {
+  height: calc(100% - 34px);
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid rgba(125,150,185,.42);
+  background: rgba(7,14,30,.35);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 10px;
+  line-height: 13px;
+}
+
+@media (min-width: 1500px) {
+  #kaspa-node .node-v6-grid {
+    grid-template-columns: repeat(7, minmax(122px, 1fr));
+  }
+}
+
+@media (max-width: 1250px) {
+  #kaspa-node .node-v6-inner-panel.active {
+    display: block;
+    overflow: auto !important;
+  }
+
+  #kaspa-node .node-v6-toolbar,
+  #kaspa-node .node-v6-grid {
+    grid-template-columns: repeat(3, minmax(130px, 1fr));
+  }
+}
+/* KGW_NODE_COMMAND_PREVIEW_OWNER_CONTRACT_START */
+#kaspa-node .node-v6-command textarea {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  resize: none !important;
+}
+/* KGW_NODE_COMMAND_PREVIEW_OWNER_CONTRACT_END */
+
+/* KGW_NODE_CONFIRMED_SCROLL_OWNER_FIX_START */
+#kaspa-node .node-v6-inner-panel.active {
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
+  scrollbar-gutter: auto !important;
+  min-height: 0 !important;
+}
+
+#kaspa-node .node-v6-sections {
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scrollbar-gutter: auto !important;
+}
+
+#kaspa-node .node-v6-section {
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+/* KGW_NODE_CONFIRMED_SCROLL_OWNER_FIX_END */
+
+
+/* KGW_NODE_RELEASE_LOG_PANEL_LAYOUT_OWNER_V1
+   R26: Log tab uses available vertical space; no fixed short pane. */
+#kaspa-node.node-v6-root,
+#kaspa-node .node-v6-shell,
+#kaspa-node .node-v6-network-panels,
+#kaspa-node .node-v6-network-panel,
+#kaspa-node .node-v6-inner-panel {
+  min-height: 0 !important;
+}
+
+#kaspa-node .node-v6-inner-panel[data-node-inner-panel="log"].active,
+#kaspa-node .node-v6-inner-panel[data-inner-panel="log"].active,
+#kaspa-node [data-node-panel="log"].active,
+#kaspa-node [data-panel="log"].active {
+  display: grid !important;
+  grid-template-rows: 30px minmax(0, 1fr) !important;
+  gap: 6px !important;
+  min-height: 0 !important;
+  height: calc(100vh - 238px) !important;
+  max-height: none !important;
+  overflow: hidden !important;
+}
+
+#kaspa-node .node-v6-log-toolbar,
+#kaspa-node .node-log-toolbar {
+  display: flex !important;
+  min-height: 30px !important;
+  height: 30px !important;
+  gap: 8px !important;
+}
+
+#kaspa-node .node-v6-log,
+#kaspa-node .node-log,
+#kaspa-node pre[id^="node-"][id$="-logOutput"],
+#kaspa-node textarea[id^="node-"][id$="-logOutput"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: none !important;
+  width: 100% !important;
+  overflow: auto !important;
+  white-space: pre !important;
+  color: #ffffff !important;
+  background: #07101f !important;
+  border: 1px solid rgba(125,150,185,.42) !important;
+  font-family: Consolas, "Courier New", monospace !important;
+  font-size: 11px !important;
+  line-height: 15px !important;
+}
+
+/* KGW_LOG_ACTION_BUTTON_FEEDBACK_OWNER_V1 */
+#kaspa-node button.kgw-log-action-feedback {
+  font-size: 0 !important;
+}
+
+#kaspa-node button.kgw-log-action-feedback::after {
+  content: attr(data-kgw-done-label);
+  font-size: 11px !important;
+  line-height: 1 !important;
+}
+
+/* KGW_LOG_AUTOSCROLL_CONTROLS_R27_START */
+.kgw-log-autoscroll-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(125, 150, 185, .55);
+  background: rgba(15, 32, 56, .92);
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1;
+  user-select: none;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.kgw-log-autoscroll-toggle input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.kgw-log-autoscroll-toggle span {
+  white-space: nowrap;
+}
+/* KGW_LOG_AUTOSCROLL_CONTROLS_R27_END */

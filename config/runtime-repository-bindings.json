@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "mode": "development-branch",
+  "description": "Single source of truth for Kaspa Gateway embedded Rusty Kaspa runtime repository bindings.",
+  "rules": {
+    "bindingScope": "build-time",
+    "runtimeStartedByBindingTools": false,
+    "externalKaspadExeAllowed": false,
+    "sameExeSelfWorkerRequired": true,
+    "cargoLockMustBeCommitted": true,
+    "releaseModeShouldPinRev": true
+  },
+  "networks": {
+    "mainnet": {
+      "family": "mainline",
+      "repo": "https://github.com/kaspanet/rusty-kaspa.git",
+      "branch": "master",
+      "rev": null,
+      "feature": "official-kaspa-runtime-mainline",
+      "nodeAliases": [
+        "kaspad-lib-mainline",
+        "kaspa-core-mainline",
+        "kaspa-utils-mainline"
+      ],
+      "bridgeAliases": [
+        "kaspa-stratum-bridge-mainline"
+      ],
+      "packages": {
+        "node": [
+          "kaspad",
+          "kaspa-core",
+          "kaspa-utils"
+        ],
+        "bridge": [
+          "kaspa-stratum-bridge"
+        ]
+      }
+    },
+    "testnet10": {
+      "family": "tn12",
+      "repo": "https://github.com/LiveLaughLove13/rusty-kaspa.git",
+      "branch": "RKStratumTN12",
+      "rev": null,
+      "feature": "official-kaspa-runtime-tn12",
+      "nodeAliases": [
+        "kaspad-lib-tn12",
+        "kaspa-core-tn12",
+        "kaspa-utils-tn12"
+      ],
+      "bridgeAliases": [
+        "kaspa-stratum-bridge-tn12"
+      ],
+      "packages": {
+        "node": [
+          "kaspad",
+          "kaspa-core",
+          "kaspa-utils"
+        ],
+        "bridge": [
+          "kaspa-stratum-bridge"
+        ]
+      }
+    },
+    "testnet12": {
+      "family": "tn12",
+      "repo": "https://github.com/LiveLaughLove13/rusty-kaspa.git",
+      "branch": "RKStratumTN12",
+      "rev": null,
+      "feature": "official-kaspa-runtime-tn12",
+      "nodeAliases": [
+        "kaspad-lib-tn12",
+        "kaspa-core-tn12",
+        "kaspa-utils-tn12"
+      ],
+      "bridgeAliases": [
+        "kaspa-stratum-bridge-tn12"
+      ],
+      "packages": {
+        "node": [
+          "kaspad",
+          "kaspa-core",
+          "kaspa-utils"
+        ],
+        "bridge": [
+          "kaspa-stratum-bridge"
+        ]
+      }
+    }
+  }
+}

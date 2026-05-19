@@ -1,0 +1,2395 @@
+{
+  "actions": {
+    "add": "添加",
+    "backup": "备份",
+    "browse": "浏览...",
+    "cancel": "取消",
+    "clear": {
+      "caches": "清除缓存",
+      "fields": "清除字段",
+      "folder": {
+        "warning": "您确定要删除 '{}' 文件夹中的 *所有* 内容吗？ 此操作无法撤销。"
+      },
+      "log": "清除日志",
+      "logs": {
+        "warning": "这将关闭当前的日志处理程序，删除日志文件夹中的所有 .log 文件，然后重新启动日志记录。您确定吗？"
+      }
+    },
+    "copy": "复制",
+    "delete": "删除",
+    "edit": {
+      "endpoint": "编辑端点"
+    },
+    "export": {
+      "addresses": "导出地址",
+      "path": "导出路径",
+      "results": "导出结果:",
+      "successful": "导出成功"
+    },
+    "fetch": "获取",
+    "filter": "筛选",
+    "import": {
+      "addresses": "导入地址",
+      "successful": "导入成功"
+    },
+    "load": {
+      "address": "加载地址",
+      "an": {
+        "address": {
+          "to": {
+            "see": {
+              "transactions": "加载一个地址以查看交易。"
+            }
+          }
+        }
+      }
+    },
+    "open": {
+      "exported": {
+        "file": "是否立即打开？"
+      }
+    },
+    "refresh": "刷新",
+    "reset": "重置",
+    "restart": {
+      "required": "需要重启"
+    },
+    "restore": "恢复",
+    "save": "保存",
+    "search": "搜索",
+    "start": {
+      "with": {
+        "windows": "随 Windows 启动"
+      }
+    },
+    "update": "更新"
+  },
+  "actions.export.results": "导出结果：",
+  "addresses": "地址",
+  "analysis": {
+    "analysis": "分析",
+    "charts": "图表",
+    "deep": {
+      "analysis": {
+        "complete": "深度分析完成"
+      }
+    },
+    "loading": {
+      "analysis": "正在加载分析..."
+    },
+    "network": {
+      "graph": {
+        "and": {
+          "cluster": {
+            "analysis": {
+              "are": {
+                "ready": "网络图和聚类分析已准备就绪。"
+              }
+            }
+          }
+        }
+      }
+    },
+    "run": {
+      "analysis": "运行分析"
+    },
+    "standard": {
+      "analysis": "标准分析"
+    },
+    "starting": {
+      "deep": {
+        "analysis": "正在开始深度分析..."
+      }
+    },
+    "summary": "摘要",
+    "avg": {
+      "daily": {
+        "net": {
+          "flow": "平均每日净流量"
+        }
+      }
+    }
+  },
+  "analysis.counterparties": "Counterparties",
+  "analysis.counterparty": "Counterparty",
+  "analysis.incoming": "Incoming",
+  "analysis.net": "Net",
+  "analysis.noCounterpartyRowsAvailable": "No counterparty rows available.",
+  "analysis.outgoing": "Outgoing",
+  "analysis.transactions": "Transactions",
+  "app": {
+    "title": "Kaspa Gateway"
+  },
+  "bridge": {
+    "bridge": {
+      "1": "桥接 1",
+      "2": "桥接 2",
+      "files": {
+        "are": {
+          "already": {
+            "up": {
+              "to": {
+                "date": "桥接文件已是最新。"
+              }
+            }
+          }
+        }
+      },
+      "is": {
+        "already": {
+          "running": "桥接已在运行。"
+        },
+        "not": {
+          "running": "桥接未运行。"
+        }
+      },
+      "update": {
+        "complete": "桥接更新完成。"
+      }
+    },
+    "enable": {
+      "bridge": {
+        "2": "启用桥接 2"
+      }
+    },
+    "kaspa": {
+      "bridge": "Kaspa 桥接"
+    },
+    "please": {
+      "stop": {
+        "bridge": {
+          "2": {
+            "before": {
+              "disabling": {
+                "it": "请在禁用桥接 2 之前停止它。"
+              }
+            }
+          }
+        }
+      }
+    },
+    "tabs": {
+      "kaspabridge": "Kaspa Bridge"
+    }
+  },
+  "bridge.serviceEventPlanningDescription": "KGW service-event planning for all bridges in parallel. mainnet/testnet10 use master; testnet12 uses tn12.",
+  "coinbase": "coinbase",
+  "common": {
+    "loading": "Loading",
+    "all": "全部",
+    "action": {
+      "moved": "操作已移动"
+    },
+    "advanced": "高级",
+    "are": {
+      "you": {
+        "sure": {
+          "you": {
+            "want": {
+              "to": {
+                "exit": "您确定要退出吗？"
+              }
+            }
+          }
+        }
+      }
+    },
+    "automatic": {
+      "refresh": "自动刷新"
+    },
+    "available": {
+      "files": "可用文件:"
+    },
+    "backoff": {
+      "factor": "退避因子"
+    },
+    "base": {
+      "url": "基础 URL"
+    },
+    "cache": {
+      "cleared": {
+        "successfully": "缓存清除成功。"
+      }
+    },
+    "caching": "缓存",
+    "calculating": "计算中...",
+    "cancel": {
+      "tooltip": "停止当前的交易获取操作"
+    },
+    "cancelling": "正在取消...",
+    "check": {
+      "for": {
+        "updates": {
+          "on": {
+            "startup": "启动时检查更新"
+          }
+        }
+      }
+    },
+    "checking": {
+      "for": {
+        "updates": "正在检查更新..."
+      },
+      "latest": {
+        "version": {
+          "for": {
+            "value": "正在检查 {} 的最新版本..."
+          }
+        }
+      }
+    },
+    "clearing": {
+      "folder": "正在清除文件夹:",
+      "local": {
+        "data": {
+          "and": {
+            "starting": {
+              "full": {
+                "redownload": "正在清除本地数据并开始完整重新下载..."
+              }
+            }
+          }
+        }
+      }
+    },
+    "click": {
+      "no": {
+        "to": {
+          "select": {
+            "a": {
+              "custom": {
+                "location": "点击 '否' 选择自定义位置。"
+              }
+            }
+          }
+        }
+      },
+      "yes": {
+        "to": {
+          "download": {
+            "to": {
+              "default": {
+                "location": "点击 '是' 下载到默认位置:"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cluster": "聚类",
+    "command": "命令",
+    "compact": {
+      "database": "压缩数据库"
+    },
+    "compacting": {
+      "database": "正在压缩数据库..."
+    },
+    "confirm": {
+      "action": "确认操作",
+      "deletion": "确认删除",
+      "file": {
+        "deletion": "确认删除文件"
+      }
+    },
+    "continue": "继续?",
+    "controls": "控件",
+    "db": {
+      "and": {
+        "performance": "数据库与性能"
+      },
+      "file": "数据库文件",
+      "size": "数据库大小"
+    },
+    "daily": "每日",
+    "database": {
+      "maintenance": "数据库维护"
+    },
+    "date": {
+      "time": "日期/时间"
+    },
+    "deleting": {
+      "databases": "正在删除数据库..."
+    },
+    "description": "描述",
+    "details": "详情",
+    "direction": "方向",
+    "displayed": {
+      "currencies": "显示的货币",
+      "tabs": "显示的标签"
+    },
+    "download": {
+      "file": "下载文件",
+      "cancelled": {
+        "by": {
+          "user": "用户取消了下载。"
+        }
+      },
+      "complete": {
+        "attempting": {
+          "to": {
+            "replace": {
+              "file": "下载完成。尝试替换文件..."
+            }
+          }
+        }
+      }
+    },
+    "duration": {
+      "days": "持续时间 (天)"
+    },
+    "enable": {
+      "auto": {
+        "refresh": "启用自动刷新"
+      }
+    },
+    "expected": {
+      "sha256": {
+        "value": "预期 SHA256: {}"
+      }
+    },
+    "extracting": {
+      "value": {
+        "from": {
+          "value": "正在从 {1} 中提取 {0}..."
+        }
+      }
+    },
+    "false": "否",
+    "fetch": {
+      "tooltip": "开始获取所选地址的交易"
+    },
+    "files": {
+      "deleted": {
+        "successfully": "文件删除成功。"
+      }
+    },
+    "find": {
+      "next": "查找下一个",
+      "previous": "查找上一个"
+    },
+    "font": {
+      "size": "字体大小"
+    },
+    "force": {
+      "fetch": "强制获取"
+    },
+    "frequency": "频率",
+    "from": {
+      "date": "从日期:"
+    },
+    "full": {
+      "url": {
+        "preview": "完整 URL 预览"
+      }
+    },
+    "general": "常规",
+    "grand": {
+      "total": "总计"
+    },
+    "hash": {
+      "mismatch": {
+        "for": {
+          "value": {
+            "download": {
+              "aborted": "{value} 的哈希不匹配。下载已中止。"
+            }
+          }
+        }
+      },
+      "verified": {
+        "successfully": "哈希验证成功。"
+      }
+    },
+    "initializing": "正在初始化...",
+    "kb": "KB",
+    "known": {
+      "name": "已知名称"
+    },
+    "last": {
+      "3": {
+        "days": "最近 3 天",
+        "months": "最近 3 个月"
+      },
+      "6": {
+        "months": "最近 6 个月"
+      },
+      "modified": "最后修改",
+      "month": "上个月",
+      "network": {
+        "update": {
+          "value": "上次网络更新: {}"
+        }
+      },
+      "updated": "最后更新",
+      "week": "上周",
+      "year": "去年"
+    },
+    "latest": {
+      "version": "最新版本"
+    },
+    "legend": "图例",
+    "local": {
+      "version": "本地版本"
+    },
+    "max": {
+      "pages": "最大页数",
+      "workers": "最大工作线程数"
+    },
+    "monthly": "每月",
+    "name": "名称",
+    "network": "网络",
+    "no": {
+      "data": {
+        "to": {
+          "display": "没有可显示的数据",
+          "export": "没有可导出的数据"
+        }
+      },
+      "database": {
+        "selected": "未选择数据库"
+      },
+      "matches": {
+        "found": "未找到匹配项"
+      },
+      "selection": "未选择",
+      "significant": {
+        "anomalies": {
+          "detected": "未检测到重大异常"
+        }
+      }
+    },
+    "not": {
+      "implemented": "未实现"
+    },
+    "nothing": "无",
+    "ok": "确定",
+    "only": {
+      "https": {
+        "urls": {
+          "are": {
+            "allowed": {
+              "for": {
+                "security": "出于安全考虑，只允许使用 HTTPS URL。"
+              }
+            }
+          }
+        }
+      }
+    },
+    "page": "页面",
+    "peak": {
+      "activity": {
+        "hour": {
+          "s": "高峰活动时间"
+        }
+      }
+    },
+    "please": {
+      "select": {
+        "only": {
+          "one": {
+            "database": {
+              "for": {
+                "this": {
+                  "action": "此操作请只选择一个数据库。"
+                }
+              }
+            }
+          }
+        }
+      },
+      "wait": {
+        "for": {
+          "the": {
+            "current": {
+              "fetch": {
+                "or": {
+                  "export": {
+                    "to": {
+                      "complete": {
+                        "before": {
+                          "closing": "请在关闭前等待当前的获取或导出完成。"
+                        }
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "complete": "请等待当前获取完成。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "process": {
+      "terminated": "进程已终止"
+    },
+    "quit": "退出",
+    "rank": "排名",
+    "reason": "原因",
+    "release": {
+      "has": {
+        "no": {
+          "published": {
+            "at": {
+              "date": "发行版没有 'published_at' 日期。"
+            }
+          }
+        }
+      }
+    },
+    "rename": "重命名",
+    "retry": {
+      "attempts": "重试次数",
+      "fetch": "发生错误: {}\\n\\n您想重试获取吗?"
+    },
+    "select": {
+      "all": "全选",
+      "date": "选择日期",
+      "download": {
+        "location": "选择下载位置"
+      }
+    },
+    "set": {
+      "default": "设置为默认值"
+    },
+    "severity": "严重性",
+    "size": {
+      "kb": "大小 (KB)"
+    },
+    "skipping": {
+      "hash": {
+        "verification": {
+          "as": {
+            "no": {
+              "valid": {
+                "hash": {
+                  "was": {
+                    "found": {
+                      "for": {
+                        "value": "跳过哈希验证，因为 {} 未找到有效的哈希。"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "startup": {
+      "delay": {
+        "sec": "启动延迟 (秒):"
+      }
+    },
+    "success": "成功",
+    "this": {
+      "will": {
+        "overwrite": "这将覆盖"
+      }
+    },
+    "times": {
+      "received": "接收次数",
+      "sent": "发送次数"
+    },
+    "to": {
+      "date": "到日期:"
+    },
+    "tooltip": {
+      "appdir": "存储数据的目录。",
+      "archival": "作为存档节点运行：避免删除旧区块数据（警告：磁盘使用量大）。",
+      "async": {
+        "threads": "指定异步线程数（默认值：16）。"
+      },
+      "backoff": {
+        "factor": "重试延迟的乘数（延迟 = backoff * 2^尝试次数）。（推荐值：0.5）"
+      },
+      "configfile": "配置文件的路径。",
+      "connect": "启动时仅连接到指定的对等点。",
+      "disable": {
+        "upnp": "禁用 UPnP。"
+      },
+      "enable": {
+        "unsynced": {
+          "mining": "允许节点在未同步时接受来自 RPC 的区块（此标志主要用于测试）。"
+        }
+      },
+      "externalip": "将套接字地址（ip:port）添加到我们声称侦听对等点的本地地址列表中。",
+      "hcp": "健康检查端口。",
+      "ks": {
+        "extranonce": "extranonce 的大小（以字节为单位）（默认值：0）。",
+        "mindiff": "矿工的最小难度（默认值：8192）。",
+        "pow2clamp": "将难度限制为 2 的幂（ASIC 所需）。",
+        "prom": "Prometheus 指标的端口（例如，:2114）。",
+        "sharespermin": "vardiff 的每分钟目标份额（默认值：20）。",
+        "stats": "在控制台中显示哈希率和连接统计信息。",
+        "stratum": "用于侦听矿工连接的接口:端口（例如，:5555）。",
+        "vardiff": "启用可变难度（vardiff）。",
+        "vardiffstats": "在控制台中显示 vardiff 统计信息。"
+      },
+      "listen": "添加一个接口:端口以侦听连接（默认所有接口端口：16111，测试网：16211）。",
+      "max": {
+        "pages": "获取单个地址的总页数上的安全限制。",
+        "workers": "网络请求的最大并行线程数。"
+      },
+      "maxinpeers": "最大入站对等点数（默认值：128）。",
+      "netsuffix": "测试网网络后缀编号。",
+      "network": {
+        "cache": {
+          "hours": "在获取新数据之前保留网络数据（哈希率、难度）的小时数。"
+        }
+      },
+      "nodnsseed": "禁用对等点的 DNS 播种。",
+      "outpeers": "目标出站对等点数（默认值：8）。",
+      "page": {
+        "delay": "在获取页面之间等待的秒数，以避免速率限制。",
+        "limit": "每个 API 请求获取的最大交易数。（推荐值：100-1000）"
+      },
+      "ram": {
+        "scale": "对内存分配限制应用比例因子（例如，8GB RAM 为 0.5）。"
+      },
+      "reset": {
+        "db": "启动节点前重置数据库。在子网络之间切换时需要。"
+      },
+      "retention": {
+        "period": {
+          "days": "保留数据的总天数。"
+        }
+      },
+      "retry": {
+        "attempts": "重试失败的 API 请求的次数。（推荐值：3-5）"
+      },
+      "sanity": "启用各种健全性检查，这可能会占用大量计算资源。",
+      "uacomment": "添加到用户代理的注释。",
+      "yes": "对所有交互式控制台问题回答 '是'。"
+    },
+    "total": "总计",
+    "true": "是",
+    "type": "类型",
+    "ukn": "未知",
+    "url": {
+      "components": "URL 组件"
+    },
+    "updated": "已更新",
+    "updating": {
+      "value": "正在更新 {}..."
+    },
+    "use": {
+      "custom": {
+        "download": {
+          "url": "使用自定义下载 URL"
+        },
+        "config": {
+          "yaml": "使用自定义 config.yaml"
+        }
+      }
+    },
+    "user": {
+      "accepted": {
+        "risk": {
+          "proceeding": {
+            "without": {
+              "hash": {
+                "verification": "用户接受风险。在没有哈希验证的情况下继续。"
+              }
+            }
+          }
+        }
+      }
+    },
+    "value": "价值",
+    "version": "版本",
+    "weekly": "每周",
+    "copied": {
+      "to": {
+        "clipboard": "已复制到剪贴板。"
+      }
+    },
+    "databases": {
+      "deleted": {
+        "successfully": "数据库删除成功。"
+      }
+    },
+    "deleted": {
+      "successfully": "删除成功。"
+    },
+    "folder": {
+      "cleared": "文件夹已清空。"
+    },
+    "lang": {
+      "ar": "阿拉伯语",
+      "de": "德语",
+      "en": "英语",
+      "es": "西班牙语",
+      "fr": "法语",
+      "hi": "印地语",
+      "id": "印尼语",
+      "ja": "日语",
+      "ko": "韩语",
+      "ru": "俄语",
+      "tr": "土耳其语",
+      "zh": {
+        "cn": "中文（简体）"
+      }
+    },
+    "search": "搜索",
+    "autoScroll": "自动滚动"
+  },
+  "common.loading": "正在加载",
+  "errors": {
+    "api": {
+      "timeout": {
+        "sec": "API超时 (秒)"
+      }
+    },
+    "are": {
+      "you": {
+        "sure": {
+          "you": {
+            "want": {
+              "to": {
+                "delete": {
+                  "these": {
+                    "files": {
+                      "this": {
+                        "cannot": {
+                          "be": {
+                            "undone": "您确定要删除这些文件吗？此操作无法撤销。"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "automatically": {
+      "restart": {
+        "the": {
+          "bridge": {
+            "if": {
+              "it": {
+                "crashes": {
+                  "or": {
+                    "loses": {
+                      "connection": {
+                        "to": {
+                          "the": {
+                            "node": "如果桥接崩溃或与节点失去连接，则自动重新启动。"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "node": {
+            "if": {
+              "it": {
+                "crashes": {
+                  "or": {
+                    "stops": {
+                      "unexpectedly": "如果节点崩溃或意外停止，则自动重新启动。"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "blocked": {
+      "potential": {
+        "path": {
+          "traversal": {
+            "attack": "阻止了潜在的路径遍历攻击:"
+          }
+        }
+      }
+    },
+    "cannot": {
+      "delete": {
+        "default": {
+          "profile": "无法删除默认配置文件"
+        }
+      },
+      "rename": {
+        "default": {
+          "profile": "无法重命名默认配置文件"
+        }
+      }
+    },
+    "compact": {
+      "warning": "压缩数据库 '{0}' 将重新写入数据库文件，以删除旧数据并优化空间。 这可能需要一些时间。 您要继续吗？"
+    },
+    "could": {
+      "not": {
+        "delete": {
+          "wal": {
+            "file": {
+              "value": {
+                "value": "无法删除 WAL 文件 '{0}': {1}"
+              }
+            }
+          },
+          "the": {
+            "database": "无法删除数据库，因为它正在被本程序或另一个进程使用。请在重新启动应用程序后重试。"
+          }
+        },
+        "open": {
+          "file": "无法打开文件:"
+        }
+      }
+    },
+    "database": {
+      "deletion": {
+        "failed": "数据库删除失败"
+      }
+    },
+    "directory": {
+      "not": {
+        "found": "未找到目录。"
+      }
+    },
+    "error": "错误",
+    "failed": {
+      "to": {
+        "check": {
+          "version": {
+            "for": {
+              "value": "检查 {} 版本失败。"
+            }
+          }
+        },
+        "delete": {
+          "files": {
+            "check": {
+              "logs": "删除文件失败。检查日志。"
+            }
+          },
+          "some": {
+            "databases": {
+              "check": {
+                "logs": "删除某些数据库失败。检查日志。"
+              }
+            }
+          }
+        },
+        "import": {
+          "addresses": "导入地址失败:"
+        },
+        "save": {
+          "address": "保存地址失败。",
+          "configuration": "保存配置失败。"
+        },
+        "update": {
+          "registry": "更新注册表失败:"
+        }
+      }
+    },
+    "file": {
+      "not": {
+        "found": "未找到文件"
+      }
+    },
+    "files": {
+      "not": {
+        "found": "文件未找到。"
+      }
+    },
+    "invalid": {
+      "input": "无效输入",
+      "kaspa": {
+        "address": "无效的 Kaspa 地址"
+      }
+    },
+    "network": {
+      "error": "网络错误"
+    },
+    "not": {
+      "found": "未找到"
+    },
+    "security": {
+      "error": {
+        "invalid": {
+          "file": {
+            "path": {
+              "inside": {
+                "zip": "安全错误: ZIP 内的文件路径无效。"
+              }
+            }
+          }
+        }
+      },
+      "warning": "安全警告",
+      "check": {
+        "failed": "安全检查失败。"
+      }
+    },
+    "selective": {
+      "db": {
+        "delete": {
+          "warning": "这将永久删除以下选定的数据库文件:"
+        }
+      }
+    },
+    "this": {
+      "action": {
+        "cannot": {
+          "be": {
+            "undone": {
+              "are": {
+                "you": {
+                  "sure": "此操作无法撤销。您确定吗？"
+                }
+              }
+            }
+          }
+        }
+      },
+      "will": {
+        "reset": {
+          "all": {
+            "settings": {
+              "to": {
+                "their": {
+                  "default": {
+                    "values": {
+                      "and": {
+                        "cannot": {
+                          "be": {
+                            "undone": {
+                              "are": {
+                                "you": {
+                                  "sure": "这将把所有设置重置为默认值，并且无法撤销。您确定吗？"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tooltip": {
+      "timeout": "API 响应失败前的最大等待秒数。（推荐值：10-30）"
+    },
+    "warning": {
+      "could": {
+        "not": {
+          "write": {
+            "version": {
+              "file": {
+                "value": "警告: 无法写入版本文件: {0}。"
+              }
+            }
+          }
+        }
+      },
+      "hash": {
+        "file": {
+          "not": {
+            "found": {
+              "for": {
+                "custom": {
+                  "url": {
+                    "proceeding": {
+                      "without": {
+                        "hash": {
+                          "verification": "警告: 未找到自定义 URL 的哈希文件。在没有哈希验证的情况下继续。"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "explorer": {
+    "address": "地址",
+    "addresses": {
+      "exported": {
+        "to": "地址已导出到"
+      },
+      "imported": "地址已导入。"
+    },
+    "analysis": {
+      "report": {
+        "for": {
+          "kaspa": {
+            "address": "Kaspa地址分析报告"
+          }
+        }
+      },
+      "for": {
+        "address": "地址分析"
+      }
+    },
+    "applying": {
+      "filters": "正在应用筛选器..."
+    },
+    "asset": {
+      "value": {
+        "not": {
+          "in": {
+            "latest": {
+              "release": "最新版本中没有资产 {}"
+            }
+          }
+        }
+      }
+    },
+    "avg": {
+      "tx": {
+        "count": "平均交易次数"
+      }
+    },
+    "balance": "余额",
+    "block": {
+      "score": "区块分数"
+    },
+    "building": {
+      "counterparty": {
+        "export": {
+          "data": "正在构建交易对手导出数据..."
+        }
+      }
+    },
+    "checking": {
+      "network": {
+        "for": {
+          "new": {
+            "transactions": "正在检查网络中是否有新交易..."
+          }
+        }
+      }
+    },
+    "coinbase": {
+      "mining": "Coinbase / 挖矿"
+    },
+    "configuration": {
+      "saved": "配置已保存"
+    },
+    "counterparty": "交易对手",
+    "enter": {
+      "kaspa": {
+        "address": {
+          "or": {
+            "select": {
+              "from": {
+                "dropdown": "输入 Kaspa 地址或从下拉菜单中选择"
+              }
+            }
+          }
+        }
+      }
+    },
+    "explorer": "浏览器",
+    "exported": {
+      "on": "导出时间"
+    },
+    "fetching": {
+      "page": {
+        "value": {
+          "new": {
+            "txs": {
+              "value": "正在获取页面 {} (新交易: {})..."
+            }
+          }
+        }
+      },
+      "transactions": "正在获取交易..."
+    },
+    "first": {
+      "transaction": "第一次交易"
+    },
+    "from": {
+      "address": {
+        "es": "发件人地址"
+      }
+    },
+    "incoming": "入账",
+    "kaspa": {
+      "address": "Kaspa 地址",
+      "transaction": {
+        "report": "Kaspa 交易报告"
+      }
+    },
+    "last": {
+      "transaction": "最后一次交易"
+    },
+    "loading": {
+      "cached": {
+        "transactions": "正在加载缓存的交易..."
+      },
+      "transactions": {
+        "from": {
+          "local": {
+            "database": "正在从本地数据库加载交易..."
+          }
+        }
+      }
+    },
+    "main": {
+      "address": "主地址"
+    },
+    "manage": {
+      "addresses": "管理地址"
+    },
+    "new": {
+      "address": {
+        "auto": {
+          "saved": {
+            "successfully": "新地址自动保存成功。"
+          }
+        }
+      }
+    },
+    "no": {
+      "addresses": {
+        "to": {
+          "export": "没有要导出的地址。"
+        }
+      },
+      "transactions": {
+        "for": {
+          "this": {
+            "counterparty": "此交易对手没有交易。"
+          }
+        },
+        "match": {
+          "the": {
+            "current": {
+              "criteria": "没有交易符合当前条件。"
+            }
+          }
+        },
+        "to": {
+          "analyze": "没有可分析的交易。"
+        }
+      }
+    },
+    "outgoing": "出账",
+    "press": {
+      "fetch": {
+        "or": {
+          "apply": {
+            "filters": "按 '获取' 或应用筛选器。"
+          }
+        }
+      },
+      "refresh": {
+        "list": {
+          "to": {
+            "load": {
+              "top": {
+                "addresses": "按 '刷新列表' 加载热门地址。"
+              }
+            }
+          }
+        }
+      }
+    },
+    "right": {
+      "click": {
+        "an": {
+          "address": {
+            "to": {
+              "add": {
+                "it": {
+                  "to": {
+                    "my": {
+                      "addresses": "右键单击地址以将其添加到 '我的地址'。"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "saved": {
+      "value": {
+        "total": {
+          "transactions": "已保存 {} 条总交易..."
+        }
+      }
+    },
+    "scanning": {
+      "page": {
+        "value": {
+          "value": {
+            "new": {
+              "transactions": {
+                "found": "正在扫描页面 {}... (发现 {} 条新交易)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "starting": {
+      "fetch": {
+        "for": {
+          "address": {
+            "value": "正在开始获取地址: {}..."
+          }
+        }
+      },
+      "transaction": {
+        "download": "正在开始交易下载..."
+      }
+    },
+    "txs": "交易数",
+    "to": {
+      "address": {
+        "es": "收件人地址"
+      },
+      "get": {
+        "started": {
+          "enter": {
+            "a": {
+              "kaspa": {
+                "address": {
+                  "in": {
+                    "the": {
+                      "field": {
+                        "above": {
+                          "and": {
+                            "press": {
+                              "fetch": "要开始，请在上方字段中输入 Kaspa 地址并按 '获取'。"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tooltip": {
+      "api": {
+        "address": "API 地址",
+        "balance": "用于获取特定 Kaspa 地址当前余额的端点。",
+        "blockdag": {
+          "info": "提供有关 blockDAG 的一般信息（如区块计数和难度）的端点。"
+        },
+        "blockreward": "用于检查当前区块奖励的端点。",
+        "full": {
+          "transactions": "用于按页获取特定地址的完整交易列表的端点。"
+        },
+        "top": {
+          "addresses": "用于获取最富有地址列表的端点。"
+        },
+        "transaction": "用于在区块浏览器上查看特定交易的 URL 模板。"
+      },
+      "ks": {
+        "blockwait": "等待新区块模板的时间（例如，3s，2000ms）。"
+      },
+      "max": {
+        "tracked": {
+          "addresses": "用于 UTXO 更改事件跟踪的最大（预分配）地址数（默认值：0）。"
+        }
+      }
+    },
+    "top": {
+      "addresses": "热门地址"
+    },
+    "total": {
+      "transactions": "总交易数"
+    },
+    "transaction": {
+      "distribution": "交易分布",
+      "fetching": "交易获取",
+      "id": "交易 ID",
+      "network": {
+        "graph": {
+          "static": "交易网络图 (静态)"
+        }
+      },
+      "report": {
+        "for": {
+          "kaspa": {
+            "address": "Kaspa 地址交易报告"
+          }
+        }
+      },
+      "table": {
+        "font": {
+          "size": "交易表字体大小"
+        }
+      },
+      "url": "交易 URL",
+      "value": {
+        "kas": "交易价值 (KAS)"
+      }
+    },
+    "transactions": "交易",
+    "updating": {
+      "transactions": "正在更新交易..."
+    },
+    "tabs": {
+      "topaddresses": "Top Addresses"
+    }
+  },
+  "explorer.noTransactionsToDisplay": "没有可显示的交易。",
+  "explorer.total": "Total",
+  "incoming": "入账",
+  "links": {
+    "donations": "Donations",
+    "twitter": "Twitter",
+    "github": "GitHub"
+  },
+  "links.donations": "捐赠",
+  "log.tauriInvokeApiUnavailable": "Tauri invoke API is not available.",
+  "logs": {
+    "auto": {
+      "scroll": "自动滚动"
+    },
+    "check": {
+      "logs": {
+        "for": {
+          "details": "检查日志获取详情。"
+        }
+      }
+    },
+    "live": {
+      "log": "实时日志"
+    },
+    "log": "日志",
+    "logging": {
+      "and": {
+        "stats": "日志记录与统计"
+      },
+      "level": "日志记录级别"
+    },
+    "network": {
+      "and": {
+        "logging": "网络与日志记录"
+      }
+    },
+    "tooltip": {
+      "ks": {
+        "log": "在同一目录下的文件中启用日志记录。"
+      },
+      "logdir": "日志输出的目录。",
+      "nologfiles": "禁用文件日志记录。"
+    }
+  },
+  "metrics": {
+    "price": "价格",
+    "hashrate": "Hashrate",
+    "difficulty": "难度",
+    "amount": {
+      "kas": "数量 (KAS)"
+    },
+    "avg": {
+      "inflow": {
+        "kas": "平均流入 (KAS)"
+      },
+      "outflow": {
+        "kas": "平均流出 (KAS)"
+      },
+      "net": {
+        "flow": {
+          "kas": "平均净流量 (KAS)"
+        }
+      }
+    },
+    "kaspa": {
+      "analysis": {
+        "report": "Kaspa 地址分析报告"
+      },
+      "gateway": "metrics.kaspa.gateway"
+    },
+    "kaspagateway": "Kaspa 网关",
+    "largest": {
+      "inflow": {
+        "kas": "最大流入 (KAS)"
+      },
+      "outflow": {
+        "kas": "最大流出 (KAS)"
+      }
+    },
+    "last": {
+      "price": {
+        "update": {
+          "value": "上次价格更新: {}"
+        }
+      }
+    },
+    "net": {
+      "flow": {
+        "kas": "净流量 (KAS)"
+      },
+      "volume": {
+        "kas": "净交易量 (KAS)"
+      }
+    },
+    "receivers": {
+      "outflow": "接收者 (流出)"
+    },
+    "senders": {
+      "inflow": "发送者 (流入)"
+    },
+    "tooltip": {
+      "ks": {
+        "kaspa": "kaspad gRPC 服务器的地址:端口（例如，127.0.0.1:16110）。"
+      },
+      "perf": {
+        "metrics": "性能指标"
+      },
+      "price": {
+        "cache": {
+          "hours": "在获取新数据之前保留价格数据的小时数。（例如：0.25 = 15 分钟）"
+        }
+      }
+    },
+    "top": {
+      "10": {
+        "counterparties": {
+          "by": {
+            "net": {
+              "flow": "按净流量排名前 10 的交易对手"
+            }
+          }
+        }
+      },
+      "counterparties": "主要交易对手"
+    },
+    "total": {
+      "inflow": {
+        "kas": "总流入 (KAS)"
+      },
+      "outflow": {
+        "kas": "总流出 (KAS)"
+      },
+      "received": {
+        "kas": "总接收 (KAS)"
+      },
+      "sent": {
+        "kas": "总发送 (KAS)"
+      }
+    },
+    "unique": {
+      "counterparties": "独特交易对手"
+    },
+    "value": {
+      "usd": "价值 (USD)"
+    }
+  },
+  "metrics.hashrate": "哈希率",
+  "node": {
+    "kaspa": {
+      "node": "Kaspa 节点"
+    },
+    "node": {
+      "is": {
+        "not": {
+          "running": "节点未运行。"
+        }
+      },
+      "size": {
+        "proportional": {
+          "to": {
+            "tx": {
+              "volume": "节点大小与交易量成比例"
+            }
+          }
+        }
+      }
+    },
+    "p2p": "P2P",
+    "rpc": "RPC",
+    "tooltip": {
+      "api": {
+        "kaspad": "用于获取 API 连接的 kaspad 节点信息的端点。"
+      },
+      "nogrpc": "禁用 gRPC 服务器。",
+      "rpclisten": "RPC 监听地址",
+      "rpcmaxclients": "标准连接的最大 RPC 客户端数（默认值：128）。",
+      "unsaferpc": "启用影响节点状态的 RPC 命令。",
+      "utxoindex": "启用 UTXO 索引（浏览器功能所需）。"
+    },
+    "tabs": {
+      "kaspanode": "Kaspa Node"
+    }
+  },
+  "node.serviceEventPlanningDescription": "KGW service-event planning for mainnet, testnet10, and testnet12. mainnet/testnet10 use master; testnet12 uses tn12.",
+  "outgoing": "出账",
+  "runtime.ready": "就绪",
+  "runtime.shellErrorNavigationPreserved": "Shell/runtime error. Navigation was preserved.",
+  "settings": {
+    "language": "Language",
+    "currency": "货币",
+    "theme": "Theme",
+    "api": {
+      "and": {
+        "performance": "API与性能"
+      },
+      "endpoints": "API端点",
+      "key": "API密钥",
+      "performance": "API性能",
+      "server": {
+        "profiles": "API服务器配置文件"
+      },
+      "settings": "API设置",
+      "url": "API URL"
+    },
+    "active": {
+      "profile": "活动配置文件"
+    },
+    "autostart": {
+      "can": {
+        "only": {
+          "be": {
+            "set": {
+              "for": {
+                "the": {
+                  "installed": {
+                    "application": "自动启动只能为已安装的应用程序设置。"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "is": {
+        "only": {
+          "available": {
+            "on": {
+              "windows": "自动启动仅在 Windows 上可用。"
+            }
+          }
+        }
+      }
+    },
+    "calculating": {
+      "currency": {
+        "values": "正在计算货币价值..."
+      }
+    },
+    "create": {
+      "a": {
+        "backup": {
+          "of": "创建备份"
+        }
+      }
+    },
+    "custom": {
+      "paths": "自定义路径"
+    },
+    "database": {
+      "path": "数据库路径"
+    },
+    "deletion": {
+      "outside": {
+        "user": {
+          "data": {
+            "directory": {
+              "is": {
+                "not": {
+                  "allowed": "不允许在用户数据目录外删除。"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "display": {
+      "settings": "显示设置"
+    },
+    "displayed": {
+      "languages": "显示的语言",
+      "currencies": "显示的货币",
+      "tabs": "显示的标签页"
+    },
+    "external": {
+      "apis": "外部 API"
+    },
+    "file": {
+      "paths": "文件路径"
+    },
+    "kaspa": {
+      "api": {
+        "endpoints": "Kaspa API 端点"
+      }
+    },
+    "local": {
+      "or": {
+        "private": {
+          "network": {
+            "urls": {
+              "are": {
+                "not": {
+                  "allowed": {
+                    "for": {
+                      "api": {
+                        "base": {
+                          "url": "API 基础 URL 不允许使用本地或私有网络 URL。"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "log": {
+      "path": "日志路径"
+    },
+    "main": {
+      "settings": "主要设置"
+    },
+    "page": {
+      "size": {
+        "api": {
+          "list": "页面大小 API 列表"
+        }
+      }
+    },
+    "path": {
+      "settings": {
+        "changed": {
+          "please": {
+            "restart": {
+              "the": {
+                "application": "路径设置已更改。请重新启动应用程序。"
+              }
+            }
+          }
+        }
+      }
+    },
+    "paths": {
+      "and": {
+        "logging": "路径和日志记录"
+      }
+    },
+    "performance": {
+      "settings": "性能设置"
+    },
+    "select": {
+      "backup": {
+        "folder": {
+          "for": "选择备份文件夹"
+        }
+      }
+    },
+    "settings": "设置",
+    "tooltip": {
+      "api": {
+        "coingecko": "用于从 CoinGecko 获取 Kaspa 对各种法定货币价格的端点。",
+        "coinsupply": "用于获取代币供应详情（包括流通和最大供应量）的端点。",
+        "halving": "提供有关下一次减半事件信息的端点。",
+        "hashrate": "用于获取当前网络哈希率的端点。",
+        "max": {
+          "hashrate": "用于获取记录的最大网络哈希率的端点。"
+        },
+        "network": "用于获取一般网络信息的端点。"
+      }
+    },
+    "working": {
+      "directory": "工作目录"
+    },
+    "general": "常规"
+  },
+  "settings.language": "语言",
+  "settings.logDiagnostics": "Log & Diagnostics",
+  "settings.noDatabaseFilesFound": "No database files found.",
+  "settings.noSavedAddresses": "No saved addresses.",
+  "settings.theme": "主题",
+  "status": {
+    "ready": "Ready",
+    "already": {
+      "up": {
+        "to": {
+          "date": {
+            "value": "已是最新: {}"
+          }
+        }
+      }
+    },
+    "busy": "忙碌",
+    "downloading": {
+      "from": {
+        "custom": {
+          "url": "正在从自定义 URL 下载..."
+        }
+      },
+      "hash": {
+        "file": {
+          "value": "正在下载哈希文件 {0}..."
+        }
+      },
+      "value": "正在下载 {}..."
+    },
+    "graph": {
+      "is": {
+        "interactive": {
+          "zoom": {
+            "pan": "图表是交互式的（缩放/平移）"
+          }
+        }
+      }
+    },
+    "loading": "加载中...",
+    "unknown": "未知"
+  },
+  "status.ready": "就绪",
+  "tabs": {
+    "explorer": "Explorer",
+    "analysis": "Analysis",
+    "log": "Log",
+    "settings": "Settings",
+    "kaspaNode": "Kaspa 节点",
+    "kaspaBridge": "Kaspa 桥接",
+    "topAddresses": "热门地址"
+  },
+  "tabs.analysis": "分析",
+  "tabs.explorer": "浏览器",
+  "tabs.log": "日志",
+  "tabs.settings": "设置",
+  "topAddresses.noTopAddressesLoaded": "No top addresses loaded.",
+  "transactions": "交易",
+  "transfer": "转账",
+  "ui": {
+    "shell": {
+      "shelllanguageselect": {
+        "shellcurrencyselect": {
+          "select": {
+            "input": {
+              "textarea": {
+                "pointer": {}
+              }
+            }
+          },
+          "pointer": {
+            "events": {
+              "auto": {
+                "important": {}
+              }
+            }
+          }
+        }
+      },
+      "kaspagateway": {
+        "v0": {
+          "1": {
+            "0": "KaspaGateway V0.1.0"
+          }
+        }
+      },
+      "usd": "USD",
+      "kas": "KAS",
+      "sar": "SAR",
+      "eur": "EUR",
+      "dark": "Dark",
+      "superhero": "Superhero",
+      "kaspa": {
+        "gateway": {
+          "links": "Kaspa Gateway links"
+        }
+      },
+      "slate": "Slate",
+      "midnight": "Midnight",
+      "blue": "Blue",
+      "waiting": {
+        "for": {
+          "live": {
+            "update": "Waiting for live update"
+          }
+        }
+      },
+      "current": {
+        "date": {
+          "and": {
+            "time": "Current date and time"
+          }
+        }
+      },
+      "en": "en",
+      "ar": "ar",
+      "de": "de",
+      "es": "es",
+      "fr": "fr",
+      "hi": "hi",
+      "id": "id",
+      "ja": "ja",
+      "ko": "ko",
+      "ru": "ru",
+      "tr": "tr",
+      "zh": {
+        "cn": "zh-CN"
+      },
+      "main": {
+        "tabs": "Main tabs"
+      },
+      "application": {
+        "status": {
+          "and": {
+            "links": "Application status and links"
+          }
+        }
+      }
+    },
+    "analysis": {
+      "cancel": {
+        "analysis": "Cancel Analysis"
+      },
+      "save": {
+        "as": {
+          "csv": "Save as CSV",
+          "html": "Save as HTML",
+          "pdf": "Save as PDF"
+        }
+      },
+      "total": {
+        "in": "Total In",
+        "out": "Total Out"
+      },
+      "net": {
+        "flow": {
+          "amount": "Net Flow / Amount"
+        }
+      },
+      "avg": {
+        "in": "Avg In",
+        "out": "Avg Out"
+      },
+      "max": {
+        "in": "Max In",
+        "out": "Max Out"
+      },
+      "peers": "Peers",
+      "first": "First",
+      "last": "Last",
+      "days": "Days",
+      "from": "From:",
+      "to": "To:",
+      "type": "Type:",
+      "in": "IN",
+      "out": "OUT",
+      "direction": "Direction:",
+      "reset": {
+        "filter": "Reset Filter"
+      },
+      "counterparty": {
+        "breakdown": "Counterparty Breakdown"
+      },
+      "known": {
+        "name": {
+          "date": {
+            "time": {
+              "sort": "Known Name / Date/Time ↕"
+            }
+          }
+        }
+      },
+      "address": {
+        "transaction": {
+          "id": "Address / Transaction ID"
+        }
+      },
+      "txs": {
+        "dir": "TXs / Dir"
+      },
+      "block": "Block",
+      "load": {
+        "an": {
+          "address": {
+            "to": {
+              "see": {
+                "analysis": "Load an address to see analysis."
+              }
+            }
+          }
+        }
+      },
+      "average": {
+        "inflow": {
+          "kas": "Average Inflow (KAS)"
+        },
+        "outflow": {
+          "kas": "Average Outflow (KAS)"
+        }
+      },
+      "open": {
+        "from": {
+          "date": {
+            "calendar": "Open from date calendar"
+          }
+        },
+        "to": {
+          "date": {
+            "calendar": "Open to date calendar"
+          }
+        }
+      },
+      "search": {
+        "by": {
+          "address": {
+            "transaction": "Search by Address/Transaction..."
+          }
+        }
+      },
+      "loadAddressPrompt": "加载地址以查看分析。",
+      "last30Days": "最近30天",
+      "last90Days": "最近90天",
+      "lastYear": "去年"
+    },
+    "explorer": {
+      "select": {
+        "saved": {
+          "address": "Select saved address..."
+        }
+      },
+      "balance": "Balance:",
+      "date": {
+        "time": {
+          "sort": "Date/Time ↕"
+        }
+      },
+      "transaction": {
+        "id": {
+          "sort": "Transaction ID ↕"
+        },
+        "table": {
+          "font": {
+            "size": "Transaction Table Font Size:"
+          }
+        }
+      },
+      "direction": {
+        "sort": "Direction ↕"
+      },
+      "amount": {
+        "kas": {
+          "sort": "Amount (KAS) ↕"
+        }
+      },
+      "value": {
+        "usd": {
+          "sort": "Value (USD) ↕"
+        }
+      },
+      "type": {
+        "sort": "Type ↕"
+      },
+      "yyyy": {
+        "mm": {
+          "dd": "YYYY-MM-DD"
+        }
+      },
+      "open": {
+        "calendar": "Open calendar"
+      },
+      "decrease": {
+        "font": {
+          "size": "Decrease font size"
+        }
+      },
+      "increase": {
+        "font": {
+          "size": "Increase font size"
+        }
+      },
+      "noSavedAddresses": "没有已保存的地址"
+    },
+    "kaspa": {
+      "bridge": {
+        "kaspa": {
+          "bridge": {
+            "runtime": "Kaspa Bridge Runtime"
+          }
+        }
+      },
+      "node": {
+        "kaspa": {
+          "node": {
+            "runtime": "Kaspa Node Runtime"
+          }
+        }
+      }
+    },
+    "log": {
+      "severity": "Severity:",
+      "trace": "TRACE",
+      "debug": "DEBUG",
+      "info": "INFO",
+      "warn": "WARN",
+      "font": {
+        "size": "Font Size:"
+      },
+      "copy": {
+        "log": "Copy Log"
+      },
+      "search": {
+        "log": {
+          "text": "Search log text..."
+        }
+      },
+      "log": {
+        "font": {
+          "size": "Log font size"
+        }
+      },
+      "application": {
+        "log": {
+          "output": "Application log output"
+        }
+      }
+    },
+    "settings": {
+      "api": {
+        "and": {
+          "amp": {
+            "performance": "API &amp; Performance"
+          },
+          "performance": {
+            "tabs": "API and performance tabs"
+          }
+        },
+        "key": "api_key"
+      },
+      "english": {
+        "en": "English (en)"
+      },
+      "arabic": {
+        "ar": "Arabic (ar)"
+      },
+      "german": {
+        "de": "German (de)"
+      },
+      "spanish": {
+        "es": "Spanish (es)"
+      },
+      "french": {
+        "fr": "French (fr)"
+      },
+      "hindi": {
+        "hi": "Hindi (hi)"
+      },
+      "indonesian": {
+        "id": "Indonesian (id)",
+        "rupiah": "Indonesian Rupiah"
+      },
+      "japanese": {
+        "ja": "Japanese (ja)",
+        "yen": "Japanese Yen"
+      },
+      "korean": {
+        "ko": "Korean (ko)"
+      },
+      "russian": {
+        "ru": "Russian (ru)",
+        "ruble": "Russian Ruble"
+      },
+      "turkish": {
+        "tr": "Turkish (tr)",
+        "lira": "Turkish Lira"
+      },
+      "chinese": {
+        "simplified": {
+          "zh": {
+            "cn": "Chinese (Simplified) (zh-CN)"
+          }
+        },
+        "yuan": "Chinese Yuan"
+      },
+      "us": {
+        "dollar": "US Dollar"
+      },
+      "saudi": {
+        "riyal": "Saudi Riyal"
+      },
+      "euro": "Euro",
+      "british": {
+        "pound": "British Pound"
+      },
+      "swiss": {
+        "franc": "Swiss Franc"
+      },
+      "australian": {
+        "dollar": "Australian Dollar"
+      },
+      "canadian": {
+        "dollar": "Canadian Dollar"
+      },
+      "south": {
+        "korean": {
+          "won": "South Korean Won"
+        }
+      },
+      "indian": {
+        "rupee": "Indian Rupee"
+      },
+      "hong": {
+        "kong": {
+          "dollar": "Hong Kong Dollar"
+        }
+      },
+      "singapore": {
+        "dollar": "Singapore Dollar"
+      },
+      "brazilian": {
+        "real": "Brazilian Real"
+      },
+      "logging": {
+        "level": "Logging Level:"
+      },
+      "backup": {
+        "directory": "Backup Directory"
+      },
+      "default": "default",
+      "kaspa": {
+        "org": "Kaspa.org",
+        "api": {
+          "endpoints": "⊟ Kaspa API Endpoints"
+        },
+        "address": {
+          "sort": "Kaspa Address ↕"
+        }
+      },
+      "local": {
+        "node": "Local Node"
+      },
+      "custom": "Custom",
+      "base": "Base:",
+      "page": {
+        "limit": "Page Limit",
+        "delay": {
+          "sec": "Page Delay (sec)"
+        }
+      },
+      "address": {
+        "names": "address_names"
+      },
+      "blockdag": {
+        "info": "blockdag_info"
+      },
+      "blockreward": "blockreward",
+      "coinsupply": "coinsupply",
+      "full": {
+        "transactions": "full_transactions",
+        "url": {
+          "preview": "Full URL Preview:"
+        }
+      },
+      "halving": "halving",
+      "kaspad": "kaspad",
+      "max": {
+        "hashrate": "max_hashrate"
+      },
+      "top": {
+        "addresses": "top_addresses"
+      },
+      "explorer": {
+        "urls": "⊟ Explorer URLs"
+      },
+      "transaction": "transaction",
+      "external": {
+        "apis": "⊟ External APIs"
+      },
+      "coingecko": "coingecko",
+      "reset": {
+        "selected": "Reset Selected",
+        "to": {
+          "defaults": "Reset to Defaults"
+        }
+      },
+      "description": "Description:",
+      "path": "Path:",
+      "price": {
+        "cache": {
+          "hours": "Price Cache (hours)"
+        }
+      },
+      "network": {
+        "cache": {
+          "hours": "Network Cache (hours)"
+        }
+      },
+      "refresh": {
+        "interval": {
+          "seconds": "Refresh Interval (seconds)"
+        },
+        "list": "Refresh List"
+      },
+      "name": {
+        "sort": "Name ↕"
+      },
+      "add": {
+        "edit": {
+          "address": "Add/Edit Address"
+        }
+      },
+      "delete": {
+        "address": "Delete Address"
+      },
+      "last": {
+        "updated": "Last Updated: —"
+      },
+      "known": {
+        "name": {
+          "sort": "Known Name ↕"
+        }
+      },
+      "balance": {
+        "sort": "Balance ↕"
+      },
+      "loading": {
+        "database": {
+          "status": "Loading database status..."
+        }
+      },
+      "settings": {
+        "tabs": "Settings tabs"
+      },
+      "browse": "Browse",
+      "clear": "Clear",
+      "choose": {
+        "base": "Choose base"
+      },
+      "managed": {
+        "addresses": "Managed addresses"
+      }
+    },
+    "top": {
+      "addresses": {
+        "last": {
+          "updated": "Last Updated:"
+        },
+        "rank": {
+          "sort": "Rank ↕"
+        },
+        "address": {
+          "sort": "Address ↕"
+        },
+        "balance": {
+          "kas": {
+            "sort": "Balance (KAS) ↕"
+          }
+        },
+        "search": {
+          "by": {
+            "rank": {
+              "name": {
+                "or": {
+                  "address": "Search by Rank, Name, or Address..."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "ui.analysis.net": "Net",
+  "ui.analysis.reset.filter": "重置筛选器",
+  "ui.analysis.save.as.csv": "另存为 CSV",
+  "ui.analysis.save.as.html": "另存为 HTML",
+  "ui.analysis.save.as.pdf": "另存为 PDF",
+  "ui.explorer.amount.kas.sort": "金额 (KAS) ↕",
+  "ui.explorer.balance": "余额：",
+  "ui.explorer.date.time.sort": "日期/时间 ↕",
+  "ui.explorer.direction.sort": "方向 ↕",
+  "ui.explorer.select.saved.address": "选择已保存的地址...",
+  "ui.explorer.transaction.id.sort": "交易 ID ↕",
+  "ui.explorer.transaction.table.font.size": "交易表字体大小：",
+  "ui.explorer.type.sort": "类型 ↕",
+  "ui.explorer.value.usd.sort": "价值 (USD) ↕",
+  "ui.runtime.logsUnavailable": "日志不可用:",
+  "ui.settings.base.url": "⊟ Base URL",
+  "ui.settings.default.app.data.directory": "directory",
+  "ui.settings.default.backup.directory": "directory",
+  "ui.settings.default.export.directory": "directory",
+  "ui.settings.default.log.directory": "directory",
+  "ui.settings.kaspa.address": "Kaspa Address:",
+  "ui.settings.name": "Name:",
+  "ui.shell.kaspa.green": "Kaspa Green",
+  "ui.shell.kaspa.live.network.metrics": "metrics",
+  "validation": {
+    "missing": {
+      "advanced": {
+        "libraries": {
+          "networkx": {
+            "scikit": {
+              "learn": "缺少高级库 (networkx, scikit-learn)。"
+            }
+          }
+        }
+      }
+    },
+    "please": {
+      "select": {
+        "at": {
+          "least": {
+            "one": {
+              "currency": "请至少选择一种货币。",
+              "language": "请至少选择一种语言。"
+            }
+          }
+        }
+      }
+    },
+    "user": {
+      "aborted": {
+        "update": {
+          "due": {
+            "to": {
+              "missing": {
+                "hash": {
+                  "file": "由于缺少哈希文件，用户中止了更新。"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "actions.save.settings": "保存设置",
+  "log.copied": "已复制",
+  "log.deleted": "已删除",
+  "common.search": "搜索",
+  "common.autoScroll": "自动滚动",
+  "common.all": "全部",
+  "ui.analysis.address": "地址",
+  "ui.analysis.counterparty": "交易对手",
+  "ui.analysis.loadAddressPrompt": "加载地址以查看分析。",
+  "ui.analysis.last30Days": "最近30天",
+  "ui.analysis.last90Days": "最近90天",
+  "ui.analysis.lastYear": "去年",
+  "ui.explorer.noSavedAddresses": "没有已保存的地址"
+}

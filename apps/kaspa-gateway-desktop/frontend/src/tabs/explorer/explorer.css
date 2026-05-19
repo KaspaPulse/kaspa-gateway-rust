@@ -1,0 +1,1597 @@
+#explorer.explorer-python-root {
+  --kgw-bg: #0b1725;
+  --kgw-panel: rgba(16, 34, 56, 0.74);
+  --kgw-table: #132840;
+  --kgw-head: #31485e;
+  --kgw-border: rgba(140, 170, 205, 0.38);
+  --kgw-blue: #4d9cec;
+  --kgw-red: #d9534f;
+  --kgw-text: #ffffff;
+  --kgw-muted: rgba(255,255,255,.68);
+  --kgw-green: #72e071;
+  --kgw-cyan: #5fd3ff;
+  --explorer-table-font-size: 9px;
+
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  padding: 6px 10px !important;
+  background: var(--kgw-bg) !important;
+  color: var(--kgw-text) !important;
+  font-family: Arial, "Segoe UI", sans-serif !important;
+  box-sizing: border-box !important;
+}
+
+#explorer *,
+#explorer *::before,
+#explorer *::after {
+  box-sizing: border-box !important;
+}
+
+#explorer .explorer-py-shell {
+  height: 100% !important;
+  display: grid !important;
+  grid-template-rows: 62px 62px minmax(0, 1fr) 44px !important;
+  gap: 6px !important;
+  overflow: hidden !important;
+}
+
+#explorer #explorerStatus {
+  display: none !important;
+}
+
+#explorer .explorer-py-card {
+  margin: 0 !important;
+  padding: 6px 10px 7px !important;
+  border: 1px solid var(--kgw-border) !important;
+  background: var(--kgw-panel) !important;
+  min-width: 0 !important;
+}
+
+#explorer legend {
+  padding: 0 6px !important;
+  margin: 0 !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+  color: var(--kgw-text) !important;
+}
+
+#explorer .explorer-py-load-grid {
+  display: grid !important;
+  grid-template-columns: 92px minmax(520px, 1fr) minmax(410px, 520px) 64px 92px 78px 68px !important;
+  gap: 7px !important;
+  align-items: center !important;
+  min-width: 0 !important;
+}
+
+#explorer .explorer-py-filter-grid {
+  display: grid !important;
+  grid-template-columns: 74px 150px 56px 150px 82px 82px minmax(260px, 1fr) 62px 88px !important;
+  gap: 7px !important;
+  align-items: center !important;
+  min-width: 0 !important;
+}
+
+#explorer label {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.05 !important;
+  font-weight: 700 !important;
+  color: var(--kgw-text) !important;
+  white-space: nowrap !important;
+}
+
+#explorer input,
+#explorer select,
+#explorer button {
+  height: 26px !important;
+  min-height: 26px !important;
+  border-radius: 0 !important;
+}
+
+#explorer input,
+#explorer select {
+  width: 100% !important;
+  min-width: 0 !important;
+  padding: 3px 7px !important;
+  border: 1px solid rgba(140,170,205,.35) !important;
+  background: #12263d !important;
+  color: var(--kgw-text) !important;
+  font: 12px Consolas, "Segoe UI", sans-serif !important;
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
+}
+
+#explorer button {
+  border: 0 !important;
+  padding: 0 7px !important;
+  color: #fff !important;
+  background: #31527b !important;
+  cursor: pointer !important;
+  font: 12px "Segoe UI", Arial, sans-serif !important;
+  white-space: nowrap !important;
+}
+
+#explorer button:disabled {
+  opacity: .42 !important;
+  cursor: not-allowed !important;
+}
+
+#explorer #explorerFetch,
+#explorer #explorerOpenExplorer,
+#explorer #explorerApplyFilter,
+#explorer #explorerExportCsv,
+#explorer #explorerExportHtml,
+#explorer #explorerExportPdf {
+  background: var(--kgw-blue) !important;
+}
+
+#explorer #explorerForceFetch {
+  background: var(--kgw-red) !important;
+}
+
+#explorer .explorer-address-input {
+  font-size: 10.8px !important;
+  grid-column: 1 !important;
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: 32px !important;
+  letter-spacing: -0.35px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
+  padding: 0 14px !important;
+}
+
+#explorer .explorer-balance-box {
+  display: grid !important;
+  grid-template-rows: 13px 19px 13px !important;
+  align-content: center !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+
+#explorer .explorer-wallet-name {
+  display: block !important;
+  height: 13px !important;
+  line-height: 13px !important;
+  color: var(--kgw-green) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#explorer .explorer-balance-line {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 5px !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+#explorer .explorer-balance-line span {
+  flex: 0 0 auto !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+#explorer #explorerBalanceValue {
+  flex: 1 1 auto !important;
+  min-width: 108px !important;
+  max-width: 108px !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  color: var(--kgw-cyan) !important;
+  font-size: 13.5px !important;
+  line-height: 16px !important;
+  font-weight: 900 !important;
+  display: block !important;
+  white-space: nowrap !important;
+  text-align: right !important;
+}
+
+#explorer .explorer-wallet-fiat {
+  display: block !important;
+  height: 13px !important;
+  line-height: 13px !important;
+  color: var(--kgw-muted) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#explorer .explorer-date-combo {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 26px !important;
+  gap: 4px !important;
+  align-items: center !important;
+  min-width: 0 !important;
+}
+
+#explorer .explorer-font-spinbox {
+  display: grid !important;
+  grid-template-columns: 44px 24px 24px !important;
+  gap: 4px !important;
+  align-items: center !important;
+}
+
+#explorer .explorer-mini-button {
+  padding: 0 !important;
+  text-align: center !important;
+  line-height: 26px !important;
+  font-weight: 900 !important;
+  background: #31527b !important;
+}
+
+#explorer .explorer-native-date {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+#explorer .explorer-table-zone {
+  min-height: 0 !important;
+  overflow: auto !important;
+  border: 1px solid var(--kgw-border) !important;
+  background: var(--kgw-table) !important;
+}
+
+#explorer #explorerTransactionsTable {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  table-layout: fixed !important;
+  font-size: var(--explorer-table-font-size, 11px) !important;
+}
+
+#explorer #explorerTransactionsTable thead th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 2 !important;
+  background: var(--kgw-head) !important;
+  color: #fff !important;
+  padding: 5px 7px !important;
+  border-bottom: 1px solid rgba(255,255,255,.12) !important;
+  text-align: left !important;
+  font-size: var(--explorer-table-font-size, 11px) !important;
+  font-weight: 900 !important;
+}
+
+#explorer #explorerTransactionsTable td {
+  padding: 4px 7px !important;
+  border-bottom: 1px solid rgba(255,255,255,.06) !important;
+  color: #fff !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: var(--explorer-table-font-size, 11px) !important;
+}
+
+#explorer #explorerTransactionsTable th:nth-child(1),
+#explorer #explorerTransactionsTable td:nth-child(1) {
+  width: 132px !important;
+}
+
+#explorer #explorerTransactionsTable th:nth-child(3),
+#explorer #explorerTransactionsTable td:nth-child(3) {
+  width: 94px !important;
+}
+
+#explorer #explorerTransactionsTable th:nth-child(4),
+#explorer #explorerTransactionsTable td:nth-child(4),
+#explorer #explorerTransactionsTable th:nth-child(5),
+#explorer #explorerTransactionsTable td:nth-child(5) {
+  width: 145px !important;
+  text-align: right !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#explorer #explorerTransactionsTable th:nth-child(6),
+#explorer #explorerTransactionsTable td:nth-child(6) {
+  width: 86px !important;
+}
+
+#explorer .explorer-grand-total-row,
+#explorer .python-grand-total-row {
+  background: #343a40 !important;
+  font-weight: 900 !important;
+}
+
+#explorer .explorer-date-group-row,
+#explorer .python-date-header-row {
+  background: rgba(51,65,85,.9) !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+#explorer .explorer-py-bottom-bar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 44px !important;
+  padding: 5px 10px !important;
+  border: 1px solid var(--kgw-border) !important;
+  background: var(--kgw-panel) !important;
+  overflow: hidden !important;
+}
+
+#explorer .explorer-export-left,
+#explorer .explorer-font-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  min-width: 0 !important;
+}
+
+#explorer .explorer-font-right {
+  margin-left: auto !important;
+}
+
+#explorer .explorer-py-bottom-bar strong,
+#explorer .explorer-py-bottom-bar label {
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+#explorer #explorerTableFontSize {
+  text-align: center !important;
+}
+
+@media (max-width: 1360px) {
+  #explorer .explorer-py-load-grid {
+    grid-template-columns: 88px minmax(400px, 1fr) minmax(330px, 420px) 62px 88px 74px 64px !important;
+    gap: 6px !important;
+  }
+
+  #explorer .explorer-py-filter-grid {
+    grid-template-columns: 70px 142px 52px 142px 78px 78px minmax(220px, 1fr) 60px 84px !important;
+    gap: 6px !important;
+  }
+}
+
+/* KGW Phase 2.2: Python-style grouped transaction table. */
+#explorer .explorer-grand-total-row,
+#explorer .python-grand-total-row {
+  background: #343a40 !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+}
+
+#explorer .explorer-date-group-row,
+#explorer .python-date-header-row {
+  background: rgba(51, 65, 85, 0.92) !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+#explorer .explorer-date-group-row:hover,
+#explorer .python-date-header-row:hover {
+  filter: brightness(1.12) !important;
+}
+
+#explorer .group-toggle {
+  display: inline-block !important;
+  width: 14px !important;
+  text-align: center !important;
+  font-weight: 900 !important;
+}
+
+#explorer .explorer-tx-row,
+#explorer .python-transaction-row {
+  background: rgba(19, 40, 64, 0.96) !important;
+}
+
+#explorer .explorer-tx-row:nth-child(even),
+#explorer .python-transaction-row:nth-child(even) {
+  background: rgba(15, 32, 52, 0.96) !important;
+}
+
+#explorer .tx-id {
+  font-family: Consolas, "Courier New", monospace !important;
+}
+
+#explorer .tx-amount,
+#explorer .tx-usd {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#explorer .tx-direction.incoming {
+  color: #72e071 !important;
+}
+
+#explorer .tx-direction.outgoing {
+  color: #ff9a9a !important;
+}
+
+/* KGW_PHASE7B_R4_EXACT_REFERENCE_FLEX_ROW
+   Exact reference-style Load Address row.
+
+   This intentionally abandons the previous grid attempts.
+   Layout target:
+   Load Address fieldset:
+   Kaspa Address label + long input | Balance value | buttons
+   Filter fieldset below, no overlap.
+*/
+
+#explorer .kgw-r4-load-card,
+.explorer-python-root .kgw-r4-load-card {
+  display: block !important;
+  position: relative !important;
+  width: 100% !important;
+  min-height: 78px !important;
+  height: auto !important;
+  margin: 0 0 10px 0 !important;
+  padding: 20px 14px 14px 14px !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+  z-index: 2 !important;
+}
+
+#explorer .kgw-r4-load-card::before,
+#explorer .kgw-r4-load-card::after,
+.explorer-python-root .kgw-r4-load-card::before,
+.explorer-python-root .kgw-r4-load-card::after {
+  content: none !important;
+  display: none !important;
+}
+
+#explorer .kgw-r4-load-card > legend,
+.explorer-python-root .kgw-r4-load-card > legend {
+  font-weight: 700 !important;
+  padding: 0 6px !important;
+}
+
+#explorer .kgw-r4-load-row,
+.explorer-python-root .kgw-r4-load-row {
+  display: grid !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 40px !important;
+  box-sizing: border-box !important;
+  position: relative !important;
+  z-index: 3 !important;
+  grid-template-columns: minmax(0, 1fr) 108px 424px !important;
+  overflow: visible !important;
+  column-gap: 8px !important;
+  max-width: 100% !important;
+}
+
+#explorer .kgw-r4-address-label,
+.explorer-python-root .kgw-r4-address-label {
+  flex: 0 0 auto !important;
+  display: none !important;
+  align-items: center !important;
+  height: 34px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  overflow: hidden !important;
+}
+
+#explorer #explorerAddress.kgw-r4-address-input,
+.explorer-python-root #explorerAddress.kgw-r4-address-input {
+  flex: 1 1 640px !important;
+  display: block !important;
+  position: static !important;
+  width: auto !important;
+  min-width: 420px !important;
+  max-width: none !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+  padding: 0 10px !important;
+  box-sizing: border-box !important;
+  line-height: 34px !important;
+  font-size: 13px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+}
+
+#explorer .kgw-r4-balance-box,
+.explorer-python-root .kgw-r4-balance-box {
+  flex: 0 0 360px !important;
+  display: grid !important;
+  position: static !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  grid-template-rows: 22px 16px !important;
+  column-gap: 8px !important;
+  row-gap: 0 !important;
+  align-items: center !important;
+  width: 108px !important;
+  min-width: 108px !important;
+  max-width: 108px !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  background: transparent !important;
+  border: none !important;
+  overflow: hidden !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  justify-self: end !important;
+  text-align: right !important;
+  grid-column: 2 !important;
+}
+
+#explorer .kgw-r4-balance-label,
+.explorer-python-root .kgw-r4-balance-label {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 22px !important;
+  font-size: 14px !important;
+  font-weight: 850 !important;
+  color: rgba(235, 244, 255, 0.96) !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+  justify-self: end !important;
+  width: 132px !important;
+  min-width: 0 !important;
+  max-width: 132px !important;
+  overflow: hidden !important;
+  text-align: right !important;
+}
+
+#explorer #explorerBalanceValue.kgw-r4-balance-value,
+.explorer-python-root #explorerBalanceValue.kgw-r4-balance-value {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  display: block !important;
+  position: static !important;
+  width: 108px !important;
+  min-width: 108px !important;
+  max-width: 108px !important;
+  height: 22px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: #6ed7f2 !important;
+  font-size: 13.5px !important;
+  font-weight: 900 !important;
+  line-height: 16px !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  box-sizing: border-box !important;
+  justify-self: end !important;
+}
+
+#explorer #explorerBalanceUsdValue.kgw-r4-fiat-value,
+.explorer-python-root #explorerBalanceUsdValue.kgw-r4-fiat-value {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+  display: block !important;
+  position: static !important;
+  width: 108px !important;
+  min-width: 108px !important;
+  height: 16px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: rgba(215, 233, 255, 0.55) !important;
+  font-size: 10px !important;
+  font-weight: 750 !important;
+  line-height: 11px !important;
+  text-align: right !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  max-width: 108px !important;
+}
+
+#explorer .kgw-r4-wallet-name,
+.explorer-python-root .kgw-r4-wallet-name {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+#explorer .kgw-r4-actions,
+.explorer-python-root .kgw-r4-actions {
+  flex: 0 0 auto !important;
+  display: grid !important;
+  align-items: center !important;
+  gap: 8px !important;
+  height: 32px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  justify-self: end !important;
+  width: 424px !important;
+  min-width: 424px !important;
+  max-width: 424px !important;
+  overflow: visible !important;
+  grid-column: 3 !important;
+  grid-template-columns: 86px 126px 96px 84px !important;
+}
+
+#explorer .kgw-r4-action-button,
+.explorer-python-root .kgw-r4-action-button {
+  display: inline-flex !important;
+  position: static !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 5px !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  line-height: 32px !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  font-size: 11.3px !important;
+}
+
+#explorer #explorerFetch,
+.explorer-python-root #explorerFetch {
+  min-width: 0 !important;
+}
+
+#explorer #explorerForceFetch,
+.explorer-python-root #explorerForceFetch {
+  min-width: 0 !important;
+}
+
+#explorer #explorerOpenExplorer,
+.explorer-python-root #explorerOpenExplorer {
+  min-width: 0 !important;
+}
+
+#explorer #explorerCancel,
+.explorer-python-root #explorerCancel {
+  min-width: 0 !important;
+}
+
+#explorer .explorer-py-filter-card,
+.explorer-python-root .explorer-py-filter-card {
+  display: block !important;
+  position: relative !important;
+  z-index: 1 !important;
+  clear: both !important;
+  width: 100% !important;
+  margin: 0 0 10px 0 !important;
+  padding: 12px !important;
+  box-sizing: border-box !important;
+  overflow: visible !important;
+}
+
+#explorer .explorer-py-filter-grid,
+.explorer-python-root .explorer-py-filter-grid {
+  display: grid !important;
+  position: relative !important;
+  z-index: 1 !important;
+  align-items: center !important;
+  min-width: 0 !important;
+}
+
+@media (max-width: 1350px) {
+  #explorer #explorerAddress.kgw-r4-address-input,
+  .explorer-python-root #explorerAddress.kgw-r4-address-input {
+    flex-basis: 520px !important;
+    min-width: 360px !important;
+  }
+
+  #explorer .kgw-r4-balance-box,
+  .explorer-python-root .kgw-r4-balance-box {
+    flex-basis: 300px !important;
+    width: 108px !important;
+    min-width: 108px !important;
+    box-sizing: border-box !important;
+  justify-self: end !important;
+  max-width: 108px !important;
+  overflow: hidden !important;
+  text-align: right !important;
+  grid-column: 2 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+  #explorer #explorerBalanceValue.kgw-r4-balance-value,
+  .explorer-python-root #explorerBalanceValue.kgw-r4-balance-value {
+    font-size: 13.5px !important;
+    box-sizing: border-box !important;
+  justify-self: end !important;
+  width: 108px !important;
+  min-width: 108px !important;
+  max-width: 108px !important;
+  overflow: hidden !important;
+  text-align: right !important;
+  display: block !important;
+  line-height: 16px !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+  #explorer .kgw-r4-action-button,
+  .explorer-python-root .kgw-r4-action-button {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  padding: 0 5px !important;
+  font-size: 11.3px !important;
+  box-sizing: border-box !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  line-height: 32px !important;
+}
+}
+
+@media (max-width: 1100px) {
+  #explorer .kgw-r4-load-row,
+  .explorer-python-root .kgw-r4-load-row {
+    flex-wrap: wrap !important;
+    height: 40px !important;
+    gap: 8px !important;
+    display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 108px 424px !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  column-gap: 8px !important;
+  max-width: 100% !important;
+}
+
+  #explorer #explorerAddress.kgw-r4-address-input,
+  .explorer-python-root #explorerAddress.kgw-r4-address-input {
+    flex: 1 1 calc(100% - 120px) !important;
+    min-width: 260px !important;
+  }
+
+  #explorer .kgw-r4-balance-box,
+  .explorer-python-root .kgw-r4-balance-box {
+    flex: 1 1 100% !important;
+    width: 108px !important;
+    max-width: 108px !important;
+    box-sizing: border-box !important;
+  justify-self: end !important;
+  min-width: 108px !important;
+  overflow: hidden !important;
+  text-align: right !important;
+  grid-column: 2 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+  #explorer .kgw-r4-actions,
+  .explorer-python-root .kgw-r4-actions {
+    flex: 1 1 100% !important;
+    width: 424px !important;
+    justify-self: end !important;
+  min-width: 424px !important;
+  max-width: 424px !important;
+  overflow: visible !important;
+  grid-column: 3 !important;
+  display: grid !important;
+  grid-template-columns: 86px 126px 96px 84px !important;
+  gap: 8px !important;
+  height: 32px !important;
+}
+
+  #explorer .kgw-r4-action-button,
+  .explorer-python-root .kgw-r4-action-button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  padding: 0 5px !important;
+  font-size: 11.3px !important;
+  box-sizing: border-box !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  line-height: 32px !important;
+}
+}
+
+/* KGW_PHASE7B_R5_REMOVE_VISIBLE_BOX_LABELS
+   Remove visual labels requested by user:
+   - Hide Kaspa Address row label.
+   - Hide Filter fieldset legend text.
+   - Keep IDs, fieldsets, inputs, and JS wiring unchanged.
+*/
+
+#explorer .kgw-r5-visually-hidden-label,
+.explorer-python-root .kgw-r5-visually-hidden-label,
+#explorer .kgw-r4-address-label.kgw-r5-visually-hidden-label,
+.explorer-python-root .kgw-r4-address-label.kgw-r5-visually-hidden-label,
+#explorer .kgw-r3-address-label.kgw-r5-visually-hidden-label,
+.explorer-python-root .kgw-r3-address-label.kgw-r5-visually-hidden-label {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+#explorer .kgw-r5-hidden-legend,
+.explorer-python-root .kgw-r5-hidden-legend {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* R4 flex-row adjustment after removing Kaspa Address visible label */
+#explorer .kgw-r4-load-row,
+.explorer-python-root .kgw-r4-load-row {
+  height: 40px !important;
+  align-items: center !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 108px 424px !important;
+  gap: 8px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  column-gap: 8px !important;
+  max-width: 100% !important;
+}
+
+#explorer #explorerAddress.kgw-r4-address-input,
+.explorer-python-root #explorerAddress.kgw-r4-address-input {
+  flex: 1 1 760px !important;
+  min-width: 520px !important;
+}
+
+/* R3 fallback if active template still uses R3 classes */
+#explorer .kgw-r3-load-grid,
+.explorer-python-root .kgw-r3-load-grid {
+  grid-template-rows: 34px !important;
+}
+
+#explorer #explorerAddress.kgw-r3-address-input,
+.explorer-python-root #explorerAddress.kgw-r3-address-input,
+#explorer .kgw-r3-load-grid #explorerAddress,
+.explorer-python-root .kgw-r3-load-grid #explorerAddress {
+  grid-row: 1 !important;
+}
+
+/* Reduce Filter top padding after hiding its legend */
+#explorer .explorer-py-filter-card,
+.explorer-python-root .explorer-py-filter-card {
+  padding-top: 10px !important;
+  margin-top: 0 !important;
+}
+
+/* KGW_PHASE7B_R6_REMOVE_LOAD_ADDRESS_LEGEND
+   Hide Load Address fieldset legend visually while preserving fieldset structure.
+*/
+
+#explorer .kgw-r6-hidden-load-legend,
+.explorer-python-root .kgw-r6-hidden-load-legend {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Remove extra top space after hiding Load Address legend */
+#explorer .kgw-r4-load-card,
+.explorer-python-root .kgw-r4-load-card,
+#explorer .kgw-r3-load-card,
+.explorer-python-root .kgw-r3-load-card,
+#explorer .explorer-py-load-card,
+.explorer-python-root .explorer-py-load-card {
+  padding-top: 10px !important;
+  min-height: 62px !important;
+}
+
+/* KGW_PHASE7B_R7_FINAL_VISUAL_POLISH
+   Final visual polish requested:
+   - Saved-only address dropdown.
+   - Keep Cancel visible.
+   - Smaller Explorer controls.
+   - Fixed header metric/control sizes.
+*/
+
+#explorer .kgw-r7-address-select,
+.explorer-python-root .kgw-r7-address-select,
+#explorer #explorerAddress.kgw-r7-address-select,
+.explorer-python-root #explorerAddress.kgw-r7-address-select {
+  flex: 1 1 620px !important;
+  display: block !important;
+  position: static !important;
+  width: auto !important;
+  min-width: 440px !important;
+  max-width: none !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 10px !important;
+  box-sizing: border-box !important;
+  font-size: 13px !important;
+  line-height: 32px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#explorer .kgw-r4-load-row,
+.explorer-python-root .kgw-r4-load-row,
+#explorer .kgw-r3-load-row,
+.explorer-python-root .kgw-r3-load-row {
+  gap: 8px !important;
+  height: 40px !important;
+  align-items: center !important;
+  overflow: visible !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 108px 424px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  column-gap: 8px !important;
+  max-width: 100% !important;
+}
+
+#explorer .kgw-r4-balance-box,
+.explorer-python-root .kgw-r4-balance-box,
+#explorer .kgw-r3-balance-box,
+.explorer-python-root .kgw-r3-balance-box {
+  flex: 0 0 300px !important;
+  width: 108px !important;
+  min-width: 108px !important;
+  max-width: 108px !important;
+  height: 40px !important;
+  box-sizing: border-box !important;
+  justify-self: end !important;
+  overflow: hidden !important;
+  text-align: right !important;
+  grid-column: 2 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+#explorer #explorerBalanceValue,
+.explorer-python-root #explorerBalanceValue {
+  font-size: 13.5px !important;
+  display: block !important;
+  max-width: 108px !important;
+  line-height: 16px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  text-align: right !important;
+  min-width: 108px !important;
+}
+
+#explorer #explorerBalanceUsdValue,
+.explorer-python-root #explorerBalanceUsdValue {
+  font-size: 10px !important;
+  display: block !important;
+  max-width: 108px !important;
+  line-height: 11px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  text-align: right !important;
+  min-width: 108px !important;
+}
+
+#explorer .kgw-r4-actions,
+.explorer-python-root .kgw-r4-actions,
+#explorer .kgw-r3-actions,
+.explorer-python-root .kgw-r3-actions {
+  display: grid !important;
+  grid-template-columns: 86px 126px 96px 84px !important;
+  gap: 8px !important;
+  flex: 0 0 auto !important;
+  height: 32px !important;
+  align-items: stretch !important;
+  justify-self: end !important;
+  width: 424px !important;
+  min-width: 424px !important;
+  max-width: 424px !important;
+  overflow: visible !important;
+  grid-column: 3 !important;
+}
+
+#explorer .kgw-r4-action-button,
+.explorer-python-root .kgw-r4-action-button,
+#explorer .kgw-r3-action-button,
+.explorer-python-root .kgw-r3-action-button,
+#explorer #explorerFetch,
+#explorer #explorerForceFetch,
+#explorer #explorerOpenExplorer,
+#explorer #explorerCancel,
+.explorer-python-root #explorerFetch,
+.explorer-python-root #explorerForceFetch,
+.explorer-python-root #explorerOpenExplorer,
+.explorer-python-root #explorerCancel {
+  display: inline-flex !important;
+  position: static !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 5px !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  font-size: 11.3px !important;
+  line-height: 32px !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#explorer #explorerCancel,
+.explorer-python-root #explorerCancel {
+  min-width: 0 !important;
+  max-width: 78px !important;
+  opacity: 0.85 !important;
+  visibility: visible !important;
+}
+
+#explorer .explorer-py-filter-card,
+.explorer-python-root .explorer-py-filter-card {
+  margin-top: 0 !important;
+  padding-top: 10px !important;
+}
+
+#explorer .explorer-py-filter-grid select,
+#explorer .explorer-py-filter-grid input,
+#explorer .explorer-py-filter-grid button,
+.explorer-python-root .explorer-py-filter-grid select,
+.explorer-python-root .explorer-py-filter-grid input,
+.explorer-python-root .explorer-py-filter-grid button {
+  height: 30px !important;
+  min-height: 30px !important;
+  font-size: 12px !important;
+  box-sizing: border-box !important;
+}
+
+#explorer .explorer-py-filter-grid,
+.explorer-python-root .explorer-py-filter-grid {
+  gap: 6px !important;
+}
+
+/* Header fixed-size guard: price / hashrate / difficulty / date / top selects */
+#kgwHeaderMetrics,
+#kgwHeaderMetrics *,
+[data-kgw-metric-key],
+[data-kgw-metric-key] *,
+.header-metrics,
+.header-metrics *,
+.kgw-header-metrics,
+.kgw-header-metrics * {
+  font-size: 12px !important;
+  line-height: 1.15 !important;
+  box-sizing: border-box !important;
+}
+
+#kgwHeaderMetrics,
+.header-metrics,
+.kgw-header-metrics {
+  min-height: 38px !important;
+  max-height: 42px !important;
+  overflow: hidden !important;
+}
+
+header select,
+.kgw-header select,
+.app-header select,
+.header-top select,
+.header-top-right select,
+.kgw-shell-header select,
+#languageSelect,
+#currencySelect,
+#themeSelect {
+  height: 32px !important;
+  min-height: 32px !important;
+  max-height: 32px !important;
+  font-size: 13px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  box-sizing: border-box !important;
+}
+
+#languageSelect,
+.kgw-language-select {
+  width: 170px !important;
+  max-width: 170px !important;
+}
+
+#currencySelect,
+.kgw-currency-select {
+  width: 150px !important;
+  max-width: 150px !important;
+}
+
+#themeSelect,
+.kgw-theme-select {
+  width: 150px !important;
+  max-width: 150px !important;
+}
+
+@media (max-width: 1350px) {
+  #explorer .kgw-r7-address-select,
+  .explorer-python-root .kgw-r7-address-select,
+  #explorer #explorerAddress.kgw-r7-address-select,
+  .explorer-python-root #explorerAddress.kgw-r7-address-select {
+    flex-basis: 520px !important;
+    min-width: 360px !important;
+  }
+
+  #explorer .kgw-r4-balance-box,
+  .explorer-python-root .kgw-r4-balance-box,
+  #explorer .kgw-r3-balance-box,
+  .explorer-python-root .kgw-r3-balance-box {
+    flex-basis: 270px !important;
+    width: 108px !important;
+    min-width: 108px !important;
+    box-sizing: border-box !important;
+  justify-self: end !important;
+  max-width: 108px !important;
+  overflow: hidden !important;
+  text-align: right !important;
+  grid-column: 2 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+  #explorer .kgw-r4-actions,
+  .explorer-python-root .kgw-r4-actions,
+  #explorer .kgw-r3-actions,
+  .explorer-python-root .kgw-r3-actions {
+    grid-template-columns: 86px 126px 96px 84px !important;
+    gap: 8px !important;
+    justify-self: end !important;
+  width: 424px !important;
+  min-width: 424px !important;
+  max-width: 424px !important;
+  overflow: visible !important;
+  grid-column: 3 !important;
+  display: grid !important;
+  height: 32px !important;
+}
+}
+
+
+/* KGW_ADDRESS_BALANCE_LAYOUT_CLASSES_ONLY_START */
+/*
+ * Address/balance layout stabilization.
+ *
+ * Ownership:
+ * - JavaScript remains the owner of values only.
+ * - This block only stabilizes layout for existing kgw-python-* classes.
+ * - Do not create a second address grid or duplicate balance/name renderers.
+ */
+
+#explorer .kgw-python-load-address-owner,
+.explorer-python-root .kgw-python-load-address-owner {
+  min-width: 0;
+}
+
+#explorer .kgw-python-load-address-owner #explorerAddress,
+.explorer-python-root .kgw-python-load-address-owner #explorerAddress {
+  min-width: 240px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#explorer .kgw-python-balance-kas,
+.explorer-python-root .kgw-python-balance-kas {
+  display: block;
+  min-width: 12ch;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+#explorer .kgw-python-balance-fiat,
+.explorer-python-root .kgw-python-balance-fiat {
+  display: block;
+  min-width: 12ch;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+#explorer .kgw-python-wallet-name,
+.explorer-python-root .kgw-python-wallet-name {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+#explorer .kgw-python-load-address-button,
+.explorer-python-root .kgw-python-load-address-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+/* KGW_ADDRESS_BALANCE_LAYOUT_CLASSES_ONLY_END */
+
+/* KGW_TOP_HEADER_CLOCK_SIZE_ONLY_START */
+/*
+ * Existing top header clock size owner replacement.
+ * R26: stable first-paint dimensions to prevent oversized startup clock.
+ */
+#kgwHeaderMetrics,
+.header-metrics,
+.kgw-header-metrics {
+  min-height: 46px !important;
+  max-height: 56px !important;
+  overflow: hidden !important;
+  align-items: center !important;
+  box-sizing: border-box !important;
+}
+/* KGW_TOP_HEADER_CLOCK_SIZE_ONLY_END */
+
+
+/* KGW_COMPACT_EXPLORER_ACTION_ROW_V1
+   Compact the load/action controls so Fetch / Force Fetch / Explorer / Cancel do not collide. */
+#explorer .kgw-r4-load-row,
+.explorer-python-root .kgw-r4-load-row {
+  gap: 8px !important;
+  height: 40px !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 108px 424px !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  column-gap: 8px !important;
+  max-width: 100% !important;
+}
+
+#explorer .kgw-r4-actions,
+.explorer-python-root .kgw-r4-actions {
+  gap: 8px !important;
+  height: 32px !important;
+  justify-self: end !important;
+  width: 424px !important;
+  min-width: 424px !important;
+  max-width: 424px !important;
+  overflow: visible !important;
+  grid-column: 3 !important;
+  display: grid !important;
+  grid-template-columns: 86px 126px 96px 84px !important;
+}
+
+#explorer .kgw-r4-action-button,
+.explorer-python-root .kgw-r4-action-button {
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 5px !important;
+  font-size: 11.3px !important;
+  line-height: 32px !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+#explorer #explorerFetch,
+.explorer-python-root #explorerFetch {
+  min-width: 0 !important;
+}
+
+#explorer #explorerForceFetch,
+.explorer-python-root #explorerForceFetch {
+  min-width: 0 !important;
+}
+
+#explorer #explorerOpenExplorer,
+.explorer-python-root #explorerOpenExplorer {
+  min-width: 0 !important;
+}
+
+#explorer #explorerCancel,
+.explorer-python-root #explorerCancel {
+  min-width: 0 !important;
+}
+
+#explorer #explorerTransactionsTable th:nth-child(5),
+#explorer #explorerTransactionsTable td:nth-child(5) {
+  width: 125px !important;
+  min-width: 125px !important;
+  text-align: right !important;
+}
+
+
+/* KGW_EXPLORER_FILTER_BUSY_LOCK_OWNER_V1 */
+#explorer [data-kgw-explorer-filter-lifecycle^="busy:"],
+.explorer-python-root [data-kgw-explorer-filter-lifecycle^="busy:"] {
+  opacity: 0.55 !important;
+  cursor: wait !important;
+}
+
+#explorer [data-kgw-explorer-filter-lifecycle^="no-address:"],
+.explorer-python-root [data-kgw-explorer-filter-lifecycle^="no-address:"] {
+  opacity: 0.65 !important;
+}
+
+
+/* KGW_FINAL_EXPLORER_ACTION_BALANCE_COMPACT_V1
+   Final owner for translated Explorer action buttons and compact balance display. */
+#explorer .kgw-r4-load-row,
+.explorer-python-root .kgw-r4-load-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 108px 424px !important;
+  gap: 8px !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 40px !important;
+  overflow: visible !important;
+  column-gap: 8px !important;
+  max-width: 100% !important;
+}
+
+#explorer .kgw-r4-balance,
+.explorer-python-root .kgw-r4-balance {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  justify-self: end !important;
+  max-width: 132px !important;
+  text-align: right !important;
+}
+
+#explorer .kgw-r4-balance-label,
+.explorer-python-root .kgw-r4-balance-label {
+  display: none !important;
+  width: 132px !important;
+  min-width: 0 !important;
+  max-width: 132px !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  justify-self: end !important;
+  text-align: right !important;
+}
+
+#explorer #explorerBalanceValue,
+#explorer .kgw-python-balance-kas,
+.explorer-python-root #explorerBalanceValue,
+.explorer-python-root .kgw-python-balance-kas {
+  display: block !important;
+  max-width: 108px !important;
+  font-size: 13.5px !important;
+  line-height: 16px !important;
+  vertical-align: baseline !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  text-align: right !important;
+  min-width: 108px !important;
+}
+
+#explorer #explorerBalanceUsdValue,
+#explorer .kgw-python-balance-fiat,
+.explorer-python-root #explorerBalanceUsdValue,
+.explorer-python-root .kgw-python-balance-fiat {
+  font-size: 10px !important;
+  line-height: 11px !important;
+  white-space: nowrap !important;
+  display: block !important;
+  max-width: 108px !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  text-align: right !important;
+  min-width: 108px !important;
+}
+
+#explorer .kgw-r4-actions,
+.explorer-python-root .kgw-r4-actions,
+#explorer .kgw-r3-actions,
+.explorer-python-root .kgw-r3-actions {
+  display: grid !important;
+  grid-template-columns: 86px 126px 96px 84px !important;
+  width: 424px !important;
+  max-width: 424px !important;
+  min-width: 424px !important;
+  gap: 8px !important;
+  height: 32px !important;
+  align-items: stretch !important;
+  overflow: visible !important;
+  justify-self: end !important;
+  grid-column: 3 !important;
+}
+
+#explorer .kgw-r4-action-button,
+.explorer-python-root .kgw-r4-action-button,
+#explorer .kgw-r3-action-button,
+.explorer-python-root .kgw-r3-action-button,
+#explorer #explorerFetch,
+#explorer #explorerForceFetch,
+#explorer #explorerOpenExplorer,
+#explorer #explorerCancel,
+.explorer-python-root #explorerFetch,
+.explorer-python-root #explorerForceFetch,
+.explorer-python-root #explorerOpenExplorer,
+.explorer-python-root #explorerCancel {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 5px !important;
+  font-size: 11.3px !important;
+  line-height: 32px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#explorer #explorerForceFetch,
+.explorer-python-root #explorerForceFetch {
+  font-size: 11.75px !important;
+}
+
+@media (max-width: 1280px) {
+  #explorer .kgw-r4-load-row,
+  .explorer-python-root .kgw-r4-load-row {
+    grid-template-columns: minmax(0, 1fr) 108px 424px !important;
+    display: grid !important;
+  gap: 8px !important;
+  align-items: center !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 40px !important;
+  overflow: visible !important;
+  column-gap: 8px !important;
+  max-width: 100% !important;
+}
+
+  #explorer #explorerBalanceValue,
+  #explorer .kgw-python-balance-kas,
+  .explorer-python-root #explorerBalanceValue,
+  .explorer-python-root .kgw-python-balance-kas {
+    max-width: 108px !important;
+    font-size: 13.5px !important;
+    display: block !important;
+  line-height: 16px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  text-align: right !important;
+  min-width: 108px !important;
+}
+
+  #explorer .kgw-r4-action-button,
+  .explorer-python-root .kgw-r4-action-button,
+  #explorer .kgw-r3-action-button,
+  .explorer-python-root .kgw-r3-action-button,
+  #explorer #explorerFetch,
+  #explorer #explorerForceFetch,
+  #explorer #explorerOpenExplorer,
+  #explorer #explorerCancel,
+  .explorer-python-root #explorerFetch,
+  .explorer-python-root #explorerForceFetch,
+  .explorer-python-root #explorerOpenExplorer,
+  .explorer-python-root #explorerCancel {
+    font-size: 11.3px !important;
+    padding-inline: 5px !important;
+    min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  padding: 0 5px !important;
+  box-sizing: border-box !important;
+  height: 32px !important;
+  min-height: 32px !important;
+  line-height: 32px !important;
+}
+}
+
+
+/* KGW_EXPLORER_CUSTOM_SAVED_ADDRESS_DROPDOWN_CSS_R5 */
+
+/* KGW_EXPLORER_CUSTOM_SAVED_ADDRESS_DROPDOWN_POSITION_R6B */
+.kgw-explorer-address-dropdown {
+  position: fixed !important;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #102033;
+  border: 1px solid #5f7898;
+  border-radius: 8px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
+  z-index: 10000;
+  padding: 4px 0;
+  box-sizing: border-box;
+}
+
+.kgw-explorer-address-dropdown[hidden] {
+  display: none !important;
+}
+
+.kgw-explorer-address-dropdown-option {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kgw-explorer-address-dropdown-option:hover,
+.kgw-explorer-address-dropdown-option:focus,
+.kgw-explorer-address-dropdown-option[aria-selected="true"] {
+  background: #27446a;
+  outline: none;
+}
+
+.kgw-explorer-address-dropdown-empty {
+  padding: 10px 14px;
+  color: #9fb2c8;
+  font-size: 13px;
+}
+

@@ -1,0 +1,50 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/kaspa-gateway-core",
+    "crates/kaspa-gateway-config",
+    "crates/kaspa-gateway-security",
+    "crates/kaspa-gateway-rk-node",
+    "crates/kaspa-gateway-rk-bridge",
+    "crates/kaspa-gateway-api",
+    "crates/kaspa-gateway-db",
+    "crates/kaspa-gateway-node",
+    "crates/kaspa-gateway-observability",
+    "crates/kaspa-gateway-runtime",
+    "apps/kaspa-gateway-cli",
+    "apps/kaspa-gateway-desktop/src-tauri"
+]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.80"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/KaspaPulse/KaspaGateway"
+homepage = "https://github.com/KaspaPulse/KaspaGateway"
+documentation = "https://github.com/KaspaPulse/KaspaGateway"
+authors = ["KaspaPulse"]
+description = "Kaspa Gateway rewritten in Rust with secure modular architecture."
+
+[workspace.dependencies]
+anyhow = "1"
+thiserror = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "signal", "time", "fs", "io-util"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+url = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+zeroize = { version = "1", features = ["derive"] }
+secrecy = "0.10"
+keyring = "3"
+directories = "5"
+uuid = { version = "1", features = ["v4", "serde"] }
+time = { version = "0.3", features = ["serde", "formatting"] }
+duckdb = { version = "1", features = ["bundled"] }
+clap = { version = "4", features = ["derive"] }
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+
+

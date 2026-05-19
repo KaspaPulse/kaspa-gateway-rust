@@ -1,0 +1,37 @@
+[package]
+name = "kaspa-gateway-rk-bridge"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[features]
+default = []
+
+rkstratum_cpu_miner = [
+    "dep:kaspa-stratum-bridge-tn12",
+    "kaspa-stratum-bridge-tn12/rkstratum_cpu_miner"
+]
+
+official-kaspa-runtime-mainline = [
+    "dep:kaspa-stratum-bridge-mainline"
+]
+
+official-kaspa-runtime-tn12 = [
+    "dep:kaspa-stratum-bridge-tn12"
+]
+
+official-kaspa-runtime-all = [
+    "official-kaspa-runtime-mainline",
+    "official-kaspa-runtime-tn12"
+]
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time"] }
+
+kaspa-stratum-bridge-mainline = { package = "kaspa-stratum-bridge", git = "https://github.com/kaspanet/rusty-kaspa.git", branch = "master", optional = true }
+kaspa-stratum-bridge-tn12 = { package = "kaspa-stratum-bridge", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", branch = "RKStratumTN12", optional = true }
+
+

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en" data-kgw-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:* http://localhost:*"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="app.title">Kaspa Gateway</title>
+    <link rel="stylesheet" href="./styles.css" />
+  
+<style id="KGW_R87_I18N_SAFE_APPLY_SELECT_FREEZE_STYLE">
+  #shellLanguageSelect,
+  #shellCurrencySelect,
+  select,
+  input,
+  textarea {
+    pointer-events: auto !important;
+  }
+
+  #shellLanguageSelect,
+  #shellCurrencySelect {
+    position: relative !important;
+    z-index: 2147483647 !important;
+    direction: ltr !important;
+    unicode-bidi: isolate !important;
+    text-align: left !important;
+  }
+
+  html[dir="rtl"] #shellLanguageSelect,
+  html[dir="rtl"] #shellCurrencySelect {
+    direction: ltr !important;
+    unicode-bidi: isolate !important;
+    text-align: left !important;
+  }
+</style>
+<style id="KGW_R88_I18N_ROOT_CAUSE_SELECT_FREEZE_STYLE">
+  #shellLanguageSelect,
+  #shellCurrencySelect {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 2147483647 !important;
+    direction: ltr !important;
+    unicode-bidi: isolate !important;
+    text-align: left !important;
+  }
+
+  html[dir="rtl"] #shellLanguageSelect,
+  html[dir="rtl"] #shellCurrencySelect {
+    direction: ltr !important;
+    unicode-bidi: isolate !important;
+    text-align: left !important;
+  }
+
+  select,
+  input,
+  textarea,
+  button {
+    pointer-events: auto !important;
+  }
+</style>
+<style id="KGW_R89_I18N_EVENT_LOOP_SELECT_ROOT_FIX_STYLE">
+  #shellLanguageSelect,
+  #shellCurrencySelect {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 2147483647 !important;
+    direction: ltr !important;
+    unicode-bidi: isolate !important;
+    text-align: left !important;
+  }
+
+  html[dir="rtl"] #shellLanguageSelect,
+  html[dir="rtl"] #shellCurrencySelect {
+    direction: ltr !important;
+    unicode-bidi: isolate !important;
+    text-align: left !important;
+  }
+</style>
+</head>
+
+  <body>
+    <div id="app" class="kgw-shell">
+      <header class="kgw-header">
+        <div class="kgw-brand">
+          <div class="kgw-logo" aria-hidden="true"><img class="kgw-logo-image" src="./assets/kaspa-white.ico" alt="" /></div>
+          <div class="kgw-title-block">
+            <h1 data-i18n="ui.shell.kaspagateway.v0.1.0">KaspaGateway V0.1.0</h1>
+          <!-- KGW REAL HEADER METRICS START -->
+          <div id="kgwHeaderMetrics" class="kgw-header-metrics" aria-label="Kaspa live network metrics" data-i18n-aria-label="ui.shell.kaspa.live.network.metrics">
+            <div class="kgw-header-metric kgw-header-metric-price" id="kgwHeaderPriceBox" title="Waiting for live update" data-i18n-title="ui.shell.waiting.for.live.update">
+              <div class="kgw-header-metric-label" data-i18n="metrics.price">Price</div>
+              <div id="kgwHeaderPrice" class="kgw-header-metric-value" data-kgw-no-i18n="true" data-kgw-live-metric-value="price">Loading</div>
+            </div>
+            <div class="kgw-header-metric kgw-header-metric-hashrate" id="kgwHeaderHashrateBox" title="Waiting for live update" data-i18n-title="ui.shell.waiting.for.live.update">
+              <div class="kgw-header-metric-label" data-i18n="metrics.hashrate">Hashrate</div>
+              <div id="kgwHeaderHashrate" class="kgw-header-metric-value" data-kgw-no-i18n="true" data-kgw-live-metric-value="hashrate">Loading</div>
+            </div>
+            <div class="kgw-header-metric kgw-header-metric-difficulty" id="kgwHeaderDifficultyBox" title="Waiting for live update" data-i18n-title="ui.shell.waiting.for.live.update">
+              <div class="kgw-header-metric-label" data-i18n="metrics.difficulty">Difficulty</div>
+              <div id="kgwHeaderDifficulty" class="kgw-header-metric-value" data-kgw-no-i18n="true" data-kgw-live-metric-value="difficulty">Loading</div>
+            </div>
+          </div>
+          <!-- KGW REAL HEADER METRICS END -->
+          </div>
+        </div>
+
+        <div class="kgw-top-controls">
+          <!-- KGW REAL HEADER CLOCK START -->
+          <div id="kgwHeaderClock" class="kgw-header-clock" aria-label="Current date and time" data-i18n-aria-label="ui.shell.current.date.and.time">
+            <div id="kgwHeaderClockTime" class="kgw-header-clock-time">--:--:--</div>
+            <div id="kgwHeaderClockDate" class="kgw-header-clock-date">----</div>
+          </div>
+          <!-- KGW REAL HEADER CLOCK END -->
+          <label class="kgw-top-control">
+            <span data-i18n="settings.language">Language</span>
+            <select id="shellLanguageSelect">
+          <option value="en" data-i18n="common.lang.en">English</option>
+          <option value="ar" data-i18n="common.lang.ar">Arabic</option>
+          <option value="de" data-i18n="common.lang.de">German</option>
+          <option value="es" data-i18n="common.lang.es">Spanish</option>
+          <option value="fr" data-i18n="common.lang.fr">French</option>
+          <option value="hi" data-i18n="common.lang.hi">Hindi</option>
+          <option value="id" data-i18n="common.lang.id">Indonesian</option>
+          <option value="ja" data-i18n="common.lang.ja">Japanese</option>
+          <option value="ko" data-i18n="common.lang.ko">Korean</option>
+          <option value="ru" data-i18n="common.lang.ru">Russian</option>
+          <option value="tr" data-i18n="common.lang.tr">Turkish</option>
+          <option value="zh-CN" data-i18n="common.lang.zh.cn">Chinese (Simplified)</option>
+        </select>
+          </label>
+
+          <label class="kgw-top-control">
+            <span data-i18n="settings.currency">Currency</span>
+            <select id="shellCurrencySelect">
+              <option value="USD" selected data-i18n="ui.shell.usd">USD</option>
+              <option value="KAS" data-i18n="ui.shell.kas">KAS</option>
+              <option value="SAR" data-i18n="ui.shell.sar">SAR</option>
+              <option value="EUR" data-i18n="ui.shell.eur">EUR</option>
+            </select>
+          </label>
+
+          <label class="kgw-top-control">
+            <span data-i18n="settings.theme">Theme</span>
+            <select id="shellThemeSelect">
+              <option value="dark" selected data-i18n="ui.shell.dark">Dark</option>
+              <option value="superhero" data-i18n="ui.shell.superhero">Superhero</option>
+              <option value="kaspa" data-i18n="ui.shell.kaspa.green">Kaspa Green</option>
+              <option value="slate" data-i18n="ui.shell.slate">Slate</option>
+              <option value="midnight" data-i18n="ui.shell.midnight">Midnight</option>
+              <option value="blue" data-i18n="ui.shell.blue">Blue</option>
+            </select>
+          </label>
+        </div>
+      </header>
+
+      <nav class="kgw-tabs" aria-label="Main tabs" data-i18n-aria-label="ui.shell.main.tabs">
+        <button type="button" class="kgw-tab-button active" data-tab="explorer" aria-selected="true" data-i18n="tabs.explorer">Explorer</button>
+        <button type="button" class="kgw-tab-button" data-tab="kaspa-node" aria-selected="false" data-i18n="tabs.kaspaNode">Kaspa Node</button>
+        <button type="button" class="kgw-tab-button" data-tab="kaspa-bridge" aria-selected="false" data-i18n="tabs.kaspaBridge">Kaspa Bridge</button>
+        <button type="button" class="kgw-tab-button" data-tab="analysis" aria-selected="false" data-i18n="tabs.analysis">Analysis</button>
+        <button type="button" class="kgw-tab-button" data-tab="top-addresses" aria-selected="false" data-i18n="tabs.topAddresses">Top Addresses</button>
+        <button type="button" class="kgw-tab-button" data-tab="log" aria-selected="false" data-i18n="tabs.log">Log</button>
+        <button type="button" class="kgw-tab-button" data-tab="settings" aria-selected="false" data-i18n="tabs.settings">Settings</button>
+      </nav>
+
+      <main id="kgwMain" class="kgw-main">
+        <section id="explorer" class="page active" data-tab-panel="explorer"></section>
+        <section id="kaspa-node" class="page" data-tab-panel="kaspa-node" hidden></section>
+        <section id="kaspa-bridge" class="page" data-tab-panel="kaspa-bridge" hidden></section>
+        <section id="analysis" class="page" data-tab-panel="analysis" hidden></section>
+        <section id="top-addresses" class="page" data-tab-panel="top-addresses" hidden></section>
+        <section id="log" class="page" data-tab-panel="log" hidden></section>
+        <section id="settings" class="page" data-tab-panel="settings" hidden></section>
+      </main>
+      <!-- KGW GLOBAL READY SOCIAL BAR START -->
+      <div id="kgwShellBottomBar" class="kgw-shell-bottom-bar" role="contentinfo" aria-label="Application status and links" data-i18n-aria-label="ui.shell.application.status.and.links">
+        <div id="kgwShellReadyStatus" class="kgw-shell-ready-status" data-i18n="status.ready">Ready</div>
+        <nav class="kgw-shell-social-links" aria-label="Kaspa Gateway links" data-i18n-aria-label="ui.shell.kaspa.gateway.links">
+          <button type="button" class="kgw-shell-link-button" data-kgw-link="donations" data-i18n="links.donations">Donations</button>
+          <span class="kgw-shell-link-separator" aria-hidden="true">|</span>
+          <button type="button" class="kgw-shell-link-button" data-kgw-link="twitter" data-i18n="links.twitter">Twitter</button>
+          <span class="kgw-shell-link-separator" aria-hidden="true">|</span>
+          <button type="button" class="kgw-shell-link-button" data-kgw-link="github" data-i18n="links.github">GitHub</button>
+        </nav>
+      </div>
+      <!-- KGW GLOBAL READY SOCIAL BAR END -->
+    </div>
+<script type="module" src="./main.js"></script>
+  </body>
+</html>

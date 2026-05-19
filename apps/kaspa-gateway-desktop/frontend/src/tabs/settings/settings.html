@@ -1,0 +1,360 @@
+<section id="settings" class="page settings-python-root" data-tab-panel="settings">
+  <div class="settings-python-shell">
+    <div class="settings-python-frame">
+      <nav class="settings-python-outer-tabs" aria-label="Settings tabs" data-i18n-aria-label="ui.settings.settings.tabs">
+        <button type="button" class="settings-python-outer-tab active" data-settings-tab="api-performance" data-i18n="ui.settings.api.and.amp.performance">API &amp; Performance</button>
+        <button type="button" class="settings-python-outer-tab" data-settings-tab="manage-addresses" data-i18n="explorer.manage.addresses">Manage Addresses</button>
+        <button type="button" class="settings-python-outer-tab" data-settings-tab="database-maintenance" data-i18n="common.database.maintenance">Database Maintenance</button>
+      </nav>
+
+      <div class="settings-python-main">
+        <section class="settings-python-panel active" data-settings-panel="api-performance">
+          <nav class="settings-python-inner-tabs" aria-label="API and performance tabs" data-i18n-aria-label="ui.settings.api.and.performance.tabs">
+            <button type="button" class="settings-python-inner-tab active" data-settings-inner-tab="general" data-i18n="settings.general">General</button>
+            <button type="button" class="settings-python-inner-tab" data-settings-inner-tab="api-settings" data-i18n="settings.api.settings">API Settings</button>
+            <button type="button" class="settings-python-inner-tab" data-settings-inner-tab="performance-settings" data-i18n="settings.performance.settings">Performance Settings</button>
+          </nav>
+
+          <section class="settings-python-inner-panel active" data-settings-inner-panel="general">
+            <fieldset class="settings-group display-group">
+              <legend data-i18n="settings.display.settings">Display Settings</legend>
+
+              <div class="display-grid">
+                <fieldset class="settings-subgroup">
+                  <legend data-i18n="settings.displayed.languages">Displayed Languages</legend>
+                  <label class="check-line select-line"><input type="checkbox" id="settingsLangSelectAll" checked /> Select All</label>
+                  <div class="check-separator"></div>
+                  <div class="check-columns two">
+                    <label><input type="checkbox" data-settings-language="en" checked /> English (en)</label>
+                    <label><input type="checkbox" data-settings-language="ar" checked /> Arabic (ar)</label>
+                    <label><input type="checkbox" data-settings-language="de" checked /> German (de)</label>
+                    <label><input type="checkbox" data-settings-language="es" checked /> Spanish (es)</label>
+                    <label><input type="checkbox" data-settings-language="fr" checked /> French (fr)</label>
+                    <label><input type="checkbox" data-settings-language="hi" checked /> Hindi (hi)</label>
+                    <label><input type="checkbox" data-settings-language="id" checked /> Indonesian (id)</label>
+                    <label><input type="checkbox" data-settings-language="ja" checked /> Japanese (ja)</label>
+                    <label><input type="checkbox" data-settings-language="ko" checked /> Korean (ko)</label>
+                    <label><input type="checkbox" data-settings-language="ru" checked /> Russian (ru)</label>
+                    <label><input type="checkbox" data-settings-language="tr" checked /> Turkish (tr)</label>
+                    <label><input type="checkbox" data-settings-language="zh-CN" checked /> Chinese (Simplified) (zh-CN)</label>
+                  </div>
+                </fieldset>
+
+                <fieldset class="settings-subgroup">
+                  <legend data-i18n="settings.displayed.currencies">Displayed Currencies</legend>
+                  <label class="check-line select-line"><input type="checkbox" id="settingsCurrencySelectAll" checked /> Select All</label>
+                  <div class="check-separator"></div>
+                  <div class="check-columns three">
+                    <label><input type="checkbox" data-settings-currency="USD" checked /> US Dollar</label>
+                    <label><input type="checkbox" data-settings-currency="SAR" checked /> Saudi Riyal</label>
+                    <label><input type="checkbox" data-settings-currency="EUR" checked /> Euro</label>
+                    <label><input type="checkbox" data-settings-currency="GBP" checked /> British Pound</label>
+                    <label><input type="checkbox" data-settings-currency="CHF" checked /> Swiss Franc</label>
+                    <label><input type="checkbox" data-settings-currency="AUD" checked /> Australian Dollar</label>
+                    <label><input type="checkbox" data-settings-currency="CAD" checked /> Canadian Dollar</label>
+                    <label><input type="checkbox" data-settings-currency="JPY" checked /> Japanese Yen</label>
+                    <label><input type="checkbox" data-settings-currency="KRW" checked /> South Korean Won</label>
+                    <label><input type="checkbox" data-settings-currency="RUB" checked /> Russian Ruble</label>
+                    <label><input type="checkbox" data-settings-currency="CNY" checked /> Chinese Yuan</label>
+                    <label><input type="checkbox" data-settings-currency="TRY" checked /> Turkish Lira</label>
+                    <label><input type="checkbox" data-settings-currency="INR" checked /> Indian Rupee</label>
+                    <label><input type="checkbox" data-settings-currency="IDR" checked /> Indonesian Rupiah</label>
+                    <label><input type="checkbox" data-settings-currency="HKD" checked /> Hong Kong Dollar</label>
+                    <label><input type="checkbox" data-settings-currency="SGD" checked /> Singapore Dollar</label>
+                    <label><input type="checkbox" data-settings-currency="BRL" checked /> Brazilian Real</label>
+                  </div>
+                </fieldset>
+
+                <fieldset class="settings-subgroup">
+                  <legend data-i18n="settings.displayed.tabs">Displayed Tabs</legend>
+                  <label class="check-line select-line"><input type="checkbox" id="settingsTabSelectAll" checked /> Select All</label>
+                  <div class="check-separator"></div>
+                  <div class="check-columns two">
+                    <label><input type="checkbox" data-settings-visible-tab="explorer" checked /> Explorer</label>
+                    <label><input type="checkbox" data-settings-visible-tab="kaspa-node" checked /> Kaspa Node</label>
+                    <label><input type="checkbox" data-settings-visible-tab="kaspa-bridge" checked /> Kaspa Bridge</label>
+                    <label><input type="checkbox" data-settings-visible-tab="analysis" checked /> Analysis</label>
+                    <label><input type="checkbox" data-settings-visible-tab="top-addresses" checked /> Top Addresses</label>
+                    <label><input type="checkbox" data-settings-visible-tab="log" checked /> Log</label>
+                  </div>
+                </fieldset>
+              </div>
+            </fieldset>
+
+            <div class="general-bottom-grid">
+              <fieldset class="settings-group advanced-group">
+                <legend data-i18n="common.advanced">Advanced</legend>
+
+                <label class="check-line"><input type="checkbox" id="settingsCheckUpdates" checked /> Check for updates on startup</label>
+                <label class="check-line"><input type="checkbox" id="settingsStartWindows" /> Start with Windows</label>
+
+                <div class="inline-form-row">
+                  <label for="settingsLoggingLevel" data-i18n="ui.settings.logging.level">Logging Level:</label>
+                  <select id="settingsLoggingLevel" class="small-select">
+                    <option value="TRACE" data-i18n="ui.log.trace">TRACE</option>
+                    <option value="DEBUG" data-i18n="ui.log.debug">DEBUG</option>
+                    <option value="INFO" selected data-i18n="ui.log.info">INFO</option>
+                    <option value="WARN" data-i18n="ui.log.warn">WARN</option>
+                    <option value="ERROR" data-i18n="errors.error">ERROR</option>
+                  </select>
+                </div>
+              </fieldset>
+
+              <fieldset class="settings-group paths-group">
+                <legend data-i18n="settings.file.paths">File Paths</legend>
+
+                <div class="path-grid">
+                  <label for="settingsDatabasePath" data-i18n="settings.database.path">Database Path</label>
+                  <input id="settingsDatabasePath" type="text" value="" placeholder="Default app data directory" / data-i18n-placeholder="ui.settings.default.app.data.directory">
+                  <button type="button" class="icon-btn browse-btn" data-browse-for="settingsDatabasePath" title="Browse" data-i18n-title="ui.settings.browse">▱</button>
+                  <button type="button" class="icon-btn clear-btn" data-clear-for="settingsDatabasePath" title="Clear" data-i18n-title="ui.settings.clear">🗑</button>
+
+                  <label for="settingsExportPath" data-i18n="actions.export.path">Export Path</label>
+                  <input id="settingsExportPath" type="text" value="" placeholder="Default export directory" / data-i18n-placeholder="ui.settings.default.export.directory">
+                  <button type="button" class="icon-btn browse-btn" data-browse-for="settingsExportPath" title="Browse" data-i18n-title="ui.settings.browse">▱</button>
+                  <button type="button" class="icon-btn clear-btn" data-clear-for="settingsExportPath" title="Clear" data-i18n-title="ui.settings.clear">🗑</button>
+
+                  <label for="settingsLogPath" data-i18n="settings.log.path">Log Path</label>
+                  <input id="settingsLogPath" type="text" value="" placeholder="Default log directory" / data-i18n-placeholder="ui.settings.default.log.directory">
+                  <button type="button" class="icon-btn browse-btn" data-browse-for="settingsLogPath" title="Browse" data-i18n-title="ui.settings.browse">▱</button>
+                  <button type="button" class="icon-btn clear-btn" data-clear-for="settingsLogPath" title="Clear" data-i18n-title="ui.settings.clear">🗑</button>
+
+                  <label for="settingsBackupPath" data-i18n="ui.settings.backup.directory">Backup Directory</label>
+                  <input id="settingsBackupPath" type="text" value="" placeholder="Default backup directory" / data-i18n-placeholder="ui.settings.default.backup.directory">
+                  <button type="button" class="icon-btn browse-btn" data-browse-for="settingsBackupPath" title="Browse" data-i18n-title="ui.settings.browse">▱</button>
+                  <button type="button" class="icon-btn clear-btn" data-clear-for="settingsBackupPath" title="Clear" data-i18n-title="ui.settings.clear">🗑</button>
+                </div>
+              </fieldset>
+            </div>
+          </section>
+
+          <section class="settings-python-inner-panel" data-settings-inner-panel="api-settings">
+            <div class="api-settings-grid">
+              <div class="api-left-column">
+                <fieldset class="settings-group api-profile-group">
+                  <legend data-i18n="settings.api.server.profiles">API Server Profiles</legend>
+
+                  <select id="settingsApiProfile">
+                    <option value="default" selected data-i18n="ui.settings.default">Default</option>
+                    <option value="kaspa-org" data-i18n="ui.settings.kaspa.org">Kaspa.org</option>
+                    <option value="local-node" data-i18n="ui.settings.local.node">Local Node</option>
+                    <option value="custom" data-i18n="ui.settings.custom">Custom</option>
+                  </select>
+
+                  <div class="three-button-row">
+                    <button type="button" id="settingsProfileAdd" class="green-btn" data-i18n="actions.add">Add</button>
+                    <button type="button" id="settingsProfileRename" class="blue-outline-btn" data-i18n="common.rename">Rename</button>
+                    <button type="button" id="settingsProfileDelete" class="red-outline-btn" data-i18n="actions.delete">Delete</button>
+                  </div>
+                </fieldset>
+
+                <fieldset class="settings-group api-tree-group">
+                  <legend data-i18n="settings.api.endpoints">API Endpoints</legend>
+
+                  <div id="settingsEndpointTree" class="endpoint-tree" role="tree">
+                    <div class="tree-section" data-i18n="ui.settings.base.url">⊟ Base URL</div>
+                    <button type="button" class="tree-row" data-api-key="base_url" data-api-desc="Base URL" data-api-base="https://api.kaspa.org" data-api-path="">Base URL <span data-i18n="ui.settings.base.url">base_url</span></button>
+                    <button type="button" class="tree-row" data-api-key="page_limit" data-api-desc="Page Limit" data-api-base="" data-api-path="100">Page Limit <span data-i18n="ui.settings.page.limit">page_limit</span></button>
+
+                    <div class="tree-section" data-i18n="ui.settings.kaspa.api.endpoints">⊟ Kaspa API Endpoints</div>
+                    <button type="button" class="tree-row" data-api-key="address_names" data-api-desc="Address names endpoint" data-api-base="https://api.kaspa.org" data-api-path="/addresses/names">address_names <span data-i18n="ui.settings.address.names">address_names</span></button>
+                    <button type="button" class="tree-row" data-api-key="balance" data-api-desc="Address balance endpoint" data-api-base="https://api.kaspa.org" data-api-path="/addresses/{address}/balance">balance <span data-i18n="explorer.balance">balance</span></button>
+                    <button type="button" class="tree-row" data-api-key="blockdag_info" data-api-desc="BlockDAG info endpoint" data-api-base="https://api.kaspa.org" data-api-path="/info/blockdag">blockdag_info <span data-i18n="ui.settings.blockdag.info">blockdag_info</span></button>
+                    <button type="button" class="tree-row" data-api-key="blockreward" data-api-desc="Block reward endpoint" data-api-base="https://api.kaspa.org" data-api-path="/info/blockreward">blockreward <span data-i18n="ui.settings.blockreward">blockreward</span></button>
+                    <button type="button" class="tree-row" data-api-key="coinsupply" data-api-desc="Coin supply endpoint" data-api-base="https://api.kaspa.org" data-api-path="/info/coinsupply">coinsupply <span data-i18n="ui.settings.coinsupply">coinsupply</span></button>
+                    <button type="button" class="tree-row" data-api-key="full_transactions" data-api-desc="Full transactions endpoint" data-api-base="https://api.kaspa.org" data-api-path="/addresses/{address}/full-transactions">full_transactions <span data-i18n="ui.settings.full.transactions">full_transactions</span></button>
+                    <button type="button" class="tree-row" data-api-key="halving" data-api-desc="Halving endpoint" data-api-base="https://api.kaspa.org" data-api-path="/info/halving">halving <span data-i18n="ui.settings.halving">halving</span></button>
+                    <button type="button" class="tree-row" data-api-key="hashrate" data-api-desc="Hashrate endpoint" data-api-base="https://api.kaspa.org" data-api-path="/info/hashrate">hashrate <span data-i18n="metrics.hashrate">hashrate</span></button>
+                    <button type="button" class="tree-row" data-api-key="kaspad" data-api-desc="Kaspad endpoint" data-api-base="https://api.kaspa.org" data-api-path="/info/kaspad">kaspad <span data-i18n="ui.settings.kaspad">kaspad</span></button>
+                    <button type="button" class="tree-row" data-api-key="max_hashrate" data-api-desc="Max hashrate endpoint" data-api-base="https://api.kaspa.org" data-api-path="/info/max-hashrate">max_hashrate <span data-i18n="ui.settings.max.hashrate">max_hashrate</span></button>
+                    <button type="button" class="tree-row" data-api-key="network" data-api-desc="Network endpoint" data-api-base="https://api.kaspa.org" data-api-path="/info/network">network <span data-i18n="common.network">network</span></button>
+                    <button type="button" class="tree-row" data-api-key="top_addresses" data-api-desc="Top addresses endpoint" data-api-base="https://api.kaspa.org" data-api-path="/info/rich-list">top_addresses <span data-i18n="ui.settings.top.addresses">top_addresses</span></button>
+
+                    <div class="tree-section" data-i18n="ui.settings.explorer.urls">⊟ Explorer URLs</div>
+                    <button type="button" class="tree-row" data-api-key="address" data-api-desc="Explorer address URL" data-api-base="https://explorer.kaspa.org" data-api-path="/addresses/{address}">address <span data-i18n="explorer.address">address</span></button>
+                    <button type="button" class="tree-row" data-api-key="transaction" data-api-desc="Explorer transaction URL" data-api-base="https://explorer.kaspa.org" data-api-path="/txs/{txid}">transaction <span data-i18n="ui.settings.transaction">transaction</span></button>
+
+                    <div class="tree-section" data-i18n="ui.settings.external.apis">⊟ External APIs</div>
+                    <button type="button" class="tree-row" data-api-key="api_key" data-api-desc="External API key" data-api-base="" data-api-path="">api_key <span data-i18n="ui.settings.api.key">api_key</span></button>
+                    <button type="button" class="tree-row" data-api-key="coingecko" data-api-desc="CoinGecko price API" data-api-base="https://api.coingecko.com" data-api-path="/api/v3/simple/price">coingecko <span data-i18n="ui.settings.coingecko">coingecko</span></button>
+                  </div>
+
+                  <button type="button" id="settingsResetSelectedEndpoint" class="full-blue-btn" data-i18n="ui.settings.reset.selected">Reset Selected</button>
+                </fieldset>
+              </div>
+
+              <fieldset class="settings-group edit-endpoint-group">
+                <legend data-i18n="actions.edit.endpoint">Edit Endpoint</legend>
+
+                <label class="large-label" for="settingsApiKey" data-i18n="ui.settings.api.key">API Key:</label>
+                <input id="settingsApiKey" type="text" />
+
+                <label for="settingsApiDescription" data-i18n="ui.settings.description">Description:</label>
+                <input id="settingsApiDescription" type="text" />
+
+                <fieldset class="settings-subgroup url-components">
+                  <legend data-i18n="common.url.components">URL Components</legend>
+
+                  <div class="url-grid">
+                    <label for="settingsApiBase" data-i18n="ui.settings.base">Base:</label>
+                    <input id="settingsApiBase" type="text" />
+                    <button type="button" class="combo-arrow" title="Choose base" data-i18n-title="ui.settings.choose.base">⌄</button>
+
+                    <label for="settingsApiPath" data-i18n="ui.settings.path">Path:</label>
+                    <input id="settingsApiPath" type="text" />
+                    <span></span>
+                  </div>
+                </fieldset>
+
+                <label for="settingsApiPreview" data-i18n="ui.settings.full.url.preview">Full URL Preview:</label>
+                <input id="settingsApiPreview" type="text" readonly />
+              </fieldset>
+            </div>
+          </section>
+
+          <section class="settings-python-inner-panel" data-settings-inner-panel="performance-settings">
+            <fieldset class="settings-group perf-group">
+              <legend data-i18n="settings.api.performance">API Performance</legend>
+
+              <div class="perf-row">
+                <label for="settingsApiTimeout" data-i18n="errors.api.timeout.sec">API Timeout (sec)</label>
+                <span class="info-dot">i</span>
+                <input id="settingsApiTimeout" type="text" inputmode="decimal" dir="ltr" value="30" min="1" />
+
+                <label for="settingsRetryAttempts" data-i18n="common.retry.attempts">Retry Attempts</label>
+                <span class="info-dot">i</span>
+                <input id="settingsRetryAttempts" type="text" inputmode="decimal" dir="ltr" value="5" min="0" />
+              </div>
+
+              <div class="perf-row">
+                <label for="settingsBackoffFactor" data-i18n="common.backoff.factor">Backoff Factor</label>
+                <span class="info-dot">i</span>
+                <input id="settingsBackoffFactor" type="text" inputmode="decimal" dir="ltr" value="4.0" step="0.1" min="0" />
+
+                <label for="settingsMaxWorkers" data-i18n="common.max.workers">Max Workers</label>
+                <span class="info-dot">i</span>
+                <input id="settingsMaxWorkers" type="text" inputmode="decimal" dir="ltr" value="10" min="1" />
+              </div>
+            </fieldset>
+
+            <fieldset class="settings-group perf-group compact">
+              <legend data-i18n="explorer.transaction.fetching">Transaction Fetching</legend>
+
+              <div class="perf-row">
+                <label for="settingsMaxPages" data-i18n="common.max.pages">Max Pages</label>
+                <span class="info-dot">i</span>
+                <input id="settingsMaxPages" type="text" inputmode="decimal" dir="ltr" value="10000" min="1" />
+
+                <label for="settingsPageDelay" data-i18n="ui.settings.page.delay.sec">Page Delay (sec)</label>
+                <span class="info-dot">i</span>
+                <input id="settingsPageDelay" type="text" inputmode="decimal" dir="ltr" value="0.05" step="0.01" min="0" />
+              </div>
+            </fieldset>
+
+            <fieldset class="settings-group perf-group compact">
+              <legend data-i18n="common.caching">Caching</legend>
+
+              <div class="perf-row">
+                <label for="settingsPriceCacheHours" data-i18n="ui.settings.price.cache.hours">Price Cache (hours)</label>
+                <span class="info-dot">i</span>
+                <input id="settingsPriceCacheHours" type="text" inputmode="decimal" dir="ltr" value="0.25" step="0.01" min="0" />
+
+                <label for="settingsNetworkCacheHours" data-i18n="ui.settings.network.cache.hours">Network Cache (hours)</label>
+                <span class="info-dot">i</span>
+                <input id="settingsNetworkCacheHours" type="text" inputmode="decimal" dir="ltr" value="0.25" step="0.01" min="0" />
+              </div>
+            </fieldset>
+
+            <fieldset class="settings-group perf-group compact">
+              <legend data-i18n="common.automatic.refresh">Automatic Refresh</legend>
+
+              <div class="perf-row auto-refresh-row">
+                <label class="check-line"><input type="checkbox" id="settingsEnableAutoRefresh" /> Enable Auto-Refresh</label>
+
+                <label for="settingsRefreshInterval" data-i18n="ui.settings.refresh.interval.seconds">Refresh Interval (seconds)</label>
+                <input id="settingsRefreshInterval" type="text" inputmode="decimal" dir="ltr" value="60" min="1" />
+              </div>
+            </fieldset>
+          </section>
+        </section>
+
+        <section class="settings-python-panel" data-settings-panel="manage-addresses">
+          <div class="manage-addresses-panel">
+            <div class="address-form-row">
+              <label for="settingsAddressName" data-i18n="ui.settings.name">Name:</label>
+              <input id="settingsAddressName" type="text" />
+
+              <label for="settingsAddressValue" data-i18n="ui.settings.kaspa.address">Kaspa Address:</label>
+              <input id="settingsAddressValue" type="text" />
+            </div>
+
+            <div class="address-action-row">
+              <button type="button" id="settingsAddressAdd" class="blue-btn" data-i18n="ui.settings.add.edit.address">Add/Edit Address</button>
+              <button type="button" id="settingsAddressDelete" class="red-btn" data-i18n="ui.settings.delete.address">Delete Address</button>
+              <button type="button" id="settingsAddressExplorer" class="disabled-btn" disabled data-i18n="tabs.explorer">Explorer</button>
+              <button type="button" id="settingsAddressClear" class="gray-btn" data-i18n="actions.clear.fields">Clear Fields</button>
+              <button type="button" id="settingsAddressRefresh" class="cyan-btn" data-i18n="ui.settings.refresh.list">Refresh List</button>
+              <span id="settingsAddressLastUpdated" data-i18n="ui.settings.last.updated">Last Updated: —</span>
+            </div>
+
+            <div class="settings-table-shell address-table-shell">
+              <table class="python-table" aria-label="Managed addresses" data-i18n-aria-label="ui.settings.managed.addresses">
+                <thead>
+                  <tr>
+                    <th data-i18n="ui.settings.name.sort">Name ↕</th>
+                    <th data-i18n="ui.settings.kaspa.address.sort">Kaspa Address ↕</th>
+                    <th data-i18n="ui.settings.known.name.sort">Known Name ↕</th>
+                    <th data-i18n="ui.settings.balance.sort">Balance ↕</th>
+                    <th data-i18n="ui.explorer.value.usd.sort">Value (USD) ↕</th>
+                  </tr>
+                </thead>
+                <tbody id="settingsAddressRows"></tbody>
+              </table>
+            </div>
+
+            <div class="address-export-row">
+              <button type="button" id="settingsExportAddresses" class="blue-btn" data-i18n="actions.export.addresses">Export Addresses</button>
+              <button type="button" id="settingsImportAddresses" class="blue-btn" data-i18n="actions.import.addresses">Import Addresses</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="settings-python-panel" data-settings-panel="database-maintenance">
+          <div class="database-panel">
+            <div class="settings-table-shell database-table-shell">
+              <table class="python-table" aria-label="Database maintenance" data-i18n-aria-label="common.database.maintenance">
+                <thead>
+                  <tr>
+                    <th data-i18n="common.db.file">DB File</th>
+                    <th data-i18n="common.size.kb">Size (KB)</th>
+                    <th data-i18n="common.last.modified">Last Modified</th>
+                    <th data-i18n="common.details">Details</th>
+                  </tr>
+                </thead>
+                <tbody id="settingsDatabaseRows">
+                  <tr>
+                    <td colspan="4" data-i18n="ui.settings.loading.database.status">Loading database status...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="database-action-row">
+              <button type="button" id="settingsDbRefresh" class="blue-btn" data-i18n="ui.settings.refresh.list">Refresh List</button>
+              <button type="button" id="settingsDbCompact" class="cyan-btn" data-i18n="common.compact.database">Compact Database</button>
+              <button type="button" id="settingsDbClearCaches" class="orange-btn" data-i18n="actions.clear.caches">Clear Caches</button>
+              <button type="button" id="settingsDbBackup" class="blue-btn" data-i18n="actions.backup">Backup</button>
+              <button type="button" id="settingsDbRestore" class="blue-btn" data-i18n="actions.restore">Restore</button>
+              <button type="button" id="settingsDbDelete" class="red-btn" data-i18n="actions.delete">Delete</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="settings-bottom-actions">
+        <button type="button" id="settingsResetDefaults" data-i18n="ui.settings.reset.to.defaults">Reset to Defaults</button>
+        <button type="button" id="settingsSaveSettings" disabled data-i18n="actions.save.settings">Save Settings</button>
+      </div>
+    </div>
+  </div>
+</section>

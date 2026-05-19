@@ -1,0 +1,457 @@
+/*
+  KGW_ANALYSIS_ULTRA_COMPACT_FILTER_FIELDS_OWNER_V12
+  Whole-file CSS owner replacement.
+  Scope: #analysis only.
+
+  User request:
+  - Compress filter/date fields strongly.
+  - Keep filter in one row.
+  - Remove wasted horizontal gaps.
+  - Give transaction table more visible space.
+  - No Explorer/header/clock/Rust/DB ownership.
+*/
+
+#analysis.kgw-analysis-root,
+#analysis.page {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  background: var(--kgw-global-bg, #101827);
+  color: var(--kgw-global-text, #ffffff);
+  font-size: 12px;
+}
+
+#analysis,
+#analysis * {
+  box-sizing: border-box;
+}
+
+#analysis .kgw-analysis-hidden-compat {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 1px !important;
+  min-height: 1px !important;
+  max-width: 1px !important;
+  max-height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  border: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+#analysis .kgw-analysis-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 52px 90px 48px minmax(500px, 1fr);
+  gap: 7px;
+  padding: 7px 18px;
+  overflow: hidden;
+}
+
+#analysis .kgw-analysis-control-card,
+#analysis .kgw-analysis-summary-card,
+#analysis .kgw-analysis-filter-card,
+#analysis .kgw-analysis-table-card {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--kgw-global-panel, #172235) 92%, black 4%);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+#analysis .kgw-analysis-control-card {
+  display: grid;
+  grid-template-columns: minmax(360px, 980px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 18px;
+  position: relative;
+}
+
+#analysis .kgw-analysis-summary-card {
+  padding: 7px 18px;
+}
+
+#analysis .kgw-analysis-filter-card {
+  padding: 6px 18px;
+}
+
+#analysis .kgw-analysis-field {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+}
+
+#analysis .kgw-analysis-no-visible-label {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#analysis label {
+  min-width: max-content;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  line-height: 28px;
+  opacity: 0.82;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#analysis button,
+#analysis input,
+#analysis select {
+  height: 28px;
+  min-height: 28px;
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.76);
+  color: var(--kgw-global-text, #ffffff);
+  outline: none;
+  font-size: 11.5px;
+}
+
+#analysis input,
+#analysis select {
+  width: 100%;
+  padding: 0 7px;
+}
+
+#analysis input[dir="ltr"] {
+  direction: ltr;
+  unicode-bidi: plaintext;
+  font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
+}
+
+#analysis button {
+  padding: 0 8px;
+  background: #4b75a3;
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#analysis button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+#analysis button:disabled,
+#analysis input:disabled,
+#analysis select:disabled {
+  opacity: 0.48;
+  cursor: default;
+}
+
+#analysis .kgw-analysis-actions,
+#analysis .kgw-analysis-export-actions,
+#analysis .kgw-analysis-filter-buttons {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+#analysis .kgw-analysis-actions {
+  justify-content: flex-end;
+  grid-column: 3;
+}
+
+#analysis .kgw-analysis-address-field {
+  grid-column: 1;
+  max-width: 980px;
+}
+
+#analysis .kgw-analysis-summary-grid {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  grid-template-rows: repeat(2, minmax(32px, 1fr));
+  gap: 6px;
+  overflow: hidden;
+}
+
+#analysis .kgw-analysis-metric {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: 13px 1fr;
+  gap: 1px;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.34);
+  overflow: hidden;
+}
+
+#analysis .kgw-analysis-metric span {
+  min-width: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10.5px;
+  line-height: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#analysis .kgw-analysis-metric strong {
+  min-width: 0;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+  ULTRA COMPACT ONE ROW FILTER.
+  Fixed compact columns:
+  From 178, To 178, Type 150, Direction 165, Search expands, Buttons 166.
+*/
+#analysis .kgw-analysis-filter-grid {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid !important;
+  grid-template-columns:
+    178px
+    178px
+    150px
+    165px
+    minmax(150px, 1fr)
+    166px;
+  gap: 5px;
+  align-items: center;
+  overflow: hidden;
+}
+
+#analysis .kgw-analysis-filter-grid > * {
+  min-width: 0;
+}
+
+#analysis .kgw-analysis-date-field {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) 28px !important;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+#analysis .kgw-analysis-date-field > label {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+#analysis .kgw-analysis-date-field > .analysis-date-text {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  padding-left: 7px;
+  padding-right: 7px;
+}
+
+#analysis .kgw-analysis-date-field > .analysis-calendar-btn {
+  grid-column: 3;
+  grid-row: 1;
+  width: 28px !important;
+  min-width: 28px !important;
+  max-width: 28px !important;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+}
+
+#analysis .kgw-analysis-date-field > .analysis-date-native {
+  position: fixed !important;
+  left: -10000px !important;
+  top: -10000px !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 1px !important;
+  min-height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+#analysis .kgw-analysis-search-field {
+  min-width: 0;
+}
+
+#analysis .kgw-analysis-filter-buttons {
+  justify-content: flex-end;
+  gap: 5px;
+  width: 166px;
+  min-width: 166px;
+  max-width: 166px;
+  overflow: hidden;
+}
+
+#analysis .kgw-analysis-filter-buttons button {
+  width: 80px;
+  min-width: 80px;
+  max-width: 80px;
+  padding: 0 5px;
+  font-size: 11px;
+}
+
+#analysis .kgw-analysis-table-card {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 36px minmax(0, 1fr);
+  padding: 9px 18px 11px 18px;
+  overflow: hidden;
+}
+
+#analysis .kgw-analysis-table-toolbar {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  overflow: hidden;
+}
+
+#analysis .kgw-analysis-table-title {
+  min-width: 0;
+  height: 25px;
+  line-height: 25px;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--kgw-global-text, #ffffff);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#analysis .kgw-analysis-export-actions strong {
+  font-size: 12px;
+  opacity: 0.82;
+  white-space: nowrap;
+}
+
+#analysis .kgw-analysis-export-actions button {
+  height: 30px;
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+#analysis .kgw-analysis-table-wrap {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.28);
+}
+
+#analysis .kgw-analysis-table {
+  width: 100%;
+  min-width: 940px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+}
+
+#analysis .kgw-analysis-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 30px;
+  padding: 0 9px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.26);
+  background: #315b82;
+  color: #ffffff;
+  text-align: left;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#analysis .kgw-analysis-table tbody td {
+  height: 30px;
+  padding: 0 9px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  color: var(--kgw-global-text, #ffffff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#analysis .kgw-analysis-table tbody tr:hover td {
+  background: rgba(89, 164, 237, 0.08);
+}
+
+#analysis .analysis-empty-row td {
+  color: rgba(255, 255, 255, 0.72);
+  text-align: center;
+}
+
+#analysis .kgw-analysis-table th:nth-child(1) { width: 20%; }
+#analysis .kgw-analysis-table th:nth-child(2) { width: 32%; }
+#analysis .kgw-analysis-table th:nth-child(3) { width: 10%; }
+#analysis .kgw-analysis-table th:nth-child(4) { width: 14%; }
+#analysis .kgw-analysis-table th:nth-child(5) { width: 8%; }
+#analysis .kgw-analysis-table th:nth-child(6) { width: 8%; }
+#analysis .kgw-analysis-table th:nth-child(7) { width: 8%; }
+
+@media (max-width: 960px) {
+  #analysis .kgw-analysis-shell {
+    grid-template-rows: auto auto auto minmax(340px, 1fr);
+    overflow: auto;
+  }
+
+  #analysis .kgw-analysis-control-card {
+    grid-template-columns: 1fr;
+  }
+
+  #analysis .kgw-analysis-actions {
+    grid-column: auto;
+    justify-content: flex-start;
+  }
+
+  #analysis .kgw-analysis-summary-grid {
+    grid-template-columns: repeat(2, minmax(100px, 1fr));
+  }
+
+  #analysis .kgw-analysis-filter-grid {
+    grid-template-columns: 1fr !important;
+    height: auto;
+  }
+
+  #analysis .kgw-analysis-filter-buttons {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  #analysis .kgw-analysis-table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

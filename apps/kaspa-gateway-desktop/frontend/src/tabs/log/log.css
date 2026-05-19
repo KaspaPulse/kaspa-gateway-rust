@@ -1,0 +1,298 @@
+#log.log-python-root,
+#log.page {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--kgw-global-bg, #2b3f53);
+  color: var(--kgw-global-text, #ffffff);
+  font-size: 14px;
+}
+
+#log .log-python-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 38px minmax(0, 1fr);
+  gap: 6px;
+  padding: 10px 10px 10px;
+  overflow: hidden;
+  background: var(--kgw-global-bg, #2b3f53);
+}
+
+#log .log-toolbar {
+  display: grid;
+  grid-template-columns: 174px minmax(260px, 1fr) 38px 38px 164px 102px 102px 132px;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  min-height: 38px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+#log .log-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+#log .log-field span,
+#log .font-size-wrap span,
+#log .auto-scroll-label span {
+  color: var(--kgw-global-text, #ffffff);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+#log select,
+#log input,
+#log button {
+  height: 30px;
+  min-height: 30px;
+  border-radius: 0;
+  border: 1px solid rgba(150, 174, 196, 0.42);
+  background: color-mix(in srgb, var(--kgw-global-panel, #334b62) 88%, black 4%);
+  color: var(--kgw-global-text, #ffffff);
+  font-size: 14px;
+  outline: none;
+}
+
+#log .severity-field select {
+  width: 102px;
+  padding: 3px 8px;
+}
+
+#log .log-search {
+  width: 100%;
+  min-width: 0;
+  padding: 3px 10px;
+}
+
+#log .log-arrow-btn {
+  width: 38px;
+  padding: 0;
+  background: #4ba3f0;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+#log .font-size-wrap {
+  display: grid;
+  grid-template-columns: 58px auto;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+#log .log-font-size {
+  width: 58px;
+  padding: 3px 8px;
+  direction: ltr;
+  unicode-bidi: plaintext;
+  text-align: left;
+  font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
+}
+
+#log .log-btn {
+  width: 100%;
+  padding: 3px 10px;
+  background: #4ba3f0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#log .auto-scroll-label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+#log .auto-scroll-label input {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  accent-color: #4aa3ef;
+}
+
+#log .log-output {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid rgba(150, 174, 196, 0.42);
+  background: color-mix(in srgb, var(--kgw-global-panel, #334b62) 88%, black 2%);
+  color: #63d8ff;
+  font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
+  font-size: 9pt;
+  line-height: 1.22;
+  white-space: pre-wrap;
+  word-break: break-word;
+  tab-size: 2;
+}
+
+#log .log-output:empty::before {
+  content: "";
+}
+
+#log .log-output .warn {
+  color: #ffd166;
+}
+
+#log .log-output .error {
+  color: #ff6b6b;
+}
+
+#log .log-output .debug {
+  color: #b7c7d8;
+}
+
+#log .log-output .trace {
+  color: #9ad8ff;
+}
+
+@media (max-width: 1200px) {
+  #log .log-toolbar {
+    grid-template-columns: 156px minmax(180px, 1fr) 34px 34px 150px 92px 92px 122px;
+    gap: 4px;
+  }
+
+  #log .log-field span,
+  #log .font-size-wrap span,
+  #log .auto-scroll-label span,
+  #log select,
+  #log input,
+  #log button {
+    font-size: 13px;
+  }
+}
+
+/* KGW LOG FONT SIZE DROPDOWN FIX START */
+
+/*
+  Modern Log toolbar font-size control:
+  - No spinner arrows.
+  - No numeric input.
+  - One compact dropdown: Font Size [9].
+  - Keeps logger and log behavior unchanged.
+*/
+
+#log .log-toolbar {
+  grid-template-columns: 196px minmax(240px, 1fr) 154px 102px 102px 134px !important;
+  align-items: center !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+}
+
+#log #logFindPrevious,
+#log #logFindNext,
+#log .log-arrow-btn {
+  display: none !important;
+}
+
+#log .font-size-label,
+#log .font-size-wrap {
+  display: none !important;
+}
+
+#log .log-font-size-group {
+  height: 30px !important;
+  min-height: 30px !important;
+  display: grid !important;
+  grid-template-columns: auto 70px !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+}
+
+#log .log-font-size-group span {
+  font-size: 14px !important;
+  color: var(--kgw-global-text, #ffffff) !important;
+  white-space: nowrap !important;
+}
+
+#log .log-font-size-select {
+  width: 70px !important;
+  min-width: 70px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  border-radius: 0 !important;
+  border: 1px solid rgba(150, 174, 196, 0.42) !important;
+  background: color-mix(in srgb, var(--kgw-global-panel, #334b62) 88%, black 4%) !important;
+  color: var(--kgw-global-text, #ffffff) !important;
+  padding: 3px 8px !important;
+  font-size: 14px !important;
+  outline: none !important;
+  direction: ltr !important;
+  unicode-bidi: plaintext !important;
+}
+
+#log .log-font-size-select:focus {
+  border-color: #6bb7ff !important;
+  box-shadow: 0 0 0 1px rgba(107, 183, 255, 0.35) !important;
+}
+
+#log .log-search {
+  min-width: 0 !important;
+}
+
+#log .log-btn {
+  min-width: 0 !important;
+}
+
+#log .auto-scroll-label {
+  justify-content: flex-end !important;
+}
+
+/* The output should still consume the full remaining area. */
+#log .log-python-shell {
+  grid-template-rows: 38px minmax(0, 1fr) !important;
+}
+
+@media (max-width: 1200px) {
+  #log .log-toolbar {
+    grid-template-columns: 174px minmax(160px, 1fr) 142px 92px 92px 124px !important;
+    gap: 6px !important;
+  }
+
+  #log .log-font-size-group {
+    grid-template-columns: auto 62px !important;
+    gap: 6px !important;
+  }
+
+  #log .log-font-size-select {
+    width: 62px !important;
+    min-width: 62px !important;
+  }
+
+  #log .log-font-size-group span,
+  #log .log-font-size-select {
+    font-size: 13px !important;
+  }
+}
+
+/* KGW LOG FONT SIZE DROPDOWN FIX END */
+.log-copy-status {
+  margin-left: 10px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.log-copy-status[hidden] {
+  display: none !important;
+}

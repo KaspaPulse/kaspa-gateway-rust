@@ -1,0 +1,130 @@
+# ============================================================
+# Kaspa Gateway - Safe repository ignore rules
+# ============================================================
+
+# Rust build outputs
+target/
+**/target/
+
+# Node / frontend build outputs
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+**/build/
+.vite/
+**/.vite/
+.cache/
+**/.cache/
+
+# Tauri generated outputs
+src-tauri/target/
+apps/*/src-tauri/target/
+apps/*/frontend/node_modules/
+apps/*/frontend/dist/
+apps/*/frontend/.vite/
+
+# Logs / temporary / audits / migration runs
+*.log
+logs/
+**/logs/
+_tab_migration_runs/
+_repo_publish_audit_*/
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+*.disabled.js
+
+# Local runtime data / DB / cache
+*.db
+*.sqlite
+*.sqlite3
+*.duckdb
+*.db-wal
+*.db-shm
+cache/
+**/cache/
+data/
+**/data/
+
+# Secrets / env / local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+secrets/
+**/secrets/
+credentials/
+**/credentials/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Binaries / archives / installers
+*.exe
+*.dll
+*.pdb
+*.msi
+*.dmg
+*.pkg
+*.AppImage
+*.zip
+*.7z
+*.rar
+*.tar
+*.tar.gz
+*.tgz
+
+# Python cache, if any
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Coverage / reports
+coverage/
+*.lcov
+
+# Keep lock files committed for reproducible application builds
+!Cargo.lock
+!package-lock.json
+!pnpm-lock.yaml
+!yarn.lock
+
+# Local audit outputs
+_audit_reports/
+
+# Local AI/codebase packing outputs
+repomix-output*.xml
+.kgw-audit-reports/
+.kgw-audit-backups/
+
+# KGW integrated runtime data must not be committed
+apps/kaspa-gateway-desktop/src-tauri/kaspa-gateway-rk-node/
+
+.kgw-clean-archive/
+
+# KGW generated artifacts
+.kgw-release-artifacts/
+apps/kaspa-gateway-desktop/src-tauri/target/
+apps/kaspa-gateway-desktop/node_modules/
+apps/kaspa-gateway-desktop/dist/
+apps/kaspa-gateway-desktop/.vite/
+# KGW generated snapshots
+kaspa-gateway-rust.xml
+kaspa-gateway-rust.zip

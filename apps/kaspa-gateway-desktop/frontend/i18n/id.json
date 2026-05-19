@@ -1,0 +1,2395 @@
+{
+  "actions": {
+    "add": "Tambah",
+    "backup": "Cadangkan",
+    "browse": "Jelajahi...",
+    "cancel": "Batal",
+    "clear": {
+      "caches": "Hapus cache",
+      "fields": "Kosongkan Bidang",
+      "folder": {
+        "warning": "Apakah Anda yakin ingin menghapus *semua* isi folder '{}'? Tindakan ini tidak dapat dibatalkan."
+      },
+      "log": "Hapus Log",
+      "logs": {
+        "warning": "Ini akan mematikan handler log saat ini, menghapus semua file .log dari folder log, lalu memulai ulang pencatatan. Apakah Anda yakin?"
+      }
+    },
+    "copy": "Salin",
+    "delete": "Hapus",
+    "edit": {
+      "endpoint": "Edit Endpoint"
+    },
+    "export": {
+      "addresses": "Ekspor Alamat",
+      "path": "Path Ekspor",
+      "results": "Ekspor Hasil:",
+      "successful": "Ekspor Berhasil"
+    },
+    "fetch": "Ambil",
+    "filter": "Filter",
+    "import": {
+      "addresses": "Impor Alamat",
+      "successful": "Impor Berhasil"
+    },
+    "load": {
+      "address": "Muat Alamat",
+      "an": {
+        "address": {
+          "to": {
+            "see": {
+              "transactions": "Muat alamat untuk melihat transaksi."
+            }
+          }
+        }
+      }
+    },
+    "open": {
+      "exported": {
+        "file": "Apakah Anda ingin membukanya sekarang?"
+      }
+    },
+    "refresh": "Segarkan",
+    "reset": "Atur ulang",
+    "restart": {
+      "required": "Restart Diperlukan"
+    },
+    "restore": "Pulihkan",
+    "save": "Simpan",
+    "search": "Cari",
+    "start": {
+      "with": {
+        "windows": "Mulai bersama Windows"
+      }
+    },
+    "update": "Perbarui"
+  },
+  "actions.export.results": "Ekspor hasil:",
+  "addresses": "alamat",
+  "analysis": {
+    "analysis": "Analisis",
+    "charts": "Grafik",
+    "deep": {
+      "analysis": {
+        "complete": "Analisis Mendalam Selesai"
+      }
+    },
+    "loading": {
+      "analysis": "Memuat analisis..."
+    },
+    "network": {
+      "graph": {
+        "and": {
+          "cluster": {
+            "analysis": {
+              "are": {
+                "ready": "Grafik jaringan dan analisis cluster siap."
+              }
+            }
+          }
+        }
+      }
+    },
+    "run": {
+      "analysis": "Jalankan Analisis"
+    },
+    "standard": {
+      "analysis": "Analisis Standar"
+    },
+    "starting": {
+      "deep": {
+        "analysis": "Memulai analisis mendalam..."
+      }
+    },
+    "summary": "Ringkasan",
+    "avg": {
+      "daily": {
+        "net": {
+          "flow": "rata-rata arus bersih harian"
+        }
+      }
+    }
+  },
+  "analysis.counterparties": "Counterparties",
+  "analysis.counterparty": "Counterparty",
+  "analysis.incoming": "Incoming",
+  "analysis.net": "Net",
+  "analysis.noCounterpartyRowsAvailable": "No counterparty rows available.",
+  "analysis.outgoing": "Outgoing",
+  "analysis.transactions": "Transactions",
+  "app": {
+    "title": "Kaspa Gateway"
+  },
+  "bridge": {
+    "bridge": {
+      "1": "Bridge 1",
+      "2": "Bridge 2",
+      "files": {
+        "are": {
+          "already": {
+            "up": {
+              "to": {
+                "date": "File bridge sudah diperbarui."
+              }
+            }
+          }
+        }
+      },
+      "is": {
+        "already": {
+          "running": "Bridge sudah berjalan."
+        },
+        "not": {
+          "running": "Bridge tidak berjalan."
+        }
+      },
+      "update": {
+        "complete": "Pembaruan bridge selesai."
+      }
+    },
+    "enable": {
+      "bridge": {
+        "2": "Aktifkan Bridge 2"
+      }
+    },
+    "kaspa": {
+      "bridge": "Bridge Kaspa"
+    },
+    "please": {
+      "stop": {
+        "bridge": {
+          "2": {
+            "before": {
+              "disabling": {
+                "it": "Harap hentikan Bridge 2 sebelum menonaktifkannya."
+              }
+            }
+          }
+        }
+      }
+    },
+    "tabs": {
+      "kaspabridge": "Kaspa Bridge"
+    }
+  },
+  "bridge.serviceEventPlanningDescription": "KGW service-event planning for all bridges in parallel. mainnet/testnet10 use master; testnet12 uses tn12.",
+  "coinbase": "coinbase",
+  "common": {
+    "loading": "Loading",
+    "all": "SEMUA",
+    "action": {
+      "moved": "Tindakan Dipindahkan"
+    },
+    "advanced": "Lanjutan",
+    "are": {
+      "you": {
+        "sure": {
+          "you": {
+            "want": {
+              "to": {
+                "exit": "Apakah Anda yakin ingin keluar?"
+              }
+            }
+          }
+        }
+      }
+    },
+    "automatic": {
+      "refresh": "Penyegaran Otomatis"
+    },
+    "available": {
+      "files": "File yang tersedia:"
+    },
+    "backoff": {
+      "factor": "Faktor Backoff"
+    },
+    "base": {
+      "url": "URL dasar"
+    },
+    "cache": {
+      "cleared": {
+        "successfully": "Cache berhasil dibersihkan."
+      }
+    },
+    "caching": "Caching",
+    "calculating": "Menghitung...",
+    "cancel": {
+      "tooltip": "Hentikan operasi pengambilan transaksi saat ini"
+    },
+    "cancelling": "Membatalkan...",
+    "check": {
+      "for": {
+        "updates": {
+          "on": {
+            "startup": "Periksa pembaruan saat startup"
+          }
+        }
+      }
+    },
+    "checking": {
+      "for": {
+        "updates": "Memeriksa pembaruan..."
+      },
+      "latest": {
+        "version": {
+          "for": {
+            "value": "Memeriksa versi terbaru untuk {}..."
+          }
+        }
+      }
+    },
+    "clearing": {
+      "folder": "Membersihkan folder:",
+      "local": {
+        "data": {
+          "and": {
+            "starting": {
+              "full": {
+                "redownload": "Membersihkan data lokal dan memulai unduh ulang penuh..."
+              }
+            }
+          }
+        }
+      }
+    },
+    "click": {
+      "no": {
+        "to": {
+          "select": {
+            "a": {
+              "custom": {
+                "location": "Klik Tidak untuk memilih lokasi kustom."
+              }
+            }
+          }
+        }
+      },
+      "yes": {
+        "to": {
+          "download": {
+            "to": {
+              "default": {
+                "location": "Klik Ya untuk mengunduh ke lokasi default:"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cluster": "Cluster",
+    "command": "Perintah",
+    "compact": {
+      "database": "Kompakkan Database"
+    },
+    "compacting": {
+      "database": "Mengompakkan database..."
+    },
+    "confirm": {
+      "action": "Konfirmasi Tindakan",
+      "deletion": "Konfirmasi Penghapusan",
+      "file": {
+        "deletion": "Konfirmasi Penghapusan File"
+      }
+    },
+    "continue": "Lanjutkan?",
+    "controls": "Kontrol",
+    "db": {
+      "and": {
+        "performance": "DB & Kinerja"
+      },
+      "file": "File DB",
+      "size": "Ukuran DB"
+    },
+    "daily": "Harian",
+    "database": {
+      "maintenance": "Pemeliharaan Database"
+    },
+    "date": {
+      "time": "Tanggal/Waktu"
+    },
+    "deleting": {
+      "databases": "Menghapus database..."
+    },
+    "description": "Deskripsi",
+    "details": "Detail",
+    "direction": "Arah",
+    "displayed": {
+      "currencies": "Mata Uang yang Ditampilkan",
+      "tabs": "Tab yang Ditampilkan"
+    },
+    "download": {
+      "file": "Unduh File",
+      "cancelled": {
+        "by": {
+          "user": "Unduhan dibatalkan oleh pengguna."
+        }
+      },
+      "complete": {
+        "attempting": {
+          "to": {
+            "replace": {
+              "file": "Unduhan selesai. Mencoba mengganti file..."
+            }
+          }
+        }
+      }
+    },
+    "duration": {
+      "days": "Durasi (Hari)"
+    },
+    "enable": {
+      "auto": {
+        "refresh": "Aktifkan Penyegaran Otomatis"
+      }
+    },
+    "expected": {
+      "sha256": {
+        "value": "SHA256 yang diharapkan: {}"
+      }
+    },
+    "extracting": {
+      "value": {
+        "from": {
+          "value": "Mengekstrak {0} dari {1}..."
+        }
+      }
+    },
+    "false": "Salah",
+    "fetch": {
+      "tooltip": "Mulai mengambil transaksi untuk alamat yang dipilih"
+    },
+    "files": {
+      "deleted": {
+        "successfully": "File berhasil dihapus."
+      }
+    },
+    "find": {
+      "next": "Cari Berikutnya",
+      "previous": "Cari Sebelumnya"
+    },
+    "font": {
+      "size": "Ukuran Font"
+    },
+    "force": {
+      "fetch": "Paksa ambil"
+    },
+    "frequency": "Frekuensi",
+    "from": {
+      "date": "Dari Tanggal:"
+    },
+    "full": {
+      "url": {
+        "preview": "Pratinjau URL Lengkap"
+      }
+    },
+    "general": "Umum",
+    "grand": {
+      "total": "Total Keseluruhan"
+    },
+    "hash": {
+      "mismatch": {
+        "for": {
+          "value": {
+            "download": {
+              "aborted": "Hash tidak cocok untuk {value}. Unduhan dibatalkan."
+            }
+          }
+        }
+      },
+      "verified": {
+        "successfully": "Hash berhasil diverifikasi."
+      }
+    },
+    "initializing": "enginisialisasi...",
+    "kb": "KB",
+    "known": {
+      "name": "Nama Dikenal"
+    },
+    "last": {
+      "3": {
+        "days": "3 Hari Terakhir",
+        "months": "3 Bulan Terakhir"
+      },
+      "6": {
+        "months": "6 Bulan Terakhir"
+      },
+      "modified": "Terakhir Diubah",
+      "month": "Bulan Lalu",
+      "network": {
+        "update": {
+          "value": "Pembaruan Jaringan Terakhir: {}"
+        }
+      },
+      "updated": "Terakhir Diperbarui",
+      "week": "Minggu Lalu",
+      "year": "Tahun Lalu"
+    },
+    "latest": {
+      "version": "Versi terbaru"
+    },
+    "legend": "Legenda",
+    "local": {
+      "version": "Versi Lokal"
+    },
+    "max": {
+      "pages": "Halaman Maks",
+      "workers": "Pekerja Maks"
+    },
+    "monthly": "Bulanan",
+    "name": "Nama",
+    "network": "Jaringan",
+    "no": {
+      "data": {
+        "to": {
+          "display": "Tidak ada data untuk ditampilkan",
+          "export": "Tidak ada data untuk diekspor"
+        }
+      },
+      "database": {
+        "selected": "Tidak ada database yang dipilih"
+      },
+      "matches": {
+        "found": "Tidak ada kecocokan ditemukan"
+      },
+      "selection": "Tidak ada pilihan",
+      "significant": {
+        "anomalies": {
+          "detected": "Tidak ada anomali signifikan yang terdeteksi"
+        }
+      }
+    },
+    "not": {
+      "implemented": "Belum Diimplementasikan"
+    },
+    "nothing": "Tidak ada",
+    "ok": "Oke",
+    "only": {
+      "https": {
+        "urls": {
+          "are": {
+            "allowed": {
+              "for": {
+                "security": "Hanya URL HTTPS yang diizinkan demi keamanan."
+              }
+            }
+          }
+        }
+      }
+    },
+    "page": "Halaman",
+    "peak": {
+      "activity": {
+        "hour": {
+          "s": "Jam aktivitas puncak"
+        }
+      }
+    },
+    "please": {
+      "select": {
+        "only": {
+          "one": {
+            "database": {
+              "for": {
+                "this": {
+                  "action": "Harap pilih hanya satu database untuk tindakan ini."
+                }
+              }
+            }
+          }
+        }
+      },
+      "wait": {
+        "for": {
+          "the": {
+            "current": {
+              "fetch": {
+                "or": {
+                  "export": {
+                    "to": {
+                      "complete": {
+                        "before": {
+                          "closing": "Harap tunggu hingga pengambilan atau ekspor saat ini selesai sebelum menutup."
+                        }
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "complete": "Harap tunggu hingga pengambilan saat ini selesai."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "process": {
+      "terminated": "Proses Dihentikan"
+    },
+    "quit": "Keluar",
+    "rank": "Peringkat",
+    "reason": "Alasan",
+    "release": {
+      "has": {
+        "no": {
+          "published": {
+            "at": {
+              "date": "Rilis tidak memiliki tanggal 'published_at'."
+            }
+          }
+        }
+      }
+    },
+    "rename": "Ganti Nama",
+    "retry": {
+      "attempts": "Upaya Coba Lagi",
+      "fetch": "Terjadi kesalahan: {}\\n\\nApakah Anda ingin mencoba lagi pengambilan?"
+    },
+    "select": {
+      "all": "Pilih Semua",
+      "date": "Pilih Tanggal",
+      "download": {
+        "location": "Pilih Lokasi Unduhan"
+      }
+    },
+    "set": {
+      "default": "Atur Default"
+    },
+    "severity": "Tingkat Keparahan",
+    "size": {
+      "kb": "Ukuran (KB)"
+    },
+    "skipping": {
+      "hash": {
+        "verification": {
+          "as": {
+            "no": {
+              "valid": {
+                "hash": {
+                  "was": {
+                    "found": {
+                      "for": {
+                        "value": "Melewatkan verifikasi hash karena tidak ada hash yang valid ditemukan untuk {}."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "startup": {
+      "delay": {
+        "sec": "Tunda Mulai (detik):"
+      }
+    },
+    "success": "Berhasil",
+    "this": {
+      "will": {
+        "overwrite": "Ini akan menimpa"
+      }
+    },
+    "times": {
+      "received": "Jumlah Diterima",
+      "sent": "Jumlah Dikirim"
+    },
+    "to": {
+      "date": "Sampai Tanggal:"
+    },
+    "tooltip": {
+      "appdir": "Direktori untuk menyimpan data.",
+      "archival": "Jalankan sebagai node arsip: menghindari penghapusan data blok lama (Peringatan: penggunaan disk berat).",
+      "async": {
+        "threads": "Tentukan jumlah thread asinkron (default: 16)."
+      },
+      "backoff": {
+        "factor": "Pengganda untuk penundaan coba lagi (penundaan = backoff * 2^upaya). (Disarankan: 0.5)"
+      },
+      "configfile": "Path file konfigurasi.",
+      "connect": "Hanya terhubung ke rekan tertentu saat startup.",
+      "disable": {
+        "upnp": "Nonaktifkan UPnP."
+      },
+      "enable": {
+        "unsynced": {
+          "mining": "Izinkan node menerima blok dari RPC saat tidak sinkron (flag ini terutama digunakan untuk pengujian)."
+        }
+      },
+      "externalip": "Tambahkan alamat soket (ip:port) ke daftar alamat lokal yang kami klaim untuk didengarkan oleh rekan.",
+      "hcp": "Port Pemeriksaan Kesehatan.",
+      "ks": {
+        "extranonce": "Ukuran extranonce dalam byte (default: 0).",
+        "mindiff": "Kesulitan minimum untuk penambang (default: 8192).",
+        "pow2clamp": "Jepit kesulitan ke pangkat 2 (diperlukan untuk ASIC).",
+        "prom": "Port untuk metrik Prometheus (misalnya, :2114).",
+        "sharespermin": "Target share per menit untuk vardiff (default: 20).",
+        "stats": "Tampilkan hashrate dan statistik koneksi di konsol.",
+        "stratum": "Antarmuka:port untuk mendengarkan koneksi penambang (misalnya, :5555).",
+        "vardiff": "Aktifkan kesulitan variabel (vardiff).",
+        "vardiffstats": "Tampilkan statistik vardiff di konsol."
+      },
+      "listen": "Tambahkan antarmuka:port untuk mendengarkan koneksi (default semua antarmuka port: 16111, testnet: 16211).",
+      "max": {
+        "pages": "Batas keamanan pada jumlah total halaman yang akan diambil untuk satu alamat.",
+        "workers": "Jumlah maksimum thread paralel untuk permintaan jaringan."
+      },
+      "maxinpeers": "Jumlah maksimum rekan masuk (default: 128).",
+      "netsuffix": "Nomor akhiran jaringan Testnet.",
+      "network": {
+        "cache": {
+          "hours": "Jam untuk menyimpan data jaringan (hashrate, kesulitan) sebelum mengambil data baru."
+        }
+      },
+      "nodnsseed": "Nonaktifkan penyemaian DNS untuk rekan.",
+      "outpeers": "Jumlah target rekan keluar (default: 8).",
+      "page": {
+        "delay": "Detik untuk menunggu di antara pengambilan halaman untuk menghindari pembatasan laju.",
+        "limit": "Maks transaksi yang akan diambil per permintaan API. (Disarankan: 100-1000)"
+      },
+      "ram": {
+        "scale": "Terapkan faktor skala ke batas alokasi memori (misalnya, 0.5 untuk RAM 8GB)."
+      },
+      "reset": {
+        "db": "Setel ulang database sebelum memulai node. Diperlukan saat beralih antar subnetwork."
+      },
+      "retention": {
+        "period": {
+          "days": "Jumlah total hari data yang akan disimpan."
+        }
+      },
+      "retry": {
+        "attempts": "Berapa kali mencoba lagi permintaan API yang gagal. (Disarankan: 3-5)"
+      },
+      "sanity": "Aktifkan berbagai pemeriksaan kewarasan yang mungkin intensif secara komputasi.",
+      "uacomment": "Komentar untuk ditambahkan ke agen pengguna.",
+      "yes": "Jawab ya untuk semua pertanyaan konsol interaktif."
+    },
+    "total": "Total",
+    "true": "Benar",
+    "type": "Tipe",
+    "ukn": "TDK",
+    "url": {
+      "components": "Komponen URL"
+    },
+    "updated": "Diperbarui",
+    "updating": {
+      "value": "Memperbarui {}..."
+    },
+    "use": {
+      "custom": {
+        "download": {
+          "url": "Gunakan URL Unduhan Kustom"
+        },
+        "config": {
+          "yaml": "Gunakan config.yaml Kustom"
+        }
+      }
+    },
+    "user": {
+      "accepted": {
+        "risk": {
+          "proceeding": {
+            "without": {
+              "hash": {
+                "verification": "Pengguna menerima risiko. Melanjutkan tanpa verifikasi hash."
+              }
+            }
+          }
+        }
+      }
+    },
+    "value": "Nilai",
+    "version": "Versi",
+    "weekly": "Mingguan",
+    "copied": {
+      "to": {
+        "clipboard": "disalin ke clipboard."
+      }
+    },
+    "databases": {
+      "deleted": {
+        "successfully": "database berhasil dihapus."
+      }
+    },
+    "deleted": {
+      "successfully": "berhasil dihapus."
+    },
+    "folder": {
+      "cleared": "folder dibersihkan."
+    },
+    "lang": {
+      "ar": "Arab",
+      "de": "Jerman",
+      "en": "Inggris",
+      "es": "Spanyol",
+      "fr": "Prancis",
+      "hi": "Hindi",
+      "id": "Indonesia",
+      "ja": "Jepang",
+      "ko": "Korea",
+      "ru": "Rusia",
+      "tr": "Turki",
+      "zh": {
+        "cn": "Cina (Sederhana)"
+      }
+    },
+    "search": "Cari",
+    "autoScroll": "Gulir otomatis"
+  },
+  "common.loading": "Memuat",
+  "errors": {
+    "api": {
+      "timeout": {
+        "sec": "Batas Waktu API (detik)"
+      }
+    },
+    "are": {
+      "you": {
+        "sure": {
+          "you": {
+            "want": {
+              "to": {
+                "delete": {
+                  "these": {
+                    "files": {
+                      "this": {
+                        "cannot": {
+                          "be": {
+                            "undone": "Apakah Anda yakin ingin menghapus file-file ini? Tindakan ini tidak dapat dibatalkan."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "automatically": {
+      "restart": {
+        "the": {
+          "bridge": {
+            "if": {
+              "it": {
+                "crashes": {
+                  "or": {
+                    "loses": {
+                      "connection": {
+                        "to": {
+                          "the": {
+                            "node": "Mulai ulang bridge secara otomatis jika macet atau kehilangan koneksi ke node."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "node": {
+            "if": {
+              "it": {
+                "crashes": {
+                  "or": {
+                    "stops": {
+                      "unexpectedly": "Mulai ulang node secara otomatis jika macet atau berhenti secara tidak terduga."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "blocked": {
+      "potential": {
+        "path": {
+          "traversal": {
+            "attack": "Potensi serangan path traversal diblokir:"
+          }
+        }
+      }
+    },
+    "cannot": {
+      "delete": {
+        "default": {
+          "profile": "Tidak dapat menghapus profil default"
+        }
+      },
+      "rename": {
+        "default": {
+          "profile": "Tidak dapat mengganti nama profil default"
+        }
+      }
+    },
+    "compact": {
+      "warning": "Mengompakkan database '{0}' akan menulis ulang file database untuk menghapus data lama dan mengoptimalkan ruang. Ini mungkin memakan waktu beberapa saat. Apakah Anda ingin melanjutkan?"
+    },
+    "could": {
+      "not": {
+        "delete": {
+          "wal": {
+            "file": {
+              "value": {
+                "value": "Tidak dapat menghapus file WAL '{0}': {1}"
+              }
+            }
+          },
+          "the": {
+            "database": "Tidak dapat menghapus database karena sedang digunakan oleh program ini atau proses lain. Silakan coba lagi setelah me-restart aplikasi."
+          }
+        },
+        "open": {
+          "file": "Tidak dapat membuka file:"
+        }
+      }
+    },
+    "database": {
+      "deletion": {
+        "failed": "Penghapusan Database Gagal"
+      }
+    },
+    "directory": {
+      "not": {
+        "found": "Direktori tidak ditemukan."
+      }
+    },
+    "error": "Kesalahan",
+    "failed": {
+      "to": {
+        "check": {
+          "version": {
+            "for": {
+              "value": "Gagal memeriksa versi untuk {}."
+            }
+          }
+        },
+        "delete": {
+          "files": {
+            "check": {
+              "logs": "Gagal menghapus file. Periksa log."
+            }
+          },
+          "some": {
+            "databases": {
+              "check": {
+                "logs": "gagal menghapus beberapa database. Periksa log."
+              }
+            }
+          }
+        },
+        "import": {
+          "addresses": "Gagal mengimpor alamat:"
+        },
+        "save": {
+          "address": "Gagal menyimpan alamat.",
+          "configuration": "Gagal menyimpan konfigurasi."
+        },
+        "update": {
+          "registry": "Gagal memperbarui registri:"
+        }
+      }
+    },
+    "file": {
+      "not": {
+        "found": "File tidak ditemukan"
+      }
+    },
+    "files": {
+      "not": {
+        "found": "File tidak ditemukan."
+      }
+    },
+    "invalid": {
+      "input": "Input Tidak Valid",
+      "kaspa": {
+        "address": "Alamat Kaspa tidak valid"
+      }
+    },
+    "network": {
+      "error": "Kesalahan Jaringan"
+    },
+    "not": {
+      "found": "Tidak Ditemukan"
+    },
+    "security": {
+      "error": {
+        "invalid": {
+          "file": {
+            "path": {
+              "inside": {
+                "zip": "Kesalahan Keamanan: Jalur file tidak valid di dalam ZIP."
+              }
+            }
+          }
+        }
+      },
+      "warning": "Peringatan Keamanan",
+      "check": {
+        "failed": "Pemeriksaan keamanan gagal."
+      }
+    },
+    "selective": {
+      "db": {
+        "delete": {
+          "warning": "Ini akan menghapus file database yang dipilih berikut secara permanen:"
+        }
+      }
+    },
+    "this": {
+      "action": {
+        "cannot": {
+          "be": {
+            "undone": {
+              "are": {
+                "you": {
+                  "sure": "Tindakan ini tidak dapat dibatalkan. Apakah Anda yakin?"
+                }
+              }
+            }
+          }
+        }
+      },
+      "will": {
+        "reset": {
+          "all": {
+            "settings": {
+              "to": {
+                "their": {
+                  "default": {
+                    "values": {
+                      "and": {
+                        "cannot": {
+                          "be": {
+                            "undone": {
+                              "are": {
+                                "you": {
+                                  "sure": "Ini akan mengatur ulang semua pengaturan ke nilai defaultnya dan tidak dapat dibatalkan. Apakah Anda yakin?"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tooltip": {
+      "timeout": "Maks detik untuk menunggu respons API sebelum gagal. (Disarankan: 10-30)"
+    },
+    "warning": {
+      "could": {
+        "not": {
+          "write": {
+            "version": {
+              "file": {
+                "value": "Peringatan: Tidak dapat menulis file versi: {0}."
+              }
+            }
+          }
+        }
+      },
+      "hash": {
+        "file": {
+          "not": {
+            "found": {
+              "for": {
+                "custom": {
+                  "url": {
+                    "proceeding": {
+                      "without": {
+                        "hash": {
+                          "verification": "Peringatan: File hash tidak ditemukan untuk URL kustom. Melanjutkan tanpa verifikasi hash."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "explorer": {
+    "address": "Alamat",
+    "addresses": {
+      "exported": {
+        "to": "Alamat diekspor ke"
+      },
+      "imported": "alamat diimpor."
+    },
+    "analysis": {
+      "report": {
+        "for": {
+          "kaspa": {
+            "address": "Laporan Analisis untuk Alamat Kaspa"
+          }
+        }
+      },
+      "for": {
+        "address": "Analisis untuk Alamat"
+      }
+    },
+    "applying": {
+      "filters": "Menerapkan filter..."
+    },
+    "asset": {
+      "value": {
+        "not": {
+          "in": {
+            "latest": {
+              "release": "Aset {} tidak ada di rilis terbaru."
+            }
+          }
+        }
+      }
+    },
+    "avg": {
+      "tx": {
+        "count": "Rata-rata Jumlah TX"
+      }
+    },
+    "balance": "Saldo",
+    "block": {
+      "score": "Skor Blok"
+    },
+    "building": {
+      "counterparty": {
+        "export": {
+          "data": "Membangun data ekspor rekanan..."
+        }
+      }
+    },
+    "checking": {
+      "network": {
+        "for": {
+          "new": {
+            "transactions": "Memeriksa jaringan untuk transaksi baru..."
+          }
+        }
+      }
+    },
+    "coinbase": {
+      "mining": "Coinbase / Penambangan"
+    },
+    "configuration": {
+      "saved": "Konfigurasi disimpan"
+    },
+    "counterparty": "Pihak lawan",
+    "enter": {
+      "kaspa": {
+        "address": {
+          "or": {
+            "select": {
+              "from": {
+                "dropdown": "Masukkan Alamat Kaspa atau Pilih dari Dropdown"
+              }
+            }
+          }
+        }
+      }
+    },
+    "explorer": "Explorer",
+    "exported": {
+      "on": "Diekspor Pada"
+    },
+    "fetching": {
+      "page": {
+        "value": {
+          "new": {
+            "txs": {
+              "value": "Mengambil halaman {} (TX baru: {})..."
+            }
+          }
+        }
+      },
+      "transactions": "Mengambil transaksi..."
+    },
+    "first": {
+      "transaction": "Transaksi Pertama"
+    },
+    "from": {
+      "address": {
+        "es": "Dari Alamat"
+      }
+    },
+    "incoming": "Masuk",
+    "kaspa": {
+      "address": "Alamat Kaspa",
+      "transaction": {
+        "report": "Laporan Transaksi Kaspa"
+      }
+    },
+    "last": {
+      "transaction": "Transaksi Terakhir"
+    },
+    "loading": {
+      "cached": {
+        "transactions": "Memuat transaksi cache..."
+      },
+      "transactions": {
+        "from": {
+          "local": {
+            "database": "Memuat transaksi dari database lokal..."
+          }
+        }
+      }
+    },
+    "main": {
+      "address": "Alamat Utama"
+    },
+    "manage": {
+      "addresses": "Kelola Alamat"
+    },
+    "new": {
+      "address": {
+        "auto": {
+          "saved": {
+            "successfully": "Alamat baru berhasil disimpan otomatis."
+          }
+        }
+      }
+    },
+    "no": {
+      "addresses": {
+        "to": {
+          "export": "Tidak ada alamat untuk diekspor."
+        }
+      },
+      "transactions": {
+        "for": {
+          "this": {
+            "counterparty": "Tidak ada transaksi untuk rekanan ini."
+          }
+        },
+        "match": {
+          "the": {
+            "current": {
+              "criteria": "Tidak ada transaksi yang cocok dengan kriteria saat ini."
+            }
+          }
+        },
+        "to": {
+          "analyze": "Tidak ada transaksi untuk dianalisis."
+        }
+      }
+    },
+    "outgoing": "Keluar",
+    "press": {
+      "fetch": {
+        "or": {
+          "apply": {
+            "filters": "Tekan 'Ambil' atau terapkan filter."
+          }
+        }
+      },
+      "refresh": {
+        "list": {
+          "to": {
+            "load": {
+              "top": {
+                "addresses": "Tekan 'Segarkan Daftar' untuk memuat alamat teratas."
+              }
+            }
+          }
+        }
+      }
+    },
+    "right": {
+      "click": {
+        "an": {
+          "address": {
+            "to": {
+              "add": {
+                "it": {
+                  "to": {
+                    "my": {
+                      "addresses": "Klik kanan pada alamat untuk menambahkannya ke 'Alamat Saya'."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "saved": {
+      "value": {
+        "total": {
+          "transactions": "{} total transaksi disimpan..."
+        }
+      }
+    },
+    "scanning": {
+      "page": {
+        "value": {
+          "value": {
+            "new": {
+              "transactions": {
+                "found": "Memindai halaman {}... ({} transaksi baru ditemukan)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "starting": {
+      "fetch": {
+        "for": {
+          "address": {
+            "value": "Memulai pengambilan untuk alamat: {}..."
+          }
+        }
+      },
+      "transaction": {
+        "download": "Memulai pengunduhan transaksi..."
+      }
+    },
+    "txs": "TX",
+    "to": {
+      "address": {
+        "es": "Ke Alamat"
+      },
+      "get": {
+        "started": {
+          "enter": {
+            "a": {
+              "kaspa": {
+                "address": {
+                  "in": {
+                    "the": {
+                      "field": {
+                        "above": {
+                          "and": {
+                            "press": {
+                              "fetch": "Untuk memulai, masukkan alamat Kaspa di bidang di atas dan tekan 'Ambil'."
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tooltip": {
+      "api": {
+        "address": "Alamat API",
+        "balance": "Endpoint untuk mendapatkan saldo saat ini dari alamat Kaspa tertentu.",
+        "blockdag": {
+          "info": "Endpoint yang menyediakan informasi umum tentang blockDAG, seperti jumlah blok dan kesulitan."
+        },
+        "blockreward": "Endpoint untuk memeriksa hadiah saat ini per blok.",
+        "full": {
+          "transactions": "Endpoint untuk mengambil daftar lengkap transaksi untuk alamat tertentu, halaman per halaman."
+        },
+        "top": {
+          "addresses": "Endpoint untuk mengambil daftar alamat terkaya."
+        },
+        "transaction": "Templat URL untuk melihat transaksi tertentu di block explorer."
+      },
+      "ks": {
+        "blockwait": "Waktu tunggu untuk templat blok baru (misalnya, 3d, 2000md)."
+      },
+      "max": {
+        "tracked": {
+          "addresses": "Jumlah maksimum (pra-alokasi) alamat yang dilacak untuk peristiwa perubahan UTXO (default: 0)."
+        }
+      }
+    },
+    "top": {
+      "addresses": "Alamat Teratas"
+    },
+    "total": {
+      "transactions": "Total Transaksi"
+    },
+    "transaction": {
+      "distribution": "Distribusi Transaksi",
+      "fetching": "Pengambilan Transaksi",
+      "id": "ID Transaksi",
+      "network": {
+        "graph": {
+          "static": "Grafik Jaringan Transaksi (Statis)"
+        }
+      },
+      "report": {
+        "for": {
+          "kaspa": {
+            "address": "Laporan Transaksi untuk Alamat Kaspa"
+          }
+        }
+      },
+      "table": {
+        "font": {
+          "size": "Ukuran Font Tabel Transaksi"
+        }
+      },
+      "url": "URL Transaksi",
+      "value": {
+        "kas": "Nilai Transaksi (KAS)"
+      }
+    },
+    "transactions": "Transaksi",
+    "updating": {
+      "transactions": "Memperbarui transaksi..."
+    },
+    "tabs": {
+      "topaddresses": "Top Addresses"
+    }
+  },
+  "explorer.noTransactionsToDisplay": "Tidak ada transaksi untuk ditampilkan.",
+  "explorer.total": "Total",
+  "incoming": "masuk",
+  "links": {
+    "donations": "Donations",
+    "twitter": "Twitter",
+    "github": "GitHub"
+  },
+  "links.donations": "Donasi",
+  "log.tauriInvokeApiUnavailable": "Tauri invoke API is not available.",
+  "logs": {
+    "auto": {
+      "scroll": "Gulir Otomatis"
+    },
+    "check": {
+      "logs": {
+        "for": {
+          "details": "Periksa log untuk detail."
+        }
+      }
+    },
+    "live": {
+      "log": "Log Langsung"
+    },
+    "log": "Log",
+    "logging": {
+      "and": {
+        "stats": "Pencatatan & Statistik"
+      },
+      "level": "Tingkat Pencatatan"
+    },
+    "network": {
+      "and": {
+        "logging": "Jaringan & Pencatatan"
+      }
+    },
+    "tooltip": {
+      "ks": {
+        "log": "Aktifkan pencatatan ke file di direktori yang sama."
+      },
+      "logdir": "Direktori untuk mencatat output.",
+      "nologfiles": "Nonaktifkan pencatatan ke file."
+    }
+  },
+  "metrics": {
+    "price": "Harga",
+    "hashrate": "Hashrate",
+    "difficulty": "Kesulitan",
+    "amount": {
+      "kas": "Jumlah (KAS)"
+    },
+    "avg": {
+      "inflow": {
+        "kas": "Rata-rata Arus Masuk (KAS)"
+      },
+      "outflow": {
+        "kas": "Rata-rata Arus Keluar (KAS)"
+      },
+      "net": {
+        "flow": {
+          "kas": "Rata-rata Arus Bersih (KAS)"
+        }
+      }
+    },
+    "kaspa": {
+      "analysis": {
+        "report": "Laporan Analisis Kaspa"
+      },
+      "gateway": "metrics.kaspa.gateway"
+    },
+    "kaspagateway": "Gerbang Kaspa",
+    "largest": {
+      "inflow": {
+        "kas": "Arus Masuk Terbesar (KAS)"
+      },
+      "outflow": {
+        "kas": "Arus Keluar Terbesar (KAS)"
+      }
+    },
+    "last": {
+      "price": {
+        "update": {
+          "value": "Pembaruan Harga Terakhir: {}"
+        }
+      }
+    },
+    "net": {
+      "flow": {
+        "kas": "Arus Bersih (KAS)"
+      },
+      "volume": {
+        "kas": "Volume Bersih (KAS)"
+      }
+    },
+    "receivers": {
+      "outflow": "Penerima (Arus Keluar)"
+    },
+    "senders": {
+      "inflow": "Pengirim (Arus Masuk)"
+    },
+    "tooltip": {
+      "ks": {
+        "kaspa": "Alamat:port server gRPC kaspad (misalnya, 127.0.0.1:16110)."
+      },
+      "perf": {
+        "metrics": "Metrik performa"
+      },
+      "price": {
+        "cache": {
+          "hours": "Jam untuk menyimpan data harga sebelum mengambil data baru. (misalnya, 0.25 = 15 menit)"
+        }
+      }
+    },
+    "top": {
+      "10": {
+        "counterparties": {
+          "by": {
+            "net": {
+              "flow": "10 Rekanan Teratas Berdasarkan Arus Bersih"
+            }
+          }
+        }
+      },
+      "counterparties": "Rekanan Teratas"
+    },
+    "total": {
+      "inflow": {
+        "kas": "Total Arus Masuk (KAS)"
+      },
+      "outflow": {
+        "kas": "Total Arus Keluar (KAS)"
+      },
+      "received": {
+        "kas": "Total Diterima (KAS)"
+      },
+      "sent": {
+        "kas": "Total Dikirim (KAS)"
+      }
+    },
+    "unique": {
+      "counterparties": "Rekanan Unik"
+    },
+    "value": {
+      "usd": "Nilai (USD)"
+    }
+  },
+  "metrics.hashrate": "Laju hash",
+  "node": {
+    "kaspa": {
+      "node": "Node Kaspa"
+    },
+    "node": {
+      "is": {
+        "not": {
+          "running": "Node tidak berjalan."
+        }
+      },
+      "size": {
+        "proportional": {
+          "to": {
+            "tx": {
+              "volume": "Ukuran node sebanding dengan volume TX"
+            }
+          }
+        }
+      }
+    },
+    "p2p": "P2P",
+    "rpc": "RPC",
+    "tooltip": {
+      "api": {
+        "kaspad": "Endpoint untuk informasi tentang node kaspad yang terhubung dengan API."
+      },
+      "nogrpc": "Nonaktifkan server gRPC.",
+      "rpclisten": "Alamat dengar RPC",
+      "rpcmaxclients": "Jumlah maksimum klien RPC untuk koneksi standar (default: 128).",
+      "unsaferpc": "Aktifkan perintah RPC yang memengaruhi status node.",
+      "utxoindex": "Aktifkan indeks UTXO (diperlukan untuk fungsionalitas explorer)."
+    },
+    "tabs": {
+      "kaspanode": "Kaspa Node"
+    }
+  },
+  "node.serviceEventPlanningDescription": "KGW service-event planning for mainnet, testnet10, and testnet12. mainnet/testnet10 use master; testnet12 uses tn12.",
+  "outgoing": "keluar",
+  "runtime.ready": "Siap",
+  "runtime.shellErrorNavigationPreserved": "Shell/runtime error. Navigation was preserved.",
+  "settings": {
+    "language": "Language",
+    "currency": "Mata uang",
+    "theme": "Theme",
+    "api": {
+      "and": {
+        "performance": "API & Kinerja"
+      },
+      "endpoints": "Endpoint API",
+      "key": "Kunci API",
+      "performance": "Kinerja API",
+      "server": {
+        "profiles": "Profil Server API"
+      },
+      "settings": "Pengaturan API",
+      "url": "URL API"
+    },
+    "active": {
+      "profile": "Profil Aktif"
+    },
+    "autostart": {
+      "can": {
+        "only": {
+          "be": {
+            "set": {
+              "for": {
+                "the": {
+                  "installed": {
+                    "application": "Mulai otomatis hanya dapat diatur untuk aplikasi yang terinstal."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "is": {
+        "only": {
+          "available": {
+            "on": {
+              "windows": "Mulai otomatis hanya tersedia di Windows."
+            }
+          }
+        }
+      }
+    },
+    "calculating": {
+      "currency": {
+        "values": "Menghitung nilai mata uang..."
+      }
+    },
+    "create": {
+      "a": {
+        "backup": {
+          "of": "Buat cadangan dari"
+        }
+      }
+    },
+    "custom": {
+      "paths": "Jalur Kustom"
+    },
+    "database": {
+      "path": "Path Database"
+    },
+    "deletion": {
+      "outside": {
+        "user": {
+          "data": {
+            "directory": {
+              "is": {
+                "not": {
+                  "allowed": "Penghapusan di luar direktori data pengguna tidak diizinkan."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "display": {
+      "settings": "Pengaturan Tampilan"
+    },
+    "displayed": {
+      "languages": "Bahasa yang Ditampilkan",
+      "currencies": "Mata uang yang ditampilkan",
+      "tabs": "Tab yang ditampilkan"
+    },
+    "external": {
+      "apis": "API Eksternal"
+    },
+    "file": {
+      "paths": "Path File"
+    },
+    "kaspa": {
+      "api": {
+        "endpoints": "Endpoint API Kaspa"
+      }
+    },
+    "local": {
+      "or": {
+        "private": {
+          "network": {
+            "urls": {
+              "are": {
+                "not": {
+                  "allowed": {
+                    "for": {
+                      "api": {
+                        "base": {
+                          "url": "URL jaringan lokal atau pribadi tidak diizinkan untuk URL Basis API."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "log": {
+      "path": "Path Log"
+    },
+    "main": {
+      "settings": "Pengaturan Utama"
+    },
+    "page": {
+      "size": {
+        "api": {
+          "list": "Ukuran Halaman Daftar API"
+        }
+      }
+    },
+    "path": {
+      "settings": {
+        "changed": {
+          "please": {
+            "restart": {
+              "the": {
+                "application": "Pengaturan path berubah. Harap restart aplikasi."
+              }
+            }
+          }
+        }
+      }
+    },
+    "paths": {
+      "and": {
+        "logging": "Path & Pencatatan"
+      }
+    },
+    "performance": {
+      "settings": "Pengaturan Kinerja"
+    },
+    "select": {
+      "backup": {
+        "folder": {
+          "for": "Pilih folder cadangan untuk"
+        }
+      }
+    },
+    "settings": "Pengaturan",
+    "tooltip": {
+      "api": {
+        "coingecko": "Endpoint untuk mengambil harga Kaspa terhadap berbagai mata uang fiat dari CoinGecko.",
+        "coinsupply": "Endpoint untuk detail pasokan koin, including pasokan beredar dan maksimum.",
+        "halving": "Endpoint yang menyediakan informasi tentang peristiwa halving berikutnya.",
+        "hashrate": "Endpoint untuk mendapatkan hashrate jaringan saat ini.",
+        "max": {
+          "hashrate": "Endpoint untuk hashrate jaringan maksimum yang tercatat."
+        },
+        "network": "Endpoint untuk informasi jaringan umum."
+      }
+    },
+    "working": {
+      "directory": "Direktori Kerja"
+    },
+    "general": "Umum"
+  },
+  "settings.language": "Bahasa",
+  "settings.logDiagnostics": "Log & Diagnostics",
+  "settings.noDatabaseFilesFound": "No database files found.",
+  "settings.noSavedAddresses": "No saved addresses.",
+  "settings.theme": "Tema",
+  "status": {
+    "ready": "Ready",
+    "already": {
+      "up": {
+        "to": {
+          "date": {
+            "value": "Sudah terbaru: {}"
+          }
+        }
+      }
+    },
+    "busy": "Sibuk",
+    "downloading": {
+      "from": {
+        "custom": {
+          "url": "Mengunduh dari URL kustom..."
+        }
+      },
+      "hash": {
+        "file": {
+          "value": "Mengunduh file hash {0}..."
+        }
+      },
+      "value": "Mengunduh {}..."
+    },
+    "graph": {
+      "is": {
+        "interactive": {
+          "zoom": {
+            "pan": "Grafik interaktif (zoom/geser)"
+          }
+        }
+      }
+    },
+    "loading": "Memuat...",
+    "unknown": "Tidak Dikenal"
+  },
+  "status.ready": "Siap",
+  "tabs": {
+    "explorer": "Explorer",
+    "analysis": "Analysis",
+    "log": "Log",
+    "settings": "Settings",
+    "kaspaNode": "Node Kaspa",
+    "kaspaBridge": "Bridge Kaspa",
+    "topAddresses": "Alamat Teratas"
+  },
+  "tabs.analysis": "Analisis",
+  "tabs.explorer": "Penjelajah",
+  "tabs.log": "Log Sistem",
+  "tabs.settings": "Pengaturan",
+  "topAddresses.noTopAddressesLoaded": "No top addresses loaded.",
+  "transactions": "transaksi",
+  "transfer": "transfer",
+  "ui": {
+    "shell": {
+      "shelllanguageselect": {
+        "shellcurrencyselect": {
+          "select": {
+            "input": {
+              "textarea": {
+                "pointer": {}
+              }
+            }
+          },
+          "pointer": {
+            "events": {
+              "auto": {
+                "important": {}
+              }
+            }
+          }
+        }
+      },
+      "kaspagateway": {
+        "v0": {
+          "1": {
+            "0": "KaspaGateway V0.1.0"
+          }
+        }
+      },
+      "usd": "USD",
+      "kas": "KAS",
+      "sar": "SAR",
+      "eur": "EUR",
+      "dark": "Dark",
+      "superhero": "Superhero",
+      "kaspa": {
+        "gateway": {
+          "links": "Kaspa Gateway links"
+        }
+      },
+      "slate": "Slate",
+      "midnight": "Midnight",
+      "blue": "Blue",
+      "waiting": {
+        "for": {
+          "live": {
+            "update": "Waiting for live update"
+          }
+        }
+      },
+      "current": {
+        "date": {
+          "and": {
+            "time": "Current date and time"
+          }
+        }
+      },
+      "en": "en",
+      "ar": "ar",
+      "de": "de",
+      "es": "es",
+      "fr": "fr",
+      "hi": "hi",
+      "id": "id",
+      "ja": "ja",
+      "ko": "ko",
+      "ru": "ru",
+      "tr": "tr",
+      "zh": {
+        "cn": "zh-CN"
+      },
+      "main": {
+        "tabs": "Main tabs"
+      },
+      "application": {
+        "status": {
+          "and": {
+            "links": "Application status and links"
+          }
+        }
+      }
+    },
+    "analysis": {
+      "cancel": {
+        "analysis": "Cancel Analysis"
+      },
+      "save": {
+        "as": {
+          "csv": "Save as CSV",
+          "html": "Save as HTML",
+          "pdf": "Save as PDF"
+        }
+      },
+      "total": {
+        "in": "Total In",
+        "out": "Total Out"
+      },
+      "net": {
+        "flow": {
+          "amount": "Net Flow / Amount"
+        }
+      },
+      "avg": {
+        "in": "Avg In",
+        "out": "Avg Out"
+      },
+      "max": {
+        "in": "Max In",
+        "out": "Max Out"
+      },
+      "peers": "Peers",
+      "first": "First",
+      "last": "Last",
+      "days": "Days",
+      "from": "From:",
+      "to": "To:",
+      "type": "Type:",
+      "in": "IN",
+      "out": "OUT",
+      "direction": "Direction:",
+      "reset": {
+        "filter": "Reset Filter"
+      },
+      "counterparty": {
+        "breakdown": "Counterparty Breakdown"
+      },
+      "known": {
+        "name": {
+          "date": {
+            "time": {
+              "sort": "Known Name / Date/Time ↕"
+            }
+          }
+        }
+      },
+      "address": {
+        "transaction": {
+          "id": "Address / Transaction ID"
+        }
+      },
+      "txs": {
+        "dir": "TXs / Dir"
+      },
+      "block": "Block",
+      "load": {
+        "an": {
+          "address": {
+            "to": {
+              "see": {
+                "analysis": "Load an address to see analysis."
+              }
+            }
+          }
+        }
+      },
+      "average": {
+        "inflow": {
+          "kas": "Average Inflow (KAS)"
+        },
+        "outflow": {
+          "kas": "Average Outflow (KAS)"
+        }
+      },
+      "open": {
+        "from": {
+          "date": {
+            "calendar": "Open from date calendar"
+          }
+        },
+        "to": {
+          "date": {
+            "calendar": "Open to date calendar"
+          }
+        }
+      },
+      "search": {
+        "by": {
+          "address": {
+            "transaction": "Search by Address/Transaction..."
+          }
+        }
+      },
+      "loadAddressPrompt": "Muat alamat untuk melihat analisis.",
+      "last30Days": "30 hari terakhir",
+      "last90Days": "90 hari terakhir",
+      "lastYear": "Tahun lalu"
+    },
+    "explorer": {
+      "select": {
+        "saved": {
+          "address": "Select saved address..."
+        }
+      },
+      "balance": "Balance:",
+      "date": {
+        "time": {
+          "sort": "Date/Time ↕"
+        }
+      },
+      "transaction": {
+        "id": {
+          "sort": "Transaction ID ↕"
+        },
+        "table": {
+          "font": {
+            "size": "Transaction Table Font Size:"
+          }
+        }
+      },
+      "direction": {
+        "sort": "Direction ↕"
+      },
+      "amount": {
+        "kas": {
+          "sort": "Amount (KAS) ↕"
+        }
+      },
+      "value": {
+        "usd": {
+          "sort": "Value (USD) ↕"
+        }
+      },
+      "type": {
+        "sort": "Type ↕"
+      },
+      "yyyy": {
+        "mm": {
+          "dd": "YYYY-MM-DD"
+        }
+      },
+      "open": {
+        "calendar": "Open calendar"
+      },
+      "decrease": {
+        "font": {
+          "size": "Decrease font size"
+        }
+      },
+      "increase": {
+        "font": {
+          "size": "Increase font size"
+        }
+      },
+      "noSavedAddresses": "Tidak ada alamat tersimpan"
+    },
+    "kaspa": {
+      "bridge": {
+        "kaspa": {
+          "bridge": {
+            "runtime": "Kaspa Bridge Runtime"
+          }
+        }
+      },
+      "node": {
+        "kaspa": {
+          "node": {
+            "runtime": "Kaspa Node Runtime"
+          }
+        }
+      }
+    },
+    "log": {
+      "severity": "Severity:",
+      "trace": "TRACE",
+      "debug": "DEBUG",
+      "info": "INFO",
+      "warn": "WARN",
+      "font": {
+        "size": "Font Size:"
+      },
+      "copy": {
+        "log": "Copy Log"
+      },
+      "search": {
+        "log": {
+          "text": "Search log text..."
+        }
+      },
+      "log": {
+        "font": {
+          "size": "Log font size"
+        }
+      },
+      "application": {
+        "log": {
+          "output": "Application log output"
+        }
+      }
+    },
+    "settings": {
+      "api": {
+        "and": {
+          "amp": {
+            "performance": "API &amp; Performance"
+          },
+          "performance": {
+            "tabs": "API and performance tabs"
+          }
+        },
+        "key": "api_key"
+      },
+      "english": {
+        "en": "English (en)"
+      },
+      "arabic": {
+        "ar": "Arabic (ar)"
+      },
+      "german": {
+        "de": "German (de)"
+      },
+      "spanish": {
+        "es": "Spanish (es)"
+      },
+      "french": {
+        "fr": "French (fr)"
+      },
+      "hindi": {
+        "hi": "Hindi (hi)"
+      },
+      "indonesian": {
+        "id": "Indonesian (id)",
+        "rupiah": "Indonesian Rupiah"
+      },
+      "japanese": {
+        "ja": "Japanese (ja)",
+        "yen": "Japanese Yen"
+      },
+      "korean": {
+        "ko": "Korean (ko)"
+      },
+      "russian": {
+        "ru": "Russian (ru)",
+        "ruble": "Russian Ruble"
+      },
+      "turkish": {
+        "tr": "Turkish (tr)",
+        "lira": "Turkish Lira"
+      },
+      "chinese": {
+        "simplified": {
+          "zh": {
+            "cn": "Chinese (Simplified) (zh-CN)"
+          }
+        },
+        "yuan": "Chinese Yuan"
+      },
+      "us": {
+        "dollar": "US Dollar"
+      },
+      "saudi": {
+        "riyal": "Saudi Riyal"
+      },
+      "euro": "Euro",
+      "british": {
+        "pound": "British Pound"
+      },
+      "swiss": {
+        "franc": "Swiss Franc"
+      },
+      "australian": {
+        "dollar": "Australian Dollar"
+      },
+      "canadian": {
+        "dollar": "Canadian Dollar"
+      },
+      "south": {
+        "korean": {
+          "won": "South Korean Won"
+        }
+      },
+      "indian": {
+        "rupee": "Indian Rupee"
+      },
+      "hong": {
+        "kong": {
+          "dollar": "Hong Kong Dollar"
+        }
+      },
+      "singapore": {
+        "dollar": "Singapore Dollar"
+      },
+      "brazilian": {
+        "real": "Brazilian Real"
+      },
+      "logging": {
+        "level": "Logging Level:"
+      },
+      "backup": {
+        "directory": "Backup Directory"
+      },
+      "default": "default",
+      "kaspa": {
+        "org": "Kaspa.org",
+        "api": {
+          "endpoints": "⊟ Kaspa API Endpoints"
+        },
+        "address": {
+          "sort": "Kaspa Address ↕"
+        }
+      },
+      "local": {
+        "node": "Local Node"
+      },
+      "custom": "Custom",
+      "base": "Base:",
+      "page": {
+        "limit": "Page Limit",
+        "delay": {
+          "sec": "Page Delay (sec)"
+        }
+      },
+      "address": {
+        "names": "address_names"
+      },
+      "blockdag": {
+        "info": "blockdag_info"
+      },
+      "blockreward": "blockreward",
+      "coinsupply": "coinsupply",
+      "full": {
+        "transactions": "full_transactions",
+        "url": {
+          "preview": "Full URL Preview:"
+        }
+      },
+      "halving": "halving",
+      "kaspad": "kaspad",
+      "max": {
+        "hashrate": "max_hashrate"
+      },
+      "top": {
+        "addresses": "top_addresses"
+      },
+      "explorer": {
+        "urls": "⊟ Explorer URLs"
+      },
+      "transaction": "transaction",
+      "external": {
+        "apis": "⊟ External APIs"
+      },
+      "coingecko": "coingecko",
+      "reset": {
+        "selected": "Reset Selected",
+        "to": {
+          "defaults": "Reset to Defaults"
+        }
+      },
+      "description": "Description:",
+      "path": "Path:",
+      "price": {
+        "cache": {
+          "hours": "Price Cache (hours)"
+        }
+      },
+      "network": {
+        "cache": {
+          "hours": "Network Cache (hours)"
+        }
+      },
+      "refresh": {
+        "interval": {
+          "seconds": "Refresh Interval (seconds)"
+        },
+        "list": "Refresh List"
+      },
+      "name": {
+        "sort": "Name ↕"
+      },
+      "add": {
+        "edit": {
+          "address": "Add/Edit Address"
+        }
+      },
+      "delete": {
+        "address": "Delete Address"
+      },
+      "last": {
+        "updated": "Last Updated: —"
+      },
+      "known": {
+        "name": {
+          "sort": "Known Name ↕"
+        }
+      },
+      "balance": {
+        "sort": "Balance ↕"
+      },
+      "loading": {
+        "database": {
+          "status": "Loading database status..."
+        }
+      },
+      "settings": {
+        "tabs": "Settings tabs"
+      },
+      "browse": "Browse",
+      "clear": "Clear",
+      "choose": {
+        "base": "Choose base"
+      },
+      "managed": {
+        "addresses": "Managed addresses"
+      }
+    },
+    "top": {
+      "addresses": {
+        "last": {
+          "updated": "Last Updated:"
+        },
+        "rank": {
+          "sort": "Rank ↕"
+        },
+        "address": {
+          "sort": "Address ↕"
+        },
+        "balance": {
+          "kas": {
+            "sort": "Balance (KAS) ↕"
+          }
+        },
+        "search": {
+          "by": {
+            "rank": {
+              "name": {
+                "or": {
+                  "address": "Search by Rank, Name, or Address..."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "ui.analysis.net": "Net",
+  "ui.analysis.reset.filter": "Reset filter",
+  "ui.analysis.save.as.csv": "Simpan sebagai CSV",
+  "ui.analysis.save.as.html": "Simpan sebagai HTML",
+  "ui.analysis.save.as.pdf": "Simpan sebagai PDF",
+  "ui.explorer.amount.kas.sort": "Jumlah (KAS) ↕",
+  "ui.explorer.balance": "Saldo:",
+  "ui.explorer.date.time.sort": "Tanggal/Waktu ↕",
+  "ui.explorer.direction.sort": "Arah ↕",
+  "ui.explorer.select.saved.address": "Pilih alamat tersimpan...",
+  "ui.explorer.transaction.id.sort": "ID transaksi ↕",
+  "ui.explorer.transaction.table.font.size": "Ukuran font tabel transaksi:",
+  "ui.explorer.type.sort": "Jenis ↕",
+  "ui.explorer.value.usd.sort": "Nilai (USD) ↕",
+  "ui.runtime.logsUnavailable": "Log tidak tersedia:",
+  "ui.settings.base.url": "⊟ Base URL",
+  "ui.settings.default.app.data.directory": "directory",
+  "ui.settings.default.backup.directory": "directory",
+  "ui.settings.default.export.directory": "directory",
+  "ui.settings.default.log.directory": "directory",
+  "ui.settings.kaspa.address": "Kaspa Address:",
+  "ui.settings.name": "Name:",
+  "ui.shell.kaspa.green": "Kaspa Green",
+  "ui.shell.kaspa.live.network.metrics": "metrics",
+  "validation": {
+    "missing": {
+      "advanced": {
+        "libraries": {
+          "networkx": {
+            "scikit": {
+              "learn": "Pustaka lanjutan hilang (networkx, scikit-learn)."
+            }
+          }
+        }
+      }
+    },
+    "please": {
+      "select": {
+        "at": {
+          "least": {
+            "one": {
+              "currency": "Harap pilih setidaknya satu mata uang.",
+              "language": "Harap pilih setidaknya satu bahasa."
+            }
+          }
+        }
+      }
+    },
+    "user": {
+      "aborted": {
+        "update": {
+          "due": {
+            "to": {
+              "missing": {
+                "hash": {
+                  "file": "Pengguna membatalkan pembaruan karena file hash hilang."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "actions.save.settings": "Simpan Pengaturan",
+  "log.copied": "Disalin",
+  "log.deleted": "Dihapus",
+  "common.search": "Cari",
+  "common.autoScroll": "Gulir otomatis",
+  "common.all": "SEMUA",
+  "ui.analysis.address": "Alamat",
+  "ui.analysis.counterparty": "Pihak lawan",
+  "ui.analysis.loadAddressPrompt": "Muat alamat untuk melihat analisis.",
+  "ui.analysis.last30Days": "30 hari terakhir",
+  "ui.analysis.last90Days": "90 hari terakhir",
+  "ui.analysis.lastYear": "Tahun lalu",
+  "ui.explorer.noSavedAddresses": "Tidak ada alamat tersimpan"
+}

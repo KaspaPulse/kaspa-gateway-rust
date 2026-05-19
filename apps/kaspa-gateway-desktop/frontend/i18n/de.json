@@ -1,0 +1,2394 @@
+{
+  "actions": {
+    "add": "Hinzufügen",
+    "backup": "Sichern",
+    "browse": "Durchsuchen...",
+    "cancel": "Abbrechen",
+    "clear": {
+      "caches": "Caches leeren",
+      "fields": "Felder leeren",
+      "folder": {
+        "warning": "Sind Sie sicher, dass Sie *alle* Inhalte des Ordners '{}' löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden."
+      },
+      "log": "Protokoll leeren",
+      "logs": {
+        "warning": "Dies fährt den aktuellen Protokollhandler herunter, löscht alle .log-Dateien aus dem Protokollordner und startet die Protokollierung neu. Sind Sie sicher?"
+      }
+    },
+    "copy": "Kopieren",
+    "delete": "Löschen",
+    "edit": {
+      "endpoint": "Endpunkt bearbeiten"
+    },
+    "export": {
+      "addresses": "Adressen exportieren",
+      "path": "Exportpfad",
+      "results": "Ergebnisse exportieren:",
+      "successful": "Export erfolgreich"
+    },
+    "fetch": "Abrufen",
+    "filter": "Filtern",
+    "import": {
+      "addresses": "Adressen importieren",
+      "successful": "Import erfolgreich"
+    },
+    "load": {
+      "address": "Adresse laden",
+      "an": {
+        "address": {
+          "to": {
+            "see": {
+              "transactions": "Laden Sie eine Adresse, um Transaktionen anzuzeigen."
+            }
+          }
+        }
+      }
+    },
+    "open": {
+      "exported": {
+        "file": "Möchten Sie sie jetzt öffnen?"
+      }
+    },
+    "refresh": "Aktualisieren",
+    "reset": "Zurücksetzen",
+    "restart": {
+      "required": "Neustart erforderlich"
+    },
+    "restore": "Wiederherstellen",
+    "save": "Speichern",
+    "search": "Suchen",
+    "start": {
+      "with": {
+        "windows": "Mit Windows starten"
+      }
+    },
+    "update": "Aktualisieren"
+  },
+  "addresses": "Adressen",
+  "analysis": {
+    "analysis": "Analyse",
+    "charts": "Diagramme",
+    "deep": {
+      "analysis": {
+        "complete": "Tiefenanalyse abgeschlossen"
+      }
+    },
+    "loading": {
+      "analysis": "Analyse wird geladen..."
+    },
+    "network": {
+      "graph": {
+        "and": {
+          "cluster": {
+            "analysis": {
+              "are": {
+                "ready": "Netzwerkgrafik und Clusteranalyse sind bereit."
+              }
+            }
+          }
+        }
+      }
+    },
+    "run": {
+      "analysis": "Analyse starten"
+    },
+    "standard": {
+      "analysis": "Standardanalyse"
+    },
+    "starting": {
+      "deep": {
+        "analysis": "Starte Tiefenanalyse..."
+      }
+    },
+    "summary": "Zusammenfassung",
+    "avg": {
+      "daily": {
+        "net": {
+          "flow": "Ø täglicher Nettofluss"
+        }
+      }
+    }
+  },
+  "analysis.counterparties": "Counterparties",
+  "analysis.counterparty": "Counterparty",
+  "analysis.incoming": "Incoming",
+  "analysis.net": "Net",
+  "analysis.noCounterpartyRowsAvailable": "No counterparty rows available.",
+  "analysis.outgoing": "Outgoing",
+  "analysis.transactions": "Transactions",
+  "app": {
+    "title": "Kaspa-Gateway"
+  },
+  "bridge": {
+    "bridge": {
+      "1": "Bridge 1",
+      "2": "Bridge 2",
+      "files": {
+        "are": {
+          "already": {
+            "up": {
+              "to": {
+                "date": "Bridge-Dateien sind bereits aktuell."
+              }
+            }
+          }
+        }
+      },
+      "is": {
+        "already": {
+          "running": "Bridge läuft bereits."
+        },
+        "not": {
+          "running": "Bridge läuft nicht."
+        }
+      },
+      "update": {
+        "complete": "Bridge-Update abgeschlossen."
+      }
+    },
+    "enable": {
+      "bridge": {
+        "2": "Bridge 2 aktivieren"
+      }
+    },
+    "kaspa": {
+      "bridge": "Kaspa-Bridge"
+    },
+    "please": {
+      "stop": {
+        "bridge": {
+          "2": {
+            "before": {
+              "disabling": {
+                "it": "Bitte stoppen Sie Bridge 2, bevor Sie sie deaktivieren."
+              }
+            }
+          }
+        }
+      }
+    },
+    "tabs": {
+      "kaspabridge": "Kaspa Bridge"
+    }
+  },
+  "bridge.serviceEventPlanningDescription": "KGW service-event planning for all bridges in parallel. mainnet/testnet10 use master; testnet12 uses tn12.",
+  "coinbase": "Coinbase",
+  "common": {
+    "loading": "Loading",
+    "all": "ALLE",
+    "action": {
+      "moved": "Aktion verschoben"
+    },
+    "advanced": "Erweitert",
+    "are": {
+      "you": {
+        "sure": {
+          "you": {
+            "want": {
+              "to": {
+                "exit": "Möchten Sie wirklich beenden?"
+              }
+            }
+          }
+        }
+      }
+    },
+    "automatic": {
+      "refresh": "Automatische Aktualisierung"
+    },
+    "available": {
+      "files": "Verfügbare Dateien:"
+    },
+    "backoff": {
+      "factor": "Backoff-Faktor"
+    },
+    "base": {
+      "url": "Basis-URL"
+    },
+    "cache": {
+      "cleared": {
+        "successfully": "Cache erfolgreich geleert."
+      }
+    },
+    "caching": "Caching",
+    "calculating": "Berechne...",
+    "cancel": {
+      "tooltip": "Aktuellen Transaktionsabruf stoppen"
+    },
+    "cancelling": "Wird abgebrochen...",
+    "check": {
+      "for": {
+        "updates": {
+          "on": {
+            "startup": "Beim Start auf Updates prüfen"
+          }
+        }
+      }
+    },
+    "checking": {
+      "for": {
+        "updates": "Suche nach Updates..."
+      },
+      "latest": {
+        "version": {
+          "for": {
+            "value": "Prüfe neueste Version für {}..."
+          }
+        }
+      }
+    },
+    "clearing": {
+      "folder": "Leere Ordner:",
+      "local": {
+        "data": {
+          "and": {
+            "starting": {
+              "full": {
+                "redownload": "Lokale Daten werden gelöscht und vollständiger Re-Download wird gestartet..."
+              }
+            }
+          }
+        }
+      }
+    },
+    "click": {
+      "no": {
+        "to": {
+          "select": {
+            "a": {
+              "custom": {
+                "location": "Klicken Sie auf Nein, um einen benutzerdefinierten Speicherort auszuwählen."
+              }
+            }
+          }
+        }
+      },
+      "yes": {
+        "to": {
+          "download": {
+            "to": {
+              "default": {
+                "location": "Klicken Sie auf Ja, um am Standardspeicherort herunterzuladen:"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cluster": "Cluster",
+    "command": "Befehl",
+    "compact": {
+      "database": "Datenbank komprimieren"
+    },
+    "compacting": {
+      "database": "Datenbank wird komprimiert..."
+    },
+    "confirm": {
+      "action": "Aktion bestätigen",
+      "deletion": "Löschung bestätigen",
+      "file": {
+        "deletion": "Dateilöschung bestätigen"
+      }
+    },
+    "continue": "Fortfahren?",
+    "controls": "Steuerelemente",
+    "db": {
+      "and": {
+        "performance": "DB & Leistung"
+      },
+      "file": "DB-Datei",
+      "size": "DB-Größe"
+    },
+    "daily": "Täglich",
+    "database": {
+      "maintenance": "Datenbankwartung"
+    },
+    "date": {
+      "time": "Datum/Uhrzeit"
+    },
+    "deleting": {
+      "databases": "Datenbanken werden gelöscht..."
+    },
+    "description": "Beschreibung",
+    "details": "Details",
+    "direction": "Richtung",
+    "displayed": {
+      "currencies": "Angezeigte Währungen",
+      "tabs": "Angezeigte Tabs"
+    },
+    "download": {
+      "file": "Datei herunterladen",
+      "cancelled": {
+        "by": {
+          "user": "Download vom Benutzer abgebrochen."
+        }
+      },
+      "complete": {
+        "attempting": {
+          "to": {
+            "replace": {
+              "file": "Download abgeschlossen. Versuche, Datei zu ersetzen..."
+            }
+          }
+        }
+      }
+    },
+    "duration": {
+      "days": "Dauer (Tage)"
+    },
+    "enable": {
+      "auto": {
+        "refresh": "Automatische Aktualisierung aktivieren"
+      }
+    },
+    "expected": {
+      "sha256": {
+        "value": "Erwarteter SHA256: {}"
+      }
+    },
+    "extracting": {
+      "value": {
+        "from": {
+          "value": "Extrahiere {0} aus {1}..."
+        }
+      }
+    },
+    "false": "Falsch",
+    "fetch": {
+      "tooltip": "Transaktionen für die ausgewählte Adresse abrufen"
+    },
+    "files": {
+      "deleted": {
+        "successfully": "Dateien erfolgreich gelöscht."
+      }
+    },
+    "find": {
+      "next": "Nächstes finden",
+      "previous": "Vorheriges finden"
+    },
+    "font": {
+      "size": "Schriftgröße"
+    },
+    "force": {
+      "fetch": "Abruf erzwingen"
+    },
+    "frequency": "Häufigkeit",
+    "from": {
+      "date": "Von Datum:"
+    },
+    "full": {
+      "url": {
+        "preview": "Vollständige URL-Vorschau"
+      }
+    },
+    "general": "Allgemein",
+    "grand": {
+      "total": "Gesamtsumme"
+    },
+    "hash": {
+      "mismatch": {
+        "for": {
+          "value": {
+            "download": {
+              "aborted": "Hash stimmt für {value} nicht überein. Download abgebrochen."
+            }
+          }
+        }
+      },
+      "verified": {
+        "successfully": "Hash erfolgreich verifiziert."
+      }
+    },
+    "initializing": "Initialisiere...",
+    "kb": "KB",
+    "known": {
+      "name": "Bekannter Name"
+    },
+    "last": {
+      "3": {
+        "days": "Letzte 3 Tage",
+        "months": "Letzte 3 Monate"
+      },
+      "6": {
+        "months": "Letzte 6 Monate"
+      },
+      "modified": "Zuletzt geändert",
+      "month": "Letzter Monat",
+      "network": {
+        "update": {
+          "value": "Letztes Netzwerk-Update: {}"
+        }
+      },
+      "updated": "Zuletzt aktualisiert",
+      "week": "Letzte Woche",
+      "year": "Letztes Jahr"
+    },
+    "latest": {
+      "version": "Neueste Version"
+    },
+    "legend": "Legende",
+    "local": {
+      "version": "Lokale Version"
+    },
+    "max": {
+      "pages": "Max. Seiten",
+      "workers": "Max. Worker"
+    },
+    "monthly": "Monatlich",
+    "name": "Name",
+    "network": "Netzwerk",
+    "no": {
+      "data": {
+        "to": {
+          "display": "Keine Daten zum Anzeigen",
+          "export": "Keine Daten zum Exportieren"
+        }
+      },
+      "database": {
+        "selected": "Keine Datenbank ausgewählt"
+      },
+      "matches": {
+        "found": "Keine Treffer gefunden"
+      },
+      "selection": "Keine Auswahl",
+      "significant": {
+        "anomalies": {
+          "detected": "Keine signifikanten Anomalien erkannt"
+        }
+      }
+    },
+    "not": {
+      "implemented": "Nicht implementiert"
+    },
+    "nothing": "Nichts",
+    "ok": "OK",
+    "only": {
+      "https": {
+        "urls": {
+          "are": {
+            "allowed": {
+              "for": {
+                "security": "Aus Sicherheitsgründen sind nur HTTPS-URLs erlaubt."
+              }
+            }
+          }
+        }
+      }
+    },
+    "page": "Seite",
+    "peak": {
+      "activity": {
+        "hour": {
+          "s": "Spitzenaktivitätsstunde(n)"
+        }
+      }
+    },
+    "please": {
+      "select": {
+        "only": {
+          "one": {
+            "database": {
+              "for": {
+                "this": {
+                  "action": "Bitte wählen Sie nur eine Datenbank für diese Aktion aus."
+                }
+              }
+            }
+          }
+        }
+      },
+      "wait": {
+        "for": {
+          "the": {
+            "current": {
+              "fetch": {
+                "or": {
+                  "export": {
+                    "to": {
+                      "complete": {
+                        "before": {
+                          "closing": "Bitte warten Sie, bis der aktuelle Abruf oder Export abgeschlossen ist, bevor Sie schließen."
+                        }
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "complete": "Bitte warten Sie, bis der aktuelle Abruf abgeschlossen ist."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "process": {
+      "terminated": "Prozess beendet"
+    },
+    "quit": "Beenden",
+    "rank": "Rang",
+    "reason": "Grund",
+    "release": {
+      "has": {
+        "no": {
+          "published": {
+            "at": {
+              "date": "Release hat kein 'published_at'-Datum."
+            }
+          }
+        }
+      }
+    },
+    "rename": "Umbenennen",
+    "retry": {
+      "attempts": "Wiederholungsversuche",
+      "fetch": "Ein Fehler ist aufgetreten: {}\\n\\nMöchten Sie den Abruf erneut versuchen?"
+    },
+    "select": {
+      "all": "Alle auswählen",
+      "date": "Datum auswählen",
+      "download": {
+        "location": "Download-Speicherort auswählen"
+      }
+    },
+    "set": {
+      "default": "Als Standard setzen"
+    },
+    "severity": "Schweregrad",
+    "size": {
+      "kb": "Größe (KB)"
+    },
+    "skipping": {
+      "hash": {
+        "verification": {
+          "as": {
+            "no": {
+              "valid": {
+                "hash": {
+                  "was": {
+                    "found": {
+                      "for": {
+                        "value": "Überspringe Hash-Verifizierung, da kein gültiger Hash für {} gefunden wurde."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "startup": {
+      "delay": {
+        "sec": "Startverzögerung (Sek.):"
+      }
+    },
+    "success": "Erfolg",
+    "this": {
+      "will": {
+        "overwrite": "Dies überschreibt"
+      }
+    },
+    "times": {
+      "received": "Anzahl empfangen",
+      "sent": "Anzahl gesendet"
+    },
+    "to": {
+      "date": "Bis Datum:"
+    },
+    "tooltip": {
+      "appdir": "Verzeichnis zum Speichern von Daten.",
+      "archival": "Als Archiv-Node ausführen: vermeidet das Löschen alter Blockdaten (Warnung: hohe Festplattennutzung).",
+      "async": {
+        "threads": "Anzahl der asynchronen Threads angeben (Standard: 16)."
+      },
+      "backoff": {
+        "factor": "Multiplikator für Wiederholungsverzögerung (Verzögerung = Backoff * 2^Versuch). (Empfohlen: 0,5)"
+      },
+      "configfile": "Pfad zur Konfigurationsdatei.",
+      "connect": "Nur mit den angegebenen Peers beim Start verbinden.",
+      "disable": {
+        "upnp": "UPnP deaktivieren."
+      },
+      "enable": {
+        "unsynced": {
+          "mining": "Dem Node erlauben, Blöcke von RPC zu akzeptieren, während er nicht synchronisiert ist (dieses Flag wird hauptsächlich zum Testen verwendet)."
+        }
+      },
+      "externalip": "Eine Socket-Adresse (ip:port) zur Liste der lokalen Adressen hinzufügen, von denen wir behaupten, auf Peers zu lauschen.",
+      "hcp": "Port für Gesundheitsprüfung.",
+      "ks": {
+        "extranonce": "Größe der Extranonce in Bytes (Standard: 0).",
+        "mindiff": "Die minimale Schwierigkeit für Miner (Standard: 8192).",
+        "pow2clamp": "Schwierigkeit auf Zweierpotenzen klemmen (erforderlich für ASICs).",
+        "prom": "Port für Prometheus-Metriken (z. B. :2114).",
+        "sharespermin": "Angestrebte Shares pro Minute für Vardiff (Standard: 20).",
+        "stats": "Hashrate und Verbindungsstatistiken in der Konsole anzeigen.",
+        "stratum": "Die Schnittstelle:Port, auf der auf Miner-Verbindungen gewartet werden soll (z. B. :5555).",
+        "vardiff": "Variable Schwierigkeit (Vardiff) aktivieren.",
+        "vardiffstats": "Vardiff-Statistiken in der Konsole anzeigen."
+      },
+      "listen": "Schnittstelle:Port hinzufügen, um auf Verbindungen zu warten (Standard alle Schnittstellen Port: 16111, Testnet: 16211).",
+      "max": {
+        "pages": "Sicherheitslimit für die Gesamtzahl der Seiten, die für eine einzelne Adresse abgerufen werden sollen.",
+        "workers": "Maximale Anzahl paralleler Threads für Netzwerkanfragen."
+      },
+      "maxinpeers": "Maximale Anzahl eingehender Peers (Standard: 128).",
+      "netsuffix": "Testnet-Netzwerksuffixnummer.",
+      "network": {
+        "cache": {
+          "hours": "Stunden, um Netzwerkdaten (Hashrate, Schwierigkeit) zu speichern, bevor neue Daten abgerufen werden."
+        }
+      },
+      "nodnsseed": "DNS-Seeding für Peers deaktivieren.",
+      "outpeers": "Zielanzahl ausgehender Peers (Standard: 8).",
+      "page": {
+        "delay": "Sekunden Wartezeit zwischen dem Abrufen von Seiten, um Ratenbegrenzung zu vermeiden.",
+        "limit": "Maximale Anzahl von Transaktionen pro API-Anfrage. (Empfohlen: 100-1000)"
+      },
+      "ram": {
+        "scale": "Einen Skalierungsfaktor auf die Speicherzuweisungsgrenzen anwenden (z. B. 0,5 für 8 GB RAM)."
+      },
+      "reset": {
+        "db": "Datenbank vor dem Starten des Nodes zurücksetzen. Erforderlich beim Wechsel zwischen Subnetzwerken."
+      },
+      "retention": {
+        "period": {
+          "days": "Die Gesamtzahl der Tage, an denen Daten aufbewahrt werden sollen."
+        }
+      },
+      "retry": {
+        "attempts": "Anzahl der Wiederholungsversuche einer fehlgeschlagenen API-Anfrage. (Empfohlen: 3-5)"
+      },
+      "sanity": "Verschiedene Plausibilitätsprüfungen aktivieren, die rechenintensiv sein können.",
+      "uacomment": "Kommentar zum User-Agent hinzufügen.",
+      "yes": "Alle interaktiven Konsolenfragen mit Ja beantworten."
+    },
+    "total": "Gesamt",
+    "true": "Wahr",
+    "type": "Typ",
+    "ukn": "UNB",
+    "url": {
+      "components": "URL-Komponenten"
+    },
+    "updated": "Aktualisiert",
+    "updating": {
+      "value": "Aktualisiere {}..."
+    },
+    "use": {
+      "custom": {
+        "download": {
+          "url": "Benutzerdefinierte Download-URL verwenden"
+        },
+        "config": {
+          "yaml": "Benutzerdefiniertes config.yaml verwenden"
+        }
+      }
+    },
+    "user": {
+      "accepted": {
+        "risk": {
+          "proceeding": {
+            "without": {
+              "hash": {
+                "verification": "Benutzer hat Risiko akzeptiert. Fortfahren ohne Hash-Verifizierung."
+              }
+            }
+          }
+        }
+      }
+    },
+    "value": "Wert",
+    "version": "Version",
+    "weekly": "Wöchentlich",
+    "copied": {
+      "to": {
+        "clipboard": "In die Zwischenablage kopiert."
+      }
+    },
+    "databases": {
+      "deleted": {
+        "successfully": "Datenbanken erfolgreich gelöscht."
+      }
+    },
+    "deleted": {
+      "successfully": "erfolgreich gelöscht."
+    },
+    "folder": {
+      "cleared": "Ordner geleert."
+    },
+    "lang": {
+      "ar": "Arabisch",
+      "de": "Deutsch",
+      "en": "Englisch",
+      "es": "Spanisch",
+      "fr": "Französisch",
+      "hi": "Hindi",
+      "id": "Indonesisch",
+      "ja": "Japanisch",
+      "ko": "Koreanisch",
+      "ru": "Russisch",
+      "tr": "Türkisch",
+      "zh": {
+        "cn": "Chinesisch (vereinfacht)"
+      }
+    },
+    "search": "Suche",
+    "autoScroll": "Automatisch scrollen"
+  },
+  "common.loading": "Wird geladen",
+  "errors": {
+    "api": {
+      "timeout": {
+        "sec": "API-Timeout (Sek.)"
+      }
+    },
+    "are": {
+      "you": {
+        "sure": {
+          "you": {
+            "want": {
+              "to": {
+                "delete": {
+                  "these": {
+                    "files": {
+                      "this": {
+                        "cannot": {
+                          "be": {
+                            "undone": "Möchten Sie diese Dateien wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "automatically": {
+      "restart": {
+        "the": {
+          "bridge": {
+            "if": {
+              "it": {
+                "crashes": {
+                  "or": {
+                    "loses": {
+                      "connection": {
+                        "to": {
+                          "the": {
+                            "node": "Startet die Bridge automatisch neu, falls sie abstürzt oder die Verbindung zum Node verliert."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "node": {
+            "if": {
+              "it": {
+                "crashes": {
+                  "or": {
+                    "stops": {
+                      "unexpectedly": "Startet den Node automatisch neu, falls er abstürzt oder unerwartet stoppt."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "blocked": {
+      "potential": {
+        "path": {
+          "traversal": {
+            "attack": "Möglicher Path-Traversal-Angriff blockiert:"
+          }
+        }
+      }
+    },
+    "cannot": {
+      "delete": {
+        "default": {
+          "profile": "Standardprofil kann nicht gelöscht werden"
+        }
+      },
+      "rename": {
+        "default": {
+          "profile": "Standardprofil kann nicht umbenannt werden"
+        }
+      }
+    },
+    "compact": {
+      "warning": "Das Komprimieren der Datenbank '{0}' schreibt die Datenbankdatei neu, um alte Daten zu entfernen und Speicherplatz zu optimieren. Dies kann einen Moment dauern. Möchten Sie fortfahren?"
+    },
+    "could": {
+      "not": {
+        "delete": {
+          "wal": {
+            "file": {
+              "value": {
+                "value": "WAL-Datei '{0}' konnte nicht gelöscht werden: {1}"
+              }
+            }
+          },
+          "the": {
+            "database": "Die Datenbank konnte nicht gelöscht werden, da sie von diesem Programm oder einem anderen Prozess verwendet wird. Bitte versuchen Sie es nach einem Neustart der Anwendung erneut."
+          }
+        },
+        "open": {
+          "file": "Datei konnte nicht geöffnet werden:"
+        }
+      }
+    },
+    "database": {
+      "deletion": {
+        "failed": "Datenbanklöschung fehlgeschlagen"
+      }
+    },
+    "directory": {
+      "not": {
+        "found": "Verzeichnis nicht gefunden."
+      }
+    },
+    "error": "Fehler",
+    "failed": {
+      "to": {
+        "check": {
+          "version": {
+            "for": {
+              "value": "Version für {} konnte nicht geprüft werden."
+            }
+          }
+        },
+        "delete": {
+          "files": {
+            "check": {
+              "logs": "Fehler beim Löschen von Dateien. Protokolle prüfen."
+            }
+          },
+          "some": {
+            "databases": {
+              "check": {
+                "logs": "Einige Datenbanken konnten nicht gelöscht werden. Protokolle prüfen."
+              }
+            }
+          }
+        },
+        "import": {
+          "addresses": "Adressen konnten nicht importiert werden:"
+        },
+        "save": {
+          "address": "Adresse konnte nicht gespeichert werden.",
+          "configuration": "Konfiguration konnte nicht gespeichert werden."
+        },
+        "update": {
+          "registry": "Registrierung konnte nicht aktualisiert werden:"
+        }
+      }
+    },
+    "file": {
+      "not": {
+        "found": "Datei nicht gefunden"
+      }
+    },
+    "files": {
+      "not": {
+        "found": "Dateien nicht gefunden."
+      }
+    },
+    "invalid": {
+      "input": "Ungültige Eingabe",
+      "kaspa": {
+        "address": "Ungültige Kaspa-Adresse"
+      }
+    },
+    "network": {
+      "error": "Netzwerkfehler"
+    },
+    "not": {
+      "found": "Nicht gefunden"
+    },
+    "security": {
+      "error": {
+        "invalid": {
+          "file": {
+            "path": {
+              "inside": {
+                "zip": "Sicherheitsfehler: Ungültiger Dateipfad innerhalb der ZIP-Datei."
+              }
+            }
+          }
+        }
+      },
+      "warning": "Sicherheitswarnung",
+      "check": {
+        "failed": "Sicherheitsprüfung fehlgeschlagen."
+      }
+    },
+    "selective": {
+      "db": {
+        "delete": {
+          "warning": "Dies löscht die folgenden ausgewählten Datenbankdateien dauerhaft:"
+        }
+      }
+    },
+    "this": {
+      "action": {
+        "cannot": {
+          "be": {
+            "undone": {
+              "are": {
+                "you": {
+                  "sure": "Diese Aktion kann nicht rückgängig gemacht werden. Sind Sie sicher?"
+                }
+              }
+            }
+          }
+        }
+      },
+      "will": {
+        "reset": {
+          "all": {
+            "settings": {
+              "to": {
+                "their": {
+                  "default": {
+                    "values": {
+                      "and": {
+                        "cannot": {
+                          "be": {
+                            "undone": {
+                              "are": {
+                                "you": {
+                                  "sure": "Dies setzt alle Einstellungen auf ihre Standardwerte zurück und kann nicht rückgängig gemacht werden. Sind Sie sicher?"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tooltip": {
+      "timeout": "Max. Sekunden Wartezeit auf eine API-Antwort vor einem Fehlschlag. (Empfohlen: 10-30)"
+    },
+    "warning": {
+      "could": {
+        "not": {
+          "write": {
+            "version": {
+              "file": {
+                "value": "Warnung: Konnte Versionsdatei nicht schreiben: {0}."
+              }
+            }
+          }
+        }
+      },
+      "hash": {
+        "file": {
+          "not": {
+            "found": {
+              "for": {
+                "custom": {
+                  "url": {
+                    "proceeding": {
+                      "without": {
+                        "hash": {
+                          "verification": "Warnung: Hash-Datei für benutzerdefinierte URL nicht gefunden. Fortfahren ohne Hash-Verifizierung."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "explorer": {
+    "address": "Adresse",
+    "addresses": {
+      "exported": {
+        "to": "Adressen exportiert nach"
+      },
+      "imported": "Adressen importiert."
+    },
+    "analysis": {
+      "report": {
+        "for": {
+          "kaspa": {
+            "address": "Analysebericht für Kaspa-Adresse"
+          }
+        }
+      },
+      "for": {
+        "address": "Analyse für Adresse"
+      }
+    },
+    "applying": {
+      "filters": "Filter werden angewendet..."
+    },
+    "asset": {
+      "value": {
+        "not": {
+          "in": {
+            "latest": {
+              "release": "Asset {} nicht im neuesten Release."
+            }
+          }
+        }
+      }
+    },
+    "avg": {
+      "tx": {
+        "count": "Ø TX-Anzahl"
+      }
+    },
+    "balance": "Saldo",
+    "block": {
+      "score": "Block-Score"
+    },
+    "building": {
+      "counterparty": {
+        "export": {
+          "data": "Erstelle Exportdaten der Gegenparteien..."
+        }
+      }
+    },
+    "checking": {
+      "network": {
+        "for": {
+          "new": {
+            "transactions": "Netzwerk wird auf neue Transaktionen geprüft..."
+          }
+        }
+      }
+    },
+    "coinbase": {
+      "mining": "Coinbase / Mining"
+    },
+    "configuration": {
+      "saved": "Konfiguration gespeichert"
+    },
+    "counterparty": "Gegenpartei",
+    "enter": {
+      "kaspa": {
+        "address": {
+          "or": {
+            "select": {
+              "from": {
+                "dropdown": "Kaspa-Adresse eingeben oder aus Dropdown auswählen"
+              }
+            }
+          }
+        }
+      }
+    },
+    "explorer": "Explorer",
+    "exported": {
+      "on": "Exportiert am"
+    },
+    "fetching": {
+      "page": {
+        "value": {
+          "new": {
+            "txs": {
+              "value": "Rufe Seite {} ab (Neue TXs: {})..."
+            }
+          }
+        }
+      },
+      "transactions": "Transaktionen werden abgerufen..."
+    },
+    "first": {
+      "transaction": "Erste Transaktion"
+    },
+    "from": {
+      "address": {
+        "es": "Von Adresse(n)"
+      }
+    },
+    "incoming": "Eingehend",
+    "kaspa": {
+      "address": "Kaspa-Adresse",
+      "transaction": {
+        "report": "Kaspa-Transaktionsbericht"
+      }
+    },
+    "last": {
+      "transaction": "Letzte Transaktion"
+    },
+    "loading": {
+      "cached": {
+        "transactions": "Zwischengespeicherte Transaktionen werden geladen..."
+      },
+      "transactions": {
+        "from": {
+          "local": {
+            "database": "Transaktionen werden aus der lokalen Datenbank geladen..."
+          }
+        }
+      }
+    },
+    "main": {
+      "address": "Hauptadresse"
+    },
+    "manage": {
+      "addresses": "Adressen verwalten"
+    },
+    "new": {
+      "address": {
+        "auto": {
+          "saved": {
+            "successfully": "Neue Adresse automatisch gespeichert."
+          }
+        }
+      }
+    },
+    "no": {
+      "addresses": {
+        "to": {
+          "export": "Keine Adressen zum Exportieren."
+        }
+      },
+      "transactions": {
+        "for": {
+          "this": {
+            "counterparty": "Keine Transaktionen für diese Gegenpartei."
+          }
+        },
+        "match": {
+          "the": {
+            "current": {
+              "criteria": "Keine Transaktionen entsprechen den aktuellen Kriterien."
+            }
+          }
+        },
+        "to": {
+          "analyze": "Keine Transaktionen zum Analysieren."
+        }
+      }
+    },
+    "outgoing": "Ausgehend",
+    "press": {
+      "fetch": {
+        "or": {
+          "apply": {
+            "filters": "Drücken Sie 'Abrufen' oder wenden Sie Filter an."
+          }
+        }
+      },
+      "refresh": {
+        "list": {
+          "to": {
+            "load": {
+              "top": {
+                "addresses": "Drücken Sie 'Liste aktualisieren', um Top-Adressen zu laden."
+              }
+            }
+          }
+        }
+      }
+    },
+    "right": {
+      "click": {
+        "an": {
+          "address": {
+            "to": {
+              "add": {
+                "it": {
+                  "to": {
+                    "my": {
+                      "addresses": "Klicken Sie mit der rechten Maustaste auf eine Adresse, um sie zu 'Meine Adressen' hinzuzufügen."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "saved": {
+      "value": {
+        "total": {
+          "transactions": "{} Transaktionen insgesamt gespeichert..."
+        }
+      }
+    },
+    "scanning": {
+      "page": {
+        "value": {
+          "value": {
+            "new": {
+              "transactions": {
+                "found": "Scanne Seite {}... ({} neue Transaktionen gefunden)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "starting": {
+      "fetch": {
+        "for": {
+          "address": {
+            "value": "Starte Abruf für Adresse: {}..."
+          }
+        }
+      },
+      "transaction": {
+        "download": "Starte Transaktions-Download..."
+      }
+    },
+    "txs": "TXs",
+    "to": {
+      "address": {
+        "es": "An Adresse(n)"
+      },
+      "get": {
+        "started": {
+          "enter": {
+            "a": {
+              "kaspa": {
+                "address": {
+                  "in": {
+                    "the": {
+                      "field": {
+                        "above": {
+                          "and": {
+                            "press": {
+                              "fetch": "Geben Sie eine Kaspa-Adresse in das Feld oben ein und drücken Sie 'Abrufen', um zu starten."
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tooltip": {
+      "api": {
+        "address": "API-Adresse",
+        "balance": "Endpunkt zum Abrufen des aktuellen Guthabens einer bestimmten Kaspa-Adresse.",
+        "blockdag": {
+          "info": "Endpunkt, der allgemeine Informationen über den BlockDAG liefert, wie Blockanzahl und Schwierigkeit."
+        },
+        "blockreward": "Endpunkt zur Überprüfung der aktuellen Belohnung pro Block.",
+        "full": {
+          "transactions": "Endpunkt zum seitenweisen Abrufen einer vollständigen Liste von Transaktionen für eine bestimmte Adresse."
+        },
+        "top": {
+          "addresses": "Endpunkt zum Abrufen einer Liste der reichsten Adressen."
+        },
+        "transaction": "URL-Vorlage zum Anzeigen einer bestimmten Transaktion in einem Block-Explorer."
+      },
+      "ks": {
+        "blockwait": "Zeitspanne, die auf eine neue Blockvorlage gewartet werden soll (z. B. 3s, 2000ms)."
+      },
+      "max": {
+        "tracked": {
+          "addresses": "Maximale (vorbelegte) Anzahl von Adressen, die auf UTXO-Änderungsereignisse überwacht werden (Standard: 0)."
+        }
+      }
+    },
+    "top": {
+      "addresses": "Top-Adressen"
+    },
+    "total": {
+      "transactions": "Gesamtzahl Transaktionen"
+    },
+    "transaction": {
+      "distribution": "Transaktionsverteilung",
+      "fetching": "Transaktionsabruf",
+      "id": "Transaktions-ID",
+      "network": {
+        "graph": {
+          "static": "Transaktionsnetzwerkgrafik (Statisch)"
+        }
+      },
+      "report": {
+        "for": {
+          "kaspa": {
+            "address": "Transaktionsbericht für Kaspa-Adresse"
+          }
+        }
+      },
+      "table": {
+        "font": {
+          "size": "Schriftgröße Transaktionstabelle"
+        }
+      },
+      "url": "Transaktions-URL",
+      "value": {
+        "kas": "Transaktionswert (KAS)"
+      }
+    },
+    "transactions": "Transaktionen",
+    "updating": {
+      "transactions": "Transaktionen werden aktualisiert..."
+    },
+    "tabs": {
+      "topaddresses": "Top Addresses"
+    }
+  },
+  "explorer.noTransactionsToDisplay": "Keine Transaktionen zum Anzeigen.",
+  "explorer.total": "Total",
+  "incoming": "eingehend",
+  "links": {
+    "donations": "Donations",
+    "twitter": "Twitter",
+    "github": "GitHub"
+  },
+  "links.donations": "Spenden",
+  "log.tauriInvokeApiUnavailable": "Tauri invoke API is not available.",
+  "logs": {
+    "auto": {
+      "scroll": "Auto-Scroll"
+    },
+    "check": {
+      "logs": {
+        "for": {
+          "details": "Details in den Protokollen prüfen."
+        }
+      }
+    },
+    "live": {
+      "log": "Live-Protokoll"
+    },
+    "log": "Protokoll",
+    "logging": {
+      "and": {
+        "stats": "Protokollierung & Statistiken"
+      },
+      "level": "Protokollierungsstufe"
+    },
+    "network": {
+      "and": {
+        "logging": "Netzwerk & Protokollierung"
+      }
+    },
+    "tooltip": {
+      "ks": {
+        "log": "Protokollierung in einer Datei im selben Verzeichnis aktivieren."
+      },
+      "logdir": "Verzeichnis zum Speichern von Protokolldateien.",
+      "nologfiles": "Protokollierung in Dateien deaktivieren."
+    }
+  },
+  "metrics": {
+    "price": "Preis",
+    "hashrate": "Hashrate",
+    "difficulty": "Schwierigkeit",
+    "amount": {
+      "kas": "Betrag (KAS)"
+    },
+    "avg": {
+      "inflow": {
+        "kas": "Ø Zufluss (KAS)"
+      },
+      "outflow": {
+        "kas": "Ø Abfluss (KAS)"
+      },
+      "net": {
+        "flow": {
+          "kas": "Ø Nettofluss (KAS)"
+        }
+      }
+    },
+    "kaspa": {
+      "analysis": {
+        "report": "Kaspa-Analysebericht"
+      },
+      "gateway": "KaspaGateway"
+    },
+    "kaspagateway": "KaspaGateway",
+    "largest": {
+      "inflow": {
+        "kas": "Größter Zufluss (KAS)"
+      },
+      "outflow": {
+        "kas": "Größter Abfluss (KAS)"
+      }
+    },
+    "last": {
+      "price": {
+        "update": {
+          "value": "Letztes Preis-Update: {}"
+        }
+      }
+    },
+    "net": {
+      "flow": {
+        "kas": "Nettofluss (KAS)"
+      },
+      "volume": {
+        "kas": "Nettovolumen (KAS)"
+      }
+    },
+    "receivers": {
+      "outflow": "Empfänger (Abfluss)"
+    },
+    "senders": {
+      "inflow": "Absender (Zufluss)"
+    },
+    "tooltip": {
+      "ks": {
+        "kaspa": "Die Adresse:Port des kaspad gRPC-Servers (z. B. 127.0.0.1:16110)."
+      },
+      "perf": {
+        "metrics": "Leistungsmetriken"
+      },
+      "price": {
+        "cache": {
+          "hours": "Stunden, um Preisdaten zu speichern, bevor neue Daten abgerufen werden. (z. B. 0,25 = 15 Minuten)"
+        }
+      }
+    },
+    "top": {
+      "10": {
+        "counterparties": {
+          "by": {
+            "net": {
+              "flow": "Top 10 Gegenparteien nach Nettofluss"
+            }
+          }
+        }
+      },
+      "counterparties": "Top-Gegenparteien"
+    },
+    "total": {
+      "inflow": {
+        "kas": "Gesamter Zufluss (KAS)"
+      },
+      "outflow": {
+        "kas": "Gesamter Abfluss (KAS)"
+      },
+      "received": {
+        "kas": "Insgesamt empfangen (KAS)"
+      },
+      "sent": {
+        "kas": "Insgesamt gesendet (KAS)"
+      }
+    },
+    "unique": {
+      "counterparties": "Einzigartige Gegenparteien"
+    },
+    "value": {
+      "usd": "Wert (USD)"
+    }
+  },
+  "metrics.hashrate": "Hashrate der Netzwerk",
+  "node": {
+    "kaspa": {
+      "node": "Kaspa-Node"
+    },
+    "node": {
+      "is": {
+        "not": {
+          "running": "Node läuft nicht."
+        }
+      },
+      "size": {
+        "proportional": {
+          "to": {
+            "tx": {
+              "volume": "Knotengröße proportional zum TX-Volumen"
+            }
+          }
+        }
+      }
+    },
+    "p2p": "P2P",
+    "rpc": "RPC",
+    "tooltip": {
+      "api": {
+        "kaspad": "Endpunkt für Informationen über den Kaspad-Knoten, mit dem die API verbunden ist."
+      },
+      "nogrpc": "gRPC-Server deaktivieren.",
+      "rpclisten": "RPC-Listen-Adresse",
+      "rpcmaxclients": "Maximale Anzahl von RPC-Clients für Standardverbindungen (Standard: 128).",
+      "unsaferpc": "RPC-Befehle aktivieren, die den Zustand des Nodes beeinflussen.",
+      "utxoindex": "UTXO-Index aktivieren (erforderlich für Explorer-Funktionalität)."
+    },
+    "tabs": {
+      "kaspanode": "Kaspa Node"
+    }
+  },
+  "node.serviceEventPlanningDescription": "KGW service-event planning for mainnet, testnet10, and testnet12. mainnet/testnet10 use master; testnet12 uses tn12.",
+  "outgoing": "ausgehend",
+  "runtime.ready": "Bereit",
+  "runtime.shellErrorNavigationPreserved": "Shell/runtime error. Navigation was preserved.",
+  "settings": {
+    "language": "Language",
+    "currency": "Währung",
+    "theme": "Theme",
+    "api": {
+      "and": {
+        "performance": "API & Leistung"
+      },
+      "endpoints": "API-Endpunkte",
+      "key": "API-Schlüssel",
+      "performance": "API-Leistung",
+      "server": {
+        "profiles": "API-Serverprofile"
+      },
+      "settings": "API-Einstellungen",
+      "url": "API-URL"
+    },
+    "active": {
+      "profile": "Aktives Profil"
+    },
+    "autostart": {
+      "can": {
+        "only": {
+          "be": {
+            "set": {
+              "for": {
+                "the": {
+                  "installed": {
+                    "application": "Autostart kann nur für die installierte Anwendung festgelegt werden."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "is": {
+        "only": {
+          "available": {
+            "on": {
+              "windows": "Autostart ist nur unter Windows verfügbar."
+            }
+          }
+        }
+      }
+    },
+    "calculating": {
+      "currency": {
+        "values": "Währungswerte werden berechnet..."
+      }
+    },
+    "create": {
+      "a": {
+        "backup": {
+          "of": "Sicherung erstellen von"
+        }
+      }
+    },
+    "custom": {
+      "paths": "Benutzerdefinierte Pfade"
+    },
+    "database": {
+      "path": "Datenbankpfad"
+    },
+    "deletion": {
+      "outside": {
+        "user": {
+          "data": {
+            "directory": {
+              "is": {
+                "not": {
+                  "allowed": "Löschen außerhalb des Benutzerdatenverzeichnisses ist nicht erlaubt."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "display": {
+      "settings": "Anzeigeeinstellungen"
+    },
+    "displayed": {
+      "languages": "Angezeigte Sprachen",
+      "currencies": "Angezeigte Währungen",
+      "tabs": "Angezeigte Registerkarten"
+    },
+    "external": {
+      "apis": "Externe APIs"
+    },
+    "file": {
+      "paths": "Dateipfade"
+    },
+    "kaspa": {
+      "api": {
+        "endpoints": "Kaspa-API-Endpunkte"
+      }
+    },
+    "local": {
+      "or": {
+        "private": {
+          "network": {
+            "urls": {
+              "are": {
+                "not": {
+                  "allowed": {
+                    "for": {
+                      "api": {
+                        "base": {
+                          "url": "Lokale oder private Netzwerk-URLs sind für die API-Basis-URL nicht zulässig."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "log": {
+      "path": "Protokollpfad"
+    },
+    "main": {
+      "settings": "Haupteinstellungen"
+    },
+    "page": {
+      "size": {
+        "api": {
+          "list": "Seitengröße (API-Liste)"
+        }
+      }
+    },
+    "path": {
+      "settings": {
+        "changed": {
+          "please": {
+            "restart": {
+              "the": {
+                "application": "Pfad-Einstellungen geändert. Bitte starten Sie die Anwendung neu."
+              }
+            }
+          }
+        }
+      }
+    },
+    "paths": {
+      "and": {
+        "logging": "Pfade & Protokollierung"
+      }
+    },
+    "performance": {
+      "settings": "Leistungseinstellungen"
+    },
+    "select": {
+      "backup": {
+        "folder": {
+          "for": "Sicherungsordner auswählen für"
+        }
+      }
+    },
+    "settings": "Einstellungen",
+    "tooltip": {
+      "api": {
+        "coingecko": "Endpunkt zum Abrufen von Kaspa-Preisen gegenüber verschiedenen Fiat-Währungen von CoinGecko.",
+        "coinsupply": "Endpunkt für Details zur Münzversorgung, einschließlich umlaufender und maximaler Versorgung.",
+        "halving": "Endpunkt, der Informationen über das nächste Halving-Ereignis liefert.",
+        "hashrate": "Endpunkt zum Abrufen der aktuellen Netzwerk-Hashrate.",
+        "max": {
+          "hashrate": "Endpunkt für die maximal aufgezeichnete Netzwerk-Hashrate."
+        },
+        "network": "Endpunkt für allgemeine Netzwerkinformationen."
+      }
+    },
+    "working": {
+      "directory": "Arbeitsverzeichnis"
+    },
+    "general": "Allgemein"
+  },
+  "settings.language": "Sprache",
+  "settings.logDiagnostics": "Log & Diagnostics",
+  "settings.noDatabaseFilesFound": "No database files found.",
+  "settings.noSavedAddresses": "No saved addresses.",
+  "settings.theme": "Design",
+  "status": {
+    "ready": "Ready",
+    "already": {
+      "up": {
+        "to": {
+          "date": {
+            "value": "Bereits aktuell: {}"
+          }
+        }
+      }
+    },
+    "busy": "Beschäftigt",
+    "downloading": {
+      "from": {
+        "custom": {
+          "url": "Wird von benutzerdefinierter URL heruntergeladen..."
+        }
+      },
+      "hash": {
+        "file": {
+          "value": "Lade Hash-Datei {0} herunter..."
+        }
+      },
+      "value": "Lade {} herunter..."
+    },
+    "graph": {
+      "is": {
+        "interactive": {
+          "zoom": {
+            "pan": "Grafik ist interaktiv (Zoom/Verschieben)"
+          }
+        }
+      }
+    },
+    "loading": "Wird geladen...",
+    "unknown": "Unbekannt"
+  },
+  "status.ready": "Bereit",
+  "tabs": {
+    "explorer": "Explorer",
+    "analysis": "Analysis",
+    "log": "Log",
+    "settings": "Settings",
+    "kaspaNode": "Kaspa-Node",
+    "kaspaBridge": "Kaspa-Bridge",
+    "topAddresses": "Top-Adressen"
+  },
+  "tabs.analysis": "Analyse",
+  "tabs.explorer": "Explorer",
+  "tabs.log": "Protokoll",
+  "tabs.settings": "Einstellungen",
+  "topAddresses.noTopAddressesLoaded": "No top addresses loaded.",
+  "transactions": "Transaktionen",
+  "transfer": "Übertragung",
+  "ui": {
+    "shell": {
+      "shelllanguageselect": {
+        "shellcurrencyselect": {
+          "select": {
+            "input": {
+              "textarea": {
+                "pointer": {}
+              }
+            }
+          },
+          "pointer": {
+            "events": {
+              "auto": {
+                "important": {}
+              }
+            }
+          }
+        }
+      },
+      "kaspagateway": {
+        "v0": {
+          "1": {
+            "0": "KaspaGateway V0.1.0"
+          }
+        }
+      },
+      "usd": "USD",
+      "kas": "KAS",
+      "sar": "SAR",
+      "eur": "EUR",
+      "dark": "Dark",
+      "superhero": "Superhero",
+      "kaspa": {
+        "gateway": {
+          "links": "Kaspa Gateway links"
+        }
+      },
+      "slate": "Slate",
+      "midnight": "Midnight",
+      "blue": "Blue",
+      "waiting": {
+        "for": {
+          "live": {
+            "update": "Waiting for live update"
+          }
+        }
+      },
+      "current": {
+        "date": {
+          "and": {
+            "time": "Current date and time"
+          }
+        }
+      },
+      "en": "en",
+      "ar": "ar",
+      "de": "de",
+      "es": "es",
+      "fr": "fr",
+      "hi": "hi",
+      "id": "id",
+      "ja": "ja",
+      "ko": "ko",
+      "ru": "ru",
+      "tr": "tr",
+      "zh": {
+        "cn": "zh-CN"
+      },
+      "main": {
+        "tabs": "Main tabs"
+      },
+      "application": {
+        "status": {
+          "and": {
+            "links": "Application status and links"
+          }
+        }
+      }
+    },
+    "analysis": {
+      "cancel": {
+        "analysis": "Cancel Analysis"
+      },
+      "save": {
+        "as": {
+          "csv": "Save as CSV",
+          "html": "Save as HTML",
+          "pdf": "Save as PDF"
+        }
+      },
+      "total": {
+        "in": "Total In",
+        "out": "Total Out"
+      },
+      "net": {
+        "flow": {
+          "amount": "Net Flow / Amount"
+        }
+      },
+      "avg": {
+        "in": "Avg In",
+        "out": "Avg Out"
+      },
+      "max": {
+        "in": "Max In",
+        "out": "Max Out"
+      },
+      "peers": "Peers",
+      "first": "First",
+      "last": "Last",
+      "days": "Days",
+      "from": "From:",
+      "to": "To:",
+      "type": "Type:",
+      "in": "IN",
+      "out": "OUT",
+      "direction": "Direction:",
+      "reset": {
+        "filter": "Reset Filter"
+      },
+      "counterparty": {
+        "breakdown": "Counterparty Breakdown"
+      },
+      "known": {
+        "name": {
+          "date": {
+            "time": {
+              "sort": "Known Name / Date/Time ↕"
+            }
+          }
+        }
+      },
+      "address": {
+        "transaction": {
+          "id": "Address / Transaction ID"
+        }
+      },
+      "txs": {
+        "dir": "TXs / Dir"
+      },
+      "block": "Block",
+      "load": {
+        "an": {
+          "address": {
+            "to": {
+              "see": {
+                "analysis": "Load an address to see analysis."
+              }
+            }
+          }
+        }
+      },
+      "average": {
+        "inflow": {
+          "kas": "Average Inflow (KAS)"
+        },
+        "outflow": {
+          "kas": "Average Outflow (KAS)"
+        }
+      },
+      "open": {
+        "from": {
+          "date": {
+            "calendar": "Open from date calendar"
+          }
+        },
+        "to": {
+          "date": {
+            "calendar": "Open to date calendar"
+          }
+        }
+      },
+      "search": {
+        "by": {
+          "address": {
+            "transaction": "Search by Address/Transaction..."
+          }
+        }
+      },
+      "loadAddressPrompt": "Lade eine Adresse, um die Analyse anzuzeigen.",
+      "last30Days": "Letzte 30 Tage",
+      "last90Days": "Letzte 90 Tage",
+      "lastYear": "Letztes Jahr"
+    },
+    "explorer": {
+      "select": {
+        "saved": {
+          "address": "Select saved address..."
+        }
+      },
+      "balance": "Balance:",
+      "date": {
+        "time": {
+          "sort": "Date/Time ↕"
+        }
+      },
+      "transaction": {
+        "id": {
+          "sort": "Transaction ID ↕"
+        },
+        "table": {
+          "font": {
+            "size": "Transaction Table Font Size:"
+          }
+        }
+      },
+      "direction": {
+        "sort": "Direction ↕"
+      },
+      "amount": {
+        "kas": {
+          "sort": "Amount (KAS) ↕"
+        }
+      },
+      "value": {
+        "usd": {
+          "sort": "Value (USD) ↕"
+        }
+      },
+      "type": {
+        "sort": "Type ↕"
+      },
+      "yyyy": {
+        "mm": {
+          "dd": "YYYY-MM-DD"
+        }
+      },
+      "open": {
+        "calendar": "Open calendar"
+      },
+      "decrease": {
+        "font": {
+          "size": "Decrease font size"
+        }
+      },
+      "increase": {
+        "font": {
+          "size": "Increase font size"
+        }
+      },
+      "noSavedAddresses": "Keine gespeicherten Adressen"
+    },
+    "kaspa": {
+      "bridge": {
+        "kaspa": {
+          "bridge": {
+            "runtime": "Kaspa Bridge Runtime"
+          }
+        }
+      },
+      "node": {
+        "kaspa": {
+          "node": {
+            "runtime": "Kaspa Node Runtime"
+          }
+        }
+      }
+    },
+    "log": {
+      "severity": "Severity:",
+      "trace": "TRACE",
+      "debug": "DEBUG",
+      "info": "INFO",
+      "warn": "WARN",
+      "font": {
+        "size": "Font Size:"
+      },
+      "copy": {
+        "log": "Copy Log"
+      },
+      "search": {
+        "log": {
+          "text": "Search log text..."
+        }
+      },
+      "log": {
+        "font": {
+          "size": "Log font size"
+        }
+      },
+      "application": {
+        "log": {
+          "output": "Application log output"
+        }
+      }
+    },
+    "settings": {
+      "api": {
+        "and": {
+          "amp": {
+            "performance": "API &amp; Performance"
+          },
+          "performance": {
+            "tabs": "API and performance tabs"
+          }
+        },
+        "key": "api_key"
+      },
+      "english": {
+        "en": "English (en)"
+      },
+      "arabic": {
+        "ar": "Arabic (ar)"
+      },
+      "german": {
+        "de": "German (de)"
+      },
+      "spanish": {
+        "es": "Spanish (es)"
+      },
+      "french": {
+        "fr": "French (fr)"
+      },
+      "hindi": {
+        "hi": "Hindi (hi)"
+      },
+      "indonesian": {
+        "id": "Indonesian (id)",
+        "rupiah": "Indonesian Rupiah"
+      },
+      "japanese": {
+        "ja": "Japanese (ja)",
+        "yen": "Japanese Yen"
+      },
+      "korean": {
+        "ko": "Korean (ko)"
+      },
+      "russian": {
+        "ru": "Russian (ru)",
+        "ruble": "Russian Ruble"
+      },
+      "turkish": {
+        "tr": "Turkish (tr)",
+        "lira": "Turkish Lira"
+      },
+      "chinese": {
+        "simplified": {
+          "zh": {
+            "cn": "Chinese (Simplified) (zh-CN)"
+          }
+        },
+        "yuan": "Chinese Yuan"
+      },
+      "us": {
+        "dollar": "US Dollar"
+      },
+      "saudi": {
+        "riyal": "Saudi Riyal"
+      },
+      "euro": "Euro",
+      "british": {
+        "pound": "British Pound"
+      },
+      "swiss": {
+        "franc": "Swiss Franc"
+      },
+      "australian": {
+        "dollar": "Australian Dollar"
+      },
+      "canadian": {
+        "dollar": "Canadian Dollar"
+      },
+      "south": {
+        "korean": {
+          "won": "South Korean Won"
+        }
+      },
+      "indian": {
+        "rupee": "Indian Rupee"
+      },
+      "hong": {
+        "kong": {
+          "dollar": "Hong Kong Dollar"
+        }
+      },
+      "singapore": {
+        "dollar": "Singapore Dollar"
+      },
+      "brazilian": {
+        "real": "Brazilian Real"
+      },
+      "logging": {
+        "level": "Logging Level:"
+      },
+      "backup": {
+        "directory": "Backup Directory"
+      },
+      "default": "default",
+      "kaspa": {
+        "org": "Kaspa.org",
+        "api": {
+          "endpoints": "⊟ Kaspa API Endpoints"
+        },
+        "address": {
+          "sort": "Kaspa Address ↕"
+        }
+      },
+      "local": {
+        "node": "Local Node"
+      },
+      "custom": "Custom",
+      "base": "Base:",
+      "page": {
+        "limit": "Page Limit",
+        "delay": {
+          "sec": "Page Delay (sec)"
+        }
+      },
+      "address": {
+        "names": "address_names"
+      },
+      "blockdag": {
+        "info": "blockdag_info"
+      },
+      "blockreward": "blockreward",
+      "coinsupply": "coinsupply",
+      "full": {
+        "transactions": "full_transactions",
+        "url": {
+          "preview": "Full URL Preview:"
+        }
+      },
+      "halving": "halving",
+      "kaspad": "kaspad",
+      "max": {
+        "hashrate": "max_hashrate"
+      },
+      "top": {
+        "addresses": "top_addresses"
+      },
+      "explorer": {
+        "urls": "⊟ Explorer URLs"
+      },
+      "transaction": "transaction",
+      "external": {
+        "apis": "⊟ External APIs"
+      },
+      "coingecko": "coingecko",
+      "reset": {
+        "selected": "Reset Selected",
+        "to": {
+          "defaults": "Reset to Defaults"
+        }
+      },
+      "description": "Description:",
+      "path": "Path:",
+      "price": {
+        "cache": {
+          "hours": "Price Cache (hours)"
+        }
+      },
+      "network": {
+        "cache": {
+          "hours": "Network Cache (hours)"
+        }
+      },
+      "refresh": {
+        "interval": {
+          "seconds": "Refresh Interval (seconds)"
+        },
+        "list": "Refresh List"
+      },
+      "name": {
+        "sort": "Name ↕"
+      },
+      "add": {
+        "edit": {
+          "address": "Add/Edit Address"
+        }
+      },
+      "delete": {
+        "address": "Delete Address"
+      },
+      "last": {
+        "updated": "Last Updated: —"
+      },
+      "known": {
+        "name": {
+          "sort": "Known Name ↕"
+        }
+      },
+      "balance": {
+        "sort": "Balance ↕"
+      },
+      "loading": {
+        "database": {
+          "status": "Loading database status..."
+        }
+      },
+      "settings": {
+        "tabs": "Settings tabs"
+      },
+      "browse": "Browse",
+      "clear": "Clear",
+      "choose": {
+        "base": "Choose base"
+      },
+      "managed": {
+        "addresses": "Managed addresses"
+      }
+    },
+    "top": {
+      "addresses": {
+        "last": {
+          "updated": "Last Updated:"
+        },
+        "rank": {
+          "sort": "Rank ↕"
+        },
+        "address": {
+          "sort": "Address ↕"
+        },
+        "balance": {
+          "kas": {
+            "sort": "Balance (KAS) ↕"
+          }
+        },
+        "search": {
+          "by": {
+            "rank": {
+              "name": {
+                "or": {
+                  "address": "Search by Rank, Name, or Address..."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "ui.analysis.net": "Net",
+  "ui.analysis.reset.filter": "Filter zurücksetzen",
+  "ui.analysis.save.as.csv": "Als CSV speichern",
+  "ui.analysis.save.as.html": "Als HTML speichern",
+  "ui.analysis.save.as.pdf": "Als PDF speichern",
+  "ui.explorer.amount.kas.sort": "Betrag (KAS) ↕",
+  "ui.explorer.balance": "Kontostand:",
+  "ui.explorer.date.time.sort": "Datum/Uhrzeit ↕",
+  "ui.explorer.direction.sort": "Richtung ↕",
+  "ui.explorer.select.saved.address": "Gespeicherte Adresse auswählen...",
+  "ui.explorer.transaction.id.sort": "Transaktions-ID ↕",
+  "ui.explorer.transaction.table.font.size": "Schriftgröße der Transaktionstabelle:",
+  "ui.explorer.type.sort": "Typ ↕",
+  "ui.explorer.value.usd.sort": "Wert (USD) ↕",
+  "ui.runtime.logsUnavailable": "Protokolle nicht verfügbar:",
+  "ui.settings.base.url": "⊟ Base URL",
+  "ui.settings.default.app.data.directory": "directory",
+  "ui.settings.default.backup.directory": "directory",
+  "ui.settings.default.export.directory": "directory",
+  "ui.settings.default.log.directory": "directory",
+  "ui.settings.kaspa.address": "Kaspa Address:",
+  "ui.settings.name": "Name:",
+  "ui.shell.kaspa.green": "Kaspa Green",
+  "ui.shell.kaspa.live.network.metrics": "metrics",
+  "validation": {
+    "missing": {
+      "advanced": {
+        "libraries": {
+          "networkx": {
+            "scikit": {
+              "learn": "Fehlende erweiterte Bibliotheken (networkx, scikit-learn)."
+            }
+          }
+        }
+      }
+    },
+    "please": {
+      "select": {
+        "at": {
+          "least": {
+            "one": {
+              "currency": "Bitte mindestens eine Währung auswählen.",
+              "language": "Bitte mindestens eine Sprache auswählen."
+            }
+          }
+        }
+      }
+    },
+    "user": {
+      "aborted": {
+        "update": {
+          "due": {
+            "to": {
+              "missing": {
+                "hash": {
+                  "file": "Benutzer hat Update wegen fehlender Hash-Datei abgebrochen."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "actions.save.settings": "Einstellungen speichern",
+  "log.copied": "Kopiert",
+  "log.deleted": "Gelöscht",
+  "common.search": "Suche",
+  "common.autoScroll": "Automatisch scrollen",
+  "common.all": "ALLE",
+  "ui.analysis.address": "Adresse",
+  "ui.analysis.counterparty": "Gegenpartei",
+  "ui.analysis.loadAddressPrompt": "Lade eine Adresse, um die Analyse anzuzeigen.",
+  "ui.analysis.last30Days": "Letzte 30 Tage",
+  "ui.analysis.last90Days": "Letzte 90 Tage",
+  "ui.analysis.lastYear": "Letztes Jahr",
+  "ui.explorer.noSavedAddresses": "Keine gespeicherten Adressen"
+}

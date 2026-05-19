@@ -1,0 +1,65 @@
+[package]
+name = "kaspa-gateway-desktop"
+version = "0.1.0"
+description = "Kaspa Gateway Desktop Shell"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+build = "build.rs"
+
+[lib]
+name = "kaspa_gateway_desktop_lib"
+crate-type = ["rlib"]
+
+[[bin]]
+name = "kaspa-gateway-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build.workspace = true
+
+[dependencies]
+kaspa-gateway-rk-bridge = { path = "../../../crates/kaspa-gateway-rk-bridge" }
+kaspa-gateway-rk-node = { path = "../../../crates/kaspa-gateway-rk-node" }
+tracing-subscriber.workspace = true
+tracing.workspace = true
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+duckdb.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tauri.workspace = true
+kaspa-gateway-api = { path = "../../../crates/kaspa-gateway-api" }
+kaspa-gateway-config = { path = "../../../crates/kaspa-gateway-config" }
+kaspa-gateway-core = { path = "../../../crates/kaspa-gateway-core" }
+kaspa-gateway-db = { path = "../../../crates/kaspa-gateway-db" }
+kaspa-gateway-node = { path = "../../../crates/kaspa-gateway-node" }
+kaspa-gateway-runtime = { path = "../../../crates/kaspa-gateway-runtime" }
+ureq = "2.12"
+sha2 = "0.10"
+
+[features]
+default = []
+
+rkstratum_cpu_miner = [
+    "kaspa-gateway-rk-bridge/rkstratum_cpu_miner"
+]
+kgw-inproc-owner = [
+    "kaspa-gateway-rk-node/kgw-inproc-owner"
+]
+
+official-kaspa-runtime-mainline = [
+    "kaspa-gateway-rk-node/official-kaspa-runtime-mainline",
+    "kaspa-gateway-rk-bridge/official-kaspa-runtime-mainline"
+]
+
+official-kaspa-runtime-tn12 = [
+    "kaspa-gateway-rk-node/official-kaspa-runtime-tn12",
+    "kaspa-gateway-rk-bridge/official-kaspa-runtime-tn12"
+]
+
+official-kaspa-runtime-all = [
+    "official-kaspa-runtime-mainline",
+    "official-kaspa-runtime-tn12"
+]
+
+

@@ -1,0 +1,125 @@
+<section id="analysis" class="page kgw-analysis-root" data-tab-panel="analysis">
+  <div class="kgw-analysis-shell">
+    <section class="kgw-analysis-control-card" aria-label="Analysis controls">
+      <div class="kgw-analysis-field kgw-analysis-address-field kgw-analysis-no-visible-label">
+        <label for="analysisAddressSelect" class="kgw-analysis-hidden-compat" data-i18n="ui.analysis.address">Address</label>
+        <select id="analysisAddressSelect" aria-label="Analysis address">
+          <option value="" data-i18n="ui.explorer.select.saved.address">Select saved address</option>
+        </select>
+      </div>
+
+      <div class="kgw-analysis-actions">
+        <button type="button" id="analysisRun" disabled data-i18n="analysis.run.analysis">Run Analysis</button>
+        <button type="button" id="analysisCancel" disabled data-i18n="ui.analysis.cancel.analysis">Cancel Analysis</button>
+      </div>
+
+      <span id="analysisStatus" class="kgw-analysis-hidden-compat" role="status" aria-live="polite" data-i18n="ui.analysis.loadAddressPrompt">Load an address to see analysis.</span>
+      <input id="analysisAddressInput" class="kgw-analysis-hidden-compat" type="text" autocomplete="off" spellcheck="false" dir="ltr" tabindex="-1" aria-hidden="true">
+      <select id="analysisTimeRange" class="kgw-analysis-hidden-compat" tabindex="-1" aria-hidden="true">
+        <option value="all" data-i18n="common.all">ALL</option>
+        <option value="30d" data-i18n="ui.analysis.last30Days">Last 30 days</option>
+        <option value="90d" data-i18n="ui.analysis.last90Days">Last 90 days</option>
+        <option value="1y" data-i18n="ui.analysis.lastYear">Last year</option>
+      </select>
+    </section>
+
+    <section class="kgw-analysis-summary-card" aria-label="Analysis summary">
+      <div class="analysis-summary-grid kgw-analysis-summary-grid">
+        <div class="analysis-metric kgw-analysis-metric"><span data-i18n="ui.analysis.total.in">Total In</span><strong>—</strong></div>
+        <div class="analysis-metric kgw-analysis-metric"><span data-i18n="ui.analysis.total.out">Total Out</span><strong>—</strong></div>
+        <div class="analysis-metric kgw-analysis-metric"><span data-i18n="ui.analysis.net">Net</span><strong>—</strong></div>
+        <div class="analysis-metric kgw-analysis-metric"><span data-i18n="ui.analysis.avg.in">Avg In</span><strong>—</strong></div>
+        <div class="analysis-metric kgw-analysis-metric"><span data-i18n="ui.analysis.avg.out">Avg Out</span><strong>—</strong></div>
+        <div class="analysis-metric kgw-analysis-metric"><span data-i18n="explorer.txs">TXs</span><strong>—</strong></div>
+        <div class="analysis-metric kgw-analysis-metric"><span data-i18n="ui.analysis.max.in">Max In</span><strong>—</strong></div>
+        <div class="analysis-metric kgw-analysis-metric"><span data-i18n="ui.analysis.max.out">Max Out</span><strong>—</strong></div>
+        <div class="analysis-metric kgw-analysis-metric"><span data-i18n="ui.analysis.peers">Peers</span><strong>—</strong></div>
+        <div class="analysis-metric kgw-analysis-metric"><span data-i18n="ui.analysis.first">First</span><strong>—</strong></div>
+        <div class="analysis-metric kgw-analysis-metric"><span data-i18n="ui.analysis.last">Last</span><strong>—</strong></div>
+        <div class="analysis-metric kgw-analysis-metric"><span data-i18n="ui.analysis.days">Days</span><strong>—</strong></div>
+      </div>
+    </section>
+
+    <section class="kgw-analysis-filter-card" aria-label="Analysis filters">
+      <div class="analysis-filter-grid kgw-analysis-filter-grid">
+        <div class="kgw-analysis-field kgw-analysis-date-field">
+          <label for="analysisFromDate" data-i18n="ui.analysis.from">From:</label>
+          <input id="analysisFromDate" class="analysis-date-text" type="text" inputmode="numeric" dir="ltr" value="2021-11-07">
+          <input id="analysisFromDateNative" class="analysis-date-native" type="date" value="2021-11-07" tabindex="-1" aria-hidden="true">
+          <button type="button" class="analysis-calendar-btn" data-date-for="analysisFromDate" data-native-for="analysisFromDateNative" aria-label="Open from date calendar">📅</button>
+        </div>
+
+        <div class="kgw-analysis-field kgw-analysis-date-field">
+          <label for="analysisToDate" data-i18n="ui.analysis.to">To:</label>
+          <input id="analysisToDate" class="analysis-date-text" type="text" inputmode="numeric" dir="ltr" value="2026-05-18">
+          <input id="analysisToDateNative" class="analysis-date-native" type="date" value="2026-05-18" tabindex="-1" aria-hidden="true">
+          <button type="button" class="analysis-calendar-btn" data-date-for="analysisToDate" data-native-for="analysisToDateNative" aria-label="Open to date calendar">📅</button>
+        </div>
+
+        <div class="kgw-analysis-field">
+          <label for="analysisType" data-i18n="ui.analysis.type">Type:</label>
+          <select id="analysisType" disabled>
+            <option value="ALL" data-i18n="common.all">ALL</option>
+            <option value="IN" data-i18n="ui.analysis.in">IN</option>
+            <option value="OUT" data-i18n="ui.analysis.out">OUT</option>
+            <option value="COUNTERPARTY" data-i18n="ui.analysis.counterparty">Counterparty</option>
+          </select>
+        </div>
+
+        <div class="kgw-analysis-field">
+          <label for="analysisDirection" data-i18n="ui.analysis.direction">Direction:</label>
+          <select id="analysisDirection" disabled>
+            <option value="ALL" data-i18n="common.all">ALL</option>
+            <option value="IN" data-i18n="ui.analysis.in">IN</option>
+            <option value="OUT" data-i18n="ui.analysis.out">OUT</option>
+            <option value="COUNTERPARTY" data-i18n="ui.analysis.counterparty">Counterparty</option>
+          </select>
+        </div>
+
+        <div class="kgw-analysis-field kgw-analysis-search-field">
+          <label for="analysisSearch" data-i18n="common.search">Search</label>
+          <input id="analysisSearch" type="text" placeholder="Search by Address/Transaction..." disabled data-i18n-placeholder="ui.analysis.search.by.address.transaction">
+        </div>
+
+        <div class="kgw-analysis-filter-buttons">
+          <button type="button" id="analysisFilter" disabled data-i18n="actions.filter">Filter</button>
+          <button type="button" id="analysisResetFilter" disabled data-i18n="ui.analysis.reset.filter">Reset Filter</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="kgw-analysis-table-card" aria-label="Counterparty breakdown">
+      <div class="kgw-analysis-table-toolbar">
+        <div class="kgw-analysis-table-title" data-i18n="ui.analysis.counterparty.breakdown">Counterparty Breakdown</div>
+
+        <div class="kgw-analysis-export-actions">
+          <strong data-i18n="actions.export.results">Export Results:</strong>
+          <button type="button" id="analysisExportCsv" disabled data-i18n="ui.analysis.save.as.csv">Save as CSV</button>
+          <button type="button" id="analysisExportHtml" disabled data-i18n="ui.analysis.save.as.html">Save as HTML</button>
+          <button type="button" id="analysisExportPdf" disabled data-i18n="ui.analysis.save.as.pdf">Save as PDF</button>
+        </div>
+      </div>
+
+      <div class="analysis-table-wrap kgw-analysis-table-wrap">
+        <table class="analysis-table kgw-analysis-table">
+          <thead>
+            <tr>
+              <th data-i18n="ui.analysis.known.name.date.time.sort">Known Name / Date/Time ↕</th>
+              <th data-i18n="ui.analysis.address.transaction.id">Address / Transaction ID</th>
+              <th data-i18n="ui.analysis.txs.dir">TXs / Dir</th>
+              <th data-i18n="ui.analysis.net.flow.amount">Net Flow / Amount</th>
+              <th data-i18n="common.value">Value</th>
+              <th data-i18n="ui.analysis.block">Block</th>
+              <th data-i18n="common.type">Type</th>
+            </tr>
+          </thead>
+          <tbody id="analysisRows">
+            <tr class="analysis-empty-row">
+              <td colspan="7" data-i18n="ui.analysis.load.an.address.to.see.analysis">Load an address to see analysis.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</section>

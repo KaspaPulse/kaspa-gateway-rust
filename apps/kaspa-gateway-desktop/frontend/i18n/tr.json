@@ -1,0 +1,2395 @@
+{
+  "actions": {
+    "add": "Ekle",
+    "backup": "Yedekle",
+    "browse": "Gözat...",
+    "cancel": "İptal",
+    "clear": {
+      "caches": "Önbellekleri temizle",
+      "fields": "Alanları Temizle",
+      "folder": {
+        "warning": "'{}' klasörünün *tüm* içeriğini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+      },
+      "log": "Günlüğü Temizle",
+      "logs": {
+        "warning": "Bu, mevcut günlük işleyiciyi kapatacak, günlükler klasöründeki tüm .log dosyalarını silecek ve ardından günlük kaydını yeniden başlatacaktır. Emin misiniz?"
+      }
+    },
+    "copy": "Kopyala",
+    "delete": "Sil",
+    "edit": {
+      "endpoint": "Uç Noktayı Düzenle"
+    },
+    "export": {
+      "addresses": "Adresleri Dışa Aktar",
+      "path": "Dışa Aktarma Yolu",
+      "results": "Sonuçları Dışa Aktar:",
+      "successful": "Dışa Aktarma Başarılı"
+    },
+    "fetch": "Getir",
+    "filter": "Filtrele",
+    "import": {
+      "addresses": "Adresleri İçe Aktar",
+      "successful": "İçe Aktarma Başarılı"
+    },
+    "load": {
+      "address": "Adres Yükle",
+      "an": {
+        "address": {
+          "to": {
+            "see": {
+              "transactions": "İşlemleri görmek için bir adres yükleyin."
+            }
+          }
+        }
+      }
+    },
+    "open": {
+      "exported": {
+        "file": "Şimdi açmak ister misiniz?"
+      }
+    },
+    "refresh": "Yenile",
+    "reset": "Sıfırla",
+    "restart": {
+      "required": "Yeniden Başlatma Gerekli"
+    },
+    "restore": "Geri yükle",
+    "save": "Kaydet",
+    "search": "Ara",
+    "start": {
+      "with": {
+        "windows": "Windows ile Başlat"
+      }
+    },
+    "update": "Güncelle"
+  },
+  "actions.export.results": "Sonuçları dışa aktar:",
+  "addresses": "adresler",
+  "analysis": {
+    "analysis": "Analiz",
+    "charts": "Grafikler",
+    "deep": {
+      "analysis": {
+        "complete": "Derin Analiz Tamamlandı"
+      }
+    },
+    "loading": {
+      "analysis": "Analiz yükleniyor..."
+    },
+    "network": {
+      "graph": {
+        "and": {
+          "cluster": {
+            "analysis": {
+              "are": {
+                "ready": "Ağ grafiği ve küme analizi hazır."
+              }
+            }
+          }
+        }
+      }
+    },
+    "run": {
+      "analysis": "Analiz Çalıştır"
+    },
+    "standard": {
+      "analysis": "Standart Analiz"
+    },
+    "starting": {
+      "deep": {
+        "analysis": "Derin analiz başlatılıyor..."
+      }
+    },
+    "summary": "Özet",
+    "avg": {
+      "daily": {
+        "net": {
+          "flow": "ortalama günlük net akış"
+        }
+      }
+    }
+  },
+  "analysis.counterparties": "Counterparties",
+  "analysis.counterparty": "Counterparty",
+  "analysis.incoming": "Incoming",
+  "analysis.net": "Net",
+  "analysis.noCounterpartyRowsAvailable": "No counterparty rows available.",
+  "analysis.outgoing": "Outgoing",
+  "analysis.transactions": "Transactions",
+  "app": {
+    "title": "Kaspa Gateway"
+  },
+  "bridge": {
+    "bridge": {
+      "1": "Köprü 1",
+      "2": "Köprü 2",
+      "files": {
+        "are": {
+          "already": {
+            "up": {
+              "to": {
+                "date": "Köprü dosyaları zaten güncel."
+              }
+            }
+          }
+        }
+      },
+      "is": {
+        "already": {
+          "running": "Köprü zaten çalışıyor."
+        },
+        "not": {
+          "running": "Köprü çalışmıyor."
+        }
+      },
+      "update": {
+        "complete": "Köprü güncellemesi tamamlandı."
+      }
+    },
+    "enable": {
+      "bridge": {
+        "2": "Köprü 2'yi Etkinleştir"
+      }
+    },
+    "kaspa": {
+      "bridge": "Kaspa Köprüsü"
+    },
+    "please": {
+      "stop": {
+        "bridge": {
+          "2": {
+            "before": {
+              "disabling": {
+                "it": "Lütfen Köprü 2'yi devre dışı bırakmadan önce durdurun."
+              }
+            }
+          }
+        }
+      }
+    },
+    "tabs": {
+      "kaspabridge": "Kaspa Bridge"
+    }
+  },
+  "bridge.serviceEventPlanningDescription": "KGW service-event planning for all bridges in parallel. mainnet/testnet10 use master; testnet12 uses tn12.",
+  "coinbase": "coinbase",
+  "common": {
+    "loading": "Loading",
+    "all": "TÜMÜ",
+    "action": {
+      "moved": "Eylem Taşındı"
+    },
+    "advanced": "Gelişmiş",
+    "are": {
+      "you": {
+        "sure": {
+          "you": {
+            "want": {
+              "to": {
+                "exit": "Çıkmak istediğinizden emin misiniz?"
+              }
+            }
+          }
+        }
+      }
+    },
+    "automatic": {
+      "refresh": "Otomatik Yenileme"
+    },
+    "available": {
+      "files": "Mevcut dosyalar:"
+    },
+    "backoff": {
+      "factor": "Geri Çekilme Faktörü"
+    },
+    "base": {
+      "url": "Temel URL"
+    },
+    "cache": {
+      "cleared": {
+        "successfully": "Önbellek başarıyla temizlendi."
+      }
+    },
+    "caching": "Önbelleğe Alma",
+    "calculating": "Hesaplanıyor...",
+    "cancel": {
+      "tooltip": "Mevcut işlem getirme işlemini durdur"
+    },
+    "cancelling": "İptal ediliyor...",
+    "check": {
+      "for": {
+        "updates": {
+          "on": {
+            "startup": "Başlangıçta güncellemeleri kontrol et"
+          }
+        }
+      }
+    },
+    "checking": {
+      "for": {
+        "updates": "Güncellemeler kontrol ediliyor..."
+      },
+      "latest": {
+        "version": {
+          "for": {
+            "value": "{} için en son sürüm kontrol ediliyor..."
+          }
+        }
+      }
+    },
+    "clearing": {
+      "folder": "Klasör temizleniyor:",
+      "local": {
+        "data": {
+          "and": {
+            "starting": {
+              "full": {
+                "redownload": "Yerel veriler temizleniyor ve tam yeniden indirme başlatılıyor..."
+              }
+            }
+          }
+        }
+      }
+    },
+    "click": {
+      "no": {
+        "to": {
+          "select": {
+            "a": {
+              "custom": {
+                "location": "Özel bir konum seçmek için Hayır'a tıklayın."
+              }
+            }
+          }
+        }
+      },
+      "yes": {
+        "to": {
+          "download": {
+            "to": {
+              "default": {
+                "location": "Varsayılan konuma indirmek için Evet'e tıklayın:"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cluster": "Küme",
+    "command": "Komut",
+    "compact": {
+      "database": "Veritabanını Sıkıştır"
+    },
+    "compacting": {
+      "database": "Veritabanı sıkıştırılıyor..."
+    },
+    "confirm": {
+      "action": "Eylemi Onayla",
+      "deletion": "Silmeyi Onayla",
+      "file": {
+        "deletion": "Dosya Silme Onayı"
+      }
+    },
+    "continue": "Devam et?",
+    "controls": "Kontroller",
+    "db": {
+      "and": {
+        "performance": "VT ve Performans"
+      },
+      "file": "VT Dosyası",
+      "size": "VT Boyutu"
+    },
+    "daily": "Günlük",
+    "database": {
+      "maintenance": "Veritabanı Bakımı"
+    },
+    "date": {
+      "time": "Tarih/Saat"
+    },
+    "deleting": {
+      "databases": "Veritabanları siliniyor..."
+    },
+    "description": "Açıklama",
+    "details": "Detaylar",
+    "direction": "Yön",
+    "displayed": {
+      "currencies": "Görüntülenen Para Birimleri",
+      "tabs": "Görüntülenen Sekmeler"
+    },
+    "download": {
+      "file": "Dosya İndir",
+      "cancelled": {
+        "by": {
+          "user": "Kullanıcı tarafından indirme iptal edildi."
+        }
+      },
+      "complete": {
+        "attempting": {
+          "to": {
+            "replace": {
+              "file": "İndirme tamamlandı. Dosya değiştirilmeye çalışılıyor..."
+            }
+          }
+        }
+      }
+    },
+    "duration": {
+      "days": "Süre (Gün)"
+    },
+    "enable": {
+      "auto": {
+        "refresh": "Otomatik Yenilemeyi Etkinleştir"
+      }
+    },
+    "expected": {
+      "sha256": {
+        "value": "Beklenen SHA256: {}"
+      }
+    },
+    "extracting": {
+      "value": {
+        "from": {
+          "value": "{1}'den {0} çıkarılıyor..."
+        }
+      }
+    },
+    "false": "Yanlış",
+    "fetch": {
+      "tooltip": "Seçilen adres için işlem getirmeyi başlat"
+    },
+    "files": {
+      "deleted": {
+        "successfully": "Dosyalar başarıyla silindi."
+      }
+    },
+    "find": {
+      "next": "Sonrakini Bul",
+      "previous": "Öncekini Bul"
+    },
+    "font": {
+      "size": "Yazı Tipi Boyutu"
+    },
+    "force": {
+      "fetch": "Zorla getir"
+    },
+    "frequency": "Sıklık",
+    "from": {
+      "date": "Başlangıç Tarihi:"
+    },
+    "full": {
+      "url": {
+        "preview": "Tam URL Önizlemesi"
+      }
+    },
+    "general": "Genel",
+    "grand": {
+      "total": "Genel Toplam"
+    },
+    "hash": {
+      "mismatch": {
+        "for": {
+          "value": {
+            "download": {
+              "aborted": "{value} için hash eşleşmiyor. İndirme iptal edildi."
+            }
+          }
+        }
+      },
+      "verified": {
+        "successfully": "Özet (Hash) başarıyla doğrulandı."
+      }
+    },
+    "initializing": "Başlatılıyor...",
+    "kb": "KB",
+    "known": {
+      "name": "Bilinen İsim"
+    },
+    "last": {
+      "3": {
+        "days": "Son 3 Gün",
+        "months": "Son 3 Ay"
+      },
+      "6": {
+        "months": "Son 6 Ay"
+      },
+      "modified": "Son Düzenleme",
+      "month": "Geçen Ay",
+      "network": {
+        "update": {
+          "value": "Son Ağ Güncellemesi: {}"
+        }
+      },
+      "updated": "Son Güncelleme",
+      "week": "Geçen Hafta",
+      "year": "Geçen Yıl"
+    },
+    "latest": {
+      "version": "En son sürüm"
+    },
+    "legend": "Açıklama",
+    "local": {
+      "version": "Yerel Sürüm"
+    },
+    "max": {
+      "pages": "Maksimum Sayfa",
+      "workers": "Maksimum İşçi"
+    },
+    "monthly": "Aylık",
+    "name": "Ad",
+    "network": "Ağ",
+    "no": {
+      "data": {
+        "to": {
+          "display": "Gösterilecek veri yok",
+          "export": "Dışa aktarılacak veri yok"
+        }
+      },
+      "database": {
+        "selected": "Veritabanı seçilmedi"
+      },
+      "matches": {
+        "found": "Eşleşme bulunamadı"
+      },
+      "selection": "Seçim yok",
+      "significant": {
+        "anomalies": {
+          "detected": "Önemli bir anomali algılanmadı"
+        }
+      }
+    },
+    "not": {
+      "implemented": "Uygulanmadı"
+    },
+    "nothing": "Hiçbir şey",
+    "ok": "Tamam",
+    "only": {
+      "https": {
+        "urls": {
+          "are": {
+            "allowed": {
+              "for": {
+                "security": "Güvenlik için yalnızca HTTPS URL'lerine izin verilir."
+              }
+            }
+          }
+        }
+      }
+    },
+    "page": "Sayfa",
+    "peak": {
+      "activity": {
+        "hour": {
+          "s": "En yüksek aktivite saati(leri)"
+        }
+      }
+    },
+    "please": {
+      "select": {
+        "only": {
+          "one": {
+            "database": {
+              "for": {
+                "this": {
+                  "action": "Lütfen bu işlem için sadece bir veritabanı seçin."
+                }
+              }
+            }
+          }
+        }
+      },
+      "wait": {
+        "for": {
+          "the": {
+            "current": {
+              "fetch": {
+                "or": {
+                  "export": {
+                    "to": {
+                      "complete": {
+                        "before": {
+                          "closing": "Lütfen kapatmadan önce mevcut getirme veya dışa aktarma işleminin tamamlanmasını bekleyin."
+                        }
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "complete": "Lütfen mevcut getirme işleminin tamamlanmasını bekleyin."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "process": {
+      "terminated": "İşlem Sonlandırıldı"
+    },
+    "quit": "Çık",
+    "rank": "Sıra",
+    "reason": "Neden",
+    "release": {
+      "has": {
+        "no": {
+          "published": {
+            "at": {
+              "date": "Sürümde 'published_at' tarihi yok."
+            }
+          }
+        }
+      }
+    },
+    "rename": "Yeniden Adlandır",
+    "retry": {
+      "attempts": "Yeniden Deneme Sayısı",
+      "fetch": "Bir hata oluştu: {}\\n\\nYeniden getirmeyi denemek ister misiniz?"
+    },
+    "select": {
+      "all": "Tümünü Seç",
+      "date": "Tarih Seç",
+      "download": {
+        "location": "İndirme Konumu Seç"
+      }
+    },
+    "set": {
+      "default": "Varsayılan Yap"
+    },
+    "severity": "Şiddet",
+    "size": {
+      "kb": "Boyut (KB)"
+    },
+    "skipping": {
+      "hash": {
+        "verification": {
+          "as": {
+            "no": {
+              "valid": {
+                "hash": {
+                  "was": {
+                    "found": {
+                      "for": {
+                        "value": "{} için geçerli bir özet (hash) bulunmadığından özet doğrulama atlanıyor."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "startup": {
+      "delay": {
+        "sec": "Başlangıç Gecikmesi (sn):"
+      }
+    },
+    "success": "Başarı",
+    "this": {
+      "will": {
+        "overwrite": "Bu üzerine yazacaktır"
+      }
+    },
+    "times": {
+      "received": "Alınan Kez",
+      "sent": "Gönderilen Kez"
+    },
+    "to": {
+      "date": "Bitiş Tarihi:"
+    },
+    "tooltip": {
+      "appdir": "Verileri depolamak için dizin.",
+      "archival": "Arşiv düğümü olarak çalıştırın: eski blok verilerini silmekten kaçının (Uyarı: yoğun disk kullanımı).",
+      "async": {
+        "threads": "Eşzamansız iş parçacığı sayısını belirtin (varsayılan: 16)."
+      },
+      "backoff": {
+        "factor": "Yeniden deneme gecikmesi için çarpan (gecikme = backoff * 2^deneme). (Önerilen: 0,5)"
+      },
+      "configfile": "Yapılandırma dosyası yolu.",
+      "connect": "Başlangıçta yalnızca belirtilen eşlere bağlan.",
+      "disable": {
+        "upnp": "UPnP'yi devre dışı bırak."
+      },
+      "enable": {
+        "unsynced": {
+          "mining": "Senkronize edilmemişken düğümün RPC'den blokları kabul etmesine izin ver (bu işaret çoğunlukla test için kullanılır)."
+        }
+      },
+      "externalip": "Eşlere dinlediğimizi iddia ettiğimiz yerel adresler listesine bir yuva adresi (ip:port) ekleyin.",
+      "hcp": "Sağlık Kontrolü Bağlantı Noktası.",
+      "ks": {
+        "extranonce": "Bayt cinsinden extranonce boyutu (varsayılan: 0).",
+        "mindiff": "Madenciler için minimum zorluk (varsayılan: 8192).",
+        "pow2clamp": "Zorluğu 2'nin kuvvetlerine sabitle (ASIC'ler için gereklidir).",
+        "prom": "Prometheus metrikleri için bağlantı noktası (örneğin, :2114).",
+        "sharespermin": "vardiff için dakikadaki hedef paylaşımlar (varsayılan: 20).",
+        "stats": "Konsolda hashrate ve bağlantı istatistiklerini göster.",
+        "stratum": "Madenci bağlantılarını dinlemek için arabirim:bağlantı noktası (örneğin, :5555).",
+        "vardiff": "Değişken zorluğu (vardiff) etkinleştir.",
+        "vardiffstats": "Konsolda vardiff istatistiklerini göster."
+      },
+      "listen": "Bağlantıları dinlemek için bir arabirim:bağlantı noktası ekleyin (varsayılan tüm arabirimler bağlantı noktası: 16111, testnet: 16211).",
+      "max": {
+        "pages": "Tek bir adres için alınacak toplam sayfa sayısında güvenlik sınırı.",
+        "workers": "Ağ istekleri için maksimum paralel iş parçacığı sayısı."
+      },
+      "maxinpeers": "Maksimum gelen eş sayısı (varsayılan: 128).",
+      "netsuffix": "Testnet ağ sonek numarası.",
+      "network": {
+        "cache": {
+          "hours": "Yeni veri almadan önce ağ verilerini (hashrate, zorluk) tutmak için saat."
+        }
+      },
+      "nodnsseed": "Eşler için DNS tohumlamayı devre dışı bırak.",
+      "outpeers": "Hedef giden eş sayısı (varsayılan: 8).",
+      "page": {
+        "delay": "Hız sınırlamasını önlemek için sayfaları alma arasında beklenecek saniye.",
+        "limit": "API isteği başına alınacak maksimum işlem sayısı. (Önerilen: 100-1000)"
+      },
+      "ram": {
+        "scale": "Bellek tahsis sınırlarına bir ölçek faktörü uygula (örneğin, 8 GB RAM için 0,5)."
+      },
+      "reset": {
+        "db": "Düğümü başlatmadan önce veritabanını sıfırla. Alt ağlar arasında geçiş yaparken gereklidir."
+      },
+      "retention": {
+        "period": {
+          "days": "Verilerin saklanacağı toplam gün sayısı."
+        }
+      },
+      "retry": {
+        "attempts": "Başarısız bir API isteğini yeniden deneme sayısı. (Önerilen: 3-5)"
+      },
+      "sanity": "Hesaplama açısından yoğun olabilecek çeşitli akıl sağlığı kontrollerini etkinleştir.",
+      "uacomment": "Kullanıcı aracısına eklenecek yorum.",
+      "yes": "Tüm etkileşimli konsol sorularına evet yanıtı ver."
+    },
+    "total": "Toplam",
+    "true": "Doğru",
+    "type": "Tür",
+    "ukn": "BİLİNMEYEN",
+    "url": {
+      "components": "URL Bileşenleri"
+    },
+    "updated": "Güncellendi",
+    "updating": {
+      "value": "{} güncelleniyor..."
+    },
+    "use": {
+      "custom": {
+        "download": {
+          "url": "Özel İndirme URL'si Kullan"
+        },
+        "config": {
+          "yaml": "Özel config.yaml Kullan"
+        }
+      }
+    },
+    "user": {
+      "accepted": {
+        "risk": {
+          "proceeding": {
+            "without": {
+              "hash": {
+                "verification": "Kullanıcı riski kabul etti. Özet doğrulaması olmadan devam ediliyor."
+              }
+            }
+          }
+        }
+      }
+    },
+    "value": "Değer",
+    "version": "Sürüm",
+    "weekly": "Haftalık",
+    "copied": {
+      "to": {
+        "clipboard": "panoya kopyalandı."
+      }
+    },
+    "databases": {
+      "deleted": {
+        "successfully": "veritabanları başarıyla silindi."
+      }
+    },
+    "deleted": {
+      "successfully": "başarıyla silindi."
+    },
+    "folder": {
+      "cleared": "klasör temizlendi."
+    },
+    "lang": {
+      "ar": "Arapça",
+      "de": "Almanca",
+      "en": "İngilizce",
+      "es": "İspanyolca",
+      "fr": "Fransızca",
+      "hi": "Hintçe",
+      "id": "Endonezyaca",
+      "ja": "Japonca",
+      "ko": "Korece",
+      "ru": "Rusça",
+      "tr": "Türkçe",
+      "zh": {
+        "cn": "Çince (Basitleştirilmiş)"
+      }
+    },
+    "search": "Ara",
+    "autoScroll": "Otomatik kaydırma"
+  },
+  "common.loading": "Yükleniyor",
+  "errors": {
+    "api": {
+      "timeout": {
+        "sec": "API Zaman Aşımı (sn)"
+      }
+    },
+    "are": {
+      "you": {
+        "sure": {
+          "you": {
+            "want": {
+              "to": {
+                "delete": {
+                  "these": {
+                    "files": {
+                      "this": {
+                        "cannot": {
+                          "be": {
+                            "undone": "Bu dosyaları silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "automatically": {
+      "restart": {
+        "the": {
+          "bridge": {
+            "if": {
+              "it": {
+                "crashes": {
+                  "or": {
+                    "loses": {
+                      "connection": {
+                        "to": {
+                          "the": {
+                            "node": "Köprü çökerse veya düğümle bağlantısını kaybederse otomatik olarak yeniden başlatılır."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "node": {
+            "if": {
+              "it": {
+                "crashes": {
+                  "or": {
+                    "stops": {
+                      "unexpectedly": "Düğüm çökerse veya beklenmedik şekilde durursa otomatik olarak yeniden başlatılır."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "blocked": {
+      "potential": {
+        "path": {
+          "traversal": {
+            "attack": "Potansiyel yol aşımı saldırısı engellendi:"
+          }
+        }
+      }
+    },
+    "cannot": {
+      "delete": {
+        "default": {
+          "profile": "Varsayılan profil silinemez"
+        }
+      },
+      "rename": {
+        "default": {
+          "profile": "Varsayılan profil yeniden adlandırılamaz"
+        }
+      }
+    },
+    "compact": {
+      "warning": "Veritabanı '{0}'nu sıkıştırmak, eski verileri kaldırmak ve alanı optimize etmek için veritabanı dosyasını yeniden yazacaktır. Bu biraz zaman alabilir. Devam etmek istiyor musunuz?"
+    },
+    "could": {
+      "not": {
+        "delete": {
+          "wal": {
+            "file": {
+              "value": {
+                "value": "WAL dosyası '{0}' silinemedi: {1}"
+              }
+            }
+          },
+          "the": {
+            "database": "Veritabanı bu program veya başka bir işlem tarafından kullanıldığı için silinemedi. Lütfen uygulamayı yeniden başlattıktan sonra tekrar deneyin."
+          }
+        },
+        "open": {
+          "file": "Dosya açılamadı:"
+        }
+      }
+    },
+    "database": {
+      "deletion": {
+        "failed": "Veritabanı Silme Başarısız"
+      }
+    },
+    "directory": {
+      "not": {
+        "found": "Dizin bulunamadı."
+      }
+    },
+    "error": "Hata",
+    "failed": {
+      "to": {
+        "check": {
+          "version": {
+            "for": {
+              "value": "{} için sürüm kontrolü başarısız oldu."
+            }
+          }
+        },
+        "delete": {
+          "files": {
+            "check": {
+              "logs": "Dosya silme başarısız. Günlükleri kontrol edin."
+            }
+          },
+          "some": {
+            "databases": {
+              "check": {
+                "logs": "bazı veritabanları silinemedi. Günlükleri kontrol edin."
+              }
+            }
+          }
+        },
+        "import": {
+          "addresses": "Adresler içe aktarılamadı:"
+        },
+        "save": {
+          "address": "Adres kaydedilemedi.",
+          "configuration": "Yapılandırma kaydedilemedi."
+        },
+        "update": {
+          "registry": "Kayıt defteri güncellenemedi:"
+        }
+      }
+    },
+    "file": {
+      "not": {
+        "found": "Dosya bulunamadı"
+      }
+    },
+    "files": {
+      "not": {
+        "found": "Dosyalar bulunamadı."
+      }
+    },
+    "invalid": {
+      "input": "Geçersiz Giriş",
+      "kaspa": {
+        "address": "Geçersiz Kaspa adresi"
+      }
+    },
+    "network": {
+      "error": "Ağ Hatası"
+    },
+    "not": {
+      "found": "Bulunamadı"
+    },
+    "security": {
+      "error": {
+        "invalid": {
+          "file": {
+            "path": {
+              "inside": {
+                "zip": "Güvenlik Hatası: ZIP içindeki geçersiz dosya yolu."
+              }
+            }
+          }
+        }
+      },
+      "warning": "Güvenlik Uyarısı",
+      "check": {
+        "failed": "Güvenlik kontrolü başarısız."
+      }
+    },
+    "selective": {
+      "db": {
+        "delete": {
+          "warning": "Bu, aşağıdaki seçili veritabanı dosyalarını kalıcı olarak silecektir:"
+        }
+      }
+    },
+    "this": {
+      "action": {
+        "cannot": {
+          "be": {
+            "undone": {
+              "are": {
+                "you": {
+                  "sure": "Bu işlem geri alınamaz. Emin misiniz?"
+                }
+              }
+            }
+          }
+        }
+      },
+      "will": {
+        "reset": {
+          "all": {
+            "settings": {
+              "to": {
+                "their": {
+                  "default": {
+                    "values": {
+                      "and": {
+                        "cannot": {
+                          "be": {
+                            "undone": {
+                              "are": {
+                                "you": {
+                                  "sure": "Bu, tüm ayarları varsayılan değerlerine sıfırlayacak ve geri alınamayacaktır. Emin misiniz?"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tooltip": {
+      "timeout": "Başarısız olmadan önce API yanıtı için beklenecek maksimum saniye. (Önerilen: 10-30)"
+    },
+    "warning": {
+      "could": {
+        "not": {
+          "write": {
+            "version": {
+              "file": {
+                "value": "Uyarı: Sürüm dosyası yazılamadı: {0}."
+              }
+            }
+          }
+        }
+      },
+      "hash": {
+        "file": {
+          "not": {
+            "found": {
+              "for": {
+                "custom": {
+                  "url": {
+                    "proceeding": {
+                      "without": {
+                        "hash": {
+                          "verification": "Uyarı: Özel URL için özet (hash) dosyası bulunamadı. Özet doğrulaması olmadan devam ediliyor."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "explorer": {
+    "address": "Adres",
+    "addresses": {
+      "exported": {
+        "to": "Adresler şuraya aktarıldı"
+      },
+      "imported": "adres içe aktarıldı."
+    },
+    "analysis": {
+      "report": {
+        "for": {
+          "kaspa": {
+            "address": "Kaspa Adresi için Analiz Raporu"
+          }
+        }
+      },
+      "for": {
+        "address": "Adres için Analiz"
+      }
+    },
+    "applying": {
+      "filters": "Filtreler uygulanıyor..."
+    },
+    "asset": {
+      "value": {
+        "not": {
+          "in": {
+            "latest": {
+              "release": "Öğe {} en son sürümde yok."
+            }
+          }
+        }
+      }
+    },
+    "avg": {
+      "tx": {
+        "count": "Ort. İşlem Sayısı"
+      }
+    },
+    "balance": "Bakiye",
+    "block": {
+      "score": "Blok Puanı"
+    },
+    "building": {
+      "counterparty": {
+        "export": {
+          "data": "Karşı taraf dışa aktarma verileri oluşturuluyor..."
+        }
+      }
+    },
+    "checking": {
+      "network": {
+        "for": {
+          "new": {
+            "transactions": "Yeni işlemler için ağ kontrol ediliyor..."
+          }
+        }
+      }
+    },
+    "coinbase": {
+      "mining": "Coinbase / Madencilik"
+    },
+    "configuration": {
+      "saved": "Yapılandırma kaydedildi"
+    },
+    "counterparty": "Karşı taraf",
+    "enter": {
+      "kaspa": {
+        "address": {
+          "or": {
+            "select": {
+              "from": {
+                "dropdown": "Kaspa Adresi Girin veya Açılır Listeden Seçin"
+              }
+            }
+          }
+        }
+      }
+    },
+    "explorer": "Gezgin",
+    "exported": {
+      "on": "Aktarılma Tarihi"
+    },
+    "fetching": {
+      "page": {
+        "value": {
+          "new": {
+            "txs": {
+              "value": "{} sayfası getiriliyor (Yeni İşlem: {})..."
+            }
+          }
+        }
+      },
+      "transactions": "İşlemler getiriliyor..."
+    },
+    "first": {
+      "transaction": "İlk İşlem"
+    },
+    "from": {
+      "address": {
+        "es": "Gönderen Adres(ler)"
+      }
+    },
+    "incoming": "Gelen",
+    "kaspa": {
+      "address": "Kaspa Adresi",
+      "transaction": {
+        "report": "Kaspa İşlem Raporu"
+      }
+    },
+    "last": {
+      "transaction": "Son İşlem"
+    },
+    "loading": {
+      "cached": {
+        "transactions": "Önbelleğe alınmış işlemler yükleniyor..."
+      },
+      "transactions": {
+        "from": {
+          "local": {
+            "database": "Yerel veritabanından işlemler yükleniyor..."
+          }
+        }
+      }
+    },
+    "main": {
+      "address": "Ana Adres"
+    },
+    "manage": {
+      "addresses": "Adresleri Yönet"
+    },
+    "new": {
+      "address": {
+        "auto": {
+          "saved": {
+            "successfully": "Yeni adres başarıyla otomatik kaydedildi."
+          }
+        }
+      }
+    },
+    "no": {
+      "addresses": {
+        "to": {
+          "export": "Dışa aktarılacak adres yok."
+        }
+      },
+      "transactions": {
+        "for": {
+          "this": {
+            "counterparty": "Bu karşı taraf için işlem yok."
+          }
+        },
+        "match": {
+          "the": {
+            "current": {
+              "criteria": "Mevcut kriterlere uyan işlem yok."
+            }
+          }
+        },
+        "to": {
+          "analyze": "Analiz edilecek işlem yok."
+        }
+      }
+    },
+    "outgoing": "Giden",
+    "press": {
+      "fetch": {
+        "or": {
+          "apply": {
+            "filters": "'Getir'e basın veya filtreleri uygulayın."
+          }
+        }
+      },
+      "refresh": {
+        "list": {
+          "to": {
+            "load": {
+              "top": {
+                "addresses": "En iyi adresleri yüklemek için 'Listeyi Yenile'ye basın."
+              }
+            }
+          }
+        }
+      }
+    },
+    "right": {
+      "click": {
+        "an": {
+          "address": {
+            "to": {
+              "add": {
+                "it": {
+                  "to": {
+                    "my": {
+                      "addresses": "Adreslerime eklemek için bir adrese sağ tıklayın."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "saved": {
+      "value": {
+        "total": {
+          "transactions": "{} toplam işlem kaydedildi..."
+        }
+      }
+    },
+    "scanning": {
+      "page": {
+        "value": {
+          "value": {
+            "new": {
+              "transactions": {
+                "found": "{} sayfası taranıyor... ({} yeni işlem bulundu)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "starting": {
+      "fetch": {
+        "for": {
+          "address": {
+            "value": "Adres için getirme başlatılıyor: {}..."
+          }
+        }
+      },
+      "transaction": {
+        "download": "İşlem indirme başlatılıyor..."
+      }
+    },
+    "txs": "İşlemler",
+    "to": {
+      "address": {
+        "es": "Alıcı Adres(ler)"
+      },
+      "get": {
+        "started": {
+          "enter": {
+            "a": {
+              "kaspa": {
+                "address": {
+                  "in": {
+                    "the": {
+                      "field": {
+                        "above": {
+                          "and": {
+                            "press": {
+                              "fetch": "Başlamak için yukarıdaki alana bir Kaspa adresi girin ve 'Getir'e basın."
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tooltip": {
+      "api": {
+        "address": "API adresi",
+        "balance": "Belirli bir Kaspa adresinin mevcut bakiyesini almak için uç nokta.",
+        "blockdag": {
+          "info": "Blok sayısı ve zorluk gibi blockDAG hakkında genel bilgi sağlayan uç nokta."
+        },
+        "blockreward": "Blok başına mevcut ödülü kontrol etmek için uç nokta.",
+        "full": {
+          "transactions": "Belirli bir adres için tüm işlemlerin sayfa sayfa tam listesini almak için uç nokta."
+        },
+        "top": {
+          "addresses": "En zengin adreslerin bir listesini almak için uç nokta."
+        },
+        "transaction": "Bir blok gezgininde belirli bir işlemi görüntülemek için URL şablonu."
+      },
+      "ks": {
+        "blockwait": "Yeni bir blok şablonu beklemek için süre (örneğin, 3s, 2000ms)."
+      },
+      "max": {
+        "tracked": {
+          "addresses": "UTXO değişimi olayları için izlenen maksimum (önceden ayrılmış) adres sayısı (varsayılan: 0)."
+        }
+      }
+    },
+    "top": {
+      "addresses": "En İyi Adresler"
+    },
+    "total": {
+      "transactions": "Toplam İşlem Sayısı"
+    },
+    "transaction": {
+      "distribution": "İşlem Dağılımı",
+      "fetching": "İşlem Getirme",
+      "id": "İşlem Kimliği",
+      "network": {
+        "graph": {
+          "static": "İşlem Ağ Grafiği (Statik)"
+        }
+      },
+      "report": {
+        "for": {
+          "kaspa": {
+            "address": "Kaspa Adresi için İşlem Raporu"
+          }
+        }
+      },
+      "table": {
+        "font": {
+          "size": "İşlem Tablosu Yazı Tipi Boyutu"
+        }
+      },
+      "url": "İşlem URL'si",
+      "value": {
+        "kas": "İşlem Değeri (KAS)"
+      }
+    },
+    "transactions": "İşlemler",
+    "updating": {
+      "transactions": "İşlemler güncelleniyor..."
+    },
+    "tabs": {
+      "topaddresses": "Top Addresses"
+    }
+  },
+  "explorer.noTransactionsToDisplay": "Gösterilecek işlem yok.",
+  "explorer.total": "Total",
+  "incoming": "gelen",
+  "links": {
+    "donations": "Donations",
+    "twitter": "Twitter",
+    "github": "GitHub"
+  },
+  "links.donations": "Bağışlar",
+  "log.tauriInvokeApiUnavailable": "Tauri invoke API is not available.",
+  "logs": {
+    "auto": {
+      "scroll": "Otomatik Kaydırma"
+    },
+    "check": {
+      "logs": {
+        "for": {
+          "details": "Ayrıntılar için günlükleri kontrol edin."
+        }
+      }
+    },
+    "live": {
+      "log": "Canlı Günlük"
+    },
+    "log": "Günlük",
+    "logging": {
+      "and": {
+        "stats": "Günlükleme ve İstatistikler"
+      },
+      "level": "Günlükleme Seviyesi"
+    },
+    "network": {
+      "and": {
+        "logging": "Ağ ve Günlükleme"
+      }
+    },
+    "tooltip": {
+      "ks": {
+        "log": "Aynı dizindeki bir dosyaya günlük kaydını etkinleştir."
+      },
+      "logdir": "Çıktıyı kaydetmek için dizin.",
+      "nologfiles": "Dosyalara günlük kaydını devre dışı bırak."
+    }
+  },
+  "metrics": {
+    "price": "Fiyat",
+    "hashrate": "Hashrate",
+    "difficulty": "Zorluk",
+    "amount": {
+      "kas": "Miktar (KAS)"
+    },
+    "avg": {
+      "inflow": {
+        "kas": "Ort. Gelen Akış (KAS)"
+      },
+      "outflow": {
+        "kas": "Ort. Giden Akış (KAS)"
+      },
+      "net": {
+        "flow": {
+          "kas": "Ort. Net Akış (KAS)"
+        }
+      }
+    },
+    "kaspa": {
+      "analysis": {
+        "report": "Kaspa Analiz Raporu"
+      },
+      "gateway": "metrics.kaspa.gateway"
+    },
+    "kaspagateway": "Kaspa Ağ Geçidi",
+    "largest": {
+      "inflow": {
+        "kas": "En Büyük Gelen Akış (KAS)"
+      },
+      "outflow": {
+        "kas": "En Büyük Giden Akış (KAS)"
+      }
+    },
+    "last": {
+      "price": {
+        "update": {
+          "value": "Son Fiyat Güncellemesi: {}"
+        }
+      }
+    },
+    "net": {
+      "flow": {
+        "kas": "Net Akış (KAS)"
+      },
+      "volume": {
+        "kas": "Net Hacim (KAS)"
+      }
+    },
+    "receivers": {
+      "outflow": "Alıcılar (Giden Akış)"
+    },
+    "senders": {
+      "inflow": "Gönderenler (Gelen Akış)"
+    },
+    "tooltip": {
+      "ks": {
+        "kaspa": "kaspad gRPC sunucusunun adresi:bağlantı noktası (örneğin, 127.0.0.1:16110)."
+      },
+      "perf": {
+        "metrics": "Performans metrikleri"
+      },
+      "price": {
+        "cache": {
+          "hours": "Yeni veri almadan önce fiyat verilerini tutmak için saat. (örneğin, 0,25 = 15 dakika)"
+        }
+      }
+    },
+    "top": {
+      "10": {
+        "counterparties": {
+          "by": {
+            "net": {
+              "flow": "Net Akışa Göre En İyi 10 Karşı Taraf"
+            }
+          }
+        }
+      },
+      "counterparties": "En İyi Karşı Taraflar"
+    },
+    "total": {
+      "inflow": {
+        "kas": "Toplam Gelen Akış (KAS)"
+      },
+      "outflow": {
+        "kas": "Toplam Giden Akış (KAS)"
+      },
+      "received": {
+        "kas": "Toplam Alınan (KAS)"
+      },
+      "sent": {
+        "kas": "Toplam Gönderilen (KAS)"
+      }
+    },
+    "unique": {
+      "counterparties": "Benzersiz Karşı Taraflar"
+    },
+    "value": {
+      "usd": "Değer (USD)"
+    }
+  },
+  "metrics.hashrate": "Hash oranı",
+  "node": {
+    "kaspa": {
+      "node": "Kaspa Düğümü"
+    },
+    "node": {
+      "is": {
+        "not": {
+          "running": "Düğüm çalışmıyor."
+        }
+      },
+      "size": {
+        "proportional": {
+          "to": {
+            "tx": {
+              "volume": "Düğüm boyutu TX hacmiyle orantılı"
+            }
+          }
+        }
+      }
+    },
+    "p2p": "P2P",
+    "rpc": "RPC",
+    "tooltip": {
+      "api": {
+        "kaspad": "API'nin bağlı olduğu kaspad düğümü hakkında bilgi için uç nokta."
+      },
+      "nogrpc": "gRPC sunucusunu devre dışı bırak.",
+      "rpclisten": "RPC dinleme adresi",
+      "rpcmaxclients": "Standart bağlantılar için maksimum RPC istemcisi sayısı (varsayılan: 128).",
+      "unsaferpc": "Düğümün durumunu etkileyen RPC komutlarını etkinleştir.",
+      "utxoindex": "UTXO dizinini etkinleştir (gezgin işlevselliği için gereklidir)."
+    },
+    "tabs": {
+      "kaspanode": "Kaspa Node"
+    }
+  },
+  "node.serviceEventPlanningDescription": "KGW service-event planning for mainnet, testnet10, and testnet12. mainnet/testnet10 use master; testnet12 uses tn12.",
+  "outgoing": "giden",
+  "runtime.ready": "Hazır",
+  "runtime.shellErrorNavigationPreserved": "Shell/runtime error. Navigation was preserved.",
+  "settings": {
+    "language": "Language",
+    "currency": "Para birimi",
+    "theme": "Theme",
+    "api": {
+      "and": {
+        "performance": "API ve Performans"
+      },
+      "endpoints": "API Uç Noktaları",
+      "key": "API Anahtarı",
+      "performance": "API Performansı",
+      "server": {
+        "profiles": "API Sunucu Profilleri"
+      },
+      "settings": "API Ayarları",
+      "url": "API URL'si"
+    },
+    "active": {
+      "profile": "Aktif Profil"
+    },
+    "autostart": {
+      "can": {
+        "only": {
+          "be": {
+            "set": {
+              "for": {
+                "the": {
+                  "installed": {
+                    "application": "Otomatik başlatma yalnızca kurulu uygulama için ayarlanabilir."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "is": {
+        "only": {
+          "available": {
+            "on": {
+              "windows": "Otomatik başlatma yalnızca Windows'ta mevcuttur."
+            }
+          }
+        }
+      }
+    },
+    "calculating": {
+      "currency": {
+        "values": "Para birimi değerleri hesaplanıyor..."
+      }
+    },
+    "create": {
+      "a": {
+        "backup": {
+          "of": "Yedek oluştur"
+        }
+      }
+    },
+    "custom": {
+      "paths": "Özel Yollar"
+    },
+    "database": {
+      "path": "Veritabanı Yolu"
+    },
+    "deletion": {
+      "outside": {
+        "user": {
+          "data": {
+            "directory": {
+              "is": {
+                "not": {
+                  "allowed": "Kullanıcı veri dizini dışındaki silme işlemlerine izin verilmez."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "display": {
+      "settings": "Görüntü Ayarları"
+    },
+    "displayed": {
+      "languages": "Görüntülenen Diller",
+      "currencies": "Gösterilen para birimleri",
+      "tabs": "Gösterilen sekmeler"
+    },
+    "external": {
+      "apis": "Harici API'lar"
+    },
+    "file": {
+      "paths": "Dosya Yolları"
+    },
+    "kaspa": {
+      "api": {
+        "endpoints": "Kaspa API Uç Noktaları"
+      }
+    },
+    "local": {
+      "or": {
+        "private": {
+          "network": {
+            "urls": {
+              "are": {
+                "not": {
+                  "allowed": {
+                    "for": {
+                      "api": {
+                        "base": {
+                          "url": "Yerel veya özel ağ URL'lerine API Temel URL'si için izin verilmez."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "log": {
+      "path": "Günlük Yolu"
+    },
+    "main": {
+      "settings": "Ana Ayarlar"
+    },
+    "page": {
+      "size": {
+        "api": {
+          "list": "Sayfa Boyutu API Listesi"
+        }
+      }
+    },
+    "path": {
+      "settings": {
+        "changed": {
+          "please": {
+            "restart": {
+              "the": {
+                "application": "Yol ayarları değişti. Lütfen uygulamayı yeniden başlatın."
+              }
+            }
+          }
+        }
+      }
+    },
+    "paths": {
+      "and": {
+        "logging": "Yollar ve Günlükleme"
+      }
+    },
+    "performance": {
+      "settings": "Performans Ayarları"
+    },
+    "select": {
+      "backup": {
+        "folder": {
+          "for": "için yedekleme klasörü seç"
+        }
+      }
+    },
+    "settings": "Ayarlar",
+    "tooltip": {
+      "api": {
+        "coingecko": "CoinGecko'dan çeşitli fiat para birimlerine karşı Kaspa fiyatlarını almak için uç nokta.",
+        "coinsupply": "Dolaşımdaki ve maksimum arz dahil olmak üzere coin arzı ayrıntıları için uç nokta.",
+        "halving": "Bir sonraki yarılanma olayı hakkında bilgi sağlayan uç nokta.",
+        "hashrate": "Mevcut ağ hashrate'ini almak için uç nokta.",
+        "max": {
+          "hashrate": "Kaydedilen maksimum ağ hashrate'i için uç nokta."
+        },
+        "network": "Genel ağ bilgileri için uç nokta."
+      }
+    },
+    "working": {
+      "directory": "Çalışma Dizini"
+    },
+    "general": "Genel"
+  },
+  "settings.language": "Dil",
+  "settings.logDiagnostics": "Log & Diagnostics",
+  "settings.noDatabaseFilesFound": "No database files found.",
+  "settings.noSavedAddresses": "No saved addresses.",
+  "settings.theme": "Tema",
+  "status": {
+    "ready": "Ready",
+    "already": {
+      "up": {
+        "to": {
+          "date": {
+            "value": "Zaten güncel: {}"
+          }
+        }
+      }
+    },
+    "busy": "Meşgul",
+    "downloading": {
+      "from": {
+        "custom": {
+          "url": "Özel URL'den indiriliyor..."
+        }
+      },
+      "hash": {
+        "file": {
+          "value": "Özet (Hash) dosyası {0} indiriliyor..."
+        }
+      },
+      "value": "{} indiriliyor..."
+    },
+    "graph": {
+      "is": {
+        "interactive": {
+          "zoom": {
+            "pan": "Grafik etkileşimlidir (yakınlaştırma/kaydırma)"
+          }
+        }
+      }
+    },
+    "loading": "Yükleniyor...",
+    "unknown": "Bilinmeyen"
+  },
+  "status.ready": "Hazır",
+  "tabs": {
+    "explorer": "Explorer",
+    "analysis": "Analysis",
+    "log": "Log",
+    "settings": "Settings",
+    "kaspaNode": "Kaspa Düğümü",
+    "kaspaBridge": "Kaspa Köprüsü",
+    "topAddresses": "En İyi Adresler"
+  },
+  "tabs.analysis": "Analiz",
+  "tabs.explorer": "Gezgin",
+  "tabs.log": "Günlük",
+  "tabs.settings": "Ayarlar",
+  "topAddresses.noTopAddressesLoaded": "No top addresses loaded.",
+  "transactions": "işlemler",
+  "transfer": "transfer",
+  "ui": {
+    "shell": {
+      "shelllanguageselect": {
+        "shellcurrencyselect": {
+          "select": {
+            "input": {
+              "textarea": {
+                "pointer": {}
+              }
+            }
+          },
+          "pointer": {
+            "events": {
+              "auto": {
+                "important": {}
+              }
+            }
+          }
+        }
+      },
+      "kaspagateway": {
+        "v0": {
+          "1": {
+            "0": "KaspaGateway V0.1.0"
+          }
+        }
+      },
+      "usd": "USD",
+      "kas": "KAS",
+      "sar": "SAR",
+      "eur": "EUR",
+      "dark": "Dark",
+      "superhero": "Superhero",
+      "kaspa": {
+        "gateway": {
+          "links": "Kaspa Gateway links"
+        }
+      },
+      "slate": "Slate",
+      "midnight": "Midnight",
+      "blue": "Blue",
+      "waiting": {
+        "for": {
+          "live": {
+            "update": "Waiting for live update"
+          }
+        }
+      },
+      "current": {
+        "date": {
+          "and": {
+            "time": "Current date and time"
+          }
+        }
+      },
+      "en": "en",
+      "ar": "ar",
+      "de": "de",
+      "es": "es",
+      "fr": "fr",
+      "hi": "hi",
+      "id": "id",
+      "ja": "ja",
+      "ko": "ko",
+      "ru": "ru",
+      "tr": "tr",
+      "zh": {
+        "cn": "zh-CN"
+      },
+      "main": {
+        "tabs": "Main tabs"
+      },
+      "application": {
+        "status": {
+          "and": {
+            "links": "Application status and links"
+          }
+        }
+      }
+    },
+    "analysis": {
+      "cancel": {
+        "analysis": "Cancel Analysis"
+      },
+      "save": {
+        "as": {
+          "csv": "Save as CSV",
+          "html": "Save as HTML",
+          "pdf": "Save as PDF"
+        }
+      },
+      "total": {
+        "in": "Total In",
+        "out": "Total Out"
+      },
+      "net": {
+        "flow": {
+          "amount": "Net Flow / Amount"
+        }
+      },
+      "avg": {
+        "in": "Avg In",
+        "out": "Avg Out"
+      },
+      "max": {
+        "in": "Max In",
+        "out": "Max Out"
+      },
+      "peers": "Peers",
+      "first": "First",
+      "last": "Last",
+      "days": "Days",
+      "from": "From:",
+      "to": "To:",
+      "type": "Type:",
+      "in": "IN",
+      "out": "OUT",
+      "direction": "Direction:",
+      "reset": {
+        "filter": "Reset Filter"
+      },
+      "counterparty": {
+        "breakdown": "Counterparty Breakdown"
+      },
+      "known": {
+        "name": {
+          "date": {
+            "time": {
+              "sort": "Known Name / Date/Time ↕"
+            }
+          }
+        }
+      },
+      "address": {
+        "transaction": {
+          "id": "Address / Transaction ID"
+        }
+      },
+      "txs": {
+        "dir": "TXs / Dir"
+      },
+      "block": "Block",
+      "load": {
+        "an": {
+          "address": {
+            "to": {
+              "see": {
+                "analysis": "Load an address to see analysis."
+              }
+            }
+          }
+        }
+      },
+      "average": {
+        "inflow": {
+          "kas": "Average Inflow (KAS)"
+        },
+        "outflow": {
+          "kas": "Average Outflow (KAS)"
+        }
+      },
+      "open": {
+        "from": {
+          "date": {
+            "calendar": "Open from date calendar"
+          }
+        },
+        "to": {
+          "date": {
+            "calendar": "Open to date calendar"
+          }
+        }
+      },
+      "search": {
+        "by": {
+          "address": {
+            "transaction": "Search by Address/Transaction..."
+          }
+        }
+      },
+      "loadAddressPrompt": "Analizi görmek için bir adres yükleyin.",
+      "last30Days": "Son 30 gün",
+      "last90Days": "Son 90 gün",
+      "lastYear": "Geçen yıl"
+    },
+    "explorer": {
+      "select": {
+        "saved": {
+          "address": "Select saved address..."
+        }
+      },
+      "balance": "Balance:",
+      "date": {
+        "time": {
+          "sort": "Date/Time ↕"
+        }
+      },
+      "transaction": {
+        "id": {
+          "sort": "Transaction ID ↕"
+        },
+        "table": {
+          "font": {
+            "size": "Transaction Table Font Size:"
+          }
+        }
+      },
+      "direction": {
+        "sort": "Direction ↕"
+      },
+      "amount": {
+        "kas": {
+          "sort": "Amount (KAS) ↕"
+        }
+      },
+      "value": {
+        "usd": {
+          "sort": "Value (USD) ↕"
+        }
+      },
+      "type": {
+        "sort": "Type ↕"
+      },
+      "yyyy": {
+        "mm": {
+          "dd": "YYYY-MM-DD"
+        }
+      },
+      "open": {
+        "calendar": "Open calendar"
+      },
+      "decrease": {
+        "font": {
+          "size": "Decrease font size"
+        }
+      },
+      "increase": {
+        "font": {
+          "size": "Increase font size"
+        }
+      },
+      "noSavedAddresses": "Kaydedilmiş adres yok"
+    },
+    "kaspa": {
+      "bridge": {
+        "kaspa": {
+          "bridge": {
+            "runtime": "Kaspa Bridge Runtime"
+          }
+        }
+      },
+      "node": {
+        "kaspa": {
+          "node": {
+            "runtime": "Kaspa Node Runtime"
+          }
+        }
+      }
+    },
+    "log": {
+      "severity": "Severity:",
+      "trace": "TRACE",
+      "debug": "DEBUG",
+      "info": "INFO",
+      "warn": "WARN",
+      "font": {
+        "size": "Font Size:"
+      },
+      "copy": {
+        "log": "Copy Log"
+      },
+      "search": {
+        "log": {
+          "text": "Search log text..."
+        }
+      },
+      "log": {
+        "font": {
+          "size": "Log font size"
+        }
+      },
+      "application": {
+        "log": {
+          "output": "Application log output"
+        }
+      }
+    },
+    "settings": {
+      "api": {
+        "and": {
+          "amp": {
+            "performance": "API &amp; Performance"
+          },
+          "performance": {
+            "tabs": "API and performance tabs"
+          }
+        },
+        "key": "api_key"
+      },
+      "english": {
+        "en": "English (en)"
+      },
+      "arabic": {
+        "ar": "Arabic (ar)"
+      },
+      "german": {
+        "de": "German (de)"
+      },
+      "spanish": {
+        "es": "Spanish (es)"
+      },
+      "french": {
+        "fr": "French (fr)"
+      },
+      "hindi": {
+        "hi": "Hindi (hi)"
+      },
+      "indonesian": {
+        "id": "Indonesian (id)",
+        "rupiah": "Indonesian Rupiah"
+      },
+      "japanese": {
+        "ja": "Japanese (ja)",
+        "yen": "Japanese Yen"
+      },
+      "korean": {
+        "ko": "Korean (ko)"
+      },
+      "russian": {
+        "ru": "Russian (ru)",
+        "ruble": "Russian Ruble"
+      },
+      "turkish": {
+        "tr": "Turkish (tr)",
+        "lira": "Turkish Lira"
+      },
+      "chinese": {
+        "simplified": {
+          "zh": {
+            "cn": "Chinese (Simplified) (zh-CN)"
+          }
+        },
+        "yuan": "Chinese Yuan"
+      },
+      "us": {
+        "dollar": "US Dollar"
+      },
+      "saudi": {
+        "riyal": "Saudi Riyal"
+      },
+      "euro": "Euro",
+      "british": {
+        "pound": "British Pound"
+      },
+      "swiss": {
+        "franc": "Swiss Franc"
+      },
+      "australian": {
+        "dollar": "Australian Dollar"
+      },
+      "canadian": {
+        "dollar": "Canadian Dollar"
+      },
+      "south": {
+        "korean": {
+          "won": "South Korean Won"
+        }
+      },
+      "indian": {
+        "rupee": "Indian Rupee"
+      },
+      "hong": {
+        "kong": {
+          "dollar": "Hong Kong Dollar"
+        }
+      },
+      "singapore": {
+        "dollar": "Singapore Dollar"
+      },
+      "brazilian": {
+        "real": "Brazilian Real"
+      },
+      "logging": {
+        "level": "Logging Level:"
+      },
+      "backup": {
+        "directory": "Backup Directory"
+      },
+      "default": "default",
+      "kaspa": {
+        "org": "Kaspa.org",
+        "api": {
+          "endpoints": "⊟ Kaspa API Endpoints"
+        },
+        "address": {
+          "sort": "Kaspa Address ↕"
+        }
+      },
+      "local": {
+        "node": "Local Node"
+      },
+      "custom": "Custom",
+      "base": "Base:",
+      "page": {
+        "limit": "Page Limit",
+        "delay": {
+          "sec": "Page Delay (sec)"
+        }
+      },
+      "address": {
+        "names": "address_names"
+      },
+      "blockdag": {
+        "info": "blockdag_info"
+      },
+      "blockreward": "blockreward",
+      "coinsupply": "coinsupply",
+      "full": {
+        "transactions": "full_transactions",
+        "url": {
+          "preview": "Full URL Preview:"
+        }
+      },
+      "halving": "halving",
+      "kaspad": "kaspad",
+      "max": {
+        "hashrate": "max_hashrate"
+      },
+      "top": {
+        "addresses": "top_addresses"
+      },
+      "explorer": {
+        "urls": "⊟ Explorer URLs"
+      },
+      "transaction": "transaction",
+      "external": {
+        "apis": "⊟ External APIs"
+      },
+      "coingecko": "coingecko",
+      "reset": {
+        "selected": "Reset Selected",
+        "to": {
+          "defaults": "Reset to Defaults"
+        }
+      },
+      "description": "Description:",
+      "path": "Path:",
+      "price": {
+        "cache": {
+          "hours": "Price Cache (hours)"
+        }
+      },
+      "network": {
+        "cache": {
+          "hours": "Network Cache (hours)"
+        }
+      },
+      "refresh": {
+        "interval": {
+          "seconds": "Refresh Interval (seconds)"
+        },
+        "list": "Refresh List"
+      },
+      "name": {
+        "sort": "Name ↕"
+      },
+      "add": {
+        "edit": {
+          "address": "Add/Edit Address"
+        }
+      },
+      "delete": {
+        "address": "Delete Address"
+      },
+      "last": {
+        "updated": "Last Updated: —"
+      },
+      "known": {
+        "name": {
+          "sort": "Known Name ↕"
+        }
+      },
+      "balance": {
+        "sort": "Balance ↕"
+      },
+      "loading": {
+        "database": {
+          "status": "Loading database status..."
+        }
+      },
+      "settings": {
+        "tabs": "Settings tabs"
+      },
+      "browse": "Browse",
+      "clear": "Clear",
+      "choose": {
+        "base": "Choose base"
+      },
+      "managed": {
+        "addresses": "Managed addresses"
+      }
+    },
+    "top": {
+      "addresses": {
+        "last": {
+          "updated": "Last Updated:"
+        },
+        "rank": {
+          "sort": "Rank ↕"
+        },
+        "address": {
+          "sort": "Address ↕"
+        },
+        "balance": {
+          "kas": {
+            "sort": "Balance (KAS) ↕"
+          }
+        },
+        "search": {
+          "by": {
+            "rank": {
+              "name": {
+                "or": {
+                  "address": "Search by Rank, Name, or Address..."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "ui.analysis.net": "Net",
+  "ui.analysis.reset.filter": "Filtreyi sıfırla",
+  "ui.analysis.save.as.csv": "CSV olarak kaydet",
+  "ui.analysis.save.as.html": "HTML olarak kaydet",
+  "ui.analysis.save.as.pdf": "PDF olarak kaydet",
+  "ui.explorer.amount.kas.sort": "Tutar (KAS) ↕",
+  "ui.explorer.balance": "Bakiye:",
+  "ui.explorer.date.time.sort": "Tarih/Saat ↕",
+  "ui.explorer.direction.sort": "Yön ↕",
+  "ui.explorer.select.saved.address": "Kayıtlı adres seçin...",
+  "ui.explorer.transaction.id.sort": "İşlem kimliği ↕",
+  "ui.explorer.transaction.table.font.size": "İşlem tablosu yazı boyutu:",
+  "ui.explorer.type.sort": "Tür ↕",
+  "ui.explorer.value.usd.sort": "Değer (USD) ↕",
+  "ui.runtime.logsUnavailable": "Günlükler kullanılamıyor:",
+  "ui.settings.base.url": "⊟ Base URL",
+  "ui.settings.default.app.data.directory": "directory",
+  "ui.settings.default.backup.directory": "directory",
+  "ui.settings.default.export.directory": "directory",
+  "ui.settings.default.log.directory": "directory",
+  "ui.settings.kaspa.address": "Kaspa Address:",
+  "ui.settings.name": "Name:",
+  "ui.shell.kaspa.green": "Kaspa Green",
+  "ui.shell.kaspa.live.network.metrics": "metrics",
+  "validation": {
+    "missing": {
+      "advanced": {
+        "libraries": {
+          "networkx": {
+            "scikit": {
+              "learn": "Gelişmiş kütüphaneler eksik (networkx, scikit-learn)."
+            }
+          }
+        }
+      }
+    },
+    "please": {
+      "select": {
+        "at": {
+          "least": {
+            "one": {
+              "currency": "Lütfen en az bir para birimi seçin.",
+              "language": "Lütfen en az bir dil seçin."
+            }
+          }
+        }
+      }
+    },
+    "user": {
+      "aborted": {
+        "update": {
+          "due": {
+            "to": {
+              "missing": {
+                "hash": {
+                  "file": "Özet dosyası eksik olduğu için kullanıcı güncellemeyi iptal etti."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "actions.save.settings": "Ayarları Kaydet",
+  "log.copied": "Kopyalandı",
+  "log.deleted": "Silindi",
+  "common.search": "Ara",
+  "common.autoScroll": "Otomatik kaydırma",
+  "common.all": "TÜMÜ",
+  "ui.analysis.address": "Adres",
+  "ui.analysis.counterparty": "Karşı taraf",
+  "ui.analysis.loadAddressPrompt": "Analizi görmek için bir adres yükleyin.",
+  "ui.analysis.last30Days": "Son 30 gün",
+  "ui.analysis.last90Days": "Son 90 gün",
+  "ui.analysis.lastYear": "Geçen yıl",
+  "ui.explorer.noSavedAddresses": "Kaydedilmiş adres yok"
+}

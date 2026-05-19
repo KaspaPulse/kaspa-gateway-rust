@@ -1,0 +1,2394 @@
+{
+  "actions": {
+    "add": "추가",
+    "backup": "백업",
+    "browse": "찾아보기...",
+    "cancel": "취소",
+    "clear": {
+      "caches": "캐시 지우기",
+      "fields": "필드 지우기",
+      "folder": {
+        "warning": "'{}' 폴더의 *모든* 내용을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+      },
+      "log": "로그 지우기",
+      "logs": {
+        "warning": "현재 로그 핸들러를 종료하고 로그 폴더에서 모든 .log 파일을 삭제한 다음 로깅을 다시 시작합니다. 계속하시겠습니까?"
+      }
+    },
+    "copy": "복사",
+    "delete": "삭제",
+    "edit": {
+      "endpoint": "엔드포인트 편집"
+    },
+    "export": {
+      "addresses": "주소 내보내기",
+      "path": "내보내기 경로",
+      "results": "결과 내보내기:",
+      "successful": "내보내기 성공"
+    },
+    "fetch": "가져오기",
+    "filter": "필터",
+    "import": {
+      "addresses": "주소 가져오기",
+      "successful": "가져오기 성공"
+    },
+    "load": {
+      "address": "주소 로드",
+      "an": {
+        "address": {
+          "to": {
+            "see": {
+              "transactions": "주소를 로드하여 트랜잭션을 확인하세요."
+            }
+          }
+        }
+      }
+    },
+    "open": {
+      "exported": {
+        "file": "지금 여시겠습니까?"
+      }
+    },
+    "refresh": "새로고침",
+    "reset": "재설정",
+    "restart": {
+      "required": "재시작 필요"
+    },
+    "restore": "복원",
+    "save": "저장",
+    "search": "검색",
+    "start": {
+      "with": {
+        "windows": "Windows 시작 시 실행"
+      }
+    },
+    "update": "업데이트"
+  },
+  "addresses": "주소",
+  "analysis": {
+    "analysis": "분석",
+    "charts": "차트",
+    "deep": {
+      "analysis": {
+        "complete": "심층 분석 완료"
+      }
+    },
+    "loading": {
+      "analysis": "분석 로드 중..."
+    },
+    "network": {
+      "graph": {
+        "and": {
+          "cluster": {
+            "analysis": {
+              "are": {
+                "ready": "네트워크 그래프 및 클러스터 분석이 준비되었습니다."
+              }
+            }
+          }
+        }
+      }
+    },
+    "run": {
+      "analysis": "분석 실행"
+    },
+    "standard": {
+      "analysis": "표준 분석"
+    },
+    "starting": {
+      "deep": {
+        "analysis": "심층 분석 시작 중..."
+      }
+    },
+    "summary": "요약",
+    "avg": {
+      "daily": {
+        "net": {
+          "flow": "일일 평균 순유입"
+        }
+      }
+    }
+  },
+  "analysis.counterparties": "Counterparties",
+  "analysis.counterparty": "Counterparty",
+  "analysis.incoming": "Incoming",
+  "analysis.net": "Net",
+  "analysis.noCounterpartyRowsAvailable": "No counterparty rows available.",
+  "analysis.outgoing": "Outgoing",
+  "analysis.transactions": "Transactions",
+  "app": {
+    "title": "Kaspa Gateway"
+  },
+  "bridge": {
+    "bridge": {
+      "1": "브리지 1",
+      "2": "브리지 2",
+      "files": {
+        "are": {
+          "already": {
+            "up": {
+              "to": {
+                "date": "브리지 파일이 이미 최신 버전입니다."
+              }
+            }
+          }
+        }
+      },
+      "is": {
+        "already": {
+          "running": "브리지가 이미 실행 중입니다."
+        },
+        "not": {
+          "running": "브리지가 실행 중이지 않습니다."
+        }
+      },
+      "update": {
+        "complete": "브리지 업데이트 완료."
+      }
+    },
+    "enable": {
+      "bridge": {
+        "2": "브리지 2 활성화"
+      }
+    },
+    "kaspa": {
+      "bridge": "Kaspa 브리지"
+    },
+    "please": {
+      "stop": {
+        "bridge": {
+          "2": {
+            "before": {
+              "disabling": {
+                "it": "비활성화하기 전에 브리지 2를 중지하십시오."
+              }
+            }
+          }
+        }
+      }
+    },
+    "tabs": {
+      "kaspabridge": "Kaspa Bridge"
+    }
+  },
+  "bridge.serviceEventPlanningDescription": "KGW service-event planning for all bridges in parallel. mainnet/testnet10 use master; testnet12 uses tn12.",
+  "coinbase": "코인베이스",
+  "common": {
+    "loading": "Loading",
+    "all": "전체",
+    "action": {
+      "moved": "작업 이동됨"
+    },
+    "advanced": "고급",
+    "are": {
+      "you": {
+        "sure": {
+          "you": {
+            "want": {
+              "to": {
+                "exit": "종료하시겠습니까?"
+              }
+            }
+          }
+        }
+      }
+    },
+    "automatic": {
+      "refresh": "자동 새로고침"
+    },
+    "available": {
+      "files": "사용 가능한 파일:"
+    },
+    "backoff": {
+      "factor": "백오프 팩터"
+    },
+    "base": {
+      "url": "기본 URL"
+    },
+    "cache": {
+      "cleared": {
+        "successfully": "캐시가 성공적으로 지워졌습니다."
+      }
+    },
+    "caching": "캐싱",
+    "calculating": "계산 중...",
+    "cancel": {
+      "tooltip": "현재 트랜잭션 가져오기 작업을 중지합니다"
+    },
+    "cancelling": "취소 중...",
+    "check": {
+      "for": {
+        "updates": {
+          "on": {
+            "startup": "시작 시 업데이트 확인"
+          }
+        }
+      }
+    },
+    "checking": {
+      "for": {
+        "updates": "업데이트 확인 중..."
+      },
+      "latest": {
+        "version": {
+          "for": {
+            "value": "{}의 최신 버전을 확인하는 중..."
+          }
+        }
+      }
+    },
+    "clearing": {
+      "folder": "폴더 비우는 중:",
+      "local": {
+        "data": {
+          "and": {
+            "starting": {
+              "full": {
+                "redownload": "로컬 데이터 지우고 전체 다시 다운로드 시작 중..."
+              }
+            }
+          }
+        }
+      }
+    },
+    "click": {
+      "no": {
+        "to": {
+          "select": {
+            "a": {
+              "custom": {
+                "location": "사용자 지정 위치를 선택하려면 '아니요'를 클릭하십시오:"
+              }
+            }
+          }
+        }
+      },
+      "yes": {
+        "to": {
+          "download": {
+            "to": {
+              "default": {
+                "location": "기본 위치에 다운로드하려면 '예'를 클릭하십시오:"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cluster": "클러스터",
+    "command": "명령",
+    "compact": {
+      "database": "데이터베이스 압축"
+    },
+    "compacting": {
+      "database": "데이터베이스 압축 중..."
+    },
+    "confirm": {
+      "action": "작업 확인",
+      "deletion": "삭제 확인",
+      "file": {
+        "deletion": "파일 삭제 확인"
+      }
+    },
+    "continue": "계속하시겠습니까?",
+    "controls": "컨트롤",
+    "db": {
+      "and": {
+        "performance": "DB 및 성능"
+      },
+      "file": "DB 파일",
+      "size": "DB 크기"
+    },
+    "daily": "매일",
+    "database": {
+      "maintenance": "데이터베이스 유지보수"
+    },
+    "date": {
+      "time": "날짜/시간"
+    },
+    "deleting": {
+      "databases": "데이터베이스 삭제 중..."
+    },
+    "description": "설명",
+    "details": "세부 정보",
+    "direction": "방향",
+    "displayed": {
+      "currencies": "표시된 통화",
+      "tabs": "표시된 탭"
+    },
+    "download": {
+      "file": "파일 다운로드",
+      "cancelled": {
+        "by": {
+          "user": "사용자가 다운로드를 취소했습니다."
+        }
+      },
+      "complete": {
+        "attempting": {
+          "to": {
+            "replace": {
+              "file": "다운로드 완료. 파일 교체 시도 중..."
+            }
+          }
+        }
+      }
+    },
+    "duration": {
+      "days": "기간 (일)"
+    },
+    "enable": {
+      "auto": {
+        "refresh": "자동 새로고침 활성화"
+      }
+    },
+    "expected": {
+      "sha256": {
+        "value": "예상 SHA256: {}"
+      }
+    },
+    "extracting": {
+      "value": {
+        "from": {
+          "value": "{1}에서 {0} 추출 중..."
+        }
+      }
+    },
+    "false": "거짓",
+    "fetch": {
+      "tooltip": "선택한 주소의 트랜잭션 가져오기를 시작합니다"
+    },
+    "files": {
+      "deleted": {
+        "successfully": "파일이 성공적으로 삭제되었습니다."
+      }
+    },
+    "find": {
+      "next": "다음 찾기",
+      "previous": "이전 찾기"
+    },
+    "font": {
+      "size": "글꼴 크기"
+    },
+    "force": {
+      "fetch": "강제 가져오기"
+    },
+    "frequency": "빈도",
+    "from": {
+      "date": "시작 날짜:"
+    },
+    "full": {
+      "url": {
+        "preview": "전체 URL 미리보기"
+      }
+    },
+    "general": "일반",
+    "grand": {
+      "total": "총 합계"
+    },
+    "hash": {
+      "mismatch": {
+        "for": {
+          "value": {
+            "download": {
+              "aborted": "{value}의 해시가 일치하지 않습니다. 다운로드가 중단되었습니다."
+            }
+          }
+        }
+      },
+      "verified": {
+        "successfully": "해시가 성공적으로 확인되었습니다."
+      }
+    },
+    "initializing": "초기화 중...",
+    "kb": "KB",
+    "known": {
+      "name": "알려진 이름"
+    },
+    "last": {
+      "3": {
+        "days": "최근 3일",
+        "months": "최근 3개월"
+      },
+      "6": {
+        "months": "최근 6개월"
+      },
+      "modified": "최종 수정",
+      "month": "지난 달",
+      "network": {
+        "update": {
+          "value": "마지막 네트워크 업데이트: {}"
+        }
+      },
+      "updated": "마지막 업데이트",
+      "week": "지난 주",
+      "year": "지난 해"
+    },
+    "latest": {
+      "version": "최신 버전"
+    },
+    "legend": "범례",
+    "local": {
+      "version": "로컬 버전"
+    },
+    "max": {
+      "pages": "최대 페이지",
+      "workers": "최대 작업자"
+    },
+    "monthly": "매월",
+    "name": "이름",
+    "network": "네트워크",
+    "no": {
+      "data": {
+        "to": {
+          "display": "표시할 데이터가 없습니다",
+          "export": "내보낼 데이터가 없습니다"
+        }
+      },
+      "database": {
+        "selected": "선택된 데이터베이스가 없습니다"
+      },
+      "matches": {
+        "found": "일치하는 항목이 없습니다"
+      },
+      "selection": "선택 없음",
+      "significant": {
+        "anomalies": {
+          "detected": "중요한 이상이 감지되지 않았습니다"
+        }
+      }
+    },
+    "not": {
+      "implemented": "구현되지 않음"
+    },
+    "nothing": "없음",
+    "ok": "확인",
+    "only": {
+      "https": {
+        "urls": {
+          "are": {
+            "allowed": {
+              "for": {
+                "security": "보안을 위해 HTTPS URL만 허용됩니다."
+              }
+            }
+          }
+        }
+      }
+    },
+    "page": "페이지",
+    "peak": {
+      "activity": {
+        "hour": {
+          "s": "최대 활동 시간"
+        }
+      }
+    },
+    "please": {
+      "select": {
+        "only": {
+          "one": {
+            "database": {
+              "for": {
+                "this": {
+                  "action": "이 작업을 위해 하나의 데이터베이스만 선택하십시오."
+                }
+              }
+            }
+          }
+        }
+      },
+      "wait": {
+        "for": {
+          "the": {
+            "current": {
+              "fetch": {
+                "or": {
+                  "export": {
+                    "to": {
+                      "complete": {
+                        "before": {
+                          "closing": "닫기 전에 현재 가져오기 또는 내보내기가 완료될 때까지 기다리십시오."
+                        }
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "complete": "현재 가져오기가 완료될 때까지 기다리십시오."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "process": {
+      "terminated": "프로세스 종료됨"
+    },
+    "quit": "종료",
+    "rank": "순위",
+    "reason": "이유",
+    "release": {
+      "has": {
+        "no": {
+          "published": {
+            "at": {
+              "date": "릴리스에 'published_at' 날짜가 없습니다."
+            }
+          }
+        }
+      }
+    },
+    "rename": "이름 바꾸기",
+    "retry": {
+      "attempts": "재시도 횟수",
+      "fetch": "오류가 발생했습니다: {}\\n\\n다시 가져오시겠습니까?"
+    },
+    "select": {
+      "all": "모두 선택",
+      "date": "날짜 선택",
+      "download": {
+        "location": "다운로드 위치 선택"
+      }
+    },
+    "set": {
+      "default": "기본값으로 설정"
+    },
+    "severity": "심각도",
+    "size": {
+      "kb": "크기 (KB)"
+    },
+    "skipping": {
+      "hash": {
+        "verification": {
+          "as": {
+            "no": {
+              "valid": {
+                "hash": {
+                  "was": {
+                    "found": {
+                      "for": {
+                        "value": "{0}에 대한 유효한 해시를 찾을 수 없어 해시 확인을 건너뜕니다."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "startup": {
+      "delay": {
+        "sec": "시작 지연 (초):"
+      }
+    },
+    "success": "성공",
+    "this": {
+      "will": {
+        "overwrite": "이것은 덮어쓰게 됩니다"
+      }
+    },
+    "times": {
+      "received": "수신 횟수",
+      "sent": "발신 횟수"
+    },
+    "to": {
+      "date": "종료 날짜:"
+    },
+    "tooltip": {
+      "appdir": "데이터 저장 디렉토리.",
+      "archival": "아카이브 노드로 실행: 오래된 블록 데이터 삭제 방지 (경고: 높은 디스크 사용량).",
+      "async": {
+        "threads": "비동기 스레드 수 지정 (기본값: 16)."
+      },
+      "backoff": {
+        "factor": "재시도 지연 시간 승수 (지연 시간 = backoff * 2^시도 횟수). (권장: 0.5)"
+      },
+      "configfile": "설정 파일 경로.",
+      "connect": "시작 시 지정된 피어에만 연결.",
+      "disable": {
+        "upnp": "UPnP 비활성화."
+      },
+      "enable": {
+        "unsynced": {
+          "mining": "노드가 동기화되지 않았을 때 RPC로부터 블록 수락 허용 (주로 테스트용)."
+        }
+      },
+      "externalip": "피어에게 수신한다고 주장하는 로컬 주소 목록에 소켓 주소(ip:port) 추가。",
+      "hcp": "상태 확인 포트.",
+      "ks": {
+        "extranonce": "엑스트라논스 크기 (바이트) (기본값: 0).",
+        "mindiff": "마이너를 위한 최소 난이도 (기본값: 8192)。",
+        "pow2clamp": "난이도를 2의 거듭제곱으로 고정 (ASIC에 필요)。",
+        "prom": "Prometheus 메트릭스 포트 (예: :2114)。",
+        "sharespermin": "vardiff를 위한 분당 목표 공유 수 (기본값: 20)。",
+        "stats": "콘솔에 해시레이트 및 연결 통계 표시。",
+        "stratum": "마이너 연결을 수신할 인터페이스:포트 (예: :5555).",
+        "vardiff": "가변 난이도 (vardiff) 활성화。",
+        "vardiffstats": "콘솔에 vardiff 통계 표시。"
+      },
+      "listen": "연결 수신 인터페이스:포트 추가 (기본 모든 인터페이스 포트: 16111, 테스트넷: 16211)。",
+      "max": {
+        "pages": "단일 주소에 대해 가져올 총 페이지 수에 대한 안전 한도입니다。",
+        "workers": "네트워크 요청을 위한 최대 병렬 스레드 수입니다。"
+      },
+      "maxinpeers": "최대 인바운드 피어 수 (기본값: 128).",
+      "netsuffix": "테스트넷 네트워크 접미사 번호。",
+      "network": {
+        "cache": {
+          "hours": "새 데이터를 가져오기 전에 네트워크 데이터(해시레이트, 난이도)를 보관할 시간입니다。"
+        }
+      },
+      "nodnsseed": "피어를 위한 DNS 시딩 비활성화。",
+      "outpeers": "대상 아웃바운드 피어 수 (기본값: 8)。",
+      "page": {
+        "delay": "속도 제한을 피하기 위해 페이지를 가져오는 사이에 대기할 시간(초)입니다。",
+        "limit": "API 요청당 가져올 최대 트랜잭션 수입니다. (권장: 100-1000)"
+      },
+      "ram": {
+        "scale": "메모리 할당 한계에 스케일 팩터 적용 (예: 8GB RAM의 경우 0.5)。"
+      },
+      "reset": {
+        "db": "노드 시작 전 데이터베이스 재설정. 서브네트워크 간 전환 시 필요。"
+      },
+      "retention": {
+        "period": {
+          "days": "데이터를 보관할 총 일수。"
+        }
+      },
+      "retry": {
+        "attempts": "실패한 API 요청을 재시도할 횟수입니다. (권장: 3-5)"
+      },
+      "sanity": "계산량이 많을 수 있는 다양한 온전성 검사 활성화。",
+      "uacomment": "사용자 에이전트에 추가할 주석。",
+      "yes": "모든 대화형 콘솔 질문에 '예'로 응답。"
+    },
+    "total": "합계",
+    "true": "참",
+    "type": "유형",
+    "ukn": "알수없음",
+    "url": {
+      "components": "URL 구성 요소"
+    },
+    "updated": "업데이트됨",
+    "updating": {
+      "value": "{} 업데이트 중..."
+    },
+    "use": {
+      "custom": {
+        "download": {
+          "url": "사용자 지정 다운로드 URL 사용"
+        },
+        "config": {
+          "yaml": "사용자 지정 config.yaml 사용"
+        }
+      }
+    },
+    "user": {
+      "accepted": {
+        "risk": {
+          "proceeding": {
+            "without": {
+              "hash": {
+                "verification": "사용자가 위험을 수락했습니다. 해시 확인 없이 진행합니다."
+              }
+            }
+          }
+        }
+      }
+    },
+    "value": "가치",
+    "version": "버전",
+    "weekly": "매주",
+    "copied": {
+      "to": {
+        "clipboard": "클립보드에 복사되었습니다."
+      }
+    },
+    "databases": {
+      "deleted": {
+        "successfully": "데이터베이스가 성공적으로 삭제되었습니다。"
+      }
+    },
+    "deleted": {
+      "successfully": "성공적으로 삭제되었습니다。"
+    },
+    "folder": {
+      "cleared": "폴더가 비워졌습니다。"
+    },
+    "lang": {
+      "ar": "아랍어",
+      "de": "독일어",
+      "en": "영어",
+      "es": "스페인어",
+      "fr": "프랑스어",
+      "hi": "힌디어",
+      "id": "인도네시아어",
+      "ja": "일본어",
+      "ko": "한국어",
+      "ru": "러시아어",
+      "tr": "터키어",
+      "zh": {
+        "cn": "중국어(간체)"
+      }
+    },
+    "search": "검색",
+    "autoScroll": "자동 스크롤"
+  },
+  "common.loading": "로딩 중",
+  "errors": {
+    "api": {
+      "timeout": {
+        "sec": "API 타임아웃 (초)"
+      }
+    },
+    "are": {
+      "you": {
+        "sure": {
+          "you": {
+            "want": {
+              "to": {
+                "delete": {
+                  "these": {
+                    "files": {
+                      "this": {
+                        "cannot": {
+                          "be": {
+                            "undone": "이 파일들을 정말 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "automatically": {
+      "restart": {
+        "the": {
+          "bridge": {
+            "if": {
+              "it": {
+                "crashes": {
+                  "or": {
+                    "loses": {
+                      "connection": {
+                        "to": {
+                          "the": {
+                            "node": "브리지가 충돌하거나 노드 연결이 끊어지면 자동으로 다시 시작합니다."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "node": {
+            "if": {
+              "it": {
+                "crashes": {
+                  "or": {
+                    "stops": {
+                      "unexpectedly": "노드가 충돌하거나 예기치 않게 중지되면 자동으로 다시 시작합니다."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "blocked": {
+      "potential": {
+        "path": {
+          "traversal": {
+            "attack": "잠재적인 경로 탐색 공격 차단됨:"
+          }
+        }
+      }
+    },
+    "cannot": {
+      "delete": {
+        "default": {
+          "profile": "기본 프로필을 삭제할 수 없습니다"
+        }
+      },
+      "rename": {
+        "default": {
+          "profile": "기본 프로필의 이름을 바꿀 수 없습니다"
+        }
+      }
+    },
+    "compact": {
+      "warning": "데이터베이스 '{0}'를 압축하면 이전 데이터를 제거하고 공간을 최적화하기 위해 데이터베이스 파일이 다시 작성됩니다. 잠시 시간이 걸릴 수 있습니다. 계속하시겠습니까?"
+    },
+    "could": {
+      "not": {
+        "delete": {
+          "wal": {
+            "file": {
+              "value": {
+                "value": "WAL 파일 '{0}'을(를) 삭제할 수 없습니다: {1}"
+              }
+            }
+          },
+          "the": {
+            "database": "데이터베이스가 이 프로그램이나 다른 프로세스에서 사용 중이므로 삭제할 수 없습니다. 애플리케이션을 다시 시작한 후 다시 시도하십시오."
+          }
+        },
+        "open": {
+          "file": "파일을 열 수 없습니다:"
+        }
+      }
+    },
+    "database": {
+      "deletion": {
+        "failed": "데이터베이스 삭제 실패"
+      }
+    },
+    "directory": {
+      "not": {
+        "found": "디렉토리를 찾을 수 없습니다."
+      }
+    },
+    "error": "오류",
+    "failed": {
+      "to": {
+        "check": {
+          "version": {
+            "for": {
+              "value": "{}의 버전 확인에 실패했습니다."
+            }
+          }
+        },
+        "delete": {
+          "files": {
+            "check": {
+              "logs": "파일 삭제 실패. 로그를 확인하세요."
+            }
+          },
+          "some": {
+            "databases": {
+              "check": {
+                "logs": "일부 데이터베이스 삭제에 실패했습니다. 로그를 확인하십시오。"
+              }
+            }
+          }
+        },
+        "import": {
+          "addresses": "주소 가져오기에 실패했습니다:"
+        },
+        "save": {
+          "address": "주소 저장에 실패했습니다.",
+          "configuration": "설정 저장에 실패했습니다."
+        },
+        "update": {
+          "registry": "레지스트리 업데이트 실패:"
+        }
+      }
+    },
+    "file": {
+      "not": {
+        "found": "파일을 찾을 수 없습니다"
+      }
+    },
+    "files": {
+      "not": {
+        "found": "파일을 찾을 수 없음."
+      }
+    },
+    "invalid": {
+      "input": "잘못된 입력",
+      "kaspa": {
+        "address": "잘못된 Kaspa 주소"
+      }
+    },
+    "network": {
+      "error": "네트워크 오류"
+    },
+    "not": {
+      "found": "찾을 수 없음"
+    },
+    "security": {
+      "error": {
+        "invalid": {
+          "file": {
+            "path": {
+              "inside": {
+                "zip": "보안 오류: ZIP 파일 내 잘못된 파일 경로입니다."
+              }
+            }
+          }
+        }
+      },
+      "warning": "보안 경고",
+      "check": {
+        "failed": "보안 검사 실패."
+      }
+    },
+    "selective": {
+      "db": {
+        "delete": {
+          "warning": "선택한 다음 데이터베이스 파일을 영구적으로 삭제합니다:"
+        }
+      }
+    },
+    "this": {
+      "action": {
+        "cannot": {
+          "be": {
+            "undone": {
+              "are": {
+                "you": {
+                  "sure": "이 작업은 되돌릴 수 없습니다. 확실합니까?"
+                }
+              }
+            }
+          }
+        }
+      },
+      "will": {
+        "reset": {
+          "all": {
+            "settings": {
+              "to": {
+                "their": {
+                  "default": {
+                    "values": {
+                      "and": {
+                        "cannot": {
+                          "be": {
+                            "undone": {
+                              "are": {
+                                "you": {
+                                  "sure": "모든 설정을 기본값으로 재설정하며 되돌릴 수 없습니다. 확실합니까?"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tooltip": {
+      "timeout": "실패하기 전 API 응답을 기다릴 최대 시간(초)입니다. (권장: 10-30)"
+    },
+    "warning": {
+      "could": {
+        "not": {
+          "write": {
+            "version": {
+              "file": {
+                "value": "경고: 버전 파일을 쓸 수 없습니다: {0}。"
+              }
+            }
+          }
+        }
+      },
+      "hash": {
+        "file": {
+          "not": {
+            "found": {
+              "for": {
+                "custom": {
+                  "url": {
+                    "proceeding": {
+                      "without": {
+                        "hash": {
+                          "verification": "경고: 사용자 지정 URL에 대한 해시 파일을 찾을 수 없습니다. 해시 확인 없이 진행합니다."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "explorer": {
+    "address": "주소",
+    "addresses": {
+      "exported": {
+        "to": "주소 내보내기 위치"
+      },
+      "imported": "개의 주소를 가져왔습니다."
+    },
+    "analysis": {
+      "report": {
+        "for": {
+          "kaspa": {
+            "address": "Kaspa 주소 분석 보고서"
+          }
+        }
+      },
+      "for": {
+        "address": "주소 분석"
+      }
+    },
+    "applying": {
+      "filters": "필터 적용 중..."
+    },
+    "asset": {
+      "value": {
+        "not": {
+          "in": {
+            "latest": {
+              "release": "자산 {}이(가) 최신 릴리스에 없습니다."
+            }
+          }
+        }
+      }
+    },
+    "avg": {
+      "tx": {
+        "count": "평균 TX 수"
+      }
+    },
+    "balance": "잔액",
+    "block": {
+      "score": "블록 점수"
+    },
+    "building": {
+      "counterparty": {
+        "export": {
+          "data": "거래 상대방 내보내기 데이터 구축 중..."
+        }
+      }
+    },
+    "checking": {
+      "network": {
+        "for": {
+          "new": {
+            "transactions": "네트워크에서 새 트랜잭션 확인 중..."
+          }
+        }
+      }
+    },
+    "coinbase": {
+      "mining": "코인베이스 / 채굴"
+    },
+    "configuration": {
+      "saved": "설정이 저장되었습니다"
+    },
+    "counterparty": "상대방",
+    "enter": {
+      "kaspa": {
+        "address": {
+          "or": {
+            "select": {
+              "from": {
+                "dropdown": "Kaspa 주소를 입력하거나 드롭다운에서 선택하세요"
+              }
+            }
+          }
+        }
+      }
+    },
+    "explorer": "탐색기",
+    "exported": {
+      "on": "내보낸 날짜"
+    },
+    "fetching": {
+      "page": {
+        "value": {
+          "new": {
+            "txs": {
+              "value": "페이지 {} 가져오는 중 (새 TXs: {})..."
+            }
+          }
+        }
+      },
+      "transactions": "트랜잭션 가져오는 중..."
+    },
+    "first": {
+      "transaction": "첫 번째 트랜잭션"
+    },
+    "from": {
+      "address": {
+        "es": "보낸 주소"
+      }
+    },
+    "incoming": "수신",
+    "kaspa": {
+      "address": "Kaspa 주소",
+      "transaction": {
+        "report": "Kaspa 트랜잭션 보고서"
+      }
+    },
+    "last": {
+      "transaction": "마지막 트랜잭션"
+    },
+    "loading": {
+      "cached": {
+        "transactions": "캐시된 트랜잭션 로드 중..."
+      },
+      "transactions": {
+        "from": {
+          "local": {
+            "database": "로컬 데이터베이스에서 트랜잭션 로드 중..."
+          }
+        }
+      }
+    },
+    "main": {
+      "address": "메인 주소"
+    },
+    "manage": {
+      "addresses": "주소 관리"
+    },
+    "new": {
+      "address": {
+        "auto": {
+          "saved": {
+            "successfully": "새 주소가 성공적으로 자동 저장되었습니다."
+          }
+        }
+      }
+    },
+    "no": {
+      "addresses": {
+        "to": {
+          "export": "내보낼 주소가 없습니다."
+        }
+      },
+      "transactions": {
+        "for": {
+          "this": {
+            "counterparty": "이 거래 상대방에 대한 트랜잭션이 없습니다."
+          }
+        },
+        "match": {
+          "the": {
+            "current": {
+              "criteria": "현재 기준과 일치하는 트랜잭션이 없습니다."
+            }
+          }
+        },
+        "to": {
+          "analyze": "분석할 트랜잭션이 없습니다."
+        }
+      }
+    },
+    "outgoing": "발신",
+    "press": {
+      "fetch": {
+        "or": {
+          "apply": {
+            "filters": "'가져오기'를 누르거나 필터를 적용하십시오."
+          }
+        }
+      },
+      "refresh": {
+        "list": {
+          "to": {
+            "load": {
+              "top": {
+                "addresses": "상위 주소를 로드하려면 '목록 새로고침'을 누르십시오."
+              }
+            }
+          }
+        }
+      }
+    },
+    "right": {
+      "click": {
+        "an": {
+          "address": {
+            "to": {
+              "add": {
+                "it": {
+                  "to": {
+                    "my": {
+                      "addresses": "주소를 마우스 오른쪽 버튼으로 클릭하여 '내 주소'에 추가하세요."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "saved": {
+      "value": {
+        "total": {
+          "transactions": "총 {}개의 트랜잭션이 저장되었습니다..."
+        }
+      }
+    },
+    "scanning": {
+      "page": {
+        "value": {
+          "value": {
+            "new": {
+              "transactions": {
+                "found": "페이지 {} 스캔 중... ({}개의 새 트랜잭션 발견)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "starting": {
+      "fetch": {
+        "for": {
+          "address": {
+            "value": "주소 {}의 가져오기 시작..."
+          }
+        }
+      },
+      "transaction": {
+        "download": "트랜잭션 다운로드 시작..."
+      }
+    },
+    "txs": "TX",
+    "to": {
+      "address": {
+        "es": "받는 주소"
+      },
+      "get": {
+        "started": {
+          "enter": {
+            "a": {
+              "kaspa": {
+                "address": {
+                  "in": {
+                    "the": {
+                      "field": {
+                        "above": {
+                          "and": {
+                            "press": {
+                              "fetch": "시작하려면 위 필드에 Kaspa 주소를 입력하고 '가져오기'를 누르십시오."
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tooltip": {
+      "api": {
+        "address": "API 주소",
+        "balance": "특정 Kaspa 주소의 현재 잔액을 가져오기 위한 엔드포인트입니다。",
+        "blockdag": {
+          "info": "블록 수 및 난이도와 같은 BlockDAG에 대한 일반 정보를 제공하는 엔드포인트입니다."
+        },
+        "blockreward": "블록당 현재 보상을 확인하기 위한 엔드포인트입니다。",
+        "full": {
+          "transactions": "특정 주소에 대한 전체 트랜잭션 목록을 페이지별로 가져오기 위한 엔드포인트입니다。"
+        },
+        "top": {
+          "addresses": "가장 부유한 주소 목록을 가져오기 위한 엔드포인트입니다。"
+        },
+        "transaction": "블록 탐색기에서 특정 트랜잭션을 보기 위한 URL 템플릿입니다。"
+      },
+      "ks": {
+        "blockwait": "새 블록 템플릿 대기 시간 (예: 3s, 2000ms)."
+      },
+      "max": {
+        "tracked": {
+          "addresses": "UTXO 변경 이벤트를 위해 추적되는 (미리 할당된) 최대 주소 수 (기본값: 0)。"
+        }
+      }
+    },
+    "top": {
+      "addresses": "상위 주소"
+    },
+    "total": {
+      "transactions": "총 트랜잭션"
+    },
+    "transaction": {
+      "distribution": "트랜잭션 분포",
+      "fetching": "트랜잭션 가져오기",
+      "id": "트랜잭션 ID",
+      "network": {
+        "graph": {
+          "static": "트랜잭션 네트워크 그래프 (정적)"
+        }
+      },
+      "report": {
+        "for": {
+          "kaspa": {
+            "address": "Kaspa 주소 트랜잭션 보고서"
+          }
+        }
+      },
+      "table": {
+        "font": {
+          "size": "트랜잭션 테이블 글꼴 크기"
+        }
+      },
+      "url": "트랜잭션 URL",
+      "value": {
+        "kas": "트랜잭션 가치 (KAS)"
+      }
+    },
+    "transactions": "트랜잭션",
+    "updating": {
+      "transactions": "트랜잭션 업데이트 중..."
+    },
+    "tabs": {
+      "topaddresses": "Top Addresses"
+    }
+  },
+  "explorer.noTransactionsToDisplay": "표시할 트랜잭션이 없습니다.",
+  "explorer.total": "Total",
+  "incoming": "수신",
+  "links": {
+    "donations": "Donations",
+    "twitter": "Twitter",
+    "github": "GitHub"
+  },
+  "links.donations": "기부",
+  "log.tauriInvokeApiUnavailable": "Tauri invoke API is not available.",
+  "logs": {
+    "auto": {
+      "scroll": "자동 스크롤"
+    },
+    "check": {
+      "logs": {
+        "for": {
+          "details": "자세한 내용은 로그를 확인하세요."
+        }
+      }
+    },
+    "live": {
+      "log": "실시간 로그"
+    },
+    "log": "로그",
+    "logging": {
+      "and": {
+        "stats": "로깅 및 통계"
+      },
+      "level": "로깅 수준"
+    },
+    "network": {
+      "and": {
+        "logging": "네트워크 및 로깅"
+      }
+    },
+    "tooltip": {
+      "ks": {
+        "log": "동일 디렉토리의 파일에 로깅 활성화."
+      },
+      "logdir": "로그 출력 디렉토리.",
+      "nologfiles": "파일에 로그 저장 비활성화."
+    }
+  },
+  "metrics": {
+    "price": "가격",
+    "hashrate": "Hashrate",
+    "difficulty": "난이도",
+    "amount": {
+      "kas": "금액 (KAS)"
+    },
+    "avg": {
+      "inflow": {
+        "kas": "평균 유입 (KAS)"
+      },
+      "outflow": {
+        "kas": "평균 유출 (KAS)"
+      },
+      "net": {
+        "flow": {
+          "kas": "평균 순유입 (KAS)"
+        }
+      }
+    },
+    "kaspa": {
+      "analysis": {
+        "report": "Kaspa 분석 보고서"
+      },
+      "gateway": "metrics.kaspa.gateway"
+    },
+    "kaspagateway": "Kaspa 게이트웨이",
+    "largest": {
+      "inflow": {
+        "kas": "최대 유입 (KAS)"
+      },
+      "outflow": {
+        "kas": "최대 유출 (KAS)"
+      }
+    },
+    "last": {
+      "price": {
+        "update": {
+          "value": "마지막 가격 업데이트: {}"
+        }
+      }
+    },
+    "net": {
+      "flow": {
+        "kas": "순유입 (KAS)"
+      },
+      "volume": {
+        "kas": "순거래량 (KAS)"
+      }
+    },
+    "receivers": {
+      "outflow": "수신자 (유출)"
+    },
+    "senders": {
+      "inflow": "발신자 (유입)"
+    },
+    "tooltip": {
+      "ks": {
+        "kaspa": "kaspad gRPC 서버의 주소:포트 (예: 127.0.0.1:16110)."
+      },
+      "perf": {
+        "metrics": "성능 지표"
+      },
+      "price": {
+        "cache": {
+          "hours": "새 데이터를 가져오기 전에 가격 데이터를 보관할 시간입니다. (예: 0.25 = 15분)。"
+        }
+      }
+    },
+    "top": {
+      "10": {
+        "counterparties": {
+          "by": {
+            "net": {
+              "flow": "순유입별 상위 10개 거래 상대방"
+            }
+          }
+        }
+      },
+      "counterparties": "상위 거래 상대방"
+    },
+    "total": {
+      "inflow": {
+        "kas": "총 유입 (KAS)"
+      },
+      "outflow": {
+        "kas": "총 유출 (KAS)"
+      },
+      "received": {
+        "kas": "총 수신 (KAS)"
+      },
+      "sent": {
+        "kas": "총 발신 (KAS)"
+      }
+    },
+    "unique": {
+      "counterparties": "고유한 거래 상대방"
+    },
+    "value": {
+      "usd": "가치 (USD)"
+    }
+  },
+  "metrics.hashrate": "해시레이트",
+  "node": {
+    "kaspa": {
+      "node": "Kaspa 노드"
+    },
+    "node": {
+      "is": {
+        "not": {
+          "running": "노드가 실행 중이지 않습니다."
+        }
+      },
+      "size": {
+        "proportional": {
+          "to": {
+            "tx": {
+              "volume": "노드 크기는 TX 볼륨에 비례합니다"
+            }
+          }
+        }
+      }
+    },
+    "p2p": "P2P",
+    "rpc": "RPC",
+    "tooltip": {
+      "api": {
+        "kaspad": "API가 연결된 kaspad 노드에 대한 정보를 위한 엔드포인트입니다。"
+      },
+      "nogrpc": "gRPC 서버 비활성화.",
+      "rpclisten": "RPC 수신 주소",
+      "rpcmaxclients": "표준 연결을 위한 최대 RPC 클라이언트 수 (기본값: 128).",
+      "unsaferpc": "노드 상태에 영향을 주는 RPC 명령어 활성화。",
+      "utxoindex": "UTXO 인덱스 활성화 (탐색기 기능에 필요)。"
+    },
+    "tabs": {
+      "kaspanode": "Kaspa Node"
+    }
+  },
+  "node.serviceEventPlanningDescription": "KGW service-event planning for mainnet, testnet10, and testnet12. mainnet/testnet10 use master; testnet12 uses tn12.",
+  "outgoing": "발신",
+  "runtime.ready": "준비됨",
+  "runtime.shellErrorNavigationPreserved": "Shell/runtime error. Navigation was preserved.",
+  "settings": {
+    "language": "Language",
+    "currency": "통화",
+    "theme": "Theme",
+    "api": {
+      "and": {
+        "performance": "API 및 성능"
+      },
+      "endpoints": "API 엔드포인트",
+      "key": "API 키",
+      "performance": "API 성능",
+      "server": {
+        "profiles": "API 서버 프로필"
+      },
+      "settings": "API 설정",
+      "url": "API URL"
+    },
+    "active": {
+      "profile": "활성 프로필"
+    },
+    "autostart": {
+      "can": {
+        "only": {
+          "be": {
+            "set": {
+              "for": {
+                "the": {
+                  "installed": {
+                    "application": "자동 시작은 설치된 애플리케이션에만 설정할 수 있습니다."
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "is": {
+        "only": {
+          "available": {
+            "on": {
+              "windows": "자동 시작은 Windows에서만 사용할 수 있습니다."
+            }
+          }
+        }
+      }
+    },
+    "calculating": {
+      "currency": {
+        "values": "통화 가치 계산 중..."
+      }
+    },
+    "create": {
+      "a": {
+        "backup": {
+          "of": "백업 생성"
+        }
+      }
+    },
+    "custom": {
+      "paths": "사용자 지정 경로"
+    },
+    "database": {
+      "path": "데이터베이스 경로"
+    },
+    "deletion": {
+      "outside": {
+        "user": {
+          "data": {
+            "directory": {
+              "is": {
+                "not": {
+                  "allowed": "사용자 데이터 디렉토리 외부에서의 삭제는 허용되지 않습니다."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "display": {
+      "settings": "표시 설정"
+    },
+    "displayed": {
+      "languages": "표시된 언어",
+      "currencies": "표시할 통화",
+      "tabs": "표시할 탭"
+    },
+    "external": {
+      "apis": "외부 API"
+    },
+    "file": {
+      "paths": "파일 경로"
+    },
+    "kaspa": {
+      "api": {
+        "endpoints": "Kaspa API 엔드포인트"
+      }
+    },
+    "local": {
+      "or": {
+        "private": {
+          "network": {
+            "urls": {
+              "are": {
+                "not": {
+                  "allowed": {
+                    "for": {
+                      "api": {
+                        "base": {
+                          "url": "로컬 또는 사설 네트워크 URL은 API 기본 URL로 허용되지 않습니다."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "log": {
+      "path": "로그 경로"
+    },
+    "main": {
+      "settings": "주요 설정"
+    },
+    "page": {
+      "size": {
+        "api": {
+          "list": "페이지 크기 API 목록"
+        }
+      }
+    },
+    "path": {
+      "settings": {
+        "changed": {
+          "please": {
+            "restart": {
+              "the": {
+                "application": "경로 설정이 변경되었습니다. 애플리케이션을 다시 시작하십시오."
+              }
+            }
+          }
+        }
+      }
+    },
+    "paths": {
+      "and": {
+        "logging": "경로 및 로깅"
+      }
+    },
+    "performance": {
+      "settings": "성능 설정"
+    },
+    "select": {
+      "backup": {
+        "folder": {
+          "for": "백업 폴더 선택"
+        }
+      }
+    },
+    "settings": "설정",
+    "tooltip": {
+      "api": {
+        "coingecko": "CoinGecko에서 다양한 법정 화폐 대비 Kaspa 가격을 가져오기 위한 엔드포인트입니다。",
+        "coinsupply": "유통 공급량 및 최대 공급량을 포함한 코인 공급 세부 정보를 위한 엔드포인트입니다。",
+        "halving": "다음 반감기 이벤트에 대한 정보를 제공하는 엔드포인트입니다。",
+        "hashrate": "현재 네트워크 해시레이트를 가져오기 위한 엔드포인트입니다。",
+        "max": {
+          "hashrate": "기록된 최대 네트워크 해시레이트를 위한 엔드포인트입니다。"
+        },
+        "network": "일반 네트워크 정보를 위한 엔드포인트입니다。"
+      }
+    },
+    "working": {
+      "directory": "작업 디렉토리"
+    },
+    "general": "일반"
+  },
+  "settings.language": "언어",
+  "settings.logDiagnostics": "Log & Diagnostics",
+  "settings.noDatabaseFilesFound": "No database files found.",
+  "settings.noSavedAddresses": "No saved addresses.",
+  "settings.theme": "테마",
+  "status": {
+    "ready": "Ready",
+    "already": {
+      "up": {
+        "to": {
+          "date": {
+            "value": "이미 최신 버전입니다: {}"
+          }
+        }
+      }
+    },
+    "busy": "바쁨",
+    "downloading": {
+      "from": {
+        "custom": {
+          "url": "사용자 지정 URL에서 다운로드 중..."
+        }
+      },
+      "hash": {
+        "file": {
+          "value": "해시 파일 {0} 다운로드 중..."
+        }
+      },
+      "value": "{} 다운로드 중..."
+    },
+    "graph": {
+      "is": {
+        "interactive": {
+          "zoom": {
+            "pan": "그래프는 상호작용형입니다 (줌/이동)"
+          }
+        }
+      }
+    },
+    "loading": "로드 중...",
+    "unknown": "알 수 없음"
+  },
+  "status.ready": "준비됨",
+  "tabs": {
+    "explorer": "Explorer",
+    "analysis": "Analysis",
+    "log": "Log",
+    "settings": "Settings",
+    "kaspaNode": "Kaspa 노드",
+    "kaspaBridge": "Kaspa 브리지",
+    "topAddresses": "상위 주소"
+  },
+  "tabs.analysis": "분석",
+  "tabs.explorer": "탐색기",
+  "tabs.log": "로그",
+  "tabs.settings": "설정",
+  "topAddresses.noTopAddressesLoaded": "No top addresses loaded.",
+  "transactions": "트랜잭션",
+  "transfer": "전송",
+  "ui": {
+    "shell": {
+      "shelllanguageselect": {
+        "shellcurrencyselect": {
+          "select": {
+            "input": {
+              "textarea": {
+                "pointer": {}
+              }
+            }
+          },
+          "pointer": {
+            "events": {
+              "auto": {
+                "important": {}
+              }
+            }
+          }
+        }
+      },
+      "kaspagateway": {
+        "v0": {
+          "1": {
+            "0": "KaspaGateway V0.1.0"
+          }
+        }
+      },
+      "usd": "USD",
+      "kas": "KAS",
+      "sar": "SAR",
+      "eur": "EUR",
+      "dark": "Dark",
+      "superhero": "Superhero",
+      "kaspa": {
+        "gateway": {
+          "links": "Kaspa Gateway links"
+        }
+      },
+      "slate": "Slate",
+      "midnight": "Midnight",
+      "blue": "Blue",
+      "waiting": {
+        "for": {
+          "live": {
+            "update": "Waiting for live update"
+          }
+        }
+      },
+      "current": {
+        "date": {
+          "and": {
+            "time": "Current date and time"
+          }
+        }
+      },
+      "en": "en",
+      "ar": "ar",
+      "de": "de",
+      "es": "es",
+      "fr": "fr",
+      "hi": "hi",
+      "id": "id",
+      "ja": "ja",
+      "ko": "ko",
+      "ru": "ru",
+      "tr": "tr",
+      "zh": {
+        "cn": "zh-CN"
+      },
+      "main": {
+        "tabs": "Main tabs"
+      },
+      "application": {
+        "status": {
+          "and": {
+            "links": "Application status and links"
+          }
+        }
+      }
+    },
+    "analysis": {
+      "cancel": {
+        "analysis": "Cancel Analysis"
+      },
+      "save": {
+        "as": {
+          "csv": "Save as CSV",
+          "html": "Save as HTML",
+          "pdf": "Save as PDF"
+        }
+      },
+      "total": {
+        "in": "Total In",
+        "out": "Total Out"
+      },
+      "net": {
+        "flow": {
+          "amount": "Net Flow / Amount"
+        }
+      },
+      "avg": {
+        "in": "Avg In",
+        "out": "Avg Out"
+      },
+      "max": {
+        "in": "Max In",
+        "out": "Max Out"
+      },
+      "peers": "Peers",
+      "first": "First",
+      "last": "Last",
+      "days": "Days",
+      "from": "From:",
+      "to": "To:",
+      "type": "Type:",
+      "in": "IN",
+      "out": "OUT",
+      "direction": "Direction:",
+      "reset": {
+        "filter": "Reset Filter"
+      },
+      "counterparty": {
+        "breakdown": "Counterparty Breakdown"
+      },
+      "known": {
+        "name": {
+          "date": {
+            "time": {
+              "sort": "Known Name / Date/Time ↕"
+            }
+          }
+        }
+      },
+      "address": {
+        "transaction": {
+          "id": "Address / Transaction ID"
+        }
+      },
+      "txs": {
+        "dir": "TXs / Dir"
+      },
+      "block": "Block",
+      "load": {
+        "an": {
+          "address": {
+            "to": {
+              "see": {
+                "analysis": "Load an address to see analysis."
+              }
+            }
+          }
+        }
+      },
+      "average": {
+        "inflow": {
+          "kas": "Average Inflow (KAS)"
+        },
+        "outflow": {
+          "kas": "Average Outflow (KAS)"
+        }
+      },
+      "open": {
+        "from": {
+          "date": {
+            "calendar": "Open from date calendar"
+          }
+        },
+        "to": {
+          "date": {
+            "calendar": "Open to date calendar"
+          }
+        }
+      },
+      "search": {
+        "by": {
+          "address": {
+            "transaction": "Search by Address/Transaction..."
+          }
+        }
+      },
+      "loadAddressPrompt": "분석을 보려면 주소를 불러오세요.",
+      "last30Days": "최근 30일",
+      "last90Days": "최근 90일",
+      "lastYear": "지난 1년"
+    },
+    "explorer": {
+      "select": {
+        "saved": {
+          "address": "Select saved address..."
+        }
+      },
+      "balance": "Balance:",
+      "date": {
+        "time": {
+          "sort": "Date/Time ↕"
+        }
+      },
+      "transaction": {
+        "id": {
+          "sort": "Transaction ID ↕"
+        },
+        "table": {
+          "font": {
+            "size": "Transaction Table Font Size:"
+          }
+        }
+      },
+      "direction": {
+        "sort": "Direction ↕"
+      },
+      "amount": {
+        "kas": {
+          "sort": "Amount (KAS) ↕"
+        }
+      },
+      "value": {
+        "usd": {
+          "sort": "Value (USD) ↕"
+        }
+      },
+      "type": {
+        "sort": "Type ↕"
+      },
+      "yyyy": {
+        "mm": {
+          "dd": "YYYY-MM-DD"
+        }
+      },
+      "open": {
+        "calendar": "Open calendar"
+      },
+      "decrease": {
+        "font": {
+          "size": "Decrease font size"
+        }
+      },
+      "increase": {
+        "font": {
+          "size": "Increase font size"
+        }
+      },
+      "noSavedAddresses": "저장된 주소가 없습니다"
+    },
+    "kaspa": {
+      "bridge": {
+        "kaspa": {
+          "bridge": {
+            "runtime": "Kaspa Bridge Runtime"
+          }
+        }
+      },
+      "node": {
+        "kaspa": {
+          "node": {
+            "runtime": "Kaspa Node Runtime"
+          }
+        }
+      }
+    },
+    "log": {
+      "severity": "Severity:",
+      "trace": "TRACE",
+      "debug": "DEBUG",
+      "info": "INFO",
+      "warn": "WARN",
+      "font": {
+        "size": "Font Size:"
+      },
+      "copy": {
+        "log": "Copy Log"
+      },
+      "search": {
+        "log": {
+          "text": "Search log text..."
+        }
+      },
+      "log": {
+        "font": {
+          "size": "Log font size"
+        }
+      },
+      "application": {
+        "log": {
+          "output": "Application log output"
+        }
+      }
+    },
+    "settings": {
+      "api": {
+        "and": {
+          "amp": {
+            "performance": "API &amp; Performance"
+          },
+          "performance": {
+            "tabs": "API and performance tabs"
+          }
+        },
+        "key": "api_key"
+      },
+      "english": {
+        "en": "English (en)"
+      },
+      "arabic": {
+        "ar": "Arabic (ar)"
+      },
+      "german": {
+        "de": "German (de)"
+      },
+      "spanish": {
+        "es": "Spanish (es)"
+      },
+      "french": {
+        "fr": "French (fr)"
+      },
+      "hindi": {
+        "hi": "Hindi (hi)"
+      },
+      "indonesian": {
+        "id": "Indonesian (id)",
+        "rupiah": "Indonesian Rupiah"
+      },
+      "japanese": {
+        "ja": "Japanese (ja)",
+        "yen": "Japanese Yen"
+      },
+      "korean": {
+        "ko": "Korean (ko)"
+      },
+      "russian": {
+        "ru": "Russian (ru)",
+        "ruble": "Russian Ruble"
+      },
+      "turkish": {
+        "tr": "Turkish (tr)",
+        "lira": "Turkish Lira"
+      },
+      "chinese": {
+        "simplified": {
+          "zh": {
+            "cn": "Chinese (Simplified) (zh-CN)"
+          }
+        },
+        "yuan": "Chinese Yuan"
+      },
+      "us": {
+        "dollar": "US Dollar"
+      },
+      "saudi": {
+        "riyal": "Saudi Riyal"
+      },
+      "euro": "Euro",
+      "british": {
+        "pound": "British Pound"
+      },
+      "swiss": {
+        "franc": "Swiss Franc"
+      },
+      "australian": {
+        "dollar": "Australian Dollar"
+      },
+      "canadian": {
+        "dollar": "Canadian Dollar"
+      },
+      "south": {
+        "korean": {
+          "won": "South Korean Won"
+        }
+      },
+      "indian": {
+        "rupee": "Indian Rupee"
+      },
+      "hong": {
+        "kong": {
+          "dollar": "Hong Kong Dollar"
+        }
+      },
+      "singapore": {
+        "dollar": "Singapore Dollar"
+      },
+      "brazilian": {
+        "real": "Brazilian Real"
+      },
+      "logging": {
+        "level": "Logging Level:"
+      },
+      "backup": {
+        "directory": "Backup Directory"
+      },
+      "default": "default",
+      "kaspa": {
+        "org": "Kaspa.org",
+        "api": {
+          "endpoints": "⊟ Kaspa API Endpoints"
+        },
+        "address": {
+          "sort": "Kaspa Address ↕"
+        }
+      },
+      "local": {
+        "node": "Local Node"
+      },
+      "custom": "Custom",
+      "base": "Base:",
+      "page": {
+        "limit": "Page Limit",
+        "delay": {
+          "sec": "Page Delay (sec)"
+        }
+      },
+      "address": {
+        "names": "address_names"
+      },
+      "blockdag": {
+        "info": "blockdag_info"
+      },
+      "blockreward": "blockreward",
+      "coinsupply": "coinsupply",
+      "full": {
+        "transactions": "full_transactions",
+        "url": {
+          "preview": "Full URL Preview:"
+        }
+      },
+      "halving": "halving",
+      "kaspad": "kaspad",
+      "max": {
+        "hashrate": "max_hashrate"
+      },
+      "top": {
+        "addresses": "top_addresses"
+      },
+      "explorer": {
+        "urls": "⊟ Explorer URLs"
+      },
+      "transaction": "transaction",
+      "external": {
+        "apis": "⊟ External APIs"
+      },
+      "coingecko": "coingecko",
+      "reset": {
+        "selected": "Reset Selected",
+        "to": {
+          "defaults": "Reset to Defaults"
+        }
+      },
+      "description": "Description:",
+      "path": "Path:",
+      "price": {
+        "cache": {
+          "hours": "Price Cache (hours)"
+        }
+      },
+      "network": {
+        "cache": {
+          "hours": "Network Cache (hours)"
+        }
+      },
+      "refresh": {
+        "interval": {
+          "seconds": "Refresh Interval (seconds)"
+        },
+        "list": "Refresh List"
+      },
+      "name": {
+        "sort": "Name ↕"
+      },
+      "add": {
+        "edit": {
+          "address": "Add/Edit Address"
+        }
+      },
+      "delete": {
+        "address": "Delete Address"
+      },
+      "last": {
+        "updated": "Last Updated: —"
+      },
+      "known": {
+        "name": {
+          "sort": "Known Name ↕"
+        }
+      },
+      "balance": {
+        "sort": "Balance ↕"
+      },
+      "loading": {
+        "database": {
+          "status": "Loading database status..."
+        }
+      },
+      "settings": {
+        "tabs": "Settings tabs"
+      },
+      "browse": "Browse",
+      "clear": "Clear",
+      "choose": {
+        "base": "Choose base"
+      },
+      "managed": {
+        "addresses": "Managed addresses"
+      }
+    },
+    "top": {
+      "addresses": {
+        "last": {
+          "updated": "Last Updated:"
+        },
+        "rank": {
+          "sort": "Rank ↕"
+        },
+        "address": {
+          "sort": "Address ↕"
+        },
+        "balance": {
+          "kas": {
+            "sort": "Balance (KAS) ↕"
+          }
+        },
+        "search": {
+          "by": {
+            "rank": {
+              "name": {
+                "or": {
+                  "address": "Search by Rank, Name, or Address..."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "ui.analysis.net": "Net",
+  "ui.analysis.reset.filter": "필터 재설정",
+  "ui.analysis.save.as.csv": "CSV로 저장",
+  "ui.analysis.save.as.html": "HTML로 저장",
+  "ui.analysis.save.as.pdf": "PDF로 저장",
+  "ui.explorer.amount.kas.sort": "금액 (KAS) ↕",
+  "ui.explorer.balance": "잔액:",
+  "ui.explorer.date.time.sort": "날짜/시간 ↕",
+  "ui.explorer.direction.sort": "방향 ↕",
+  "ui.explorer.select.saved.address": "저장된 주소 선택...",
+  "ui.explorer.transaction.id.sort": "트랜잭션 ID ↕",
+  "ui.explorer.transaction.table.font.size": "트랜잭션 표 글꼴 크기:",
+  "ui.explorer.type.sort": "유형 ↕",
+  "ui.explorer.value.usd.sort": "가치 (USD) ↕",
+  "ui.runtime.logsUnavailable": "로그를 사용할 수 없습니다:",
+  "ui.settings.base.url": "⊟ Base URL",
+  "ui.settings.default.app.data.directory": "directory",
+  "ui.settings.default.backup.directory": "directory",
+  "ui.settings.default.export.directory": "directory",
+  "ui.settings.default.log.directory": "directory",
+  "ui.settings.kaspa.address": "Kaspa Address:",
+  "ui.settings.name": "Name:",
+  "ui.shell.kaspa.green": "Kaspa Green",
+  "ui.shell.kaspa.live.network.metrics": "metrics",
+  "validation": {
+    "missing": {
+      "advanced": {
+        "libraries": {
+          "networkx": {
+            "scikit": {
+              "learn": "고급 라이브러리 누락 (networkx, scikit-learn)."
+            }
+          }
+        }
+      }
+    },
+    "please": {
+      "select": {
+        "at": {
+          "least": {
+            "one": {
+              "currency": "하나 이상의 통화를 선택하십시오.",
+              "language": "하나 이상의 언어를 선택하십시오."
+            }
+          }
+        }
+      }
+    },
+    "user": {
+      "aborted": {
+        "update": {
+          "due": {
+            "to": {
+              "missing": {
+                "hash": {
+                  "file": "해시 파일이 누락되어 사용자가 업데이트를 중단했습니다."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "actions.save.settings": "설정 저장",
+  "log.copied": "복사됨",
+  "log.deleted": "삭제됨",
+  "common.search": "검색",
+  "common.autoScroll": "자동 스크롤",
+  "common.all": "전체",
+  "ui.analysis.address": "주소",
+  "ui.analysis.counterparty": "상대방",
+  "ui.analysis.loadAddressPrompt": "분석을 보려면 주소를 불러오세요.",
+  "ui.analysis.last30Days": "최근 30일",
+  "ui.analysis.last90Days": "최근 90일",
+  "ui.analysis.lastYear": "지난 1년",
+  "ui.explorer.noSavedAddresses": "저장된 주소가 없습니다"
+}

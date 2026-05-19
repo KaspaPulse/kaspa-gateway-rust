@@ -1,0 +1,1147 @@
+#settings.settings-python-root,
+#settings.page {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--kgw-global-bg, #2b3f53);
+  color: var(--kgw-global-text, #ffffff);
+  overflow: hidden;
+  font-size: 14px;
+}
+
+#settings .settings-python-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 8px;
+  overflow: hidden;
+  background: var(--kgw-global-bg, #2b3f53);
+}
+
+#settings .settings-python-frame {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 29px minmax(0, 1fr) 44px;
+  border: 1px solid rgba(150, 174, 196, 0.38);
+  background: var(--kgw-global-bg, #2b3f53);
+  overflow: hidden;
+}
+
+#settings .settings-python-outer-tabs,
+#settings .settings-python-inner-tabs {
+  display: flex;
+  align-items: end;
+  gap: 0;
+  min-width: 0;
+  min-height: 0;
+  padding-left: 10px;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(150, 174, 196, 0.34);
+}
+
+#settings .settings-python-outer-tab,
+#settings .settings-python-inner-tab {
+  height: 29px;
+  min-height: 29px;
+  padding: 3px 12px;
+  border: 1px solid rgba(150, 174, 196, 0.34);
+  border-bottom: 0;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--kgw-global-panel, #334b62) 86%, black 8%);
+  color: var(--kgw-global-text, #ffffff);
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+#settings .settings-python-outer-tab.active,
+#settings .settings-python-inner-tab.active {
+  background: var(--kgw-global-bg, #2b3f53);
+  border-bottom-color: var(--kgw-global-bg, #2b3f53);
+}
+
+#settings .settings-python-main {
+  min-height: 0;
+  padding: 10px 14px 0;
+  overflow: hidden;
+}
+
+#settings .settings-python-panel,
+#settings .settings-python-inner-panel {
+  display: none;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#settings .settings-python-panel.active,
+#settings .settings-python-inner-panel.active {
+  display: block;
+}
+
+#settings .settings-python-panel[data-settings-panel="api-performance"].active {
+  display: grid;
+  grid-template-rows: 29px minmax(0, 1fr);
+  border: 1px solid rgba(150, 174, 196, 0.34);
+  overflow: hidden;
+}
+
+#settings .settings-python-panel[data-settings-panel="api-performance"] .settings-python-inner-tabs {
+  padding-left: 10px;
+}
+
+#settings .settings-python-panel[data-settings-panel="api-performance"] .settings-python-inner-panel {
+  padding: 18px 18px 10px;
+}
+
+#settings fieldset {
+  border: 1px solid rgba(150, 174, 196, 0.36);
+  margin: 0;
+  padding: 12px 12px 10px;
+  min-width: 0;
+  min-height: 0;
+}
+
+#settings legend {
+  padding: 0 6px;
+  color: var(--kgw-global-text, #ffffff);
+  font-size: 14px;
+}
+
+#settings .settings-group {
+  background: transparent;
+}
+
+#settings .settings-subgroup {
+  padding: 12px 12px 8px;
+  overflow: hidden;
+}
+
+#settings .display-group {
+  height: 218px;
+  padding-top: 12px;
+}
+
+#settings .display-grid {
+  height: 100%;
+  display: grid;
+  grid-template-columns: 33% 33% 32%;
+  gap: 8px;
+}
+
+#settings .check-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 22px;
+  white-space: nowrap;
+}
+
+#settings .select-line {
+  margin-bottom: 3px;
+}
+
+#settings .check-separator {
+  height: 1px;
+  background: rgba(150, 174, 196, 0.25);
+  margin: 3px 0 5px;
+}
+
+#settings .check-columns {
+  display: grid;
+  grid-auto-flow: row;
+  gap: 3px 16px;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+#settings .check-columns.two {
+  grid-template-columns: 1fr 1fr;
+}
+
+#settings .check-columns.three {
+  grid-template-columns: 1fr 1fr 1fr;
+  font-size: 13px;
+}
+
+#settings .check-columns label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+#settings input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #4aa3ef;
+}
+
+#settings .general-bottom-grid {
+  height: calc(100% - 232px);
+  min-height: 0;
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 26% minmax(0, 1fr);
+  gap: 8px;
+}
+
+#settings .advanced-group {
+  padding-top: 14px;
+}
+
+#settings .advanced-group .check-line {
+  margin-bottom: 6px;
+}
+
+#settings .inline-form-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  white-space: nowrap;
+}
+
+#settings .small-select {
+  width: 98px;
+}
+
+#settings .paths-group {
+  padding-top: 14px;
+}
+
+#settings .path-grid {
+  display: grid;
+  grid-template-columns: 124px minmax(0, 1fr) 46px 46px;
+  gap: 8px 4px;
+  align-items: center;
+}
+
+#settings input,
+#settings select {
+  height: 30px;
+  border: 1px solid rgba(150, 174, 196, 0.34);
+  background: color-mix(in srgb, var(--kgw-global-panel, #334b62) 86%, black 4%);
+  color: var(--kgw-global-text, #ffffff);
+  padding: 3px 7px;
+  min-width: 0;
+  outline: none;
+  border-radius: 0;
+  font-size: 14px;
+}
+
+#settings input:read-only {
+  background: color-mix(in srgb, var(--kgw-global-panel, #334b62) 72%, white 10%);
+}
+
+#settings button {
+  height: 30px;
+  min-height: 30px;
+  border: 1px solid rgba(150, 174, 196, 0.38);
+  background: #4ba3f0;
+  color: #ffffff;
+  padding: 3px 12px;
+  cursor: pointer;
+  border-radius: 0;
+  font-size: 14px;
+}
+
+#settings button:disabled {
+  opacity: 0.45;
+  cursor: default;
+  filter: grayscale(0.35);
+}
+
+#settings .icon-btn {
+  width: 46px;
+  padding: 0;
+  font-size: 13px;
+}
+
+#settings .browse-btn,
+#settings .blue-btn,
+#settings .full-blue-btn {
+  background: #4ba3f0;
+}
+
+#settings .cyan-btn {
+  background: #4fc3df;
+}
+
+#settings .orange-btn {
+  background: #f0ad4e;
+}
+
+#settings .red-btn {
+  background: #e65252;
+}
+
+#settings .gray-btn {
+  background: #586a7d;
+}
+
+#settings .green-btn {
+  background: transparent;
+  border-color: #31c95b;
+  color: #31ff6b;
+}
+
+#settings .blue-outline-btn {
+  background: transparent;
+  border-color: #4ba3f0;
+  color: #5dc0ff;
+}
+
+#settings .red-outline-btn {
+  background: transparent;
+  border-color: #ff5c5c;
+  color: #ff6969;
+}
+
+#settings .disabled-btn {
+  background: #586a7d;
+}
+
+#settings .api-settings-grid {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 390px minmax(0, 1fr);
+  gap: 10px;
+}
+
+#settings .api-left-column {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 116px minmax(0, 1fr);
+  gap: 8px;
+}
+
+#settings .api-profile-group {
+  padding-top: 16px;
+}
+
+#settings .api-profile-group select {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+#settings .three-button-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+}
+
+#settings .api-tree-group {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 31px;
+  gap: 5px;
+  overflow: hidden;
+}
+
+#settings .endpoint-tree {
+  overflow: auto;
+  border: 1px solid rgba(150, 174, 196, 0.30);
+  background: color-mix(in srgb, var(--kgw-global-panel, #334b62) 84%, black 4%);
+  padding: 5px 3px;
+}
+
+#settings .tree-section {
+  color: #ffffff;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+#settings .tree-row {
+  width: 100%;
+  height: 18px;
+  min-height: 18px;
+  border: 0;
+  padding: 0 2px 0 28px;
+  background: transparent;
+  color: #ffffff;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 170px;
+  text-align: left;
+  line-height: 18px;
+}
+
+#settings .tree-row:hover,
+#settings .tree-row.is-selected {
+  background: rgba(74, 163, 240, 0.28);
+}
+
+#settings .tree-row span {
+  color: #ffffff;
+}
+
+#settings .full-blue-btn {
+  width: 100%;
+}
+
+#settings .edit-endpoint-group {
+  display: grid;
+  grid-template-rows: auto 30px auto 30px 108px auto 30px;
+  gap: 8px;
+  padding: 16px 12px 10px;
+  overflow: hidden;
+}
+
+#settings .large-label {
+  font-weight: 700;
+  font-size: 17px;
+}
+
+#settings .url-components {
+  padding: 14px 14px 10px;
+}
+
+#settings .url-grid {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 26px;
+  gap: 8px 6px;
+  align-items: center;
+}
+
+#settings .combo-arrow {
+  width: 26px;
+  padding: 0;
+  background: color-mix(in srgb, var(--kgw-global-panel, #334b62) 86%, black 4%);
+  border-left: 0;
+}
+
+#settings .perf-group {
+  margin-bottom: 14px;
+}
+
+#settings .perf-group.compact {
+  height: 82px;
+}
+
+#settings .perf-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+#settings .perf-row input {
+  width: 72px;
+}
+
+#settings .info-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #5dc0ff;
+  border-radius: 999px;
+  color: #5dc0ff;
+  font-size: 10px;
+  line-height: 1;
+}
+
+#settings .auto-refresh-row input[type="number"] {
+  width: 70px;
+}
+
+#settings .manage-addresses-panel,
+#settings .database-panel {
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  overflow: hidden;
+  border: 1px solid rgba(150, 174, 196, 0.34);
+  padding: 14px;
+}
+
+#settings .manage-addresses-panel {
+  grid-template-rows: 31px 36px minmax(0, 1fr) 42px;
+  gap: 6px;
+}
+
+#settings .database-panel {
+  grid-template-rows: minmax(0, 1fr) 42px;
+  gap: 8px;
+}
+
+#settings .address-form-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 108px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+#settings .address-action-row,
+#settings .database-action-row,
+#settings .address-export-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+#settings .address-action-row #settingsAddressLastUpdated {
+  margin-left: 6px;
+}
+
+#settings .address-export-row {
+  justify-content: flex-end;
+}
+
+#settings .settings-table-shell {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid rgba(150, 174, 196, 0.34);
+  background: color-mix(in srgb, var(--kgw-global-panel, #334b62) 86%, black 2%);
+}
+
+#settings .python-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 14px;
+}
+
+#settings .python-table th,
+#settings .python-table td {
+  padding: 6px 7px;
+  border: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+#settings .python-table th {
+  color: #ffffff;
+  font-weight: 400;
+}
+
+#settings .python-table tr.is-selected {
+  background: rgba(74, 163, 240, 0.32);
+}
+
+#settings .database-table-shell .python-table th:nth-child(1),
+#settings .database-table-shell .python-table td:nth-child(1) {
+  width: 140px;
+}
+
+#settings .database-table-shell .python-table th:nth-child(2),
+#settings .database-table-shell .python-table td:nth-child(2) {
+  width: 90px;
+}
+
+#settings .database-table-shell .python-table th:nth-child(3),
+#settings .database-table-shell .python-table td:nth-child(3) {
+  width: 210px;
+}
+
+#settings .settings-bottom-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 22px 7px 0;
+  border-top: 1px solid rgba(150, 174, 196, 0.22);
+}
+
+#settings .settings-bottom-actions button {
+  min-width: 130px;
+}
+
+#settings #settingsSaveSettings:disabled {
+  background: #607080;
+}
+
+@media (max-width: 1250px) {
+  #settings .display-grid {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  #settings .general-bottom-grid,
+  #settings .api-settings-grid {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+}
+
+/* KGW SETTINGS PYTHON EXACT LAYOUT FIX START */
+
+/* Keep the Python desktop layout. Do not collapse these panels on normal desktop sizes. */
+#settings .settings-python-frame {
+  grid-template-rows: 36px minmax(0, 1fr) 52px !important;
+}
+
+#settings .settings-python-main {
+  padding: 10px 14px 0 !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+#settings .settings-python-panel[data-settings-panel="api-performance"].active {
+  grid-template-rows: 37px minmax(0, 1fr) !important;
+}
+
+#settings .settings-python-panel[data-settings-panel="api-performance"] .settings-python-inner-panel {
+  padding: 18px 18px 10px !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+/* GENERAL: force the three Python columns to stay visible. */
+#settings .display-group {
+  height: 262px !important;
+  min-height: 262px !important;
+  overflow: visible !important;
+}
+
+#settings .display-grid {
+  grid-template-columns: 33% 33% 32% !important;
+  gap: 8px !important;
+  overflow: visible !important;
+}
+
+#settings .settings-subgroup {
+  min-height: 184px !important;
+  overflow: hidden !important;
+}
+
+#settings .check-columns {
+  display: grid !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  overflow: visible !important;
+  font-size: 13px !important;
+  line-height: 1.18 !important;
+  gap: 2px 12px !important;
+}
+
+#settings .check-columns.two {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+}
+
+#settings .check-columns.three {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) !important;
+  font-size: 12px !important;
+}
+
+#settings .check-columns label {
+  display: flex !important;
+  align-items: center !important;
+  min-height: 18px !important;
+  height: 18px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+}
+
+#settings .check-separator {
+  display: block !important;
+}
+
+#settings .general-bottom-grid {
+  height: calc(100% - 274px) !important;
+  min-height: 176px !important;
+  grid-template-columns: 26% minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+#settings .advanced-group,
+#settings .paths-group {
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+#settings .path-grid {
+  grid-template-columns: 124px minmax(0, 1fr) 46px 46px !important;
+  gap: 8px 4px !important;
+}
+
+/* API SETTINGS: force left tree + right editor exactly like Python. */
+#settings .api-settings-grid {
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 390px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  overflow: hidden !important;
+}
+
+#settings .api-left-column {
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: 116px minmax(0, 1fr) !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+}
+
+#settings .api-tree-group {
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) 31px !important;
+  gap: 5px !important;
+  overflow: hidden !important;
+}
+
+#settings .endpoint-tree {
+  display: block !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+  padding: 5px 3px !important;
+}
+
+#settings .tree-section {
+  display: block !important;
+  height: 18px !important;
+  line-height: 18px !important;
+  color: #ffffff !important;
+  overflow: hidden !important;
+}
+
+#settings .tree-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 170px !important;
+  width: 100% !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  line-height: 18px !important;
+  padding: 0 2px 0 28px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: #ffffff !important;
+  text-align: left !important;
+  overflow: hidden !important;
+}
+
+#settings .tree-row span {
+  display: inline !important;
+  color: #ffffff !important;
+  overflow: hidden !important;
+}
+
+/* PERFORMANCE: force western digits and LTR numeric fields. */
+#settings .perf-row input,
+#settings input[inputmode="decimal"],
+#settings input[dir="ltr"] {
+  direction: ltr !important;
+  unicode-bidi: plaintext !important;
+  text-align: left !important;
+  font-family: Consolas, "Cascadia Mono", "Courier New", monospace !important;
+  font-variant-numeric: lining-nums tabular-nums !important;
+}
+
+/* Keep Python desktop layout even under Chromium/Tauri scaling. */
+@media (max-width: 1250px) {
+  #settings .display-grid {
+    grid-template-columns: 33% 33% 32% !important;
+    overflow: visible !important;
+  }
+
+  #settings .general-bottom-grid {
+    grid-template-columns: 26% minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  #settings .api-settings-grid {
+    grid-template-columns: 390px minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  #settings .path-grid {
+    grid-template-columns: 124px minmax(0, 1fr) 46px 46px !important;
+  }
+}
+
+/* KGW SETTINGS PYTHON EXACT LAYOUT FIX END */
+
+/* KGW SETTINGS GENERAL VISIBLE AREA FIX START */
+
+/*
+  Fixes:
+  - Keep General page fully visible.
+  - Stop File Paths from being cut by bottom buttons.
+  - Make currency/language/tab lists fit like Python.
+  - Keep dense QWidget/Python style.
+*/
+
+#settings .settings-python-frame {
+  grid-template-rows: 36px minmax(0, 1fr) 44px !important;
+}
+
+#settings .settings-python-main {
+  padding: 10px 14px 0 !important;
+  overflow: hidden !important;
+}
+
+#settings .settings-python-panel[data-settings-panel="api-performance"].active {
+  grid-template-rows: 37px minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+#settings .settings-python-panel[data-settings-panel="api-performance"] .settings-python-inner-panel[data-settings-inner-panel="general"].active {
+  display: grid !important;
+  grid-template-rows: 292px minmax(0, 1fr) !important;
+  gap: 8px !important;
+  padding: 14px 18px 8px !important;
+  overflow: hidden !important;
+}
+
+#settings .display-group {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: 12px 14px 10px !important;
+}
+
+#settings .display-grid {
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 33.5% 33% 32.5% !important;
+  gap: 10px !important;
+  overflow: hidden !important;
+}
+
+#settings .settings-subgroup {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 12px 12px 8px !important;
+  overflow: hidden !important;
+}
+
+#settings .check-line {
+  min-height: 20px !important;
+  height: 20px !important;
+  line-height: 20px !important;
+}
+
+#settings .check-separator {
+  margin: 3px 0 5px !important;
+}
+
+#settings .check-columns {
+  display: grid !important;
+  align-content: start !important;
+  gap: 1px 10px !important;
+  line-height: 17px !important;
+  font-size: 13px !important;
+  overflow: hidden !important;
+}
+
+#settings .check-columns.two {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+}
+
+#settings .check-columns.three {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 1px 8px !important;
+  font-size: 12px !important;
+}
+
+#settings .check-columns label {
+  display: flex !important;
+  align-items: center !important;
+  height: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
+  line-height: 18px !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+  text-overflow: clip !important;
+}
+
+#settings .check-columns input[type="checkbox"] {
+  flex: 0 0 auto !important;
+  margin-right: 4px !important;
+}
+
+#settings .general-bottom-grid {
+  height: auto !important;
+  min-height: 0 !important;
+  margin-top: 0 !important;
+  display: grid !important;
+  grid-template-columns: 26% minmax(0, 1fr) !important;
+  gap: 10px !important;
+  overflow: hidden !important;
+}
+
+#settings .advanced-group,
+#settings .paths-group {
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  padding: 13px 14px 10px !important;
+}
+
+#settings .advanced-group .check-line {
+  margin-bottom: 5px !important;
+}
+
+#settings .inline-form-row {
+  margin-top: 6px !important;
+}
+
+#settings .path-grid {
+  display: grid !important;
+  grid-template-columns: 124px minmax(0, 1fr) 46px 46px !important;
+  grid-auto-rows: 34px !important;
+  gap: 6px 4px !important;
+  align-items: center !important;
+  height: auto !important;
+  overflow: hidden !important;
+}
+
+#settings .path-grid input,
+#settings .path-grid button {
+  height: 30px !important;
+  min-height: 30px !important;
+}
+
+#settings .settings-bottom-actions {
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 6px 26px 6px 0 !important;
+  align-items: center !important;
+  border-top: 1px solid rgba(150, 174, 196, 0.26) !important;
+}
+
+/* Prevent an inner scrollbar from stealing width in General. */
+#settings .settings-python-inner-panel[data-settings-inner-panel="general"]::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* Keep bottom file-path row visible at normal app size. */
+#settings #settingsBackupPath {
+  display: block !important;
+}
+
+/* KGW SETTINGS GENERAL VISIBLE AREA FIX END */
+
+/* KGW SETTINGS GENERAL COMPACT NO CLIP START */
+
+/*
+  Final General-page compaction:
+  - Display Settings becomes shorter.
+  - File Paths gets enough height for all 4 rows.
+  - Currency labels become compact.
+  - No inner General scrollbar.
+  - Bottom Reset/Save row no longer cuts content.
+*/
+
+#settings .settings-python-frame {
+  grid-template-rows: 36px minmax(0, 1fr) 42px !important;
+}
+
+#settings .settings-python-main {
+  padding: 8px 10px 0 !important;
+  overflow: hidden !important;
+}
+
+#settings .settings-python-panel[data-settings-panel="api-performance"].active {
+  grid-template-rows: 36px minmax(0, 1fr) !important;
+  overflow: hidden !important;
+}
+
+#settings .settings-python-panel[data-settings-panel="api-performance"] .settings-python-inner-panel[data-settings-inner-panel="general"].active {
+  display: grid !important;
+  grid-template-rows: 236px minmax(166px, 1fr) !important;
+  gap: 7px !important;
+  padding: 10px 12px 6px !important;
+  overflow: hidden !important;
+}
+
+#settings .display-group {
+  height: 236px !important;
+  min-height: 236px !important;
+  max-height: 236px !important;
+  padding: 9px 12px 7px !important;
+  overflow: hidden !important;
+}
+
+#settings .display-grid {
+  height: 100% !important;
+  min-height: 0 !important;
+  display: grid !important;
+  grid-template-columns: 34% 34% 31.5% !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+}
+
+#settings .settings-subgroup {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 9px 10px 6px !important;
+  overflow: hidden !important;
+}
+
+#settings .settings-subgroup legend {
+  font-size: 13px !important;
+  padding: 0 5px !important;
+}
+
+#settings .check-line {
+  height: 18px !important;
+  min-height: 18px !important;
+  line-height: 18px !important;
+  font-size: 13px !important;
+}
+
+#settings .select-line {
+  margin-bottom: 2px !important;
+}
+
+#settings .check-separator {
+  height: 1px !important;
+  margin: 2px 0 4px !important;
+}
+
+#settings .check-columns {
+  display: grid !important;
+  align-content: start !important;
+  gap: 0 8px !important;
+  line-height: 16px !important;
+  font-size: 12px !important;
+  overflow: hidden !important;
+}
+
+#settings .check-columns.two {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+}
+
+#settings .check-columns.three {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 0 6px !important;
+  font-size: 11px !important;
+}
+
+#settings .check-columns label {
+  display: flex !important;
+  align-items: center !important;
+  height: 16px !important;
+  min-height: 16px !important;
+  max-height: 16px !important;
+  line-height: 16px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+}
+
+#settings input[type="checkbox"] {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  margin: 0 4px 0 0 !important;
+  flex: 0 0 14px !important;
+}
+
+#settings .general-bottom-grid {
+  height: 100% !important;
+  min-height: 0 !important;
+  margin-top: 0 !important;
+  display: grid !important;
+  grid-template-columns: 26% minmax(0, 1fr) !important;
+  gap: 8px !important;
+  overflow: hidden !important;
+}
+
+#settings .advanced-group,
+#settings .paths-group {
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 9px 12px 7px !important;
+  overflow: hidden !important;
+}
+
+#settings .advanced-group {
+  display: grid !important;
+  grid-template-rows: 24px 24px 34px minmax(0, 1fr) !important;
+  align-content: start !important;
+}
+
+#settings .advanced-group .check-line {
+  margin: 0 !important;
+}
+
+#settings .inline-form-row {
+  margin: 0 !important;
+  height: 30px !important;
+  align-self: start !important;
+}
+
+#settings .paths-group {
+  display: grid !important;
+  grid-template-rows: minmax(0, 1fr) !important;
+}
+
+#settings .path-grid {
+  display: grid !important;
+  grid-template-columns: 122px minmax(0, 1fr) 42px 42px !important;
+  grid-template-rows: repeat(4, 30px) !important;
+  grid-auto-rows: 30px !important;
+  gap: 6px 4px !important;
+  align-content: start !important;
+  align-items: center !important;
+  height: auto !important;
+  min-height: 138px !important;
+  overflow: visible !important;
+}
+
+#settings .path-grid label {
+  height: 30px !important;
+  line-height: 30px !important;
+  white-space: nowrap !important;
+}
+
+#settings .path-grid input,
+#settings .path-grid button {
+  height: 30px !important;
+  min-height: 30px !important;
+  max-height: 30px !important;
+}
+
+#settings .path-grid input {
+  font-size: 13px !important;
+}
+
+#settings .icon-btn {
+  width: 42px !important;
+  min-width: 42px !important;
+  padding: 0 !important;
+}
+
+#settings .settings-bottom-actions {
+  height: 42px !important;
+  min-height: 42px !important;
+  max-height: 42px !important;
+  padding: 5px 26px 5px 0 !important;
+  align-items: center !important;
+}
+
+#settings .settings-bottom-actions button {
+  height: 31px !important;
+  min-height: 31px !important;
+}
+
+/* General must not create an inner scrollbar. */
+#settings .settings-python-inner-panel[data-settings-inner-panel="general"],
+#settings .settings-python-inner-panel[data-settings-inner-panel="general"].active {
+  overflow: hidden !important;
+}
+
+#settings .settings-python-inner-panel[data-settings-inner-panel="general"]::-webkit-scrollbar,
+#settings .settings-python-inner-panel[data-settings-inner-panel="general"] *::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Make the last two path rows visible. */
+#settings #settingsLogPath,
+#settings #settingsBackupPath {
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* KGW SETTINGS GENERAL COMPACT NO CLIP END */

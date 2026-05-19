@@ -1,0 +1,19 @@
+[package]
+name = "kaspa-gateway-cli"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+clap.workspace = true
+kaspa-gateway-api = { path = "../../crates/kaspa-gateway-api" }
+kaspa-gateway-config = { path = "../../crates/kaspa-gateway-config" }
+kaspa-gateway-core = { path = "../../crates/kaspa-gateway-core" }
+kaspa-gateway-db = { path = "../../crates/kaspa-gateway-db" }
+kaspa-gateway-node = { path = "../../crates/kaspa-gateway-node" }
+kaspa-gateway-runtime = { path = "../../crates/kaspa-gateway-runtime" }
+kaspa-gateway-security = { path = "../../crates/kaspa-gateway-security" }
+kaspa-gateway-observability = { path = "../../crates/kaspa-gateway-observability" }
+
+

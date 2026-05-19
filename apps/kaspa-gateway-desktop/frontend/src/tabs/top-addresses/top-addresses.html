@@ -1,0 +1,50 @@
+<section id="top-addresses" class="ta-python-root" data-tab-panel="top-addresses">
+  <div class="ta-python-shell">
+    <div class="ta-toolbar">
+      <div class="ta-updated-block">
+        <span class="ta-updated-label" data-i18n="ui.top.addresses.last.updated">Last Updated:</span>
+        <span id="taLastUpdated" class="ta-updated-value">--</span>
+        <span class="ta-bulb" aria-hidden="true">💡</span>
+      </div>
+
+      <div class="ta-toolbar-actions">
+        <button id="taRefreshList" type="button" class="ta-btn ta-btn-primary" data-i18n="ui.settings.refresh.list">Refresh List</button>
+        <span class="ta-export-label" data-i18n="actions.export.results">Export Results:</span>
+        <button id="taExportCsv" type="button" class="ta-btn ta-btn-accent" data-i18n="ui.analysis.save.as.csv">Save as CSV</button>
+        <button id="taExportHtml" type="button" class="ta-btn ta-btn-accent" data-i18n="ui.analysis.save.as.html">Save as HTML</button>
+        <button id="taExportPdf" type="button" class="ta-btn ta-btn-accent" data-i18n="ui.analysis.save.as.pdf">Save as PDF</button>
+      </div>
+    </div>
+
+    <div class="ta-filter-row">
+      <input
+        id="taSearchInput"
+        type="text"
+        class="ta-search-input"
+        placeholder="Search by Rank, Name, or Address..."
+        autocomplete="off"
+      / data-i18n-placeholder="ui.top.addresses.search.by.rank.name.or.address">
+      <button id="taApplyFilter" type="button" class="ta-btn ta-btn-primary" data-i18n="actions.filter">Filter</button>
+      <button id="taResetFilter" type="button" class="ta-btn ta-btn-secondary" data-i18n="ui.analysis.reset.filter">Reset Filter</button>
+    </div>
+
+    <div class="ta-table-wrap">
+      <table class="ta-table" id="taTable">
+        <thead>
+          <tr>
+            <th data-sort="rank" data-i18n="ui.top.addresses.rank.sort">Rank ↕</th>
+            <th data-sort="name" data-i18n="ui.settings.known.name.sort">Known Name ↕</th>
+            <th data-sort="address" data-i18n="ui.top.addresses.address.sort">Address ↕</th>
+            <th data-sort="balance" data-i18n="ui.top.addresses.balance.kas.sort">Balance (KAS) ↕</th>
+            <th data-sort="value" data-i18n="ui.explorer.value.usd.sort">Value (USD) ↕</th>
+          </tr>
+        </thead>
+        <tbody id="taTableBody"></tbody>
+      </table>
+    </div>
+
+    
+      
+    </div>
+  </div>
+</section>

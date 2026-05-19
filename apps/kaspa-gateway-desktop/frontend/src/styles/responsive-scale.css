@@ -1,0 +1,12 @@
+/*
+Stage 1 scaffold only.
+
+Target rule for future stages:
+- No wrap for primary form rows.
+- Controls scale using --kgw-scale.
+- If a row becomes impossible to fit, use horizontal scroll inside that row instead of wrapping.
+*/
+
+:root {
+  --kgw-scale: 1;
+}
