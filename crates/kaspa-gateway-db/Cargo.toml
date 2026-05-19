@@ -7,7 +7,7 @@ license.workspace = true
 build = "build.rs"
 
 [dependencies]
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
 serde_json = "1"
 duckdb.workspace = true
 serde.workspace = true
