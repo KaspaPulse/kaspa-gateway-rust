@@ -34,7 +34,7 @@ impl KgwNetwork {
         }
     }
 
-        pub fn branch(self) -> &'static str {
+    pub fn branch(self) -> &'static str {
         match self {
             Self::Mainnet => "master",
             Self::Testnet10 | Self::Testnet12 => "RKStratumTN12",
@@ -896,4 +896,3 @@ fn timestamp_ms() -> u128 {
 pub fn exact_kgw_service_controller_summary_v1() -> &'static str {
     "Exact KGW controller flow: NodeSettings -> KaspadServiceEvents::from_node_settings -> service_events sender -> controller event loop -> handle_event lifecycle. mainnet/testnet10 use master; testnet12 uses tn12."
 }
-
