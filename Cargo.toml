@@ -39,12 +39,13 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 zeroize = { version = "1", features = ["derive"] }
 secrecy = "0.10"
 keyring = "3"
-directories = "5"
+directories = "6.0.0"
 uuid = { version = "1", features = ["v4", "serde"] }
 time = { version = "0.3", features = ["serde", "formatting"] }
 duckdb = { version = "1", features = ["bundled"] }
 clap = { version = "4", features = ["derive"] }
 tauri = { version = "2", features = [] }
 tauri-build = { version = "2", features = [] }
+
 
 
