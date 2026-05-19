@@ -608,7 +608,7 @@ Any user-visible string in HTML or JS should be bound through the i18n system un
 
 ```text
 .
-├── .github/workflows/                  # CI and release workflows
+├── .github/                             # CODEOWNERS and Dependabot config; GitHub Actions workflows are currently disabled
 ├── apps/
 │   ├── kaspa-gateway-cli/              # CLI application
 │   └── kaspa-gateway-desktop/          # Tauri desktop application
@@ -628,7 +628,7 @@ Any user-visible string in HTML or JS should be bound through the i18n system un
 │   ├── kaspa-gateway-runtime/
 │   └── kaspa-gateway-security/
 ├── docs/
-├── tools/                              # Audit, repair, release, and gate scripts
+├── tools/                              # Durable local gate scripts only
 ├── Cargo.toml                          # Rust workspace
 └── README.md
 ```
@@ -731,6 +731,20 @@ node --check ".\apps\kaspa-gateway-desktop\frontend\src\tabs\kaspa-bridge\kaspa-
 ```
 
 ---
+
+
+## GitHub Actions status
+
+GitHub Actions workflows are currently disabled in this public repository.
+
+The repository intentionally does not track `.github/workflows` at this stage. Local validation is the source of truth until CI is reintroduced safely.
+
+Current tracked `.github` files are limited to repository ownership and dependency monitoring configuration:
+
+- `.github/CODEOWNERS`
+- `.github/dependabot.yml`
+
+Do not reintroduce workflow files without first validating runner scope, billing behavior, required tools, and local parity with the durable gate scripts.
 
 ## Quality gates
 
@@ -998,7 +1012,7 @@ Before changing behavior:
 
 ## Git hygiene
 
-Generated folders should stay ignored:
+Generated folders should stay ignored. GitHub Actions workflow files are currently not tracked:
 
 ```text
 .kgw-release-artifacts/
@@ -1055,3 +1069,4 @@ Desktop framework:
 ```text
 https://tauri.app/
 ```
+
