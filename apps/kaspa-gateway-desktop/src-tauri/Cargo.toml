@@ -35,7 +35,7 @@ kaspa-gateway-db = { path = "../../../crates/kaspa-gateway-db" }
 kaspa-gateway-node = { path = "../../../crates/kaspa-gateway-node" }
 kaspa-gateway-runtime = { path = "../../../crates/kaspa-gateway-runtime" }
 ureq = "2.12"
-sha2 = "0.10"
+sha2 = "0.11"
 
 [features]
 default = []
