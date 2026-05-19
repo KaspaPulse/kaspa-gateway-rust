@@ -27,14 +27,14 @@ impl KaspaRuntimeNetwork {
         }
     }
 
-    pub fn branch(self) -> &'static str {
+        pub fn branch(self) -> &'static str {
         match self {
             Self::Mainnet => "master",
             Self::Testnet10 | Self::Testnet12 => "RKStratumTN12",
         }
     }
 
-    pub fn family(self) -> KaspaRuntimeFamily {
+        pub fn family(self) -> KaspaRuntimeFamily {
         match self {
             Self::Mainnet => KaspaRuntimeFamily::Mainline,
             Self::Testnet10 | Self::Testnet12 => KaspaRuntimeFamily::Tn12,
@@ -563,3 +563,5 @@ impl fmt::Display for KaspaNodeRuntimeMode {
         formatter.write_str(self.as_str())
     }
 }
+
+

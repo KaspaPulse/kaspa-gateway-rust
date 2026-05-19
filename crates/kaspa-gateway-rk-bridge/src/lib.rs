@@ -27,14 +27,14 @@ impl BridgeRuntimeNetwork {
         }
     }
 
-    pub fn branch(self) -> &'static str {
+        pub fn branch(self) -> &'static str {
         match self {
             Self::Mainnet => "master",
             Self::Testnet10 | Self::Testnet12 => "RKStratumTN12",
         }
     }
 
-    pub fn family(self) -> BridgeRuntimeFamily {
+        pub fn family(self) -> BridgeRuntimeFamily {
         match self {
             Self::Mainnet => BridgeRuntimeFamily::Mainline,
             Self::Testnet10 | Self::Testnet12 => BridgeRuntimeFamily::Tn12,
@@ -751,3 +751,5 @@ pub fn official_bridge_tn12_dependency_marker_v1() -> &'static str {
 pub fn official_bridge_tn12_dependency_marker_v1() -> &'static str {
     "official-kaspa-runtime-tn12 feature disabled"
 }
+
+
