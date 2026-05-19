@@ -1,0 +1,13 @@
+* @KaspaPulse
+
+config/runtime-repository-bindings.json @KaspaPulse
+Cargo.lock @KaspaPulse
+Cargo.toml @KaspaPulse
+apps/kaspa-gateway-desktop/src-tauri/** @KaspaPulse
+crates/kaspa-gateway-rk-node/** @KaspaPulse
+crates/kaspa-gateway-rk-bridge/** @KaspaPulse
+tools/** @KaspaPulse
+SECURITY.md @KaspaPulse
+docs/security/** @KaspaPulse
+.github/dependabot.yml @KaspaPulse
+.github/CODEOWNERS @KaspaPulse
