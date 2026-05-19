@@ -567,3 +567,49 @@
   white-space: nowrap;
 }
 /* KGW_LOG_AUTOSCROLL_CONTROLS_R27_END */
+
+/* KGW_LOG_FONT_SIZE_CONTROLS_CSS_V1 */
+.kgw-log-font-size-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: 8px;
+  padding: 2px 4px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.kgw-log-font-size-button {
+  min-width: 28px;
+  min-height: 24px;
+  padding: 2px 7px;
+  border-radius: 7px;
+  border: 1px solid var(--kgw-border-color, rgba(148, 163, 184, 0.35));
+  background: var(--kgw-panel-bg, rgba(15, 23, 42, 0.18));
+  color: inherit;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.kgw-log-font-size-button:hover {
+  background: var(--kgw-panel-bg-hover, rgba(148, 163, 184, 0.16));
+}
+
+.kgw-log-font-size-button:active {
+  transform: translateY(1px);
+}
+
+.kgw-log-font-size-value {
+  min-width: 36px;
+  text-align: center;
+  font-size: 11px;
+  opacity: 0.82;
+}
+
+[data-kgw-log-font-size-pane="1"] {
+  font-size: var(--kgw-log-font-size, 12px);
+  line-height: 1.45;
+}
+
