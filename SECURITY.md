@@ -4,8 +4,8 @@
 
 This project is maintained at:
 
-- Repository: `KaspaPulse/kaspa-gateway-rust`
-- Public release tag: `desktop-v0.1.0-20260519-165127`
+- Repository: KaspaPulse/kaspa-gateway-rust
+- Public release tag: desktop-v0.1.0-20260519-165127
 - Desktop target: Windows x64
 - Runtime model: KGW same-exe parallel self-worker runtime
 
@@ -34,12 +34,12 @@ The project currently claims only a local security baseline, not formal hardenin
 
 Required baseline checks:
 
-- `kgw_i18n_contract_gate.cjs`
-- `kgw_i18n_locale_coverage_gate.cjs`
-- `kgw_parallel_self_worker_runtime_gate.cjs`
-- `cargo fmt --all -- --check`
-- `cargo check -p kaspa-gateway-desktop --no-default-features --features "official-kaspa-runtime-all rkstratum_cpu_miner"`
-- `npm audit --audit-level=moderate`
+- kgw_i18n_contract_gate.cjs
+- kgw_i18n_locale_coverage_gate.cjs
+- kgw_parallel_self_worker_runtime_gate.cjs
+- cargo fmt --all -- --check
+- cargo check -p kaspa-gateway-desktop --no-default-features --features "official-kaspa-runtime-all rkstratum_cpu_miner"
+- npm audit --audit-level=moderate
 - tracked source secret-pattern scan
 - release executable metadata review
 - Windows GUI subsystem verification for the portable executable
@@ -75,8 +75,8 @@ Release assets must include:
 - Windows installer
 - Timestamped installer copy
 - Portable executable
-- `INSTALL.txt`
-- `SHA256SUMS.txt`
+- INSTALL.txt
+- SHA256SUMS.txt
 
 Code signing is recommended for future releases. Unsigned Windows executables may trigger SmartScreen warnings even when the build is clean.
 
