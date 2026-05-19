@@ -251,12 +251,17 @@ fn probe_kaspa_api(base_url: &str) -> RealApiProbeReport {
     let base = base_url.trim().trim_end_matches('/');
     let url = format!("{base}/info/network");
 
-    let result = ureq::get(&url).timeout(Duration::from_secs(6)).call();
+    let agent = ureq::Agent::config_builder()
+        .timeout_global(Some(Duration::from_secs(6)))
+        .build()
+        .new_agent();
+    let result = agent.get(&url).call();
 
     match result {
-        Ok(response) => {
+        Ok(mut response) => {
             let text = response
-                .into_string()
+                .body_mut()
+                .read_to_string()
                 .unwrap_or_else(|_| "<non-text response>".to_string());
 
             let preview = safe_preview(&text, 300);

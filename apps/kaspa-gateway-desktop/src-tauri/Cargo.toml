@@ -34,8 +34,8 @@ kaspa-gateway-core = { path = "../../../crates/kaspa-gateway-core" }
 kaspa-gateway-db = { path = "../../../crates/kaspa-gateway-db" }
 kaspa-gateway-node = { path = "../../../crates/kaspa-gateway-node" }
 kaspa-gateway-runtime = { path = "../../../crates/kaspa-gateway-runtime" }
-ureq = "2.12"
-sha2 = "0.10"
+ureq = "3.3.0"
+sha2 = "0.11.0"
 
 [features]
 default = []
@@ -61,5 +61,7 @@ official-kaspa-runtime-all = [
     "official-kaspa-runtime-mainline",
     "official-kaspa-runtime-tn12"
 ]
+
+
 
 
