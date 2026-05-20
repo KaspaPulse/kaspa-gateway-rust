@@ -613,3 +613,20 @@
   line-height: 1.45;
 }
 
+/* KGW_SETTINGS_OWNER_V19_VISUAL */
+button.kgw-settings-action-disabled-v19,
+button[data-kgw-settings-owner-v19-disabled="true"],
+button:disabled.kgw-settings-action-disabled-v19 {
+  opacity: 0.45;
+  filter: grayscale(0.35);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+button[data-kgw-settings-owner-v19-disabled="false"] {
+  opacity: 1;
+  filter: none;
+  cursor: pointer;
+}
+/* END_KGW_SETTINGS_OWNER_V19_VISUAL */

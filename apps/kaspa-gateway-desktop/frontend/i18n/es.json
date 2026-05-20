@@ -1722,7 +1722,12 @@
     "working": {
       "directory": "Directorio de Trabajo"
     },
-    "general": "General"
+    "general": "General",
+    "feedback": {
+      "saved": "Guardado",
+      "restored": "Restaurado",
+      "setAsDefaults": "Establecido como predeterminado"
+    }
   },
   "settings.language": "Idioma",
   "settings.logDiagnostics": "Log & Diagnostics",

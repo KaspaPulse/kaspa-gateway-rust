@@ -1,3 +1,453 @@
+// KGW_SETTINGS_OWNER_V19
+(function installKgwSettingsOwnerV19() {
+  "use strict";
+
+  const OWNER = "KGW_SETTINGS_OWNER_V19";
+  const PATCH = "KGW_SETTINGS_OWNER_V19_SAFE_FEEDBACK_NO_FREEZE_V25B";
+  const SCOPE = "bridge";
+  const GLOBAL_NAME = "KGW_BRIDGE_SETTINGS_OWNER_V19";
+  const FEEDBACK_MS = 3000;
+  const DISABLED_CLASS = "kgw-settings-action-disabled-v19";
+  const ROOT_INSTALLED_ATTR = "kgwSettingsOwnerV19";
+
+  const feedbackByRoot = new WeakMap();
+  const dirtyByRoot = new WeakMap();
+
+  function lower(value) {
+    return String(value || "").toLowerCase();
+  }
+
+  function trace(root, phase, details) {
+    try {
+      const safeDetails = details && typeof details === "object" ? details : {};
+      const net = String(safeDetails.network || safeDetails.net || "unknown");
+      const action = String(safeDetails.action || "settings-owner");
+      const detailsText = JSON.stringify({
+        owner: OWNER,
+        patch: PATCH,
+        scope: SCOPE,
+        phase: phase,
+        details: safeDetails
+      });
+
+      const args = {
+        scope: String(SCOPE),
+        net: net,
+        action: action,
+        phase: String(phase || "unknown"),
+        details: detailsText
+      };
+
+      const tauri = window.__TAURI__;
+      if (tauri && tauri.core && typeof tauri.core.invoke === "function") {
+        tauri.core.invoke("kgw_frontend_button_trace_v1", args).catch(function (error) {
+          console.error("[KGW_SETTINGS_OWNER_V19_TRACE_FAILED]", error, args);
+        });
+      } else if (tauri && typeof tauri.invoke === "function") {
+        tauri.invoke("kgw_frontend_button_trace_v1", args).catch(function (error) {
+          console.error("[KGW_SETTINGS_OWNER_V19_TRACE_FAILED]", error, args);
+        });
+      } else {
+        console.debug("[KGW_SETTINGS_OWNER_V19_TRACE_BROWSER]", args);
+      }
+    } catch (error) {
+      console.error("[KGW_SETTINGS_OWNER_V19_TRACE_EXCEPTION]", error);
+    }
+  }
+
+  function currentLanguage() {
+    try {
+      const lang = String(document.documentElement.getAttribute("lang") || document.body.getAttribute("lang") || "");
+      if (lang) return lower(lang);
+    } catch (_) {}
+
+    try {
+      const keys = ["kgw.language", "kgw_locale", "language", "locale", "i18nextLng"];
+      for (const key of keys) {
+        const value = localStorage.getItem(key);
+        if (value) return lower(value);
+      }
+    } catch (_) {}
+
+    try {
+      const apiCandidates = [window.kgwI18n, window.KGWI18n, window.KGW_I18N, window.i18n];
+      for (const api of apiCandidates) {
+        if (!api) continue;
+        const values = [api.language, api.lang, api.locale, api.currentLanguage, api.currentLocale];
+        for (const value of values) {
+          if (value) return lower(value);
+        }
+        if (typeof api.getLanguage === "function") return lower(api.getLanguage());
+        if (typeof api.getLocale === "function") return lower(api.getLocale());
+      }
+    } catch (_) {}
+
+    return "";
+  }
+
+  function isArabic() {
+    return currentLanguage().startsWith("ar") || lower(document.dir) === "rtl";
+  }
+
+  function translate(key, fallback) {
+    try {
+      const candidates = [window.kgwT, window.__kgwT, window.t];
+      for (const fn of candidates) {
+        if (typeof fn === "function") {
+          const value = fn(key, fallback);
+          if (typeof value === "string" && value.trim() && value !== key) return value;
+        }
+      }
+
+      const apis = [window.kgwI18n, window.KGWI18n, window.KGW_I18N, window.i18n];
+      for (const api of apis) {
+        if (api && typeof api.t === "function") {
+          const value = api.t(key, fallback);
+          if (typeof value === "string" && value.trim() && value !== key) return value;
+        }
+        if (api && typeof api.translate === "function") {
+          const value = api.translate(key, fallback);
+          if (typeof value === "string" && value.trim() && value !== key) return value;
+        }
+      }
+    } catch (_) {}
+    return fallback;
+  }
+
+  function isSettingsControl(element) {
+    if (!element || !element.tagName) return false;
+
+    const tag = lower(element.tagName);
+    if (tag !== "input" && tag !== "select" && tag !== "textarea") return false;
+
+    const type = lower(element.type);
+    if (type === "button" || type === "submit" || type === "reset" || type === "hidden") return false;
+
+    if (element.closest && element.closest(".logs, .log, [data-log], .kgw-log-pane")) return false;
+
+    return true;
+  }
+
+  function isActionButton(element) {
+    if (!element || !element.tagName || lower(element.tagName) !== "button") return false;
+
+    const text = lower(element.textContent);
+    const action = lower(
+      (element.dataset && (element.dataset.kgwSettingsAction || element.dataset.action)) ||
+        element.getAttribute("data-action") ||
+        element.getAttribute("aria-label") ||
+        ""
+    );
+
+    return (
+      action.includes("save") ||
+      action.includes("restore") ||
+      action.includes("default") ||
+      text.includes("save settings") ||
+      text.includes("restore defaults") ||
+      text.includes("set as defaults") ||
+      text.includes("saved") ||
+      text.includes("restored") ||
+      text.includes("تم الحفظ") ||
+      text.includes("تم الضبط") ||
+      text.includes("تمت الاستعادة") ||
+      text.includes("حفظ") ||
+      text.includes("استعادة") ||
+      text.includes("افتراض")
+    );
+  }
+
+  function networkOf(element) {
+    let current = element;
+
+    while (current && current !== document) {
+      const dataset = current.dataset || {};
+      const direct =
+        dataset.network ||
+        dataset.net ||
+        dataset.kgwNetwork ||
+        current.getAttribute("data-network") ||
+        current.getAttribute("data-net") ||
+        current.getAttribute("data-kgw-network");
+
+      if (direct) return String(direct);
+
+      const id = lower(current.id);
+      const cls = lower(current.className);
+
+      if (id.includes("testnet12") || cls.includes("testnet12") || id.includes("tn12") || cls.includes("tn12")) return "testnet12";
+      if (id.includes("testnet10") || cls.includes("testnet10") || id.includes("tn10") || cls.includes("tn10")) return "testnet10";
+      if (id.includes("mainnet") || cls.includes("mainnet")) return "mainnet";
+
+      current = current.parentElement;
+    }
+
+    return "mainnet";
+  }
+
+  function actionName(button) {
+    const raw = lower(
+      (button.dataset && (button.dataset.kgwSettingsAction || button.dataset.action || button.dataset.kgwSettingsOwnerV19Action)) ||
+        button.getAttribute("data-action") ||
+        button.getAttribute("aria-label") ||
+        button.textContent ||
+        ""
+    );
+
+    if (raw.includes("restore") || raw.includes("استعادة")) return "restore";
+    if (raw.includes("default") || raw.includes("افتراض") || raw.includes("ضبط")) return "defaults";
+    return "save";
+  }
+
+  function feedbackText(action) {
+    if (isArabic()) {
+      if (action === "restore") return "تمت الاستعادة";
+      if (action === "defaults") return "تم الضبط";
+      return "تم الحفظ";
+    }
+
+    if (action === "restore") return translate("settings.feedback.restored", "Restored");
+    if (action === "defaults") return translate("settings.feedback.setAsDefaults", "Set");
+    return translate("settings.feedback.saved", "Saved");
+  }
+
+  function fallbackText(action) {
+    if (action === "restore") return "Restore Defaults";
+    if (action === "defaults") return "Set as Defaults";
+    return "Save Settings";
+  }
+
+  function allButtons(root) {
+    return Array.from(root.querySelectorAll("button")).filter(isActionButton);
+  }
+
+  function buttons(root, network) {
+    return allButtons(root).filter(function (button) {
+      return !network || network === "all" || networkOf(button) === network;
+    });
+  }
+
+  function dirtyMap(root) {
+    let map = dirtyByRoot.get(root);
+    if (!map) {
+      map = new Map();
+      dirtyByRoot.set(root, map);
+    }
+    return map;
+  }
+
+  function feedbackMap(root) {
+    let map = feedbackByRoot.get(root);
+    if (!map) {
+      map = new Map();
+      feedbackByRoot.set(root, map);
+    }
+    return map;
+  }
+
+  function setDisabled(root, network, disabled, reason) {
+    buttons(root, network || "all").forEach(function (button) {
+      button.disabled = !!disabled;
+      button.setAttribute("aria-disabled", disabled ? "true" : "false");
+      button.classList.toggle(DISABLED_CLASS, !!disabled);
+      button.dataset.kgwSettingsOwnerV19Disabled = disabled ? "true" : "false";
+    });
+
+    trace(root, disabled ? "v19-disabled" : "v19-enabled", {
+      network: network || "all",
+      reason: reason || "unspecified"
+    });
+  }
+
+  function setDirty(root, network, dirty, reason) {
+    dirtyMap(root).set(network, !!dirty);
+    setDisabled(root, network, !dirty, reason || (dirty ? "dirty" : "clean"));
+  }
+
+  function isFeedbackLabel(text) {
+    const value = lower(text);
+    return (
+      value === "saved" ||
+      value === "restored" ||
+      value === "set" ||
+      value === "set as defaults" ||
+      value === "تم الحفظ" ||
+      value === "تم الضبط" ||
+      value === "تمت الاستعادة"
+    );
+  }
+
+  function rememberOriginalLabel(button, action) {
+    const current = String(button.textContent || "").trim();
+
+    if (!button.dataset.kgwSettingsOwnerV19OriginalLabel || isFeedbackLabel(current)) {
+      button.dataset.kgwSettingsOwnerV19OriginalLabel = current && !isFeedbackLabel(current) ? current : fallbackText(action);
+    }
+
+    button.dataset.kgwSettingsOwnerV19Action = action;
+  }
+
+  function restoreLabel(button) {
+    button.textContent = button.dataset.kgwSettingsOwnerV19OriginalLabel || fallbackText(actionName(button));
+  }
+
+  function restoreLabels(root, network) {
+    buttons(root, network).forEach(function (button) {
+      restoreLabel(button);
+    });
+  }
+
+  function clearFeedback(root, network, reason) {
+    const map = feedbackMap(root);
+    const active = map.get(network);
+
+    if (!active) return;
+
+    if (active.timer) window.clearTimeout(active.timer);
+    if (active.button) restoreLabel(active.button);
+
+    map.delete(network);
+
+    trace(root, "v19-feedback-cleared", {
+      network: network,
+      reason: reason || "clear"
+    });
+  }
+
+  function startVisualFeedbackAfterOriginalClick(root, network, button, action) {
+    window.setTimeout(function () {
+      clearFeedback(root, network, "new-feedback");
+
+      dirtyMap(root).set(network, false);
+      rememberOriginalLabel(button, action);
+
+      const label = feedbackText(action);
+
+      button.textContent = label;
+      button.setAttribute("aria-label", label);
+      button.setAttribute("title", label);
+
+      setDisabled(root, network, true, "feedback-clean-state");
+
+      const timer = window.setTimeout(function () {
+        const active = feedbackMap(root).get(network);
+        if (!active || active.button !== button) return;
+
+        feedbackMap(root).delete(network);
+        restoreLabel(button);
+
+        const dirty = dirtyMap(root).get(network) === true;
+        setDisabled(root, network, !dirty, dirty ? "feedback-complete-dirty" : "feedback-complete-clean");
+
+        trace(root, "v19-feedback-complete", {
+          network: network,
+          action: action,
+          holdMs: FEEDBACK_MS,
+          dirty: dirty,
+          safeNoFreeze: true
+        });
+      }, FEEDBACK_MS);
+
+      feedbackMap(root).set(network, {
+        timer: timer,
+        button: button,
+        action: action,
+        label: label
+      });
+
+      trace(root, "v19-feedback-start", {
+        network: network,
+        action: action,
+        holdMs: FEEDBACK_MS,
+        label: label,
+        visualOnly: true,
+        safeNoFreeze: true
+      });
+    }, 0);
+  }
+
+  function install(root) {
+    if (!root || root.dataset[ROOT_INSTALLED_ATTR] === "installed") return;
+
+    root.dataset[ROOT_INSTALLED_ATTR] = "installed";
+    setDisabled(root, "all", true, "initial");
+
+    root.addEventListener("input", function (event) {
+      if (!isSettingsControl(event.target)) return;
+
+      const network = networkOf(event.target);
+
+      if (!event.isTrusted) {
+        setDisabled(root, network, true, "input-programmatic");
+        return;
+      }
+
+      clearFeedback(root, network, "trusted-input");
+      restoreLabels(root, network);
+      setDirty(root, network, true, "trusted-input");
+    }, true);
+
+    root.addEventListener("change", function (event) {
+      if (!isSettingsControl(event.target)) return;
+
+      const network = networkOf(event.target);
+
+      if (!event.isTrusted) {
+        setDisabled(root, network, true, "change-programmatic");
+        return;
+      }
+
+      clearFeedback(root, network, "trusted-change");
+      restoreLabels(root, network);
+      setDirty(root, network, true, "trusted-change");
+    }, true);
+
+    root.addEventListener("click", function (event) {
+      const button = event.target && event.target.closest ? event.target.closest("button") : null;
+      if (!button || !root.contains(button) || !isActionButton(button)) return;
+
+      const network = networkOf(button);
+      const action = actionName(button);
+      const disabled = !!button.disabled || button.dataset.kgwSettingsOwnerV19Disabled === "true";
+
+      trace(root, "v19-click", {
+        network: network,
+        action: action,
+        disabled: disabled,
+        label: String(button.textContent || "").trim()
+      });
+
+      if (disabled) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        setDisabled(root, network, true, "click-blocked-clean-state");
+        return;
+      }
+
+      startVisualFeedbackAfterOriginalClick(root, network, button, action);
+    }, true);
+
+    trace(root, "v19-owner-installed", {
+      scope: SCOPE,
+      patch: PATCH,
+      feedbackMs: FEEDBACK_MS,
+      safeNoFreeze: true
+    });
+  }
+
+  window[GLOBAL_NAME] = {
+    install: install,
+    setDisabled: setDisabled,
+    buttons: buttons
+  };
+
+  window.KGW_SETTINGS_OWNER_V19 = window[GLOBAL_NAME];
+})();
+// END_KGW_SETTINGS_OWNER_V19
+
+
+
+
 function kgwI18nTextR41(key, fallback) {
   try {
     if (window.kgwT && typeof window.kgwT === "function") return window.kgwT(key, fallback);
@@ -8,6 +458,90 @@ function kgwI18nTextR41(key, fallback) {
   return fallback;
 }
 
+
+/* KGW_BRIDGE_RUSTY_KASPA_ROOT_ONLY_DEFAULT_PATHS_FIX_R5
+ * Canonical bridge runtime default path owner.
+ * The only generated default path is the current user's LocalAppData rusty-kaspa root.
+ * Example runtime value: %LOCALAPPDATA%\rusty-kaspa.
+ * No bridge suffix, no network suffix, no KGW app-data root.
+ * Kaspa bridge/runtime owns/completes any internal layout below this root.
+ */
+function kgwBridgeBackendInvokeR5(command, payload = {}) {
+  const invoke =
+    window.__TAURI__?.core?.invoke ||
+    window.__TAURI__?.tauri?.invoke ||
+    window.__TAURI_INVOKE__;
+
+  if (typeof invoke !== "function") {
+    return Promise.reject(new Error("Tauri invoke is not available"));
+  }
+
+  return invoke(command, payload);
+}
+
+function kgwBridgeJoinPathR5(root, child) {
+  const base = String(root || "").replace(/[\\/]+$/, "");
+  if (!base) return "";
+  return base + "\\" + child;
+}
+
+function kgwBridgeExtractUserLocalAppDataR5(paths) {
+  const values = Object.values(paths || {}).map((value) => String(value || ""));
+  for (const value of values) {
+    const match = value.match(/^([A-Za-z]:[\\/]Users[\\/][^\\/]+[\\/]AppData)[\\/](?:Local|Roaming)(?:[\\/].*)?$/i);
+    if (match && match[1]) {
+      return match[1] + "\\Local";
+    }
+  }
+  return "%LOCALAPPDATA%";
+}
+
+function kgwBridgeRustyKaspaLocalAppDataRootR5(paths = {}) {
+  return kgwBridgeJoinPathR5(kgwBridgeExtractUserLocalAppDataR5(paths), "rusty-kaspa");
+}
+
+function kgwBridgeIsEmptyOrGeneratedPathR5(value) {
+  const text = String(value || "");
+  return text.trim() === "" || /^[A-Za-z]:[\\/]+Users[\\/]+[^\\/]+AppData[\\/]+(?:Local|Roaming)[\\/]+(?:rusty-kaspa|KaspaGateway)(?:[\\/].*)?$/i.test(text) || /^%LOCALAPPDATA%[\\/]+rusty-kaspa(?:[\\/].*)?$/i.test(text);
+}
+
+async function kgwBridgeLoadEnvironmentPathHintsR5() {
+  try {
+    const defaults = await kgwBridgeBackendInvokeR5("settings_defaults");
+    return defaults && defaults.paths ? defaults.paths : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+async function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsR5(net, options = {}) {
+  const force = options.force === true;
+  const pathHints = await kgwBridgeLoadEnvironmentPathHintsR5();
+  const rustyRoot = kgwBridgeRustyKaspaLocalAppDataRootR5(pathHints);
+
+  const values = {
+    appdir: rustyRoot,
+    config: ""
+  };
+
+  Object.entries(values).forEach(([name, value]) => {
+    const field = byId(id(net, name));
+    if (!field) return;
+    const current = String(field.value || "");
+    if (force || kgwBridgeIsEmptyOrGeneratedPathR5(current)) {
+      field.value = value;
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  });
+
+  updateCommand(net);
+  return values;
+}
+
+function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
+  void kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsR5(net, options).catch(() => {});
+}
 
 const BRIDGE_NETWORKS = [
   { key: "mainnet", label: "MAINNET", testnet: false, netsuffix: "", kaspadPort: "16110", stratumPort: ":5555", promPort: ":2112" },
@@ -42,9 +576,6 @@ function esc(value) {
 function id(net, name) {
   return `bridge-${net}-${name}`;
 }
-
-
-
 
 
 function iid(net, instanceId, name) {
@@ -84,13 +615,6 @@ function addBoolValue(lines, net, name, flag) {
   const value = v(net, name);
   if (value && value !== "not set") lines.push(`${flag}=${value}`);
 }
-
-
-
-
-
-
-
 
 
 function cardInput(net, name, label, value = "", placeholder = "", span = "") {
@@ -195,11 +719,6 @@ function renderPorts(net) {
     <div class="bridge-v7-grid">
       ${cardInput(net.key, "stratumPort", "--stratum-port", net.stratumPort)}
       ${cardInput(net.key, "promPort", "--prom-port", net.promPort)}
-      ${cardInput(net.key, "customExePath", "Custom bridge exe", "", "optional", "span2")}
-      <div class="bridge-v7-card buttons">
-        <button type="button" data-bridge-action="default-url" data-net="${net.key}">Default URL</button>
-        <button type="button" data-bridge-action="browse" data-net="${net.key}">Browse</button>
-      </div>
     </div>`;
 }
 
@@ -406,7 +925,6 @@ function renderInstances(net) {
       `).join("")}
     </div>`;
 }
-
 
 
 function renderSections(net) {
@@ -657,17 +1175,6 @@ function addRawValue(lines, flag, value) {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
 function bridgeLogLineBelongsToBridge(_line) {
   // KGW_BRIDGE_RAW_NO_FILTER_R20
   return true;
@@ -843,17 +1350,6 @@ function buildCommandLines(net) {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
 function kgwExtractBridgeOwnerFlags(result) {
   const raw = stringifyRuntimeResult(result);
   const fields = {};
@@ -927,28 +1423,10 @@ function updateCommand(net) {
 }
 
 
-
-
-
-
-
-
-
 function updateAllCommands() {
   bridgeSyncAllModeControls();
   BRIDGE_NETWORKS.forEach((net) => updateCommand(net.key));
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 function installNetworkTabs(root) {
@@ -1349,6 +1827,48 @@ function kgwBridgeR51Fields(net) {
   });
 }
 
+
+/* KGW_BRIDGE_SETTINGS_LIFECYCLE_FIX_R6_START */
+function kgwBridgeSettingsActionIsR6(action) {
+  return action === "save-settings" || action === "restore-defaults" || action === "set-defaults";
+}
+
+function kgwBridgeNetFromSettingsEventR6(event, root, fallbackNet = "") {
+  const target = event?.target;
+  const carrier = target?.closest?.("[data-net], [data-network], [data-bridge-settings-panel], [id*='mainnet' i], [id*='testnet10' i], [id*='testnet12' i]");
+
+  const raw = [
+    target?.dataset?.net,
+    target?.dataset?.network,
+    carrier?.dataset?.net,
+    carrier?.dataset?.network,
+    target?.id,
+    carrier?.id,
+    carrier?.className,
+    fallbackNet,
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  if (raw.includes("testnet12") || raw.includes("tn12")) return "testnet12";
+  if (raw.includes("testnet10") || raw.includes("tn10")) return "testnet10";
+  if (raw.includes("mainnet")) return "mainnet";
+
+  try {
+    return fallbackNet || kgwBridgeCurrentVisibleNetwork(root) || "";
+  } catch {
+    return fallbackNet || "";
+  }
+}
+
+
+/* KGW_BRIDGE_SETTINGS_LIFECYCLE_FIX_R6_END */
+
+
+/* KGW_SETTINGS_FEEDBACK_LOCK_OWNER_R11_START */
+const kgwBridgeSettingsFeedbackLocksR11 = new Map();
+
+
+/* KGW_SETTINGS_FEEDBACK_LOCK_OWNER_R11_END */
+
 function kgwBridgeR51ReadSettings(net) {
   const values = {};
 
@@ -1410,6 +1930,12 @@ function kgwBridgeR51LoadSavedSettings() {
   }
 }
 
+/* KGW_BRIDGE_DIRTY_SETTINGS_BUTTONS_FIX_R2
+ * Settings buttons must show whether the current panel has unsaved/default differences.
+ * No changes: Save Settings / Restore Defaults / Set as Defaults are disabled.
+ */
+
+
 function kgwBridgeR51SaveSettings(net) {
   kgwBridgeR51Store("saved:" + net, kgwBridgeR51ReadSettings(net));
 }
@@ -1419,8 +1945,11 @@ function kgwBridgeR51SetAsDefaults(net) {
 }
 
 function kgwBridgeR51RestoreDefaults(net) {
-  const defaults = kgwBridgeR51Load("default:" + net) || kgwBridgeR51Load("factory:" + net);
-  kgwBridgeR51WriteSettings(net, defaults);
+  kgwBridgeSettingsWithProgrammaticWriteR9B(() => {
+    const defaults = kgwBridgeR51Load("default:" + net) || kgwBridgeR51Load("factory:" + net);
+    kgwBridgeR51WriteSettings(net, defaults);
+    kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, { force: true });
+  });
 }
 
 function kgwBridgeR51IsRunning(text) {
@@ -1557,7 +2086,6 @@ function installKgwBridgeR51BottomStyle() {
 }
 
 
-
 /* KGW_BRIDGE_ACTION_AND_LOG_FEEDBACK_OWNER_V1 */
 function kgwBridgeCurrentVisibleNetwork(root) {
   const activePanel = root.querySelector("[data-bridge-network-panel].active, [data-bridge-network-panel].is-active, [data-bridge-network-panel][data-active='true']");
@@ -1631,151 +2159,136 @@ function kgwBridgeLogCpuMinerDiagnostic(_net) {
   // Diagnostics are not raw bridge stdout/stderr.
 }
 
-function installActions(root) {
-  root.addEventListener("input", (event) => {
-    const field = event.target?.dataset?.bridgeInstanceField;
-    if (field) {
-      const panel = event.target.closest("[data-bridge-instance-panel]");
-      const instanceId = panel?.dataset?.bridgeInstancePanel;
-      const net = event.target.id?.split("-")?.[1];
+/* KGW_BRIDGE_SETTINGS_BUTTON_FEEDBACK_FIX_R1
+ * Settings action buttons must confirm successful user actions immediately.
+ * The existing Bridge action owner calls this helper after save/restore/set-default succeeds.
+ */
+/* KGW_BRIDGE_SETTINGS_BUTTON_FEEDBACK_HOLD_FIX_R2
+ * Keep settings button success labels visible long enough for the user.
+ * The helper repeats the label during the hold window to survive fast UI re-renders.
+ */
 
-      if (net && instanceId) {
-        const instance = bridgeInstances[net]?.find((item) => String(item.id) === String(instanceId));
-        if (instance) {
-          instance[field] = event.target.value;
-        }
-      }
+
+function installActions(root) {
+  // KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26: Bridge settings actions are scoped to the exact bridge/network that changed.
+  if (window.KGW_BRIDGE_SETTINGS_OWNER_V19 && typeof window.KGW_BRIDGE_SETTINGS_OWNER_V19.install === "function") {
+    window.KGW_BRIDGE_SETTINGS_OWNER_V19.install(root);
+  }
+
+  function normalizeNet(value) {
+    const raw = String(value || "").toLowerCase();
+    if (raw.includes("testnet12") || raw.includes("tn12")) return "testnet12";
+    if (raw.includes("testnet10") || raw.includes("tn10")) return "testnet10";
+    if (raw.includes("mainnet")) return "mainnet";
+    return "";
+  }
+
+  function netFromElement(element) {
+    if (!element) return "";
+    const carrier = element.closest("[data-net], [data-network], [data-bridge-network-panel], [data-bridge-inner-panel], [data-bridge-section-panel], [data-bridge-instance-panel]");
+
+    return normalizeNet(
+      [
+        element.dataset && element.dataset.net,
+        element.dataset && element.dataset.network,
+        carrier && carrier.dataset && carrier.dataset.net,
+        carrier && carrier.dataset && carrier.dataset.network,
+        carrier && carrier.dataset && carrier.dataset.bridgeNetworkPanel,
+        element.id,
+        carrier && carrier.id,
+        carrier && carrier.className
+      ].filter(Boolean).join(" ")
+    );
+  }
+
+  function netFromEvent(event) {
+    return netFromElement(event && event.target);
+  }
+
+  function scopedUpdate(net, reason) {
+    if (!net) return;
+
+    if (typeof bridgeSyncModeControls === "function") {
+      bridgeSyncModeControls(net);
     }
 
-    bridgeSyncAllModeControls();
-    updateAllCommands();
-  });
+    if (typeof updateCommand === "function") {
+      updateCommand(net);
+    }
+
+    if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === "function") {
+      window.__TAURI__.core.invoke("kgw_frontend_button_trace_v1", {
+        scope: "bridge",
+        net: net,
+        action: "settings-scope",
+        phase: "v26-scoped-update",
+        details: JSON.stringify({ patch: "KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26", network: net, reason: reason || "unknown" })
+      }).catch(function () {});
+    }
+  }
+
+  root.addEventListener("input", (event) => {
+    const target = event.target;
+    if (!target || !target.matches || !target.matches("input, select, textarea")) return;
+    if (target.readOnly || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
+
+    const net = netFromEvent(event);
+    scopedUpdate(net, event.isTrusted ? "trusted-input" : "programmatic-input");
+  }, true);
 
   root.addEventListener("change", (event) => {
-    const field = event.target?.dataset?.bridgeInstanceField;
-    if (field) {
-      const panel = event.target.closest("[data-bridge-instance-panel]");
-      const instanceId = panel?.dataset?.bridgeInstancePanel;
-      const net = event.target.id?.split("-")?.[1];
+    const target = event.target;
+    if (!target || !target.matches || !target.matches("input, select, textarea")) return;
+    if (target.readOnly || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
 
-      if (net && instanceId) {
-        const instance = bridgeInstances[net]?.find((item) => String(item.id) === String(instanceId));
-        if (instance) {
-          instance[field] = event.target.value;
-        }
-      }
-    }
+    const net = netFromEvent(event);
+    scopedUpdate(net, event.isTrusted ? "trusted-change" : "programmatic-change");
+  }, true);
 
-    bridgeSyncAllModeControls();
-    updateAllCommands();
-  });
-
-  root.addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-bridge-action]");
+  root.addEventListener("click", (event) => {
+    const button = event.target && event.target.closest ? event.target.closest("[data-bridge-action]") : null;
     if (!button || !root.contains(button)) return;
 
     const action = button.dataset.bridgeAction;
-    const net = button.dataset.net || button.dataset.network || kgwBridgeCurrentVisibleNetwork(root);
-    const instanceId = button.dataset.instanceId;
+    const net = normalizeNet(button.dataset.net || button.dataset.network || netFromElement(button));
 
-    if (!net) {
-      return;
-    }
-
-    if (action === "add-instance") {
-      addInstance(net);
-      return;
-    }
-
-    if (action === "duplicate-instance") {
-      duplicateInstance(net, instanceId);
-      return;
-    }
-
-    if (action === "remove-instance") {
-      removeInstance(net, instanceId);
-      return;
-    }
-
-    if (action === "select-instance") {
-      selectInstance(net, instanceId);
-      return;
-    }
-
-    if (action === "start" || action === "stop") {
-      if (button.dataset.kgwBusy === "1") {
-        return;
-      }
-
-      button.dataset.kgwBusy = "1";
-      button.disabled = true;
-
-      try {
-        if (action === "start") {
-          kgwBridgeLogCpuMinerDiagnostic(net);
-        }
-
-        await runBridgeIntegratedAction(action, net);
-      } finally {
-        delete button.dataset.kgwBusy;
-        button.disabled = false;
-
-        if (typeof kgwBridgeR51RefreshOne === "function") {
-          await kgwBridgeR51RefreshOne(net, action + "-final");
-          window.setTimeout(() => kgwBridgeR51RefreshOne(net, action + "+700ms"), 700);
-          window.setTimeout(() => kgwBridgeR51RefreshOne(net, action + "+1800ms"), 1800);
-        }
-      }
-
-      return;
-    }
+    if (!net) return;
 
     if (action === "save-settings") {
-      kgwBridgeR51SaveSettings(net);
-      return;
-    }
-
-    if (action === "restore-defaults") {
-      kgwBridgeR51RestoreDefaults(net);
+      if (typeof kgwBridgeR51SaveSettings === "function") kgwBridgeR51SaveSettings(net);
+      scopedUpdate(net, "save-settings");
       return;
     }
 
     if (action === "set-defaults") {
-      kgwBridgeR51SetAsDefaults(net);
+      if (typeof kgwBridgeR51SetAsDefaults === "function") kgwBridgeR51SetAsDefaults(net);
+      scopedUpdate(net, "set-defaults");
+      return;
+    }
+
+    if (action === "restore-defaults") {
+      if (typeof kgwBridgeR51RestoreDefaults === "function") kgwBridgeR51RestoreDefaults(net);
+      scopedUpdate(net, "restore-defaults");
       return;
     }
 
     if (action === "copy-command") {
-      try {
-        const text = updateCommand(net) || byId(id(net, "commandPreview"))?.value || "";
-        await navigator.clipboard?.writeText(text);
-        kgwFlashLogActionButton(button, kgwBridgeTranslateRuntime("log.copied", "Copied"));
-      } catch (error) {
+      const preview = document.getElementById("bridge-" + net + "-commandPreview");
+      if (preview && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(String(preview.value || preview.textContent || "")).catch(function () {});
       }
       return;
     }
 
-    if (action === "copy-log") {
-      try {
-        const text = byId(id(net, "logOutput"))?.textContent || "";
-        await navigator.clipboard?.writeText(text);
-        kgwFlashLogActionButton(button, kgwBridgeTranslateRuntime("log.copied", "Copied"));
-      } catch (error) {
+    if (action === "start" || action === "stop") {
+      if (typeof runBridgeIntegratedAction === "function") {
+        runBridgeIntegratedAction(action, net).catch(function (error) {
+          if (typeof appendLog === "function") appendLog(net, "Bridge " + action + " failed: " + (error && error.message ? error.message : String(error)));
+        });
       }
-      return;
     }
-
-    if (action === "clear-log") {
-      const out = byId(id(net, "logOutput"));
-      if (out) out.textContent = "";
-      KGW_BRIDGE_R51_LAST_LOGS[net] = "";
-      kgwFlashLogActionButton(button, kgwBridgeTranslateRuntime("log.deleted", "Deleted"));
-      return;
-    }
-  });
+  }, false);
 }
-
-
 
 export async function initKaspaBridgeTab(root) {
 
@@ -1793,6 +2306,7 @@ const bridgeRoot = root || document.getElementById("kaspa-bridge");
   installActions(bridgeRoot);
   bridgeSyncAllModeControls();
   updateAllCommands();
+  BRIDGE_NETWORKS.forEach((net) => kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net.key, { force: false })); /* KGW_BRIDGE_DYNAMIC_PATHS_INIT_R3 */
   window.setTimeout(updateAllCommands, 0);
   window.setTimeout(updateAllCommands, 150);
   bridgeSyncAllModeControls();
@@ -2058,4 +2572,5 @@ if (typeof window !== "undefined") {
     }
   });
 })();
+
 

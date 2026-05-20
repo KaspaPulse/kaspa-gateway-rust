@@ -445,7 +445,74 @@ function kgwSettingsApplyShellDisplayFromState(state, reason = "settings") {
   } catch (_) {}
 }
 
-function saveState() {
+
+/* KGW_DYNAMIC_PATHS_BACKEND_OWNER_FIX_R4
+ * Rust owns environment-specific default paths.
+ * settings.js may display and save path values, but path field defaults must not hard-code a Windows user path.
+ */
+function kgwSettingsBackendInvokeR4(command, payload = {}) {
+  const invoke =
+    window.__TAURI__?.core?.invoke ||
+    window.__TAURI__?.tauri?.invoke ||
+    window.__TAURI_INVOKE__;
+
+  if (typeof invoke !== "function") {
+    return Promise.reject(new Error("Tauri invoke is not available"));
+  }
+
+  return invoke(command, payload);
+}
+
+function kgwSettingsIsStaleUserPathR4(value) {
+  const text = String(value || "");
+  return /^[A-Za-z]:[\\/]+Users[\\/]+[^\\/]+[\\/]+AppData[\\/]+Roaming[\\/]+KaspaGateway/i.test(text) || /AppData[\\/]+Roaming[\\/]+KaspaGateway/i.test(text);
+}
+
+function kgwSettingsApplyDynamicPathValuesR4(paths, options = {}) {
+  const force = options.force === true;
+
+  const mapping = {
+    settingsDatabasePath: paths.database || paths.database_path || paths.data || "",
+    settingsExportPath: paths.exports || paths.export_path || "",
+    settingsLogPath: paths.logs || paths.log_path || "",
+    settingsBackupPath: paths.backups || paths.backup_path || ""
+  };
+
+  Object.entries(mapping).forEach(([id, value]) => {
+    if (!value) return;
+
+    const node = q(`#${CSS.escape(id)}`);
+    if (!node) return;
+
+    const current = String(node.value || "");
+    if (force || current.trim() === "" || kgwSettingsIsStaleUserPathR4(current)) {
+      node.value = value;
+    }
+  });
+}
+
+async function kgwSettingsLoadDynamicPathDefaultsR4(reason = "settings") {
+  try {
+    const defaults = await kgwSettingsBackendInvokeR4("settings_defaults");
+    if (defaults && defaults.paths) {
+      kgwSettingsApplyDynamicPathValuesR4(defaults.paths, { force: reason === "reset-defaults" });
+      settingsLogger().log("dynamic settings paths loaded from backend owner", { reason });
+      return defaults.paths;
+    }
+  } catch (error) {
+    settingsLogger().warn("dynamic settings paths backend load failed", { reason, error: String(error?.message || error) });
+  }
+
+  return null;
+}
+
+async function kgwSettingsRepairDynamicPathsBeforeSaveR4() {
+  await kgwSettingsLoadDynamicPathDefaultsR4("save-repair");
+}
+
+async function saveState() {
+  await kgwSettingsRepairDynamicPathsBeforeSaveR4();
+
   if (!kgwDisplaySelectionValidateForSaveR1()) {
     setSaveEnabled(true);
     return;
@@ -463,7 +530,7 @@ function saveState() {
   settingsLogger().log("settings saved");
 }
 
-function resetDefaults(options = {}) {
+async function resetDefaults(options = {}) {
   const shouldClearStorage = options.clearStorage !== false;
   const shouldApplyShell = options.applyShell !== false;
 
@@ -479,10 +546,10 @@ function resetDefaults(options = {}) {
 
   const defaults = {
     settingsLoggingLevel: "INFO",
-    settingsDatabasePath: "C:\\Users\\abuha\\AppData\\Roaming\\KaspaGateway\\data",
-    settingsExportPath: "C:\\Users\\abuha\\AppData\\Roaming\\KaspaGateway\\exports",
-    settingsLogPath: "C:\\Users\\abuha\\AppData\\Roaming\\KaspaGateway\\logs",
-    settingsBackupPath: "C:\\Users\\abuha\\AppData\\Roaming\\KaspaGateway\\backups",
+    settingsDatabasePath: "",
+    settingsExportPath: "",
+    settingsLogPath: "",
+    settingsBackupPath: "",
     settingsApiProfile: "default",
     settingsApiTimeout: "30",
     settingsRetryAttempts: "5",
@@ -517,6 +584,11 @@ function resetDefaults(options = {}) {
   }
 
   setSaveEnabled(false);
+
+  /* KGW_RESTORE_DEFAULTS_DYNAMIC_PATHS_FULL_REWRITE_FIX_R2
+   * Restore Defaults must finish by applying backend-owned dynamic file paths.
+   */
+  await kgwSettingsLoadDynamicPathDefaultsR4("reset-defaults");
 }
 
 function bindStaticActions() {
@@ -588,7 +660,7 @@ function bindStaticActions() {
     button.addEventListener("click", () => {
       const target = q(`#${CSS.escape(button.dataset.browseFor)}`);
       if (target && !target.value) {
-        target.value = "C:\\Users\\abuha\\AppData\\Roaming\\KaspaGateway";
+        void kgwSettingsLoadDynamicPathDefaultsR4("browse-defaults");
       }
       markDirty();
     });
@@ -666,11 +738,14 @@ function loadSavedState() {
       }
 
       window.setTimeout(() => kgwSettingsApplyShellDisplayFromState(state, "settings-load"), 0);
+      void kgwSettingsLoadDynamicPathDefaultsR4("settings-load");
     } else {
       kgwDisplaySelectionEnsureDefaultsR1("settings-load-defaults");
+      void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-defaults");
     }
   } catch (_) {
     kgwDisplaySelectionEnsureDefaultsR1("settings-load-error");
+    void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-error");
   }
 }
 
@@ -767,6 +842,7 @@ export async function initSettingsTab() {
   loadSavedState();
   kgwDisplaySelectionEnsureDefaultsR1("settings-init");
   kgwSettingsNormalizeNumericFields();
+  void kgwSettingsLoadDynamicPathDefaultsR4("settings-init");
 
   const firstEndpoint = q(".tree-row");
   if (firstEndpoint && !q(".tree-row.is-selected")) {

@@ -49,6 +49,21 @@ mod top_addresses_deep;
 mod transaction_analysis;
 mod ui_wiring;
 
+#[tauri::command]
+fn kgw_frontend_button_trace_v1(
+    scope: String,
+    net: String,
+    action: String,
+    phase: String,
+    details: String,
+) -> bool {
+    println!(
+        "[KGW_BUTTON_TRACE] scope={} net={} action={} phase={} details={}",
+        scope, net, action, phase, details
+    );
+    true
+}
+
 pub fn run() {
     app_logger::init_tracing_bridge();
     tauri::Builder::default()
@@ -200,7 +215,8 @@ pub fn run() {
             export_system::default_export_path,
             export_system::export_data,
             migration::preview_python_migration,
-            migration::migrate_python_data
+            migration::migrate_python_data,
+            kgw_frontend_button_trace_v1
         ])
         .setup(|app| {
             kgw_set_runtime_main_window_icon(app)?;

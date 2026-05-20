@@ -1719,7 +1719,12 @@
     "working": {
       "directory": "Working Directory"
     },
-    "general": "General"
+    "general": "General",
+    "feedback": {
+      "saved": "Saved",
+      "restored": "Restored",
+      "setAsDefaults": "Set as defaults"
+    }
   },
   "settings.logDiagnostics": "Log & Diagnostics",
   "settings.noDatabaseFilesFound": "No database files found.",

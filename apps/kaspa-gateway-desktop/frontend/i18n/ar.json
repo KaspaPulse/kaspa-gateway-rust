@@ -1718,7 +1718,12 @@
     "working": {
       "directory": "دليل العمل"
     },
-    "general": "عام"
+    "general": "عام",
+    "feedback": {
+      "saved": "تم الحفظ",
+      "restored": "تمت الاستعادة",
+      "setAsDefaults": "تم الضبط كافتراضي"
+    }
   },
   "settings.logDiagnostics": "السجل والتشخيص",
   "settings.noDatabaseFilesFound": "لم يتم العثور على ملفات قاعدة بيانات.",
