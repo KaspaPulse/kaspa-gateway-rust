@@ -1011,6 +1011,12 @@ console.log("[KGW Explorer][busy-ui] global controller installed");
   if (window.kgwShellDisplayPreferencesR71) return;
 
   const storageKey = "kgw.shell.display.preferences.v71";
+  const canonicalSettingsKey = "kgw-settings-python-exact-state";
+
+  /* KGW_SETTINGS_DISPLAY_SOURCE_BASED_FIX_R2
+   * main.js remains the shell display application owner.
+   * It reads canonical Settings state first, then falls back to the legacy shell display key.
+   */
 
   const languageOptions = [
     ["en", "English"], ["ar", "Arabic"], ["de", "German"], ["es", "Spanish"],
@@ -1065,12 +1071,49 @@ console.log("[KGW Explorer][busy-ui] global controller installed");
     };
   }
 
-  function read() {
+  function readCanonicalSettingsState() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(canonicalSettingsKey) || "null");
+      const checks = saved && typeof saved === "object" ? saved.checks : null;
+      if (!checks || typeof checks !== "object") return null;
+
+      const prefs = { languages: [], currencies: [], tabs: [] };
+
+      Object.entries(checks).forEach(([key, checked]) => {
+        if (!checked) return;
+
+        if (key.startsWith("language:")) {
+          prefs.languages.push(key.slice("language:".length));
+          return;
+        }
+
+        if (key.startsWith("currency:")) {
+          prefs.currencies.push(key.slice("currency:".length));
+          return;
+        }
+
+        if (key.startsWith("tab:")) {
+          prefs.tabs.push(key.slice("tab:".length));
+        }
+      });
+
+      const hasAny = prefs.languages.length > 0 || prefs.currencies.length > 0 || prefs.tabs.length > 0;
+      return hasAny ? normalize(prefs) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function readLegacyDisplayPreferences() {
     try {
       return normalize(JSON.parse(localStorage.getItem(storageKey) || "null"));
     } catch {
       return defaults();
     }
+  }
+
+  function read() {
+    return readCanonicalSettingsState() || readLegacyDisplayPreferences();
   }
 
   function save(prefs) {
@@ -1132,7 +1175,15 @@ console.log("[KGW Explorer][busy-ui] global controller installed");
       }
 
       if (button.hidden !== !visible) button.hidden = !visible;
-      if (button.style.display !== (visible ? "" : "none")) button.style.display = visible ? "" : "none";
+      /* KGW_TAB_VISIBILITY_UNIFIED_OWNER_FIX_R1
+       * main.js is the only runtime owner for top tab visibility.
+       * Use inline !important when hiding because legacy compact tab CSS uses display !important.
+       */
+      if (visible) {
+        button.style.removeProperty("display");
+      } else {
+        button.style.setProperty("display", "none", "important");
+      }
       button.setAttribute("aria-hidden", visible ? "false" : "true");
       button.dataset.kgwDisplayVisible = visible ? "true" : "false";
     }

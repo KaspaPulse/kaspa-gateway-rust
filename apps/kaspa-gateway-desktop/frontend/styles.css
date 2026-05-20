@@ -972,6 +972,17 @@ header [class*="metric" i],
   text-overflow: ellipsis !important;
 }
 
+/* KGW_TAB_VISIBILITY_UNIFIED_OWNER_FIX_R1
+   Contract: main.js owns which top tabs are visible.
+   CSS may size visible tab buttons, but must never force hidden tabs visible.
+   This rule is intentionally placed after the compact tab display rule. */
+.kgw-tab-button[hidden],
+.kgw-tab-button[data-kgw-display-visible="false"],
+.kgw-tabs .kgw-tab-button[hidden],
+.kgw-tabs .kgw-tab-button[data-kgw-display-visible="false"] {
+  display: none !important;
+}
+
 .kgw-tab-button[data-tab="kaspa-node"],
 .kgw-tab-button[data-tab="kaspa-bridge"],
 .kgw-tab-button[data-tab="top-addresses"] {

@@ -1595,3 +1595,112 @@ header select,
   font-size: 13px;
 }
 
+/* KGW_EXPLORER_DATE_FILTER_LAYOUT_FIX_V1
+   Existing-owner CSS fix only.
+   Keeps Explorer filtering/fetch logic unchanged.
+   Prevents From Date / To Date label and date input overlap. */
+#explorer .explorer-py-filter-grid,
+.explorer-python-root .explorer-py-filter-grid {
+  grid-template-columns:
+    max-content minmax(168px, 188px)
+    max-content minmax(168px, 188px)
+    minmax(82px, 96px)
+    minmax(82px, 96px)
+    minmax(260px, 1fr)
+    minmax(74px, 88px)
+    minmax(94px, 110px) !important;
+  align-items: center !important;
+  column-gap: 8px !important;
+  row-gap: 6px !important;
+  overflow: visible !important;
+}
+
+#explorer .explorer-py-filter-grid > label,
+.explorer-python-root .explorer-py-filter-grid > label {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  min-width: max-content !important;
+  width: auto !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  line-height: 30px !important;
+}
+
+#explorer .explorer-date-combo,
+.explorer-python-root .explorer-date-combo {
+  display: grid !important;
+  grid-template-columns: minmax(124px, 1fr) 32px !important;
+  align-items: center !important;
+  gap: 5px !important;
+  min-width: 168px !important;
+  max-width: 188px !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+#explorer .explorer-date-combo input[type="text"],
+.explorer-python-root .explorer-date-combo input[type="text"] {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 3px 8px !important;
+  text-align: left !important;
+}
+
+#explorer .explorer-date-combo .explorer-mini-button,
+.explorer-python-root .explorer-date-combo .explorer-mini-button {
+  width: 32px !important;
+  min-width: 32px !important;
+  max-width: 32px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  line-height: 30px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 32px !important;
+}
+
+#explorer .explorer-date-combo .explorer-native-date,
+.explorer-python-root .explorer-date-combo .explorer-native-date {
+  position: absolute !important;
+  left: -9999px !important;
+  top: auto !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+@media (max-width: 1360px) {
+  #explorer .explorer-py-filter-grid,
+  .explorer-python-root .explorer-py-filter-grid {
+    grid-template-columns:
+      max-content minmax(154px, 174px)
+      max-content minmax(154px, 174px)
+      minmax(76px, 88px)
+      minmax(76px, 88px)
+      minmax(220px, 1fr)
+      minmax(68px, 82px)
+      minmax(86px, 102px) !important;
+    column-gap: 6px !important;
+  }
+
+  #explorer .explorer-date-combo,
+  .explorer-python-root .explorer-date-combo {
+    min-width: 154px !important;
+    max-width: 174px !important;
+    grid-template-columns: minmax(116px, 1fr) 30px !important;
+  }
+
+  #explorer .explorer-date-combo .explorer-mini-button,
+  .explorer-python-root .explorer-date-combo .explorer-mini-button {
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
+  }
+}
+

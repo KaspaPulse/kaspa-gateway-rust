@@ -171,6 +171,157 @@ function selectEndpoint(row) {
   combineUrl();
 }
 
+
+/* KGW_SETTINGS_DISPLAY_MINIMUM_SELECTION_OWNER_FIX_R1
+ * settings.js owns Display Settings checkbox validity.
+ * main.js remains the only owner of top-tab DOM visibility.
+ * A display group must never have zero selected entries.
+ */
+/* KGW_SETTINGS_DISPLAY_SILENT_DEFAULT_FALLBACK_FIX_R3
+ * Zero-selected Display Settings groups are repaired silently.
+ * Fixed fallback: English / USD / Explorer.
+ */
+const KGW_DISPLAY_SELECTION_GROUPS_R1 = [
+  {
+    name: "languages",
+    selector: "[data-settings-language]",
+    attr: "data-settings-language",
+    selectAll: "#settingsLangSelectAll",
+    label: "Displayed Languages",
+    fallbackValue: "en"
+  },
+  {
+    name: "currencies",
+    selector: "[data-settings-currency]",
+    attr: "data-settings-currency",
+    selectAll: "#settingsCurrencySelectAll",
+    label: "Displayed Currencies",
+    fallbackValue: "USD"
+  },
+  {
+    name: "tabs",
+    selector: "[data-settings-visible-tab]",
+    attr: "data-settings-visible-tab",
+    selectAll: "#settingsTabSelectAll",
+    label: "Displayed Tabs",
+    fallbackValue: "explorer"
+  }
+]
+
+function kgwDisplaySelectionNodesR1(group) {
+  return qa(group.selector).filter((node) => node && node.type === "checkbox");
+}
+
+function kgwDisplaySelectionCheckedCountR1(group) {
+  return kgwDisplaySelectionNodesR1(group).filter((node) => node.checked).length;
+}
+
+function kgwDisplaySelectionSetAllR1(group, checked) {
+  kgwDisplaySelectionNodesR1(group).forEach((node) => {
+    node.checked = checked;
+  });
+  updateSelectAll(group.selectAll, group.selector);
+}
+
+function kgwDisplaySelectionSetFallbackR1(group) {
+  const nodes = kgwDisplaySelectionNodesR1(group);
+  let fallbackApplied = false;
+
+  nodes.forEach((node) => {
+    const value = node.getAttribute(group.attr) || node.value || "";
+    const checked = value === group.fallbackValue;
+    node.checked = checked;
+    fallbackApplied = fallbackApplied || checked;
+  });
+
+  if (!fallbackApplied && nodes[0]) {
+    nodes[0].checked = true;
+  }
+
+  updateSelectAll(group.selectAll, group.selector);
+}
+
+function kgwDisplaySelectionZeroGroupsR1() {
+  return KGW_DISPLAY_SELECTION_GROUPS_R1.filter((group) => {
+    const nodes = kgwDisplaySelectionNodesR1(group);
+    return nodes.length > 0 && nodes.filter((node) => node.checked).length === 0;
+  });
+}
+
+function kgwDisplaySelectionWarnR1(groups) {
+  if (!Array.isArray(groups) || groups.length === 0) return;
+
+  settingsLogger().warn("display selection repaired silently to fixed fallback", {
+    groups: groups.map((group) => group.name),
+    fallback: groups.reduce((acc, group) => {
+      acc[group.name] = group.fallbackValue;
+      return acc;
+    }, {})
+  });
+}
+
+function kgwDisplaySelectionEnsureDefaultsR1(reason = "default") {
+  const repaired = [];
+
+  KGW_DISPLAY_SELECTION_GROUPS_R1.forEach((group) => {
+    const nodes = kgwDisplaySelectionNodesR1(group);
+    if (nodes.length === 0) return;
+
+    if (nodes.filter((node) => node.checked).length === 0) {
+      kgwDisplaySelectionSetFallbackR1(group);
+      repaired.push(group.name);
+    }
+  });
+
+  if (repaired.length) {
+    settingsLogger().warn("display selection repaired from zero-selected state", { reason, repaired });
+  }
+
+  return repaired;
+}
+
+function kgwDisplaySelectionValidateForSaveR1() {
+  const zeroGroups = kgwDisplaySelectionZeroGroupsR1();
+  if (zeroGroups.length === 0) return true;
+
+  zeroGroups.forEach((group) => kgwDisplaySelectionSetFallbackR1(group));
+  kgwDisplaySelectionWarnR1(zeroGroups);
+  return true;
+}
+
+function kgwDisplaySelectionBindMinimumGuardsR1() {
+  KGW_DISPLAY_SELECTION_GROUPS_R1.forEach((group) => {
+    const master = q(group.selectAll);
+
+    if (master && master.dataset.kgwMinimumSelectionBound !== "true") {
+      master.dataset.kgwMinimumSelectionBound = "true";
+      master.addEventListener("change", () => {
+        window.setTimeout(() => {
+          if (kgwDisplaySelectionCheckedCountR1(group) === 0) {
+            kgwDisplaySelectionSetFallbackR1(group);
+            kgwDisplaySelectionWarnR1([group]);
+            markDirty();
+          }
+        }, 0);
+      });
+    }
+
+    kgwDisplaySelectionNodesR1(group).forEach((node) => {
+      if (node.dataset.kgwMinimumSelectionBound === "true") return;
+      node.dataset.kgwMinimumSelectionBound = "true";
+      node.addEventListener("change", () => {
+        window.setTimeout(() => {
+          if (kgwDisplaySelectionCheckedCountR1(group) === 0) {
+            kgwDisplaySelectionSetFallbackR1(group);
+            kgwDisplaySelectionWarnR1([group]);
+            markDirty();
+          }
+        }, 0);
+      });
+    });
+  });
+}
+
 function collectState() {
   const state = {
     inputs: {},
@@ -240,19 +391,87 @@ function applyState(state) {
   combineUrl();
 }
 
-function saveState() {
+
+/* KGW_SETTINGS_DISPLAY_SOURCE_BASED_FIX_R2
+ * settings.js remains the canonical Settings state owner.
+ * main.js remains the shell display application owner.
+ */
+function kgwSettingsDisplayPrefsFromCanonicalState(state) {
+  const checks = state && typeof state === "object" ? state.checks : null;
+  if (!checks || typeof checks !== "object") return null;
+
+  const prefs = { languages: [], currencies: [], tabs: [] };
+
+  Object.entries(checks).forEach(([key, checked]) => {
+    if (!checked) return;
+
+    if (key.startsWith("language:")) {
+      prefs.languages.push(key.slice("language:".length));
+      return;
+    }
+
+    if (key.startsWith("currency:")) {
+      prefs.currencies.push(key.slice("currency:".length));
+      return;
+    }
+
+    if (key.startsWith("tab:")) {
+      prefs.tabs.push(key.slice("tab:".length));
+    }
+  });
+
+  prefs.languages = Array.from(new Set(prefs.languages));
+  prefs.currencies = Array.from(new Set(prefs.currencies));
+  prefs.tabs = Array.from(new Set(prefs.tabs));
+
+  return prefs.languages.length || prefs.currencies.length || prefs.tabs.length ? prefs : null;
+}
+
+function kgwSettingsApplyShellDisplayFromState(state, reason = "settings") {
+  const prefs = kgwSettingsDisplayPrefsFromCanonicalState(state);
+  const shell = window.kgwShellDisplayPreferencesR71;
+
+  if (!prefs || !shell) return;
+
   try {
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(collectState(), null, 2));
+    if (typeof shell.save === "function") shell.save(prefs);
+    if (typeof shell.apply === "function") shell.apply(prefs, reason);
   } catch (_) {}
+
+  try {
+    window.dispatchEvent(new CustomEvent("kgw:shell-display-preferences-changed", {
+      detail: prefs
+    }));
+  } catch (_) {}
+}
+
+function saveState() {
+  if (!kgwDisplaySelectionValidateForSaveR1()) {
+    setSaveEnabled(true);
+    return;
+  }
+
+  const state = collectState();
+
+  try {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state, null, 2));
+  } catch (_) {}
+
+  kgwSettingsApplyShellDisplayFromState(state, "settings-save");
 
   setSaveEnabled(false);
   settingsLogger().log("settings saved");
 }
 
-function resetDefaults() {
-  try {
-    localStorage.removeItem(SETTINGS_STORAGE_KEY);
-  } catch (_) {}
+function resetDefaults(options = {}) {
+  const shouldClearStorage = options.clearStorage !== false;
+  const shouldApplyShell = options.applyShell !== false;
+
+  if (shouldClearStorage) {
+    try {
+      localStorage.removeItem(SETTINGS_STORAGE_KEY);
+    } catch (_) {}
+  }
 
   qa("input[type='checkbox']").forEach((node) => {
     node.checked = node.id !== "settingsStartWindows" && node.id !== "settingsEnableAutoRefresh";
@@ -291,6 +510,12 @@ function resetDefaults() {
   updateSelectAll("#settingsCurrencySelectAll", "[data-settings-currency]");
   updateSelectAll("#settingsTabSelectAll", "[data-settings-visible-tab]");
 
+  kgwDisplaySelectionEnsureDefaultsR1("reset-defaults");
+
+  if (shouldApplyShell) {
+    kgwSettingsApplyShellDisplayFromState(collectState(), "settings-reset-defaults");
+  }
+
   setSaveEnabled(false);
 }
 
@@ -318,6 +543,7 @@ function bindStaticActions() {
   bindSelectAll("#settingsLangSelectAll", "[data-settings-language]");
   bindSelectAll("#settingsCurrencySelectAll", "[data-settings-currency]");
   bindSelectAll("#settingsTabSelectAll", "[data-settings-visible-tab]");
+  kgwDisplaySelectionBindMinimumGuardsR1();
 
   qa("input, select").forEach((node) => {
     if (node.dataset.changeBound === "true") return;
@@ -428,8 +654,24 @@ function bindStaticActions() {
 function loadSavedState() {
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || "null");
-    if (saved) applyState(saved);
-  } catch (_) {}
+    if (saved) {
+      applyState(saved);
+      const repaired = kgwDisplaySelectionEnsureDefaultsR1("settings-load");
+      const state = collectState();
+
+      if (repaired.length) {
+        try {
+          localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state, null, 2));
+        } catch (_) {}
+      }
+
+      window.setTimeout(() => kgwSettingsApplyShellDisplayFromState(state, "settings-load"), 0);
+    } else {
+      kgwDisplaySelectionEnsureDefaultsR1("settings-load-defaults");
+    }
+  } catch (_) {
+    kgwDisplaySelectionEnsureDefaultsR1("settings-load-error");
+  }
 }
 
 
@@ -521,8 +763,9 @@ export async function initSettingsTab() {
   node.dataset.settingsPythonInitialized = "true";
 
   bindStaticActions();
-  resetDefaults();
+  resetDefaults({ clearStorage: false, applyShell: false });
   loadSavedState();
+  kgwDisplaySelectionEnsureDefaultsR1("settings-init");
   kgwSettingsNormalizeNumericFields();
 
   const firstEndpoint = q(".tree-row");
@@ -1348,176 +1591,6 @@ document.addEventListener("click", (event) => {
   event.preventDefault();
   kgwDeleteSettingsAddressTransactions();
 });
-
-/* KGW_R71_SETTINGS_DISPLAY_PREFERENCES_BINDING_SAFE */
-(function installKgwSettingsDisplayPreferencesBindingR71() {
-  if (window.kgwSettingsDisplayPreferencesBindingR71) return;
-  window.kgwSettingsDisplayPreferencesBindingR71 = true;
-
-  function owner() {
-    return window.kgwShellDisplayPreferencesR71 || null;
-  }
-
-  function boxes(kind) {
-    const selector = kind === "languages"
-      ? "[data-settings-language]"
-      : kind === "currencies"
-        ? "[data-settings-currency]"
-        : "[data-settings-visible-tab]";
-
-    return Array.from(document.querySelectorAll(selector));
-  }
-
-  function keyOf(kind, box) {
-    if (kind === "languages") return box.dataset.settingsLanguage;
-    if (kind === "currencies") return box.dataset.settingsCurrency;
-    return box.dataset.settingsVisibleTab;
-  }
-
-  function selected(kind) {
-    return boxes(kind)
-      .filter((box) => box.checked)
-      .map((box) => keyOf(kind, box))
-      .filter(Boolean);
-  }
-
-  function readFromUi() {
-    return {
-      languages: selected("languages"),
-      currencies: selected("currencies"),
-      tabs: selected("tabs")
-    };
-  }
-
-  function writeToUi(prefs) {
-    const shell = owner();
-    const normalized = shell ? shell.normalize(prefs || shell.read()) : prefs;
-    if (!normalized) return;
-
-    for (const kind of ["languages", "currencies", "tabs"]) {
-      const allowed = new Set(normalized[kind] || []);
-
-      for (const box of boxes(kind)) {
-        const key = keyOf(kind, box);
-        if (!key) continue;
-
-        const next = allowed.has(key);
-        if (box.checked !== next) box.checked = next;
-      }
-    }
-  }
-
-  function ensureMinimum(kind, changedBox) {
-    const checked = boxes(kind).filter((box) => box.checked);
-
-    if (checked.length > 0) return true;
-
-    if (changedBox) changedBox.checked = true;
-
-    const shell = owner();
-    if (shell) writeToUi(shell.read());
-
-    console.warn("[KGW settings] At least one " + kind + " option must remain selected.");
-    return false;
-  }
-
-  function saveApply(reason) {
-    const shell = owner();
-    if (!shell) return;
-
-    const prefs = shell.save(readFromUi());
-    writeToUi(prefs);
-    shell.apply(prefs, reason);
-
-    window.dispatchEvent(new CustomEvent("kgw:shell-display-preferences-changed", {
-      detail: prefs
-    }));
-  }
-
-  function syncSettingsUi(reason = "sync") {
-    const shell = owner();
-    if (!shell) return;
-
-    const hasSettingsChoices =
-      boxes("languages").length > 0 ||
-      boxes("currencies").length > 0 ||
-      boxes("tabs").length > 0;
-
-    if (!hasSettingsChoices) return;
-
-    writeToUi(shell.read());
-    shell.apply(shell.read(), reason);
-  }
-
-  document.addEventListener("change", (event) => {
-    const target = event.target;
-
-    if (!(target instanceof HTMLInputElement)) return;
-
-    if (target.matches("[data-settings-language]")) {
-      if (!ensureMinimum("languages", target)) return;
-      saveApply("language-change");
-      return;
-    }
-
-    if (target.matches("[data-settings-currency]")) {
-      if (!ensureMinimum("currencies", target)) return;
-      saveApply("currency-change");
-      return;
-    }
-
-    if (target.matches("[data-settings-visible-tab]")) {
-      if (!ensureMinimum("tabs", target)) return;
-      saveApply("tab-change");
-    }
-  }, true);
-
-  document.addEventListener("click", (event) => {
-    const tabButton = event.target.closest("[data-tab='settings']");
-    if (tabButton) {
-      window.setTimeout(() => syncSettingsUi("settings-tab-open"), 50);
-      window.setTimeout(() => syncSettingsUi("settings-tab-open-late"), 300);
-      return;
-    }
-
-    const button = event.target.closest("button");
-    if (!button) return;
-
-    const label = String(button.textContent || "").trim().toLowerCase();
-
-    if (label.includes("save settings")) {
-      window.setTimeout(() => saveApply("save-settings"), 0);
-      return;
-    }
-
-    if (label.includes("reset to defaults") || label.includes("restore defaults")) {
-      window.setTimeout(() => {
-        const shell = owner();
-        if (!shell) return;
-
-        const defaults = shell.defaults();
-        writeToUi(defaults);
-        shell.save(defaults);
-        shell.apply(defaults, "reset-defaults");
-
-        window.dispatchEvent(new CustomEvent("kgw:shell-display-preferences-changed", {
-          detail: defaults
-        }));
-      }, 0);
-    }
-  }, true);
-
-  function boot() {
-    syncSettingsUi("boot");
-    window.setTimeout(() => syncSettingsUi("boot-late"), 500);
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot, { once: true });
-  } else {
-    window.setTimeout(boot, 0);
-  }
-})();
 
 /* KGW_R80_SETTINGS_SEMANTIC_I18N_BINDING_SAFE_V3 */
 (function installKgwSettingsSemanticI18nBindingR80V3() {

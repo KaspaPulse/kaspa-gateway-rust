@@ -431,7 +431,7 @@
 }
 /* KGW_LOG_AUTOSCROLL_CONTROLS_R27_END */
 
-/* KGW_LOG_FONT_SIZE_CONTROLS_CSS_V1 */
+/* KGW_LOG_FONT_SIZE_CONTROLS_CSS_V2 */
 .kgw-log-font-size-controls {
   display: inline-flex;
   align-items: center;
@@ -443,12 +443,12 @@
 }
 
 .kgw-log-font-size-button {
-  min-width: 28px;
+  min-width: 30px;
   min-height: 24px;
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 7px;
   border: 1px solid var(--kgw-border-color, rgba(148, 163, 184, 0.35));
-  background: var(--kgw-panel-bg, rgba(15, 23, 42, 0.18));
+  background: var(--kgw-panel-bg, rgba(148, 163, 184, 0.18));
   color: inherit;
   font: inherit;
   font-size: 11px;
@@ -465,10 +465,10 @@
 }
 
 .kgw-log-font-size-value {
-  min-width: 36px;
+  min-width: 38px;
   text-align: center;
   font-size: 11px;
-  opacity: 0.82;
+  opacity: 0.84;
 }
 
 [data-kgw-log-font-size-pane="1"] {

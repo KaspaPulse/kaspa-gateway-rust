@@ -1810,22 +1810,23 @@ if (typeof window !== "undefined") {
   window.initKaspaBridgeTab = initKaspaBridgeTab;
 }
 
-(function installKgwLogFontSizeControlsV1() {
+(function installKgwLogFontSizeToolbarControlsV2() {
   "use strict";
 
-  const KGW_MARKER = "KGW_LOG_FONT_SIZE_CONTROLS_V1";
+  const MARKER = "KGW_LOG_FONT_SIZE_CONTROLS_V2";
   const KIND = "bridge";
+  const NETWORKS = ["mainnet", "testnet10", "testnet12"];
   const MIN_SIZE = 10;
   const MAX_SIZE = 18;
   const DEFAULT_SIZE = 12;
 
-  const NETWORKS = ["mainnet", "testnet10", "testnet12"];
+  let scheduled = false;
 
   function storageKey(network) {
     return "kgw." + KIND + ".log.fontSize." + network;
   }
 
-  function clampFontSize(value) {
+  function clampSize(value) {
     const parsed = Number.parseInt(String(value || ""), 10);
     if (!Number.isFinite(parsed)) return DEFAULT_SIZE;
     return Math.max(MIN_SIZE, Math.min(MAX_SIZE, parsed));
@@ -1833,218 +1834,228 @@ if (typeof window !== "undefined") {
 
   function readSize(network) {
     try {
-      return clampFontSize(window.localStorage.getItem(storageKey(network)));
+      return clampSize(window.localStorage.getItem(storageKey(network)));
     } catch (_) {
       return DEFAULT_SIZE;
     }
   }
 
   function writeSize(network, size) {
-    const finalSize = clampFontSize(size);
+    const finalSize = clampSize(size);
     try {
       window.localStorage.setItem(storageKey(network), String(finalSize));
     } catch (_) {}
     return finalSize;
   }
 
-  function networkFromElement(element) {
-    let current = element;
-    while (current && current !== document.documentElement) {
-      const candidates = [
-        current.dataset && current.dataset.network,
-        current.dataset && current.dataset.kgwNetwork,
-        current.getAttribute && current.getAttribute("data-network"),
-        current.getAttribute && current.getAttribute("data-kgw-network"),
-        current.id,
-        current.className
-      ];
-
-      const joined = candidates
+  function textOf(element) {
+    return String(
+      [
+        element && element.id,
+        element && element.className,
+        element && element.textContent,
+        element && element.getAttribute && element.getAttribute("aria-label"),
+        element && element.getAttribute && element.getAttribute("data-network"),
+        element && element.getAttribute && element.getAttribute("data-kgw-network")
+      ]
         .filter(Boolean)
-        .map((value) => String(value).toLowerCase())
-        .join(" ");
+        .join(" ")
+    ).toLowerCase();
+  }
 
+  function isVisible(element) {
+    if (!element || !element.getBoundingClientRect) return false;
+    const rect = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+    return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+  }
+
+  function activeNetwork() {
+    const selected = Array.from(
+      document.querySelectorAll(
+        "[aria-selected='true'], .active, .is-active, .selected, [data-active='true']"
+      )
+    ).filter(isVisible);
+
+    for (const element of selected) {
+      const t = textOf(element);
       for (const network of NETWORKS) {
-        if (joined.includes(network.toLowerCase())) return network;
+        if (t.includes(network)) return network;
+        if (network === "testnet10" && t.includes("testnet 10")) return network;
+        if (network === "testnet12" && t.includes("testnet 12")) return network;
       }
+    }
 
-      current = current.parentElement;
+    const visibleLogs = Array.from(document.querySelectorAll("[id*='log'], [class*='log'], pre, textarea"))
+      .filter(isVisible);
+
+    for (const element of visibleLogs) {
+      let current = element;
+      while (current && current !== document.documentElement) {
+        const t = textOf(current);
+        for (const network of NETWORKS) {
+          if (t.includes(network)) return network;
+          if (network === "testnet10" && t.includes("testnet 10")) return network;
+          if (network === "testnet12" && t.includes("testnet 12")) return network;
+        }
+        current = current.parentElement;
+      }
     }
 
     return "mainnet";
   }
 
   function looksLikeLogPane(element) {
-    if (!element || element.dataset.kgwLogFontSizePane === "1") return false;
-
-    const text = [
-      element.id || "",
-      element.className || "",
-      element.getAttribute && element.getAttribute("aria-label") || "",
-      element.getAttribute && element.getAttribute("data-role") || ""
-    ].join(" ").toLowerCase();
-
-    if (!text.includes("log")) return false;
+    if (!element || !isVisible(element)) return false;
 
     const tag = String(element.tagName || "").toLowerCase();
-    const allowedTag = tag === "pre" || tag === "code" || tag === "textarea" || tag === "div";
-    if (!allowedTag) return false;
+    const t = textOf(element);
 
-    const rect = element.getBoundingClientRect ? element.getBoundingClientRect() : null;
-    if (rect && rect.height > 0 && rect.height < 40) return false;
+    if (!(tag === "pre" || tag === "textarea" || tag === "code" || tag === "div")) return false;
+    if (!t.includes("log")) return false;
+    if (element.classList && element.classList.contains("kgw-log-font-size-controls")) return false;
+
+    const rect = element.getBoundingClientRect();
+    if (rect.height < 80) return false;
 
     return true;
   }
 
-  function findLogPanes(root) {
-    const selector = [
-      "pre",
-      "code",
-      "textarea",
-      "[class*='log']",
-      "[id*='log']",
-      "[data-role*='log']",
-      "[aria-label*='log']"
-    ].join(",");
-
-    return Array.from(root.querySelectorAll(selector)).filter(looksLikeLogPane);
+  function visibleLogPanes() {
+    return Array.from(
+      document.querySelectorAll("pre, textarea, code, [id*='log'], [class*='log'], [data-role*='log']")
+    ).filter(looksLikeLogPane);
   }
 
-  function applySizeToPane(pane) {
-    const network = networkFromElement(pane);
+  function applyFontSize() {
+    const network = activeNetwork();
     const size = readSize(network);
-    pane.dataset.kgwLogFontSizePane = "1";
-    pane.dataset.kgwLogFontSizeNetwork = network;
-    pane.style.setProperty("--kgw-log-font-size", size + "px");
-    pane.style.fontSize = "var(--kgw-log-font-size)";
+
+    for (const pane of visibleLogPanes()) {
+      pane.dataset.kgwLogFontSizePane = "1";
+      pane.style.setProperty("--kgw-log-font-size", size + "px");
+      pane.style.fontSize = "var(--kgw-log-font-size)";
+      pane.style.lineHeight = "1.45";
+    }
+
+    const value = document.querySelector(".kgw-log-font-size-controls[data-kind='" + KIND + "'] .kgw-log-font-size-value");
+    if (value) value.textContent = size + "px";
   }
 
-  function applyAllSizes(root) {
-    for (const pane of findLogPanes(root || document)) {
-      applySizeToPane(pane);
-    }
+  function button(label, title) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "kgw-log-font-size-button";
+    b.textContent = label;
+    b.title = title;
+    b.setAttribute("aria-label", title);
+    return b;
   }
 
-  function findToolbarForPane(pane) {
-    let current = pane.parentElement;
-    while (current && current !== document.body) {
-      const toolbar = current.querySelector(
-        ".kgw-log-toolbar, .log-toolbar, [class*='log-toolbar'], [class*='toolbar'], [role='toolbar']"
-      );
-      if (toolbar) return toolbar;
-      current = current.parentElement;
+  function findVisibleLogToolbar() {
+    const existingToolbars = Array.from(
+      document.querySelectorAll(
+        ".kgw-log-toolbar, .log-toolbar, [class*='log-toolbar'], [role='toolbar']"
+      )
+    ).filter(isVisible);
+
+    for (const toolbar of existingToolbars) {
+      const t = textOf(toolbar);
+      if (t.includes("copy log") || t.includes("clear log") || t.includes("auto-scroll") || t.includes("autoscroll")) {
+        return toolbar;
+      }
     }
+
+    const buttons = Array.from(document.querySelectorAll("button")).filter(isVisible);
+    for (const b of buttons) {
+      const t = textOf(b);
+      if (t.includes("copy log") || t.includes("clear log")) {
+        return b.parentElement;
+      }
+    }
+
     return null;
   }
 
-  function createButton(label, title) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "kgw-log-font-size-button";
-    button.textContent = label;
-    button.title = title;
-    button.setAttribute("aria-label", title);
-    return button;
+  function removeDuplicateControls() {
+    const controls = Array.from(document.querySelectorAll(".kgw-log-font-size-controls"));
+    controls.forEach((control, index) => {
+      if (index > 0) control.remove();
+    });
   }
 
-  function updateControlsForNetwork(network) {
-    const size = readSize(network);
-    document
-      .querySelectorAll(".kgw-log-font-size-controls[data-kind='" + KIND + "'][data-network='" + network + "']")
-      .forEach((controls) => {
-        const value = controls.querySelector(".kgw-log-font-size-value");
-        if (value) value.textContent = size + "px";
-      });
-
-    document
-      .querySelectorAll("[data-kgw-log-font-size-pane='1'][data-kgw-log-font-size-network='" + network + "']")
-      .forEach((pane) => {
-        pane.style.setProperty("--kgw-log-font-size", size + "px");
-        pane.style.fontSize = "var(--kgw-log-font-size)";
-      });
-  }
-
-  function installControlsForPane(pane) {
-    const toolbar = findToolbarForPane(pane);
+  function installOneToolbarControl() {
+    const toolbar = findVisibleLogToolbar();
     if (!toolbar) return;
 
-    const network = networkFromElement(pane);
-    const existing = toolbar.querySelector(
-      ".kgw-log-font-size-controls[data-kind='" + KIND + "'][data-network='" + network + "']"
-    );
-    if (existing) return;
+    removeDuplicateControls();
 
-    const controls = document.createElement("div");
-    controls.className = "kgw-log-font-size-controls";
-    controls.dataset.kind = KIND;
-    controls.dataset.network = network;
-    controls.dataset.marker = KGW_MARKER;
+    let controls = toolbar.querySelector(".kgw-log-font-size-controls[data-kind='" + KIND + "']");
+    if (!controls) {
+      controls = document.createElement("div");
+      controls.className = "kgw-log-font-size-controls";
+      controls.dataset.kind = KIND;
+      controls.dataset.marker = MARKER;
 
-    const decrease = createButton("A-", "Decrease log font size");
-    const value = document.createElement("span");
-    value.className = "kgw-log-font-size-value";
-    value.textContent = readSize(network) + "px";
-    value.title = "Current log font size";
+      const decrease = button("A-", "Decrease log font size");
+      const value = document.createElement("span");
+      value.className = "kgw-log-font-size-value";
+      value.textContent = readSize(activeNetwork()) + "px";
 
-    const increase = createButton("A+", "Increase log font size");
-    const reset = createButton("Reset", "Reset log font size");
+      const increase = button("A+", "Increase log font size");
+      const reset = button("Reset", "Reset log font size");
 
-    decrease.addEventListener("click", () => {
-      const size = writeSize(network, readSize(network) - 1);
-      updateControlsForNetwork(network);
-    });
+      decrease.addEventListener("click", () => {
+        const network = activeNetwork();
+        writeSize(network, readSize(network) - 1);
+        applyFontSize();
+      });
 
-    increase.addEventListener("click", () => {
-      const size = writeSize(network, readSize(network) + 1);
-      updateControlsForNetwork(network);
-    });
+      increase.addEventListener("click", () => {
+        const network = activeNetwork();
+        writeSize(network, readSize(network) + 1);
+        applyFontSize();
+      });
 
-    reset.addEventListener("click", () => {
-      const size = writeSize(network, DEFAULT_SIZE);
-      updateControlsForNetwork(network);
-    });
+      reset.addEventListener("click", () => {
+        writeSize(activeNetwork(), DEFAULT_SIZE);
+        applyFontSize();
+      });
 
-    controls.append(decrease, value, increase, reset);
-    toolbar.appendChild(controls);
-    updateControlsForNetwork(network);
+      controls.append(decrease, value, increase, reset);
+      toolbar.appendChild(controls);
+    }
+
+    applyFontSize();
   }
 
-  function installAll(root) {
-    applyAllSizes(root || document);
-    document
-      .querySelectorAll("[data-kgw-log-font-size-pane='1']")
-      .forEach((pane) => installControlsForPane(pane));
+  function run() {
+    scheduled = false;
+    installOneToolbarControl();
   }
 
-  function scheduleInstall(root) {
-    window.requestAnimationFrame(() => installAll(root || document));
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    window.requestAnimationFrame(run);
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => scheduleInstall(document), { once: true });
+    document.addEventListener("DOMContentLoaded", schedule, { once: true });
   } else {
-    scheduleInstall(document);
+    schedule();
   }
 
-  const observer = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      for (const node of mutation.addedNodes || []) {
-        if (node && node.nodeType === 1) {
-          scheduleInstall(node);
-        }
-      }
-    }
-  });
+  document.addEventListener("click", schedule, true);
+  document.addEventListener("change", schedule, true);
 
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true
-  });
+  const observer = new MutationObserver(schedule);
+  observer.observe(document.documentElement, { childList: true, subtree: true });
 
   window.addEventListener("storage", (event) => {
-    if (!event.key || !event.key.startsWith("kgw." + KIND + ".log.fontSize.")) return;
-    const network = event.key.split(".").pop();
-    if (NETWORKS.includes(network)) updateControlsForNetwork(network);
+    if (event.key && event.key.startsWith("kgw." + KIND + ".log.fontSize.")) {
+      schedule();
+    }
   });
 })();
 
