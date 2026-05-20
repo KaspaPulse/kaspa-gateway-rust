@@ -1416,25 +1416,47 @@ function kgwNodeR51IsRunning(text) {
   return /running=true/.test(value) || /node_running=true/.test(value) || /official_core_running=true/.test(value);
 }
 
-function kgwNodeR51SetRuntimeButtons(net, running) {
+function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false) {
   const panel = kgwNodeR51Panel(net);
   if (!panel) return;
 
   const start = panel.querySelector(`[data-node-action="start"][data-net="${net}"]`);
   const stop = panel.querySelector(`[data-node-action="stop"][data-net="${net}"]`);
+  const lockMessage = "This node is owned by Bridge in-process mode. Stop the bridge first.";
+
+  for (const field of kgwNodeR51Fields(net)) {
+    field.disabled = Boolean(bridgeInprocessLocked);
+    field.dataset.kgwBridgeInprocessLockedV7 = bridgeInprocessLocked ? "true" : "false";
+    field.title = bridgeInprocessLocked ? lockMessage : "";
+  }
+
+  const preview = byId(id(net, "commandPreview"));
+  if (preview) {
+    preview.readOnly = Boolean(bridgeInprocessLocked);
+    preview.dataset.kgwBridgeInprocessLockedV7 = bridgeInprocessLocked ? "true" : "false";
+    preview.title = bridgeInprocessLocked ? lockMessage : "";
+  }
 
   if (start) {
-    start.disabled = Boolean(running);
-    start.style.opacity = running ? "0.45" : "";
-    start.style.cursor = running ? "not-allowed" : "";
-    start.title = running ? "Node is running. Stop it before starting again." : "Start node";
+    start.disabled = Boolean(running || bridgeInprocessLocked);
+    start.style.opacity = running || bridgeInprocessLocked ? "0.45" : "";
+    start.style.cursor = running || bridgeInprocessLocked ? "not-allowed" : "";
+    start.title = bridgeInprocessLocked
+      ? lockMessage
+      : running
+        ? "Node is running. Stop it before starting again."
+        : "Start node";
   }
 
   if (stop) {
-    stop.disabled = !running;
-    stop.style.opacity = running ? "" : "0.45";
-    stop.style.cursor = running ? "" : "not-allowed";
-    stop.title = running ? "Stop node" : "Node is not running";
+    stop.disabled = Boolean(!running || bridgeInprocessLocked);
+    stop.style.opacity = running && !bridgeInprocessLocked ? "" : "0.45";
+    stop.style.cursor = running && !bridgeInprocessLocked ? "" : "not-allowed";
+    stop.title = bridgeInprocessLocked
+      ? lockMessage
+      : running
+        ? "Stop node"
+        : "Node is not running";
   }
 }
 
@@ -1460,10 +1482,32 @@ function kgwNodeR51MaybeActivityNotice(net, statusText) {
 
 }
 
+// KGW_NODE_BRIDGE_INPROCESS_LOCK_V7
+async function kgwNodeR51BridgeInprocessLockedV7(net) {
+  try {
+    const invoke = getTauriInvoke();
+    if (!invoke) return false;
+
+    const result = stringifyRuntimeResult(await invokeWithTimeout(
+      invoke,
+      "kgw_runtime_owner_status_v1",
+      { network: net, runtimeRole: "bridge" },
+      KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS
+    ));
+
+    const fields = parseRuntimeFields(result);
+    return fields.running === "true" && fields.node_mode === "inprocess";
+  } catch (_) {
+    return false;
+  }
+}
+
+
 async function kgwNodeR51RefreshOne(net, reason = "live") {
   try {
     const status = stringifyRuntimeResult(await invokeNodeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
-    kgwNodeR51SetRuntimeButtons(net, kgwNodeR51IsRunning(status));
+    const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
+    kgwNodeR51SetRuntimeButtons(net, kgwNodeR51IsRunning(status), bridgeInprocessLocked);
 
     if (KGW_NODE_R51_LAST_STATUS[net] !== status) {
       KGW_NODE_R51_LAST_STATUS[net] = status;
@@ -1472,7 +1516,8 @@ async function kgwNodeR51RefreshOne(net, reason = "live") {
 
     kgwNodeR51MaybeActivityNotice(net, status);
   } catch (error) {
-    kgwNodeR51SetRuntimeButtons(net, false);
+    const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
+    kgwNodeR51SetRuntimeButtons(net, false, bridgeInprocessLocked);
   }
 
   try {

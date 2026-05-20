@@ -260,6 +260,7 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
 
     let role =
         kgw_self_worker_arg_value(&args, "--kgw-self-worker").unwrap_or_else(|| "node".to_string());
+    let role_key = role.trim().to_ascii_lowercase();
     let network =
         kgw_self_worker_arg_value(&args, "--network").unwrap_or_else(|| "mainnet".to_string());
     let appdir =
@@ -271,16 +272,46 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
     let utxoindex = args.iter().any(|arg| arg == "--utxoindex");
     let archival = args.iter().any(|arg| arg == "--archival");
 
-    let result = match role.trim().to_ascii_lowercase().as_str() {
+    let bridge_node_mode = if role_key == "bridge" {
+        kgw_self_worker_arg_value(&args, "--node-mode")
+            .unwrap_or_else(|| "external".to_string())
+            .trim()
+            .to_ascii_lowercase()
+    } else {
+        String::new()
+    };
+
+    let bridge_owns_inprocess_node = matches!(
+        bridge_node_mode.as_str(),
+        "inprocess" | "inproc" | "official-inprocess-node" | "inprocess-node"
+    );
+
+    let result = match role_key.as_str() {
         "node" => kgw_run_node_self_worker(&network, &appdir, &rpc, utxoindex, archival),
         "bridge" => {
-            kgw_init_bridge_self_worker_raw_tracing_r23();
-            kgw_run_bridge_self_worker(&network, &rpc, &stratum, &args)
+            // KGW_BRIDGE_INPROCESS_SETLOGGERERROR_V14
+            // External bridge keeps the bridge tracing subscriber so raw bridge logs remain visible.
+            // In-process bridge must not initialize a second process-global tracing/log subscriber
+            // before embedded kaspad starts, otherwise rusty-kaspa can panic with SetLoggerError.
+            if bridge_owns_inprocess_node {
+                eprintln!(
+                    "[KGW][bridge-self-worker][{}] inprocess mode detected; skipping bridge tracing subscriber before embedded kaspad logger initialization",
+                    network
+                );
+            } else {
+                kgw_init_bridge_self_worker_raw_tracing_r23();
+            }
+
+            kgw_run_bridge_self_worker(&network, &appdir, &rpc, &stratum, &args)
         }
         other => Err(format!("unsupported self-worker role: {other}")),
     };
 
-    if let Err(_error) = result {
+    if let Err(error) = result {
+        eprintln!(
+            "[KGW][self-worker][{}][{}] failed: {}",
+            role_key, network, error
+        );
         std::process::exit(1);
     }
 
@@ -359,10 +390,16 @@ fn kgw_run_node_self_worker(
 
 fn kgw_run_bridge_self_worker(
     network: &str,
+    appdir: &str,
     rpc: &str,
     stratum: &str,
     args: &[String],
 ) -> Result<(), String> {
+    let bridge_node_mode = kgw_self_worker_arg_value(args, "--node-mode")
+        .unwrap_or_else(|| "external".to_string())
+        .trim()
+        .to_ascii_lowercase();
+
     let bridge_cpu_miner_enabled = args.iter().any(|arg| arg == "--internal-cpu-miner");
     let bridge_cpu_miner_address = kgw_self_worker_arg_value(args, "--internal-cpu-miner-address");
     let bridge_cpu_miner_threads = kgw_self_worker_arg_value(args, "--internal-cpu-miner-threads")
@@ -376,6 +413,43 @@ fn kgw_run_bridge_self_worker(
         kgw_self_worker_arg_value(args, "--internal-cpu-miner-template-poll-ms")
             .and_then(|value| value.trim().parse::<u64>().ok())
             .filter(|value| *value > 0);
+
+    if bridge_node_mode == "inprocess"
+        || bridge_node_mode == "inproc"
+        || bridge_node_mode == "official-inprocess-node"
+    {
+        let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
+            network.to_string(),
+            "integrated-inproc".to_string(),
+            "official-inprocess-node".to_string(),
+        )
+        .map_err(|error| error.to_string())?;
+
+        settings.app_dir_name = appdir.to_string();
+        settings.rpc_endpoint = rpc.to_string();
+        settings.stratum_listen = stratum.to_string();
+        settings.enable_utxo_index = args.iter().any(|arg| arg == "--utxoindex");
+        settings.archival = args.iter().any(|arg| arg == "--archival");
+        settings.bridge_internal_cpu_miner = bridge_cpu_miner_enabled;
+        settings.bridge_internal_cpu_miner_address = bridge_cpu_miner_address.clone();
+        settings.bridge_internal_cpu_miner_threads = bridge_cpu_miner_threads;
+        settings.bridge_internal_cpu_miner_throttle_ms = bridge_cpu_miner_throttle_ms;
+        settings.bridge_internal_cpu_miner_template_poll_ms = bridge_cpu_miner_template_poll_ms;
+
+        let runtime = kaspa_gateway_rk_node::KgwRealOwnerRuntime::new();
+        let _status = runtime
+            .start_node_owner_session(&settings)
+            .map_err(|error| error.to_string())?;
+
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(10));
+
+            match runtime.status(settings.network) {
+                Ok(_status) => {}
+                Err(_error) => {}
+            }
+        }
+    }
 
     let settings = kaspa_gateway_rk_bridge::BridgeRuntimeSettings {
         network: network.to_string(),

@@ -927,9 +927,166 @@ function renderInstances(net) {
 }
 
 
+// KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D
+function renderInprocessNodeSettings(net) {
+  const tabs = [
+    ["basic", kgwI18nTextR41("bridge.inprocessNodeSettings.tab.basic", "Basic")],
+    ["rpc", kgwI18nTextR41("bridge.inprocessNodeSettings.tab.rpc", "RPC")],
+    ["storage", kgwI18nTextR41("bridge.inprocessNodeSettings.tab.storage", "Storage / Index")],
+    ["p2p", kgwI18nTextR41("bridge.inprocessNodeSettings.tab.p2p", "P2P / Network")],
+    ["perf", kgwI18nTextR41("bridge.inprocessNodeSettings.tab.performance", "Performance / Logs")],
+    ["advanced", kgwI18nTextR41("bridge.inprocessNodeSettings.tab.advanced", "Advanced")],
+    ["danger", kgwI18nTextR41("bridge.inprocessNodeSettings.tab.dangerous", "Dangerous")]
+  ];
+
+  const tabButtons = tabs.map(([key, label], index) =>
+    `<button type="button" class="bridge-v12d-node-tab${index === 0 ? " active" : ""}" data-net="${net.key}" data-bridge-inprocess-node-tab="${key}">${esc(label)}</button>`
+  ).join("");
+
+  const testnetArgs = net.testnet
+    ? `--testnet${net.netsuffix ? " --netsuffix=" + esc(net.netsuffix) : ""}`
+    : "mainnet";
+
+  return `
+    <div class="bridge-v12d-inprocess-node-settings bridge-v12d-inprocess-inactive" data-net="${net.key}" data-bridge-inprocess-node-settings="${net.key}" data-kgw-owner="KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D">
+      <div class="bridge-v12d-node-tabs">${tabButtons}</div>
+
+      <section class="bridge-v12d-node-panel active" data-net="${net.key}" data-bridge-inprocess-node-panel="basic">
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          <div class="bridge-v7-card span2">
+            <span data-i18n="bridge.inprocessNodeSettings.appdir">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.appdir", "same --appdir / database path"))}</span>
+            <input id="${id(net.key, "inprocessAppdirMirror")}" type="text" value="" readonly>
+          </div>
+          <div class="bridge-v7-card span2">
+            <span data-i18n="bridge.inprocessNodeSettings.testnet">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.testnet", "kaspad network args"))}</span>
+            <input id="${id(net.key, "inprocessNetworkArgs")}" type="text" value="${esc(testnetArgs)}" readonly>
+          </div>
+        </div>
+      </section>
+
+      <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="rpc" hidden>
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.rpcListen">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.rpcListen", "--rpclisten"))}</span>
+            <input id="${id(net.key, "inprocessRpcListen")}" type="text" value="127.0.0.1:${esc(net.kaspadPort)}">
+          </div>
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.rpcListenBorsh">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.rpcListenBorsh", "--rpclisten-borsh"))}</span>
+            <input id="${id(net.key, "inprocessRpcListenBorsh")}" type="text" value="">
+          </div>
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.rpcListenJson">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.rpcListenJson", "--rpclisten-json"))}</span>
+            <input id="${id(net.key, "inprocessRpcListenJson")}" type="text" value="">
+          </div>
+          <label class="bridge-v7-card check danger">
+            <input id="${id(net.key, "inprocessUnsafeRpc")}" type="checkbox">
+            <span data-i18n="bridge.inprocessNodeSettings.unsafeRpc">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.unsafeRpc", "--unsaferpc"))}</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="storage" hidden>
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          <label class="bridge-v7-card check">
+            <input id="${id(net.key, "inprocessUtxoIndex")}" type="checkbox" checked>
+            <span data-i18n="bridge.inprocessNodeSettings.utxoIndex">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.utxoIndex", "--utxoindex"))}</span>
+          </label>
+          <label class="bridge-v7-card check">
+            <input id="${id(net.key, "inprocessArchival")}" type="checkbox">
+            <span data-i18n="bridge.inprocessNodeSettings.archival">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.archival", "--archival"))}</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="p2p" hidden>
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.listen">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.listen", "--listen"))}</span>
+            <input id="${id(net.key, "inprocessListen")}" type="text" value="">
+          </div>
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.addPeer">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.addPeer", "--addpeer"))}</span>
+            <input id="${id(net.key, "inprocessAddPeer")}" type="text" value="">
+          </div>
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.connect">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.connect", "--connect"))}</span>
+            <input id="${id(net.key, "inprocessConnect")}" type="text" value="">
+          </div>
+          <label class="bridge-v7-card check">
+            <input id="${id(net.key, "inprocessDisableUpnp")}" type="checkbox">
+            <span data-i18n="bridge.inprocessNodeSettings.disableUpnp">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.disableUpnp", "--disable-upnp"))}</span>
+          </label>
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.maxInpeers">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.maxInpeers", "--maxinpeers"))}</span>
+            <input id="${id(net.key, "inprocessMaxInpeers")}" type="number" min="0" step="1" value="">
+          </div>
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.outpeers">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.outpeers", "--outpeers"))}</span>
+            <input id="${id(net.key, "inprocessOutpeers")}" type="number" min="0" step="1" value="">
+          </div>
+        </div>
+      </section>
+
+      <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="perf" hidden>
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          <label class="bridge-v7-card check">
+            <input id="${id(net.key, "inprocessPerfMetrics")}" type="checkbox">
+            <span data-i18n="bridge.inprocessNodeSettings.perfMetrics">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.perfMetrics", "--perf-metrics"))}</span>
+          </label>
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.perfMetricsIntervalSec">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.perfMetricsIntervalSec", "--perf-metrics-interval-sec"))}</span>
+            <input id="${id(net.key, "inprocessPerfMetricsIntervalSec")}" type="number" min="1" step="1" value="">
+          </div>
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.logLevel">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.logLevel", "--loglevel"))}</span>
+            <input id="${id(net.key, "inprocessLogLevel")}" type="text" value="">
+          </div>
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.ramScale">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.ramScale", "--ram-scale"))}</span>
+            <input id="${id(net.key, "inprocessRamScale")}" type="number" min="0.1" step="0.1" value="">
+          </div>
+        </div>
+      </section>
+
+      <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="advanced" hidden>
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.configfile">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.configfile", "--configfile"))}</span>
+            <input id="${id(net.key, "inprocessConfigfile")}" type="text" value="">
+          </div>
+          <label class="bridge-v7-card check">
+            <input id="${id(net.key, "inprocessYes")}" type="checkbox">
+            <span data-i18n="bridge.inprocessNodeSettings.yes">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.yes", "--yes"))}</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="danger" hidden>
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          <div class="bridge-v7-card">
+            <span data-i18n="bridge.inprocessNodeSettings.overrideParamsFile">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.overrideParamsFile", "--override-params-file"))}</span>
+            <input id="${id(net.key, "inprocessOverrideParamsFile")}" type="text" value="">
+          </div>
+          <label class="bridge-v7-card check danger">
+            <input id="${id(net.key, "inprocessDevnet")}" type="checkbox">
+            <span data-i18n="bridge.inprocessNodeSettings.devnet">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.devnet", "--devnet"))}</span>
+          </label>
+          <label class="bridge-v7-card check danger">
+            <input id="${id(net.key, "inprocessSimnet")}" type="checkbox">
+            <span data-i18n="bridge.inprocessNodeSettings.simnet">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.simnet", "--simnet"))}</span>
+          </label>
+          <label class="bridge-v7-card check danger">
+            <input id="${id(net.key, "inprocessEnableUnsyncedMining")}" type="checkbox">
+            <span data-i18n="bridge.inprocessNodeSettings.enableUnsyncedMining">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.enableUnsyncedMining", "--enable-unsynced-mining"))}</span>
+          </label>
+        </div>
+      </section>
+    </div>`;
+}
 function renderSections(net) {
   const sections = [
     ["runtime", "Runtime", renderRuntime(net)],
+    ["inprocess-node", "In-Process Node", renderInprocessNodeSettings(net)],
     ["difficulty", "Difficulty", renderDifficulty(net)],
     ["logging", "Logging", renderLogging(net)],
     ["ports", "Ports / Paths", renderPorts(net)],
@@ -1102,6 +1259,89 @@ function bridgeSetDisabled(net, name, disabled, reason = "") {
   }
 }
 
+function bridgeSyncInprocessNodeSettingsV12D(net) {
+  const profile = bridgeProfile(net);
+  if (!profile) return;
+
+  const nodeMode = bridgeNodeMode(net);
+  const active = nodeMode === "inprocess" && !bridgeHasConfig(net);
+  const section = document.querySelector(`[data-bridge-inprocess-node-settings="${net}"]`);
+
+  if (section) {
+    section.classList.toggle("bridge-v12d-inprocess-inactive", !active);
+    section.classList.toggle("bridge-v12d-inprocess-active", active);
+    section.dataset.kgwInprocessNodeActive = active ? "true" : "false";
+  }
+
+  const appdirMirror = bridgeControl(net, "inprocessAppdirMirror");
+  if (appdirMirror) {
+    appdirMirror.value = v(net, "appdir") || kgwI18nTextR41("bridge.inprocessNodeSettings.sameAsAppdir", "same as --appdir");
+    appdirMirror.readOnly = true;
+  }
+
+  const networkArgs = bridgeControl(net, "inprocessNetworkArgs");
+  if (networkArgs) {
+    networkArgs.value = profile.testnet
+      ? `--testnet${profile.netsuffix ? " --netsuffix=" + profile.netsuffix : ""}`
+      : "mainnet";
+    networkArgs.readOnly = true;
+  }
+
+  const fields = [
+    "inprocessAppdirMirror",
+    "inprocessNetworkArgs",
+    "inprocessRpcListen",
+    "inprocessRpcListenBorsh",
+    "inprocessRpcListenJson",
+    "inprocessUnsafeRpc",
+    "inprocessUtxoIndex",
+    "inprocessArchival",
+    "inprocessListen",
+    "inprocessAddPeer",
+    "inprocessConnect",
+    "inprocessDisableUpnp",
+    "inprocessMaxInpeers",
+    "inprocessOutpeers",
+    "inprocessPerfMetrics",
+    "inprocessPerfMetricsIntervalSec",
+    "inprocessLogLevel",
+    "inprocessRamScale",
+    "inprocessConfigfile",
+    "inprocessYes",
+    "inprocessOverrideParamsFile",
+    "inprocessDevnet",
+    "inprocessSimnet",
+    "inprocessEnableUnsyncedMining"
+  ];
+
+  for (const name of fields) {
+    const mainnetDanger =
+      net === "mainnet" &&
+      [
+        "inprocessOverrideParamsFile",
+        "inprocessDevnet",
+        "inprocessSimnet",
+        "inprocessEnableUnsyncedMining"
+      ].includes(name);
+
+    bridgeSetDisabled(
+      net,
+      name,
+      !active || mainnetDanger,
+      mainnetDanger
+        ? "Dangerous development-only kaspad flag is disabled on mainnet."
+        : kgwI18nTextR41("bridge.inprocessNodeSettings.externalInactive", "Used only when Bridge Node Mode is In-Process.")
+    );
+  }
+
+  const readonlyFields = ["inprocessAppdirMirror", "inprocessNetworkArgs"];
+  for (const name of readonlyFields) {
+    const control = bridgeControl(net, name);
+    if (control) control.readOnly = true;
+  }
+}
+
+
 function bridgeSyncModeControls(net) {
   const profile = bridgeProfile(net);
   if (!profile) return;
@@ -1140,6 +1380,8 @@ function bridgeSyncModeControls(net) {
   for (const name of explicitBridgeFields) {
     bridgeSetDisabled(net, name, configMode, "Config mode is active. Clear --config to edit explicit CLI flags.");
   }
+
+  bridgeSyncInprocessNodeSettingsV12D(net);
 
   if (configMode) return;
 
@@ -1268,6 +1510,14 @@ function appendLog(net, message) {
   out.textContent = lines.join("\n");
   if (kgwBridgeLogAutoScrollEnabledR27(net)) out.scrollTop = out.scrollHeight;
 }
+// KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D_HELPER
+function bridgeInprocessAddKaspadValueArgV12D(lines, flag, value) {
+  const clean = String(value || "").trim();
+  if (!clean) return;
+  lines.push(`${flag}=${clean}`);
+}
+
+
 function buildCommandLines(net) {
   bridgeSyncModeControls(net);
   bridgeEnsureInstanceState(net);
@@ -1301,6 +1551,38 @@ function buildCommandLines(net) {
         kaspadArgs.push(`--netsuffix=${profile.netsuffix}`);
       }
     }
+
+    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--rpclisten", v(net, "inprocessRpcListen") || `127.0.0.1:${profile.kaspadPort}`);
+    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--rpclisten-borsh", v(net, "inprocessRpcListenBorsh"));
+    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--rpclisten-json", v(net, "inprocessRpcListenJson"));
+
+    if (c(net, "inprocessUnsafeRpc")) kaspadArgs.push("--unsaferpc");
+    if (c(net, "inprocessUtxoIndex")) kaspadArgs.push("--utxoindex");
+    if (c(net, "inprocessArchival")) kaspadArgs.push("--archival");
+
+    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--listen", v(net, "inprocessListen"));
+    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--addpeer", v(net, "inprocessAddPeer"));
+    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--connect", v(net, "inprocessConnect"));
+
+    if (c(net, "inprocessDisableUpnp")) kaspadArgs.push("--disable-upnp");
+
+    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--maxinpeers", v(net, "inprocessMaxInpeers"));
+    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--outpeers", v(net, "inprocessOutpeers"));
+
+    if (c(net, "inprocessPerfMetrics")) kaspadArgs.push("--perf-metrics");
+    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--perf-metrics-interval-sec", v(net, "inprocessPerfMetricsIntervalSec"));
+    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--loglevel", v(net, "inprocessLogLevel"));
+    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--ram-scale", v(net, "inprocessRamScale"));
+
+    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--configfile", v(net, "inprocessConfigfile"));
+    if (c(net, "inprocessYes")) kaspadArgs.push("--yes");
+
+    if (net !== "mainnet") {
+      bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--override-params-file", v(net, "inprocessOverrideParamsFile"));
+      if (c(net, "inprocessDevnet")) kaspadArgs.push("--devnet");
+      if (c(net, "inprocessSimnet")) kaspadArgs.push("--simnet");
+      if (c(net, "inprocessEnableUnsyncedMining")) kaspadArgs.push("--enable-unsynced-mining");
+    }
   }
 
   addValue(lines, net, "blockWaitTime", "--block-wait-time");
@@ -1332,14 +1614,12 @@ function buildCommandLines(net) {
     bridgeInstanceBoolArg(lines, net, instance.id, "instancePow2Clamp", "--instance-pow2-clamp");
   }
 
-  if (c(net, "internalCpuMiner")) {
-    if (net.key !== "mainnet") {
-      addFlag(lines, net, "internalCpuMiner", "--internal-cpu-miner");
-      addValue(lines, net, "internalCpuMinerAddress", "--internal-cpu-miner-address");
-      addValue(lines, net, "internalCpuMinerThreads", "--internal-cpu-miner-threads");
-      addValue(lines, net, "internalCpuMinerThrottleMs", "--internal-cpu-miner-throttle-ms");
-      addValue(lines, net, "internalCpuMinerTemplatePollMs", "--internal-cpu-miner-template-poll-ms");
-    }
+  if (c(net, "internalCpuMiner") && net !== "mainnet") {
+    addFlag(lines, net, "internalCpuMiner", "--internal-cpu-miner");
+    addValue(lines, net, "internalCpuMinerAddress", "--internal-cpu-miner-address");
+    addValue(lines, net, "internalCpuMinerThreads", "--internal-cpu-miner-threads");
+    addValue(lines, net, "internalCpuMinerThrottleMs", "--internal-cpu-miner-throttle-ms");
+    addValue(lines, net, "internalCpuMinerTemplatePollMs", "--internal-cpu-miner-template-poll-ms");
   }
 
   if (kaspadArgs.length) {
@@ -1683,15 +1963,15 @@ function appendReadableRuntimeResult(_net, _title, _result) {
 }
 
 function buildApplyPayload(net, command) {
-
   if (command === "kgw_kgw_apply_node_settings_v1") {
     const preview = updateCommand(net) || byId(id(net, "commandPreview"))?.value || "";
+    const nodeMode = bridgeNodeMode(net) === "inprocess" ? "inprocess" : "external";
 
     return {
       network: net,
       runtimeRole: "bridge",
-      nodeKind: "remote",
-      bridgeKind: "official-external-node",
+      nodeKind: nodeMode === "inprocess" ? "integrated-inproc" : "remote",
+      bridgeKind: nodeMode === "inprocess" ? "official-inprocess-node" : "official-external-node",
       nodeCommandPreview: "",
       bridgeCommandPreview: preview,
     };
@@ -1734,6 +2014,45 @@ async function invokeBridgeIntegratedRuntime(command, net) {
 }
 
 
+// KGW_BRIDGE_INPROCESS_SAME_DB_OWNER_V7
+function kgwBridgeV7RuntimeRunningFromText(text) {
+  const parsed = parseRuntimeKeyValueResponse(text);
+  const fields = parsed.fields || {};
+  return (
+    fields.running === "true" ||
+    fields.node_running === "true" ||
+    fields.official_core_running === "true" ||
+    fields.bridge_running === "true" ||
+    fields.bridge_owner_active === "true" ||
+    /running=true/i.test(String(text || ""))
+  );
+}
+
+async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {
+  if (bridgeNodeMode(net) !== "inprocess") return false;
+
+  const invoke = getTauriInvoke();
+  if (!invoke) return false;
+
+  const result = await invokeWithTimeout(
+    invoke,
+    "kgw_runtime_owner_status_v1",
+    { network: net, runtimeRole: "node" },
+    KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS
+  );
+
+  if (!kgwBridgeV7RuntimeRunningFromText(result)) return false;
+
+  const message =
+    "Cannot start bridge in in-process mode because the same-network node is already running. Stop the node first, or switch bridge node mode to External.";
+
+  try {
+    window.alert(message);
+  } catch (_) {}
+
+  return true;
+}
+
 async function runBridgeIntegratedAction(action, net) {
 
   const commandByAction = {
@@ -1743,6 +2062,10 @@ async function runBridgeIntegratedAction(action, net) {
 
   const command = commandByAction[action];
   if (!command) return false;
+
+  if (action === "start" && await kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net)) {
+    return true;
+  }
 
   const inFlightKey = net + ":" + action;
 
@@ -2170,6 +2493,33 @@ function kgwBridgeLogCpuMinerDiagnostic(_net) {
 
 
 function installActions(root) {
+  // KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D_ACTIONS
+  if (root && !root.dataset.kgwBridgeInprocessNodeTabsV12B) {
+    root.dataset.kgwBridgeInprocessNodeTabsV12B = "true";
+    root.addEventListener("click", (event) => {
+      const tab = event.target?.closest?.("[data-bridge-inprocess-node-tab]");
+      if (!tab) return;
+
+      const net = tab.dataset.net;
+      const key = tab.dataset.bridgeInprocessNodeTab;
+      if (!net || !key) return;
+
+      const section = tab.closest("[data-bridge-inprocess-node-settings]");
+      if (!section) return;
+
+      for (const item of section.querySelectorAll("[data-bridge-inprocess-node-tab]")) {
+        item.classList.toggle("active", item === tab);
+      }
+
+      for (const panel of section.querySelectorAll("[data-bridge-inprocess-node-panel]")) {
+        const active = panel.dataset.bridgeInprocessNodePanel === key;
+        panel.classList.toggle("active", active);
+        panel.hidden = !active;
+      }
+    });
+  }
+
+
   // KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26: Bridge settings actions are scoped to the exact bridge/network that changed.
   if (window.KGW_BRIDGE_SETTINGS_OWNER_V19 && typeof window.KGW_BRIDGE_SETTINGS_OWNER_V19.install === "function") {
     window.KGW_BRIDGE_SETTINGS_OWNER_V19.install(root);

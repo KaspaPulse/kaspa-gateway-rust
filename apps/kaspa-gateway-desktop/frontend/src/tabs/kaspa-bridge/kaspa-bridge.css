@@ -630,3 +630,66 @@ button[data-kgw-settings-owner-v19-disabled="false"] {
   cursor: pointer;
 }
 /* END_KGW_SETTINGS_OWNER_V19_VISUAL */
+
+
+
+
+/* KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D */
+.bridge-v12d-inprocess-node-settings {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 14px;
+  padding: 10px;
+  margin: 10px 0;
+}
+
+.bridge-v12d-node-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.bridge-v12d-node-tab {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 10px;
+  padding: 6px 10px;
+  background: rgba(15, 23, 42, 0.42);
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.bridge-v12d-node-tab.active {
+  border-color: rgba(96, 165, 250, 0.72);
+  background: rgba(37, 99, 235, 0.24);
+}
+
+.bridge-v12d-node-panel {
+  display: block;
+}
+
+.bridge-v12d-node-panel[hidden] {
+  display: none;
+}
+
+.bridge-v12d-inprocess-grid {
+  margin-top: 4px;
+}
+
+.bridge-v12d-inprocess-inactive {
+  opacity: 0.62;
+}
+
+.bridge-v12d-inprocess-inactive input,
+.bridge-v12d-inprocess-inactive select,
+.bridge-v12d-inprocess-inactive textarea {
+  cursor: not-allowed;
+}
+
+.bridge-v12d-inprocess-active {
+  opacity: 1;
+}
+
+.bridge-v7-card.danger {
+  border-color: rgba(248, 113, 113, 0.45);
+}

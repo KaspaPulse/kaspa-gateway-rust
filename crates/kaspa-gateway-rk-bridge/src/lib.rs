@@ -496,8 +496,6 @@ fn start_mainline_bridge_owner_thread(
             };
 
             runtime.block_on(async move {
-                // KGW_BRIDGE_MODE_SYNC_REAL_LOGS_PATCH_R1
-                if event.mode == BridgeRuntimeMode::OfficialInProcessNode {}
                 let kaspa_api = kaspa_stratum_bridge_mainline::KaspaApi::new(
                     event.kaspa_rpc_endpoint.clone(),
                     None,
@@ -579,8 +577,6 @@ fn start_tn12_bridge_owner_thread(
             };
 
             runtime.block_on(async move {
-                // KGW_BRIDGE_MODE_SYNC_REAL_LOGS_PATCH_R1
-                if event.mode == BridgeRuntimeMode::OfficialInProcessNode {}
                 let kaspa_api = kaspa_stratum_bridge_tn12::KaspaApi::new(
                     event.kaspa_rpc_endpoint.clone(),
                     None,

@@ -298,7 +298,7 @@ impl KgwRealOwnerRuntime {
         session.status.owner_thread_alive = true;
         session.status.official_core_running = true;
         session.status.last_message = format!(
-            "official Rusty Kaspa core and bridge owner accepted inside KGW owner; network={};branch={};node_kind={};bridge_kind={};no_binary_path_fallback=true;no_bridge_binary_fallback=true;no_process_owner_fallback=true",
+            "official Rusty Kaspa core and bridge owner accepted inside KGW owner; network={};branch={};node_kind={};bridge_kind={};same_db_path=true;exclusive_node_owner_per_network=true;no_binary_path_fallback=true;no_bridge_binary_fallback=true;no_process_owner_fallback=true",
             settings.network.as_str(),
             settings.network.branch(),
             settings.node_kind.as_str(),
@@ -552,7 +552,7 @@ fn start_bridge_owner_if_requested(
             kaspa_gateway_rk_bridge::BridgeRuntimeMode::OfficialExternalNode
         }
         BridgeNodeKind::OfficialInProcessNode => {
-            kaspa_gateway_rk_bridge::BridgeRuntimeMode::OfficialExternalNode
+            kaspa_gateway_rk_bridge::BridgeRuntimeMode::OfficialInProcessNode
         }
     };
 

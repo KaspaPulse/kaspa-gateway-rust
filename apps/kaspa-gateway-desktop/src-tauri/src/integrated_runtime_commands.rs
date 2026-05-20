@@ -15,6 +15,8 @@ struct KgwParallelSelfWorker {
     role: String,
     network: String,
     appdir: String,
+
+    node_mode: String,
     child: Child,
     logs: Arc<Mutex<VecDeque<String>>>,
     started_ms: u128,
@@ -103,10 +105,74 @@ fn kgw_worker_start(
     let network = settings.network.as_str().to_string();
     let role = role.trim().to_ascii_lowercase();
     let key = kgw_worker_key(&role, &network);
+    let bridge_node_mode =
+        if settings.bridge_kind == kaspa_gateway_rk_node::BridgeNodeKind::OfficialInProcessNode {
+            "inprocess"
+        } else {
+            "external"
+        };
 
     let mut workers = kgw_parallel_self_workers()
         .lock()
         .map_err(|_| "parallel self-worker lock failed".to_string())?;
+
+    if role == "bridge" && bridge_node_mode == "inprocess" {
+        let node_key = kgw_worker_key("node", &network);
+        let mut remove_stale_node = false;
+
+        if let Some(existing) = workers.get_mut(&node_key) {
+            let running = existing
+                .child
+                .try_wait()
+                .map_err(|error| error.to_string())?
+                .is_none();
+
+            if running {
+                return Ok(format!(
+                    "start_blocked=true;start_allowed=false;runtime_role=bridge;network={};node_mode=inprocess;block_reason=node-tab-owner-running;message=Cannot start bridge in-process because the same-network node is already running. Stop the node first or use external bridge mode.;node_pid={};appdir={}",
+                    network,
+                    existing.child.id(),
+                    existing.appdir
+                ));
+            }
+
+            remove_stale_node = true;
+        }
+
+        if remove_stale_node {
+            workers.remove(&node_key);
+        }
+    }
+
+    if role == "node" {
+        let bridge_key = kgw_worker_key("bridge", &network);
+        let mut remove_stale_bridge = false;
+
+        if let Some(existing) = workers.get_mut(&bridge_key) {
+            let running = existing
+                .child
+                .try_wait()
+                .map_err(|error| error.to_string())?
+                .is_none();
+
+            if running && existing.node_mode == "inprocess" {
+                return Ok(format!(
+                    "start_blocked=true;start_allowed=false;runtime_role=node;network={};node_mode=inprocess;block_reason=bridge-inprocess-owner-running;message=Cannot start node because bridge in-process owns this network. Stop the bridge first.;bridge_pid={};appdir={}",
+                    network,
+                    existing.child.id(),
+                    existing.appdir
+                ));
+            }
+
+            if !running {
+                remove_stale_bridge = true;
+            }
+        }
+
+        if remove_stale_bridge {
+            workers.remove(&bridge_key);
+        }
+    }
 
     if let Some(existing) = workers.get_mut(&key) {
         if existing
@@ -116,11 +182,12 @@ fn kgw_worker_start(
             .is_none()
         {
             return Ok(format!(
-                "parallel-owned-self-worker already running;role={};network={};pid={};appdir={}",
+                "parallel-owned-self-worker already running;role={};network={};pid={};appdir={};node_mode={}",
                 existing.role,
                 existing.network,
                 existing.child.id(),
-                existing.appdir
+                existing.appdir,
+                existing.node_mode
             ));
         }
 
@@ -145,10 +212,6 @@ fn kgw_worker_start(
         .stderr(Stdio::piped())
         .stdin(Stdio::null());
 
-    // KGW_BRIDGE_RUST_LOG_DEFAULT_PATCH_R1
-    // The official RKStratum bridge uses tracing/RUST_LOG for real bridge diagnostics.
-    // Preserve user-provided RUST_LOG; otherwise provide a bridge-focused default
-    // for the same-exe bridge self-worker.
     if role == "bridge" {
         let bridge_rust_log = std::env::var("RUST_LOG")
             .unwrap_or_else(|_| "info,kaspa_stratum_bridge=debug".to_string());
@@ -165,6 +228,17 @@ fn kgw_worker_start(
         }
     } else {
         command.arg("--stratum").arg(&settings.stratum_listen);
+        command.arg("--node-mode").arg(bridge_node_mode);
+
+        if bridge_node_mode == "inprocess" {
+            if settings.enable_utxo_index {
+                command.arg("--utxoindex");
+            }
+
+            if settings.archival {
+                command.arg("--archival");
+            }
+        }
 
         if settings.bridge_internal_cpu_miner {
             command.arg("--internal-cpu-miner");
@@ -204,6 +278,11 @@ fn kgw_worker_start(
     }
 
     let pid = child.id();
+    let stored_node_mode = if role == "bridge" {
+        bridge_node_mode.to_string()
+    } else {
+        "node".to_string()
+    };
 
     workers.insert(
         key,
@@ -211,6 +290,7 @@ fn kgw_worker_start(
             role: role.clone(),
             network: network.clone(),
             appdir: settings.app_dir_name.clone(),
+            node_mode: stored_node_mode.clone(),
             child,
             logs,
             started_ms: kgw_worker_now_ms(),
@@ -218,13 +298,14 @@ fn kgw_worker_start(
     );
 
     Ok(format!(
-        "parallel-owned-self-worker started;role={};network={};pid={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};stratum={}",
+        "parallel-owned-self-worker started;role={};network={};pid={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};stratum={};node_mode={};same_db_path=true;exclusive_node_owner_per_network=true",
         role,
         network,
         pid,
         settings.app_dir_name,
         settings.rpc_endpoint,
-        settings.stratum_listen
+        settings.stratum_listen,
+        stored_node_mode
     ))
 }
 
@@ -265,8 +346,8 @@ fn kgw_worker_stop(network: &str, runtime_role: Option<&str>) -> Result<Option<S
             let _ = worker.child.wait();
 
             lines.push(format!(
-                "parallel-owned-self-worker stopped;role={};network={};pid={};appdir={}",
-                worker.role, worker.network, pid, worker.appdir
+                "parallel-owned-self-worker stopped;role={};network={};pid={};appdir={};node_mode={}",
+                worker.role, worker.network, pid, worker.appdir, worker.node_mode
             ));
         }
     }
@@ -339,13 +420,14 @@ fn kgw_worker_status(
             .is_none();
 
         lines.push(format!(
-            "parallel-owned-self-worker status;role={};network={};pid={};running={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};started_ms={}",
+            "parallel-owned-self-worker status;role={};network={};pid={};running={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};started_ms={};node_mode={}",
             worker.role,
             worker.network,
             worker.child.id(),
             running,
             worker.appdir,
-            worker.started_ms
+            worker.started_ms,
+            worker.node_mode
         ));
     }
 
@@ -437,7 +519,7 @@ pub fn kgw_runtime_owner_status_v1(
             .unwrap_or_else(|| "all".to_string());
 
         return Ok(format!(
-            "parallel-owned-self-worker status;role=bridge;network={};running=false;same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;message=no bridge worker status yet",
+            "parallel-owned-self-worker status;role=bridge;network={};running=false;same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;node_mode=none;message=no bridge worker status yet",
             network_label
         ));
     }
@@ -582,6 +664,27 @@ fn kgw_apply_command_preview_overrides(
         if let Some(value) = kgw_command_preview_find_cli_value(&bridge_preview, "--appdir") {
             if !value.trim().is_empty() {
                 settings.app_dir_name = kgw_safe_runtime_appdir(value);
+            }
+        }
+
+        // KGW_BRIDGE_INPROCESS_SAME_DB_OWNER_V7_INTEGRATED
+        if let Some(value) = kgw_command_preview_find_cli_value(&bridge_preview, "--node-mode") {
+            match value.trim().to_ascii_lowercase().as_str() {
+                "inprocess" | "inproc" | "official-inprocess-node" => {
+                    settings.node_kind = kaspa_gateway_rk_node::KaspadNodeKind::IntegratedInProc;
+                    settings.bridge_kind =
+                        kaspa_gateway_rk_node::BridgeNodeKind::OfficialInProcessNode;
+                    settings.enable_utxo_index =
+                        kgw_command_preview_has_cli_flag(&bridge_preview, "--utxoindex");
+                    settings.archival =
+                        kgw_command_preview_has_cli_flag(&bridge_preview, "--archival");
+                }
+                "external" | "external-node" | "official-external-node" => {
+                    settings.node_kind = kaspa_gateway_rk_node::KaspadNodeKind::Remote;
+                    settings.bridge_kind =
+                        kaspa_gateway_rk_node::BridgeNodeKind::OfficialExternalNode;
+                }
+                _ => {}
             }
         }
 
