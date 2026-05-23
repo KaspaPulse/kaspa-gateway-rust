@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+﻿use serde::{Deserialize, Serialize};
 use std::fmt;
 use thiserror::Error;
 
@@ -27,21 +27,21 @@ impl KaspaRuntimeNetwork {
         }
     }
 
-    pub fn branch(self) -> &'static str {
+        pub fn branch(self) -> &'static str {
         match self {
             Self::Mainnet => "master",
             Self::Testnet10 | Self::Testnet12 => "RKStratumTN12",
         }
     }
 
-    pub fn revision(self) -> &'static str {
+        pub fn revision(self) -> &'static str {
         match self {
             Self::Mainnet => "4969c6c31bec6a1a31e17c2e8a43532e17834240",
-            Self::Testnet10 | Self::Testnet12 => "a6a408943e1a62cd46fab3e6032c90cf152ab2ad",
+            Self::Testnet10 | Self::Testnet12 => "f197b5ca00a92825f9962db1b3ed0f5d00455464",
         }
     }
 
-    pub fn family(self) -> KaspaRuntimeFamily {
+        pub fn family(self) -> KaspaRuntimeFamily {
         match self {
             Self::Mainnet => KaspaRuntimeFamily::Mainline,
             Self::Testnet10 | Self::Testnet12 => KaspaRuntimeFamily::Tn12,
@@ -570,3 +570,6 @@ impl fmt::Display for KaspaNodeRuntimeMode {
         formatter.write_str(self.as_str())
     }
 }
+
+
+

@@ -61,10 +61,19 @@ function Branch-Function {
   $arms = @()
   foreach ($key in $groups.Keys) {
     $b = $groups[$key].Binding
-    $specValue = if ($b.rev) { $b.rev } else { $b.branch }
-    $arms += Network-Arm $groups[$key].Networks """$specValue"""
+    $arms += Network-Arm $groups[$key].Networks """$($b.branch)"""
   }
   return @("    pub fn branch(self) -> &'static str {", "        match self {") + $arms + @("        }", "    }") -join "`n"
+}
+
+function Revision-Function {
+  $groups = Get-Family-Groups
+  $arms = @()
+  foreach ($key in $groups.Keys) {
+    $b = $groups[$key].Binding
+    $arms += Network-Arm $groups[$key].Networks """$($b.rev)"""
+  }
+  return @("    pub fn revision(self) -> &'static str {", "        match self {") + $arms + @("        }", "    }") -join "`n"
 }
 
 function Node-Family-Function {
@@ -126,9 +135,12 @@ Replace-Cargo-Line $BridgeCargo "kaspa-stratum-bridge-mainline" (Cargo-Line "kas
 Replace-Cargo-Line $BridgeCargo "kaspa-stratum-bridge-tn12" (Cargo-Line "kaspa-stratum-bridge-tn12" "kaspa-stratum-bridge" $tn12)
 
 Replace-Rust-Function $ServiceController "pub fn branch(self) -> &'static str" (Branch-Function)
+Replace-Rust-Function $ServiceController "pub fn revision(self) -> &'static str" (Revision-Function)
 Replace-Rust-Function $OfficialRuntime "pub fn branch(self) -> &'static str" (Branch-Function)
+Replace-Rust-Function $OfficialRuntime "pub fn revision(self) -> &'static str" (Revision-Function)
 Replace-Rust-Function $OfficialRuntime "pub fn family(self) -> KaspaRuntimeFamily" (Node-Family-Function)
 Replace-Rust-Function $BridgeRuntime "pub fn branch(self) -> &'static str" (Branch-Function)
+Replace-Rust-Function $BridgeRuntime "pub fn revision(self) -> &'static str" (Revision-Function)
 Replace-Rust-Function $BridgeRuntime "pub fn family(self) -> BridgeRuntimeFamily" (Bridge-Family-Function)
 
 Write-Host "KGW runtime repository binding apply"

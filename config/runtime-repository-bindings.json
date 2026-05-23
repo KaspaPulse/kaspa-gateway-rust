@@ -40,7 +40,7 @@
       "family": "tn12",
       "repo": "https://github.com/LiveLaughLove13/rusty-kaspa.git",
       "branch": "RKStratumTN12",
-      "rev": "a6a408943e1a62cd46fab3e6032c90cf152ab2ad",
+      "rev": "f197b5ca00a92825f9962db1b3ed0f5d00455464",
       "feature": "official-kaspa-runtime-tn12",
       "nodeAliases": [
         "kaspad-lib-tn12",
@@ -65,7 +65,7 @@
       "family": "tn12",
       "repo": "https://github.com/LiveLaughLove13/rusty-kaspa.git",
       "branch": "RKStratumTN12",
-      "rev": "a6a408943e1a62cd46fab3e6032c90cf152ab2ad",
+      "rev": "f197b5ca00a92825f9962db1b3ed0f5d00455464",
       "feature": "official-kaspa-runtime-tn12",
       "nodeAliases": [
         "kaspad-lib-tn12",
