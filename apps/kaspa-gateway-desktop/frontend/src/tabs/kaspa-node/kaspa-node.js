@@ -1202,8 +1202,17 @@ function installNetworkTabs(root) {
         panel.classList.toggle("active", active);
         panel.hidden = !active;
       });
+
+      if (selected && kgwIsBridgeOwnedNodeLockedR65E(selected)) {
+        kgwNodeApplyBridgeOwnedDisplayOnlyR65E(selected, true, "network-tab-select");
+        kgwNodeR51SetRuntimeButtons(selected, false, true);
+      }
+
+      kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2("network-tab-click");
     });
   });
+
+  kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2("network-tabs-installed");
 }
 
 function installDelegatedTabs(root) {
@@ -1367,6 +1376,17 @@ async function runNodeIntegratedAction(action, net) {
   const command = commandByAction[action];
   if (!command) return false;
 
+  if (action === "start" || action === "stop") {
+    const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
+
+    if (bridgeInprocessLocked) {
+      kgwNodeR51SetRuntimeButtons(net, false, true);
+      kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, true, "action-guard");
+      appendLog(net, "KGW node " + action + " blocked: this network is display-only because Bridge in-process mode owns the node runtime. Stop the bridge first.");
+      return true;
+    }
+  }
+
   if (!window.__kgwR29NodeInFlight) {
     window.__kgwR29NodeInFlight = new Set();
   }
@@ -1386,11 +1406,7 @@ async function runNodeIntegratedAction(action, net) {
 
     const result = await invokeNodeIntegratedRuntime(command, net);
     appendLog(net, "KGW node " + action + " response: " + stringifyRuntimeResult(result));
-
-    if (action === "start") {
-
-    }
-return true;
+    return true;
   } catch (error) {
     appendLog(net, "KGW node " + action + " failed: " + normalizeRuntimeError(error));
     return true;
@@ -1565,43 +1581,43 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
   const panel = kgwNodeR51Panel(net);
   if (!panel) return;
 
-  const start = panel.querySelector(`[data-node-action="start"][data-net="${net}"]`);
-  const stop = panel.querySelector(`[data-node-action="stop"][data-net="${net}"]`);
+  const displayOnlyLocked = Boolean(bridgeInprocessLocked || kgwIsBridgeOwnedNodeLockedR65E(net));
+  kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, displayOnlyLocked, "runtime-buttons");
+
+  const start = panel.querySelector('[data-node-action="start"][data-net="' + net + '"]');
+  const stop = panel.querySelector('[data-node-action="stop"][data-net="' + net + '"]');
   const lockMessage = "This node is owned by Bridge in-process mode. Stop the bridge first.";
 
   for (const field of kgwNodeR51Fields(net)) {
-    field.disabled = Boolean(bridgeInprocessLocked);
-    field.dataset.kgwBridgeInprocessLockedV7 = bridgeInprocessLocked ? "true" : "false";
-    field.title = bridgeInprocessLocked ? lockMessage : "";
+    field.disabled = Boolean(displayOnlyLocked);
+    field.readOnly = Boolean(displayOnlyLocked);
+    field.dataset.kgwBridgeInprocessLockedV7 = displayOnlyLocked ? "true" : "false";
+    field.title = displayOnlyLocked ? lockMessage : "";
   }
 
   const preview = byId(id(net, "commandPreview"));
   if (preview) {
-    preview.readOnly = Boolean(bridgeInprocessLocked);
-    preview.dataset.kgwBridgeInprocessLockedV7 = bridgeInprocessLocked ? "true" : "false";
-    preview.title = bridgeInprocessLocked ? lockMessage : "";
+    preview.readOnly = true;
+    preview.dataset.kgwBridgeInprocessLockedV7 = displayOnlyLocked ? "true" : "false";
+    preview.title = displayOnlyLocked ? lockMessage : "";
   }
 
   if (start) {
-    start.disabled = Boolean(running || bridgeInprocessLocked);
-    start.style.opacity = running || bridgeInprocessLocked ? "0.45" : "";
-    start.style.cursor = running || bridgeInprocessLocked ? "not-allowed" : "";
-    start.title = bridgeInprocessLocked
-      ? lockMessage
-      : running
-        ? "Node is running. Stop it before starting again."
-        : "Start node";
+    start.disabled = Boolean(running || displayOnlyLocked);
+    start.style.opacity = running || displayOnlyLocked ? "0.45" : "";
+    start.style.cursor = running || displayOnlyLocked ? "not-allowed" : "";
+    start.setAttribute("aria-disabled", running || displayOnlyLocked ? "true" : "false");
+    start.dataset.kgwBridgeInprocessLockedV7 = displayOnlyLocked ? "true" : "false";
+    start.title = displayOnlyLocked ? lockMessage : running ? "Node is running. Stop it before starting again." : "Start node";
   }
 
   if (stop) {
-    stop.disabled = Boolean(!running || bridgeInprocessLocked);
-    stop.style.opacity = running && !bridgeInprocessLocked ? "" : "0.45";
-    stop.style.cursor = running && !bridgeInprocessLocked ? "" : "not-allowed";
-    stop.title = bridgeInprocessLocked
-      ? lockMessage
-      : running
-        ? "Stop node"
-        : "Node is not running";
+    stop.disabled = Boolean(!running || displayOnlyLocked);
+    stop.style.opacity = running && !displayOnlyLocked ? "" : "0.45";
+    stop.style.cursor = running && !displayOnlyLocked ? "" : "not-allowed";
+    stop.setAttribute("aria-disabled", !running || displayOnlyLocked ? "true" : "false");
+    stop.dataset.kgwBridgeInprocessLockedV7 = displayOnlyLocked ? "true" : "false";
+    stop.title = displayOnlyLocked ? lockMessage : running ? "Stop node" : "Node is not running";
   }
 }
 
@@ -1628,7 +1644,102 @@ function kgwNodeR51MaybeActivityNotice(net, statusText) {
 }
 
 // KGW_NODE_BRIDGE_INPROCESS_LOCK_V7
+// KGW_NODE_DISPLAY_ONLY_WHEN_BRIDGE_INPROCESS_R65B
+// KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E
+function kgwBridgeOwnedNodeLockStoreR65E() {
+  if (!window.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E || typeof window.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E !== "object") {
+    window.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E = {};
+  }
+  return window.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E;
+}
+
+function kgwSetBridgeOwnedNodeLockR65E(net, locked, details) {
+  const key = String(net || "");
+  if (!key) return;
+  const store = kgwBridgeOwnedNodeLockStoreR65E();
+
+  if (locked) {
+    store[key] = {
+      locked: true,
+      net: key,
+      reason: "bridge-inprocess-owner",
+      updatedAt: Date.now(),
+      details: details && typeof details === "object" ? details : {}
+    };
+  } else {
+    delete store[key];
+  }
+
+  try {
+    window.dispatchEvent(new CustomEvent("kgw-bridge-owned-node-lock-r65e", {
+      detail: {
+        net: key,
+        locked: Boolean(locked),
+        source: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E"
+      }
+    }));
+  } catch (_) {}
+}
+
+function kgwIsBridgeOwnedNodeLockedR65E(net) {
+  const key = String(net || "");
+  if (!key) return false;
+  const store = kgwBridgeOwnedNodeLockStoreR65E();
+  return Boolean(store[key] && store[key].locked);
+}
+
+function kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, locked, reason) {
+  const panel = kgwNodeR51Panel(net);
+  if (!panel) return;
+
+  const message = "This network is display-only because Bridge in-process mode owns the node runtime. Stop the bridge first.";
+
+  panel.dataset.kgwBridgeOwnedNodeDisplayOnlyR65E = locked ? "true" : "false";
+  panel.setAttribute("aria-readonly", locked ? "true" : "false");
+  panel.title = locked ? message : "";
+
+  for (const field of kgwNodeR51Fields(net)) {
+    field.disabled = Boolean(locked);
+    field.readOnly = Boolean(locked);
+    field.dataset.kgwBridgeOwnedNodeDisplayOnlyR65E = locked ? "true" : "false";
+    field.setAttribute("aria-readonly", locked ? "true" : "false");
+    field.title = locked ? message : "";
+  }
+
+  const preview = byId(id(net, "commandPreview"));
+  if (preview) {
+    preview.readOnly = true;
+    preview.dataset.kgwBridgeOwnedNodeDisplayOnlyR65E = locked ? "true" : "false";
+    preview.setAttribute("aria-readonly", "true");
+    preview.title = locked ? message : "";
+  }
+
+  const actionButtons = panel.querySelectorAll("[data-node-action]");
+  actionButtons.forEach(function (button) {
+    const action = String(button.dataset.nodeAction || "");
+    if (action === "start" || action === "stop" || action === "save-settings" || action === "set-defaults" || action === "restore-defaults" || action === "copy-command") {
+      button.disabled = Boolean(locked);
+      button.setAttribute("aria-disabled", locked ? "true" : "false");
+      button.dataset.kgwBridgeOwnedNodeDisplayOnlyR65E = locked ? "true" : "false";
+      button.style.opacity = locked ? "0.45" : "";
+      button.style.cursor = locked ? "not-allowed" : "";
+      button.title = locked ? message : "";
+    }
+  });
+
+  try {
+    kgwNodeExplicitTraceR27D(net, "display-only", locked ? "r65e-node-display-only-enabled" : "r65e-node-display-only-cleared", {
+      patch: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E",
+      reason: reason || "unknown"
+    });
+  } catch (_) {}
+}
+
 async function kgwNodeR51BridgeInprocessLockedV7(net) {
+  if (kgwIsBridgeOwnedNodeLockedR65E(net)) {
+    return true;
+  }
+
   try {
     const invoke = getTauriInvoke();
     if (!invoke) return false;
@@ -1641,9 +1752,34 @@ async function kgwNodeR51BridgeInprocessLockedV7(net) {
     ));
 
     const fields = parseRuntimeFields(result);
-    return fields.running === "true" && fields.node_mode === "inprocess";
+    const nodeMode = String(fields.node_mode || fields.nodeMode || "").toLowerCase();
+    const role = String(fields.role || "").toLowerCase();
+    const statusNetwork = String(fields.network || net || "");
+    const pid = String(fields.pid || "").trim();
+
+    const bridgeLooksAlive =
+      fields.running === "true" ||
+      fields.bridge_running === "true" ||
+      fields.bridge_owner_active === "true" ||
+      /^[0-9]+$/.test(pid) ||
+      /running=true/i.test(result) ||
+      /pid=[0-9]+/i.test(result);
+
+    const sameNetwork = !statusNetwork || statusNetwork === String(net || "");
+    const locked = sameNetwork && role === "bridge" && nodeMode === "inprocess" && bridgeLooksAlive;
+
+    if (locked) {
+      kgwSetBridgeOwnedNodeLockR65E(net, true, {
+        source: "kgw_runtime_owner_status_v1",
+        role,
+        nodeMode,
+        pid
+      });
+    }
+
+    return locked;
   } catch (_) {
-    return false;
+    return kgwIsBridgeOwnedNodeLockedR65E(net);
   }
 }
 
@@ -1678,10 +1814,48 @@ async function kgwNodeR51RefreshOne(net, reason = "live") {
   }
 }
 
+// KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_HYDRATION_R65H2
+function kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2(reason = "hydrate") {
+  const store = kgwBridgeOwnedNodeLockStoreR65E();
+  const keys = new Set();
+
+  for (const net of kgwNodeR51Keys()) keys.add(String(net || ""));
+  for (const key of Object.keys(store || {})) keys.add(String(key || ""));
+
+  for (const net of keys) {
+    if (!net) continue;
+    const locked = kgwIsBridgeOwnedNodeLockedR65E(net);
+    if (locked) {
+      kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, true, reason);
+      kgwNodeR51SetRuntimeButtons(net, false, true);
+    }
+  }
+}
+
+function kgwNodeInstallBridgeOwnedDisplayOnlyHydrationR65H2(root) {
+  if (window.__KGW_NODE_BRIDGE_OWNED_DISPLAY_ONLY_HYDRATION_R65H2_INSTALLED) return;
+  window.__KGW_NODE_BRIDGE_OWNED_DISPLAY_ONLY_HYDRATION_R65H2_INSTALLED = true;
+
+  window.addEventListener("kgw-bridge-owned-node-lock-r65e", function (event) {
+    const detail = event && event.detail ? event.detail : {};
+    const net = String(detail.net || "");
+    const locked = Boolean(detail.locked);
+    if (net) {
+      kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, locked, "lock-event");
+      kgwNodeR51SetRuntimeButtons(net, false, locked);
+    }
+    window.setTimeout(function () { kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2("lock-event-late"); }, 0);
+  });
+
+  window.setTimeout(function () { kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2("module-init"); }, 0);
+}
+
 function kgwNodeR51RefreshAll(reason = "live") {
+  kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2(String(reason || "live") + "-before-refresh");
   for (const net of kgwNodeR51Keys()) {
     kgwNodeR51RefreshOne(net, reason);
   }
+  kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2(String(reason || "live") + "-after-refresh");
 }
 
 function kgwNodeR51StartLiveRefresh() {
@@ -1823,6 +1997,12 @@ function installActions(root) {
     window.KGW_NODE_SETTINGS_OWNER_V19.install(root);
   }
 
+  kgwNodeInstallBridgeOwnedDisplayOnlyHydrationR65H2(root);
+  kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2("install-actions");
+  window.setTimeout(function () {
+    kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2("install-actions-late");
+  }, 0);
+
   function normalizeNet(value) {
     const raw = String(value || "").toLowerCase();
     if (raw.includes("testnet12") || raw.includes("tn12")) return "testnet12";
@@ -1896,7 +2076,19 @@ function installActions(root) {
   root.addEventListener("input", (event) => {
     const target = event.target;
     if (!target || !target.matches || !target.matches("input, select, textarea")) return;
-    if (target.readOnly || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
+    if (target.readOnly || target.disabled || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
+
+    const inputNet = netFromEvent(event);
+    if (inputNet && kgwIsBridgeOwnedNodeLockedR65E(inputNet)) {
+      event.preventDefault();
+      event.stopPropagation();
+      kgwNodeApplyBridgeOwnedDisplayOnlyR65E(inputNet, true, "input-guard");
+      kgwNodeExplicitTraceR27D(inputNet, "display-only", "r65e-node-input-blocked", {
+        patch: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E",
+        targetId: String(target.id || "")
+      });
+      return;
+    }
 
     const net = netFromEvent(event);
     scopedUpdate(net, event.isTrusted ? "trusted-input" : "programmatic-input");
@@ -1905,7 +2097,19 @@ function installActions(root) {
   root.addEventListener("change", (event) => {
     const target = event.target;
     if (!target || !target.matches || !target.matches("input, select, textarea")) return;
-    if (target.readOnly || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
+    if (target.readOnly || target.disabled || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
+
+    const changeNet = netFromEvent(event);
+    if (changeNet && kgwIsBridgeOwnedNodeLockedR65E(changeNet)) {
+      event.preventDefault();
+      event.stopPropagation();
+      kgwNodeApplyBridgeOwnedDisplayOnlyR65E(changeNet, true, "change-guard");
+      kgwNodeExplicitTraceR27D(changeNet, "display-only", "r65e-node-change-blocked", {
+        patch: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E",
+        targetId: String(target.id || "")
+      });
+      return;
+    }
 
     const net = netFromEvent(event);
     scopedUpdate(net, event.isTrusted ? "trusted-change" : "programmatic-change");
@@ -1920,12 +2124,25 @@ function installActions(root) {
 
     if (!net) return;
 
+    const lockedBeforeAction = kgwIsBridgeOwnedNodeLockedR65E(net);
+
     kgwNodeExplicitTraceR27D(net, String(action || "unknown"), "r27d-action-click", {
       trusted: Boolean(event && event.isTrusted),
-      disabled: Boolean(button.disabled),
+      disabled: Boolean(button.disabled || lockedBeforeAction),
       id: String(button.id || ""),
-      text: String(button.textContent || "").trim()
+      text: String(button.textContent || "").trim(),
+      bridgeOwnedDisplayOnly: Boolean(lockedBeforeAction)
     });
+
+    if (lockedBeforeAction && (action === "start" || action === "stop" || action === "save-settings" || action === "set-defaults" || action === "restore-defaults" || action === "copy-command")) {
+      event.preventDefault();
+      event.stopPropagation();
+      kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, true, "click-guard");
+      if (typeof appendLog === "function" && (action === "start" || action === "stop")) {
+        appendLog(net, "KGW node " + action + " blocked: this network is display-only because Bridge in-process mode owns the node runtime. Stop the bridge first.");
+      }
+      return;
+    }
 
     if (action === "save-settings") {
       if (typeof kgwNodeR51SaveSettings === "function") kgwNodeR51SaveSettings(net);

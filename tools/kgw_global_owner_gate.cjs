@@ -283,6 +283,31 @@ const OWNER_REGISTRY = {
     ]
   },
 
+  bridgeOwnedNodeDisplayOnly: {
+    ownerId: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_OWNER",
+    description: "Node display-only ownership while Bridge in-process owns a same-network node runtime.",
+    activeFiles: [
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js",
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+    ],
+    referenceFiles: [],
+    requiredMarkers: [
+      "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E",
+      "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_MAINNET_IMMEDIATE_R65F",
+      "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_HYDRATION_R65H2"
+    ],
+    requiredFiles: [],
+    forbiddenMarkers: [
+      "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65D"
+    ],
+    responsibilities: [
+      "bridge in-process start sets same-network node display-only lock",
+      "bridge stop clears same-network node display-only lock",
+      "node start/stop/settings actions are blocked while bridge owns the node runtime",
+      "network tabs remain available for read-only inspection",
+      "no CSS hiding workaround and no global listener"
+    ]
+  },
   nodeBridgeInternalNavigationTrace: {
     ownerId: "KGW_NODE_BRIDGE_INTERNAL_NAV_TRACE_OWNER",
     description: "Node/Bridge internal network and inner-tab navigation trace ownership.",

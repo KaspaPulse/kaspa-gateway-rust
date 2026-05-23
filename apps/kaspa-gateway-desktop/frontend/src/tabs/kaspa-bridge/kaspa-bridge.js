@@ -1073,6 +1073,44 @@ function bridgeCollectConfiguredPortsR5() {
   return items;
 }
 
+function bridgePortConflictLogicalKeyR64F(item) {
+  const net = String(item && item.net ? item.net : "");
+  const role = String(item && item.role ? item.role : "");
+  const owner = String(item && item.owner ? item.owner : "");
+
+  if (
+    role === "default-kaspad-rpc" ||
+    role === "bridge-external-kaspad" ||
+    role === "inprocess-rpc"
+  ) {
+    return net + ":node-rpc";
+  }
+
+  if (
+    role === "default-stratum" ||
+    role === "bridge-stratum"
+  ) {
+    return net + ":bridge-stratum";
+  }
+
+  if (
+    role === "default-prometheus" ||
+    role === "bridge-prometheus"
+  ) {
+    return net + ":bridge-prometheus";
+  }
+
+  return net + ":" + role + ":" + owner;
+}
+
+function bridgePortOwnersRepresentSameLogicalEndpointR64F(owners) {
+  const logicalKeys = new Set(
+    owners.map((item) => bridgePortConflictLogicalKeyR64F(item))
+  );
+
+  return logicalKeys.size <= 1;
+}
+
 function bridgeValidatePortConflictsR5(activeNet) {
   const items = bridgeCollectConfiguredPortsR5();
   const byPort = new Map();
@@ -1085,9 +1123,15 @@ function bridgeValidatePortConflictsR5(activeNet) {
   const conflicts = [];
 
   for (const [port, owners] of byPort.entries()) {
-    const uniqueOwners = new Set(owners.map((item) => item.net + ":" + item.role + ":" + item.owner));
+    const uniqueOwners = new Set(
+      owners.map((item) => item.net + ":" + item.role + ":" + item.owner)
+    );
 
     if (uniqueOwners.size <= 1) continue;
+
+    if (bridgePortOwnersRepresentSameLogicalEndpointR64F(owners)) {
+      continue;
+    }
 
     const touchesActiveNet = owners.some((item) => item.net === activeNet);
     const touchesInstance = owners.some((item) => item.role === "instance");
@@ -2824,7 +2868,123 @@ async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {
   return true;
 }
 
+// KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E
+function kgwBridgeOwnedNodeLockStoreR65E() {
+  if (!window.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E || typeof window.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E !== "object") {
+    window.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E = {};
+  }
+  return window.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E;
+}
+
+function kgwSetBridgeOwnedNodeLockR65E(net, locked, details) {
+  const key = String(net || "");
+  if (!key) return;
+  const store = kgwBridgeOwnedNodeLockStoreR65E();
+
+  if (locked) {
+    store[key] = {
+      locked: true,
+      net: key,
+      reason: "bridge-inprocess-owner",
+      updatedAt: Date.now(),
+      details: details && typeof details === "object" ? details : {}
+    };
+  } else {
+    delete store[key];
+  }
+
+  try {
+    window.dispatchEvent(new CustomEvent("kgw-bridge-owned-node-lock-r65e", {
+      detail: {
+        net: key,
+        locked: Boolean(locked),
+        source: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E"
+      }
+    }));
+  } catch (_) {}
+}
+
+function kgwIsBridgeOwnedNodeLockedR65E(net) {
+  const key = String(net || "");
+  if (!key) return false;
+  const store = kgwBridgeOwnedNodeLockStoreR65E();
+  return Boolean(store[key] && store[key].locked);
+}
+
+// KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_MAINNET_IMMEDIATE_R65F
+function kgwBridgeNormalizeNodeModeR65F(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function kgwBridgeCurrentNodeModeFromUiR65F(net) {
+  try {
+    const direct = byId(id(net, "nodeMode"));
+    if (direct && "value" in direct) return String(direct.value || "");
+  } catch (_) {}
+
+  try {
+    const panel = document.querySelector('[data-bridge-panel="' + String(net || "") + '"]') ||
+      document.querySelector('[data-net="' + String(net || "") + '"]');
+    if (panel) {
+      const select = panel.querySelector('[id$="-nodeMode"], [data-bridge-setting="nodeMode"], select[name="nodeMode"]');
+      if (select && "value" in select) return String(select.value || "");
+    }
+  } catch (_) {}
+
+  return "";
+}
+
+function kgwBridgePreviewDeclaresInprocessR65F(preview) {
+  const text = String(preview || "").toLowerCase();
+  return /--node-mode\s*=\s*in-?process/.test(text) ||
+    /--node-mode\s+in-?process/.test(text) ||
+    /node-mode=in-?process/.test(text) ||
+    /node_mode=in-?process/.test(text);
+}
+
+function kgwBridgeStartWasInprocessR65F(net, fields, preview) {
+  const fieldMode = kgwBridgeNormalizeNodeModeR65F(fields && (fields.node_mode || fields.nodeMode));
+  const uiMode = kgwBridgeNormalizeNodeModeR65F(kgwBridgeCurrentNodeModeFromUiR65F(net));
+  const previewMode = kgwBridgePreviewDeclaresInprocessR65F(preview);
+
+  return fieldMode === "inprocess" ||
+    fieldMode === "inproc" ||
+    uiMode === "inprocess" ||
+    uiMode === "inproc" ||
+    previewMode;
+}
+
 async function runBridgeIntegratedAction(action, net) {
+  function kgwBridgeRuntimeOwnerTraceR64D(phase, details) {
+    try {
+      const safeNet = String(net || "unknown");
+      const safeAction = String(action || "unknown");
+      const safePhase = String(phase || "unknown");
+      const payload = {
+        patch: "KGW_BRIDGE_RUNTIME_OWNER_TRACE_R64D",
+        owner: "runBridgeIntegratedAction-existing-owner",
+        network: safeNet,
+        action: safeAction,
+        phase: safePhase,
+        details: details && typeof details === "object" ? details : {}
+      };
+
+      if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === "function") {
+        window.__TAURI__.core.invoke("kgw_frontend_button_trace_v1", {
+          scope: "bridge",
+          net: safeNet,
+          action: safeAction,
+          phase: safePhase,
+          details: JSON.stringify(payload)
+        }).catch(function () {});
+      }
+    } catch (_) {}
+  }
+
+  kgwBridgeRuntimeOwnerTraceR64D("r64d-runtime-owner-enter", {
+    action: String(action || ""),
+    net: String(net || "")
+  });
 
   const commandByAction = {
     start: "kgw_kgw_apply_node_settings_v1",
@@ -2832,27 +2992,104 @@ async function runBridgeIntegratedAction(action, net) {
   };
 
   const command = commandByAction[action];
-  if (!command) return false;
 
-  if (action === "start" && await kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net)) {
-    return true;
+  if (!command) {
+    kgwBridgeRuntimeOwnerTraceR64D("r64d-invalid-action-return", {
+      action: String(action || "")
+    });
+    return false;
+  }
+
+  if (action === "start") {
+    kgwBridgeRuntimeOwnerTraceR64D("r64d-preflight-begin", {
+      command
+    });
+
+    const blockedBySameNetworkNode = await kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net);
+
+    kgwBridgeRuntimeOwnerTraceR64D("r64d-preflight-result", {
+      blockedBySameNetworkNode: Boolean(blockedBySameNetworkNode)
+    });
+
+    if (blockedBySameNetworkNode) {
+      if (typeof appendLog === "function") {
+        appendLog(net, "KGW bridge start blocked: same-network node is already running in in-process mode.");
+      }
+
+      kgwBridgeRuntimeOwnerTraceR64D("r64d-preflight-blocked-return", {
+        reason: "same-network-node-running-inprocess"
+      });
+
+      return true;
+    }
   }
 
   const inFlightKey = net + ":" + action;
 
+  kgwBridgeRuntimeOwnerTraceR64D("r64d-inflight-check", {
+    inFlightKey,
+    alreadyInFlight: KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(inFlightKey)
+  });
+
   if (KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(inFlightKey)) {
+    if (typeof appendLog === "function") {
+      appendLog(net, "KGW bridge " + action + " already in progress. Duplicate click ignored.");
+    }
+
+    kgwBridgeRuntimeOwnerTraceR64D("r64d-inflight-duplicate-return", {
+      inFlightKey
+    });
+
     return true;
   }
 
   KGW_BRIDGE_RUNTIME_IN_FLIGHT.add(inFlightKey);
 
+  kgwBridgeRuntimeOwnerTraceR64D("r64d-inflight-added", {
+    inFlightKey
+  });
+
   try {
+    kgwBridgeRuntimeOwnerTraceR64D("r64d-preview-begin", {
+      command
+    });
+
     const preview = updateCommand(net) || byId(id(net, "commandPreview"))?.value || "";
 
+    kgwBridgeRuntimeOwnerTraceR64D("r64d-preview-ready", {
+      hasPreview: Boolean(preview),
+      previewLength: String(preview || "").length
+    });
+
+    if (typeof appendLog === "function") {
+      appendLog(net, "KGW bridge " + action + " requested via existing button.");
+      if (preview) appendLog(net, "KGW bridge flags: " + preview);
+    }
+
+    kgwBridgeRuntimeOwnerTraceR64D("r64d-invoke-begin", {
+      command,
+      hasPreview: Boolean(preview)
+    });
+
     const result = await invokeBridgeIntegratedRuntime(command, net);
+
+    kgwBridgeRuntimeOwnerTraceR64D("r64d-invoke-result", {
+      resultType: typeof result,
+      resultStringLength: String(result ?? "").length
+    });
+
     const raw = stringifyRuntimeResult(result);
     const parsed = parseRuntimeKeyValueResponse(result);
     const fields = parsed.fields || {};
+
+    kgwBridgeRuntimeOwnerTraceR64D("r64d-response-parsed", {
+      rawLength: String(raw || "").length,
+      fieldKeys: Object.keys(fields)
+    });
+
+    if (typeof appendLog === "function") {
+      appendLog(net, "KGW bridge " + action + " response: " + raw);
+    }
 
     if (action === "start") {
       const confirmedStarted =
@@ -2868,10 +3105,36 @@ async function runBridgeIntegratedAction(action, net) {
         fields.start_allowed === "false" ||
         /blocked|not enabled|failed/i.test(raw);
 
+      kgwBridgeRuntimeOwnerTraceR64D("r64d-start-confirmation-evaluated", {
+        confirmedStarted: Boolean(confirmedStarted),
+        blocked: Boolean(blocked)
+      });
+
       if (confirmedStarted && !blocked) {
-
+        const bridgeNodeMode = String(fields.node_mode || fields.nodeMode || "").toLowerCase();
+        const bridgeStartWasInprocess = kgwBridgeStartWasInprocessR65F(net, fields, preview);
+        if (bridgeStartWasInprocess) {
+          kgwSetBridgeOwnedNodeLockR65E(net, true, {
+            source: "bridge-start-confirmed-r65f",
+            action: "start",
+            nodeMode: bridgeNodeMode,
+            uiNodeMode: kgwBridgeCurrentNodeModeFromUiR65F(net),
+            previewDeclaredInprocess: kgwBridgePreviewDeclaresInprocessR65F(preview),
+            pid: String(fields.pid || "")
+          });
+        }
+        kgwBridgeRuntimeOwnerTraceR64D("r65f-bridge-owned-node-lock-evaluated", {
+          patch: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_MAINNET_IMMEDIATE_R65F",
+          bridgeNodeMode,
+          uiNodeMode: kgwBridgeCurrentNodeModeFromUiR65F(net),
+          previewDeclaredInprocess: kgwBridgePreviewDeclaresInprocessR65F(preview),
+          bridgeStartWasInprocess
+        });
+        if (typeof appendLog === "function") appendLog(net, "KGW bridge start confirmed.");
+      } else if (blocked) {
+        if (typeof appendLog === "function") appendLog(net, "KGW bridge start blocked or failed: " + raw);
       } else {
-
+        if (typeof appendLog === "function") appendLog(net, "KGW bridge start was not confirmed by runtime response: " + raw);
       }
     }
 
@@ -2881,17 +3144,45 @@ async function runBridgeIntegratedAction(action, net) {
         fields.running === "false" ||
         fields.bridge_running === "false";
 
+      kgwBridgeRuntimeOwnerTraceR64D("r64d-stop-confirmation-evaluated", {
+        confirmedStopped: Boolean(confirmedStopped)
+      });
+
       if (confirmedStopped) {
+        kgwSetBridgeOwnedNodeLockR65E(net, false, {
+          source: "bridge-stop-confirmed",
+          action: "stop"
+        });
+        if (typeof appendLog === "function") appendLog(net, "KGW bridge stop confirmed.");
       } else {
+        if (typeof appendLog === "function") appendLog(net, "KGW bridge stop was not confirmed by runtime response: " + raw);
       }
     }
-  } catch (error) {
-  }
-finally {
-    KGW_BRIDGE_RUNTIME_IN_FLIGHT.delete(inFlightKey);
-  }
 
-  return true;
+    kgwBridgeRuntimeOwnerTraceR64D("r64d-runtime-owner-return-success", {
+      action: String(action || "")
+    });
+
+    return true;
+  } catch (error) {
+    const message = error && error.message ? error.message : String(error);
+
+    kgwBridgeRuntimeOwnerTraceR64D("r64d-runtime-owner-catch", {
+      message
+    });
+
+    if (typeof appendLog === "function") {
+      appendLog(net, "KGW bridge " + action + " failed: " + message);
+    }
+
+    return true;
+  } finally {
+    KGW_BRIDGE_RUNTIME_IN_FLIGHT.delete(inFlightKey);
+
+    kgwBridgeRuntimeOwnerTraceR64D("r64d-runtime-owner-finally", {
+      inFlightKey
+    });
+  }
 }
 /* KGW_R51_DIRECT_BRIDGE_LOG_RUNTIME_SETTINGS_OWNER */
 const KGW_BRIDGE_R51_STORAGE_PREFIX = "kgw.bridge.direct.v51.";
