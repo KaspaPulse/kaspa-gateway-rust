@@ -493,3 +493,28 @@ button[data-kgw-settings-owner-v19-disabled="false"] {
   cursor: pointer;
 }
 /* END_KGW_SETTINGS_OWNER_V19_VISUAL */
+
+
+/* KGW_NODE_LOG_SCOPED_CONTROLS_V29_VISUAL */
+#kaspa-node .kgw-log-font-size-controls {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  margin-left: 8px !important;
+  height: 24px !important;
+}
+
+#kaspa-node .kgw-log-font-size-button {
+  height: 23px !important;
+  min-height: 23px !important;
+  padding: 0 8px !important;
+  font-size: 11px !important;
+  line-height: 1 !important;
+}
+
+#kaspa-node .kgw-log-font-size-value {
+  min-width: 34px !important;
+  text-align: center !important;
+  font-size: 11px !important;
+  opacity: .9 !important;
+}

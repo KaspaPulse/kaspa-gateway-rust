@@ -229,15 +229,75 @@ function applyInitialState() {
   if (qs("#logFontSize") && state.fontSize) qs("#logFontSize").value = state.fontSize;
 }
 
+
+// KGW_LOG_UI_TRACE_PATCH_R49B2
+function kgwLogUiTraceR49B2(action, phase, details) {
+  try {
+    const call = invoke();
+    if (typeof call !== "function") return;
+    const safeAction = String(action || "log-ui");
+    const safePhase = String(phase || "unknown");
+    const safeDetails = details && typeof details === "object" ? details : {};
+    call("kgw_frontend_button_trace_v1", {
+      scope: "log",
+      net: "ui",
+      action: safeAction,
+      phase: safePhase,
+      details: JSON.stringify({
+        patch: "KGW_LOG_UI_TRACE_PATCH_R49B2",
+        owner: "log-existing-initLogTab-owner",
+        action: safeAction,
+        phase: safePhase,
+        details: safeDetails
+      })
+    }).catch(function () {});
+  } catch (_) {}
+}
 export function initLogTab() {
   applyInitialState();
 
-  qs("#logSeverity")?.addEventListener("change", render);
-  qs("#logSearch")?.addEventListener("input", render);
-  qs("#logAutoScroll")?.addEventListener("change", saveState);
-  qs("#logFontSize")?.addEventListener("change", render);
-  qs("#logClear")?.addEventListener("click", () => clearLog().catch(console.error));
-  qs("#logCopy")?.addEventListener("click", () => copyLog().catch(console.error));
+  qs("#logSeverity")?.addEventListener("change", (event) => {
+    kgwLogUiTraceR49B2("log-filter", "r49b2-log-severity-change", {
+      trusted: Boolean(event && event.isTrusted),
+      value: String(qs("#logSeverity")?.value || "")
+    });
+    render();
+  });
+  qs("#logSearch")?.addEventListener("input", (event) => {
+    kgwLogUiTraceR49B2("log-filter", "r49b2-log-search-input", {
+      trusted: Boolean(event && event.isTrusted),
+      valueLength: String(qs("#logSearch")?.value || "").length
+    });
+    render();
+  });
+  qs("#logAutoScroll")?.addEventListener("change", (event) => {
+    kgwLogUiTraceR49B2("log-option", "r49b2-log-autoscroll-change", {
+      trusted: Boolean(event && event.isTrusted),
+      checked: Boolean(qs("#logAutoScroll")?.checked)
+    });
+    saveState();
+  });
+  qs("#logFontSize")?.addEventListener("change", (event) => {
+    kgwLogUiTraceR49B2("log-option", "r49b2-log-font-size-change", {
+      trusted: Boolean(event && event.isTrusted),
+      value: String(qs("#logFontSize")?.value || "")
+    });
+    render();
+  });
+  qs("#logClear")?.addEventListener("click", (event) => {
+    kgwLogUiTraceR49B2("log-action", "r49b2-log-clear-click", {
+      trusted: Boolean(event && event.isTrusted),
+      visibleLines: filteredLines.length
+    });
+    clearLog().catch(console.error);
+  });
+  qs("#logCopy")?.addEventListener("click", (event) => {
+    kgwLogUiTraceR49B2("log-action", "r49b2-log-copy-click", {
+      trusted: Boolean(event && event.isTrusted),
+      visibleLines: filteredLines.length
+    });
+    copyLog().catch(console.error);
+  });
 
   if (pollTimer) clearInterval(pollTimer);
 

@@ -15,7 +15,7 @@
       "family": "mainline",
       "repo": "https://github.com/kaspanet/rusty-kaspa.git",
       "branch": "master",
-      "rev": null,
+      "rev": "4969c6c31bec6a1a31e17c2e8a43532e17834240",
       "feature": "official-kaspa-runtime-mainline",
       "nodeAliases": [
         "kaspad-lib-mainline",
@@ -40,7 +40,7 @@
       "family": "tn12",
       "repo": "https://github.com/LiveLaughLove13/rusty-kaspa.git",
       "branch": "RKStratumTN12",
-      "rev": null,
+      "rev": "a6a408943e1a62cd46fab3e6032c90cf152ab2ad",
       "feature": "official-kaspa-runtime-tn12",
       "nodeAliases": [
         "kaspad-lib-tn12",
@@ -65,7 +65,7 @@
       "family": "tn12",
       "repo": "https://github.com/LiveLaughLove13/rusty-kaspa.git",
       "branch": "RKStratumTN12",
-      "rev": null,
+      "rev": "a6a408943e1a62cd46fab3e6032c90cf152ab2ad",
       "feature": "official-kaspa-runtime-tn12",
       "nodeAliases": [
         "kaspad-lib-tn12",

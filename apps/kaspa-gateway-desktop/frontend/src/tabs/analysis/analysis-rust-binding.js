@@ -56,6 +56,30 @@ function invoke() {
 }
 
 
+
+// KGW_ANALYSIS_START_CANCEL_TRACE_PATCH_R50D3
+function kgwAnalysisBindingTraceR50D3(action, phase, details) {
+  try {
+    const call = invoke();
+    if (typeof call !== "function") return;
+    const safeAction = String(action || "analysis-binding");
+    const safePhase = String(phase || "unknown");
+    const safeDetails = details && typeof details === "object" ? details : {};
+    call("kgw_frontend_button_trace_v1", {
+      scope: "analysis",
+      net: "ui",
+      action: safeAction,
+      phase: safePhase,
+      details: JSON.stringify({
+        patch: "KGW_ANALYSIS_START_CANCEL_TRACE_PATCH_R50D3",
+        owner: "analysis-rust-binding-bindControls-owner",
+        action: safeAction,
+        phase: safePhase,
+        details: safeDetails
+      })
+    }).catch(function () {});
+  } catch (_) {}
+}
 function translateI18n(key) {
   const runtime = window.kgwT || window.kgwI18n;
   if (typeof runtime === "function") {
@@ -104,6 +128,13 @@ function bindControls() {
     run.dataset.kgwAnalysisBound = "true";
     run.addEventListener("click", (event) => {
       event.preventDefault();
+      kgwAnalysisBindingTraceR50D3("analysis-run", "r50d3-analysis-run-click", {
+        trusted: Boolean(event && event.isTrusted),
+        id: String(run.id || ""),
+        text: String(run.textContent || "").trim(),
+        runningBefore: Boolean(ANALYSIS_STATE.running),
+        selectedAddress: String(selectedAddress() || "")
+      });
       runRustAnalysis().catch((error) => {
         logAnalysisError("Analysis failed", error);
         setStatus(error && error.message ? error.message : String(error), "error");
@@ -117,6 +148,13 @@ function bindControls() {
     cancel.dataset.kgwAnalysisBound = "true";
     cancel.addEventListener("click", (event) => {
       event.preventDefault();
+      kgwAnalysisBindingTraceR50D3("analysis-cancel", "r50d3-analysis-cancel-click", {
+        trusted: Boolean(event && event.isTrusted),
+        id: String(cancel.id || ""),
+        text: String(cancel.textContent || "").trim(),
+        runningBefore: Boolean(ANALYSIS_STATE.running),
+        currentAddress: String(ANALYSIS_STATE.currentAddress || "")
+      });
       ANALYSIS_STATE.running = false;
       setStatus("Analysis cancelled.", "warn");
       updateRunState();
@@ -126,7 +164,12 @@ function bindControls() {
 
   if (select && select.dataset.kgwAnalysisBound !== "true") {
     select.dataset.kgwAnalysisBound = "true";
-    select.addEventListener("change", () => {
+    select.addEventListener("change", (event) => {
+      kgwAnalysisBindingTraceR50D3("analysis-address", "r50d3-analysis-address-select-change", {
+        trusted: Boolean(event && event.isTrusted),
+        id: String(select.id || ""),
+        valueLength: String(select.value || "").length
+      });
       if (String(select.value || "").trim()) {
         const inputNode = q("#analysisAddressInput");
         if (inputNode) inputNode.value = "";
@@ -137,7 +180,12 @@ function bindControls() {
 
   if (input && input.dataset.kgwAnalysisBound !== "true") {
     input.dataset.kgwAnalysisBound = "true";
-    input.addEventListener("input", () => {
+    input.addEventListener("input", (event) => {
+      kgwAnalysisBindingTraceR50D3("analysis-address", "r50d3-analysis-address-input", {
+        trusted: Boolean(event && event.isTrusted),
+        id: String(input.id || ""),
+        valueLength: String(input.value || "").length
+      });
       if (String(input.value || "").trim()) {
         const selectNode = q("#analysisAddressSelect");
         if (selectNode) selectNode.value = "";

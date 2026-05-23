@@ -49,6 +49,166 @@ mod top_addresses_deep;
 mod transaction_analysis;
 mod ui_wiring;
 
+/* KGW_UI_TRACE_GATE_DEFAULT_OFF_R20
+ * Central UI trace gate.
+ * Default: no KGW_BUTTON_TRACE output.
+ * Enable for dev diagnostics with:
+ *   PowerShell: $env:KGW_UI_TRACE="1"
+ * Supported truthy values: 1, true, yes, on, debug.
+ */
+fn kgw_ui_trace_level_v1() -> Option<&'static str> {
+    match std::env::var("KGW_UI_TRACE") {
+        Ok(value) => match value.trim().to_ascii_lowercase().as_str() {
+            "1" | "true" | "yes" | "on" | "user" => Some("user"),
+            "full" => Some("full"),
+            "debug" => Some("debug"),
+            _ => None,
+        },
+        Err(_) => None,
+    }
+}
+
+fn kgw_ui_trace_date_yyyymmdd_v37() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let Ok(duration) = SystemTime::now().duration_since(UNIX_EPOCH) else {
+        return "unknown-date".to_string();
+    };
+
+    let days = (duration.as_secs() / 86_400) as i64;
+    let (year, month, day) = kgw_ui_trace_civil_from_days_v37(days);
+    format!("{year:04}{month:02}{day:02}")
+}
+
+fn kgw_ui_trace_civil_from_days_v37(days_since_unix_epoch: i64) -> (i32, u32, u32) {
+    let z = days_since_unix_epoch + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1_460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = mp + if mp < 10 { 3 } else { -9 };
+    let year = y + if m <= 2 { 1 } else { 0 };
+
+    (year as i32, m as u32, d as u32)
+}
+
+fn kgw_ui_trace_json_escape_v37(value: &str) -> String {
+    let mut out = String::with_capacity(value.len() + 16);
+
+    for ch in value.chars() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            ch if ch.is_control() => out.push_str(&format!("\\u{:04x}", ch as u32)),
+            ch => out.push(ch),
+        }
+    }
+
+    out
+}
+
+fn kgw_ui_trace_file_sink_enabled_v40() -> bool {
+    match std::env::var("KGW_UI_TRACE_FILE") {
+        Ok(value) => matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on" | "file"
+        ),
+        Err(_) => false,
+    }
+}
+
+fn kgw_ui_trace_log_dir_v37() -> Option<std::path::PathBuf> {
+    if let Some(dir) = std::env::var_os("KGW_UI_TRACE_DIR") {
+        return Some(std::path::PathBuf::from(dir));
+    }
+
+    if !kgw_ui_trace_file_sink_enabled_v40() {
+        return None;
+    }
+
+    let current_dir = std::env::current_dir().ok()?;
+    Some(current_dir.join("dev-traces"))
+}
+
+fn kgw_ui_trace_append_file_v37(
+    level: &str,
+    scope: &str,
+    net: &str,
+    action: &str,
+    phase: &str,
+    details: &str,
+) {
+    let Some(dir) = kgw_ui_trace_log_dir_v37() else {
+        return;
+    };
+
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+
+    let file_path = dir.join(format!(
+        "kgw-ui-trace-{}.log",
+        kgw_ui_trace_date_yyyymmdd_v37()
+    ));
+
+    let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(file_path)
+    else {
+        return;
+    };
+
+    use std::io::Write;
+
+    let now = format!("{:?}", std::time::SystemTime::now());
+    let line = format!(
+        "{{\"ts\":\"{}\",\"level\":\"{}\",\"scope\":\"{}\",\"net\":\"{}\",\"action\":\"{}\",\"phase\":\"{}\",\"details\":\"{}\"}}\n",
+        kgw_ui_trace_json_escape_v37(&now),
+        kgw_ui_trace_json_escape_v37(level),
+        kgw_ui_trace_json_escape_v37(scope),
+        kgw_ui_trace_json_escape_v37(net),
+        kgw_ui_trace_json_escape_v37(action),
+        kgw_ui_trace_json_escape_v37(phase),
+        kgw_ui_trace_json_escape_v37(details)
+    );
+
+    let _ = file.write_all(line.as_bytes());
+}
+
+fn kgw_ui_trace_should_print_v1(level: &str, action: &str, phase: &str, details: &str) -> bool {
+    let text = format!("{action} {phase} {details}").to_ascii_lowercase();
+
+    let is_programmatic = text.contains("programmatic")
+        || text.contains("input-programmatic")
+        || text.contains("change-programmatic")
+        || text.contains("programmatic-input")
+        || text.contains("programmatic-change");
+
+    let is_bootstrap = text.contains("owner-installed")
+        || text.contains("bootstrap")
+        || text.contains("probe")
+        || text.contains("initial")
+        || text.contains("invoke-proxy-installed");
+
+    let is_owner_disabled = phase.contains("disabled")
+        || text.contains("v19-disabled")
+        || text.contains("\"reason\":\"initial\"");
+
+    match level {
+        "debug" => true,
+        "full" => !is_bootstrap,
+        "user" => !is_programmatic && !is_bootstrap && !is_owner_disabled,
+        _ => false,
+    }
+}
+
 #[tauri::command]
 fn kgw_frontend_button_trace_v1(
     scope: String,
@@ -57,16 +217,102 @@ fn kgw_frontend_button_trace_v1(
     phase: String,
     details: String,
 ) -> bool {
+    let Some(trace_level) = kgw_ui_trace_level_v1() else {
+        return false;
+    };
+
+    if !kgw_ui_trace_should_print_v1(trace_level, &action, &phase, &details) {
+        return false;
+    }
+
     println!(
-        "[KGW_BUTTON_TRACE] scope={} net={} action={} phase={} details={}",
-        scope, net, action, phase, details
+        "[KGW_BUTTON_TRACE] level={} scope={} net={} action={} phase={} details={}",
+        trace_level, scope, net, action, phase, details
     );
+
+    kgw_ui_trace_append_file_v37(trace_level, &scope, &net, &action, &phase, &details);
+
     true
+}
+#[tauri::command]
+fn kgw_open_exported_file_v1(path: String) -> Result<(), String> {
+    use std::path::PathBuf;
+    use std::process::Command;
+
+    let requested = PathBuf::from(&path);
+    if !requested.is_absolute() {
+        return Err("export path must be absolute".to_string());
+    }
+
+    if !requested.exists() {
+        return Err(format!(
+            "export file does not exist: {}",
+            requested.display()
+        ));
+    }
+
+    let local_app_data = std::env::var_os("LOCALAPPDATA")
+        .ok_or_else(|| "LOCALAPPDATA is not available".to_string())?;
+    let exports_root = PathBuf::from(local_app_data)
+        .join("KaspaGateway")
+        .join("exports");
+
+    let exports_root_canonical = std::fs::canonicalize(&exports_root).map_err(|e| {
+        format!(
+            "failed to canonicalize exports root {}: {e}",
+            exports_root.display()
+        )
+    })?;
+
+    let requested_parent = requested
+        .parent()
+        .ok_or_else(|| "export file has no parent directory".to_string())?;
+
+    let requested_parent_canonical = std::fs::canonicalize(requested_parent).map_err(|e| {
+        format!(
+            "failed to canonicalize export parent {}: {e}",
+            requested_parent.display()
+        )
+    })?;
+
+    if !requested_parent_canonical.starts_with(&exports_root_canonical) {
+        return Err(format!(
+            "refusing to open file outside exports directory: {}",
+            requested.display()
+        ));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("cmd")
+            .args(["/C", "start", "", &path])
+            .spawn()
+            .map_err(|e| format!("failed to open exported file: {e}"))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("failed to open exported file: {e}"))?;
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("failed to open exported file: {e}"))?;
+    }
+
+    Ok(())
 }
 
 pub fn run() {
     app_logger::init_tracing_bridge();
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(commands::DesktopRuntimeState::default())
         .manage(diagnostics::LogState::default())
         .invoke_handler(tauri::generate_handler![
@@ -101,6 +347,7 @@ pub fn run() {
             app_logger::kgw_log_clear,
             app_logger::kgw_log_append,
             transaction_routes::explorer_transactions,
+            transaction_routes::explorer_cancel_transactions,
             transaction_routes::explorer_delete_transactions_for_address,
             live_metrics::kgw_live_metrics_snapshot,
             live_metrics::kgw_live_metrics_refresh_now,
@@ -216,7 +463,8 @@ pub fn run() {
             export_system::export_data,
             migration::preview_python_migration,
             migration::migrate_python_data,
-            kgw_frontend_button_trace_v1
+            kgw_frontend_button_trace_v1,
+            kgw_open_exported_file_v1,
         ])
         .setup(|app| {
             kgw_set_runtime_main_window_icon(app)?;

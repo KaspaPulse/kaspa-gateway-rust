@@ -2434,5 +2434,16 @@
   "bridge.inprocessNodeSettings.overrideParamsFile": "--override-params-file",
   "bridge.inprocessNodeSettings.devnet": "--devnet",
   "bridge.inprocessNodeSettings.simnet": "--simnet",
-  "bridge.inprocessNodeSettings.enableUnsyncedMining": "--enable-unsynced-mining"
+  "bridge.inprocessNodeSettings.enableUnsyncedMining": "--enable-unsynced-mining",
+  "explorer.export.modal.saveTitle": "Guardar exportación",
+  "explorer.export.modal.saveButton": "Guardar",
+  "explorer.export.modal.openButton": "Abrir archivo",
+  "explorer.export.modal.pathLabel": "Ruta del archivo",
+  "explorer.export.modal.closeButton": "Cerrar",
+  "explorer.export.modal.savedTitle": "Guardado",
+  "explorer.export.modal.savedMessage": "Guardado. ¿Quieres abrir el archivo?",
+  "explorer.export.modal.pdfPending": "La exportación a PDF está pendiente para la fase 2.",
+  "explorer.export.modal.cancelButton": "Cancelar",
+  "explorer.export.modal.saveMessage": "Elige dónde guardar el archivo.",
+  "calendar.close": "Cerrar"
 }

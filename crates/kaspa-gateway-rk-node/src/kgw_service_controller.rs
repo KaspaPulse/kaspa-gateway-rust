@@ -41,6 +41,13 @@ impl KgwNetwork {
         }
     }
 
+    pub fn revision(self) -> &'static str {
+        match self {
+            Self::Mainnet => "4969c6c31bec6a1a31e17c2e8a43532e17834240",
+            Self::Testnet10 | Self::Testnet12 => "a6a408943e1a62cd46fab3e6032c90cf152ab2ad",
+        }
+    }
+
     pub fn rpc_endpoint(self) -> &'static str {
         match self {
             Self::Mainnet => "127.0.0.1:16110",

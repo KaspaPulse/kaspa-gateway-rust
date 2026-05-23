@@ -377,14 +377,36 @@
 
       const network = networkOf(event.target);
 
+      trace(root, "r44h2-input-seen", {
+        patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(event.target && event.target.id || ""),
+        targetName: String(event.target && event.target.name || ""),
+        targetTag: String(event.target && event.target.tagName || "")
+      });
+
       if (!event.isTrusted) {
         setDisabled(root, network, true, "input-programmatic");
+        trace(root, "r44h2-input-programmatic-disabled", {
+        patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(event.target && event.target.id || ""),
+        targetName: String(event.target && event.target.name || ""),
+        targetTag: String(event.target && event.target.tagName || "")
+      });
         return;
       }
 
       clearFeedback(root, network, "trusted-input");
       restoreLabels(root, network);
       setDirty(root, network, true, "trusted-input");
+      trace(root, "r44h2-trusted-input-dirty", {
+        patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(event.target && event.target.id || ""),
+        targetName: String(event.target && event.target.name || ""),
+        targetTag: String(event.target && event.target.tagName || "")
+      });
     }, true);
 
     root.addEventListener("change", function (event) {
@@ -392,14 +414,36 @@
 
       const network = networkOf(event.target);
 
+      trace(root, "r44h2-change-seen", {
+        patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(event.target && event.target.id || ""),
+        targetName: String(event.target && event.target.name || ""),
+        targetTag: String(event.target && event.target.tagName || "")
+      });
+
       if (!event.isTrusted) {
         setDisabled(root, network, true, "change-programmatic");
+        trace(root, "r44h2-change-programmatic-disabled", {
+        patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(event.target && event.target.id || ""),
+        targetName: String(event.target && event.target.name || ""),
+        targetTag: String(event.target && event.target.tagName || "")
+      });
         return;
       }
 
       clearFeedback(root, network, "trusted-change");
       restoreLabels(root, network);
       setDirty(root, network, true, "trusted-change");
+      trace(root, "r44h2-trusted-change-dirty", {
+        patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(event.target && event.target.id || ""),
+        targetName: String(event.target && event.target.name || ""),
+        targetTag: String(event.target && event.target.tagName || "")
+      });
     }, true);
 
     root.addEventListener("click", function (event) {
@@ -444,6 +488,38 @@
   window.KGW_SETTINGS_OWNER_V19 = window[GLOBAL_NAME];
 })();
 // END_KGW_SETTINGS_OWNER_V19
+
+function kgwBridgeSmallOwnerTraceR44D(net, action, phase, details) {
+  try {
+    const safeNet = String(net || "unknown");
+    const safeAction = String(action || "small-owner");
+    const safePhase = String(phase || "unknown");
+    const safeDetails = details && typeof details === "object" ? details : {};
+    const args = {
+      scope: "bridge",
+      net: safeNet,
+      action: safeAction,
+      phase: safePhase,
+      details: JSON.stringify({
+        patch: "KGW_SMALL_NODE_BRIDGE_TRACE_PATCH_R44D",
+        existingOwner: "bridge-small-owner-functions",
+        network: safeNet,
+        action: safeAction,
+        phase: safePhase,
+        details: safeDetails
+      })
+    };
+    const tauri = window.__TAURI__;
+    const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
+      ? tauri.core.invoke.bind(tauri.core)
+      : tauri && typeof tauri.invoke === "function"
+        ? tauri.invoke.bind(tauri)
+        : window.__TAURI_INVOKE__;
+    if (typeof invoke === "function") {
+      invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
+    }
+  } catch (_) {}
+}
 
 
 
@@ -739,13 +815,13 @@ function renderInstancePanel(net, instanceId) {
       <div class="bridge-v7-grid">
         <div class="bridge-v7-card span3">
           <span>--instance</span>
-          <textarea id="${iid(net.key, instanceId, "instance")}" class="bridge-v7-instance-text" placeholder="Optional instance definition"></textarea>
+          <textarea id="${iid(net.key, instanceId, "instance")}" class="bridge-v7-instance-text" placeholder="port=:5555,diff=2048,prom=:2114"></textarea>
         </div>
-        ${instanceSelect(net.key, instanceId, "instanceLogToFile", "--instance-log-to-file", ["not set", "true", "false"], "not set")}
-        ${instanceSelect(net.key, instanceId, "instanceVarDiff", "--instance-var-diff", ["not set", "true", "false"], "not set")}
-        ${instanceSelect(net.key, instanceId, "instanceVarDiffStats", "--instance-var-diff-stats", ["not set", "true", "false"], "not set")}
-        ${instanceInput(net.key, instanceId, "instanceSharesPerMin", "--instance-shares-per-min", "", "optional")}
-        ${instanceSelect(net.key, instanceId, "instancePow2Clamp", "--instance-pow2-clamp", ["not set", "true", "false"], "not set")}
+        ${instanceSelect(net.key, instanceId, "instanceLogToFile", "instance log", ["not set", "true", "false"], "not set")}
+        ${instanceSelect(net.key, instanceId, "instanceVarDiff", "instance var_diff", ["not set", "true", "false"], "not set")}
+        ${instanceSelect(net.key, instanceId, "instanceVarDiffStats", "instance var_diff_stats", ["not set", "true", "false"], "not set")}
+        ${instanceInput(net.key, instanceId, "instanceSharesPerMin", "instance shares_per_min", "", "optional")}
+        ${instanceSelect(net.key, instanceId, "instancePow2Clamp", "instance pow2_clamp", ["not set", "true", "false"], "not set")}
         <div class="bridge-v7-card buttons">
           <button type="button" data-bridge-action="duplicate-instance" data-net="${net.key}" data-instance="${instanceId}">Duplicate</button>
           <button type="button" class="danger" data-bridge-action="remove-instance" data-net="${net.key}" data-instance="${instanceId}">Remove</button>
@@ -760,15 +836,477 @@ function bridgeNormalizeInstance(raw) {
 
   if (!value) return "";
 
-  if (value.includes("=")) {
-    return value;
-  }
-
   if (/^\d+$/.test(value)) {
     return `port=:${value}`;
   }
 
+  if (/^:\d{2,5}$/.test(value)) {
+    return `port=${value}`;
+  }
+
   return value;
+}
+
+/* KGW_BRIDGE_INSTANCE_PHASE1_UPSTREAM_SERIALIZER_R1C
+ * Upstream-compatible bridge instance serializer.
+ * RKStratum expects one --instance value with comma-separated internal keys:
+ * port/prom/diff/log/var_diff/shares_per_min/var_diff_stats/pow2_clamp.
+ */
+function bridgeInstanceSplitParts(value) {
+  return String(value || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function bridgeInstanceKeyOf(part) {
+  const eq = String(part || "").indexOf("=");
+  return eq > 0 ? String(part).slice(0, eq).trim() : "";
+}
+
+function bridgeInstanceCanonicalKey(key) {
+  const normalized = String(key || "").trim();
+
+  if (normalized === "stratum" || normalized === "stratum_port") return "port";
+  if (normalized === "prom_port") return "prom";
+  if (normalized === "min_share_diff") return "diff";
+  if (normalized === "log_to_file") return "log";
+
+  return normalized;
+}
+
+function bridgeInstanceWithoutKeys(parts, keys) {
+  const blocked = new Set(keys.map(bridgeInstanceCanonicalKey));
+  return parts.filter((part) => {
+    const key = bridgeInstanceKeyOf(part);
+    if (!key) return true;
+    return !blocked.has(bridgeInstanceCanonicalKey(key));
+  });
+}
+
+function bridgeInstanceAppend(parts, key, value) {
+  const clean = String(value || "").trim();
+  if (!clean) return parts;
+
+  const canonical = bridgeInstanceCanonicalKey(key);
+  const filtered = bridgeInstanceWithoutKeys(parts, [canonical]);
+  filtered.push(`${canonical}=${clean}`);
+  return filtered;
+}
+
+function bridgeInstanceReadSupplement(net, instanceId, fieldName, fallbackValue) {
+  const value = bridgeReadInstanceField(net, instanceId, fieldName);
+  if (value !== "") return value;
+  return String(fallbackValue || "").trim();
+}
+
+function bridgeBuildUpstreamInstanceArg(net, instance) {
+  const instanceId = instance?.id;
+  let parts = [];
+
+  parts = bridgeInstanceAppend(parts, "port", bridgeInstancePortValue(bridgeInstanceReadSupplement(net, instanceId, "instancePort", instance?.instancePort)));
+  parts = bridgeInstanceAppend(parts, "diff", bridgeInstancePlainValue(bridgeInstanceReadSupplement(net, instanceId, "instanceDiff", instance?.instanceDiff)));
+  parts = bridgeInstanceAppend(parts, "prom", bridgeInstancePortValue(bridgeInstanceReadSupplement(net, instanceId, "instanceProm", instance?.instanceProm)));
+
+  parts = bridgeInstanceAppend(parts, "log", bridgeInstanceReadSupplement(net, instanceId, "instanceLogToFile", instance?.instanceLogToFile));
+  parts = bridgeInstanceAppend(parts, "var_diff", bridgeInstanceReadSupplement(net, instanceId, "instanceVarDiff", instance?.instanceVarDiff));
+  parts = bridgeInstanceAppend(parts, "shares_per_min", bridgeInstanceReadSupplement(net, instanceId, "instanceSharesPerMin", instance?.instanceSharesPerMin));
+  parts = bridgeInstanceAppend(parts, "var_diff_stats", bridgeInstanceReadSupplement(net, instanceId, "instanceVarDiffStats", instance?.instanceVarDiffStats));
+  parts = bridgeInstanceAppend(parts, "pow2_clamp", bridgeInstanceReadSupplement(net, instanceId, "instancePow2Clamp", instance?.instancePow2Clamp));
+
+  return parts.join(",");
+}
+
+/* KGW_BRIDGE_INSTANCES_FIELDS_TRASH_R6
+ * Existing Bridge Instances owner refinement:
+ * - Port, diff, and prom are first-class fields in the existing Instances tab.
+ * - Trash icon is next to the instance name.
+ * - Existing serializer still emits one upstream-compatible --instance value.
+ */
+function bridgeInstanceParseStructured(value) {
+  const parsed = {};
+  const parts = String(value || "").split(",").map((part) => part.trim()).filter(Boolean);
+
+  for (const part of parts) {
+    const eq = part.indexOf("=");
+    if (eq <= 0) continue;
+
+    const key = bridgeInstanceCanonicalKey(part.slice(0, eq).trim());
+    const rawValue = part.slice(eq + 1).trim();
+
+    if (key === "port") parsed.instancePort = rawValue.replace(/^:/, "");
+    if (key === "diff") parsed.instanceDiff = rawValue;
+    if (key === "prom") parsed.instanceProm = rawValue.replace(/^:/, "");
+  }
+
+  return parsed;
+}
+
+function bridgeInstancePortValue(value) {
+  const clean = String(value || "").trim().replace(/^:/, "");
+  return clean ? ":" + clean : "";
+}
+
+function bridgeInstancePlainValue(value) {
+  return String(value || "").trim();
+}
+
+/* KGW_BRIDGE_INSTANCES_UI_PORT_VALIDATOR_R5
+ * Existing Bridge owner enhancement:
+ * - Instance optional booleans default to false.
+ * - Instance tab has remove control next to the name.
+ * - Strict port validation blocks duplicate ports before runtime.
+ */
+function bridgeDefaultInstanceRecord(idValue) {
+  return {
+    id: idValue || (Date.now() + Math.floor(Math.random() * 1000)),
+    instance: "",
+    instancePort: null,
+    instanceDiff: "2048",
+    instanceProm: null,
+    instanceLogToFile: "false",
+    instanceVarDiff: "false",
+    instanceSharesPerMin: "",
+    instanceVarDiffStats: "false",
+    instancePow2Clamp: "false"
+  };
+}
+
+function bridgeNormalizeInstanceRecord(raw, fallbackId) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  const defaults = bridgeDefaultInstanceRecord(source.id || fallbackId);
+  const parsed = bridgeInstanceParseStructured(source.instance || "");
+
+  return {
+    ...defaults,
+    ...source,
+    id: source.id || defaults.id,
+    instance: "",
+    instancePort: String(source.instancePort || parsed.instancePort || ""),
+    instanceDiff: String(source.instanceDiff || parsed.instanceDiff || defaults.instanceDiff || "2048"),
+    instanceProm: String(source.instanceProm || parsed.instanceProm || ""),
+    instanceLogToFile: String(source.instanceLogToFile || "false"),
+    instanceVarDiff: String(source.instanceVarDiff || "false"),
+    instanceSharesPerMin: String(source.instanceSharesPerMin || ""),
+    instanceVarDiffStats: String(source.instanceVarDiffStats || "false"),
+    instancePow2Clamp: String(source.instancePow2Clamp || "false")
+  };
+}
+
+function bridgeExtractPortsFromTextR5(value) {
+  const text = String(value || "");
+  const ports = [];
+
+  const patterns = [
+    /(?:^|[,\s=])(?:port|stratum|stratum_port|prom|prom_port|rpc|rpclisten|listen|dashboard|web_dashboard_port)=?(?:127\.0\.0\.1:|0\.0\.0\.0:|localhost:|:)?(\d{2,5})(?=$|[,\s])/g,
+    /(?:127\.0\.0\.1|0\.0\.0\.0|localhost):(\d{2,5})/g,
+    /(^|[^\d]):(\d{2,5})(?=$|[,\s])/g
+  ];
+
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text))) {
+      const raw = match[2] || match[1];
+      const port = Number(raw);
+      if (Number.isInteger(port) && port > 0 && port <= 65535) ports.push(String(port));
+    }
+  }
+
+  return ports;
+}
+
+function bridgePushPortR5(items, port, role, owner, net) {
+  const normalized = String(port || "").trim().replace(/^:/, "");
+  if (!/^\d{1,5}$/.test(normalized)) return;
+
+  const numeric = Number(normalized);
+  if (!Number.isInteger(numeric) || numeric < 1 || numeric > 65535) return;
+
+  items.push({
+    port: String(numeric),
+    role: String(role || "unknown"),
+    owner: String(owner || ""),
+    net: String(net || "")
+  });
+}
+
+function bridgeCollectConfiguredPortsR5() {
+  const items = [];
+
+  for (const profile of BRIDGE_NETWORKS) {
+    const net = profile.key;
+
+    bridgePushPortR5(items, profile.kaspadPort, "default-kaspad-rpc", "BRIDGE_NETWORKS.kaspadPort", net);
+    bridgePushPortR5(items, profile.stratumPort, "default-stratum", "BRIDGE_NETWORKS.stratumPort", net);
+    bridgePushPortR5(items, profile.promPort, "default-prometheus", "BRIDGE_NETWORKS.promPort", net);
+
+    const fields = [
+      ["stratumPort", "bridge-stratum"],
+      ["promPort", "bridge-prometheus"],
+      ["webDashboardPort", "bridge-dashboard"],
+      ["healthCheckPort", "bridge-health"],
+      ["kaspadAddress", "bridge-external-kaspad"],
+      ["inprocessRpcListen", "inprocess-rpc"],
+      ["inprocessRpcListenBorsh", "inprocess-rpc-borsh"],
+      ["inprocessRpcListenJson", "inprocess-rpc-json"],
+      ["inprocessListen", "inprocess-p2p"]
+    ];
+
+    for (const [field, role] of fields) {
+      const value = v(net, field);
+      for (const port of bridgeExtractPortsFromTextR5(value)) {
+        bridgePushPortR5(items, port, role, field, net);
+      }
+    }
+
+    bridgeEnsureInstanceState(net);
+
+    for (const instance of bridgeInstances[net]) {
+      const instanceText = bridgeBuildUpstreamInstanceArg(net, instance);
+
+      for (const port of bridgeExtractPortsFromTextR5(instanceText)) {
+        bridgePushPortR5(items, port, "instance", "instance:" + String(instance.id), net);
+      }
+    }
+  }
+
+  return items;
+}
+
+function bridgeValidatePortConflictsR5(activeNet) {
+  const items = bridgeCollectConfiguredPortsR5();
+  const byPort = new Map();
+
+  for (const item of items) {
+    if (!byPort.has(item.port)) byPort.set(item.port, []);
+    byPort.get(item.port).push(item);
+  }
+
+  const conflicts = [];
+
+  for (const [port, owners] of byPort.entries()) {
+    const uniqueOwners = new Set(owners.map((item) => item.net + ":" + item.role + ":" + item.owner));
+
+    if (uniqueOwners.size <= 1) continue;
+
+    const touchesActiveNet = owners.some((item) => item.net === activeNet);
+    const touchesInstance = owners.some((item) => item.role === "instance");
+
+    if (touchesActiveNet || touchesInstance) {
+      conflicts.push({
+        port,
+        owners
+      });
+    }
+  }
+
+  return {
+    ok: conflicts.length === 0,
+    conflicts,
+    message: conflicts.map((item) => {
+      const owners = item.owners.map((owner) => owner.net + "/" + owner.role + "/" + owner.owner).join(" | ");
+      return "port " + item.port + " => " + owners;
+    }).join("; ")
+  };
+}
+
+/* KGW_BRIDGE_INSTANCES_PLUS_AUTOPORT_DETAILS_R8B
+ * Existing Bridge Instances owner refinement:
+ * - + action is routed through installActions.
+ * - New instance gets nearest unused stratum port and prom port.
+ * - Each instance panel shows a read-only upstream --instance preview row.
+ */
+function bridgeUsedPortSetR8B() {
+  return new Set(bridgeCollectConfiguredPortsR5().map((item) => String(item.port || "").trim()).filter(Boolean));
+}
+
+function bridgeFindNearestUnusedPortR8B(startPort, usedPorts) {
+  let port = Number(String(startPort || "").replace(/^:/, ""));
+
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    port = 1;
+  }
+
+  while (port <= 65535 && usedPorts.has(String(port))) {
+    port += 1;
+  }
+
+  if (port > 65535) {
+    throw new Error("No available TCP port was found for bridge instance allocation.");
+  }
+
+  usedPorts.add(String(port));
+  return String(port);
+}
+
+function bridgeAllocateInstancePortsR8B(net) {
+  const profile = bridgeProfile(net) || {};
+  const usedPorts = bridgeUsedPortSetR8B();
+
+  const baseStratum = v(net, "stratumPort") || profile.stratumPort || 5555;
+  const instancePort = bridgeFindNearestUnusedPortR8B(baseStratum, usedPorts);
+
+  const baseProm = v(net, "promPort") || profile.promPort || 2114;
+  const instanceProm = bridgeFindNearestUnusedPortR8B(baseProm, usedPorts);
+
+  return {
+    instancePort,
+    instanceProm
+  };
+}
+
+/* KGW_BRIDGE_INSTANCES_NO_ADVANCED_NUMERIC_PORTS_R9
+ * Existing Bridge Instances owner refinement:
+ * - No advanced free-text field.
+ * - Initial/default instances receive numeric port/prom values.
+ * - User can edit numeric port/prom.
+ * - Validator still blocks conflicts.
+ */
+function bridgeNormalizePortR9(value) {
+  return String(value || "").trim().replace(/^:/, "");
+}
+
+function bridgePortIsValidR9(value) {
+  const port = Number(bridgeNormalizePortR9(value));
+  return Number.isInteger(port) && port >= 1 && port <= 65535;
+}
+
+function bridgeUsedPortSetR9(skipNet, skipInstanceId) {
+  const used = new Set();
+
+  function add(value) {
+    const port = bridgeNormalizePortR9(value);
+    if (!port) return;
+    const numeric = Number(port);
+    if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 65535) {
+      used.add(String(numeric));
+    }
+  }
+
+  for (const profile of BRIDGE_NETWORKS) {
+    add(profile.kaspadPort);
+    add(profile.stratumPort);
+    add(profile.promPort);
+
+    const fields = [
+      "stratumPort",
+      "promPort",
+      "webDashboardPort",
+      "healthCheckPort",
+      "kaspadAddress",
+      "inprocessRpcListen",
+      "inprocessRpcListenBorsh",
+      "inprocessRpcListenJson",
+      "inprocessListen"
+    ];
+
+    for (const field of fields) {
+      const value = v(profile.key, field);
+      for (const port of bridgeExtractPortsFromTextR5(value)) add(port);
+    }
+  }
+
+  for (const [net, list] of Object.entries(bridgeInstances)) {
+    if (!Array.isArray(list)) continue;
+
+    for (const item of list) {
+      if (String(net) === String(skipNet) && String(item.id) === String(skipInstanceId)) continue;
+
+      add(item.instancePort);
+      add(item.instanceProm);
+
+      for (const port of bridgeExtractPortsFromTextR5(item.instance || "")) {
+        add(port);
+      }
+    }
+  }
+
+  return used;
+}
+
+function bridgeFindNearestUnusedPortR9(startPort, usedPorts) {
+  let port = Number(bridgeNormalizePortR9(startPort));
+
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    port = 1;
+  }
+
+  while (port <= 65535 && usedPorts.has(String(port))) {
+    port += 1;
+  }
+
+  if (port > 65535) {
+    throw new Error("No available TCP port was found for bridge instance allocation.");
+  }
+
+  usedPorts.add(String(port));
+  return String(port);
+}
+
+function bridgeAssignMissingInstancePortsR9(net, instance) {
+  const profile = bridgeProfile(net) || {};
+  const used = bridgeUsedPortSetR9(net, instance.id);
+
+  const currentPort = bridgeNormalizePortR9(instance.instancePort);
+  const currentProm = bridgeNormalizePortR9(instance.instanceProm);
+
+  if (bridgePortIsValidR9(currentPort)) used.add(currentPort);
+  if (bridgePortIsValidR9(currentProm)) used.add(currentProm);
+
+  if (!bridgePortIsValidR9(instance.instancePort)) {
+    instance.instancePort = bridgeFindNearestUnusedPortR9(v(net, "stratumPort") || profile.stratumPort || 5555, used);
+  } else {
+    instance.instancePort = currentPort;
+  }
+
+  if (!bridgePortIsValidR9(instance.instanceProm)) {
+    instance.instanceProm = bridgeFindNearestUnusedPortR9(v(net, "promPort") || profile.promPort || 2112, used);
+  } else {
+    instance.instanceProm = currentProm;
+  }
+
+  if (!String(instance.instanceDiff || "").trim()) {
+    instance.instanceDiff = v(net, "minShareDiff") || "2048";
+  }
+
+  return instance;
+}
+
+function bridgeCreateInstanceRecordR9(net) {
+  const record = bridgeDefaultInstanceRecord(Date.now() + Math.floor(Math.random() * 1000));
+  return bridgeAssignMissingInstancePortsR9(net, record);
+}
+
+function bridgeInstancePreviewTextR8B(net, instance) {
+  const value = bridgeBuildUpstreamInstanceArg(net, instance);
+  return value ? "--instance=" + value : "--instance=";
+}
+
+function bridgeSyncInstancePreviewRowsR8B(net) {
+  const root = document.getElementById("kaspa-bridge");
+  if (!root) return;
+
+  bridgeEnsureInstanceState(net);
+
+  for (const preview of root.querySelectorAll('[data-bridge-instance-preview][data-network="' + net + '"]')) {
+    const instanceId = preview.dataset.instanceId;
+    const instance = bridgeInstances[net].find((item) => String(item.id) === String(instanceId));
+    const text = instance ? bridgeInstancePreviewTextR8B(net, instance) : "--instance=";
+
+    preview.value = text;
+    preview.textContent = text;
+    preview.title = text;
+  }
+}
+
+function bridgeAssertNoPortConflictsR5(net) {
+  const validation = bridgeValidatePortConflictsR5(net);
+
+  if (!validation.ok) {
+    throw new Error("Bridge port conflict: " + validation.message);
+  }
+
+  return validation;
 }
 
 function bridgeReadInstanceField(net, instanceId, fieldName) {
@@ -833,94 +1371,122 @@ function bridgeEnsureInstanceState(net) {
   }
 
   if (bridgeInstances[net].length === 0) {
-    bridgeInstances[net].push({ id: Date.now(), instance: "", instanceLogToFile: "true", instanceVarDiff: "true", instanceSharesPerMin: "20", instanceVarDiffStats: "true", instancePow2Clamp: "true" });
+    bridgeInstances[net].push(bridgeDefaultInstanceRecord(Date.now()));
+  }
+
+  bridgeInstances[net] = bridgeInstances[net].map((instance, index) => {
+    const fallbackId = instance && instance.id ? instance.id : Date.now() + index;
+    const normalized = bridgeNormalizeInstanceRecord(instance, fallbackId);
+    return bridgeAssignMissingInstancePortsR9(net, normalized);
+  });
+
+  if (!activeInstance[net] && bridgeInstances[net][0]) {
+    activeInstance[net] = bridgeInstances[net][0].id;
   }
 }
 
 
 function renderInstances(net) {
+  net = bridgeInstanceNetworkKeyR15(net, net);
   bridgeEnsureInstanceState(net);
 
   return `
-    <div class="bridge-v7-instance-tabs">
+    <div class="bridge-v7-instance-tabs bridge-v7-instance-tabs-r7b">
       ${bridgeInstances[net].map((instance, index) => `
         <button
           type="button"
-          class="bridge-v7-instance-tab ${index === 0 ? "active" : ""}"
+          class="bridge-v7-instance-pill-r7b bridge-v7-instance-pill-r11 ${String(activeInstance[net]) === String(instance.id) || (!activeInstance[net] && index === 0) ? "active" : ""}"
           data-bridge-action="select-instance"
           data-network="${net}"
           data-instance-id="${instance.id}">
-          Instance ${index + 1}
+          <span class="bridge-v7-instance-title-r7b">Instance ${index + 1}</span>
+          <span
+            role="button"
+            tabindex="-1"
+            class="bridge-v7-instance-trash-inline-r7b bridge-v7-instance-trash-r9 bridge-v7-instance-trash-r11"
+            data-bridge-action="remove-instance"
+            data-network="${net}"
+            data-instance-id="${instance.id}"
+            title="Delete Instance ${index + 1}"
+            aria-label="Delete Instance ${index + 1}"
+            data-disabled="${bridgeInstances[net].length <= 1 ? "true" : "false"}">🗑</span>
         </button>`).join("")}
       <button
         type="button"
-        class="bridge-v7-instance-add"
+        class="bridge-v7-instance-add bridge-v7-instance-add-r7b bridge-v7-instance-add-r11"
         data-bridge-action="add-instance"
-        data-network="${net}">+</button>
+        data-network="${net}"
+        aria-label="Add Instance"
+        title="Add Instance">+</button>
     </div>
 
-    <div class="bridge-v7-instance-stack">
+    <div class="bridge-v7-instance-stack bridge-v7-instance-stack-r7b">
       ${bridgeInstances[net].map((instance, index) => `
         <section
-          class="bridge-v7-instance-panel ${index === 0 ? "active" : ""}"
+          class="bridge-v7-instance-panel bridge-v7-instance-panel-r7b ${String(activeInstance[net]) === String(instance.id) || (!activeInstance[net] && index === 0) ? "active" : ""}"
           data-bridge-instance-panel="${instance.id}">
-          <label class="bridge-v7-card bridge-v7-wide">
-            <span>--instance</span>
+          <label class="bridge-v7-card bridge-v7-instance-preview-card-r8b">
+            <span>--instance preview</span>
             <input
-              id="${id(net, `instance-${instance.id}`)}"
-              data-bridge-instance-field="instance"
-              value="${instance.instance || ""}"
-              placeholder="port=:5555,diff=2048,prom_port=:2114" />
+              readonly
+              data-bridge-instance-preview="true"
+              data-network="${net}"
+              data-instance-id="${instance.id}"
+              value="${bridgeInstancePreviewTextR8B(net, instance)}"
+              title="${bridgeInstancePreviewTextR8B(net, instance)}" />
           </label>
 
-          <label class="bridge-v7-card">
-            <span>--instance-log-to-file</span>
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span>port</span>
+            <input id="${id(net, `instancePort-${instance.id}`)}" data-bridge-instance-field="instancePort" value="${instance.instancePort || ""}" placeholder="5558" />
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span>diff</span>
+            <input id="${id(net, `instanceDiff-${instance.id}`)}" data-bridge-instance-field="instanceDiff" value="${instance.instanceDiff || "2048"}" placeholder="2048" />
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span>prom</span>
+            <input id="${id(net, `instanceProm-${instance.id}`)}" data-bridge-instance-field="instanceProm" value="${instance.instanceProm || ""}" placeholder="2115" />
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span>log</span>
             <select id="${id(net, `instanceLogToFile-${instance.id}`)}" data-bridge-instance-field="instanceLogToFile">
-              <option value=""></option>
+              <option value="false" ${instance.instanceLogToFile !== "true" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instanceLogToFile === "true" ? "selected" : ""}>true</option>
-              <option value="false" ${instance.instanceLogToFile === "false" ? "selected" : ""}>false</option>
             </select>
           </label>
 
-          <label class="bridge-v7-card">
-            <span>--instance-var-diff</span>
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span>var_diff</span>
             <select id="${id(net, `instanceVarDiff-${instance.id}`)}" data-bridge-instance-field="instanceVarDiff">
-              <option value=""></option>
+              <option value="false" ${instance.instanceVarDiff !== "true" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instanceVarDiff === "true" ? "selected" : ""}>true</option>
-              <option value="false" ${instance.instanceVarDiff === "false" ? "selected" : ""}>false</option>
             </select>
           </label>
 
-          <label class="bridge-v7-card">
-            <span>--instance-var-diff-stats</span>
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span>var_stats</span>
             <select id="${id(net, `instanceVarDiffStats-${instance.id}`)}" data-bridge-instance-field="instanceVarDiffStats">
-              <option value=""></option>
+              <option value="false" ${instance.instanceVarDiffStats !== "true" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instanceVarDiffStats === "true" ? "selected" : ""}>true</option>
-              <option value="false" ${instance.instanceVarDiffStats === "false" ? "selected" : ""}>false</option>
             </select>
           </label>
 
-          <label class="bridge-v7-card">
-            <span>--instance-shares-per-min</span>
-            <input
-              id="${id(net, `instanceSharesPerMin-${instance.id}`)}"
-              data-bridge-instance-field="instanceSharesPerMin"
-              value="${instance.instanceSharesPerMin || ""}" />
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span>shares/min</span>
+            <input id="${id(net, `instanceSharesPerMin-${instance.id}`)}" data-bridge-instance-field="instanceSharesPerMin" value="${instance.instanceSharesPerMin || ""}" placeholder="optional" />
           </label>
 
-          <label class="bridge-v7-card">
-            <span>--instance-pow2-clamp</span>
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span>pow2</span>
             <select id="${id(net, `instancePow2Clamp-${instance.id}`)}" data-bridge-instance-field="instancePow2Clamp">
-              <option value=""></option>
+              <option value="false" ${instance.instancePow2Clamp !== "true" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instancePow2Clamp === "true" ? "selected" : ""}>true</option>
-              <option value="false" ${instance.instancePow2Clamp === "false" ? "selected" : ""}>false</option>
             </select>
           </label>
-
-          <div class="bridge-v7-instance-actions">
-            <button type="button" data-bridge-action="duplicate-instance" data-network="${net}" data-instance-id="${instance.id}">Duplicate</button>
-            <button type="button" data-bridge-action="remove-instance" data-network="${net}" data-instance-id="${instance.id}" ${bridgeInstances[net].length <= 1 ? "disabled" : ""}>Remove</button>
-          </div>
         </section>
       `).join("")}
     </div>`;
@@ -1091,16 +1657,17 @@ function renderSections(net) {
     ["logging", "Logging", renderLogging(net)],
     ["ports", "Ports / Paths", renderPorts(net)],
     ...(net.key === "mainnet" ? [] : [["cpu", "CPU Miner", renderCpuMiner(net)]]),
-    ["instances", "Instances", renderInstances(net)]
+    ["instances", "Instances", renderInstances(net.key)]
   ];
 
   const tabs = sections.map(([key, label], index) =>
     `<button type="button" class="bridge-v7-section-tab${index === 0 ? " active" : ""}" data-net="${net.key}" data-bridge-section-tab="${key}">${label}</button>`
   ).join("");
 
-  const panels = sections.map(([key, , body], index) =>
-    `<section class="bridge-v7-section${index === 0 ? " active" : ""}" data-net="${net.key}" data-bridge-section-panel="${key}"${index === 0 ? "" : " hidden"}>${body}</section>`
-  ).join("");
+  const panels = sections.map(([key, , body], index) => {
+    const panelId = key === "instances" ? ` id="${id(net.key, "instances")}"` : "";
+    return `<section${panelId} class="bridge-v7-section${index === 0 ? " active" : ""}" data-net="${net.key}" data-bridge-section-panel="${key}"${index === 0 ? "" : " hidden"}>${body}</section>`;
+  }).join("");
 
   return `
     <div class="bridge-v7-section-tabs">${tabs}</div>
@@ -1157,37 +1724,159 @@ function renderNetworkPanel(net, index) {
 
 function bridgeReadInstanceState(net, instanceId) {
   const current = bridgeInstances[net].find((instance) => String(instance.id) === String(instanceId)) || {};
-  return {
-    id: Date.now() + Math.floor(Math.random() * 1000),
-    instance: bridgeReadInstanceField(net, instanceId, "instance") || current.instance || "",
-    instanceLogToFile: bridgeReadInstanceField(net, instanceId, "instanceLogToFile") || current.instanceLogToFile || "true",
-    instanceVarDiff: bridgeReadInstanceField(net, instanceId, "instanceVarDiff") || current.instanceVarDiff || "true",
-    instanceSharesPerMin: bridgeReadInstanceField(net, instanceId, "instanceSharesPerMin") || current.instanceSharesPerMin || "20",
-    instanceVarDiffStats: bridgeReadInstanceField(net, instanceId, "instanceVarDiffStats") || current.instanceVarDiffStats || "true",
-    instancePow2Clamp: bridgeReadInstanceField(net, instanceId, "instancePow2Clamp") || current.instancePow2Clamp || "true"
-  };
+  const next = bridgeNormalizeInstanceRecord(current, Date.now() + Math.floor(Math.random() * 1000));
+
+  return bridgeAssignMissingInstancePortsR9(net, {
+    id: next.id || instanceId || Date.now() + Math.floor(Math.random() * 1000),
+    instance: "",
+    instancePort: bridgeReadInstanceField(net, instanceId, "instancePort") || next.instancePort || "",
+    instanceDiff: bridgeReadInstanceField(net, instanceId, "instanceDiff") || next.instanceDiff || "2048",
+    instanceProm: bridgeReadInstanceField(net, instanceId, "instanceProm") || next.instanceProm || "",
+    instanceLogToFile: bridgeReadInstanceField(net, instanceId, "instanceLogToFile") || next.instanceLogToFile || "false",
+    instanceVarDiff: bridgeReadInstanceField(net, instanceId, "instanceVarDiff") || next.instanceVarDiff || "false",
+    instanceSharesPerMin: bridgeReadInstanceField(net, instanceId, "instanceSharesPerMin") || next.instanceSharesPerMin || "",
+    instanceVarDiffStats: bridgeReadInstanceField(net, instanceId, "instanceVarDiffStats") || next.instanceVarDiffStats || "false",
+    instancePow2Clamp: bridgeReadInstanceField(net, instanceId, "instancePow2Clamp") || next.instancePow2Clamp || "false"
+  });
 }
 
 function bridgeRefreshInstances(net) {
-  const container = byId(id(net, "instances"));
+  net = bridgeInstanceNetworkKeyR15(net, net);
+
+  const container =
+    byId(id(net, "instances")) ||
+    document.querySelector(`[data-bridge-network-panel="${net}"] [data-bridge-section-panel="instances"]`);
+
   if (container) {
+    if (!container.id) {
+      container.id = id(net, "instances");
+    }
+
     container.innerHTML = renderInstances(net);
+    bridgeInstallInstanceContainerOwnerR11(container, net);
   }
+
   updateCommand(net);
 }
 
+/* KGW_BRIDGE_INSTANCES_PATCHMARKER_RUNTIME_FIX_R13B: fixes undefined runtime owner marker assignment. */
+/* KGW_BRIDGE_INSTANCES_REBUILD_CLICK_OWNER_R11
+ * One rebuilt Bridge Instances click owner.
+ * It lives only on the rendered Instances container.
+ * It handles + / select / delete via closest('[data-bridge-action]').
+ * No document/window/global listener.
+ */
+function bridgeInstallInstanceContainerOwnerR11(container, net) {
+  net = bridgeInstanceNetworkKeyR15(net, net);
+  if (!container || !net) return;
+
+  container.dataset.kgwBridgeInstancesClickOwner = "KGW_BRIDGE_INSTANCES_REBUILD_CLICK_OWNER_R11";
+  container.onclick = function bridgeInstancesContainerClickOwnerR11(event) {
+    const control = event.target && event.target.closest
+      ? event.target.closest("[data-bridge-action]")
+      : null;
+
+    if (!control || !container.contains(control)) return;
+
+    const action = control.dataset.bridgeAction || "";
+    const targetNet = bridgeInstanceNetworkKeyR15(control.dataset.network, net);
+
+    kgwBridgeExplicitTraceR27D(targetNet || "unknown", "internal-navigation", "r45d-bridge-instance-control-click", {
+      patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+      trusted: Boolean(event && event.isTrusted),
+      action: String(action || ""),
+      instanceId: String(control.dataset.instanceId || control.dataset.instance || ""),
+      text: String(control.textContent || "").trim()
+    });
+
+    if (!["add-instance", "select-instance", "remove-instance"].includes(action)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (action === "add-instance") {
+      addInstance(targetNet);
+      return;
+    }
+
+    if (action === "select-instance") {
+      activeInstance[targetNet] = control.dataset.instanceId;
+      bridgeRefreshInstances(targetNet);
+      updateCommand(targetNet);
+      return;
+    }
+
+    if (action === "remove-instance") {
+      if (control.dataset.disabled === "true" || control.disabled) return;
+      removeInstance(targetNet, control.dataset.instanceId);
+      updateCommand(targetNet);
+    }
+  };
+}
+
+function bridgeInstallAllVisibleInstanceContainerOwnersR11(root) {
+  const scope = root || document;
+  if (!scope) return;
+
+  for (const profile of BRIDGE_NETWORKS) {
+    const container = byId(id(profile.key, "instances"));
+    if (container) {
+      bridgeInstallInstanceContainerOwnerR11(container, profile.key);
+    }
+  }
+}
+
+/* KGW_BRIDGE_INSTANCES_TEMP_TRACE_REMOVED
+ * Temporary scoped runtime trace for Bridge Instances across mainnet/testnet10/testnet12.
+ * No global click listener. No forbidden legacy phase names.
+ */
+
+
+
+/* KGW_BRIDGE_INSTANCES_NETWORK_KEY_FIX_R15
+ * Canonical network-key resolver for Bridge Instances.
+ * Normalizes Bridge Instances network keys for mainnet, testnet10, and testnet12.
+ */
+function bridgeInstanceNetworkKeyR15(value, fallback) {
+  const known = new Set(BRIDGE_NETWORKS.map((item) => item.key));
+  const candidates = [];
+
+  if (typeof value === "string") candidates.push(value);
+  if (value && typeof value === "object" && typeof value.key === "string") candidates.push(value.key);
+
+  if (typeof fallback === "string") candidates.push(fallback);
+  if (fallback && typeof fallback === "object" && typeof fallback.key === "string") candidates.push(fallback.key);
+
+  for (const candidate of candidates) {
+    const normalized = String(candidate || "").trim();
+    if (known.has(normalized)) return normalized;
+  }
+
+  return "mainnet";
+}
+
+/* KGW_BRIDGE_INSTANCES_ADD_CLICK_BIND_R10
+ * Scoped Bridge Instances button binder.
+ * This is not a global listener. It binds only the rendered instance container
+ * and replaces onclick handlers idempotently after each render.
+ */
+
+
+
 function addInstance(net) {
+  kgwBridgeSmallOwnerTraceR44D(net, "add-instance", "r44d-owner-begin", {});
+  net = bridgeInstanceNetworkKeyR15(net, net);
   bridgeEnsureInstanceState(net);
-  bridgeInstances[net].push({
-    id: Date.now() + Math.floor(Math.random() * 1000),
-    instance: "",
-    instanceLogToFile: "true",
-    instanceVarDiff: "true",
-    instanceSharesPerMin: "20",
-    instanceVarDiffStats: "true",
-    instancePow2Clamp: "true"
-  });
+
+  const next = bridgeCreateInstanceRecordR9(net);
+  bridgeInstances[net].push(next);
+  activeInstance[net] = next.id;
+
   bridgeRefreshInstances(net);
+  updateCommand(net);
+  kgwBridgeSmallOwnerTraceR44D(net, "add-instance", "r44d-owner-complete", {});
 }
 
 function duplicateInstance(net, instanceId) {
@@ -1197,13 +1886,16 @@ function duplicateInstance(net, instanceId) {
 }
 
 function removeInstance(net, instanceId) {
+  kgwBridgeSmallOwnerTraceR44D(net, "remove-instance", "r44d-owner-begin", { instanceId: String(instanceId || "") });
   bridgeEnsureInstanceState(net);
   if (bridgeInstances[net].length <= 1) return;
   bridgeInstances[net] = bridgeInstances[net].filter((instance) => String(instance.id) !== String(instanceId));
   bridgeRefreshInstances(net);
+  kgwBridgeSmallOwnerTraceR44D(net, "remove-instance", "r44d-owner-complete", { instanceId: String(instanceId || "") });
 }
 
 function selectInstance(net, instanceId) {
+  kgwBridgeSmallOwnerTraceR44D(net, "select-instance", "r44d-owner-begin", { instanceId: String(instanceId || "") });
   const root = byId(id(net, "instances"));
   if (!root) return;
 
@@ -1214,6 +1906,7 @@ function selectInstance(net, instanceId) {
   root.querySelectorAll("[data-bridge-action='select-instance']").forEach((button) => {
     button.classList.toggle("active", button.dataset.instanceId === String(instanceId));
   });
+  kgwBridgeSmallOwnerTraceR44D(net, "select-instance", "r44d-owner-complete", { instanceId: String(instanceId || "") });
 }
 
 function renderAllNetworks(root) {
@@ -1223,6 +1916,7 @@ function renderAllNetworks(root) {
 
 
   setTimeout(kgwInstallBridgeLogAutoScrollControlsR27, 0);
+  setTimeout(window.kgwInstallBridgeLogScopedControlsV29, 0);
 }
 
 function bridgeProfile(net) {
@@ -1466,7 +2160,15 @@ function kgwInstallBridgeLogAutoScrollControlsR27() {
     checkbox.type = "checkbox";
     checkbox.id = controlId;
     checkbox.checked = kgwBridgeLogAutoScrollEnabledR27(net);
-    checkbox.addEventListener("change", () => kgwBridgeSetLogAutoScrollR27(net, checkbox.checked));
+    checkbox.addEventListener("change", (event) => {
+      kgwBridgeSmallOwnerTraceR44D(net, "log-autoscroll", "r51b3-bridge-log-autoscroll-change", {
+        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
+        trusted: Boolean(event && event.isTrusted),
+        controlId: String(controlId || ""),
+        checked: Boolean(checkbox.checked)
+      });
+      kgwBridgeSetLogAutoScrollR27(net, checkbox.checked);
+    });
 
     const span = document.createElement("span");
     span.textContent = kgwI18nTextR41("common.autoScroll", "Auto-scroll");
@@ -1602,16 +2304,10 @@ function buildCommandLines(net) {
   addValue(lines, net, "promPort", "--prom-port");
 
   for (const instance of bridgeInstances[net]) {
-    const instanceDefinition = bridgeNormalizeInstance(bridgeReadInstanceField(net, instance.id, "instance") || instance.instance);
+    const instanceDefinition = bridgeBuildUpstreamInstanceArg(net, instance);
     if (instanceDefinition) {
       lines.push(`--instance=${instanceDefinition}`);
     }
-
-    bridgeInstanceBoolArg(lines, net, instance.id, "instanceLogToFile", "--instance-log-to-file");
-    bridgeInstanceBoolArg(lines, net, instance.id, "instanceVarDiff", "--instance-var-diff");
-    bridgeInstanceValueArg(lines, net, instance.id, "instanceSharesPerMin", "--instance-shares-per-min");
-    bridgeInstanceBoolArg(lines, net, instance.id, "instanceVarDiffStats", "--instance-var-diff-stats");
-    bridgeInstanceBoolArg(lines, net, instance.id, "instancePow2Clamp", "--instance-pow2-clamp");
   }
 
   if (c(net, "internalCpuMiner") && net !== "mainnet") {
@@ -1672,9 +2368,12 @@ function updateCommand(net) {
 
   try {
     bridgeSyncModeControls(net);
+    bridgeSyncInstancePreviewRowsR8B(net);
 
     const lines = buildCommandLines(net);
     const duplicatePorts = bridgeDuplicatePorts(lines);
+    const portValidation = bridgeValidatePortConflictsR5(net);
+    const allDuplicatePorts = [...new Set([...duplicatePorts, ...portValidation.conflicts.map((item) => item.port)])];
     const first = lines.shift() || "stratum-bridge";
     const text = lines.length ? `${first} ${lines.join(" ")}` : first;
 
@@ -1683,14 +2382,15 @@ function updateCommand(net) {
     preview.dataset.kgwBridgeCommandOwner = "readme-instance-command-owner";
     preview.dataset.kgwBridgeNetwork = net;
 
-    if (duplicatePorts.length) {
-      preview.dataset.kgwBridgeCommandWarning = `duplicate ports: ${duplicatePorts.join(",")}`;
+    if (allDuplicatePorts.length || !portValidation.ok) {
+      preview.dataset.kgwBridgeCommandWarning = portValidation.message || `duplicate ports: ${allDuplicatePorts.join(",")}`;
       preview.classList.add("bridge-v7-command-warning");
     } else {
       delete preview.dataset.kgwBridgeCommandWarning;
       preview.classList.remove("bridge-v7-command-warning");
     }
 
+    bridgeSyncInstancePreviewRowsR8B(net);
     return text;
   } catch (error) {
     const message = "stratum-bridge # command preview error: " + normalizeRuntimeError(error);
@@ -1698,6 +2398,8 @@ function updateCommand(net) {
     preview.textContent = message;
     preview.dataset.kgwBridgeCommandOwner = "readme-instance-command-owner-error";
     preview.dataset.kgwBridgeNetwork = net;
+    preview.dataset.kgwBridgeCommandWarning = normalizeRuntimeError(error);
+    preview.classList.add("bridge-v7-command-warning");
     return message;
   }
 }
@@ -1709,6 +2411,39 @@ function updateAllCommands() {
 }
 
 
+
+// KGW_BRIDGE_EXPLICIT_TRACE_HELPER_VISIBILITY_R45E
+function kgwBridgeExplicitTraceR27D(net, action, phase, details) {
+  try {
+    const safeNet = String(net || "unknown");
+    const safeAction = String(action || "internal-navigation");
+    const safePhase = String(phase || "unknown");
+    const safeDetails = details && typeof details === "object" ? details : {};
+    const args = {
+      scope: "bridge",
+      net: safeNet,
+      action: safeAction,
+      phase: safePhase,
+      details: JSON.stringify({
+        patch: "KGW_BRIDGE_EXPLICIT_TRACE_HELPER_VISIBILITY_R45E",
+        owner: "bridge-module-visible-explicit-trace-helper",
+        network: safeNet,
+        action: safeAction,
+        phase: safePhase,
+        details: safeDetails
+      })
+    };
+    const tauri = window.__TAURI__;
+    const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
+      ? tauri.core.invoke.bind(tauri.core)
+      : tauri && typeof tauri.invoke === "function"
+        ? tauri.invoke.bind(tauri)
+        : window.__TAURI_INVOKE__;
+    if (typeof invoke === "function") {
+      invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
+    }
+  } catch (_) {}
+}
 function installNetworkTabs(root) {
   // KGW_R63_DIRECT_BRIDGE_NETWORK_TAB_SWITCH_OWNER
   const networkTabSelector = "[data-bridge-network-tab]";
@@ -1731,6 +2466,12 @@ function installNetworkTabs(root) {
     const normalized = String(net || "").trim();
 
     if (!normalized) return;
+
+    kgwBridgeExplicitTraceR27D(normalized, "internal-navigation", "r45d-bridge-network-select", {
+      patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+      reason: String(reason || ""),
+      selected: normalized
+    });
 
     const tabs = allNetworkTabs();
     const panels = allNetworkPanels();
@@ -1782,6 +2523,13 @@ function installNetworkTabs(root) {
     event.preventDefault();
     event.stopPropagation();
 
+    kgwBridgeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-bridge-network-tab-click", {
+      patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+      trusted: Boolean(event && event.isTrusted),
+      selected: String(net || ""),
+      text: String(tab.textContent || "").trim()
+    });
+
     selectBridgeNetwork(net, "click");
   }, true);
 
@@ -1812,6 +2560,13 @@ function installDelegatedTabs(root) {
       const selected = innerTab.dataset.bridgeInnerTab;
       const panel = root.querySelector(`[data-bridge-network-panel="${net}"]`);
 
+      kgwBridgeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-bridge-inner-tab-click", {
+        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+        trusted: Boolean(event && event.isTrusted),
+        selected: String(selected || ""),
+        text: String(innerTab.textContent || "").trim()
+      });
+
       panel.querySelectorAll("[data-bridge-inner-tab]").forEach((item) => {
         item.classList.toggle("active", item === innerTab);
       });
@@ -1831,6 +2586,13 @@ function installDelegatedTabs(root) {
       const selected = sectionTab.dataset.bridgeSectionTab;
       const panel = root.querySelector(`[data-bridge-network-panel="${net}"]`);
 
+      kgwBridgeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-bridge-section-tab-click", {
+        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+        trusted: Boolean(event && event.isTrusted),
+        selected: String(selected || ""),
+        text: String(sectionTab.textContent || "").trim()
+      });
+
       panel.querySelectorAll("[data-bridge-section-tab]").forEach((item) => {
         item.classList.toggle("active", item === sectionTab);
       });
@@ -1849,6 +2611,13 @@ function installDelegatedTabs(root) {
       const net = instanceTab.dataset.net;
       const selected = Number(instanceTab.dataset.instanceTab);
       activeInstance[net] = selected;
+
+      kgwBridgeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-bridge-instance-tab-click", {
+        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+        trusted: Boolean(event && event.isTrusted),
+        selected: String(selected),
+        text: String(instanceTab.textContent || "").trim()
+      });
 
       const panel = root.querySelector(`[data-bridge-network-panel="${net}"]`);
 
@@ -1964,6 +2733,8 @@ function appendReadableRuntimeResult(_net, _title, _result) {
 
 function buildApplyPayload(net, command) {
   if (command === "kgw_kgw_apply_node_settings_v1") {
+    bridgeAssertNoPortConflictsR5(net);
+
     const preview = updateCommand(net) || byId(id(net, "commandPreview"))?.value || "";
     const nodeMode = bridgeNodeMode(net) === "inprocess" ? "inprocess" : "external";
 
@@ -2260,19 +3031,25 @@ function kgwBridgeR51LoadSavedSettings() {
 
 
 function kgwBridgeR51SaveSettings(net) {
+  kgwBridgeSmallOwnerTraceR44D(net, "save-settings", "r44d-owner-begin", {});
   kgwBridgeR51Store("saved:" + net, kgwBridgeR51ReadSettings(net));
+  kgwBridgeSmallOwnerTraceR44D(net, "save-settings", "r44d-owner-complete", {});
 }
 
 function kgwBridgeR51SetAsDefaults(net) {
+  kgwBridgeSmallOwnerTraceR44D(net, "set-defaults", "r44d-owner-begin", {});
   kgwBridgeR51Store("default:" + net, kgwBridgeR51ReadSettings(net));
+  kgwBridgeSmallOwnerTraceR44D(net, "set-defaults", "r44d-owner-complete", {});
 }
 
 function kgwBridgeR51RestoreDefaults(net) {
+  kgwBridgeSmallOwnerTraceR44D(net, "restore-defaults", "r44d-owner-begin", {});
   kgwBridgeSettingsWithProgrammaticWriteR9B(() => {
     const defaults = kgwBridgeR51Load("default:" + net) || kgwBridgeR51Load("factory:" + net);
     kgwBridgeR51WriteSettings(net, defaults);
     kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, { force: true });
   });
+  kgwBridgeSmallOwnerTraceR44D(net, "restore-defaults", "r44d-owner-complete", {});
 }
 
 function kgwBridgeR51IsRunning(text) {
@@ -2492,6 +3269,79 @@ function kgwBridgeLogCpuMinerDiagnostic(_net) {
  */
 
 
+
+/* KGW_LOG_ACTIONS_SCOPED_OWNER_V29_START */
+function kgwBridgeTranslateRuntimeV29(key, fallback) {
+  const runtime = window.kgwT || window.kgwI18n || window.__kgwT;
+  if (typeof runtime === "function") {
+    try {
+      const value = runtime(key, fallback);
+      if (value && value !== key) return value;
+    } catch (_) {}
+  }
+  return fallback || key;
+}
+
+function kgwBridgeLogOutputV29(net) {
+  return document.getElementById("bridge-" + net + "-logOutput");
+}
+
+function kgwBridgeRestoreLogActionLabelV29(button) {
+  if (!button) return;
+  const original = button.dataset.kgwLogOriginalLabelV29;
+  if (original) button.textContent = original;
+  button.classList.remove("kgw-log-action-feedback");
+  delete button.dataset.kgwDoneLabel;
+}
+
+function kgwBridgeFlashLogActionButtonV29(button, doneLabel) {
+  if (!button) return;
+
+  if (!button.dataset.kgwLogOriginalLabelV29) {
+    button.dataset.kgwLogOriginalLabelV29 = String(button.textContent || "").trim() || "Log Action";
+  }
+
+  window.clearTimeout(button.__kgwLogActionFeedbackTimerV29);
+
+  button.textContent = doneLabel;
+  button.dataset.kgwDoneLabel = doneLabel;
+  button.classList.add("kgw-log-action-feedback");
+
+  button.__kgwLogActionFeedbackTimerV29 = window.setTimeout(() => {
+    kgwBridgeRestoreLogActionLabelV29(button);
+  }, 1600);
+}
+
+async function kgwBridgeHandleLogActionV29(action, net, button) {
+  
+  kgwBridgeSmallOwnerTraceR44D(net, String(action || "log-action"), "r51b3-bridge-log-action-click", {
+    patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
+    action: String(action || ""),
+    buttonId: String(button && button.id || ""),
+    buttonText: String(button && button.textContent || "").trim()
+  });
+  kgwBridgeSmallOwnerTraceR44D(net, String(action || "log-action"), "r44d-owner-begin", {});
+  const out = kgwBridgeLogOutputV29(net);
+  if (!out) return;
+
+  if (action === "copy-log") {
+    const text = String(out.value || out.textContent || "");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text).catch(() => {});
+    }
+    kgwBridgeFlashLogActionButtonV29(button, kgwBridgeTranslateRuntimeV29("log.copied", "Copied"));
+    return;
+  }
+
+  if (action === "clear-log") {
+    if ("value" in out) out.value = "";
+    out.textContent = "";
+    kgwBridgeFlashLogActionButtonV29(button, kgwBridgeTranslateRuntimeV29("log.deleted", "Deleted"));
+  }
+  kgwBridgeSmallOwnerTraceR44D(net, String(action || "log-action"), "r44d-owner-complete", {});
+}
+/* KGW_LOG_ACTIONS_SCOPED_OWNER_V29_END */
+
 function installActions(root) {
   // KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D_ACTIONS
   if (root && !root.dataset.kgwBridgeInprocessNodeTabsV12B) {
@@ -2555,6 +3405,35 @@ function installActions(root) {
     return netFromElement(event && event.target);
   }
 
+
+  // KGW_EXPLICIT_TRACE_OWNER_R27D_BRIDGE_BEGIN
+  function kgwBridgeExplicitTraceR27D(net, action, phase, details) {
+    try {
+      const safeNet = String(net || "unknown");
+      const safeAction = String(action || "unknown");
+      const safePhase = String(phase || "unknown");
+      const payload = {
+        patch: "KGW_EXPLICIT_TRACE_EXACT_ANCHOR_PATCH_R27D",
+        owner: "bridge-existing-owner",
+        network: safeNet,
+        action: safeAction,
+        phase: safePhase,
+        details: details && typeof details === "object" ? details : {}
+      };
+
+      if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === "function") {
+        window.__TAURI__.core.invoke("kgw_frontend_button_trace_v1", {
+          scope: "bridge",
+          net: safeNet,
+          action: safeAction,
+          phase: safePhase,
+          details: JSON.stringify(payload)
+        }).catch(function () {});
+      }
+    } catch (_) {}
+  }
+  // KGW_EXPLICIT_TRACE_OWNER_R27D_BRIDGE_END
+
   function scopedUpdate(net, reason) {
     if (!net) return;
 
@@ -2566,16 +3445,12 @@ function installActions(root) {
       updateCommand(net);
     }
 
-    if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === "function") {
-      window.__TAURI__.core.invoke("kgw_frontend_button_trace_v1", {
-        scope: "bridge",
-        net: net,
-        action: "settings-scope",
-        phase: "v26-scoped-update",
-        details: JSON.stringify({ patch: "KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26", network: net, reason: reason || "unknown" })
-      }).catch(function () {});
-    }
+    kgwBridgeExplicitTraceR27D(net, "settings-scope", "r27d-scoped-update", {
+      previousPatch: "KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26",
+      reason: reason || "unknown"
+    });
   }
+  bridgeInstallAllVisibleInstanceContainerOwnersR11(root);
 
   root.addEventListener("input", (event) => {
     const target = event.target;
@@ -2604,6 +3479,35 @@ function installActions(root) {
 
     if (!net) return;
 
+
+
+    kgwBridgeExplicitTraceR27D(net, String(action || "unknown"), "r27d-action-click", {
+      trusted: Boolean(event && event.isTrusted),
+      disabled: Boolean(button.disabled),
+      id: String(button.id || ""),
+      instanceId: String(button.dataset.instanceId || button.dataset.instance || ""),
+      text: String(button.textContent || "").trim()
+    });
+
+    if (action === "select-instance") {
+      activeInstance[net] = button.dataset.instanceId;
+      bridgeRefreshInstances(net);
+      scopedUpdate(net, "select-instance");
+      return;
+    }
+
+    if (action === "add-instance") {
+      addInstance(net);
+      scopedUpdate(net, "add-instance");
+      return;
+    }
+
+    if (action === "remove-instance") {
+      removeInstance(net, button.dataset.instanceId);
+      scopedUpdate(net, "remove-instance");
+      return;
+    }
+
     if (action === "save-settings") {
       if (typeof kgwBridgeR51SaveSettings === "function") kgwBridgeR51SaveSettings(net);
       scopedUpdate(net, "save-settings");
@@ -2619,6 +3523,11 @@ function installActions(root) {
     if (action === "restore-defaults") {
       if (typeof kgwBridgeR51RestoreDefaults === "function") kgwBridgeR51RestoreDefaults(net);
       scopedUpdate(net, "restore-defaults");
+      return;
+    }
+
+    if (action === "copy-log" || action === "clear-log") {
+      kgwBridgeHandleLogActionV29(action, net, button).catch(function () {});
       return;
     }
 
@@ -2668,27 +3577,20 @@ const bridgeRoot = root || document.getElementById("kaspa-bridge");
   setTimeout(kgwInstallBridgeLogAutoScrollControlsR27, 0);
 }
 
-export default initKaspaBridgeTab;
 
-if (typeof window !== "undefined") {
-  window.initKaspaBridgeTab = initKaspaBridgeTab;
-}
-
-(function installKgwLogFontSizeToolbarControlsV2() {
+/* KGW_BRIDGE_LOG_SCOPED_CONTROLS_V29_START */
+(function installKgwLogScopedToolbarControlsV29() {
   "use strict";
 
-  const MARKER = "KGW_LOG_FONT_SIZE_CONTROLS_V2";
   const KIND = "bridge";
+  const ROOT_SELECTOR = "#kaspa-bridge";
+  const TOOLBAR_SELECTOR = ".bridge-v7-log-toolbar";
+  const ACTION_ATTR = "data-bridge-action";
+  const PREFIX = "bridge";
   const NETWORKS = ["mainnet", "testnet10", "testnet12"];
   const MIN_SIZE = 10;
   const MAX_SIZE = 18;
   const DEFAULT_SIZE = 12;
-
-  let scheduled = false;
-
-  function storageKey(network) {
-    return "kgw." + KIND + ".log.fontSize." + network;
-  }
 
   function clampSize(value) {
     const parsed = Number.parseInt(String(value || ""), 10);
@@ -2696,231 +3598,167 @@ if (typeof window !== "undefined") {
     return Math.max(MIN_SIZE, Math.min(MAX_SIZE, parsed));
   }
 
-  function readSize(network) {
+  function storageKey(net) {
+    return "kgw." + KIND + ".log.fontSize." + net;
+  }
+
+  function readSize(net) {
     try {
-      return clampSize(window.localStorage.getItem(storageKey(network)));
+      return clampSize(window.localStorage.getItem(storageKey(net)));
     } catch (_) {
       return DEFAULT_SIZE;
     }
   }
 
-  function writeSize(network, size) {
+  function writeSize(net, size) {
     const finalSize = clampSize(size);
     try {
-      window.localStorage.setItem(storageKey(network), String(finalSize));
+      window.localStorage.setItem(storageKey(net), String(finalSize));
     } catch (_) {}
     return finalSize;
   }
 
-  function textOf(element) {
-    return String(
-      [
-        element && element.id,
-        element && element.className,
-        element && element.textContent,
-        element && element.getAttribute && element.getAttribute("aria-label"),
-        element && element.getAttribute && element.getAttribute("data-network"),
-        element && element.getAttribute && element.getAttribute("data-kgw-network")
-      ]
-        .filter(Boolean)
-        .join(" ")
-    ).toLowerCase();
+  function root() {
+    return document.querySelector(ROOT_SELECTOR);
   }
 
-  function isVisible(element) {
-    if (!element || !element.getBoundingClientRect) return false;
-    const rect = element.getBoundingClientRect();
-    const style = window.getComputedStyle(element);
-    return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
+  function logOutput(net) {
+    return document.getElementById(PREFIX + "-" + net + "-logOutput");
   }
 
-  function activeNetwork() {
-    const selected = Array.from(
-      document.querySelectorAll(
-        "[aria-selected='true'], .active, .is-active, .selected, [data-active='true']"
-      )
-    ).filter(isVisible);
+  function toolbar(net) {
+    const r = root();
+    if (!r) return null;
 
-    for (const element of selected) {
-      const t = textOf(element);
-      for (const network of NETWORKS) {
-        if (t.includes(network)) return network;
-        if (network === "testnet10" && t.includes("testnet 10")) return network;
-        if (network === "testnet12" && t.includes("testnet 12")) return network;
-      }
+    const copyButton = r.querySelector(TOOLBAR_SELECTOR + " [" + ACTION_ATTR + "='copy-log'][data-net='" + net + "']");
+    if (copyButton) return copyButton.closest(TOOLBAR_SELECTOR);
+
+    const panel = r.querySelector("[data-net='" + net + "']");
+    if (!panel) return null;
+    return panel.querySelector(TOOLBAR_SELECTOR);
+  }
+
+  function makeButton(label, title) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "kgw-log-font-size-button";
+    button.textContent = label;
+    button.title = title;
+    button.setAttribute("aria-label", title);
+    button.dataset.kgwLogFontOwner = "v29";
+    return button;
+  }
+
+  function applyFontSize(net) {
+    const out = logOutput(net);
+    const size = readSize(net);
+
+    if (out) {
+      out.dataset.kgwLogFontSizePane = "v29";
+      out.style.setProperty("--kgw-log-font-size", size + "px");
+      out.style.setProperty("font-size", "var(--kgw-log-font-size)", "important");
+      out.style.setProperty("line-height", "1.45", "important");
     }
 
-    const visibleLogs = Array.from(document.querySelectorAll("[id*='log'], [class*='log'], pre, textarea"))
-      .filter(isVisible);
-
-    for (const element of visibleLogs) {
-      let current = element;
-      while (current && current !== document.documentElement) {
-        const t = textOf(current);
-        for (const network of NETWORKS) {
-          if (t.includes(network)) return network;
-          if (network === "testnet10" && t.includes("testnet 10")) return network;
-          if (network === "testnet12" && t.includes("testnet 12")) return network;
-        }
-        current = current.parentElement;
-      }
+    const tb = toolbar(net);
+    if (tb) {
+      const value = tb.querySelector(".kgw-log-font-size-value[data-net='" + net + "']");
+      if (value) value.textContent = size + "px";
     }
-
-    return "mainnet";
   }
 
-  function looksLikeLogPane(element) {
-    if (!element || !isVisible(element)) return false;
-
-    const tag = String(element.tagName || "").toLowerCase();
-    const t = textOf(element);
-
-    if (!(tag === "pre" || tag === "textarea" || tag === "code" || tag === "div")) return false;
-    if (!t.includes("log")) return false;
-    if (element.classList && element.classList.contains("kgw-log-font-size-controls")) return false;
-
-    const rect = element.getBoundingClientRect();
-    if (rect.height < 80) return false;
-
-    return true;
+  function removeToolbarDuplicates(tb) {
+    if (!tb) return;
+    tb.querySelectorAll(".kgw-log-font-size-controls").forEach((item) => item.remove());
   }
 
-  function visibleLogPanes() {
-    return Array.from(
-      document.querySelectorAll("pre, textarea, code, [id*='log'], [class*='log'], [data-role*='log']")
-    ).filter(looksLikeLogPane);
-  }
+  function installForNetwork(net) {
+    const tb = toolbar(net);
+    if (!tb) return;
 
-  function applyFontSize() {
-    const network = activeNetwork();
-    const size = readSize(network);
+    removeToolbarDuplicates(tb);
 
-    for (const pane of visibleLogPanes()) {
-      pane.dataset.kgwLogFontSizePane = "1";
-      pane.style.setProperty("--kgw-log-font-size", size + "px");
-      pane.style.fontSize = "var(--kgw-log-font-size)";
-      pane.style.lineHeight = "1.45";
-    }
+    const controls = document.createElement("div");
+    controls.className = "kgw-log-font-size-controls";
+    controls.dataset.kind = KIND;
+    controls.dataset.net = net;
+    controls.dataset.marker = "KGW_BRIDGE_LOG_SCOPED_CONTROLS_V29";
 
-    const value = document.querySelector(".kgw-log-font-size-controls[data-kind='" + KIND + "'] .kgw-log-font-size-value");
-    if (value) value.textContent = size + "px";
-  }
+    const decrease = makeButton("A-", "Decrease log font size");
+    const value = document.createElement("span");
+    value.className = "kgw-log-font-size-value";
+    value.dataset.net = net;
+    value.textContent = readSize(net) + "px";
 
-  function button(label, title) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "kgw-log-font-size-button";
-    b.textContent = label;
-    b.title = title;
-    b.setAttribute("aria-label", title);
-    return b;
-  }
+    const increase = makeButton("A+", "Increase log font size");
+    const reset = makeButton("Reset", "Reset log font size");
 
-  function findVisibleLogToolbar() {
-    const existingToolbars = Array.from(
-      document.querySelectorAll(
-        ".kgw-log-toolbar, .log-toolbar, [class*='log-toolbar'], [role='toolbar']"
-      )
-    ).filter(isVisible);
-
-    for (const toolbar of existingToolbars) {
-      const t = textOf(toolbar);
-      if (t.includes("copy log") || t.includes("clear log") || t.includes("auto-scroll") || t.includes("autoscroll")) {
-        return toolbar;
-      }
-    }
-
-    const buttons = Array.from(document.querySelectorAll("button")).filter(isVisible);
-    for (const b of buttons) {
-      const t = textOf(b);
-      if (t.includes("copy log") || t.includes("clear log")) {
-        return b.parentElement;
-      }
-    }
-
-    return null;
-  }
-
-  function removeDuplicateControls() {
-    const controls = Array.from(document.querySelectorAll(".kgw-log-font-size-controls"));
-    controls.forEach((control, index) => {
-      if (index > 0) control.remove();
+    decrease.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const previousSize = readSize(net);
+      kgwBridgeSmallOwnerTraceR44D(net, "log-font-size", "r51b3-bridge-log-font-decrease-click", {
+        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
+        trusted: Boolean(event && event.isTrusted),
+        previousSize,
+        nextSize: previousSize - 1
+      });
+      writeSize(net, previousSize - 1);
+      applyFontSize(net);
     });
+
+    increase.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const previousSize = readSize(net);
+      kgwBridgeSmallOwnerTraceR44D(net, "log-font-size", "r51b3-bridge-log-font-increase-click", {
+        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
+        trusted: Boolean(event && event.isTrusted),
+        previousSize,
+        nextSize: previousSize + 1
+      });
+      writeSize(net, previousSize + 1);
+      applyFontSize(net);
+    });
+
+    reset.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const previousSize = readSize(net);
+      kgwBridgeSmallOwnerTraceR44D(net, "log-font-size", "r51b3-bridge-log-font-reset-click", {
+        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
+        trusted: Boolean(event && event.isTrusted),
+        previousSize,
+        nextSize: DEFAULT_SIZE
+      });
+      writeSize(net, DEFAULT_SIZE);
+      applyFontSize(net);
+    });
+
+    controls.append(decrease, value, increase, reset);
+    tb.appendChild(controls);
+
+    applyFontSize(net);
   }
 
-  function installOneToolbarControl() {
-    const toolbar = findVisibleLogToolbar();
-    if (!toolbar) return;
-
-    removeDuplicateControls();
-
-    let controls = toolbar.querySelector(".kgw-log-font-size-controls[data-kind='" + KIND + "']");
-    if (!controls) {
-      controls = document.createElement("div");
-      controls.className = "kgw-log-font-size-controls";
-      controls.dataset.kind = KIND;
-      controls.dataset.marker = MARKER;
-
-      const decrease = button("A-", "Decrease log font size");
-      const value = document.createElement("span");
-      value.className = "kgw-log-font-size-value";
-      value.textContent = readSize(activeNetwork()) + "px";
-
-      const increase = button("A+", "Increase log font size");
-      const reset = button("Reset", "Reset log font size");
-
-      decrease.addEventListener("click", () => {
-        const network = activeNetwork();
-        writeSize(network, readSize(network) - 1);
-        applyFontSize();
-      });
-
-      increase.addEventListener("click", () => {
-        const network = activeNetwork();
-        writeSize(network, readSize(network) + 1);
-        applyFontSize();
-      });
-
-      reset.addEventListener("click", () => {
-        writeSize(activeNetwork(), DEFAULT_SIZE);
-        applyFontSize();
-      });
-
-      controls.append(decrease, value, increase, reset);
-      toolbar.appendChild(controls);
+  function installAll() {
+    for (const net of NETWORKS) {
+      installForNetwork(net);
     }
-
-    applyFontSize();
   }
 
-  function run() {
-    scheduled = false;
-    installOneToolbarControl();
-  }
-
-  function schedule() {
-    if (scheduled) return;
-    scheduled = true;
-    window.requestAnimationFrame(run);
-  }
+  window.kgwInstallBridgeLogScopedControlsV29 = installAll;
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", schedule, { once: true });
+    document.addEventListener("DOMContentLoaded", installAll, { once: true });
   } else {
-    schedule();
+    window.setTimeout(installAll, 0);
   }
-
-  document.addEventListener("click", schedule, true);
-  document.addEventListener("change", schedule, true);
-
-  const observer = new MutationObserver(schedule);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-
-  window.addEventListener("storage", (event) => {
-    if (event.key && event.key.startsWith("kgw." + KIND + ".log.fontSize.")) {
-      schedule();
-    }
-  });
 })();
+/* KGW_BRIDGE_LOG_SCOPED_CONTROLS_V29_END */
 
+export default initKaspaBridgeTab;
 
+if (typeof window !== "undefined") {
+  window.initKaspaBridgeTab = initKaspaBridgeTab;
+}

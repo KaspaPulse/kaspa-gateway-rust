@@ -52,6 +52,101 @@ const MAX_PAGES: usize = 10_000;
 const TX_VERBOSE_ITEM_LOGS: bool = false;
 static TRANSACTION_SYNC_ACTIVE: AtomicBool = AtomicBool::new(false);
 
+/* KGW_TRANSACTION_SYNC_BACKEND_CANCEL_R57D4
+Backend-owned cancellation registry for Explorer transaction sync.
+This stays inside the authoritative transaction_sync owner. */
+static TRANSACTION_SYNC_CANCEL_REQUESTS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+
+fn transaction_sync_cancel_requests() -> &'static Mutex<HashSet<String>> {
+    TRANSACTION_SYNC_CANCEL_REQUESTS.get_or_init(|| Mutex::new(HashSet::new()))
+}
+
+pub fn request_transaction_sync_cancel(request_id: &str) -> bool {
+    let trimmed = request_id.trim();
+
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    let mut guard = transaction_sync_cancel_requests()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    guard.insert(trimmed.to_string())
+}
+
+fn transaction_sync_cancel_requested(request_id: Option<&str>) -> bool {
+    let Some(request_id) = request_id else {
+        return false;
+    };
+
+    let trimmed = request_id.trim();
+
+    if trimmed.is_empty() {
+        return false;
+    }
+
+    let guard = transaction_sync_cancel_requests()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    guard.contains(trimmed)
+}
+
+fn transaction_sync_clear_cancel_request(request_id: Option<&str>) {
+    let Some(request_id) = request_id else {
+        return;
+    };
+
+    let trimmed = request_id.trim();
+
+    if trimmed.is_empty() {
+        return;
+    }
+
+    let mut guard = transaction_sync_cancel_requests()
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    guard.remove(trimmed);
+}
+
+fn transaction_sync_cancel_error(
+    request_id: Option<&str>,
+    address: &str,
+    stage: &str,
+) -> Option<String> {
+    if !transaction_sync_cancel_requested(request_id) {
+        return None;
+    }
+
+    eprintln!(
+        "[KGW][transactions][FetchWorker][CANCELLED] address={} request_id={:?} stage={}",
+        address, request_id, stage
+    );
+
+    Some(format!(
+        "transaction sync cancelled address={} request_id={:?} stage={}",
+        address, request_id, stage
+    ))
+}
+
+struct TransactionSyncCancelGuard {
+    request_id: Option<String>,
+}
+
+impl TransactionSyncCancelGuard {
+    fn new(request_id: Option<String>) -> Self {
+        Self { request_id }
+    }
+}
+
+impl Drop for TransactionSyncCancelGuard {
+    fn drop(&mut self) {
+        transaction_sync_clear_cancel_request(self.request_id.as_deref());
+    }
+}
+
 struct TransactionSyncGuard {
     address: String,
     mode: &'static str,
@@ -220,6 +315,9 @@ pub struct TransactionSyncRequest {
     pub page_limit: Option<usize>,
     pub max_pages: Option<usize>,
 
+    #[serde(default, alias = "requestId")]
+    pub request_id: Option<String>,
+
     #[serde(default)]
     pub tx_type: Option<String>,
 
@@ -289,6 +387,15 @@ pub async fn sync_transactions(
     let address = parsed.as_str().to_ascii_lowercase();
     let requested_force = request.force;
 
+    let request_id_for_cancel = request
+        .request_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(ToOwned::to_owned);
+
+    let _cancel_guard_r57d4 = TransactionSyncCancelGuard::new(request_id_for_cancel.clone());
+
     let _sync_guard = TransactionSyncGuard::enter(&address, request.force)?;
 
     if let (Some(start), Some(end)) = (request.start_ts, request.end_ts) {
@@ -312,6 +419,14 @@ pub async fn sync_transactions(
         request.direction,
         request.search_query
     );
+
+    if let Some(error) = transaction_sync_cancel_error(
+        request_id_for_cancel.as_deref(),
+        &address,
+        "before-local-preload",
+    ) {
+        return Err(error);
+    }
 
     let local_loaded = if request.force {
         0
@@ -339,6 +454,14 @@ pub async fn sync_transactions(
 
         rows
     };
+
+    if let Some(error) = transaction_sync_cancel_error(
+        request_id_for_cancel.as_deref(),
+        &address,
+        "before-force-delete-or-fetch",
+    ) {
+        return Err(error);
+    }
 
     let deleted_before_fetch = if request.force {
         let started = Instant::now();
@@ -418,9 +541,29 @@ pub async fn sync_transactions(
         max_pages
     );
 
+    if let Some(error) = transaction_sync_cancel_error(
+        request_id_for_cancel.as_deref(),
+        &address,
+        "before-page-loop",
+    ) {
+        return Err(error);
+    }
+
     'sync_page_loop: for page_num in 0..max_pages {
         let page_number = page_num + 1;
         let page_started = Instant::now();
+
+        if let Some(error) = transaction_sync_cancel_error(
+            request_id_for_cancel.as_deref(),
+            &address,
+            "before-page-fetch",
+        ) {
+            if let Some(handle) = prefetched_page.take() {
+                handle.abort();
+            }
+
+            return Err(error);
+        }
 
         eprintln!(
             "[KGW][transactions][FetchWorker] Fetch accepted page request address={} mode={} page={} before={} after={} limit={}",
@@ -487,6 +630,18 @@ pub async fn sync_transactions(
         pages += 1;
 
         let raw_count = page.transactions.len();
+
+        if let Some(error) = transaction_sync_cancel_error(
+            request_id_for_cancel.as_deref(),
+            &address,
+            "after-page-fetch",
+        ) {
+            if let Some(handle) = prefetched_page.take() {
+                handle.abort();
+            }
+
+            return Err(error);
+        }
 
         eprintln!(
             "[KGW][transactions][FetchWorker] Fetch accepted page received address={} mode={} page={} before={} after={} raw_count={} next_before={:?} next_after={:?} stored_total={} fetched_total={} elapsed_ms={}",
@@ -589,6 +744,17 @@ pub async fn sync_transactions(
         let mut page_record_timestamps = Vec::<i64>::new();
 
         for (idx, raw) in page.transactions.iter().enumerate() {
+            if let Some(error) = transaction_sync_cancel_error(
+                request_id_for_cancel.as_deref(),
+                &address,
+                "inside-page-transform-loop",
+            ) {
+                if let Some(handle) = next_prefetch.take() {
+                    handle.abort();
+                }
+
+                return Err(error);
+            }
             let item_no = idx + 1;
             let item_started = Instant::now();
             let txid_for_log = transaction_id(raw).unwrap_or_else(|| "<missing-txid>".to_string());
@@ -705,6 +871,18 @@ pub async fn sync_transactions(
             }
         }
 
+        if let Some(error) = transaction_sync_cancel_error(
+            request_id_for_cancel.as_deref(),
+            &address,
+            "before-page-upsert",
+        ) {
+            if let Some(handle) = next_prefetch.take() {
+                handle.abort();
+            }
+
+            return Err(error);
+        }
+
         if !page_records.is_empty() {
             let batch_started = Instant::now();
 
@@ -805,6 +983,18 @@ pub async fn sync_transactions(
             });
         }
 
+        if let Some(error) = transaction_sync_cancel_error(
+            request_id_for_cancel.as_deref(),
+            &address,
+            "after-page-upsert",
+        ) {
+            if let Some(handle) = next_prefetch.take() {
+                handle.abort();
+            }
+
+            return Err(error);
+        }
+
         if let Some(oldest_ts_on_page) = accepted_timestamps.iter().copied().min() {
             if request
                 .start_ts
@@ -873,6 +1063,18 @@ pub async fn sync_transactions(
 
             break 'sync_page_loop;
         }
+        if let Some(error) = transaction_sync_cancel_error(
+            request_id_for_cancel.as_deref(),
+            &address,
+            "before-next-page",
+        ) {
+            if let Some(handle) = next_prefetch.take() {
+                handle.abort();
+            }
+
+            return Err(error);
+        }
+
         if let Some(next_before) = page.next_before {
             if next_before <= 0 {
                 stop_reason = format!("invalid_next_before:{page_number}:{next_before}");

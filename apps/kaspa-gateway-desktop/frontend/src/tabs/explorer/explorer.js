@@ -42,7 +42,7 @@ function kgwI18nTextR41(key, fallback) {
  */
 
 import { parseHeaderUsdPrice } from "./explorer.header.js";
-import { openBlockExplorer, exportCsv, exportHtml } from "./explorer.export.js";
+import { openBlockExplorer, exportCsv, exportHtml, exportPdf } from "./explorer.export.js";
 import { normalizeDateInputValue, parseDateSeconds, kgwDayToEpochSeconds, kgwTxDayToEpochSeconds, kgwClean2DayToSeconds, kgwTransactionDateKey } from "./explorer.date.js";
 import { formatKas, formatUsd, kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
 import { toEnglishDigits, pick, toNumber, kgwClean2SafeText } from "./explorer.utils.js";
@@ -85,6 +85,10 @@ function invokeApi() {
 /* KGW_PHASE3C_CANONICAL_EXPLORER_COMMAND_WRAPPERS */
 async function kgwInvokeExplorerUnifiedFetch(request) {
   return await invokeCommand("explorer_transactions", { request });
+}
+
+async function kgwInvokeExplorerCancelTransactionsR57D4(requestId) {
+  return await invokeCommand("explorer_cancel_transactions", { requestId });
 }
 
 async function kgwInvokeExplorerGroupedTransactions(request) {
@@ -506,103 +510,363 @@ async function refreshAddressName(section, address) {
   return knownName;
 }
 
-function openNativeDatePicker(nativeInput) {
-  if (!nativeInput) return;
-
-  try {
-    if (typeof nativeInput.showPicker === "function") {
-      nativeInput.showPicker();
-      return;
-    }
-  } catch (_) {
-    // fallback below
-  }
-
-  try {
-    nativeInput.focus();
-    nativeInput.click();
-  } catch (_) {
-    // ignore
-  }
+/* KGW_CALENDAR_EXISTING_OWNER_REBUILD_R2_EXPLORER_OWNER_START */
+/* KGW_CALENDAR_EXISTING_OWNER_REGEX_FIX_R4: fixed regex escaping only; no new owner layer.\n * KGW_CALENDAR_EXISTING_OWNER_DOM_CSS_FIX_R6: body-attached compact popover inside existing owner.\n * KGW_CALENDAR_SCOPED_POPOVER_OWNER_FIX_R7: scope-isolated popovers per tab.\n * KGW_CALENDAR_SINGLE_ACTIVE_POPOVER_FIX_R8: removes stale body-attached popovers before opening current tab calendar.
+/* */
+function kgwCalendarPad2(value) {
+  return String(value).padStart(2, "0");
 }
 
-function setEnglishDateValue(textInput, nativeInput, value) {
+function kgwCalendarTodayIso() {
+  const now = new Date();
+  return `${now.getFullYear()}-${kgwCalendarPad2(now.getMonth() + 1)}-${kgwCalendarPad2(now.getDate())}`;
+}
+
+function kgwCalendarIsoFromDate(date) {
+  return `${date.getFullYear()}-${kgwCalendarPad2(date.getMonth() + 1)}-${kgwCalendarPad2(date.getDate())}`;
+}
+
+function kgwCalendarParseIso(value, fallbackValue) {
+  const clean = normalizeDateInputValue(value || fallbackValue || kgwCalendarTodayIso());
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(clean);
+  if (!match) return kgwCalendarParseIso(fallbackValue || kgwCalendarTodayIso(), kgwCalendarTodayIso());
+
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const date = new Date(year, month, day);
+
+  if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
+    return kgwCalendarParseIso(fallbackValue || kgwCalendarTodayIso(), kgwCalendarTodayIso());
+  }
+
+  return date;
+}
+
+function kgwCalendarEnglishMonthLabel(year, monthIndex) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+    calendar: "gregory",
+    numberingSystem: "latn"
+  }).format(new Date(year, monthIndex, 1));
+}
+
+function kgwCalendarEscapeSelector(id) {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") return CSS.escape(id);
+  return String(id).replace(/["\\]/g, "\\$&");
+}
+
+function kgwCalendarSetTextNative(textInput, nativeInput, value) {
   const clean = normalizeDateInputValue(value);
-
-  if (textInput) textInput.value = clean;
-  if (nativeInput && /^\d{4}-\d{2}-\d{2}$/.test(clean)) nativeInput.value = clean;
-
+  if (textInput) {
+    textInput.value = clean;
+    textInput.dispatchEvent(new Event("input", { bubbles: true }));
+    textInput.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  if (nativeInput && /^\d{4}-\d{2}-\d{2}$/.test(clean)) {
+    nativeInput.value = clean;
+    nativeInput.dispatchEvent(new Event("change", { bubbles: true }));
+  }
   return clean;
 }
 
-function bindExplorerDateControl(section, textId, nativeId, buttonId, fallbackValue) {
-  const textInput = qs(`#${textId}`, section);
-  const nativeInput = qs(`#${nativeId}`, section);
-  const button = qs(`#${buttonId}`, section);
+function kgwCalendarResolveRange(section, textId) {
+  const pairs = [
+    ["explorerFromDate", "explorerToDate"],
+    ["analysisFromDate", "analysisToDate"]
+  ];
 
-  if (!textInput || !nativeInput || !button) return;
+  const pair = pairs.find(([fromId, toId]) => textId === fromId || textId === toId);
+  if (!pair) return null;
 
-  if (!textInput.value) {
-    setEnglishDateValue(textInput, nativeInput, fallbackValue);
-  } else {
-    setEnglishDateValue(textInput, nativeInput, textInput.value);
+  const fromInput = section.querySelector(`#${kgwCalendarEscapeSelector(pair[0])}`);
+  const toInput = section.querySelector(`#${kgwCalendarEscapeSelector(pair[1])}`);
+  const fromNative = section.querySelector(`#${kgwCalendarEscapeSelector(pair[0] + "Native")}`);
+  const toNative = section.querySelector(`#${kgwCalendarEscapeSelector(pair[1] + "Native")}`);
+
+  if (!fromInput || !toInput) return null;
+
+  return { fromInput, toInput, fromNative, toNative };
+}
+
+function kgwCalendarClose(section, scope = "explorer") {
+  document.querySelectorAll(`.kgw-calendar-popover[data-kgw-calendar-scope="${scope}"]`).forEach((node) => node.remove());
+
+  const owner = section || document;
+  owner.querySelectorAll("[data-kgw-calendar-open='1']").forEach((node) => {
+    if (!node.dataset.kgwCalendarScope || node.dataset.kgwCalendarScope === scope) {
+      delete node.dataset.kgwCalendarOpen;
+      delete node.dataset.kgwCalendarScope;
+    }
+  });
+}
+
+function kgwCalendarApplyPreset(section, textId, presetName) {
+  const today = kgwCalendarParseIso(kgwCalendarTodayIso());
+  const range = kgwCalendarResolveRange(section, textId);
+
+  let from = kgwCalendarIsoFromDate(today);
+  let to = kgwCalendarIsoFromDate(today);
+
+  if (presetName === "last7") {
+    const start = new Date(today);
+    start.setDate(start.getDate() - 6);
+    from = kgwCalendarIsoFromDate(start);
+  } else if (presetName === "last30") {
+    const start = new Date(today);
+    start.setDate(start.getDate() - 29);
+    from = kgwCalendarIsoFromDate(start);
+  } else if (presetName === "thisMonth") {
+    from = kgwCalendarIsoFromDate(new Date(today.getFullYear(), today.getMonth(), 1));
+  } else if (presetName === "sinceLaunch") {
+    from = "2021-11-07";
   }
 
-  if (textInput.dataset.kgwDateBound === "1") return;
-  textInput.dataset.kgwDateBound = "1";
+  if (range) {
+    kgwCalendarSetTextNative(range.fromInput, range.fromNative, from);
+    kgwCalendarSetTextNative(range.toInput, range.toNative, to);
+  } else {
+    const activeInput = section.querySelector(`#${kgwCalendarEscapeSelector(textId)}`);
+    kgwCalendarSetTextNative(activeInput, null, presetName === "today" ? to : from);
+  }
 
-  textInput.addEventListener("input", () => {
-    const clean = normalizeDateInputValue(textInput.value);
-    if (clean !== textInput.value) textInput.value = clean;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) nativeInput.value = clean;
-  });
-
-  textInput.addEventListener("blur", () => {
-    setEnglishDateValue(textInput, nativeInput, textInput.value);
-  });
-
-  nativeInput.addEventListener("change", () => {
-    setEnglishDateValue(textInput, nativeInput, nativeInput.value);
-  });
-
-  button.addEventListener("click", () => {
-    const clean = setEnglishDateValue(textInput, nativeInput, textInput.value);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) nativeInput.value = clean;
-    openNativeDatePicker(nativeInput);
-  });
+  kgwCalendarClose(section, "explorer");
 }
 
-function applyExplorerFontSize(section, rawValue) {
-  const clean = toEnglishDigits(rawValue ?? "11").replace(/[^0-9]/g, "").slice(0, 2);
-  const value = Number(clean || "11");
-  explorerState.fontSize = Math.max(6, Math.min(24, Number.isFinite(value) ? value : 11));
-  setTableFontSize(section);
+function kgwCalendarAttachPopover(popover, anchor) {
+  document.querySelectorAll(".kgw-calendar-popover").forEach((node) => node.remove());
+  document.querySelectorAll("[data-kgw-calendar-open='1']").forEach((node) => {
+    delete node.dataset.kgwCalendarOpen;
+    delete node.dataset.kgwCalendarScope;
+  });
+
+  popover.dataset.kgwCalendarScope = "explorer";
+  popover.classList.add("kgw-calendar-popover-explorer");
+
+  document.body.append(popover);
+
+  const rect = anchor.getBoundingClientRect();
+  const width = Math.min(236, Math.max(218, window.innerWidth - 24));
+  const heightLimit = Math.min(326, window.innerHeight - 24);
+  const left = Math.min(Math.max(12, rect.left), Math.max(12, window.innerWidth - width - 12));
+  const preferredTop = rect.bottom + 6;
+  const top = preferredTop + heightLimit <= window.innerHeight - 12
+    ? preferredTop
+    : Math.max(12, rect.top - heightLimit - 6);
+
+  popover.style.position = "fixed";
+  popover.style.left = `${Math.round(left)}px`;
+  popover.style.top = `${Math.round(top)}px`;
+  popover.style.width = `${Math.round(width)}px`;
+  popover.style.maxHeight = `${Math.round(heightLimit)}px`;
+  popover.style.zIndex = "2147483000";
 }
 
-function kgwOpenNativeDatePicker(nativeInput) {
-  if (!nativeInput) return;
+/* KGW_CALENDAR_CLOSE_I18N_FIX_R12: i18n-safe calendar close label; no new calendar owner. */
+function kgwCalendarI18nText(key, fallback) {
+  const api = globalThis.kgwI18n || globalThis.KGW_I18N || globalThis.i18n || null;
+  const candidates = [
+    api && typeof api.t === "function" ? api.t.bind(api) : null,
+    typeof globalThis.t === "function" ? globalThis.t.bind(globalThis) : null
+  ];
 
-  try {
-    if (typeof nativeInput.showPicker === "function") {
-      nativeInput.showPicker();
-      return;
+  for (const translate of candidates) {
+    if (!translate) continue;
+    try {
+      const value = translate(key);
+      if (typeof value === "string" && value.trim() && value !== key) return value;
+    } catch {
+      /* keep fallback */
     }
-  } catch (_) {}
+  }
 
-  try {
-    nativeInput.focus();
-    nativeInput.click();
-  } catch (_) {}
+  return fallback;
+}
+
+function kgwCalendarOpen(section, textInput, nativeInput, textId, fallbackValue) {
+  if (!section || !textInput) return;
+
+  const host = textInput.closest(".explorer-date-combo, .kgw-analysis-date-field") || textInput.parentElement || section;
+  const wasOpen = host.dataset.kgwCalendarOpen === "1";
+  kgwCalendarClose(section, "explorer");
+  if (wasOpen) return;
+
+  host.dataset.kgwCalendarOpen = "1";
+  host.dataset.kgwCalendarScope = "explorer";
+
+  let activeDate = kgwCalendarParseIso(textInput.value, fallbackValue);
+  let displayYear = activeDate.getFullYear();
+  let displayMonth = activeDate.getMonth();
+
+  const popover = document.createElement("div");
+  popover.className = "kgw-calendar-popover";
+  popover.lang = "en-US";
+  popover.dir = "ltr";
+  popover.setAttribute("role", "dialog");
+  popover.setAttribute("aria-label", "Date picker");
+
+  function render() {
+    popover.textContent = "";
+
+    const header = document.createElement("div");
+    header.className = "kgw-calendar-header";
+
+    const prev = document.createElement("button");
+    prev.type = "button";
+    prev.className = "kgw-calendar-nav";
+    prev.textContent = "‹";
+    prev.setAttribute("aria-label", "Previous month");
+
+    const title = document.createElement("div");
+    title.className = "kgw-calendar-title";
+    title.textContent = kgwCalendarEnglishMonthLabel(displayYear, displayMonth);
+
+    const next = document.createElement("button");
+    next.type = "button";
+    next.className = "kgw-calendar-nav";
+    next.textContent = "›";
+    next.setAttribute("aria-label", "Next month");
+
+    prev.addEventListener("click", (event) => {
+      event.preventDefault();
+      kgwExplorerUiTraceR53B3("explorer-calendar", "r53b3-explorer-calendar-prev-click", {
+        trusted: Boolean(event && event.isTrusted),
+        textId: String(textId || ""),
+        year: displayYear,
+        month: displayMonth
+      });
+      displayMonth -= 1;
+      if (displayMonth < 0) {
+        displayMonth = 11;
+        displayYear -= 1;
+      }
+      render();
+    });
+
+    next.addEventListener("click", (event) => {
+      event.preventDefault();
+      kgwExplorerUiTraceR53B3("explorer-calendar", "r53b3-explorer-calendar-next-click", {
+        trusted: Boolean(event && event.isTrusted),
+        textId: String(textId || ""),
+        year: displayYear,
+        month: displayMonth
+      });
+      displayMonth += 1;
+      if (displayMonth > 11) {
+        displayMonth = 0;
+        displayYear += 1;
+      }
+      render();
+    });
+
+    header.append(prev, title, next);
+
+    const presets = document.createElement("div");
+    presets.className = "kgw-calendar-presets";
+
+    [
+      ["today", "Today"],
+      ["last7", "Last 7 Days"],
+      ["last30", "Last 30 Days"],
+      ["thisMonth", "This Month"],
+      ["sinceLaunch", "Since Launch"]
+    ].forEach(([value, label]) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "kgw-calendar-preset";
+      button.textContent = label;
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        kgwExplorerUiTraceR53B3("explorer-calendar", "r53b3-explorer-calendar-preset-click", {
+          trusted: Boolean(event && event.isTrusted),
+          textId: String(textId || ""),
+          preset: String(value || ""),
+          label: String(label || "")
+        });
+        kgwCalendarApplyPreset(section, textId, value);
+      });
+      presets.append(button);
+    });
+
+    const weekdays = document.createElement("div");
+    weekdays.className = "kgw-calendar-weekdays";
+    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach((day) => {
+      const node = document.createElement("span");
+      node.textContent = day;
+      weekdays.append(node);
+    });
+
+    const grid = document.createElement("div");
+    grid.className = "kgw-calendar-grid";
+
+    const firstDay = new Date(displayYear, displayMonth, 1);
+    const daysInMonth = new Date(displayYear, displayMonth + 1, 0).getDate();
+    const offset = firstDay.getDay();
+
+    for (let i = 0; i < offset; i++) {
+      const empty = document.createElement("span");
+      empty.className = "kgw-calendar-empty";
+      grid.append(empty);
+    }
+
+    const selectedIso = normalizeDateInputValue(textInput.value || fallbackValue || kgwCalendarTodayIso());
+    const todayIso = kgwCalendarTodayIso();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(displayYear, displayMonth, day);
+      const iso = kgwCalendarIsoFromDate(date);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "kgw-calendar-day";
+      button.textContent = String(day);
+      button.dataset.iso = iso;
+
+      if (iso === selectedIso) button.classList.add("is-selected");
+      if (iso === todayIso) button.classList.add("is-today");
+
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        kgwExplorerUiTraceR53B3("explorer-calendar", "r53b3-explorer-calendar-day-click", {
+          trusted: Boolean(event && event.isTrusted),
+          textId: String(textId || ""),
+          iso: String(iso || "")
+        });
+        kgwCalendarSetTextNative(textInput, nativeInput, iso);
+        kgwCalendarClose(section, "explorer");
+      });
+
+      grid.append(button);
+    }
+
+    const footer = document.createElement("div");
+    footer.className = "kgw-calendar-footer";
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "kgw-calendar-close";
+    close.textContent = kgwCalendarI18nText("calendar.close", "Close");
+    close.addEventListener("click", (event) => {
+      event.preventDefault();
+      kgwExplorerUiTraceR53B3("explorer-calendar", "r53b3-explorer-calendar-close-click", {
+        trusted: Boolean(event && event.isTrusted),
+        textId: String(textId || "")
+      });
+      kgwCalendarClose(section, "explorer");
+    });
+
+    footer.append(close);
+    popover.append(header, presets, weekdays, grid, footer);
+  }
+
+  render();
+  kgwCalendarAttachPopover(popover, textInput);
 }
 
 function kgwSetEnglishDateValue(textInput, nativeInput, value) {
   const clean = normalizeDateInputValue(value);
-
   if (textInput) textInput.value = clean;
-  if (nativeInput && /^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-    nativeInput.value = clean;
-  }
-
+  if (nativeInput && /^\d{4}-\d{2}-\d{2}$/.test(clean)) nativeInput.value = clean;
   return clean;
 }
 
@@ -611,32 +875,66 @@ function kgwBindDateControl(section, textId, nativeId, buttonId, fallbackValue) 
   const nativeInput = qs(`#${nativeId}`, section);
   const button = qs(`#${buttonId}`, section);
 
-  if (!textInput || !nativeInput || !button) return;
+  if (!textInput || !button) return;
 
   kgwSetEnglishDateValue(textInput, nativeInput, textInput.value || fallbackValue);
 
   if (textInput.dataset.kgwDateBound === "1") return;
   textInput.dataset.kgwDateBound = "1";
 
-  textInput.addEventListener("input", () => {
+  textInput.setAttribute("lang", "en-US");
+  textInput.setAttribute("dir", "ltr");
+  if (nativeInput) {
+    nativeInput.setAttribute("lang", "en-US");
+    nativeInput.setAttribute("dir", "ltr");
+  }
+
+  textInput.addEventListener("input", (event) => {
+    kgwExplorerUiTraceR53B3("explorer-date", "r53b3-explorer-date-text-input", {
+      trusted: Boolean(event && event.isTrusted),
+      textId: String(textId || ""),
+      value: String(textInput.value || "")
+    });
     const clean = normalizeDateInputValue(textInput.value);
     if (clean !== textInput.value) textInput.value = clean;
-    if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) nativeInput.value = clean;
+    if (nativeInput && /^\d{4}-\d{2}-\d{2}$/.test(clean)) nativeInput.value = clean;
   });
 
-  textInput.addEventListener("blur", () => {
-    kgwSetEnglishDateValue(textInput, nativeInput, textInput.value);
-  });
-
-  nativeInput.addEventListener("change", () => {
-    kgwSetEnglishDateValue(textInput, nativeInput, nativeInput.value);
-  });
-
-  button.addEventListener("click", () => {
+  textInput.addEventListener("blur", (event) => {
+    kgwExplorerUiTraceR53B3("explorer-date", "r53b3-explorer-date-text-blur", {
+      trusted: Boolean(event && event.isTrusted),
+      textId: String(textId || ""),
+      value: String(textInput.value || "")
+    });
     kgwSetEnglishDateValue(textInput, nativeInput, textInput.value || fallbackValue);
-    kgwOpenNativeDatePicker(nativeInput);
+  });
+
+  nativeInput?.addEventListener("change", (event) => {
+    kgwExplorerUiTraceR53B3("explorer-date", "r53b3-explorer-date-native-change", {
+      trusted: Boolean(event && event.isTrusted),
+      textId: String(textId || ""),
+      nativeId: String(nativeId || ""),
+      value: String(nativeInput.value || "")
+    });
+    kgwSetEnglishDateValue(textInput, nativeInput, nativeInput.value || fallbackValue);
+  });
+
+  button.setAttribute("lang", "en-US");
+  button.setAttribute("dir", "ltr");
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    kgwExplorerUiTraceR53B3("explorer-calendar", "r53b3-explorer-calendar-button-click", {
+      trusted: Boolean(event && event.isTrusted),
+      textId: String(textId || ""),
+      nativeId: String(nativeId || ""),
+      buttonId: String(buttonId || "")
+    });
+    kgwSetEnglishDateValue(textInput, nativeInput, textInput.value || fallbackValue);
+    kgwCalendarOpen(section, textInput, nativeInput, textId, fallbackValue);
   });
 }
+/* KGW_CALENDAR_EXISTING_OWNER_REBUILD_R2_EXPLORER_OWNER_END */
 
 function kgwApplyExplorerFontSize(section, rawValue) {
   const clean = toEnglishDigits(rawValue ?? "9").replace(/[^0-9]/g, "").slice(0, 2);
@@ -1209,6 +1507,34 @@ function kgwDaySummaryRowsFromResult(result) {
   })).filter((item) => item.day);
 }
 
+
+
+/* KGW_EXPLORER_SAFE_CONTROLS_TRACE_PATCH_R53B3
+   Existing Explorer UI trace owner.
+   Scope: Explorer fetch, force fetch, filters, address, date/calendar, grouped rows, and safe export button activity.
+*/
+function kgwExplorerUiTraceR53B3(action, phase, details = {}) {
+  try {
+    const call = invokeApi();
+    if (typeof call !== "function") return Promise.resolve(false);
+
+    return Promise.resolve(call("kgw_frontend_button_trace_v1", {
+      scope: "explorer",
+      net: "ui",
+      action: String(action || "explorer-ui"),
+      phase: String(phase || "unknown"),
+      details: JSON.stringify({
+        patch: "KGW_EXPLORER_SAFE_CONTROLS_TRACE_PATCH_R53B3",
+        owner: "explorer-existing-safe-controls-owner",
+        action: String(action || "explorer-ui"),
+        phase: String(phase || "unknown"),
+        details: details && typeof details === "object" ? details : {}
+      })
+    })).catch(function () {});
+  } catch (_) {
+    return Promise.resolve(false);
+  }
+}
 
 /* KGW_FILTER_TRACE_1
    Console tracing for Explorer filters.
@@ -2114,10 +2440,20 @@ function kgwRenderRowsFromDb(section, rows, statusText) {
 }
 
 /* KGW_CLEAR_EXPLORER_TABLE_ON_CONTEXT_CHANGE */
-function clearExplorerTransactionTable(section, reason = "cleared") {
+/* KGW_EXPLORER_CANCEL_STATE_OWNER_FIX_R56E
+   Existing owner fix:
+   clearExplorerTransactionTable is used by normal context changes and by Cancel.
+   Normal context changes reset cancelRequested.
+   Cancel preserves cancelRequested so fetchTransactions/finally can observe it. */
+function clearExplorerTransactionTable(section, reason = "cleared", options = {}) {
+  const preserveCancelRequested = Boolean(options && options.preserveCancelRequested);
+
   explorerState.rows = [];
   explorerState.filteredRows = [];
-  explorerState.cancelRequested = false;
+
+  if (!preserveCancelRequested) {
+    explorerState.cancelRequested = false;
+  }
 
   renderTable(section);
   syncActionState(section);
@@ -2798,40 +3134,116 @@ function installEvents(section) {
   const fromDateInput = qs("#explorerFromDate", section);
   const toDateInput = qs("#explorerToDate", section);
 
-  qs("#explorerFetch", section).onclick = () => fetchTransactions(section, false);
-  qs("#explorerForceFetch", section).onclick = () => fetchTransactions(section, true);
-  qs("#explorerOpenExplorer", section).onclick = () => openBlockExplorer(section);
+  qs("#explorerFetch", section).onclick = (event) => {
+    event?.preventDefault?.();
+    kgwExplorerUiTraceR53B3("explorer-fetch", "r53b3-explorer-fetch-click", {
+      trusted: Boolean(event && event.isTrusted),
+      addressLength: String(qs("#explorerAddress", section)?.value || "").length,
+      fromDate: String(qs("#explorerFromDate", section)?.value || ""),
+      toDate: String(qs("#explorerToDate", section)?.value || "")
+    });
+    return fetchTransactions(section, false);
+  };
+
+  qs("#explorerForceFetch", section).onclick = (event) => {
+    event?.preventDefault?.();
+    kgwExplorerUiTraceR53B3("explorer-fetch", "r53b3-explorer-force-fetch-click", {
+      trusted: Boolean(event && event.isTrusted),
+      addressLength: String(qs("#explorerAddress", section)?.value || "").length,
+      fromDate: String(qs("#explorerFromDate", section)?.value || ""),
+      toDate: String(qs("#explorerToDate", section)?.value || "")
+    });
+    return fetchTransactions(section, true);
+  };
+
+  qs("#explorerOpenExplorer", section).onclick = (event) => {
+    event?.preventDefault?.();
+    kgwExplorerUiTraceR53B3("explorer-open", "r53b3-explorer-open-explorer-click", {
+      trusted: Boolean(event && event.isTrusted),
+      addressLength: String(qs("#explorerAddress", section)?.value || "").length
+    });
+    return openBlockExplorer(section);
+  };
 
   if (addressInput) {
-    addressInput.oninput = () => {
+    addressInput.oninput = (event) => {
+      kgwExplorerUiTraceR53B3("explorer-address", "r53b3-explorer-address-input", {
+        trusted: Boolean(event && event.isTrusted),
+        valueLength: String(addressInput.value || "").length
+      });
       explorerState.selectedAddress = normalizeAddress(addressInput.value);
       clearExplorerTransactionTable(section, "Address changed. Table cleared.");
     };
 
-    addressInput.onchange = () => {
+    addressInput.onchange = (event) => {
+      kgwExplorerUiTraceR53B3("explorer-address", "r53b3-explorer-address-change", {
+        trusted: Boolean(event && event.isTrusted),
+        valueLength: String(addressInput.value || "").length
+      });
       explorerState.selectedAddress = normalizeAddress(addressInput.value);
       clearExplorerTransactionTable(section, "Address changed. Table cleared.");
     };
   }
 
   if (fromDateInput) {
-    fromDateInput.onchange = () => {
+    fromDateInput.onchange = (event) => {
+      kgwExplorerUiTraceR53B3("explorer-date", "r53b3-explorer-from-date-change", {
+        trusted: Boolean(event && event.isTrusted),
+        value: String(fromDateInput.value || "")
+      });
       clearExplorerTransactionTable(section, "Date range changed. Table cleared.");
     };
   }
 
   if (toDateInput) {
-    toDateInput.onchange = () => {
+    toDateInput.onchange = (event) => {
+      kgwExplorerUiTraceR53B3("explorer-date", "r53b3-explorer-to-date-change", {
+        trusted: Boolean(event && event.isTrusted),
+        value: String(toDateInput.value || "")
+      });
       clearExplorerTransactionTable(section, "Date range changed. Table cleared.");
     };
   }
 
-  qs("#explorerCancel", section).onclick = () => {
+  qs("#explorerCancel", section).onclick = async (event) => {
+    event?.preventDefault?.();
+    kgwExplorerUiTraceR53B3("explorer-cancel", "r53b3-explorer-cancel-click", {
+      trusted: Boolean(event && event.isTrusted),
+      busyBefore: Boolean(explorerState.busy),
+      cancelBefore: Boolean(explorerState.cancelRequested)
+    });
     explorerState.cancelRequested = true;
-    clearExplorerTransactionTable(section, "Cancel requested. Table cleared.");
+
+    const backendRequestId = String(explorerState.backendCancelRequestId || "");
+
+    if (backendRequestId) {
+      kgwExplorerUiTraceR53B3("explorer-cancel", "r57d4-explorer-backend-cancel-invoke", {
+        trusted: Boolean(event && event.isTrusted),
+        requestIdLength: backendRequestId.length
+      });
+
+      try {
+        await kgwInvokeExplorerCancelTransactionsR57D4(backendRequestId);
+      } catch (error) {
+        kgwExplorerUiTraceR53B3("explorer-cancel", "r57d4-explorer-backend-cancel-error", {
+          message: String(error && (error.message || error))
+        });
+      }
+    }
+
+    clearExplorerTransactionTable(section, "Cancel requested. Table cleared.", {
+      preserveCancelRequested: true
+    });
   };
 
-  qs("#explorerApplyFilter", section).onclick = async () => {
+  qs("#explorerApplyFilter", section).onclick = async (event) => {
+    event?.preventDefault?.();
+    kgwExplorerUiTraceR53B3("explorer-filter", "r53b3-explorer-apply-filter-click", {
+      trusted: Boolean(event && event.isTrusted),
+      type: String(qs("#explorerTypeFilter", section)?.value || "ALL"),
+      direction: String(qs("#explorerDirectionFilter", section)?.value || "ALL"),
+      searchLength: String(qs("#explorerSearch", section)?.value || "").length
+    });
     try {
       await applyExplorerFiltersFromDatabase(section);
     } catch (error) {
@@ -2840,14 +3252,38 @@ function installEvents(section) {
     }
   };
 
-  qs("#explorerResetFilter", section).onclick = () => {
+  qs("#explorerResetFilter", section).onclick = (event) => {
+    event?.preventDefault?.();
+    kgwExplorerUiTraceR53B3("explorer-filter", "r53b3-explorer-reset-filter-click", {
+      trusted: Boolean(event && event.isTrusted)
+    });
     resetFilters(section);
     clearExplorerTransactionTable(section, "Filters reset. Table cleared.");
   };
 
-  qs("#explorerExportCsv", section).onclick = () => exportCsv(section);
-  qs("#explorerExportHtml", section).onclick = () => exportHtml(section);
-  qs("#explorerExportPdf", section).onclick = () => exportPdf(section);
+  qs("#explorerExportCsv", section).onclick = (event) => {
+    event?.preventDefault?.();
+    kgwExplorerUiTraceR53B3("explorer-export", "r53b3-explorer-export-csv-click", {
+      trusted: Boolean(event && event.isTrusted)
+    });
+    return exportCsv(section);
+  };
+
+  qs("#explorerExportHtml", section).onclick = (event) => {
+    event?.preventDefault?.();
+    kgwExplorerUiTraceR53B3("explorer-export", "r53b3-explorer-export-html-click", {
+      trusted: Boolean(event && event.isTrusted)
+    });
+    return exportHtml(section);
+  };
+
+  qs("#explorerExportPdf", section).onclick = (event) => {
+    event?.preventDefault?.();
+    kgwExplorerUiTraceR53B3("explorer-export", "r53b3-explorer-export-pdf-click", {
+      trusted: Boolean(event && event.isTrusted)
+    });
+    return exportPdf(section);
+  };
 }
 
 
@@ -3393,6 +3829,176 @@ async function kgwClean2LoadDayTransactions(section, address, day) {
 
   return rows;
 }
+
+/* KGW_EXPORT_RAW_PAYLOAD_PARITY_EXPLORER_V2
+   Export must use raw transaction rows, not the visible day-summary table.
+   This function is intentionally exposed to explorer.export.js through window
+   to keep the existing export_report route canonical and avoid a new export system.
+*/
+function kgwExplorerExportStringV2(value) {
+  return String(value ?? "").trim();
+}
+
+function kgwExplorerExportNumberV2(value, digits = 8) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "";
+  return number.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: digits
+  });
+}
+
+function kgwExplorerExportTxUrlV2(txid) {
+  const clean = kgwExplorerExportStringV2(txid);
+  return /^[0-9a-f]{32,}$/i.test(clean) ? `https://explorer.kaspa.org/txs/${clean}` : "";
+}
+
+function kgwExplorerExportAddressUrlV2(address) {
+  const clean = kgwExplorerExportStringV2(address);
+  return clean.startsWith("kaspa:") ? `https://explorer.kaspa.org/addresses/${clean}` : "";
+}
+
+function kgwExplorerExportJoinAddressesV2(...values) {
+  const seen = new Set();
+  const out = [];
+
+  for (const value of values.flat()) {
+    const clean = kgwExplorerExportStringV2(value);
+    if (!clean || seen.has(clean)) continue;
+    seen.add(clean);
+    out.push(clean);
+  }
+
+  return out.join(" | ");
+}
+
+function kgwExplorerExportNormalizeRawTxV2(row) {
+  const txid = kgwExplorerExportStringV2(row?.txid || row?.transactionId || row?.transaction_id || row?.id || row?.hash);
+  const fromAddress = kgwExplorerExportJoinAddressesV2(row?.from_address, row?.fromAddress, row?.from);
+  const toAddress = kgwExplorerExportJoinAddressesV2(row?.to_address, row?.toAddress, row?.to);
+  const counterparty = kgwExplorerExportStringV2(row?.counterparty || row?.counterParty);
+  const timestampMs = Number(row?.timestamp_ms ?? row?.timestampMs ?? row?.timestamp ?? 0) || 0;
+  const amount = Number(row?.amount ?? row?.amount_kas ?? row?.amountKas ?? 0) || 0;
+  const value = Number(row?.value ?? row?.value_usd ?? row?.valueUsd ?? 0) || 0;
+
+  return {
+    datetime: kgwExplorerExportStringV2(row?.datetime || row?.date_time || row?.dateTime || ""),
+    txid,
+    direction: kgwExplorerExportStringV2(row?.direction || "unknown"),
+    fromAddress,
+    toAddress,
+    counterparty,
+    amount,
+    blockScore: kgwExplorerExportStringV2(row?.block_score || row?.blockScore || row?.block_height || row?.blockHeight || ""),
+    timestampMs,
+    type: kgwExplorerExportStringV2(row?.type || row?.tx_type || row?.txType || "transfer"),
+    value,
+    date: kgwExplorerExportStringV2(row?.date || row?.day || ""),
+    transactionUrl: kgwExplorerExportTxUrlV2(txid),
+    addressUrl: kgwExplorerExportJoinAddressesV2(
+      kgwExplorerExportAddressUrlV2(fromAddress),
+      kgwExplorerExportAddressUrlV2(toAddress),
+      kgwExplorerExportAddressUrlV2(counterparty)
+    )
+  };
+}
+
+async function kgwExplorerBuildRawExportTableV2(section) {
+  const root = kgwClean2Section(section);
+  const address = explorerState.selectedAddress || normalizeAddress(qs("#explorerAddress", root)?.value);
+  const visibleRows = Array.isArray(explorerState?.filteredRows) ? explorerState.filteredRows : [];
+
+  if (!isKaspaAddress(address)) {
+    throw new Error("Enter a valid Kaspa address before exporting raw transactions.");
+  }
+
+  if (!visibleRows.length) {
+    throw new Error("No explorer rows are available for export. Fetch transactions first, then export.");
+  }
+
+  const rawRows = [];
+  const seenTxids = new Set();
+  const summaryDays = visibleRows
+    .filter((row) => row?.__kgwDaySummary && row.day)
+    .map((row) => String(row.day).slice(0, 10))
+    .filter(Boolean);
+
+  if (summaryDays.length) {
+    for (const day of summaryDays) {
+      const dayRows = await kgwClean2LoadDayTransactions(root, address, day);
+
+      for (const row of Array.isArray(dayRows) ? dayRows : []) {
+        const normalized = kgwExplorerExportNormalizeRawTxV2(row);
+        if (!normalized.txid || seenTxids.has(normalized.txid)) continue;
+        seenTxids.add(normalized.txid);
+        rawRows.push(normalized);
+      }
+    }
+  } else {
+    for (const row of visibleRows) {
+      const normalized = kgwExplorerExportNormalizeRawTxV2(row);
+      if (!normalized.txid || seenTxids.has(normalized.txid)) continue;
+      seenTxids.add(normalized.txid);
+      rawRows.push(normalized);
+    }
+  }
+
+  rawRows.sort((a, b) => {
+    if (b.timestampMs !== a.timestampMs) return b.timestampMs - a.timestampMs;
+    return String(b.datetime || "").localeCompare(String(a.datetime || ""));
+  });
+
+  if (!rawRows.length) {
+    throw new Error("Explorer raw transaction export found no transaction rows. Expand/fetch data first, then export.");
+  }
+
+  const rows = rawRows.map((row) => [
+    row.datetime,
+    row.txid,
+    row.direction,
+    row.fromAddress,
+    row.toAddress,
+    kgwExplorerExportNumberV2(row.amount, 8),
+    row.blockScore,
+    String(row.timestampMs || ""),
+    row.type,
+    kgwExplorerExportNumberV2(row.value, 2),
+    row.date,
+    row.transactionUrl,
+    row.addressUrl
+  ]);
+
+  window.__KGW_EXPLORER_RAW_EXPORT_LAST_V2 = {
+    at: new Date().toISOString(),
+    days: summaryDays.length,
+    rows: rows.length,
+    address
+  };
+
+  return {
+    title: "Kaspa Gateway Explorer Transactions",
+    subtitle: `Address: ${address} | Raw transactions: ${rows.length}`,
+    headers: [
+      "Date/Time",
+      "Transaction ID",
+      "Direction",
+      "From Address(es)",
+      "To Address(es)",
+      "Amount (KAS)",
+      "Block Score",
+      "timestamp",
+      "Type:",
+      "Value (USD)",
+      "date",
+      "Transaction URL",
+      "Address URL"
+    ],
+    rows
+  };
+}
+
+window.__kgwExplorerBuildRawExportTableV2 = kgwExplorerBuildRawExportTableV2;
+
 
 async function kgwClean2RenderSummaries(section, rows, statusText = "") {
   const root = kgwClean2Section(section);
@@ -3996,6 +4602,12 @@ async function fetchTransactions(section, forceMode) {
   const isForce = Boolean(forceMode);
   const address = normalizeAddress(qs("#explorerAddress", root)?.value);
 
+  
+  kgwExplorerUiTraceR53B3("explorer-fetch", "r53b3-explorer-fetch-owner-begin", {
+    force: Boolean(isForce),
+    addressLength: String(address || "").length
+  });
+
   if (!isKaspaAddress(address)) {
     clearExplorerTransactionTable(root, "Enter a valid Kaspa address.");
     return;
@@ -4007,6 +4619,26 @@ async function fetchTransactions(section, forceMode) {
   explorerState.selectedAddress = address;
   explorerState.busy = true;
   explorerState.cancelRequested = false;
+
+  const backendRequestIdR57D4 = `explorer-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  explorerState.backendCancelRequestId = backendRequestIdR57D4;
+
+  const stopIfExplorerCancelRequestedR56E = (stage) => {
+    if (!explorerState.cancelRequested) {
+      return false;
+    }
+
+    kgwExplorerUiTraceR53B3("explorer-fetch", "r56e-explorer-fetch-cancel-observed", {
+      force: Boolean(isForce),
+      stage: String(stage || "")
+    });
+
+    clearExplorerTransactionTable(root, "Fetch cancelled. Table cleared.", {
+      preserveCancelRequested: true
+    });
+
+    return true;
+  };
 
   if (typeof window.kgwSetGlobalFetchBusy === "function") {
     window.kgwSetGlobalFetchBusy(true, {
@@ -4040,6 +4672,10 @@ async function fetchTransactions(section, forceMode) {
 
       const firstRows = await kgwClean2LoadSummaries(root, address, startTs, endTs);
 
+      if (stopIfExplorerCancelRequestedR56E("after-local-summary-load")) {
+        return;
+      }
+
       await kgwClean2RenderSummaries(
         root,
         firstRows,
@@ -4050,6 +4686,10 @@ async function fetchTransactions(section, forceMode) {
 
       kgwLiveCoreSeedFromCurrentRows(address);
 
+      if (stopIfExplorerCancelRequestedR56E("after-initial-render")) {
+        return;
+      }
+
       kgwForceSetControlsBusy(root, true, "normal");
     }
 
@@ -4059,11 +4699,16 @@ async function fetchTransactions(section, forceMode) {
       saveAddressToDatabase(address, "")
     ]);
 
+    if (stopIfExplorerCancelRequestedR56E("after-address-side-effects")) {
+      return;
+    }
+
     const request = {
       address,
       force: isForce,
       start_ts: startTs,
       end_ts: endTs,
+      request_id: backendRequestIdR57D4,
       // Force fetch must rebuild the address database completely.
       // Do not let current display filters limit what is fetched/stored.
       tx_type: isForce ? "ALL" : kgwNormalizeTxTypeFilterValue(qs("#explorerTypeFilter", root)?.value),
@@ -4075,7 +4720,16 @@ async function fetchTransactions(section, forceMode) {
 
     const result = await kgwInvokeExplorerUnifiedFetch(request);
     kgwClean2Log("fetch result ignored for table", result);
+
+    if (stopIfExplorerCancelRequestedR56E("after-unified-fetch")) {
+      return;
+    }
+
     const finalRows = await kgwClean2LoadSummaries(root, address, startTs, endTs);
+
+    if (stopIfExplorerCancelRequestedR56E("after-final-summary-load")) {
+      return;
+    }
 
     await kgwClean2RenderSummaries(
       root,
@@ -4085,6 +4739,10 @@ async function fetchTransactions(section, forceMode) {
         : `Fetch done. Showing ${finalRows.length.toLocaleString()} days from local database. Click + to load one day.`
     );
   } catch (error) {
+    kgwExplorerUiTraceR53B3("explorer-fetch", "r53b3-explorer-fetch-owner-error", {
+      force: Boolean(isForce),
+      message: error?.message || String(error)
+    });
     console.error("[KGW Explorer][force-ui] fetch failed", error);
     try {
       const rows = await kgwClean2LoadSummaries(root, address, startTs, endTs);
@@ -4098,6 +4756,14 @@ async function fetchTransactions(section, forceMode) {
       clearExplorerTransactionTable(root, error?.message || String(error));
     }
   } finally {
+        if (explorerState.backendCancelRequestId === backendRequestIdR57D4) {
+      explorerState.backendCancelRequestId = "";
+    }
+
+kgwExplorerUiTraceR53B3("explorer-fetch", "r53b3-explorer-fetch-owner-finally", {
+      force: Boolean(isForce),
+      cancelRequested: Boolean(explorerState.cancelRequested)
+    });
     explorerState.busy = false;
 
     if (typeof window.kgwSetGlobalFetchBusy === "function") {

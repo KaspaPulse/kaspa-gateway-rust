@@ -460,11 +460,69 @@ function activateTab(tabId) {
   shellLog.log("tab isolation snapshot", kgwStrictSnapshot(selected));
 }
 
+/* KGW_CALENDAR_TAB_LIFECYCLE_CLEANUP_R11B
+   Existing shell tab lifecycle cleanup.
+   main.js owns top-level tab switching through openTab(tabId).
+   Calendar popovers are attached to document.body by existing Explorer/Analysis owners,
+   so stale body popovers must be closed before switching tabs.
+*/
+function kgwCloseCalendarPopoversForTabLifecycleR11B(reason = "tab-switch") {
+  document.querySelectorAll(".kgw-calendar-popover").forEach((node) => node.remove());
+
+  document.querySelectorAll("[data-kgw-calendar-open='1']").forEach((node) => {
+    delete node.dataset.kgwCalendarOpen;
+    delete node.dataset.kgwCalendarScope;
+  });
+
+  document.documentElement.dataset.kgwCalendarLifecycleCleanupR11B = String(reason || "tab-switch");
+}
+
+
+// KGW_EXPLICIT_MAIN_TAB_TRACE_OWNER_R35C_BEGIN
+function kgwMainTabTraceR35C(tabId, phase, details) {
+  try {
+    const safeTab = String(tabId || "unknown");
+    const safePhase = String(phase || "unknown");
+    const payload = {
+      patch: "KGW_EXPLICIT_MAIN_TAB_TRACE_PATCH_R35C",
+      owner: "main-existing-tab-owner",
+      tabId: safeTab,
+      phase: safePhase,
+      details: details && typeof details === "object" ? details : {}
+    };
+
+    const invoke =
+      window.__TAURI__?.core?.invoke ||
+      window.__TAURI__?.tauri?.invoke ||
+      window.__TAURI_INVOKE__ ||
+      null;
+
+    if (typeof invoke === "function") {
+      invoke("kgw_frontend_button_trace_v1", {
+        scope: "shell",
+        net: "ui",
+        action: "tab-navigation",
+        phase: safePhase,
+        details: JSON.stringify(payload)
+      }).catch(function () {});
+    }
+  } catch (_) {}
+}
+// KGW_EXPLICIT_MAIN_TAB_TRACE_OWNER_R35C_END
+
 async function openTab(tabId) {
   shellLog.log("openTab", tabId);
-const tab = tabById(tabId);
+
+  kgwCloseCalendarPopoversForTabLifecycleR11B("open-tab-before-init");
+
+  const tab = tabById(tabId);
   await initTab(tab);
   activateTab(tab.id);
+
+  kgwMainTabTraceR35C(tab.id, "r35c-open-tab", {
+    requestedTabId: String(tabId || ""),
+    activeHash: String(window.location.hash || "")
+  });
 
   window.dispatchEvent(new CustomEvent("kgw:tab-opened", { detail: { tabId: tab.id } }));
 
@@ -478,8 +536,15 @@ function bindNavigation() {
     if (button.dataset.kgwBound === "true") return;
     button.dataset.kgwBound = "true";
 
-    button.addEventListener("click", async () => {
+    button.addEventListener("click", async (event) => {
       try {
+        kgwMainTabTraceR35C(button.dataset.tab, "r35c-tab-click", {
+          trusted: Boolean(event && event.isTrusted),
+          text: String(button.textContent || "").trim(),
+          id: String(button.id || ""),
+          className: String(button.className || "")
+        });
+
         await openTab(button.dataset.tab);
       } catch (error) {
         kgwFatal(error, "shell");

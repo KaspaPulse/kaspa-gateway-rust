@@ -22,7 +22,40 @@ No invented log messages, no placeholder runtime lines, and no UI-only fake stat
 
 ## Table of contents
 
-- [Project status](#project-status)
+- [<!-- KGW_CURRENT_RELEASE_START -->
+## Current verified desktop release
+
+Current desktop version:
+
+`0.1.0`
+
+Current release tag prepared by this workflow:
+
+`desktop-v0.1.0-20260523-053016`
+
+Runtime bindings are pinned to explicit git revisions, not floating branches:
+
+| Network | Runtime family | Repository | Branch | Pinned revision |
+|---|---:|---|---|---|
+| mainnet | mainline | https://github.com/kaspanet/rusty-kaspa.git | master | `4969c6c31bec6a1a31e17c2e8a43532e17834240` |
+| testnet10 | tn12 | https://github.com/LiveLaughLove13/rusty-kaspa.git | RKStratumTN12 | `a6a408943e1a62cd46fab3e6032c90cf152ab2ad` |
+| testnet12 | tn12 | https://github.com/LiveLaughLove13/rusty-kaspa.git | RKStratumTN12 | `a6a408943e1a62cd46fab3e6032c90cf152ab2ad` |
+
+Release validation includes:
+
+- runtime repository binding audit
+- global owner gate
+- i18n contract gate
+- i18n locale coverage gate
+- JavaScript syntax checks
+- cargo fmt check
+- cargo check
+- Tauri NSIS installer build
+
+Release artifacts are published as GitHub Release assets and are not committed to Git.
+<!-- KGW_CURRENT_RELEASE_END -->
+
+Project status](#project-status)
 - [Repository links and runtime bindings](#repository-links-and-runtime-bindings)
 - [What the application does](#what-the-application-does)
 - [Main features](#main-features)
@@ -1069,4 +1102,5 @@ Desktop framework:
 ```text
 https://tauri.app/
 ```
+
 

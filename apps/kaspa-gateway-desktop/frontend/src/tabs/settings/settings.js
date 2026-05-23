@@ -69,6 +69,37 @@ function qa(selector) {
   return Array.from(root()?.querySelectorAll(selector) || []);
 }
 
+
+// KGW_SETTINGS_UI_TRACE_PATCH_R48B3
+function kgwSettingsUiTraceR48B3(action, phase, details) {
+  try {
+    const safeAction = String(action || "settings-ui");
+    const safePhase = String(phase || "unknown");
+    const safeDetails = details && typeof details === "object" ? details : {};
+    const args = {
+      scope: "settings",
+      net: "ui",
+      action: safeAction,
+      phase: safePhase,
+      details: JSON.stringify({
+        patch: "KGW_SETTINGS_UI_TRACE_PATCH_R48B3",
+        owner: "settings-existing-ui-owners",
+        action: safeAction,
+        phase: safePhase,
+        details: safeDetails
+      })
+    };
+    const tauri = window.__TAURI__;
+    const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
+      ? tauri.core.invoke.bind(tauri.core)
+      : tauri && typeof tauri.invoke === "function"
+        ? tauri.invoke.bind(tauri)
+        : window.__TAURI_INVOKE__;
+    if (typeof invoke === "function") {
+      invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
+    }
+  } catch (_) {}
+}
 function setSaveEnabled(enabled) {
   const save = q("#settingsSaveSettings");
   if (save) save.disabled = !enabled;
@@ -120,11 +151,17 @@ function bindSelectAll(masterSelector, childSelector) {
 
   if (master.dataset.bound !== "true") {
     master.dataset.bound = "true";
-    master.addEventListener("change", () => {
+    master.addEventListener("change", (event) => {
       children.forEach((node) => {
         node.checked = master.checked;
       });
       master.indeterminate = false;
+      kgwSettingsUiTraceR48B3("settings-select-all", "r48b3-select-all-master-change", {
+        trusted: Boolean(event && event.isTrusted),
+        masterSelector: String(masterSelector || ""),
+        childSelector: String(childSelector || ""),
+        checked: Boolean(master.checked)
+      });
       markDirty();
     });
   }
@@ -132,8 +169,15 @@ function bindSelectAll(masterSelector, childSelector) {
   children.forEach((node) => {
     if (node.dataset.bound === "true") return;
     node.dataset.bound = "true";
-    node.addEventListener("change", () => {
+    node.addEventListener("change", (event) => {
       updateSelectAll(masterSelector, childSelector);
+      kgwSettingsUiTraceR48B3("settings-select-all", "r48b3-select-all-child-change", {
+        trusted: Boolean(event && event.isTrusted),
+        masterSelector: String(masterSelector || ""),
+        childSelector: String(childSelector || ""),
+        targetId: String(node.id || ""),
+        targetValue: String(node.dataset.settingsLanguage || node.dataset.settingsCurrency || node.dataset.settingsVisibleTab || "")
+      });
       markDirty();
     });
   });
@@ -596,7 +640,12 @@ function bindStaticActions() {
     if (button.dataset.bound === "true") return;
     button.dataset.bound = "true";
 
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      kgwSettingsUiTraceR48B3("settings-navigation", "r48b3-settings-tab-click", {
+        trusted: Boolean(event && event.isTrusted),
+        selected: String(button.dataset.settingsTab || ""),
+        text: String(button.textContent || "").trim()
+      });
       activateOuter(button.dataset.settingsTab);
       markDirty();
     });
@@ -606,7 +655,12 @@ function bindStaticActions() {
     if (button.dataset.bound === "true") return;
     button.dataset.bound = "true";
 
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      kgwSettingsUiTraceR48B3("settings-navigation", "r48b3-settings-inner-tab-click", {
+        trusted: Boolean(event && event.isTrusted),
+        selected: String(button.dataset.settingsInnerTab || ""),
+        text: String(button.textContent || "").trim()
+      });
       activateInner(button.dataset.settingsInnerTab);
       markDirty();
     });
@@ -621,12 +675,26 @@ function bindStaticActions() {
     if (node.dataset.changeBound === "true") return;
     node.dataset.changeBound = "true";
 
-    node.addEventListener("input", () => {
+    node.addEventListener("input", (event) => {
+      kgwSettingsUiTraceR48B3("settings-choice", "r48b3-settings-input", {
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(node.id || ""),
+        targetName: String(node.name || ""),
+        targetTag: String(node.tagName || ""),
+        value: String(node.type === "checkbox" ? node.checked : node.value || "")
+      });
       combineUrl();
       markDirty();
     });
 
-    node.addEventListener("change", () => {
+    node.addEventListener("change", (event) => {
+      kgwSettingsUiTraceR48B3("settings-choice", "r48b3-settings-change", {
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(node.id || ""),
+        targetName: String(node.name || ""),
+        targetTag: String(node.tagName || ""),
+        value: String(node.type === "checkbox" ? node.checked : node.value || "")
+      });
       combineUrl();
       markDirty();
     });
@@ -636,7 +704,12 @@ function bindStaticActions() {
     if (row.dataset.bound === "true") return;
     row.dataset.bound = "true";
 
-    row.addEventListener("click", () => {
+    row.addEventListener("click", (event) => {
+      kgwSettingsUiTraceR48B3("settings-endpoint", "r48b3-endpoint-row-click", {
+        trusted: Boolean(event && event.isTrusted),
+        apiKey: String(row.dataset.apiKey || ""),
+        text: String(row.textContent || "").trim()
+      });
       selectEndpoint(row);
       markDirty();
     });
@@ -646,7 +719,12 @@ function bindStaticActions() {
     if (button.dataset.bound === "true") return;
     button.dataset.bound = "true";
 
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      kgwSettingsUiTraceR48B3("settings-field-action", "r48b3-clear-for-click", {
+        trusted: Boolean(event && event.isTrusted),
+        target: String(button.dataset.clearFor || ""),
+        text: String(button.textContent || "").trim()
+      });
       const target = q(`#${CSS.escape(button.dataset.clearFor)}`);
       if (target) target.value = "";
       markDirty();
@@ -657,7 +735,12 @@ function bindStaticActions() {
     if (button.dataset.bound === "true") return;
     button.dataset.bound = "true";
 
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      kgwSettingsUiTraceR48B3("settings-field-action", "r48b3-browse-for-click", {
+        trusted: Boolean(event && event.isTrusted),
+        target: String(button.dataset.browseFor || ""),
+        text: String(button.textContent || "").trim()
+      });
       const target = q(`#${CSS.escape(button.dataset.browseFor)}`);
       if (target && !target.value) {
         void kgwSettingsLoadDynamicPathDefaultsR4("browse-defaults");
@@ -669,13 +752,25 @@ function bindStaticActions() {
   const reset = q("#settingsResetDefaults");
   if (reset && reset.dataset.bound !== "true") {
     reset.dataset.bound = "true";
-    reset.addEventListener("click", resetDefaults);
+    reset.addEventListener("click", (event) => {
+      kgwSettingsUiTraceR48B3("settings-action", "r48b3-reset-defaults-click", {
+        trusted: Boolean(event && event.isTrusted),
+        targetId: "settingsResetDefaults"
+      });
+      resetDefaults();
+    });
   }
 
   const save = q("#settingsSaveSettings");
   if (save && save.dataset.bound !== "true") {
     save.dataset.bound = "true";
-    save.addEventListener("click", saveState);
+    save.addEventListener("click", (event) => {
+      kgwSettingsUiTraceR48B3("settings-action", "r48b3-save-settings-click", {
+        trusted: Boolean(event && event.isTrusted),
+        targetId: "settingsSaveSettings"
+      });
+      saveState();
+    });
   }
 
   const placeholderActions = [
@@ -702,7 +797,13 @@ function bindStaticActions() {
     if (!button || button.dataset.bound === "true") return;
 
     button.dataset.bound = "true";
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      kgwSettingsUiTraceR48B3("settings-placeholder-action", "r48b3-placeholder-action-click", {
+        trusted: Boolean(event && event.isTrusted),
+        actionId: String(id || ""),
+        text: String(button.textContent || "").trim()
+      });
+
       if (id === "settingsAddressClear") {
         const name = q("#settingsAddressName");
         const address = q("#settingsAddressValue");
@@ -769,7 +870,13 @@ function installLogDiagnosticsSettings() {
     input.type = "checkbox";
     input.checked = localStorage.getItem(key) === "1";
 
-    input.addEventListener("change", function () {
+    input.addEventListener("change", function (event) {
+      kgwSettingsUiTraceR48B3("settings-log-diagnostics", "r48b3-log-diagnostics-change", {
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(id || ""),
+        key: String(key || ""),
+        checked: Boolean(input.checked)
+      });
       localStorage.setItem(key, input.checked ? "1" : "0");
       setSaveEnabled(true);
       settingsLogger().log(`${text}: ${input.checked ? "enabled" : "disabled"}`);
@@ -1355,6 +1462,12 @@ function kgwInstallSettingsManageAddresses() {
     event.preventDefault();
     event.stopImmediatePropagation();
 
+    kgwSettingsUiTraceR48B3("settings-addresses", "r48b3-address-action-click", {
+      trusted: Boolean(event && event.isTrusted),
+      action: add ? "add" : del ? "delete" : clear ? "clear" : refresh ? "refresh" : "unknown",
+      text: String((add || del || clear || refresh)?.textContent || "").trim()
+    });
+
     if (add) {
       kgwSaveSettingsAddress();
       return;
@@ -1882,6 +1995,11 @@ function kgwSettingsDbInstallRowSelection() {
     row.classList.add("is-selected");
     row.dataset.databaseKind = kind;
     KGW_SETTINGS_DB_ACTION_STATE.selectedKind = kind;
+    kgwSettingsUiTraceR48B3("settings-database", "r48b3-database-row-select", {
+      trusted: Boolean(event && event.isTrusted),
+      database: String(kind || ""),
+      text: String(row.textContent || "").trim()
+    });
     kgwSettingsDbStatus("Selected database: " + kind);
   }, true);
 }
@@ -1925,6 +2043,12 @@ function kgwInstallSettingsDbMaintenanceActions() {
     event.stopImmediatePropagation();
 
     const id = button.id;
+
+    kgwSettingsUiTraceR48B3("settings-database", "r48b3-database-action-click", {
+      trusted: Boolean(event && event.isTrusted),
+      actionId: String(id || ""),
+      text: String(button.textContent || "").trim()
+    });
 
     (async () => {
       if (id === "settingsDbRefresh") {

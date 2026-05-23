@@ -316,87 +316,442 @@ function escapeHtml(text) {
     .replaceAll("'", "&#39;");
 }
 
-function downloadText(filename, content, type = "text/plain;charset=utf-8") {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+function kgwTopLocaleV1G() {
+  return document.documentElement.getAttribute("lang") ||
+    window.kgwCurrentLocale ||
+    window.localStorage?.getItem?.("kgw.locale") ||
+    "en";
+}
+
+// KGW_EXPORT_TEMPLATE_PARITY_TOP_URLS_V1B
+function kgwTopQueryV1B(selector) {
+  return document.querySelector(selector);
+}
+
+function kgwTopAddressUrlV1B(address) {
+  const clean = String(address || "").trim().replace(/[\\s'"<>]+$/g, "");
+  return clean.startsWith("kaspa:") ? `https://explorer.kaspa.org/addresses/${clean}` : "";
+}
+
+function kgwTopSelectedCurrencyV1B() {
+  const candidates = [
+    kgwTopQueryV1B("#topAddressesCurrency")?.value,
+    kgwTopQueryV1B("[data-top-addresses-currency]")?.value,
+    kgwTopQueryV1B("[name='topAddressesCurrency']")?.value,
+    window.kgwSelectedCurrency,
+    window.KGW_SELECTED_CURRENCY,
+    localStorage.getItem("kgw.currency"),
+    localStorage.getItem("kgw.selectedCurrency")
+  ];
+
+  for (const value of candidates) {
+    const text = String(value || "").trim().toUpperCase();
+    if (/^[A-Z]{3}$/.test(text)) return text;
+  }
+
+  return "USD";
+}
+
+function kgwTopValueForCurrencyV1B(row, currency) {
+  const lower = String(currency || "USD").toLowerCase();
+  const upper = String(currency || "USD").toUpperCase();
+
+  const candidates = [
+    row[`value_${lower}`],
+    row[`value_${upper}`],
+    row[`value${upper}`],
+    row.value,
+    row.value_usd,
+    row.valueUSD
+  ];
+
+  for (const value of candidates) {
+    if (value !== undefined && value !== null && String(value).trim() !== "") return String(value);
+  }
+
+  return "";
+}
+
+function kgwTopClientTableV1G() {
+  const rows = TOP_ADDRESSES_STATE.filteredRows || [];
+  const currency = kgwTopSelectedCurrencyV1B();
+
+  if (!rows.length) throw new Error("No top address rows are available for export.");
+
+  return {
+    title: "Kaspa Gateway Top Addresses",
+    subtitle: `Last Updated: ${TOP_ADDRESSES_STATE.lastUpdatedText || "--"} | Currency: ${currency}`,
+    headers: ["Rank", "Known Name", "Address", "Address URL", "Balance (KAS)", `Value (${currency})`],
+    rows: rows.map((row) => [
+      String(row.rank ?? ""),
+      String(row.known_name ?? row.knownName ?? ""),
+      String(row.address ?? ""),
+      kgwTopAddressUrlV1B(row.address ?? ""),
+      String(row.balance ?? ""),
+      kgwTopValueForCurrencyV1B(row, currency)
+    ])
+  };
+}
+
+
+/* KGW_EXPORT_NATIVE_SAVE_PHASE_A_V8_START */
+
+
+function kgwTopDialogApiV9() {
+  const tauriKeys = Object.keys(window.__TAURI__ || {});
+  const dialog = window.__TAURI__?.dialog;
+
+  if (!dialog || typeof dialog.save !== "function" || typeof dialog.ask !== "function") {
+    throw new Error(
+      "Tauri global dialog API is not available. Expected window.__TAURI__.dialog.save/ask. Available window.__TAURI__ keys: " +
+      tauriKeys.join(",")
+    );
+  }
+
+  return dialog;
+}
+
+
+async function kgwTopLoadNativeDialogV8() {
+  return kgwTopDialogApiV9();
+}
+
+function kgwTopNativeDialogFilterV8(format) {
+  const ext = String(format || "").replace(/^\./, "").toLowerCase();
+  return {
+    name: ext ? `${ext.toUpperCase()} files` : "Export files",
+    extensions: ext ? [ext] : []
+  };
+}
+
+async function kgwTopNativeSavePathV8(format, defaultPath) {
+  const dialog = await kgwTopLoadNativeDialogV8();
+  const selected = await dialog.save({
+    title: "Save export",
+    defaultPath,
+    filters: [kgwTopNativeDialogFilterV8(format)]
+  });
+  return selected ? String(selected) : null;
+}
+
+
+/* KGW_EXPORT_CENTERED_OPEN_PROMPT_V10_START */
+function kgwExportCenteredOpenPromptTextV10() {
+  const lang = String(document.documentElement?.lang || localStorage.getItem("kgw.language") || "en").toLowerCase();
+
+  if (lang.startsWith("ar")) {
+    return {
+      title: "تم الحفظ",
+      message: "تم حفظ الملف بنجاح. هل تريد فتحه الآن؟",
+      open: "فتح",
+      cancel: "إلغاء",
+      dir: "rtl"
+    };
+  }
+
+  if (lang.startsWith("de")) {
+    return {
+      title: "Gespeichert",
+      message: "Die Datei wurde gespeichert. Möchten Sie sie jetzt öffnen?",
+      open: "Öffnen",
+      cancel: "Abbrechen",
+      dir: "ltr"
+    };
+  }
+
+  if (lang.startsWith("es")) {
+    return {
+      title: "Guardado",
+      message: "El archivo se ha guardado. ¿Quieres abrirlo ahora?",
+      open: "Abrir",
+      cancel: "Cancelar",
+      dir: "ltr"
+    };
+  }
+
+  if (lang.startsWith("fr")) {
+    return {
+      title: "Enregistré",
+      message: "Le fichier a été enregistré. Voulez-vous l’ouvrir maintenant ?",
+      open: "Ouvrir",
+      cancel: "Annuler",
+      dir: "ltr"
+    };
+  }
+
+  return {
+    title: "Saved",
+    message: "The file was saved successfully. Do you want to open it now?",
+    open: "Open",
+    cancel: "Cancel",
+    dir: "ltr"
+  };
+}
+
+function kgwExportEnsureCenteredOpenPromptStyleV10() {
+  const styleId = "kgw-export-centered-open-prompt-v10-style";
+  if (document.getElementById(styleId)) return;
+
+  const style = document.createElement("style");
+  style.id = styleId;
+  style.textContent = `
+    .kgw-export-open-prompt-v10-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 2147483000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0, 0, 0, 0.28);
+      box-sizing: border-box;
+    }
+
+    .kgw-export-open-prompt-v10-card {
+      width: min(440px, calc(100vw - 48px));
+      min-height: 132px;
+      border-radius: 14px;
+      border: 1px solid rgba(124, 171, 255, 0.28);
+      background: #101827;
+      color: #f8fbff;
+      box-shadow: 0 22px 70px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+      font-family: inherit;
+    }
+
+    .kgw-export-open-prompt-v10-card[dir="rtl"] {
+      text-align: right;
+    }
+
+    .kgw-export-open-prompt-v10-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 15px 18px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+
+    .kgw-export-open-prompt-v10-close {
+      width: 30px;
+      height: 30px;
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: #d7e7ff;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .kgw-export-open-prompt-v10-close:hover {
+      background: rgba(255, 255, 255, 0.10);
+    }
+
+    .kgw-export-open-prompt-v10-body {
+      padding: 18px;
+      color: #e7eefb;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .kgw-export-open-prompt-v10-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 0 18px 18px;
+    }
+
+    .kgw-export-open-prompt-v10-card[dir="rtl"] .kgw-export-open-prompt-v10-actions {
+      justify-content: flex-start;
+    }
+
+    .kgw-export-open-prompt-v10-button {
+      min-width: 94px;
+      height: 34px;
+      border-radius: 10px;
+      border: 1px solid rgba(124, 171, 255, 0.26);
+      background: rgba(255, 255, 255, 0.08);
+      color: #f8fbff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .kgw-export-open-prompt-v10-button:hover {
+      background: rgba(255, 255, 255, 0.13);
+    }
+
+    .kgw-export-open-prompt-v10-primary {
+      border-color: rgba(112, 180, 255, 0.65);
+      background: #4f88d9;
+      color: #ffffff;
+    }
+
+    .kgw-export-open-prompt-v10-primary:hover {
+      background: #5b96ee;
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
+function kgwExportCenteredOpenPromptV10() {
+  kgwExportEnsureCenteredOpenPromptStyleV10();
+
+  const labels = kgwExportCenteredOpenPromptTextV10();
+
+  return new Promise((resolve) => {
+    const previousActive = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "kgw-export-open-prompt-v10-backdrop";
+    backdrop.setAttribute("role", "presentation");
+
+    const card = document.createElement("div");
+    card.className = "kgw-export-open-prompt-v10-card";
+    card.setAttribute("role", "dialog");
+    card.setAttribute("aria-modal", "true");
+    card.setAttribute("aria-labelledby", "kgw-export-open-prompt-v10-title");
+    card.setAttribute("dir", labels.dir);
+
+    const header = document.createElement("div");
+    header.className = "kgw-export-open-prompt-v10-header";
+
+    const title = document.createElement("div");
+    title.id = "kgw-export-open-prompt-v10-title";
+    title.textContent = labels.title;
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "kgw-export-open-prompt-v10-close";
+    close.setAttribute("aria-label", labels.cancel);
+    close.textContent = "×";
+
+    const body = document.createElement("div");
+    body.className = "kgw-export-open-prompt-v10-body";
+    body.textContent = labels.message;
+
+    const actions = document.createElement("div");
+    actions.className = "kgw-export-open-prompt-v10-actions";
+
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "kgw-export-open-prompt-v10-button";
+    cancel.textContent = labels.cancel;
+
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "kgw-export-open-prompt-v10-button kgw-export-open-prompt-v10-primary";
+    open.textContent = labels.open;
+
+    let resolved = false;
+
+    function cleanup(value) {
+      if (resolved) return;
+      resolved = true;
+      document.removeEventListener("keydown", onKeyDown, true);
+      backdrop.remove();
+      if (previousActive && typeof previousActive.focus === "function") {
+        try { previousActive.focus(); } catch (_) {}
+      }
+      resolve(Boolean(value));
+    }
+
+    function onKeyDown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        cleanup(false);
+        return;
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        cleanup(true);
+      }
+    }
+
+    close.addEventListener("click", () => cleanup(false));
+    cancel.addEventListener("click", () => cleanup(false));
+    open.addEventListener("click", () => cleanup(true));
+
+    backdrop.addEventListener("mousedown", (event) => {
+      if (event.target === backdrop) cleanup(false);
+    });
+
+    header.append(title, close);
+    actions.append(cancel, open);
+    card.append(header, body, actions);
+    backdrop.append(card);
+    document.body.appendChild(backdrop);
+
+    document.addEventListener("keydown", onKeyDown, true);
+    setTimeout(() => open.focus(), 0);
+  });
+}
+/* KGW_EXPORT_CENTERED_OPEN_PROMPT_V10_END */
+
+
+async function kgwTopNativeAskOpenV8(finalPath) {
+  const accepted = await kgwExportCenteredOpenPromptV10();
+  if (!accepted) return false;
+
+  const call = invoke();
+  if (!call) throw new Error("Tauri invoke API is not available.");
+
+  await call("kgw_open_exported_file_v1", { path: finalPath });
+  return true;
+}
+
+/* KGW_EXPORT_NATIVE_SAVE_PHASE_A_V8_END */
+
+
+async function kgwTopExportBackendV1G(format) {
+  const call = invoke();
+  if (!call) throw new Error("Tauri invoke API is not available.");
+
+  const outputPath = await call("export_default_path", {
+    reportType: "TopAddresses",
+    format
+  });
+
+  const selectedOutputPath = await kgwTopNativeSavePathV8(format, outputPath);
+  if (!selectedOutputPath) {
+    setStatus("Export cancelled.");
+    return;
+  }
+
+  const result = await call("export_report", {
+    request: {
+      reportType: "TopAddresses",
+      format,
+      outputPath: selectedOutputPath,
+      addressFilter: null,
+      timeRange: "all",
+      limit: 100000,
+      locale: kgwTopLocaleV1G(),
+      clientTable: kgwTopClientTableV1G()
+    }
+  });
+
+  const finalPath = result.output_path || result.outputPath || selectedOutputPath;
+  setStatus(`Export completed: ${finalPath}`);
+  await kgwTopNativeAskOpenV8(finalPath);
 }
 
 function exportCsv() {
-  const rows = TOP_ADDRESSES_STATE.filteredRows || [];
-  const lines = [
-    ["Rank", "Known Name", "Address", "Balance (KAS)", "Value (USD)"].join(",")
-  ];
-
-  for (const row of rows) {
-    lines.push([
-      row.rank,
-      escapeCsv(row.known_name),
-      escapeCsv(row.address),
-      row.balance,
-      row.value_usd
-    ].join(","));
-  }
-
-  downloadText("top-addresses.csv", lines.join("\r\n"), "text/csv;charset=utf-8");
+  kgwTopExportBackendV1G("csv").catch((error) => setStatus(error?.message || String(error)));
 }
 
 function exportHtml() {
-  const rows = TOP_ADDRESSES_STATE.filteredRows || [];
-  const bodyRows = rows.map((row) => `
-    <tr>
-      <td>${row.rank}</td>
-      <td>${escapeHtml(row.known_name)}</td>
-      <td>${escapeHtml(row.address)}</td>
-      <td>${formatNumber(row.balance, 2)}</td>
-      <td>${formatNumber(row.value_usd, 2)} USD</td>
-    </tr>
-  `).join("");
-
-  const html = `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Top Addresses</title>
-<style>
-body { font-family: Arial, sans-serif; padding: 20px; }
-table { width: 100%; border-collapse: collapse; }
-th, td { border: 1px solid #999; padding: 8px; text-align: left; }
-th { background: #e6eef8; }
-</style>
-</head>
-<body>
-<h2>Top Addresses</h2>
-<p>Last Updated: ${escapeHtml(TOP_ADDRESSES_STATE.lastUpdatedText)}</p>
-<table>
-<thead>
-<tr>
-<th>Rank</th>
-<th>Known Name</th>
-<th>Address</th>
-<th>Balance (KAS)</th>
-<th>Value (USD)</th>
-</tr>
-</thead>
-<tbody>
-${bodyRows}
-</tbody>
-</table>
-</body>
-</html>`;
-
-  downloadText("top-addresses.html", html, "text/html;charset=utf-8");
+  kgwTopExportBackendV1G("html").catch((error) => setStatus(error?.message || String(error)));
 }
 
 function exportPdf() {
-  window.print();
+  kgwTopExportBackendV1G("pdf").catch((error) => setStatus(error?.message || String(error)));
 }
+
 
 async function refreshTopAddresses() {
   if (TOP_ADDRESSES_STATE.running) {
@@ -432,6 +787,37 @@ async function refreshTopAddresses() {
   }
 }
 
+
+// KGW_TOP_ADDRESSES_SAFE_CONTROLS_TRACE_PATCH_R49D
+function kgwTopAddressesUiTraceR49D(action, phase, details) {
+  try {
+    const safeAction = String(action || "top-addresses-ui");
+    const safePhase = String(phase || "unknown");
+    const safeDetails = details && typeof details === "object" ? details : {};
+    const args = {
+      scope: "top-addresses",
+      net: "ui",
+      action: safeAction,
+      phase: safePhase,
+      details: JSON.stringify({
+        patch: "KGW_TOP_ADDRESSES_SAFE_CONTROLS_TRACE_PATCH_R49D",
+        owner: "top-addresses-installButtonHandlers-safe-owner",
+        action: safeAction,
+        phase: safePhase,
+        details: safeDetails
+      })
+    };
+    const tauri = window.__TAURI__;
+    const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
+      ? tauri.core.invoke.bind(tauri.core)
+      : tauri && typeof tauri.invoke === "function"
+        ? tauri.invoke.bind(tauri)
+        : window.__TAURI_INVOKE__;
+    if (typeof invoke === "function") {
+      invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
+    }
+  } catch (_) {}
+}
 function installButtonHandlers() {
   const bindings = [
     [findRefreshButton(), "refresh", refreshTopAddresses],
@@ -450,6 +836,13 @@ function installButtonHandlers() {
     if (button && button.dataset.kgwTopHandler !== key) {
       button.dataset.kgwTopHandler = key;
       button.addEventListener("click", (event) => {
+      kgwTopAddressesUiTraceR49D("top-addresses-click", "r49d-top-addresses-click", {
+        trusted: Boolean(event && event.isTrusted),
+        element: "button",
+        id: String(button.id || ""),
+        text: String(button.textContent || "").trim(),
+        dataset: JSON.stringify(button.dataset || {})
+      });
         event.preventDefault();
         handler();
       });

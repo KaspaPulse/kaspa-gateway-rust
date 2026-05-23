@@ -35,10 +35,11 @@ serde.workspace = true
 thiserror.workspace = true
 kaspa-gateway-rk-bridge = { path = "../kaspa-gateway-rk-bridge" }
 
-kaspad-lib-mainline = { package = "kaspad", git = "https://github.com/kaspanet/rusty-kaspa.git", branch = "master", optional = true }
-kaspa-core-mainline = { package = "kaspa-core", git = "https://github.com/kaspanet/rusty-kaspa.git", branch = "master", optional = true }
-kaspa-utils-mainline = { package = "kaspa-utils", git = "https://github.com/kaspanet/rusty-kaspa.git", branch = "master", optional = true }
+kaspad-lib-mainline = { package = "kaspad", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "4969c6c31bec6a1a31e17c2e8a43532e17834240", optional = true }
+kaspa-core-mainline = { package = "kaspa-core", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "4969c6c31bec6a1a31e17c2e8a43532e17834240", optional = true }
+kaspa-utils-mainline = { package = "kaspa-utils", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "4969c6c31bec6a1a31e17c2e8a43532e17834240", optional = true }
 
-kaspad-lib-tn12 = { package = "kaspad", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", branch = "RKStratumTN12", optional = true }
-kaspa-core-tn12 = { package = "kaspa-core", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", branch = "RKStratumTN12", optional = true }
-kaspa-utils-tn12 = { package = "kaspa-utils", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", branch = "RKStratumTN12", optional = true }
+kaspad-lib-tn12 = { package = "kaspad", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", rev = "a6a408943e1a62cd46fab3e6032c90cf152ab2ad", optional = true }
+kaspa-core-tn12 = { package = "kaspa-core", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", rev = "a6a408943e1a62cd46fab3e6032c90cf152ab2ad", optional = true }
+kaspa-utils-tn12 = { package = "kaspa-utils", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", rev = "a6a408943e1a62cd46fab3e6032c90cf152ab2ad", optional = true }
+

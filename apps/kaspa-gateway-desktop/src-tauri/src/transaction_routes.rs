@@ -46,8 +46,9 @@
 use crate::{app_logger, db_state};
 use kaspa_gateway_core::KaspaAddress;
 use kaspa_gateway_runtime::transaction_sync::{
-    list_transactions_grouped_by_day, set_transaction_sync_progress_callback, sync_transactions,
-    TransactionDayGroup, TransactionListRequest, TransactionSyncRequest, TransactionSyncSummary,
+    list_transactions_grouped_by_day, request_transaction_sync_cancel,
+    set_transaction_sync_progress_callback, sync_transactions, TransactionDayGroup,
+    TransactionListRequest, TransactionSyncRequest, TransactionSyncSummary,
 };
 use serde::Serialize;
 use std::sync::Arc;
@@ -66,6 +67,27 @@ pub struct ExplorerUnifiedTransactionsReport {
 
 fn count_rows(groups: &[TransactionDayGroup]) -> usize {
     groups.iter().map(|group| group.transactions.len()).sum()
+}
+
+#[tauri::command]
+pub async fn explorer_cancel_transactions(request_id: String) -> Result<bool, String> {
+    let trimmed = request_id.trim();
+
+    if trimmed.is_empty() {
+        return Ok(false);
+    }
+
+    let accepted = request_transaction_sync_cancel(trimmed);
+
+    app_logger::log_info(
+        "transactions",
+        &format!(
+            "explorer transaction cancel requested request_id={} accepted={}",
+            trimmed, accepted
+        ),
+    );
+
+    Ok(accepted)
 }
 
 #[tauri::command]

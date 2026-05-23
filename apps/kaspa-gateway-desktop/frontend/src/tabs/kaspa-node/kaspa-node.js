@@ -377,14 +377,36 @@
 
       const network = networkOf(event.target);
 
+      trace(root, "r44h2-input-seen", {
+        patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(event.target && event.target.id || ""),
+        targetName: String(event.target && event.target.name || ""),
+        targetTag: String(event.target && event.target.tagName || "")
+      });
+
       if (!event.isTrusted) {
         setDisabled(root, network, true, "input-programmatic");
+        trace(root, "r44h2-input-programmatic-disabled", {
+        patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(event.target && event.target.id || ""),
+        targetName: String(event.target && event.target.name || ""),
+        targetTag: String(event.target && event.target.tagName || "")
+      });
         return;
       }
 
       clearFeedback(root, network, "trusted-input");
       restoreLabels(root, network);
       setDirty(root, network, true, "trusted-input");
+      trace(root, "r44h2-trusted-input-dirty", {
+        patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(event.target && event.target.id || ""),
+        targetName: String(event.target && event.target.name || ""),
+        targetTag: String(event.target && event.target.tagName || "")
+      });
     }, true);
 
     root.addEventListener("change", function (event) {
@@ -392,14 +414,36 @@
 
       const network = networkOf(event.target);
 
+      trace(root, "r44h2-change-seen", {
+        patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(event.target && event.target.id || ""),
+        targetName: String(event.target && event.target.name || ""),
+        targetTag: String(event.target && event.target.tagName || "")
+      });
+
       if (!event.isTrusted) {
         setDisabled(root, network, true, "change-programmatic");
+        trace(root, "r44h2-change-programmatic-disabled", {
+        patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(event.target && event.target.id || ""),
+        targetName: String(event.target && event.target.name || ""),
+        targetTag: String(event.target && event.target.tagName || "")
+      });
         return;
       }
 
       clearFeedback(root, network, "trusted-change");
       restoreLabels(root, network);
       setDirty(root, network, true, "trusted-change");
+      trace(root, "r44h2-trusted-change-dirty", {
+        patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
+        trusted: Boolean(event && event.isTrusted),
+        targetId: String(event.target && event.target.id || ""),
+        targetName: String(event.target && event.target.name || ""),
+        targetTag: String(event.target && event.target.tagName || "")
+      });
     }, true);
 
     root.addEventListener("click", function (event) {
@@ -444,6 +488,38 @@
   window.KGW_SETTINGS_OWNER_V19 = window[GLOBAL_NAME];
 })();
 // END_KGW_SETTINGS_OWNER_V19
+
+function kgwNodeSmallOwnerTraceR44D(net, action, phase, details) {
+  try {
+    const safeNet = String(net || "unknown");
+    const safeAction = String(action || "small-owner");
+    const safePhase = String(phase || "unknown");
+    const safeDetails = details && typeof details === "object" ? details : {};
+    const args = {
+      scope: "node",
+      net: safeNet,
+      action: safeAction,
+      phase: safePhase,
+      details: JSON.stringify({
+        patch: "KGW_SMALL_NODE_BRIDGE_TRACE_PATCH_R44D",
+        existingOwner: "node-small-owner-functions",
+        network: safeNet,
+        action: safeAction,
+        phase: safePhase,
+        details: safeDetails
+      })
+    };
+    const tauri = window.__TAURI__;
+    const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
+      ? tauri.core.invoke.bind(tauri.core)
+      : tauri && typeof tauri.invoke === "function"
+        ? tauri.invoke.bind(tauri)
+        : window.__TAURI_INVOKE__;
+    if (typeof invoke === "function") {
+      invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
+    }
+  } catch (_) {}
+}
 
 
 
@@ -706,7 +782,15 @@ function kgwInstallNodeLogAutoScrollControlsR27() {
     checkbox.type = "checkbox";
     checkbox.id = controlId;
     checkbox.checked = kgwNodeLogAutoScrollEnabledR27(net);
-    checkbox.addEventListener("change", () => kgwNodeSetLogAutoScrollR27(net, checkbox.checked));
+    checkbox.addEventListener("change", (event) => {
+      kgwNodeSmallOwnerTraceR44D(net, "log-autoscroll", "r51b3-node-log-autoscroll-change", {
+        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
+        trusted: Boolean(event && event.isTrusted),
+        controlId: String(controlId || ""),
+        checked: Boolean(checkbox.checked)
+      });
+      kgwNodeSetLogAutoScrollR27(net, checkbox.checked);
+    });
 
     const span = document.createElement("span");
     span.textContent = kgwI18nTextR41("common.autoScroll", "Auto-scroll");
@@ -948,6 +1032,7 @@ function renderAllNetworks(root) {
 
 
   setTimeout(kgwInstallNodeLogAutoScrollControlsR27, 0);
+  setTimeout(window.kgwInstallNodeLogScopedControlsV29, 0);
 }
 
 
@@ -1062,13 +1147,53 @@ function updateAllCommands() {
 }
 
 
+
+// KGW_NODE_EXPLICIT_TRACE_HELPER_VISIBILITY_R45F
+function kgwNodeExplicitTraceR27D(net, action, phase, details) {
+  try {
+    const safeNet = String(net || "unknown");
+    const safeAction = String(action || "internal-navigation");
+    const safePhase = String(phase || "unknown");
+    const safeDetails = details && typeof details === "object" ? details : {};
+    const args = {
+      scope: "node",
+      net: safeNet,
+      action: safeAction,
+      phase: safePhase,
+      details: JSON.stringify({
+        patch: "KGW_NODE_EXPLICIT_TRACE_HELPER_VISIBILITY_R45F",
+        owner: "node-module-visible-explicit-trace-helper",
+        network: safeNet,
+        action: safeAction,
+        phase: safePhase,
+        details: safeDetails
+      })
+    };
+    const tauri = window.__TAURI__;
+    const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
+      ? tauri.core.invoke.bind(tauri.core)
+      : tauri && typeof tauri.invoke === "function"
+        ? tauri.invoke.bind(tauri)
+        : window.__TAURI_INVOKE__;
+    if (typeof invoke === "function") {
+      invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
+    }
+  } catch (_) {}
+}
 function installNetworkTabs(root) {
   const tabs = root.querySelectorAll("[data-node-network-tab]");
   const panels = root.querySelectorAll("[data-node-network-panel]");
 
   tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
+    tab.addEventListener("click", (event) => {
       const selected = tab.dataset.nodeNetworkTab;
+
+      kgwNodeExplicitTraceR27D(selected || "unknown", "internal-navigation", "r45d-node-network-tab-click", {
+        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+        trusted: Boolean(event && event.isTrusted),
+        selected: String(selected || ""),
+        text: String(tab.textContent || "").trim()
+      });
 
       tabs.forEach((item) => item.classList.toggle("active", item === tab));
 
@@ -1089,6 +1214,13 @@ function installDelegatedTabs(root) {
       const selected = innerTab.dataset.nodeInnerTab;
       const panel = root.querySelector(`[data-node-network-panel="${net}"]`);
 
+      kgwNodeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-node-inner-tab-click", {
+        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+        trusted: Boolean(event && event.isTrusted),
+        selected: String(selected || ""),
+        text: String(innerTab.textContent || "").trim()
+      });
+
       panel.querySelectorAll("[data-node-inner-tab]").forEach((item) => {
         item.classList.toggle("active", item === innerTab);
       });
@@ -1107,6 +1239,13 @@ function installDelegatedTabs(root) {
       const net = sectionTab.dataset.net;
       const selected = sectionTab.dataset.nodeSectionTab;
       const panel = root.querySelector(`[data-node-network-panel="${net}"]`);
+
+      kgwNodeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-node-section-tab-click", {
+        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+        trusted: Boolean(event && event.isTrusted),
+        selected: String(selected || ""),
+        text: String(sectionTab.textContent || "").trim()
+      });
 
       panel.querySelectorAll("[data-node-section-tab]").forEach((item) => {
         item.classList.toggle("active", item === sectionTab);
@@ -1393,22 +1532,28 @@ function kgwNodeR51LoadSavedSettings() {
 
 
 function kgwNodeR51SaveSettings(net) {
+  kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r44d-owner-begin", {});
   kgwNodeR51Store("saved:" + net, kgwNodeR51ReadSettings(net));
   appendLog(net, "Node settings saved successfully.");
+  kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r44d-owner-complete", {});
 }
 
 function kgwNodeR51SetAsDefaults(net) {
+  kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r44d-owner-begin", {});
   kgwNodeR51Store("default:" + net, kgwNodeR51ReadSettings(net));
   appendLog(net, "Current node settings saved as defaults.");
+  kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r44d-owner-complete", {});
 }
 
 function kgwNodeR51RestoreDefaults(net) {
+  kgwNodeSmallOwnerTraceR44D(net, "restore-defaults", "r44d-owner-begin", {});
   kgwNodeSettingsWithProgrammaticWriteR9B(() => {
     const defaults = kgwNodeR51Load("default:" + net) || kgwNodeR51Load("factory:" + net);
     kgwNodeR51WriteSettings(net, defaults);
     kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, { force: true });
     appendLog(net, "Node defaults restored successfully.");
   });
+  kgwNodeSmallOwnerTraceR44D(net, "restore-defaults", "r44d-owner-complete", {});
 }
 
 function kgwNodeR51IsRunning(text) {
@@ -1599,6 +1744,79 @@ function installKgwNodeR51BottomStyle() {
  */
 
 
+
+/* KGW_LOG_ACTIONS_SCOPED_OWNER_V29_START */
+function kgwNodeTranslateRuntimeV29(key, fallback) {
+  const runtime = window.kgwT || window.kgwI18n || window.__kgwT;
+  if (typeof runtime === "function") {
+    try {
+      const value = runtime(key, fallback);
+      if (value && value !== key) return value;
+    } catch (_) {}
+  }
+  return fallback || key;
+}
+
+function kgwNodeLogOutputV29(net) {
+  return document.getElementById("node-" + net + "-logOutput");
+}
+
+function kgwNodeRestoreLogActionLabelV29(button) {
+  if (!button) return;
+  const original = button.dataset.kgwLogOriginalLabelV29;
+  if (original) button.textContent = original;
+  button.classList.remove("kgw-log-action-feedback");
+  delete button.dataset.kgwDoneLabel;
+}
+
+function kgwNodeFlashLogActionButtonV29(button, doneLabel) {
+  if (!button) return;
+
+  if (!button.dataset.kgwLogOriginalLabelV29) {
+    button.dataset.kgwLogOriginalLabelV29 = String(button.textContent || "").trim() || "Log Action";
+  }
+
+  window.clearTimeout(button.__kgwLogActionFeedbackTimerV29);
+
+  button.textContent = doneLabel;
+  button.dataset.kgwDoneLabel = doneLabel;
+  button.classList.add("kgw-log-action-feedback");
+
+  button.__kgwLogActionFeedbackTimerV29 = window.setTimeout(() => {
+    kgwNodeRestoreLogActionLabelV29(button);
+  }, 1600);
+}
+
+async function kgwNodeHandleLogActionV29(action, net, button) {
+  
+  kgwNodeSmallOwnerTraceR44D(net, String(action || "log-action"), "r51b3-node-log-action-click", {
+    patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
+    action: String(action || ""),
+    buttonId: String(button && button.id || ""),
+    buttonText: String(button && button.textContent || "").trim()
+  });
+  kgwNodeSmallOwnerTraceR44D(net, String(action || "log-action"), "r44d-owner-begin", {});
+  const out = kgwNodeLogOutputV29(net);
+  if (!out) return;
+
+  if (action === "copy-log") {
+    const text = String(out.value || out.textContent || "");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text).catch(() => {});
+    }
+    kgwNodeFlashLogActionButtonV29(button, kgwNodeTranslateRuntimeV29("log.copied", "Copied"));
+    return;
+  }
+
+  if (action === "clear-log") {
+    if ("value" in out) out.value = "";
+    out.textContent = "";
+    kgwNodeFlashLogActionButtonV29(button, kgwNodeTranslateRuntimeV29("log.deleted", "Deleted"));
+  }
+  kgwNodeSmallOwnerTraceR44D(net, String(action || "log-action"), "r44d-owner-complete", {});
+}
+/* KGW_LOG_ACTIONS_SCOPED_OWNER_V29_END */
+
 function installActions(root) {
   // KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26: Node settings actions are scoped to the exact network that changed.
   if (window.KGW_NODE_SETTINGS_OWNER_V19 && typeof window.KGW_NODE_SETTINGS_OWNER_V19.install === "function") {
@@ -1635,20 +1853,44 @@ function installActions(root) {
     return netFromElement(event && event.target);
   }
 
+
+  // KGW_EXPLICIT_TRACE_OWNER_R27D_NODE_BEGIN
+  function kgwNodeExplicitTraceR27D(net, action, phase, details) {
+    try {
+      const safeNet = String(net || "unknown");
+      const safeAction = String(action || "unknown");
+      const safePhase = String(phase || "unknown");
+      const payload = {
+        patch: "KGW_EXPLICIT_TRACE_EXACT_ANCHOR_PATCH_R27D",
+        owner: "node-existing-owner",
+        network: safeNet,
+        action: safeAction,
+        phase: safePhase,
+        details: details && typeof details === "object" ? details : {}
+      };
+
+      if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === "function") {
+        window.__TAURI__.core.invoke("kgw_frontend_button_trace_v1", {
+          scope: "node",
+          net: safeNet,
+          action: safeAction,
+          phase: safePhase,
+          details: JSON.stringify(payload)
+        }).catch(function () {});
+      }
+    } catch (_) {}
+  }
+  // KGW_EXPLICIT_TRACE_OWNER_R27D_NODE_END
+
   function scopedUpdate(net, reason) {
     if (!net) return;
     if (typeof updateCommand === "function") {
       updateCommand(net);
     }
-    if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === "function") {
-      window.__TAURI__.core.invoke("kgw_frontend_button_trace_v1", {
-        scope: "node",
-        net: net,
-        action: "settings-scope",
-        phase: "v26-scoped-update",
-        details: JSON.stringify({ patch: "KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26", network: net, reason: reason || "unknown" })
-      }).catch(function () {});
-    }
+    kgwNodeExplicitTraceR27D(net, "settings-scope", "r27d-scoped-update", {
+      previousPatch: "KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26",
+      reason: reason || "unknown"
+    });
   }
 
   root.addEventListener("input", (event) => {
@@ -1678,6 +1920,13 @@ function installActions(root) {
 
     if (!net) return;
 
+    kgwNodeExplicitTraceR27D(net, String(action || "unknown"), "r27d-action-click", {
+      trusted: Boolean(event && event.isTrusted),
+      disabled: Boolean(button.disabled),
+      id: String(button.id || ""),
+      text: String(button.textContent || "").trim()
+    });
+
     if (action === "save-settings") {
       if (typeof kgwNodeR51SaveSettings === "function") kgwNodeR51SaveSettings(net);
       scopedUpdate(net, "save-settings");
@@ -1693,6 +1942,11 @@ function installActions(root) {
     if (action === "restore-defaults") {
       if (typeof kgwNodeR51RestoreDefaults === "function") kgwNodeR51RestoreDefaults(net);
       scopedUpdate(net, "restore-defaults");
+      return;
+    }
+
+    if (action === "copy-log" || action === "clear-log") {
+      kgwNodeHandleLogActionV29(action, net, button).catch(function () {});
       return;
     }
 
@@ -1714,77 +1968,6 @@ function installActions(root) {
   }, false);
 }
 
-/* KGW_NODE_LOG_BUTTON_FEEDBACK_OWNER_V1 */
-
-/* KGW_NODE_LOG_FEEDBACK_I18N_OWNER_V1 */
-
-function kgwNodeTranslateRuntime(key, fallback) {
-  const runtime = window.kgwT || window.kgwI18n || window.__kgwT;
-  if (typeof runtime === "function") {
-    try {
-      const value = runtime(key);
-      if (value && value !== key) return value;
-    } catch {
-      // Translation fallback must never break button feedback.
-    }
-  }
-
-  const dict =
-    window.__kgwI18nDictR107 ||
-    window.__kgwI18nDict ||
-    window.kgwI18nDict ||
-    window.__KGW_I18N_DICT__;
-
-  if (dict && typeof dict === "object") {
-    const flat = dict[key];
-    if (typeof flat === "string" && flat.trim()) return flat;
-
-    let node = dict;
-    for (const part of String(key).split(".")) {
-      if (!node || typeof node !== "object") {
-        node = null;
-        break;
-      }
-      node = node[part];
-    }
-
-    if (typeof node === "string" && node.trim()) return node;
-  }
-
-  return fallback || key;
-}
-
-function kgwNodeFlashLogActionButton(button, doneLabel) {
-  if (!button) return;
-
-  if (!button.dataset.kgwOriginalLabel) {
-    button.dataset.kgwOriginalLabel = String(button.textContent || "").trim();
-  }
-
-  button.dataset.kgwDoneLabel = doneLabel;
-  button.classList.add("kgw-log-action-feedback");
-
-  window.clearTimeout(button.__kgwLogActionFeedbackTimer);
-  button.__kgwLogActionFeedbackTimer = window.setTimeout(() => {
-    button.classList.remove("kgw-log-action-feedback");
-    delete button.dataset.kgwDoneLabel;
-  }, 1400);
-}
-
-function kgwInstallNodeLogButtonFeedback(root) {
-  if (!root || root.dataset.kgwNodeLogButtonFeedback === "true") return;
-  root.dataset.kgwNodeLogButtonFeedback = "true";
-
-  root.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-node-action='copy-log'], [data-node-action='clear-log']");
-    if (!button || !root.contains(button)) return;
-
-    const action = button.dataset.nodeAction;
-    window.setTimeout(() => {
-      kgwNodeFlashLogActionButton(button, action === "copy-log" ? kgwNodeTranslateRuntime("log.copied", "Copied") : kgwNodeTranslateRuntime("log.deleted", "Deleted"));
-    }, 0);
-  }, true);
-}
 
 export async function initKaspaNodeTab(root) {
 
@@ -1799,8 +1982,7 @@ const nodeRoot = root || document.getElementById("kaspa-node");
   installNetworkTabs(nodeRoot);
   installDelegatedTabs(nodeRoot);
   installActions(nodeRoot);
-  kgwInstallNodeLogButtonFeedback(nodeRoot);
-  updateAllCommands();
+updateAllCommands();
   NODE_NETWORKS.forEach((net) => kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net.key, { force: false })); /* KGW_NODE_DYNAMIC_PATHS_INIT_R3 */
   installKgwNodeR51BottomStyle();
   kgwNodeR51StartLiveRefresh();
@@ -1810,6 +1992,186 @@ const nodeRoot = root || document.getElementById("kaspa-node");
 
   setTimeout(kgwInstallNodeLogAutoScrollControlsR27, 0);
 }
+
+
+/* KGW_NODE_LOG_SCOPED_CONTROLS_V29_START */
+(function installKgwLogScopedToolbarControlsV29() {
+  "use strict";
+
+  const KIND = "node";
+  const ROOT_SELECTOR = "#kaspa-node";
+  const TOOLBAR_SELECTOR = ".node-v6-log-toolbar";
+  const ACTION_ATTR = "data-node-action";
+  const PREFIX = "node";
+  const NETWORKS = ["mainnet", "testnet10", "testnet12"];
+  const MIN_SIZE = 10;
+  const MAX_SIZE = 18;
+  const DEFAULT_SIZE = 12;
+
+  function clampSize(value) {
+    const parsed = Number.parseInt(String(value || ""), 10);
+    if (!Number.isFinite(parsed)) return DEFAULT_SIZE;
+    return Math.max(MIN_SIZE, Math.min(MAX_SIZE, parsed));
+  }
+
+  function storageKey(net) {
+    return "kgw." + KIND + ".log.fontSize." + net;
+  }
+
+  function readSize(net) {
+    try {
+      return clampSize(window.localStorage.getItem(storageKey(net)));
+    } catch (_) {
+      return DEFAULT_SIZE;
+    }
+  }
+
+  function writeSize(net, size) {
+    const finalSize = clampSize(size);
+    try {
+      window.localStorage.setItem(storageKey(net), String(finalSize));
+    } catch (_) {}
+    return finalSize;
+  }
+
+  function root() {
+    return document.querySelector(ROOT_SELECTOR);
+  }
+
+  function logOutput(net) {
+    return document.getElementById(PREFIX + "-" + net + "-logOutput");
+  }
+
+  function toolbar(net) {
+    const r = root();
+    if (!r) return null;
+
+    const copyButton = r.querySelector(TOOLBAR_SELECTOR + " [" + ACTION_ATTR + "='copy-log'][data-net='" + net + "']");
+    if (copyButton) return copyButton.closest(TOOLBAR_SELECTOR);
+
+    const panel = r.querySelector("[data-net='" + net + "']");
+    if (!panel) return null;
+    return panel.querySelector(TOOLBAR_SELECTOR);
+  }
+
+  function makeButton(label, title) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "kgw-log-font-size-button";
+    button.textContent = label;
+    button.title = title;
+    button.setAttribute("aria-label", title);
+    button.dataset.kgwLogFontOwner = "v29";
+    return button;
+  }
+
+  function applyFontSize(net) {
+    const out = logOutput(net);
+    const size = readSize(net);
+
+    if (out) {
+      out.dataset.kgwLogFontSizePane = "v29";
+      out.style.setProperty("--kgw-log-font-size", size + "px");
+      out.style.setProperty("font-size", "var(--kgw-log-font-size)", "important");
+      out.style.setProperty("line-height", "1.45", "important");
+    }
+
+    const tb = toolbar(net);
+    if (tb) {
+      const value = tb.querySelector(".kgw-log-font-size-value[data-net='" + net + "']");
+      if (value) value.textContent = size + "px";
+    }
+  }
+
+  function removeToolbarDuplicates(tb) {
+    if (!tb) return;
+    tb.querySelectorAll(".kgw-log-font-size-controls").forEach((item) => item.remove());
+  }
+
+  function installForNetwork(net) {
+    const tb = toolbar(net);
+    if (!tb) return;
+
+    removeToolbarDuplicates(tb);
+
+    const controls = document.createElement("div");
+    controls.className = "kgw-log-font-size-controls";
+    controls.dataset.kind = KIND;
+    controls.dataset.net = net;
+    controls.dataset.marker = "KGW_NODE_LOG_SCOPED_CONTROLS_V29";
+
+    const decrease = makeButton("A-", "Decrease log font size");
+    const value = document.createElement("span");
+    value.className = "kgw-log-font-size-value";
+    value.dataset.net = net;
+    value.textContent = readSize(net) + "px";
+
+    const increase = makeButton("A+", "Increase log font size");
+    const reset = makeButton("Reset", "Reset log font size");
+
+    decrease.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const previousSize = readSize(net);
+      kgwNodeSmallOwnerTraceR44D(net, "log-font-size", "r51b3-node-log-font-decrease-click", {
+        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
+        trusted: Boolean(event && event.isTrusted),
+        previousSize,
+        nextSize: previousSize - 1
+      });
+      writeSize(net, previousSize - 1);
+      applyFontSize(net);
+    });
+
+    increase.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const previousSize = readSize(net);
+      kgwNodeSmallOwnerTraceR44D(net, "log-font-size", "r51b3-node-log-font-increase-click", {
+        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
+        trusted: Boolean(event && event.isTrusted),
+        previousSize,
+        nextSize: previousSize + 1
+      });
+      writeSize(net, previousSize + 1);
+      applyFontSize(net);
+    });
+
+    reset.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const previousSize = readSize(net);
+      kgwNodeSmallOwnerTraceR44D(net, "log-font-size", "r51b3-node-log-font-reset-click", {
+        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
+        trusted: Boolean(event && event.isTrusted),
+        previousSize,
+        nextSize: DEFAULT_SIZE
+      });
+      writeSize(net, DEFAULT_SIZE);
+      applyFontSize(net);
+    });
+
+    controls.append(decrease, value, increase, reset);
+    tb.appendChild(controls);
+
+    applyFontSize(net);
+  }
+
+  function installAll() {
+    for (const net of NETWORKS) {
+      installForNetwork(net);
+    }
+  }
+
+  window.kgwInstallNodeLogScopedControlsV29 = installAll;
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", installAll, { once: true });
+  } else {
+    window.setTimeout(installAll, 0);
+  }
+})();
+/* KGW_NODE_LOG_SCOPED_CONTROLS_V29_END */
 
 export default initKaspaNodeTab;
 
@@ -2013,254 +2375,4 @@ window.kgwV67RuntimeFeaturePolicy = kgwV67RuntimeFeaturePolicy;
 /* R35 settings persistence for existing Node tab. */
 /* R37 bottom placement for Node settings buttons. */
 /* R38 UI freeze protection for Node Start/Stop. */
-
-(function installKgwLogFontSizeToolbarControlsV2() {
-  "use strict";
-
-  const MARKER = "KGW_LOG_FONT_SIZE_CONTROLS_V2";
-  const KIND = "node";
-  const NETWORKS = ["mainnet", "testnet10", "testnet12"];
-  const MIN_SIZE = 10;
-  const MAX_SIZE = 18;
-  const DEFAULT_SIZE = 12;
-
-  let scheduled = false;
-
-  function storageKey(network) {
-    return "kgw." + KIND + ".log.fontSize." + network;
-  }
-
-  function clampSize(value) {
-    const parsed = Number.parseInt(String(value || ""), 10);
-    if (!Number.isFinite(parsed)) return DEFAULT_SIZE;
-    return Math.max(MIN_SIZE, Math.min(MAX_SIZE, parsed));
-  }
-
-  function readSize(network) {
-    try {
-      return clampSize(window.localStorage.getItem(storageKey(network)));
-    } catch (_) {
-      return DEFAULT_SIZE;
-    }
-  }
-
-  function writeSize(network, size) {
-    const finalSize = clampSize(size);
-    try {
-      window.localStorage.setItem(storageKey(network), String(finalSize));
-    } catch (_) {}
-    return finalSize;
-  }
-
-  function textOf(element) {
-    return String(
-      [
-        element && element.id,
-        element && element.className,
-        element && element.textContent,
-        element && element.getAttribute && element.getAttribute("aria-label"),
-        element && element.getAttribute && element.getAttribute("data-network"),
-        element && element.getAttribute && element.getAttribute("data-kgw-network")
-      ]
-        .filter(Boolean)
-        .join(" ")
-    ).toLowerCase();
-  }
-
-  function isVisible(element) {
-    if (!element || !element.getBoundingClientRect) return false;
-    const rect = element.getBoundingClientRect();
-    const style = window.getComputedStyle(element);
-    return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
-  }
-
-  function activeNetwork() {
-    const selected = Array.from(
-      document.querySelectorAll(
-        "[aria-selected='true'], .active, .is-active, .selected, [data-active='true']"
-      )
-    ).filter(isVisible);
-
-    for (const element of selected) {
-      const t = textOf(element);
-      for (const network of NETWORKS) {
-        if (t.includes(network)) return network;
-        if (network === "testnet10" && t.includes("testnet 10")) return network;
-        if (network === "testnet12" && t.includes("testnet 12")) return network;
-      }
-    }
-
-    const visibleLogs = Array.from(document.querySelectorAll("[id*='log'], [class*='log'], pre, textarea"))
-      .filter(isVisible);
-
-    for (const element of visibleLogs) {
-      let current = element;
-      while (current && current !== document.documentElement) {
-        const t = textOf(current);
-        for (const network of NETWORKS) {
-          if (t.includes(network)) return network;
-          if (network === "testnet10" && t.includes("testnet 10")) return network;
-          if (network === "testnet12" && t.includes("testnet 12")) return network;
-        }
-        current = current.parentElement;
-      }
-    }
-
-    return "mainnet";
-  }
-
-  function looksLikeLogPane(element) {
-    if (!element || !isVisible(element)) return false;
-
-    const tag = String(element.tagName || "").toLowerCase();
-    const t = textOf(element);
-
-    if (!(tag === "pre" || tag === "textarea" || tag === "code" || tag === "div")) return false;
-    if (!t.includes("log")) return false;
-    if (element.classList && element.classList.contains("kgw-log-font-size-controls")) return false;
-
-    const rect = element.getBoundingClientRect();
-    if (rect.height < 80) return false;
-
-    return true;
-  }
-
-  function visibleLogPanes() {
-    return Array.from(
-      document.querySelectorAll("pre, textarea, code, [id*='log'], [class*='log'], [data-role*='log']")
-    ).filter(looksLikeLogPane);
-  }
-
-  function applyFontSize() {
-    const network = activeNetwork();
-    const size = readSize(network);
-
-    for (const pane of visibleLogPanes()) {
-      pane.dataset.kgwLogFontSizePane = "1";
-      pane.style.setProperty("--kgw-log-font-size", size + "px");
-      pane.style.fontSize = "var(--kgw-log-font-size)";
-      pane.style.lineHeight = "1.45";
-    }
-
-    const value = document.querySelector(".kgw-log-font-size-controls[data-kind='" + KIND + "'] .kgw-log-font-size-value");
-    if (value) value.textContent = size + "px";
-  }
-
-  function button(label, title) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "kgw-log-font-size-button";
-    b.textContent = label;
-    b.title = title;
-    b.setAttribute("aria-label", title);
-    return b;
-  }
-
-  function findVisibleLogToolbar() {
-    const existingToolbars = Array.from(
-      document.querySelectorAll(
-        ".kgw-log-toolbar, .log-toolbar, [class*='log-toolbar'], [role='toolbar']"
-      )
-    ).filter(isVisible);
-
-    for (const toolbar of existingToolbars) {
-      const t = textOf(toolbar);
-      if (t.includes("copy log") || t.includes("clear log") || t.includes("auto-scroll") || t.includes("autoscroll")) {
-        return toolbar;
-      }
-    }
-
-    const buttons = Array.from(document.querySelectorAll("button")).filter(isVisible);
-    for (const b of buttons) {
-      const t = textOf(b);
-      if (t.includes("copy log") || t.includes("clear log")) {
-        return b.parentElement;
-      }
-    }
-
-    return null;
-  }
-
-  function removeDuplicateControls() {
-    const controls = Array.from(document.querySelectorAll(".kgw-log-font-size-controls"));
-    controls.forEach((control, index) => {
-      if (index > 0) control.remove();
-    });
-  }
-
-  function installOneToolbarControl() {
-    const toolbar = findVisibleLogToolbar();
-    if (!toolbar) return;
-
-    removeDuplicateControls();
-
-    let controls = toolbar.querySelector(".kgw-log-font-size-controls[data-kind='" + KIND + "']");
-    if (!controls) {
-      controls = document.createElement("div");
-      controls.className = "kgw-log-font-size-controls";
-      controls.dataset.kind = KIND;
-      controls.dataset.marker = MARKER;
-
-      const decrease = button("A-", "Decrease log font size");
-      const value = document.createElement("span");
-      value.className = "kgw-log-font-size-value";
-      value.textContent = readSize(activeNetwork()) + "px";
-
-      const increase = button("A+", "Increase log font size");
-      const reset = button("Reset", "Reset log font size");
-
-      decrease.addEventListener("click", () => {
-        const network = activeNetwork();
-        writeSize(network, readSize(network) - 1);
-        applyFontSize();
-      });
-
-      increase.addEventListener("click", () => {
-        const network = activeNetwork();
-        writeSize(network, readSize(network) + 1);
-        applyFontSize();
-      });
-
-      reset.addEventListener("click", () => {
-        writeSize(activeNetwork(), DEFAULT_SIZE);
-        applyFontSize();
-      });
-
-      controls.append(decrease, value, increase, reset);
-      toolbar.appendChild(controls);
-    }
-
-    applyFontSize();
-  }
-
-  function run() {
-    scheduled = false;
-    installOneToolbarControl();
-  }
-
-  function schedule() {
-    if (scheduled) return;
-    scheduled = true;
-    window.requestAnimationFrame(run);
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", schedule, { once: true });
-  } else {
-    schedule();
-  }
-
-  document.addEventListener("click", schedule, true);
-  document.addEventListener("change", schedule, true);
-
-  const observer = new MutationObserver(schedule);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-
-  window.addEventListener("storage", (event) => {
-    if (event.key && event.key.startsWith("kgw." + KIND + ".log.fontSize.")) {
-      schedule();
-    }
-  });
-})();
-
 

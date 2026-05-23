@@ -9,12 +9,28 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportParityRequest {
+    #[serde(alias = "reportType")]
     pub report_type: String,
     pub format: String,
+    #[serde(alias = "outputPath")]
     pub output_path: String,
+    #[serde(default, alias = "addressFilter")]
     pub address_filter: Option<String>,
+    #[serde(alias = "timeRange")]
     pub time_range: String,
     pub limit: usize,
+    #[serde(default)]
+    pub locale: Option<String>,
+    #[serde(default, alias = "clientTable")]
+    pub client_table: Option<ExportClientTable>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExportClientTable {
+    pub title: String,
+    pub subtitle: String,
+    pub headers: Vec<String>,
+    pub rows: Vec<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -77,7 +93,7 @@ pub fn export_report(request: ExportParityRequest) -> Result<ExportParityResult,
 
     match request.format.as_str() {
         "csv" => write_csv(&output_path, &table)?,
-        "html" => write_html(&output_path, &table)?,
+        "html" => write_html(&output_path, &table, request.locale.as_deref())?,
         "pdf" => write_pdf(&output_path, &table)?,
         _ => return Err("Unsupported export format.".to_string()),
     }
@@ -116,6 +132,10 @@ fn normalize_request(mut request: ExportParityRequest) -> Result<ExportParityReq
 }
 
 fn build_report_table(request: &ExportParityRequest) -> Result<ReportTable, String> {
+    if let Some(client_table) = request.client_table.as_ref() {
+        return client_report_table(client_table);
+    }
+
     match request.report_type.as_str() {
         "Addresses" => addresses_report(request.limit),
         "Transactions" => transactions_report(
@@ -135,6 +155,39 @@ fn build_report_table(request: &ExportParityRequest) -> Result<ReportTable, Stri
         ),
         _ => Err("Unsupported report type.".to_string()),
     }
+}
+
+fn client_report_table(client_table: &ExportClientTable) -> Result<ReportTable, String> {
+    if client_table.headers.is_empty() {
+        return Err("Export table must contain at least one header.".to_string());
+    }
+
+    let column_count = client_table.headers.len();
+
+    let rows = client_table
+        .rows
+        .iter()
+        .map(|row| {
+            let mut normalized = row
+                .iter()
+                .map(|cell| cell.replace('\0', "").replace(['\r', '\n'], " "))
+                .collect::<Vec<_>>();
+
+            if normalized.len() < column_count {
+                normalized.resize(column_count, String::new());
+            }
+
+            normalized.truncate(column_count);
+            normalized
+        })
+        .collect::<Vec<_>>();
+
+    Ok(ReportTable {
+        title: client_table.title.trim().to_string(),
+        subtitle: client_table.subtitle.trim().to_string(),
+        headers: client_table.headers.clone(),
+        rows,
+    })
 }
 
 fn addresses_report(limit: usize) -> Result<ReportTable, String> {
@@ -473,159 +526,1295 @@ fn metric_row(metric: &str, value: String, unit: &str) -> Vec<String> {
     vec![metric.to_string(), value, unit.to_string()]
 }
 
+fn kgw_export_csv_metadata_comment_v13(value: &str) -> String {
+    let normalized = value
+        .replace('\r', " ")
+        .replace('\n', " ")
+        .trim()
+        .to_string();
+
+    if normalized.is_empty() {
+        String::new()
+    } else {
+        normalized
+    }
+}
+
+fn kgw_export_csv_generated_on_v13() -> String {
+    match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(duration) => format!("Unix Time: {}", duration.as_secs()),
+        Err(_) => "Unix Time: unavailable".to_string(),
+    }
+}
+
+fn kgw_export_csv_write_comment_v13(output: &mut String, label: Option<&str>, value: &str) {
+    let value = kgw_export_csv_metadata_comment_v13(value);
+    if value.is_empty() {
+        return;
+    }
+
+    output.push_str("# ");
+
+    if let Some(label) = label {
+        let label = kgw_export_csv_metadata_comment_v13(label);
+        if !label.is_empty() {
+            output.push_str(&label);
+            output.push_str(": ");
+        }
+    }
+
+    output.push_str(&value);
+    output.push('\n');
+}
+
 fn write_csv(path: &Path, table: &ReportTable) -> Result<(), String> {
+    // KGW_EXPORT_PHASE_B_CSV_TEMPLATE_PARITY_V13
+    //
+    // Python parity intent:
+    // - keep UTF-8 BOM behavior equivalent to Python utf-8-sig
+    // - write report metadata comment rows before the table
+    // - keep existing csv_cell formula-injection protection
+    // - keep this as the single CSV writer owner in export_commands.rs
+
     let mut output = String::new();
 
-    output.push_str("# ");
-    output.push_str(&table.title);
-    output.push('\n');
-    output.push_str("# ");
-    output.push_str(&table.subtitle);
+    output.push('\u{feff}');
+
+    kgw_export_csv_write_comment_v13(
+        &mut output,
+        Some("Kaspa Gateway Version"),
+        env!("CARGO_PKG_VERSION"),
+    );
+
+    kgw_export_csv_write_comment_v13(&mut output, None, table.title.as_str());
+
+    if !table.subtitle.trim().is_empty() {
+        kgw_export_csv_write_comment_v13(&mut output, Some("Details"), table.subtitle.as_str());
+    }
+
+    kgw_export_csv_write_comment_v13(
+        &mut output,
+        Some("Exported On"),
+        kgw_export_csv_generated_on_v13().as_str(),
+    );
+
     output.push('\n');
 
-    output.push_str(
-        &table
-            .headers
-            .iter()
-            .map(|header| csv_cell(header))
-            .collect::<Vec<_>>()
-            .join(","),
-    );
+    let header_line = table
+        .headers
+        .iter()
+        .map(|header| csv_cell(header))
+        .collect::<Vec<_>>()
+        .join(",");
+
+    output.push_str(&header_line);
     output.push('\n');
 
     for row in &table.rows {
-        output.push_str(
-            &row.iter()
-                .map(|cell| csv_cell(cell))
-                .collect::<Vec<_>>()
-                .join(","),
-        );
+        let row_line = row
+            .iter()
+            .map(|cell| csv_cell(cell))
+            .collect::<Vec<_>>()
+            .join(",");
+
+        output.push_str(&row_line);
         output.push('\n');
     }
 
-    fs::write(path, output).map_err(|error| error.to_string())
+    std::fs::write(path, output).map_err(|error| error.to_string())
 }
 
-fn write_html(path: &Path, table: &ReportTable) -> Result<(), String> {
-    let mut output = String::new();
+fn kgw_export_html_generated_on_v16() -> String {
+    match std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH) {
+        Ok(duration) => format!("Unix Time: {}", duration.as_secs()),
+        Err(_) => "Unix Time: unavailable".to_string(),
+    }
+}
 
-    output.push_str("<!doctype html><html><head><meta charset=\"utf-8\">");
-    output.push_str("<title>");
-    output.push_str(&html_escape(&table.title));
-    output.push_str("</title>");
-    output.push_str(
-        r#"<style>
-body{font-family:Arial,sans-serif;margin:24px}
-table{border-collapse:collapse;width:100%}
-th,td{border:1px solid #ccc;padding:6px;text-align:left;font-size:13px}
-th{background:#f4f4f4}
-caption{font-size:20px;font-weight:bold;margin-bottom:12px}
-.subtitle{margin-bottom:14px;color:#555}
-</style>"#,
-    );
-    output.push_str("</head><body><table><caption>");
-    output.push_str(&html_escape(&table.title));
-    output.push_str("</caption><div class=\"subtitle\">");
-    output.push_str(&html_escape(&table.subtitle));
-    output.push_str("</div><thead><tr>");
-
-    for header in &table.headers {
-        output.push_str("<th>");
-        output.push_str(&html_escape(header));
-        output.push_str("</th>");
+fn kgw_export_html_metadata_row_v16(label: &str, value: &str) -> String {
+    if value.trim().is_empty() {
+        return String::new();
     }
 
-    output.push_str("</tr></thead><tbody>");
+    format!(
+        "<div class=\"kgw-report-meta-row\"><span>{}</span><strong>{}</strong></div>",
+        html_escape(label),
+        html_escape(value)
+    )
+}
 
-    for row in &table.rows {
-        output.push_str("<tr>");
+// KGW_EXPORT_TEMPLATE_PARITY_URL_LINKS_V1B
+fn is_export_url_v1b(value: &str) -> bool {
+    let lower = value.to_ascii_lowercase();
 
-        for cell in row {
-            output.push_str("<td>");
-            output.push_str(&html_escape(cell));
-            output.push_str("</td>");
+    (lower.starts_with("https://") || lower.starts_with("http://"))
+        && !value.chars().any(char::is_whitespace)
+}
+
+// KGW_EXPORT_HTML_PDF_READABLE_LONG_CELLS_V5
+fn kgw_middle_ellipsis_v5(value: &str, head: usize, tail: usize) -> String {
+    let clean = value
+        .replace('\r', " ")
+        .replace('\n', " ")
+        .replace('\t', " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let chars = clean.chars().collect::<Vec<_>>();
+
+    if chars.len() <= head + tail + 3 {
+        return clean;
+    }
+
+    let prefix = chars.iter().take(head).collect::<String>();
+    let suffix = chars
+        .iter()
+        .rev()
+        .take(tail)
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect::<String>();
+
+    format!("{prefix}...{suffix}")
+}
+
+fn kgw_compact_url_v5(value: &str) -> String {
+    let clean = value.trim();
+
+    if clean.contains(" | ") {
+        return clean
+            .split(" | ")
+            .map(|part| kgw_compact_url_v5(part.trim()))
+            .filter(|part| !part.trim().is_empty())
+            .collect::<Vec<_>>()
+            .join(" | ");
+    }
+
+    let lower = clean.to_ascii_lowercase();
+
+    if lower.contains("/txs/") {
+        if let Some(txid) = clean.rsplit('/').next() {
+            return format!(
+                "explorer.kaspa.org/txs/{}",
+                kgw_middle_ellipsis_v5(txid, 10, 8)
+            );
+        }
+    }
+
+    if lower.contains("/addresses/") {
+        if let Some(address) = clean.rsplit('/').next() {
+            return format!(
+                "explorer.kaspa.org/addresses/{}",
+                kgw_middle_ellipsis_v5(address, 14, 8)
+            );
+        }
+    }
+
+    kgw_middle_ellipsis_v5(clean, 26, 14)
+}
+
+fn kgw_compact_address_v5(value: &str) -> String {
+    let clean = value.trim();
+
+    if clean.contains(" | ") {
+        return clean
+            .split(" | ")
+            .map(|part| kgw_compact_address_v5(part.trim()))
+            .filter(|part| !part.trim().is_empty())
+            .collect::<Vec<_>>()
+            .join(" | ");
+    }
+
+    if clean.starts_with("kaspa:") {
+        return kgw_middle_ellipsis_v5(clean, 14, 8);
+    }
+
+    if clean.len() >= 48 && clean.chars().all(|ch| ch.is_ascii_hexdigit()) {
+        return kgw_middle_ellipsis_v5(clean, 10, 8);
+    }
+
+    clean.to_string()
+}
+
+fn kgw_display_cell_v5(header: &str, value: &str) -> String {
+    let clean = value.trim();
+    let lower = header.to_ascii_lowercase();
+
+    if clean.is_empty() {
+        return String::new();
+    }
+
+    if lower.contains("url") {
+        return kgw_compact_url_v5(clean);
+    }
+
+    if lower.contains("transaction id") || lower == "txid" || lower.contains("tx id") {
+        return kgw_middle_ellipsis_v5(clean, 10, 8);
+    }
+
+    if lower.contains("address") {
+        return kgw_compact_address_v5(clean);
+    }
+
+    if lower.contains("timestamp") && clean.len() > 12 {
+        return kgw_middle_ellipsis_v5(clean, 8, 4);
+    }
+
+    clean.to_string()
+}
+
+fn kgw_html_attr_escape_v5(value: &str) -> String {
+    html_escape(value).replace('"', "&quot;")
+}
+
+fn html_cell_with_header_v5(header: &str, value: &str) -> String {
+    let display = kgw_display_cell_v5(header, value);
+    let title = kgw_html_attr_escape_v5(value);
+
+    if is_export_url_v1b(value.trim()) {
+        let href = kgw_html_attr_escape_v5(value.trim());
+        return format!(
+            "<a href=\"{href}\" target=\"_blank\" rel=\"noopener noreferrer\" title=\"{title}\">{}</a>",
+            html_escape(&display)
+        );
+    }
+
+    if value.contains(" | ") {
+        let parts = value
+            .split(" | ")
+            .map(str::trim)
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>();
+
+        if !parts.is_empty() && parts.iter().all(|part| is_export_url_v1b(part)) {
+            return parts
+                .iter()
+                .map(|part| {
+                    let display_part = kgw_compact_url_v5(part);
+                    let href = kgw_html_attr_escape_v5(part);
+                    let title = kgw_html_attr_escape_v5(part);
+
+                    format!(
+                        "<a href=\"{href}\" target=\"_blank\" rel=\"noopener noreferrer\" title=\"{title}\">{}</a>",
+                        html_escape(&display_part)
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(" | ");
+        }
+    }
+
+    if display == value {
+        html_escape(value)
+    } else {
+        format!(
+            "<span title=\"{title}\" class=\"kgw-export-compact-cell\">{}</span>",
+            html_escape(&display)
+        )
+    }
+}
+
+// KGW_EXPORT_COMPACT_REPORT_LAYOUT_V6
+fn kgw_header_index_v6(headers: &[String], candidates: &[&str]) -> Option<usize> {
+    headers.iter().position(|header| {
+        let lower = header.to_ascii_lowercase();
+
+        candidates.iter().any(|candidate| {
+            let candidate_lower = candidate.to_ascii_lowercase();
+            lower == candidate_lower || lower.contains(&candidate_lower)
+        })
+    })
+}
+
+fn kgw_row_cell_v6(row: &[String], index: Option<usize>) -> String {
+    index
+        .and_then(|idx| row.get(idx))
+        .map(|value| value.trim().to_string())
+        .unwrap_or_default()
+}
+
+fn kgw_short_date_time_v6(value: &str) -> String {
+    let clean = value.trim();
+
+    if clean.len() >= 16 {
+        return clean[..16].to_string();
+    }
+
+    clean.to_string()
+}
+
+fn kgw_pdf_compact_table_v6(table: &ReportTable) -> ReportTable {
+    let headers = &table.headers;
+
+    let txid_idx = kgw_header_index_v6(headers, &["transaction id", "txid", "tx id"]);
+    let datetime_idx = kgw_header_index_v6(headers, &["date/time", "datetime", "time"]);
+    let direction_idx = kgw_header_index_v6(headers, &["direction"]);
+    let from_idx = kgw_header_index_v6(headers, &["from address"]);
+    let to_idx = kgw_header_index_v6(headers, &["to address"]);
+    let amount_idx = kgw_header_index_v6(headers, &["amount"]);
+    let value_idx = kgw_header_index_v6(headers, &["value"]);
+    let block_idx = kgw_header_index_v6(headers, &["block score", "block"]);
+    let type_idx = kgw_header_index_v6(headers, &["type"]);
+
+    let looks_like_explorer =
+        txid_idx.is_some() && datetime_idx.is_some() && amount_idx.is_some() && headers.len() >= 10;
+
+    if !looks_like_explorer {
+        return table.clone();
+    }
+
+    let rows = table
+        .rows
+        .iter()
+        .map(|row| {
+            let txid = kgw_row_cell_v6(row, txid_idx);
+            let from = kgw_row_cell_v6(row, from_idx);
+            let to = kgw_row_cell_v6(row, to_idx);
+
+            let reference = if !txid.is_empty() {
+                kgw_middle_ellipsis_v5(&txid, 8, 6)
+            } else {
+                String::new()
+            };
+
+            let parties = match (from.trim().is_empty(), to.trim().is_empty()) {
+                (true, true) => String::new(),
+                (false, true) => kgw_compact_address_v5(&from),
+                (true, false) => kgw_compact_address_v5(&to),
+                (false, false) => format!(
+                    "{} -> {}",
+                    kgw_compact_address_v5(&from),
+                    kgw_compact_address_v5(&to)
+                ),
+            };
+
+            vec![
+                kgw_short_date_time_v6(&kgw_row_cell_v6(row, datetime_idx)),
+                kgw_row_cell_v6(row, direction_idx),
+                kgw_row_cell_v6(row, amount_idx),
+                kgw_row_cell_v6(row, value_idx),
+                kgw_row_cell_v6(row, type_idx),
+                kgw_row_cell_v6(row, block_idx),
+                reference,
+                parties,
+            ]
+        })
+        .collect::<Vec<_>>();
+
+    ReportTable {
+        title: table.title.clone(),
+        subtitle: format!(
+            "{} | PDF compact layout; CSV/HTML keep full raw export values.",
+            table.subtitle
+        ),
+        headers: vec![
+            "Date/Time".to_string(),
+            "Dir".to_string(),
+            "Amount".to_string(),
+            "Value".to_string(),
+            "Type".to_string(),
+            "Block".to_string(),
+            "Tx".to_string(),
+            "Parties".to_string(),
+        ],
+        rows,
+    }
+}
+
+fn kgw_pdf_compact_font_size_v6(headers: &[String]) -> f32 {
+    if headers.len() <= 8 {
+        5.05
+    } else {
+        4.75
+    }
+}
+
+fn kgw_pdf_compact_header_font_size_v6(headers: &[String]) -> f32 {
+    if headers.len() <= 8 {
+        5.65
+    } else {
+        5.25
+    }
+}
+
+fn write_html(path: &Path, table: &ReportTable, locale: Option<&str>) -> Result<(), String> {
+    // KGW_EXPORT_PHASE_C_HTML_TEMPLATE_PARITY_V16C
+    //
+    // Python parity intent:
+    // - keep one canonical HTML writer owner in export_commands.rs
+    // - keep the existing call contract: locale: Option<&str>
+    // - render a complete full HTML document
+    // - preserve lang/dir for RTL Arabic
+    // - include report metadata, CSS, escaped table values, and footer
+    // - keep frontend Native Save As and CSV behavior unchanged
+
+    let locale = locale.unwrap_or("en").trim();
+    let lang = if locale.is_empty() { "en" } else { locale };
+    let is_rtl = lang.to_ascii_lowercase().starts_with("ar");
+    let dir = if is_rtl { "rtl" } else { "ltr" };
+    let align = if is_rtl { "right" } else { "left" };
+    let opposite_align = if is_rtl { "left" } else { "right" };
+
+    let mut metadata = String::new();
+
+    metadata.push_str(&kgw_export_html_metadata_row_v16(
+        "Kaspa Gateway Version",
+        env!("CARGO_PKG_VERSION"),
+    ));
+
+    metadata.push_str(&kgw_export_html_metadata_row_v16("Report", &table.title));
+
+    if !table.subtitle.trim().is_empty() {
+        metadata.push_str(&kgw_export_html_metadata_row_v16(
+            "Details",
+            &table.subtitle,
+        ));
+    }
+
+    let generated_on = kgw_export_html_generated_on_v16();
+    metadata.push_str(&kgw_export_html_metadata_row_v16(
+        "Exported On",
+        &generated_on,
+    ));
+
+    let row_count = table.rows.len().to_string();
+    metadata.push_str(&kgw_export_html_metadata_row_v16("Rows", &row_count));
+
+    let headers = table
+        .headers
+        .iter()
+        .map(|header| format!("<th>{}</th>", html_escape(header)))
+        .collect::<Vec<_>>()
+        .join("");
+
+    let rows = table
+        .rows
+        .iter()
+        .map(|row| {
+            let cells = row
+                .iter()
+                .enumerate()
+                .map(|(index, cell)| {
+                    let header = table.headers.get(index).map(String::as_str).unwrap_or("");
+                    format!("<td>{}</td>", html_cell_with_header_v5(header, cell))
+                })
+                .collect::<Vec<_>>()
+                .join("");
+
+            format!("<tr>{cells}</tr>")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let html = format!(
+        r#"<!doctype html>
+<html lang="{lang}" dir="{dir}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{title}</title>
+  <style>
+    :root {{
+      color-scheme: light dark;
+      --kgw-bg: #f5f7fb;
+      --kgw-card: #ffffff;
+      --kgw-text: #172033;
+      --kgw-muted: #64748b;
+      --kgw-border: #dbe3ef;
+      --kgw-header: #10233f;
+      --kgw-header-text: #ffffff;
+      --kgw-row: #f8fbff;
+      --kgw-link: #1d5fd1;
+    }}
+
+    * {{
+      box-sizing: border-box;
+    }}
+
+    body {{
+      margin: 0;
+      padding: 28px;
+      background: var(--kgw-bg);
+      color: var(--kgw-text);
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      line-height: 1.55;
+      text-align: {align};
+    }}
+
+    .kgw-report {{
+      max-width: 1180px;
+      margin: 0 auto;
+      background: var(--kgw-card);
+      border: 1px solid var(--kgw-border);
+      border-radius: 14px;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.10);
+      overflow: hidden;
+    }}
+
+    .kgw-report-header {{
+      padding: 28px 30px 22px;
+      background: linear-gradient(135deg, #10233f, #214b82);
+      color: var(--kgw-header-text);
+    }}
+
+    .kgw-report-title {{
+      margin: 0;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }}
+
+    .kgw-report-subtitle {{
+      margin: 8px 0 0;
+      color: rgba(255,255,255,0.84);
+      font-size: 14px;
+    }}
+
+    .kgw-report-meta {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 10px;
+      padding: 20px 30px;
+      border-bottom: 1px solid var(--kgw-border);
+      background: #f8fbff;
+    }}
+
+    .kgw-report-meta-row {{
+      min-height: 46px;
+      padding: 10px 12px;
+      border: 1px solid var(--kgw-border);
+      border-radius: 10px;
+      background: #ffffff;
+    }}
+
+    .kgw-report-meta-row span {{
+      display: block;
+      margin-bottom: 3px;
+      color: var(--kgw-muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }}
+
+    .kgw-report-meta-row strong {{
+      display: block;
+      color: var(--kgw-text);
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }}
+
+    .kgw-table-wrap {{
+      width: 100%;
+      overflow-x: auto;
+      padding: 22px 30px 30px;
+    }}
+
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid var(--kgw-border);
+      background: #ffffff;
+      font-size: 13px;
+    }}
+
+    thead th {{
+      background: var(--kgw-header);
+      color: var(--kgw-header-text);
+      text-align: {align};
+      padding: 11px 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      white-space: nowrap;
+    }}
+
+    tbody td {{
+      padding: 10px 12px;
+      border: 1px solid var(--kgw-border);
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }}
+
+    tbody tr:nth-child(even) {{
+      background: var(--kgw-row);
+    }}
+
+    a {{
+      color: var(--kgw-link);
+      text-decoration: none;
+    }}
+
+    a:hover {{
+      text-decoration: underline;
+    }}
+
+    .kgw-report-footer {{
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 30px 20px;
+      border-top: 1px solid var(--kgw-border);
+      color: var(--kgw-muted);
+      font-size: 12px;
+      text-align: {align};
+    }}
+
+    .kgw-report-footer .kgw-footer-side {{
+      text-align: {opposite_align};
+    }}
+
+    @media print {{
+      body {{
+        padding: 0;
+        background: #ffffff;
+      }}
+
+      .kgw-report {{
+        box-shadow: none;
+        border: 0;
+        border-radius: 0;
+      }}
+    }}
+  </style>
+</head>
+<body>
+  <main class="kgw-report">
+    <header class="kgw-report-header">
+      <h1 class="kgw-report-title">{title}</h1>
+      <p class="kgw-report-subtitle">{subtitle}</p>
+    </header>
+
+    <section class="kgw-report-meta" aria-label="Report metadata">
+      {metadata}
+    </section>
+
+    <section class="kgw-table-wrap">
+      <table>
+        <thead>
+          <tr>{headers}</tr>
+        </thead>
+        <tbody>
+          {rows}
+        </tbody>
+      </table>
+    </section>
+
+    <footer class="kgw-report-footer">
+      <span>Generated by Kaspa Gateway</span>
+      <span class="kgw-footer-side">Rows: {row_count}</span>
+    </footer>
+  </main>
+</body>
+</html>
+"#,
+        lang = html_escape(lang),
+        dir = dir,
+        align = align,
+        opposite_align = opposite_align,
+        title = html_escape(&table.title),
+        subtitle = html_escape(&table.subtitle),
+        metadata = metadata,
+        headers = headers,
+        rows = rows,
+        row_count = table.rows.len(),
+    );
+
+    std::fs::write(path, html).map_err(|error| error.to_string())
+}
+
+fn kgw_pdf_color_v29(r: f32, g: f32, b: f32) -> printpdf::Color {
+    printpdf::Color::Rgb(printpdf::Rgb::new(r, g, b, None))
+}
+
+fn kgw_pdf_point_v29(x: f32, y: f32) -> printpdf::Point {
+    printpdf::Point::new(printpdf::Mm(x), printpdf::Mm(y))
+}
+
+fn kgw_pdf_draw_line_v29(ops: &mut Vec<printpdf::Op>, x1: f32, y1: f32, x2: f32, y2: f32) {
+    ops.push(printpdf::Op::SetOutlineColor {
+        col: kgw_pdf_color_v29(0.70, 0.70, 0.70),
+    });
+    ops.push(printpdf::Op::SetOutlineThickness {
+        pt: printpdf::Pt(0.35),
+    });
+    ops.push(printpdf::Op::DrawLine {
+        line: printpdf::Line {
+            points: vec![
+                printpdf::LinePoint {
+                    p: kgw_pdf_point_v29(x1, y1),
+                    bezier: false,
+                },
+                printpdf::LinePoint {
+                    p: kgw_pdf_point_v29(x2, y2),
+                    bezier: false,
+                },
+            ],
+            is_closed: false,
+        },
+    });
+}
+
+fn kgw_pdf_draw_rect_border_v29(ops: &mut Vec<printpdf::Op>, x: f32, y: f32, w: f32, h: f32) {
+    kgw_pdf_draw_line_v29(ops, x, y, x + w, y);
+    kgw_pdf_draw_line_v29(ops, x + w, y, x + w, y - h);
+    kgw_pdf_draw_line_v29(ops, x + w, y - h, x, y - h);
+    kgw_pdf_draw_line_v29(ops, x, y - h, x, y);
+}
+
+fn kgw_pdf_text_v29(
+    ops: &mut Vec<printpdf::Op>,
+    font: &printpdf::PdfFontHandle,
+    text: &str,
+    x: f32,
+    y: f32,
+    size: f32,
+) {
+    ops.push(printpdf::Op::StartTextSection);
+    ops.push(printpdf::Op::SetTextCursor {
+        pos: kgw_pdf_point_v29(x, y),
+    });
+    ops.push(printpdf::Op::SetFont {
+        font: font.clone(),
+        size: printpdf::Pt(size),
+    });
+    ops.push(printpdf::Op::SetLineHeight {
+        lh: printpdf::Pt(size + 2.0),
+    });
+    ops.push(printpdf::Op::ShowText {
+        items: vec![printpdf::TextItem::Text(text.to_string())],
+    });
+    ops.push(printpdf::Op::EndTextSection);
+}
+
+fn kgw_pdf_clean_text_v29(value: &str) -> String {
+    value
+        .replace('\r', " ")
+        .replace('\n', " ")
+        .replace('\t', " ")
+        .replace('—', "-")
+        .replace('–', "-")
+        .replace('•', "-")
+        .replace('…', "...")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn kgw_pdf_column_weight_v30(header: &str) -> f32 {
+    let lower = header.to_ascii_lowercase();
+
+    if lower == "parties" {
+        2.35
+    } else if lower == "tx" {
+        1.30
+    } else if lower == "date/time" {
+        1.05
+    } else if lower == "dir" {
+        0.55
+    } else if lower == "amount" || lower == "value" {
+        0.80
+    } else if lower == "type" {
+        0.65
+    } else if lower == "block" {
+        0.75
+    } else if lower.contains("url") {
+        2.20
+    } else if lower.contains("address") {
+        1.85
+    } else if lower.contains("transaction") || lower.contains("txid") || lower == "txid" {
+        1.65
+    } else if lower.contains("date") || lower.contains("time") {
+        1.05
+    } else if lower.contains("amount") || lower.contains("balance") || lower.contains("value") {
+        0.95
+    } else if lower.contains("rank") {
+        0.45
+    } else if lower.contains("direction") || lower.contains("type") {
+        0.65
+    } else {
+        1.00
+    }
+}
+
+fn kgw_pdf_column_widths_v29(headers: &[String]) -> Vec<f32> {
+    const TABLE_WIDTH_MM: f32 = 269.0;
+
+    if headers.is_empty() {
+        return vec![TABLE_WIDTH_MM];
+    }
+
+    let weights = headers
+        .iter()
+        .map(|header| kgw_pdf_column_weight_v30(header))
+        .collect::<Vec<_>>();
+
+    let total_weight = weights.iter().sum::<f32>().max(1.0);
+    let min_width = if headers.len() >= 10 { 8.0 } else { 12.0 };
+
+    let mut widths = weights
+        .iter()
+        .map(|weight| ((weight / total_weight) * TABLE_WIDTH_MM).max(min_width))
+        .collect::<Vec<_>>();
+
+    let sum = widths.iter().sum::<f32>();
+
+    if sum > TABLE_WIDTH_MM {
+        let scale = TABLE_WIDTH_MM / sum;
+        for width in &mut widths {
+            *width = (*width * scale).max(6.0);
+        }
+    }
+
+    widths
+}
+
+fn kgw_pdf_chars_for_width_v30(width: f32, font_size: f32) -> usize {
+    ((width / (font_size * 0.36)).floor() as usize).max(4)
+}
+
+fn kgw_pdf_chunk_word_v30(word: &str, max_chars: usize) -> Vec<String> {
+    let chars = word.chars().collect::<Vec<_>>();
+
+    if chars.len() <= max_chars {
+        return vec![word.to_string()];
+    }
+
+    chars
+        .chunks(max_chars.max(1))
+        .map(|chunk| chunk.iter().collect::<String>())
+        .collect::<Vec<_>>()
+}
+
+fn kgw_pdf_wrap_segment_v30(segment: &str, max_chars: usize) -> Vec<String> {
+    let clean = kgw_pdf_clean_text_v29(segment);
+
+    if clean.is_empty() {
+        return vec![String::new()];
+    }
+
+    if !clean.contains(' ') {
+        return kgw_pdf_chunk_word_v30(&clean, max_chars);
+    }
+
+    let mut lines = Vec::new();
+    let mut current = String::new();
+
+    for word in clean.split_whitespace() {
+        let word_len = word.chars().count();
+
+        if word_len > max_chars {
+            if !current.is_empty() {
+                lines.push(current);
+                current = String::new();
+            }
+
+            lines.extend(kgw_pdf_chunk_word_v30(word, max_chars));
+            continue;
         }
 
-        output.push_str("</tr>");
+        let next_len = if current.is_empty() {
+            word_len
+        } else {
+            current.chars().count() + 1 + word_len
+        };
+
+        if next_len > max_chars && !current.is_empty() {
+            lines.push(current);
+            current = word.to_string();
+        } else {
+            if !current.is_empty() {
+                current.push(' ');
+            }
+
+            current.push_str(word);
+        }
     }
 
-    output.push_str("</tbody></table></body></html>");
+    if !current.is_empty() {
+        lines.push(current);
+    }
 
-    fs::write(path, output).map_err(|error| error.to_string())
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+
+    lines
+}
+
+fn kgw_pdf_wrap_text_v30(value: &str, width: f32, font_size: f32) -> Vec<String> {
+    let max_chars = kgw_pdf_chars_for_width_v30(width, font_size);
+    let clean = kgw_pdf_clean_text_v29(value);
+
+    if clean.is_empty() {
+        return vec![String::new()];
+    }
+
+    let mut lines = Vec::new();
+
+    for segment in clean.split(" | ") {
+        let segment_lines = kgw_pdf_wrap_segment_v30(segment.trim(), max_chars);
+
+        if !lines.is_empty() && !segment.trim().is_empty() {
+            lines.push("|".to_string());
+        }
+
+        lines.extend(segment_lines);
+    }
+
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+
+    lines
+}
+
+fn kgw_pdf_row_height_v30(row: &[String], widths: &[f32], font_size: f32) -> f32 {
+    let mut max_lines = 1usize;
+
+    for (index, width) in widths.iter().enumerate() {
+        let cell = row.get(index).map(String::as_str).unwrap_or("");
+        let lines = kgw_pdf_wrap_text_v30(cell, *width - 3.0, font_size);
+        max_lines = max_lines.max(lines.len().min(2));
+    }
+
+    let line_gap = font_size * 0.42 + 1.05;
+    ((max_lines as f32) * line_gap + 3.0).max(6.2)
+}
+
+fn kgw_pdf_draw_table_header_v29(
+    ops: &mut Vec<printpdf::Op>,
+    font: &printpdf::PdfFontHandle,
+    headers: &[String],
+    widths: &[f32],
+    x0: f32,
+    y: f32,
+    row_h: f32,
+) {
+    let mut x = x0;
+    let font_size = kgw_pdf_compact_header_font_size_v6(headers);
+
+    for (index, width) in widths.iter().enumerate() {
+        let header = headers.get(index).cloned().unwrap_or_default();
+        let mut lines = kgw_pdf_wrap_text_v30(&header, *width - 3.0, font_size);
+
+        if lines.len() > 2 {
+            lines.truncate(2);
+        }
+
+        kgw_pdf_draw_rect_border_v29(ops, x, y, *width, row_h);
+
+        for (line_index, line) in lines.iter().enumerate() {
+            let text_y = y - 4.0 - (line_index as f32 * 3.1);
+
+            if text_y > y - row_h + 1.5 {
+                kgw_pdf_text_v29(ops, font, line, x + 1.3, text_y, font_size);
+            }
+        }
+
+        x += *width;
+    }
+}
+
+fn kgw_pdf_draw_table_row_v29(
+    ops: &mut Vec<printpdf::Op>,
+    font: &printpdf::PdfFontHandle,
+    headers: &[String],
+    row: &[String],
+    widths: &[f32],
+    x0: f32,
+    y: f32,
+    row_h: f32,
+) {
+    let mut x = x0;
+    let font_size = kgw_pdf_compact_font_size_v6(headers);
+
+    for (index, width) in widths.iter().enumerate() {
+        let header = headers.get(index).map(String::as_str).unwrap_or("");
+        let cell = row.get(index).cloned().unwrap_or_default();
+        let display_cell = kgw_display_cell_v5(header, &cell);
+        let mut lines = kgw_pdf_wrap_text_v30(&display_cell, *width - 3.0, font_size);
+
+        if lines.len() > 2 {
+            lines.truncate(2);
+
+            if let Some(last) = lines.last_mut() {
+                *last = kgw_middle_ellipsis_v5(last, 14, 5);
+            }
+        }
+
+        kgw_pdf_draw_rect_border_v29(ops, x, y, *width, row_h);
+
+        for (line_index, line) in lines.iter().enumerate() {
+            let text_y = y - 3.8 - (line_index as f32 * 3.0);
+
+            if text_y > y - row_h + 1.3 {
+                kgw_pdf_text_v29(ops, font, line, x + 1.2, text_y, font_size);
+            }
+        }
+
+        x += *width;
+    }
+}
+
+fn kgw_pdf_draw_metadata_line_v30(
+    ops: &mut Vec<printpdf::Op>,
+    font: &printpdf::PdfFontHandle,
+    label: &str,
+    value: &str,
+    x: f32,
+    y: f32,
+) {
+    let text = if value.trim().is_empty() {
+        label.to_string()
+    } else {
+        format!("{label}: {value}")
+    };
+
+    kgw_pdf_text_v29(ops, font, &kgw_pdf_clean_text_v29(&text), x, y, 7.4);
+}
+
+fn kgw_pdf_draw_page_header_v29(
+    ops: &mut Vec<printpdf::Op>,
+    font: &printpdf::PdfFontHandle,
+    table: &ReportTable,
+    page_no: usize,
+) {
+    kgw_pdf_text_v29(
+        ops,
+        font,
+        &kgw_pdf_clean_text_v29(&table.title),
+        14.0,
+        195.0,
+        15.0,
+    );
+
+    if page_no == 1 {
+        if !table.subtitle.trim().is_empty() {
+            let subtitle_lines = kgw_pdf_wrap_text_v30(&table.subtitle, 250.0, 7.6);
+
+            for (index, line) in subtitle_lines.iter().take(3).enumerate() {
+                kgw_pdf_text_v29(ops, font, line, 14.0, 186.0 - (index as f32 * 4.8), 7.6);
+            }
+        }
+
+        kgw_pdf_draw_metadata_line_v30(
+            ops,
+            font,
+            "Kaspa Gateway Version",
+            env!("CARGO_PKG_VERSION"),
+            14.0,
+            169.0,
+        );
+
+        kgw_pdf_draw_metadata_line_v30(ops, font, "Report", &table.title, 14.0, 164.2);
+
+        kgw_pdf_draw_metadata_line_v30(
+            ops,
+            font,
+            "Exported On",
+            &kgw_export_html_generated_on_v16(),
+            14.0,
+            159.4,
+        );
+
+        kgw_pdf_draw_metadata_line_v30(
+            ops,
+            font,
+            "Rows",
+            &table.rows.len().to_string(),
+            150.0,
+            169.0,
+        );
+
+        kgw_pdf_draw_metadata_line_v30(
+            ops,
+            font,
+            "Columns",
+            &table.headers.len().to_string(),
+            150.0,
+            164.2,
+        );
+    }
+}
+
+fn kgw_pdf_draw_page_footer_v29(
+    ops: &mut Vec<printpdf::Op>,
+    font: &printpdf::PdfFontHandle,
+    page_no: usize,
+    total_pages: usize,
+) {
+    kgw_pdf_text_v29(
+        ops,
+        font,
+        &format!("Generated by Kaspa Gateway    Page {page_no} / {total_pages}"),
+        14.0,
+        10.0,
+        7.8,
+    );
+}
+
+fn kgw_pdf_paginate_rows_v30(
+    rows: &[Vec<String>],
+    widths: &[f32],
+    first_page_table_y: f32,
+    next_page_table_y: f32,
+    bottom_y: f32,
+    header_h: f32,
+) -> Vec<Vec<(usize, f32)>> {
+    if rows.is_empty() {
+        return vec![Vec::new()];
+    }
+
+    let mut pages = Vec::new();
+    let mut index = 0usize;
+    let mut first = true;
+
+    while index < rows.len() {
+        let table_y = if first {
+            first_page_table_y
+        } else {
+            next_page_table_y
+        };
+
+        let available = (table_y - bottom_y - header_h).max(12.0);
+        let mut used = 0.0f32;
+        let mut page_rows = Vec::new();
+
+        while index < rows.len() {
+            let row_h = kgw_pdf_row_height_v30(&rows[index], widths, 5.55).max(8.0);
+            let safe_h = row_h.min(available.max(8.0));
+
+            if !page_rows.is_empty() && used + safe_h > available {
+                break;
+            }
+
+            page_rows.push((index, safe_h));
+            used += safe_h;
+            index += 1;
+        }
+
+        if page_rows.is_empty() {
+            page_rows.push((index, available.max(8.0)));
+            index += 1;
+        }
+
+        pages.push(page_rows);
+        first = false;
+    }
+
+    pages
+}
+
+fn kgw_pdf_build_pages_v29(table: &ReportTable) -> Vec<printpdf::PdfPage> {
+    // KGW_EXPORT_COMPACT_REPORT_LAYOUT_BUILD_PAGES_V6
+    //
+    // PDF is a compact, print-oriented report. CSV remains the raw data export,
+    // and HTML remains the full interactive report. This prevents hundreds of
+    // unreadable PDF pages when rows contain long txids, addresses, and URLs.
+
+    let table = kgw_pdf_compact_table_v6(table);
+    let font = printpdf::PdfFontHandle::Builtin(printpdf::BuiltinFont::Helvetica);
+    let widths = kgw_pdf_column_widths_v29(&table.headers);
+
+    let x0: f32 = 14.0;
+    let first_page_table_y: f32 = 151.0;
+    let next_page_table_y: f32 = 184.0;
+    let bottom_y: f32 = 18.0;
+    let header_font = kgw_pdf_compact_header_font_size_v6(&table.headers);
+    let row_font = kgw_pdf_compact_font_size_v6(&table.headers);
+    let header_h = kgw_pdf_row_height_v30(&table.headers, &widths, header_font).max(7.2);
+
+    let paged_rows = kgw_pdf_paginate_rows_v30(
+        &table.rows,
+        &widths,
+        first_page_table_y,
+        next_page_table_y,
+        bottom_y,
+        header_h,
+    );
+
+    let total_pages = paged_rows.len().max(1);
+    let mut pages = Vec::new();
+
+    for (page_index, rows) in paged_rows.iter().enumerate() {
+        let page_no = page_index + 1;
+        let mut ops = Vec::new();
+
+        kgw_pdf_draw_page_header_v29(&mut ops, &font, &table, page_no);
+
+        let table_y = if page_no == 1 {
+            first_page_table_y
+        } else {
+            next_page_table_y
+        };
+
+        kgw_pdf_draw_table_header_v29(
+            &mut ops,
+            &font,
+            &table.headers,
+            &widths,
+            x0,
+            table_y,
+            header_h,
+        );
+
+        let mut y = table_y - header_h;
+
+        if table.rows.is_empty() {
+            let row = vec!["No rows available".to_string()];
+            kgw_pdf_draw_table_row_v29(&mut ops, &font, &table.headers, &row, &widths, x0, y, 8.0);
+        } else {
+            for (row_index, row_h) in rows {
+                if let Some(row) = table.rows.get(*row_index) {
+                    let compact_h = kgw_pdf_row_height_v30(row, &widths, row_font)
+                        .min(*row_h)
+                        .max(6.2);
+                    kgw_pdf_draw_table_row_v29(
+                        &mut ops,
+                        &font,
+                        &table.headers,
+                        row,
+                        &widths,
+                        x0,
+                        y,
+                        compact_h,
+                    );
+                    y -= compact_h;
+                }
+            }
+        }
+
+        kgw_pdf_draw_page_footer_v29(&mut ops, &font, page_no, total_pages);
+
+        pages.push(printpdf::PdfPage::new(
+            printpdf::Mm(297.0),
+            printpdf::Mm(210.0),
+            ops,
+        ));
+    }
+
+    pages
 }
 
 fn write_pdf(path: &Path, table: &ReportTable) -> Result<(), String> {
-    let mut lines = Vec::new();
+    // KGW_EXPORT_PDF_HTML_PARITY_WRITE_PDF_V2
+    //
+    // PDF output intentionally mirrors the HTML report model:
+    // same ReportTable, same headers/rows order, visible URL values,
+    // metadata header, repeated table headers, and page footer.
+    //
+    // No alternate export route is introduced.
 
-    lines.push(table.title.clone());
-    lines.push(table.subtitle.clone());
-    lines.push(table.headers.join(" | "));
+    let mut doc = printpdf::PdfDocument::new(&table.title);
+    let pages = kgw_pdf_build_pages_v29(table);
 
-    for row in table.rows.iter().take(80) {
-        lines.push(row.join(" | "));
-    }
+    let mut warnings = Vec::new();
+    let pdf_bytes = doc
+        .with_pages(pages)
+        .save(&printpdf::PdfSaveOptions::default(), &mut warnings);
 
-    if table.rows.len() > 80 {
-        lines.push(format!("... truncated: {} total rows", table.rows.len()));
-    }
-
-    let stream = build_pdf_content_stream(&lines);
-    let pdf = build_minimal_pdf(&stream);
-
-    fs::write(path, pdf).map_err(|error| error.to_string())
-}
-
-fn build_pdf_content_stream(lines: &[String]) -> String {
-    let mut stream = String::new();
-
-    stream.push_str("BT\n/F1 10 Tf\n50 780 Td\n14 TL\n");
-
-    for line in lines {
-        stream.push('(');
-        stream.push_str(&pdf_escape(&safe_truncate(line, 120)));
-        stream.push_str(") Tj\nT*\n");
-    }
-
-    stream.push_str("ET\n");
-    stream
-}
-
-fn build_minimal_pdf(content_stream: &str) -> Vec<u8> {
-    let mut objects = Vec::new();
-
-    objects.push("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n".to_string());
-    objects.push("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n".to_string());
-    objects.push("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n".to_string());
-    objects.push(
-        "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n".to_string(),
-    );
-    objects.push(format!(
-        "5 0 obj\n<< /Length {} >>\nstream\n{}endstream\nendobj\n",
-        content_stream.len(),
-        content_stream
-    ));
-
-    let mut pdf = String::from("%PDF-1.4\n");
-    let mut offsets = Vec::new();
-
-    for object in &objects {
-        offsets.push(pdf.len());
-        pdf.push_str(object);
-    }
-
-    let xref_offset = pdf.len();
-
-    pdf.push_str("xref\n0 6\n0000000000 65535 f \n");
-
-    for offset in offsets {
-        pdf.push_str(&format!("{offset:010} 00000 n \n"));
-    }
-
-    pdf.push_str("trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n");
-    pdf.push_str(&xref_offset.to_string());
-    pdf.push_str("\n%%EOF\n");
-
-    pdf.into_bytes()
+    std::fs::write(path, pdf_bytes).map_err(|error| error.to_string())
 }
 
 fn ensure_extension(mut path: PathBuf, format: &str) -> PathBuf {
@@ -656,6 +1845,32 @@ fn validate_output_path(path: &str) -> Result<(), String> {
         return Err("Output path contains unsafe characters.".to_string());
     }
 
+    let root = default_user_data_dir()
+        .map_err(|error| error.to_string())?
+        .join("exports");
+
+    fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+
+    let root = root.canonicalize().map_err(|error| error.to_string())?;
+    let candidate = PathBuf::from(path);
+
+    if !candidate.is_absolute() {
+        return Err("Output path must be absolute.".to_string());
+    }
+
+    let Some(parent) = candidate.parent() else {
+        return Err("Output path must include a parent directory.".to_string());
+    };
+
+    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    let parent = parent.canonicalize().map_err(|error| error.to_string())?;
+
+    if !parent.starts_with(&root) {
+        return Err(
+            "Output path must stay inside the Kaspa Gateway exports directory.".to_string(),
+        );
+    }
+
     Ok(())
 }
 
@@ -665,6 +1880,10 @@ fn normalize_report_type(value: &str) -> Result<String, String> {
         "transactions" | "transaction" | "tx" => Ok("Transactions".to_string()),
         "analysis" => Ok("Analysis".to_string()),
         "full" | "summary" | "fullsummary" | "full_summary" => Ok("Full".to_string()),
+        "explorertransactions" | "explorer_transactions" | "explorer" => {
+            Ok("ExplorerTransactions".to_string())
+        }
+        "topaddresses" | "top_addresses" | "top" => Ok("TopAddresses".to_string()),
         _ => Err("Unsupported report type.".to_string()),
     }
 }
@@ -713,18 +1932,6 @@ fn html_escape(value: &str) -> String {
         .replace('>', "&gt;")
         .replace('"', "&quot;")
         .replace('\'', "&#39;")
-}
-
-fn pdf_escape(value: &str) -> String {
-    value
-        .replace('\\', "\\\\")
-        .replace('(', "\\(")
-        .replace(')', "\\)")
-        .replace(['\r', '\n'], " ")
-}
-
-fn safe_truncate(value: &str, max_chars: usize) -> String {
-    value.chars().take(max_chars).collect()
 }
 
 fn sompi_to_kas(value: i64) -> String {
@@ -786,13 +1993,5 @@ mod tests {
     #[test]
     fn csv_cell_blocks_formula_injection() {
         assert_eq!(csv_cell("=cmd"), "\"'=cmd\"");
-    }
-
-    #[test]
-    fn pdf_builder_outputs_header() {
-        let stream = build_pdf_content_stream(&["Export".to_string()]);
-        let pdf = build_minimal_pdf(&stream);
-
-        assert!(pdf.starts_with(b"%PDF-1.4"));
     }
 }

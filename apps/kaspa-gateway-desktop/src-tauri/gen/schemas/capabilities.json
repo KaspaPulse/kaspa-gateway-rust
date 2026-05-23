@@ -1,1 +1,1 @@
-{"main-capability":{"identifier":"main-capability","description":"Main window permissions for Kaspa Gateway desktop shell","local":true,"windows":["main"],"permissions":["core:default"]}}
+{"main-capability":{"identifier":"main-capability","description":"Main window permissions for Kaspa Gateway desktop shell","local":true,"windows":["main"],"permissions":["core:default","dialog:default","dialog:allow-save","dialog:allow-open"]}}
