@@ -37,6 +37,9 @@ pub struct AnalysisCounterparty {
     pub outgoing_kas: f64,
     pub net_kas: f64,
     pub transactions: usize,
+    // KGW_ANALYSIS_BACKEND_CHILD_TRANSACTIONS_PATCH_R11C
+    // Python-style parent row carries expandable child transactions.
+    pub details: Vec<AnalysisTransactionRow>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -60,6 +63,8 @@ pub struct AnalysisTransactionRow {
     pub direction: String,
     pub amount_kas: f64,
     pub counterparty: String,
+    // KGW_ANALYSIS_CHILD_COLUMNS_PYTHON_PARITY_PATCH_R16
+    pub block_score: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -168,8 +173,26 @@ pub fn analysis_report(request: AnalysisDeepRequest) -> Result<AnalysisDeepRepor
         let bucket = bucket_map.entry(bucket_key).or_default();
         bucket.transactions += 1;
 
-        let cp = cp_map.entry(counterparty).or_default();
+        let cp = cp_map.entry(counterparty.clone()).or_default();
         cp.transactions += 1;
+        // KGW_ANALYSIS_BACKEND_CHILD_TRANSACTIONS_PATCH_R11C
+        cp.details.push(AnalysisTransactionRow {
+            txid: record.txid.clone(),
+            address: record.address.clone(),
+            timestamp_ms: record.timestamp_ms,
+            tx_type: record.tx_type.clone(),
+            direction: record.direction.clone(),
+            amount_kas: sompi_to_kas(record.amount_sompi),
+            counterparty: record
+                .counterparty
+                .clone()
+                .unwrap_or_else(|| counterparty.clone()),
+            // KGW_ANALYSIS_CHILD_COLUMNS_PYTHON_PARITY_PATCH_R16
+            block_score: record
+                .block_height
+                .map(|value| value.to_string())
+                .unwrap_or_default(),
+        });
 
         match record.direction.to_ascii_lowercase().as_str() {
             "incoming" => {
@@ -250,6 +273,8 @@ pub fn analysis_report(request: AnalysisDeepRequest) -> Result<AnalysisDeepRepor
             outgoing_kas: sompi_to_kas(cp.outgoing_sompi),
             net_kas: sompi_to_kas(cp.incoming_sompi.saturating_sub(cp.outgoing_sompi)),
             transactions: cp.transactions,
+            // KGW_ANALYSIS_BACKEND_CHILD_TRANSACTIONS_PATCH_R11C
+            details: cp.details,
         })
         .collect::<Vec<_>>();
 
@@ -275,6 +300,11 @@ pub fn analysis_report(request: AnalysisDeepRequest) -> Result<AnalysisDeepRepor
             direction: record.direction,
             amount_kas: sompi_to_kas(record.amount_sompi),
             counterparty: record.counterparty.unwrap_or_default(),
+            // KGW_ANALYSIS_CHILD_COLUMNS_PYTHON_PARITY_PATCH_R16
+            block_score: record
+                .block_height
+                .map(|value| value.to_string())
+                .unwrap_or_default(),
         })
         .collect::<Vec<_>>();
 
@@ -720,6 +750,8 @@ struct CounterpartyAccumulator {
     incoming_sompi: i64,
     outgoing_sompi: i64,
     transactions: usize,
+    // KGW_ANALYSIS_BACKEND_CHILD_TRANSACTIONS_PATCH_R11C
+    details: Vec<AnalysisTransactionRow>,
 }
 
 #[derive(Debug, Default)]

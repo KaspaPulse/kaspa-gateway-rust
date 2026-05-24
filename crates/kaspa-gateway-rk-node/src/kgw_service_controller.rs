@@ -1,4 +1,4 @@
-﻿use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{
     mpsc::{self, Receiver, Sender},
@@ -34,16 +34,16 @@ impl KgwNetwork {
         }
     }
 
-        pub fn branch(self) -> &'static str {
+    pub fn branch(self) -> &'static str {
         match self {
             Self::Mainnet => "master",
             Self::Testnet10 | Self::Testnet12 => "RKStratumTN12",
         }
     }
 
-        pub fn revision(self) -> &'static str {
+    pub fn revision(self) -> &'static str {
         match self {
-            Self::Mainnet => "4969c6c31bec6a1a31e17c2e8a43532e17834240",
+            Self::Mainnet => "d7f9b1590ca68c95ebe9f7242b822ecdf867de7e",
             Self::Testnet10 | Self::Testnet12 => "f197b5ca00a92825f9962db1b3ed0f5d00455464",
         }
     }
@@ -903,5 +903,3 @@ fn timestamp_ms() -> u128 {
 pub fn exact_kgw_service_controller_summary_v1() -> &'static str {
     "Exact KGW controller flow: NodeSettings -> KaspadServiceEvents::from_node_settings -> service_events sender -> controller event loop -> handle_event lifecycle. mainnet/testnet10 use master; testnet12 uses tn12."
 }
-
-

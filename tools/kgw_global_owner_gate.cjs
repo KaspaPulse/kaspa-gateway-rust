@@ -459,6 +459,57 @@ const OWNER_REGISTRY = {
     ]
   },
 
+
+  analysisResultsTable: {
+    ownerId: "KGW_ANALYSIS_RESULTS_TABLE_OWNER",
+    description: "Analysis results and Counterparty Breakdown table rendering, row formatting, sorting surface, and layout ownership.",
+    activeFiles: [
+          "apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis.js",
+          "apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis.css",
+          "apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis-rust-binding.js",
+          "apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis.html",
+          "apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis.template.js"
+    ],
+    referenceFiles: [
+          "apps/kaspa-gateway-desktop/src-tauri/src/analysis_commands.rs",
+          "apps/kaspa-gateway-desktop/src-tauri/src/export_commands.rs",
+          "apps/kaspa-gateway-desktop/frontend/i18n/ar.json",
+          "apps/kaspa-gateway-desktop/frontend/i18n/de.json",
+          "apps/kaspa-gateway-desktop/frontend/i18n/en.json",
+          "apps/kaspa-gateway-desktop/frontend/i18n/es.json",
+          "apps/kaspa-gateway-desktop/frontend/i18n/fr.json",
+          "apps/kaspa-gateway-desktop/frontend/i18n/hi.json",
+          "apps/kaspa-gateway-desktop/frontend/i18n/id.json",
+          "apps/kaspa-gateway-desktop/frontend/i18n/ja.json",
+          "apps/kaspa-gateway-desktop/frontend/i18n/ko.json",
+          "apps/kaspa-gateway-desktop/frontend/i18n/ru.json",
+          "apps/kaspa-gateway-desktop/frontend/i18n/tr.json",
+          "apps/kaspa-gateway-desktop/frontend/i18n/zh-CN.json"
+    ],
+    requiredMarkers: [
+          "function setAnalysisData(payload = {})",
+          "function setAnalysisData",
+          "analysisRows = rows.map",
+          "kgwAnalysisSetExportButtonsEnabledV1G",
+          "renderRows();"
+    ],
+    requiredFiles: [],
+    forbiddenMarkers: [
+      "analysisResultsTableDuplicateOwner",
+      "KGW_ANALYSIS_RESULTS_TABLE_LAYER",
+      "KGW_ANALYSIS_RESULTS_TABLE_OVERLAY_WORKAROUND",
+      "KGW_ANALYSIS_RESULTS_TABLE_MUTATION_OBSERVER_LAYER"
+    ],
+    responsibilities: [
+      "analysis Counterparty Breakdown table render owner",
+      "analysis results row formatting",
+      "analysis address and transaction display surface",
+      "analysis result table sorting and display behavior",
+      "analysis export compatibility awareness",
+      "no duplicate Analysis results table owner",
+      "no overlay workaround and no MutationObserver workaround for this table"
+    ]
+  },
   analysisUiTrace: {
     ownerId: "KGW_ANALYSIS_UI_TRACE_OWNER",
     description: "Analysis filters, calendar, export, start/cancel trace ownership.",

@@ -581,3 +581,521 @@
   font-size: 10px;
 }
 /* KGW_CALENDAR_EXISTING_OWNER_REBUILD_R2_ANALYSIS_CSS_END */
+
+
+/* KGW_ANALYSIS_RESULTS_TABLE_UI_PATCH_R3
+   Existing analysisResultsTable owner only.
+   Improves table readability without export/backend changes.
+*/
+#analysis .kgw-analysis-table {
+  min-width: 1120px;
+  font-size: 11.5px;
+}
+
+#analysis .kgw-analysis-table tbody td {
+  height: 34px;
+  padding: 4px 9px;
+  vertical-align: middle;
+}
+
+#analysis .kgw-analysis-result-row td {
+  line-height: 1.2;
+}
+
+#analysis .kgw-analysis-name-cell,
+#analysis .kgw-analysis-id-cell {
+  min-width: 0;
+}
+
+#analysis .kgw-analysis-cell-main,
+#analysis .kgw-analysis-cell-sub,
+#analysis .kgw-analysis-mono {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#analysis .kgw-analysis-cell-main {
+  font-weight: 800;
+}
+
+#analysis .kgw-analysis-cell-sub {
+  margin-top: 2px;
+  opacity: 0.68;
+  font-size: 10.5px;
+}
+
+#analysis .kgw-analysis-mono,
+#analysis .kgw-analysis-block-cell {
+  direction: ltr;
+  unicode-bidi: plaintext;
+  font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
+}
+
+#analysis .kgw-analysis-txs-cell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#analysis .kgw-analysis-count-badge,
+#analysis .kgw-analysis-dir-badge,
+#analysis .kgw-analysis-type-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.62);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#analysis .kgw-analysis-count-badge {
+  font-weight: 800;
+}
+
+#analysis .kgw-analysis-dir-badge {
+  opacity: 0.76;
+  font-size: 10px;
+}
+
+#analysis .kgw-analysis-flow-cell,
+#analysis .kgw-analysis-value-cell {
+  direction: ltr;
+  unicode-bidi: plaintext;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+#analysis .kgw-analysis-flow-cell.is-positive {
+  color: #8ef38b;
+}
+
+#analysis .kgw-analysis-flow-cell.is-negative {
+  color: #ff9b9b;
+}
+
+#analysis .kgw-analysis-flow-cell.is-neutral {
+  color: var(--kgw-global-text, #ffffff);
+}
+
+#analysis .kgw-analysis-type-cell {
+  overflow: visible;
+}
+
+#analysis .kgw-analysis-type-badge {
+  width: 100%;
+  justify-content: center;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+#analysis .kgw-analysis-table th:nth-child(1) { width: 17%; }
+#analysis .kgw-analysis-table th:nth-child(2) { width: 34%; }
+#analysis .kgw-analysis-table th:nth-child(3) { width: 10%; }
+#analysis .kgw-analysis-table th:nth-child(4) { width: 14%; }
+#analysis .kgw-analysis-table th:nth-child(5) { width: 9%; }
+#analysis .kgw-analysis-table th:nth-child(6) { width: 7%; }
+#analysis .kgw-analysis-table th:nth-child(7) { width: 9%; }
+
+
+
+
+/* KGW_ANALYSIS_PYTHON_STYLE_LAZY_TABLE_R9
+   Python Treeview-style Analysis table:
+   parent counterparty rows first, child rows displayed only on +.
+*/
+#analysis .kgw-analysis-python-parent-row-r9 {
+  font-weight: 800;
+}
+
+#analysis .kgw-analysis-python-toggle-r9 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-inline-end: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  background: rgba(30, 41, 59, 0.86);
+  color: inherit;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+#analysis .kgw-analysis-python-toggle-r9:hover {
+  border-color: rgba(147, 197, 253, 0.78);
+  background: rgba(59, 130, 246, 0.22);
+}
+
+#analysis .kgw-analysis-python-child-row-r9 td {
+  height: 30px;
+  padding: 4px 9px;
+  border-top: 1px solid rgba(148, 163, 184, 0.08);
+  background: rgba(15, 23, 42, 0.42);
+  font-size: 10.8px;
+  font-weight: 500;
+}
+
+#analysis .kgw-analysis-python-child-row-r9 .kgw-analysis-mono {
+  font-size: 10.5px;
+}
+
+#analysis .kgw-analysis-python-child-date-r9,
+#analysis .kgw-analysis-python-child-dir-r9,
+#analysis .kgw-analysis-python-child-id-r9 {
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+
+#analysis .kgw-analysis-python-empty-r9 {
+  text-align: center;
+  opacity: 0.76;
+  font-weight: 800;
+  color: rgba(248, 250, 252, 0.72);
+}
+
+
+/* KGW_ANALYSIS_PYTHON_TREEVIEW_VISUAL_PATCH_R14
+   Visual parity with old Python ttk.Treeview Analysis table.
+   This is not a new owner; it styles the existing analysisResultsTable owner.
+*/
+
+#analysis .analysis-results-card,
+#analysis .analysis-table-card,
+#analysis .analysis-results-panel,
+#analysis .counterparty-breakdown-card {
+  border-radius: 0;
+}
+
+#analysis table,
+#analysis .analysis-results-table,
+#analysis #analysisResultsTable {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+
+#analysis #analysisRows tr,
+#analysis #analysisRows td {
+  height: 20px;
+  min-height: 20px;
+  line-height: 18px;
+}
+
+#analysis .kgw-analysis-python-tree-parent-r14 td {
+  background: rgba(74, 96, 115, 0.95);
+  color: #ffffff;
+  border-top: 0;
+  border-bottom: 0;
+  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+#analysis .kgw-analysis-python-tree-child-r14 td {
+  background: rgba(52, 76, 96, 0.98);
+  color: #ffffff;
+  border-top: 0;
+  border-bottom: 0;
+  padding: 1px 6px;
+  font-size: 12px;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+#analysis .kgw-analysis-tree-toggle-r14 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  margin-inline-end: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #ffffff;
+  font-family: "Segoe UI Symbol", "Segoe UI", sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  vertical-align: -1px;
+}
+
+#analysis .kgw-analysis-tree-toggle-r14:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+#analysis .kgw-analysis-tree-parent-label-r14 {
+  display: inline;
+  font-weight: 500;
+}
+
+#analysis .kgw-analysis-tree-date-r14 {
+  padding-inline-start: 36px !important;
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+
+#analysis .kgw-analysis-tree-id-r14,
+#analysis .kgw-analysis-tree-dir-r14,
+#analysis .kgw-analysis-tree-amount-r14,
+#analysis .kgw-analysis-tree-value-r14,
+#analysis .kgw-analysis-tree-block-r14,
+#analysis .kgw-analysis-tree-type-r14,
+#analysis .kgw-analysis-tree-txs-r14 {
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+
+#analysis .kgw-analysis-tree-id-r14 .kgw-analysis-mono {
+  font-size: 12px;
+  font-family: "Consolas", "Cascadia Mono", "Courier New", monospace;
+  color: inherit;
+}
+
+#analysis .kgw-analysis-tree-txs-r14,
+#analysis .kgw-analysis-tree-amount-r14,
+#analysis .kgw-analysis-tree-value-r14,
+#analysis .kgw-analysis-tree-block-r14 {
+  text-align: right;
+}
+
+#analysis .kgw-analysis-tree-dir-r14,
+#analysis .kgw-analysis-tree-type-r14 {
+  text-align: left;
+}
+
+#analysis .kgw-analysis-count-badge,
+#analysis .kgw-analysis-dir-badge,
+#analysis .kgw-analysis-type-badge {
+  display: inline;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+#analysis .kgw-analysis-flow-positive,
+#analysis .kgw-analysis-flow-negative,
+#analysis .kgw-analysis-flow-neutral,
+#analysis .kgw-analysis-flow-cell {
+  color: inherit !important;
+  font-weight: inherit;
+}
+
+#analysis .kgw-analysis-python-empty-r9,
+#analysis .kgw-analysis-python-tree-empty-r14 td {
+  background: rgba(52, 76, 96, 0.98);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-weight: 400;
+  text-align: center;
+}
+
+
+/* KGW_ANALYSIS_CHILD_COLUMNS_PYTHON_PARITY_PATCH_R16
+   Complete child row columns: Value, Block, Type casing, and longer txid.
+*/
+
+#analysis .kgw-analysis-child-columns-r16 .kgw-analysis-tree-id-r14 .kgw-analysis-mono {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+#analysis .kgw-analysis-child-columns-r16 .kgw-analysis-tree-type-r14,
+#analysis .kgw-analysis-child-columns-r16 .kgw-analysis-tree-dir-r14 {
+  text-transform: none;
+}
+
+#analysis table th:nth-child(1),
+#analysis table td:nth-child(1) {
+  width: 17%;
+}
+
+#analysis table th:nth-child(2),
+#analysis table td:nth-child(2) {
+  width: 36%;
+}
+
+#analysis table th:nth-child(3),
+#analysis table td:nth-child(3) {
+  width: 8%;
+}
+
+#analysis table th:nth-child(4),
+#analysis table td:nth-child(4) {
+  width: 12%;
+}
+
+#analysis table th:nth-child(5),
+#analysis table td:nth-child(5) {
+  width: 10%;
+}
+
+#analysis table th:nth-child(6),
+#analysis table td:nth-child(6) {
+  width: 9%;
+}
+
+#analysis table th:nth-child(7),
+#analysis table td:nth-child(7) {
+  width: 8%;
+}
+
+/* KGW_ANALYSIS_FILTER_BAR_REBUILD_SINGLE_OWNER_R23
+   KGW_ANALYSIS_FILTER_BAR_R23_COMPACT_WIDTH_PATCH_R24
+   Canonical Analysis filter bar owner with compact select fields and all buttons visible.
+   This replaces the R23 CSS owner block; it does not add a parallel owner.
+*/
+
+#analysis .kgw-analysis-filter-host-r23 {
+  width: 100%;
+  min-width: 0;
+}
+
+#analysis .kgw-analysis-filter-bar-rebuild-r23 {
+  display: grid;
+  grid-template-columns:
+    auto minmax(150px, 172px)
+    auto minmax(150px, 172px)
+    76px
+    92px
+    minmax(300px, 1fr)
+    92px
+    116px;
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 6px;
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+
+#analysis .kgw-analysis-filter-label-r23 {
+  white-space: nowrap;
+  color: var(--text-muted, rgba(255, 255, 255, 0.82));
+  font-size: 14px;
+}
+
+#analysis .kgw-analysis-filter-date-unit-r23 {
+  display: grid;
+  grid-template-columns: minmax(118px, 1fr) 30px;
+  column-gap: 4px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  position: relative;
+}
+
+#analysis .kgw-analysis-filter-date-text-r23 {
+  grid-column: 1;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  font-size: 14px;
+}
+
+#analysis .kgw-analysis-filter-date-button-r23,
+#analysis .kgw-analysis-filter-calendar-button-r23,
+#analysis .analysis-calendar-btn.kgw-analysis-filter-calendar-button-r23 {
+  grid-column: 2;
+  position: static !important;
+  display: inline-flex !important;
+  width: 30px !important;
+  min-width: 30px !important;
+  max-width: 30px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  margin: 0 !important;
+  padding-inline: 0 !important;
+  align-items: center;
+  justify-content: center;
+  transform: none !important;
+}
+
+#analysis .kgw-analysis-filter-date-native-r23 {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  inset-inline-end: 0;
+  bottom: 0;
+}
+
+#analysis .kgw-analysis-filter-control-r23 {
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+}
+
+#analysis .kgw-analysis-filter-type-r23,
+#analysis .kgw-analysis-filter-direction-r23,
+#analysis .kgw-analysis-filter-bar-rebuild-r23 #analysisType,
+#analysis .kgw-analysis-filter-bar-rebuild-r23 #analysisDirection {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding-inline: 10px 26px;
+  text-overflow: clip;
+}
+
+#analysis .kgw-analysis-filter-search-r23,
+#analysis .kgw-analysis-filter-bar-rebuild-r23 #analysisSearch {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+#analysis .kgw-analysis-filter-apply-r23,
+#analysis .kgw-analysis-filter-reset-r23,
+#analysis .kgw-analysis-filter-bar-rebuild-r23 #analysisFilter,
+#analysis .kgw-analysis-filter-bar-rebuild-r23 #analysisResetFilter {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding-inline: 10px !important;
+  white-space: nowrap;
+}
+
+@media (max-width: 1150px) {
+  #analysis .kgw-analysis-filter-bar-rebuild-r23 {
+    grid-template-columns:
+      auto minmax(140px, 1fr)
+      auto minmax(140px, 1fr);
+  }
+
+  #analysis .kgw-analysis-filter-type-r23,
+  #analysis .kgw-analysis-filter-direction-r23,
+  #analysis .kgw-analysis-filter-search-r23,
+  #analysis .kgw-analysis-filter-apply-r23,
+  #analysis .kgw-analysis-filter-reset-r23 {
+    grid-column: auto;
+  }
+}
+

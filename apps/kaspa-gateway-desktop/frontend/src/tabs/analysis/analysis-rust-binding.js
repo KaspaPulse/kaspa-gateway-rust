@@ -315,6 +315,7 @@ function summaryFromReport(report) {
 
 function rowsFromReport(report) {
   const counterparties = Array.isArray(report?.counterparties) ? report.counterparties : [];
+
   if (counterparties.length) {
     return counterparties.map((row) => ({
       name: "Counterparty",
@@ -327,10 +328,16 @@ function rowsFromReport(report) {
       amount: String(row.net_kas ?? ""),
       valueUsd: "",
       blockScore: "",
-      type: "COUNTERPARTY"
+      type: "COUNTERPARTY",
+      // KGW_ANALYSIS_BINDING_PRESERVE_DETAILS_PATCH_R13B
+      // Preserve backend Python-style child rows for Analysis table expansion.
+      details: Array.isArray(row.details) ? row.details : [],
+      transactions: row.transactions || 0
     }));
   }
+
   const rows = Array.isArray(report?.rows) ? report.rows : [];
+
   return rows.map((row) => ({
     name: row.timestamp_ms ? new Date(Number(row.timestamp_ms)).toLocaleString() : "Transaction",
     datetime: row.timestamp_ms ? new Date(Number(row.timestamp_ms)).toLocaleString() : "",
@@ -342,7 +349,9 @@ function rowsFromReport(report) {
     amount: String(row.amount_kas ?? ""),
     valueUsd: "",
     blockScore: "",
-    type: row.tx_type || "TX"
+    type: row.tx_type || "TX",
+    // KGW_ANALYSIS_BINDING_PRESERVE_DETAILS_PATCH_R13B
+    details: Array.isArray(row.details) ? row.details : []
   }));
 }
 

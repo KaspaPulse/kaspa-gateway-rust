@@ -68,6 +68,7 @@ fn kgw_ui_trace_level_v1() -> Option<&'static str> {
     }
 }
 
+#[allow(dead_code)]
 fn kgw_ui_trace_date_yyyymmdd_v37() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -80,6 +81,7 @@ fn kgw_ui_trace_date_yyyymmdd_v37() -> String {
     format!("{year:04}{month:02}{day:02}")
 }
 
+#[allow(dead_code)]
 fn kgw_ui_trace_civil_from_days_v37(days_since_unix_epoch: i64) -> (i32, u32, u32) {
     let z = days_since_unix_epoch + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
@@ -136,6 +138,217 @@ fn kgw_ui_trace_log_dir_v37() -> Option<std::path::PathBuf> {
     Some(current_dir.join("dev-traces"))
 }
 
+// KGW_TRACE_UNIQUE_SESSION_ZIP_R69F2
+use std::io::Write;
+// Backend trace file session owner:
+// - one unique .log per process/run when KGW_UI_TRACE_FILE=1 and KGW_UI_TRACE_DIR is set
+// - console output remains controlled by KGW_UI_TRACE
+// - file output remains controlled by KGW_UI_TRACE_FILE/KGW_UI_TRACE_DIR
+// - writes session-start once
+// - writes session-end on app close finalization
+// - zips .log and removes original .log only after zip succeeds
+struct KgwTraceSessionR69F2 {
+    log_path: std::path::PathBuf,
+    zip_path: std::path::PathBuf,
+    file: std::sync::Mutex<Option<std::fs::File>>,
+    started_unix_ms: u128,
+    finalized: std::sync::Mutex<bool>,
+}
+
+impl KgwTraceSessionR69F2 {
+    fn new(dir: std::path::PathBuf) -> Result<Self, String> {
+        std::fs::create_dir_all(&dir)
+            .map_err(|error| format!("create trace dir failed: {error}"))?;
+
+        let now_ms = kgw_trace_unix_ms_r69f2();
+        let pid = std::process::id();
+        let base_name = format!(
+            "kgw-ui-trace-{}-pid{}",
+            kgw_trace_timestamp_for_file_r69f2(now_ms),
+            pid
+        );
+        let log_path = dir.join(format!("{base_name}.log"));
+        let zip_path = dir.join(format!("{base_name}.zip"));
+
+        let mut file = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&log_path)
+            .map_err(|error| format!("open trace session file failed: {error}"))?;
+
+        writeln!(
+            file,
+            "{{\"event\":\"session-start\",\"owner\":\"KGW_TRACE_BACKEND_GATE_OWNER\",\"pid\":{},\"unix_ms\":{},\"log_path\":\"{}\"}}",
+            pid,
+            now_ms,
+            kgw_trace_json_escape_r69f2(&log_path.to_string_lossy())
+        )
+        .map_err(|error| format!("write trace session-start failed: {error}"))?;
+
+        let _ = file.flush();
+
+        Ok(Self {
+            log_path,
+            zip_path,
+            file: std::sync::Mutex::new(Some(file)),
+            started_unix_ms: now_ms,
+            finalized: std::sync::Mutex::new(false),
+        })
+    }
+
+    fn write_line(&self, line: &str) {
+        if let Ok(mut file_guard) = self.file.lock() {
+            if let Some(file) = file_guard.as_mut() {
+                let _ = writeln!(file, "{line}");
+                let _ = file.flush();
+            }
+        }
+    }
+
+    fn finalize(&self) {
+        let mut finalized = match self.finalized.lock() {
+            Ok(value) => value,
+            Err(_) => return,
+        };
+
+        if *finalized {
+            return;
+        }
+
+        *finalized = true;
+
+        let ended_ms = kgw_trace_unix_ms_r69f2();
+        let elapsed_ms = ended_ms.saturating_sub(self.started_unix_ms);
+
+        if let Ok(mut file_guard) = self.file.lock() {
+            if let Some(mut file) = file_guard.take() {
+                let _ = writeln!(
+                    file,
+                    "{{\"event\":\"session-end\",\"owner\":\"KGW_TRACE_BACKEND_GATE_OWNER\",\"pid\":{},\"unix_ms\":{},\"elapsed_ms\":{}}}",
+                    std::process::id(),
+                    ended_ms,
+                    elapsed_ms
+                );
+                let _ = file.flush();
+                let _ = file.sync_all();
+            }
+        }
+
+        match kgw_zip_trace_log_r69f2(&self.log_path, &self.zip_path) {
+            Ok(()) => {
+                let _ = std::fs::remove_file(&self.log_path);
+                eprintln!(
+                    "[KGW_TRACE_SESSION][R69F2] zipped={} removed_log={}",
+                    self.zip_path.display(),
+                    self.log_path.display()
+                );
+            }
+            Err(error) => {
+                eprintln!(
+                    "[KGW_TRACE_SESSION][R69F2] zip_failed log={} zip={} error={}",
+                    self.log_path.display(),
+                    self.zip_path.display(),
+                    error
+                );
+            }
+        }
+    }
+}
+
+static KGW_TRACE_SESSION_R69F2: std::sync::OnceLock<Option<std::sync::Arc<KgwTraceSessionR69F2>>> =
+    std::sync::OnceLock::new();
+
+fn kgw_trace_unix_ms_r69f2() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or_default()
+}
+
+fn kgw_trace_timestamp_for_file_r69f2(unix_ms: u128) -> String {
+    format!("{unix_ms}")
+}
+
+fn kgw_trace_json_escape_r69f2(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+        .replace('\t', "\\t")
+}
+
+fn kgw_trace_session_r69f2() -> Option<std::sync::Arc<KgwTraceSessionR69F2>> {
+    KGW_TRACE_SESSION_R69F2
+        .get_or_init(|| {
+            if !kgw_ui_trace_file_sink_enabled_v40() {
+                return None;
+            }
+
+            let Some(dir) = kgw_ui_trace_log_dir_v37() else {
+                return None;
+            };
+
+            match KgwTraceSessionR69F2::new(dir) {
+                Ok(session) => Some(std::sync::Arc::new(session)),
+                Err(error) => {
+                    eprintln!("[KGW_TRACE_SESSION][R69F2] init_failed error={error}");
+                    None
+                }
+            }
+        })
+        .as_ref()
+        .cloned()
+}
+
+fn kgw_trace_write_file_line_r69f2(line: &str) {
+    if let Some(session) = kgw_trace_session_r69f2() {
+        session.write_line(line);
+    }
+}
+
+fn kgw_trace_finalize_session_r69f2() {
+    if let Some(Some(session)) = KGW_TRACE_SESSION_R69F2.get() {
+        session.finalize();
+    }
+}
+
+fn kgw_zip_trace_log_r69f2(
+    log_path: &std::path::Path,
+    zip_path: &std::path::Path,
+) -> Result<(), String> {
+    let zip_file =
+        std::fs::File::create(zip_path).map_err(|error| format!("create zip failed: {error}"))?;
+    let mut zip = zip::ZipWriter::new(zip_file);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+
+    let entry_name = log_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("kgw-ui-trace.log");
+
+    zip.start_file(entry_name, options)
+        .map_err(|error| format!("start zip entry failed: {error}"))?;
+
+    let mut log_file =
+        std::fs::File::open(log_path).map_err(|error| format!("open log failed: {error}"))?;
+    let mut buffer = Vec::new();
+
+    use std::io::Read;
+    log_file
+        .read_to_end(&mut buffer)
+        .map_err(|error| format!("read log failed: {error}"))?;
+
+    zip.write_all(&buffer)
+        .map_err(|error| format!("write zip entry failed: {error}"))?;
+
+    zip.finish()
+        .map_err(|error| format!("finish zip failed: {error}"))?;
+
+    Ok(())
+}
+
 fn kgw_ui_trace_append_file_v37(
     level: &str,
     scope: &str,
@@ -144,32 +357,9 @@ fn kgw_ui_trace_append_file_v37(
     phase: &str,
     details: &str,
 ) {
-    let Some(dir) = kgw_ui_trace_log_dir_v37() else {
-        return;
-    };
-
-    if std::fs::create_dir_all(&dir).is_err() {
-        return;
-    }
-
-    let file_path = dir.join(format!(
-        "kgw-ui-trace-{}.log",
-        kgw_ui_trace_date_yyyymmdd_v37()
-    ));
-
-    let Ok(mut file) = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(file_path)
-    else {
-        return;
-    };
-
-    use std::io::Write;
-
     let now = format!("{:?}", std::time::SystemTime::now());
     let line = format!(
-        "{{\"ts\":\"{}\",\"level\":\"{}\",\"scope\":\"{}\",\"net\":\"{}\",\"action\":\"{}\",\"phase\":\"{}\",\"details\":\"{}\"}}\n",
+        "{{\"ts\":\"{}\",\"level\":\"{}\",\"scope\":\"{}\",\"net\":\"{}\",\"action\":\"{}\",\"phase\":\"{}\",\"details\":\"{}\"}}",
         kgw_ui_trace_json_escape_v37(&now),
         kgw_ui_trace_json_escape_v37(level),
         kgw_ui_trace_json_escape_v37(scope),
@@ -179,7 +369,7 @@ fn kgw_ui_trace_append_file_v37(
         kgw_ui_trace_json_escape_v37(details)
     );
 
-    let _ = file.write_all(line.as_bytes());
+    kgw_trace_write_file_line_r69f2(&line);
 }
 
 fn kgw_ui_trace_should_print_v1(level: &str, action: &str, phase: &str, details: &str) -> bool {
@@ -473,6 +663,8 @@ pub fn run() {
         .on_window_event(|_window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
                 let _ = crate::integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
+
+                kgw_trace_finalize_session_r69f2();
             }
         })
         .run(tauri::generate_context!())

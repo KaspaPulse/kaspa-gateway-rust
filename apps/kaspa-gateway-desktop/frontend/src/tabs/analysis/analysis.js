@@ -101,37 +101,345 @@ function emptyMessage() {
     : "Load an address to see analysis.";
 }
 
+
+
+
+// KGW_ANALYSIS_PYTHON_STYLE_LAZY_TABLE_R9
+const kgwAnalysisExpandedRowsR9 = new Set();
+
+function kgwAnalysisPythonRowKeyR9(row, index) {
+  return [
+    index,
+    kgwAnalysisRawR3(row.type || ""),
+    kgwAnalysisRawR3(row.address || row.counterparty || ""),
+    kgwAnalysisRawR3(row.transactionId || row.txid || ""),
+    kgwAnalysisRawR3(row.name || row.knownName || "")
+  ].join("|");
+}
+
+function kgwAnalysisPythonChildRowsR9(row) {
+  const candidates = [
+    row.transactions,
+    row.children,
+    row.details,
+    row.items,
+    row.txList,
+    row.tx_list,
+    row.rows
+  ];
+
+  for (const value of candidates) {
+    if (Array.isArray(value)) return value;
+  }
+
+  return [];
+}
+
+function kgwAnalysisPythonNormalizeChildR9(tx, index) {
+  if (!tx || typeof tx !== "object") {
+    return {
+      datetime: "",
+      id: "",
+      direction: "",
+      amount: "",
+      value: "",
+      block: "",
+      type: ""
+    };
+  }
+
+  const timestampRaw = tx.timestamp_ms ?? tx.timestampMs ?? tx.timestamp ?? tx.datetime ?? tx.date_time ?? tx.time ?? "";
+  let datetime = kgwAnalysisRawR3(timestampRaw);
+
+  const numericTs = Number(timestampRaw);
+  if (Number.isFinite(numericTs) && numericTs > 0) {
+    const ms = numericTs > 10000000000 ? numericTs : numericTs * 1000;
+    const d = new Date(ms);
+    if (!Number.isNaN(d.getTime())) {
+      datetime = [
+        d.getFullYear(),
+        "-",
+        String(d.getMonth() + 1).padStart(2, "0"),
+        "-",
+        String(d.getDate()).padStart(2, "0"),
+        " ",
+        String(d.getHours()).padStart(2, "0"),
+        ":",
+        String(d.getMinutes()).padStart(2, "0"),
+        ":",
+        String(d.getSeconds()).padStart(2, "0")
+      ].join("");
+    }
+  }
+
+  const amount =
+    tx.amount_kas ??
+    tx.amountKas ??
+    tx.amount ??
+    tx.value ??
+    "";
+
+  return {
+    datetime,
+    id: kgwAnalysisRawR3(tx.txid || tx.transaction_id || tx.transactionId || tx.id || tx.hash || ""),
+    direction: kgwAnalysisRawR3(tx.direction || tx.txsDir || ""),
+    amount,
+    value: tx.value_usd ?? tx.valueUsd ?? "",
+    block: tx.block_score ?? tx.blockScore ?? tx.block_height ?? tx.blockHeight ?? "",
+    type: kgwAnalysisRawR3(tx.tx_type || tx.txType || tx.type || ""),
+    counterparty: kgwAnalysisRawR3(tx.counterparty || tx.address || tx.from_address || tx.to_address || "")
+  };
+}
+
+function kgwAnalysisPythonRenderChildrenR9(rowKey, row, colspan = 7) {
+  const children = kgwAnalysisPythonChildRowsR9(row);
+
+  if (!children.length) {
+    return `
+      <tr class="kgw-analysis-python-child-row-r9 kgw-analysis-python-tree-empty-r14" data-kgw-analysis-python-child="true" data-row-key="${escapeHtml(rowKey)}">
+        <td colspan="${colspan}" class="kgw-analysis-python-empty-r9">
+          No transaction rows found for this parent.
+        </td>
+      </tr>
+    `;
+  }
+
+  return children.map((tx, childIndex) => {
+    const item = kgwAnalysisPythonNormalizeChildR9(tx, childIndex);
+    const amountDisplay = kgwAnalysisFlowSignR3(item.amount);
+    const valueDisplay = kgwAnalysisValueUsdR16(item.amount, item.value);
+    const idDisplay = item.id || item.counterparty || "";
+    const directionDisplay = kgwAnalysisDirectionCaseR16(item.direction);
+    const typeDisplay = kgwAnalysisTitleCaseR16(item.type);
+
+    return `
+      <tr class="kgw-analysis-python-child-row-r9 kgw-analysis-python-tree-child-r14 kgw-analysis-child-columns-r16" data-kgw-analysis-python-child="true" data-row-key="${escapeHtml(rowKey)}">
+        <td class="kgw-analysis-tree-date-r14">${escapeHtml(item.datetime || "—")}</td>
+        <td class="kgw-analysis-tree-id-r14" title="${escapeHtml(item.id || item.counterparty || "")}">
+          <span class="kgw-analysis-mono">${escapeHtml(idDisplay || "—")}</span>
+        </td>
+        <td class="kgw-analysis-tree-dir-r14">${escapeHtml(directionDisplay)}</td>
+        <td class="kgw-analysis-tree-amount-r14">${escapeHtml(amountDisplay || "—")}</td>
+        <td class="kgw-analysis-tree-value-r14">${escapeHtml(valueDisplay)}</td>
+        <td class="kgw-analysis-tree-block-r14">${escapeHtml(item.block || "—")}</td>
+        <td class="kgw-analysis-tree-type-r14">${escapeHtml(typeDisplay)}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function kgwAnalysisPythonBindR9() {
+  const body = q("#analysisRows");
+  if (!body || body.dataset.kgwAnalysisPythonLazyR9 === "true") return;
+
+  body.dataset.kgwAnalysisPythonLazyR9 = "true";
+
+  body.addEventListener("click", (event) => {
+    const button = event.target && event.target.closest
+      ? event.target.closest("[data-kgw-analysis-python-toggle-r9]")
+      : null;
+
+    if (!button || !body.contains(button)) return;
+
+    event.preventDefault();
+
+    const rowKey = button.getAttribute("data-row-key") || "";
+    if (!rowKey) return;
+
+    if (kgwAnalysisExpandedRowsR9.has(rowKey)) {
+      kgwAnalysisExpandedRowsR9.delete(rowKey);
+    } else {
+      kgwAnalysisExpandedRowsR9.add(rowKey);
+    }
+
+    renderRows();
+  });
+}
+
+function kgwAnalysisPythonResetR9() {
+  kgwAnalysisExpandedRowsR9.clear();
+}
+
+
+
+// KGW_ANALYSIS_PYTHON_TREEVIEW_VISUAL_PATCH_R14
+function kgwAnalysisPlainNumberR14(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return kgwAnalysisRawR3(value || "");
+  return numeric.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+}
+
+
+// KGW_ANALYSIS_CHILD_COLUMNS_PYTHON_PARITY_PATCH_R16
+function kgwAnalysisCurrentUsdPriceR16() {
+  const text = document.body ? String(document.body.textContent || "") : "";
+  const matches = [...text.matchAll(/(\d+(?:\.\d+)?)\s*USD/g)];
+  if (!matches.length) return null;
+  const price = Number(matches[0][1]);
+  return Number.isFinite(price) && price > 0 ? price : null;
+}
+
+function kgwAnalysisValueUsdR16(amount, explicitValue) {
+  const explicit = kgwAnalysisNumberR3(explicitValue);
+  if (explicit !== null) return kgwAnalysisFormatUsdR3(explicit);
+
+  const numericAmount = kgwAnalysisNumberR3(amount);
+  const price = kgwAnalysisCurrentUsdPriceR16();
+
+  if (numericAmount === null || price === null) return "—";
+  return kgwAnalysisFormatUsdR3(Math.abs(numericAmount) * price);
+}
+
+function kgwAnalysisTitleCaseR16(value) {
+  const raw = kgwAnalysisRawR3(value);
+  if (!raw) return "—";
+  return raw
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function kgwAnalysisDirectionCaseR16(value) {
+  const raw = kgwAnalysisRawR3(value);
+  if (!raw) return "—";
+  return raw.slice(0, 1).toUpperCase() + raw.slice(1).toLowerCase();
+}
+
+// KGW_ANALYSIS_RESULTS_TABLE_UI_PATCH_R3
+function kgwAnalysisRawR3(value) {
+  return value === undefined || value === null ? "" : String(value).trim();
+}
+
+function kgwAnalysisNumberR3(value) {
+  const raw = kgwAnalysisRawR3(value).replace(/,/g, "").replace(/\s+(KAS|USD)$/i, "");
+  if (!raw) return null;
+  const number = Number(raw);
+  return Number.isFinite(number) ? number : null;
+}
+
+function kgwAnalysisFormatKasR3(value) {
+  const number = kgwAnalysisNumberR3(value);
+  if (number === null) return kgwAnalysisRawR3(value);
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 3
+  }).format(number);
+}
+
+function kgwAnalysisFormatCountR3(value) {
+  const number = kgwAnalysisNumberR3(value);
+  if (number === null) return kgwAnalysisRawR3(value);
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0
+  }).format(number);
+}
+
+function kgwAnalysisFormatUsdR3(value) {
+  const number = kgwAnalysisNumberR3(value);
+  if (number === null) return kgwAnalysisRawR3(value);
+  return "$" + new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }).format(number);
+}
+
+function kgwAnalysisMiddleTrimR3(value, head = 18, tail = 10) {
+  const raw = kgwAnalysisRawR3(value);
+  if (raw.length <= head + tail + 3) return raw;
+  return raw.slice(0, head) + "…" + raw.slice(-tail);
+}
+
+function kgwAnalysisDirectionLabelR3(row) {
+  const direction = kgwAnalysisRawR3(row.direction || row.txsDir).toUpperCase();
+  if (direction === "IN" || direction === "OUT" || direction === "MIXED") return direction;
+  return direction && !/^\d+$/.test(direction) ? direction : "—";
+}
+
+function kgwAnalysisTxCountR3(row) {
+  return row.txCount || row.txs || row.transactions || row.txsDir || "";
+}
+
+function kgwAnalysisFlowClassR3(value) {
+  const number = kgwAnalysisNumberR3(value);
+  if (number === null) return "is-neutral";
+  if (number > 0) return "is-positive";
+  if (number < 0) return "is-negative";
+  return "is-neutral";
+}
+
+function kgwAnalysisFlowSignR3(value) {
+  const number = kgwAnalysisNumberR3(value);
+  if (number === null) return kgwAnalysisRawR3(value);
+  const formatted = kgwAnalysisFormatKasR3(number);
+  return number > 0 ? "+" + formatted : formatted;
+}
+
+function kgwAnalysisTypeLabelR3(value) {
+  const raw = kgwAnalysisRawR3(value);
+  return raw || "—";
+}
+
 function renderRows() {
   const body = q("#analysisRows");
   if (!body) return;
 
   applyFilter();
+  kgwAnalysisPythonBindR9();
 
   if (!filteredRows.length) {
     body.innerHTML = `
-      <tr class="analysis-empty-row">
+      <tr class="analysis-empty-row kgw-analysis-python-tree-empty-r14">
         <td colspan="7">${escapeHtml(emptyMessage())}</td>
       </tr>
     `;
     return;
   }
 
-  body.innerHTML = filteredRows.map((row) => {
-    const first = row.name || row.datetime || "";
-    const second = row.address || row.transactionId || "";
-    const txsDir = row.txsDir || row.direction || "";
-    const flow = row.netFlow || row.amount || "";
+  body.innerHTML = filteredRows.map((row, index) => {
+    const rowKey = kgwAnalysisPythonRowKeyR9(row, index);
+    const expanded = kgwAnalysisExpandedRowsR9.has(rowKey);
+    const childRows = expanded ? kgwAnalysisPythonRenderChildrenR9(rowKey, row, 7) : "";
+
+    const primary = row.name || row.knownName || row.datetime || "Counterparty";
+    const isCoinbase = /coinbase|mining/i.test(String(row.address || row.transactionId || primary || row.type || ""));
+    const parentLabel = isCoinbase ? "Coinbase / Mining" : primary;
+    const addressOrTx = row.address || row.transactionId || "";
+    const addressOrTxDisplay = isCoinbase ? "" : kgwAnalysisMiddleTrimR3(addressOrTx, 64, 18);
+    const txCount = kgwAnalysisFormatCountR3(kgwAnalysisTxCountR3(row));
+    const flowRaw = row.netFlow || row.amount || "";
+    const flowDisplay = kgwAnalysisPlainNumberR14(flowRaw);
+    const valueDisplay = kgwAnalysisValueUsdR16(flowRaw, row.valueUsd || row.value || "");
+    const blockDisplay = kgwAnalysisMiddleTrimR3(row.blockScore || "", 12, 8);
+    const typeDisplay = isCoinbase ? "" : kgwAnalysisTypeLabelR3(row.type);
+    const plusLabel = expanded ? "⊟" : "⊞";
 
     return `
-      <tr>
-        <td title="${escapeHtml(first)}">${escapeHtml(first)}</td>
-        <td title="${escapeHtml(second)}">${escapeHtml(second)}</td>
-        <td title="${escapeHtml(txsDir)}">${escapeHtml(txsDir)}</td>
-        <td title="${escapeHtml(flow)}">${escapeHtml(flow)}</td>
-        <td title="${escapeHtml(row.valueUsd || "")}">${escapeHtml(row.valueUsd || "")}</td>
-        <td title="${escapeHtml(row.blockScore || "")}">${escapeHtml(row.blockScore || "")}</td>
-        <td title="${escapeHtml(row.type || "")}">${escapeHtml(row.type || "")}</td>
+      <tr class="kgw-analysis-result-row kgw-analysis-python-parent-row-r9 kgw-analysis-python-tree-parent-r14" data-row-key="${escapeHtml(rowKey)}">
+        <td class="kgw-analysis-tree-name-r14" title="${escapeHtml(parentLabel)}">
+          <button
+            type="button"
+            class="kgw-analysis-python-toggle-r9 kgw-analysis-tree-toggle-r14"
+            data-kgw-analysis-python-toggle-r9="true"
+            data-row-key="${escapeHtml(rowKey)}"
+            aria-expanded="${expanded ? "true" : "false"}"
+            title="${expanded ? "Hide transactions" : "Show transactions"}"
+          >${plusLabel}</button>
+          <span class="kgw-analysis-tree-parent-label-r14">${escapeHtml(parentLabel)}</span>
+        </td>
+        <td class="kgw-analysis-tree-id-r14" title="${escapeHtml(addressOrTx)}">
+          <span class="kgw-analysis-mono">${escapeHtml(addressOrTxDisplay)}</span>
+        </td>
+        <td class="kgw-analysis-tree-txs-r14">${escapeHtml(txCount || "—")}</td>
+        <td class="kgw-analysis-tree-amount-r14">${escapeHtml(flowDisplay || "—")}</td>
+        <td class="kgw-analysis-tree-value-r14">${escapeHtml(valueDisplay || "")}</td>
+        <td class="kgw-analysis-tree-block-r14">${escapeHtml(blockDisplay || "")}</td>
+        <td class="kgw-analysis-tree-type-r14">${escapeHtml(typeDisplay || "")}</td>
       </tr>
+      ${childRows}
     `;
   }).join("");
 }
@@ -150,6 +458,7 @@ function setFilterControlsEnabled(enabled) {
 }
 
 function setAnalysisData(payload = {}) {
+  kgwAnalysisPythonResetR9();
   const rows = Array.isArray(payload)
     ? payload
     : Array.isArray(payload.rows)
@@ -160,16 +469,22 @@ function setAnalysisData(payload = {}) {
 
   analysisRows = rows.map((row) => ({
     name: row.name ?? row.knownName ?? row.datetime ?? "",
+    knownName: row.knownName ?? row.name ?? "",
     datetime: row.datetime ?? "",
     address: row.address ?? row.counterparty ?? "",
     transactionId: row.transactionId ?? row.txid ?? "",
+    txCount: row.txCount ?? row.txs ?? row.transactions ?? row.count ?? "",
     txsDir: row.txsDir ?? row.direction ?? "",
     direction: row.direction ?? "",
     netFlow: row.netFlow ?? row.amount ?? row.net_kas ?? "",
     amount: row.amount ?? row.amount_kas ?? row.net_kas ?? "",
     valueUsd: row.valueUsd ?? row.value ?? "",
     blockScore: row.blockScore ?? row.block ?? "",
-    type: row.type ?? row.tx_type ?? ""
+    type: row.type ?? row.tx_type ?? "",
+    details: row.details ?? row.children ?? row.items ?? row.txList ?? row.tx_list ?? row.rows ?? (Array.isArray(row.transactions) ? row.transactions : []),
+    transactions: row.details ?? row.children ?? row.items ?? row.txList ?? row.tx_list ?? row.rows ?? (Array.isArray(row.transactions) ? row.transactions : []),
+    firstSeen: row.firstSeen ?? row.firstTransaction ?? row.first ?? "",
+    lastSeen: row.lastSeen ?? row.lastTransaction ?? row.last ?? ""
   }));
 
   setSummary(payload.summary || {});
@@ -259,6 +574,260 @@ function kgwAnalysisUiTraceR50B(action, phase, details) {
 function kgwAnalysisEscapeSelector(id) {
   if (typeof CSS !== "undefined" && typeof CSS.escape === "function") return CSS.escape(id);
   return String(id).replace(/["\\]/g, "\\$&");
+}
+
+// KGW_ANALYSIS_FILTER_BAR_REBUILD_SINGLE_OWNER_R23
+function kgwAnalysisMarkDateTouchedR18(node) {
+  if (node) node.dataset.kgwAnalysisUserTouched = "true";
+}
+
+function kgwAnalysisBindDateTouchR18() {
+  ["analysisFromDate", "analysisFromDateNative", "analysisToDate", "analysisToDateNative"].forEach((id) => {
+    const node = q("#" + id);
+    if (!node || node.dataset.kgwAnalysisTouchR23 === "true") return;
+    node.dataset.kgwAnalysisTouchR23 = "true";
+    ["input", "change"].forEach((eventName) => {
+      node.addEventListener(eventName, (event) => {
+        if (event && event.isTrusted) kgwAnalysisMarkDateTouchedR18(node);
+      });
+    });
+  });
+}
+
+function kgwAnalysisEnsureTodayToDateR18(force = false) {
+  const range = kgwAnalysisRange();
+  if (!range || !range.toInput) return "";
+
+  const today = kgwAnalysisTodayIso();
+  const touched = range.toInput.dataset.kgwAnalysisUserTouched === "true"
+    || (range.toNative && range.toNative.dataset.kgwAnalysisUserTouched === "true");
+
+  if (force || !touched || !range.toInput.value || range.toInput.value !== today) {
+    if (force || !touched) {
+      range.toInput.dataset.kgwAnalysisOwnerDefaultR23 = "today";
+      if (range.toNative) range.toNative.dataset.kgwAnalysisOwnerDefaultR23 = "today";
+      return kgwAnalysisSetDate(range.toInput, range.toNative, today);
+    }
+  }
+
+  return kgwAnalysisCleanIso(range.toInput.value, today);
+}
+
+function kgwAnalysisFilterBarButtonR23(textInput, nativeInput, role) {
+  const owner = root();
+  if (!owner || !textInput) return null;
+
+  const textId = String(textInput.id || "");
+  const nativeId = String(nativeInput && nativeInput.id ? nativeInput.id : "");
+
+  let button =
+    (textId ? owner.querySelector(`[data-date-for="${kgwAnalysisEscapeSelector(textId)}"]`) : null)
+    || (nativeId ? owner.querySelector(`[data-native-for="${kgwAnalysisEscapeSelector(nativeId)}"]`) : null)
+    || textInput.closest(".kgw-analysis-date-field")?.querySelector(".analysis-calendar-btn")
+    || textInput.parentElement?.querySelector(".analysis-calendar-btn")
+    || null;
+
+  if (!button) {
+    button = document.createElement("button");
+    button.type = "button";
+    button.className = "analysis-calendar-btn kgw-analysis-calendar-created-r23";
+    button.textContent = "📅";
+    button.setAttribute("aria-label", role === "from" ? "Open from date calendar" : "Open to date calendar");
+    button.addEventListener("click", () => {
+      if (!nativeInput) {
+        textInput.focus();
+        return;
+      }
+
+      try {
+        if (typeof nativeInput.showPicker === "function") {
+          nativeInput.showPicker();
+        } else {
+          nativeInput.focus();
+          nativeInput.click();
+        }
+      } catch {
+        nativeInput.focus();
+        nativeInput.click();
+      }
+    });
+  }
+
+  button.classList.add("kgw-analysis-filter-calendar-button-r23", `kgw-analysis-filter-${role}-calendar-r23`);
+  button.setAttribute("data-kgw-analysis-calendar-role-r23", role);
+  button.setAttribute("type", button.getAttribute("type") || "button");
+
+  return button;
+}
+
+function kgwAnalysisFilterBarLcaR23(nodes) {
+  const filtered = nodes.filter(Boolean);
+  if (!filtered.length) return null;
+
+  function ancestors(node) {
+    const out = [];
+    let current = node;
+    while (current) {
+      out.push(current);
+      current = current.parentElement;
+    }
+    return out;
+  }
+
+  const first = ancestors(filtered[0]);
+  return first.find((candidate) => filtered.every((node) => candidate.contains(node))) || null;
+}
+
+function kgwAnalysisFilterBarRemoveLabelsR23(node, terms) {
+  if (!node) return;
+
+  node.setAttribute("aria-label", terms[0]);
+  node.setAttribute("title", terms[0]);
+
+  const owner = root() || document;
+  const id = String(node.id || "");
+
+  if (id) {
+    owner.querySelectorAll(`label[for="${kgwAnalysisEscapeSelector(id)}"]`).forEach((label) => label.remove());
+  }
+
+  const parent = node.parentElement;
+  if (parent) {
+    for (const child of Array.from(parent.childNodes || [])) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        let text = child.textContent || "";
+        for (const term of terms) {
+          text = text.replace(new RegExp("\\b" + term + "\\s*:?", "gi"), "");
+        }
+        child.textContent = text;
+      }
+    }
+  }
+
+  const prev = node.previousElementSibling;
+  if (prev && /^(LABEL|SPAN|SMALL|B)$/i.test(prev.tagName || "")) {
+    const text = String(prev.textContent || "").trim().replace(/:$/, "");
+    if (terms.some((term) => text.toLowerCase() === term.toLowerCase())) {
+      prev.remove();
+    }
+  }
+}
+
+function kgwAnalysisFilterBarMakeDateUnitR23(role, textInput, nativeInput, button) {
+  const unit = document.createElement("span");
+  unit.className = `kgw-analysis-filter-date-unit-r23 kgw-analysis-filter-date-${role}-r23`;
+  unit.setAttribute("data-kgw-analysis-filter-date-unit-r23", role);
+
+  if (textInput) {
+    textInput.classList.add("kgw-analysis-filter-date-text-r23");
+    textInput.setAttribute("data-kgw-analysis-filter-date-text-r23", role);
+    unit.appendChild(textInput);
+  }
+
+  if (button) {
+    button.classList.add("kgw-analysis-filter-date-button-r23");
+    button.setAttribute("data-kgw-analysis-filter-date-button-r23", role);
+    unit.appendChild(button);
+  }
+
+  if (nativeInput) {
+    nativeInput.classList.add("kgw-analysis-filter-date-native-r23");
+    nativeInput.setAttribute("data-kgw-analysis-filter-date-native-r23", role);
+    unit.appendChild(nativeInput);
+  }
+
+  return unit;
+}
+
+function kgwAnalysisFilterBarAppendLabelR23(bar, text, className) {
+  const label = document.createElement("span");
+  label.className = `kgw-analysis-filter-label-r23 ${className}`;
+  label.textContent = text;
+  bar.appendChild(label);
+  return label;
+}
+
+function kgwAnalysisFilterBarAppendControlR23(bar, node, className, label) {
+  if (!node) return null;
+  node.classList.add("kgw-analysis-filter-control-r23", className);
+  node.setAttribute("data-kgw-analysis-filter-owner-r23", "true");
+  if (label) {
+    node.setAttribute("aria-label", label);
+    node.setAttribute("title", label);
+  }
+  bar.appendChild(node);
+  return node;
+}
+
+function kgwAnalysisNormalizeFilterLayoutR18() {
+  const owner = root();
+  if (!owner) return;
+
+  const range = kgwAnalysisRange();
+  const fromInput = range?.fromInput || q("#analysisFromDate");
+  const fromNative = range?.fromNative || q("#analysisFromDateNative");
+  const toInput = range?.toInput || q("#analysisToDate");
+  const toNative = range?.toNative || q("#analysisToDateNative");
+
+  const type = q("#analysisType");
+  const direction = q("#analysisDirection");
+  const search = q("#analysisSearch");
+  const filter = q("#analysisFilter");
+  const reset = q("#analysisResetFilter");
+
+  const fromButton = kgwAnalysisFilterBarButtonR23(fromInput, fromNative, "from");
+  const toButton = kgwAnalysisFilterBarButtonR23(toInput, toNative, "to");
+
+  kgwAnalysisFilterBarRemoveLabelsR23(type, ["Type"]);
+  kgwAnalysisFilterBarRemoveLabelsR23(direction, ["Direction"]);
+  kgwAnalysisFilterBarRemoveLabelsR23(search, ["Search"]);
+
+  const controls = [fromInput, fromButton, toInput, toButton, type, direction, search, filter, reset].filter(Boolean);
+  let host = kgwAnalysisFilterBarLcaR23(controls);
+
+  if (!host || host === owner || host === document.body || host === document.documentElement) {
+    host = filter?.closest(".analysis-filter-row, .kgw-analysis-filter-calendar-r18, .kgw-analysis-filter-bar-owner-r20, .kgw-analysis-date-calendar-owner-r22")
+      || search?.closest(".analysis-filter-row, .kgw-analysis-filter-calendar-r18, .kgw-analysis-filter-bar-owner-r20, .kgw-analysis-date-calendar-owner-r22")
+      || filter?.parentElement
+      || owner;
+  }
+
+  if (host === owner) {
+    const fallback = filter?.parentElement || search?.parentElement;
+    if (fallback) host = fallback;
+  }
+
+  const fromUnit = kgwAnalysisFilterBarMakeDateUnitR23("from", fromInput, fromNative, fromButton);
+  const toUnit = kgwAnalysisFilterBarMakeDateUnitR23("to", toInput, toNative, toButton);
+
+  const bar = document.createElement("div");
+  bar.className = "kgw-analysis-filter-bar-rebuild-r23";
+  bar.setAttribute("data-kgw-analysis-filter-bar-owner-r23", "true");
+
+  kgwAnalysisFilterBarAppendLabelR23(bar, "From:", "kgw-analysis-filter-from-label-r23");
+  bar.appendChild(fromUnit);
+  kgwAnalysisFilterBarAppendLabelR23(bar, "To:", "kgw-analysis-filter-to-label-r23");
+  bar.appendChild(toUnit);
+  kgwAnalysisFilterBarAppendControlR23(bar, type, "kgw-analysis-filter-type-r23", "Type");
+  kgwAnalysisFilterBarAppendControlR23(bar, direction, "kgw-analysis-filter-direction-r23", "Direction");
+  kgwAnalysisFilterBarAppendControlR23(bar, search, "kgw-analysis-filter-search-r23", "Search by Address or Transaction");
+  kgwAnalysisFilterBarAppendControlR23(bar, filter, "kgw-analysis-filter-apply-r23", "Filter");
+  kgwAnalysisFilterBarAppendControlR23(bar, reset, "kgw-analysis-filter-reset-r23", "Reset Filter");
+
+  if (search) search.placeholder = "Search by Address/Transaction...";
+
+  while (host.firstChild) host.removeChild(host.firstChild);
+
+  host.classList.remove(
+    "kgw-analysis-filter-calendar-r18",
+    "kgw-analysis-filter-bar-owner-r20",
+    "kgw-analysis-date-calendar-owner-r22"
+  );
+  host.classList.add("kgw-analysis-filter-host-r23");
+  host.setAttribute("data-kgw-analysis-filter-host-r23", "true");
+  host.appendChild(bar);
+
+  kgwAnalysisEnsureTodayToDateR18(false);
 }
 
 function kgwAnalysisSetDate(textInput, nativeInput, value) {
@@ -1217,6 +1786,9 @@ function kgwAnalysisBindExportButtonsV1G() {
 
 function bindControls() {
   kgwAnalysisBindExportButtonsV1G();
+  kgwAnalysisPythonBindR9();
+  // KGW_ANALYSIS_FILTER_CALENDAR_PATCH_R18
+  kgwAnalysisNormalizeFilterLayoutR18();
 
   const search = q("#analysisSearch");
   const type = q("#analysisType");
@@ -1265,6 +1837,8 @@ function bindControls() {
       if (search) search.value = "";
       if (type) type.value = "ALL";
       if (direction) direction.value = "ALL";
+      // KGW_ANALYSIS_FILTER_CALENDAR_PATCH_R18
+      kgwAnalysisEnsureTodayToDateR18(true);
       renderRows();
     });
   }
@@ -1288,6 +1862,10 @@ export async function initAnalysisTab() {
 
   bindControls();
   bindCalendar();
+  // KGW_ANALYSIS_FILTER_CALENDAR_PATCH_R18
+  kgwAnalysisNormalizeFilterLayoutR18();
+  kgwAnalysisBindDateTouchR18();
+  kgwAnalysisEnsureTodayToDateR18(false);
   installHook();
 
   if (root().dataset.analysisInitialized !== "true") {

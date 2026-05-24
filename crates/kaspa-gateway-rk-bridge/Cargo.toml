@@ -31,7 +31,7 @@ serde.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "sync", "time"] }
 
-kaspa-stratum-bridge-mainline = { package = "kaspa-stratum-bridge", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "4969c6c31bec6a1a31e17c2e8a43532e17834240", optional = true }
+kaspa-stratum-bridge-mainline = { package = "kaspa-stratum-bridge", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "d7f9b1590ca68c95ebe9f7242b822ecdf867de7e", optional = true }
 kaspa-stratum-bridge-tn12 = { package = "kaspa-stratum-bridge", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", rev = "f197b5ca00a92825f9962db1b3ed0f5d00455464", optional = true }
 
 

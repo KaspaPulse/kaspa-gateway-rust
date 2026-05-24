@@ -15,7 +15,7 @@
       "family": "mainline",
       "repo": "https://github.com/kaspanet/rusty-kaspa.git",
       "branch": "master",
-      "rev": "4969c6c31bec6a1a31e17c2e8a43532e17834240",
+      "rev": "d7f9b1590ca68c95ebe9f7242b822ecdf867de7e",
       "feature": "official-kaspa-runtime-mainline",
       "nodeAliases": [
         "kaspad-lib-mainline",
