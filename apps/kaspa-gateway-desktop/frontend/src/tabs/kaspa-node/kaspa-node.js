@@ -55,6 +55,115 @@
     }
   }
 
+
+/* KGW_NODE_CLICK_SAVE_CHECKBOX_TRACE_PATCH_R29B
+ * Dev-gated click/save/checkbox trace inside existing KGW_SETTINGS_OWNER_V19.
+ * No new listener. No document capture. No MutationObserver.
+ */
+function kgwSettingsTraceDatasetR29B(target) {
+  const out = {};
+  try {
+    const ds = target && target.dataset ? target.dataset : {};
+    for (const key of Object.keys(ds)) {
+      if (/^(net|network|nodeAction|bridgeAction|nodeCommandOptionToggleR7|bridgeCommandOptionToggleR7|bridgeInstanceCommandOptionToggleR13B|instanceId|bridgeInstanceField|kgw)/i.test(key)) {
+        out[key] = String(ds[key] || "").slice(0, 160);
+      }
+    }
+  } catch (_) {}
+  return out;
+}
+
+function kgwSettingsTraceTargetSnapshotR29B(target) {
+  const snapshot = {
+    tag: String(target && target.tagName || ""),
+    id: String(target && target.id || ""),
+    name: String(target && target.name || ""),
+    type: String(target && target.type || ""),
+    className: String(target && target.className || "").slice(0, 220),
+    dataset: kgwSettingsTraceDatasetR29B(target)
+  };
+
+  try {
+    if (target && (target.type === "checkbox" || target.type === "radio")) {
+      snapshot.checked = Boolean(target.checked);
+    } else if (target && "value" in target) {
+      const value = String(target.value ?? "");
+      snapshot.valueLength = value.length;
+      snapshot.valuePreview = value.slice(0, 180);
+    }
+  } catch (_) {}
+
+  return snapshot;
+}
+
+function kgwSettingsTracePreviewSnapshotR29B(root, network) {
+  try {
+    const netText = String(network || "");
+    const candidates = Array.from(root.querySelectorAll("textarea, input, pre, code, [id*='commandPreview'], [data-kgw-command-preview]"));
+    const preview = candidates.find(function (item) {
+      const id = String(item.id || "");
+      return id.indexOf(netText) >= 0 && /commandpreview/i.test(id);
+    }) || candidates.find(function (item) {
+      return /commandpreview/i.test(String(item.id || ""));
+    });
+
+    if (!preview) return { found: false };
+
+    const text = String(("value" in preview ? preview.value : preview.textContent) || "");
+    return {
+      found: true,
+      id: String(preview.id || ""),
+      length: text.length,
+      preview: text.slice(0, 260)
+    };
+  } catch (error) {
+    return {
+      found: false,
+      error: String(error && error.message ? error.message : error)
+    };
+  }
+}
+
+function kgwSettingsTraceEventDetailsR29B(root, event, network, reason) {
+  return {
+    patch: "R29B",
+    owner: OWNER,
+    scope: SCOPE,
+    tab: "node",
+    reason: String(reason || ""),
+    eventType: String(event && event.type || ""),
+    trusted: Boolean(event && event.isTrusted),
+    network: String(network || ""),
+    target: kgwSettingsTraceTargetSnapshotR29B(event && event.target),
+    preview: kgwSettingsTracePreviewSnapshotR29B(root, network)
+  };
+}
+
+function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action, extra) {
+  const details = {
+    patch: "R29B",
+    owner: OWNER,
+    scope: SCOPE,
+    tab: "node",
+    reason: "settings-action-button",
+    eventType: String(event && event.type || ""),
+    trusted: Boolean(event && event.isTrusted),
+    network: String(network || ""),
+    action: String(action || ""),
+    button: kgwSettingsTraceTargetSnapshotR29B(button),
+    disabled: Boolean(button && button.disabled),
+    label: String(button && button.textContent || "").trim().slice(0, 160),
+    preview: kgwSettingsTracePreviewSnapshotR29B(root, network)
+  };
+
+  if (extra && typeof extra === "object") {
+    for (const key of Object.keys(extra)) details[key] = extra[key];
+  }
+
+  return details;
+}
+
+
   function currentLanguage() {
     try {
       const lang = String(document.documentElement.getAttribute("lang") || document.body.getAttribute("lang") || "");
@@ -377,6 +486,7 @@
 
       const network = networkOf(event.target);
 
+      trace(root, "r29b-settings-control-" + String(event.type || "input") + "-seen", kgwSettingsTraceEventDetailsR29B(root, event, network, "settings-control"));
       trace(root, "r44h2-input-seen", {
         patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
         trusted: Boolean(event && event.isTrusted),
@@ -414,6 +524,7 @@
 
       const network = networkOf(event.target);
 
+      trace(root, "r29b-settings-control-" + String(event.type || "change") + "-seen", kgwSettingsTraceEventDetailsR29B(root, event, network, "settings-control"));
       trace(root, "r44h2-change-seen", {
         patch: "KGW_SETTINGS_CHANGE_TRACE_OWNER_R44H2",
         trusted: Boolean(event && event.isTrusted),
@@ -454,6 +565,7 @@
       const action = actionName(button);
       const disabled = !!button.disabled || button.dataset.kgwSettingsOwnerV19Disabled === "true";
 
+      trace(root, "r29b-settings-action-click", kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action, { disabled: disabled }));
       trace(root, "v19-click", {
         network: network,
         action: action,
@@ -1542,20 +1654,81 @@ const kgwNodeSettingsFeedbackLocksR11 = new Map();
 
 function kgwNodeR51ReadSettings(net) {
   const values = {};
+  values[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C] = kgwNodeR51ReadCommandOptionsR38C(net);
 
   for (const field of kgwNodeR51Fields(net)) {
+    if (!field.id) continue;
+
     values[field.id] = field.type === "checkbox"
       ? { type: "checkbox", checked: Boolean(field.checked) }
       : { type: "value", value: String(field.value ?? "") };
   }
 
+  kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-read-settings-command-options", {
+    patch: "R38C",
+    owner: "node-r51-settings-owner",
+    commandOptionCount: Object.keys(values[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C] || {}).length
+  });
+
   return values;
 }
+
+
+/* KGW_NODE_COMMAND_CHECKBOX_PERSISTENCE_PATCH_R38C
+ * Persist Node command include/exclude checkboxes by semantic keys, not empty DOM ids.
+ * This patches the existing R51 settings persistence owner only.
+ */
+const KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C = "__kgwNodeCommandOptionsR38C";
+
+function kgwNodeR51ReadCommandOptionsR38C(net) {
+  const state = {};
+  try {
+    const root = document.getElementById("kaspa-node");
+    if (!root) return state;
+
+    for (const item of root.querySelectorAll('[data-node-command-option-toggle-r7][data-net="' + String(net || "") + '"]')) {
+      const name = String(item.dataset.nodeCommandOptionToggleR7 || "");
+      if (!name) continue;
+      state[name] = Boolean(item.checked);
+    }
+  } catch (_) {}
+  return state;
+}
+
+function kgwNodeR51ApplyCommandOptionsR38C(net, values) {
+  try {
+    const commandOptions = values && values[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C];
+
+    if (commandOptions && typeof commandOptions === "object") {
+      const state = kgwNodeCommandInlineStateR7(net);
+      for (const [name, enabled] of Object.entries(commandOptions)) {
+        state[String(name)] = Boolean(enabled);
+      }
+      kgwNodeRefreshInlineCommandTogglesR7(net);
+      updateCommand(net);
+    }
+
+    kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-command-options-restored", {
+      patch: "R38C",
+      owner: "node-r51-settings-owner",
+      commandOptionCount: commandOptions && typeof commandOptions === "object" ? Object.keys(commandOptions).length : 0
+    });
+  } catch (error) {
+    kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-command-options-restore-failed", {
+      patch: "R38C",
+      owner: "node-r51-settings-owner",
+      message: error && error.message ? error.message : String(error)
+    });
+  }
+}
+
 
 function kgwNodeR51WriteSettings(net, values) {
   if (!values || typeof values !== "object") return;
 
   for (const field of kgwNodeR51Fields(net)) {
+    if (!field.id) continue;
+
     const item = values[field.id];
     if (!item) continue;
 
@@ -1568,6 +1741,8 @@ function kgwNodeR51WriteSettings(net, values) {
     field.dispatchEvent(new Event("input", { bubbles: true }));
     field.dispatchEvent(new Event("change", { bubbles: true }));
   }
+
+  kgwNodeR51ApplyCommandOptionsR38C(net, values);
 
   updateCommand(net);
 }
@@ -1609,28 +1784,88 @@ function kgwNodeR51LoadSavedSettings() {
 
 
 function kgwNodeR51SaveSettings(net) {
-  kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r44d-owner-begin", {});
-  kgwNodeR51Store("saved:" + net, kgwNodeR51ReadSettings(net));
+  kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-begin", {
+    patch: "R29B",
+    owner: "node-r51-settings-owner"
+  });
+
+  const values = kgwNodeR51ReadSettings(net);
+  kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-read-settings", {
+    patch: "R29B",
+    owner: "node-r51-settings-owner",
+    keyCount: Object.keys(values || {}).length,
+    checkboxCount: Object.keys(values || {}).filter((key) => values[key] && values[key].type === "checkbox").length,
+    valueCount: Object.keys(values || {}).filter((key) => values[key] && values[key].type === "value").length,
+    structuredInstanceCount: (values && values.__kgwBridgeStructuredInstancesR26B && Array.isArray(values.__kgwBridgeStructuredInstancesR26B.instances)) ? values.__kgwBridgeStructuredInstancesR26B.instances.length : 0,
+    hasActiveStructuredInstance: Boolean(values && values.__kgwBridgeActiveInstanceR26B)
+  });
+
+  kgwNodeR51Store("saved:" + net, values);
   appendLog(net, "Node settings saved successfully.");
-  kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r44d-owner-complete", {});
+
+  const saved = kgwNodeR51Load("saved:" + net);
+  kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-complete", {
+    patch: "R29B",
+    owner: "node-r51-settings-owner",
+    savedKey: "saved:" + String(net || ""),
+    persisted: Boolean(saved),
+    persistedKeyCount: saved && typeof saved === "object" ? Object.keys(saved).length : 0
+  });
 }
 
 function kgwNodeR51SetAsDefaults(net) {
-  kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r44d-owner-begin", {});
-  kgwNodeR51Store("default:" + net, kgwNodeR51ReadSettings(net));
+  kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-begin", {
+    patch: "R29B",
+    owner: "node-r51-settings-owner"
+  });
+
+  const values = kgwNodeR51ReadSettings(net);
+  kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-read-settings", {
+    patch: "R29B",
+    owner: "node-r51-settings-owner",
+    keyCount: Object.keys(values || {}).length,
+    checkboxCount: Object.keys(values || {}).filter((key) => values[key] && values[key].type === "checkbox").length,
+    valueCount: Object.keys(values || {}).filter((key) => values[key] && values[key].type === "value").length,
+    structuredInstanceCount: (values && values.__kgwBridgeStructuredInstancesR26B && Array.isArray(values.__kgwBridgeStructuredInstancesR26B.instances)) ? values.__kgwBridgeStructuredInstancesR26B.instances.length : 0,
+    hasActiveStructuredInstance: Boolean(values && values.__kgwBridgeActiveInstanceR26B)
+  });
+
+  kgwNodeR51Store("default:" + net, values);
   appendLog(net, "Current node settings saved as defaults.");
-  kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r44d-owner-complete", {});
+
+  const stored = kgwNodeR51Load("default:" + net);
+  kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-complete", {
+    patch: "R29B",
+    owner: "node-r51-settings-owner",
+    defaultKey: "default:" + String(net || ""),
+    persisted: Boolean(stored),
+    persistedKeyCount: stored && typeof stored === "object" ? Object.keys(stored).length : 0
+  });
 }
 
 function kgwNodeR51RestoreDefaults(net) {
-  kgwNodeSmallOwnerTraceR44D(net, "restore-defaults", "r44d-owner-begin", {});
+  kgwNodeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-begin", {
+    patch: "R29B",
+    owner: "node-r51-settings-owner"
+  });
+
   kgwNodeSettingsWithProgrammaticWriteR9B(() => {
     const defaults = kgwNodeR51Load("default:" + net) || kgwNodeR51Load("factory:" + net);
+    kgwNodeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-loaded", {
+      patch: "R29B",
+      owner: "node-r51-settings-owner",
+      hasDefaults: Boolean(defaults),
+      defaultKeyCount: defaults && typeof defaults === "object" ? Object.keys(defaults).length : 0
+    });
     kgwNodeR51WriteSettings(net, defaults);
     kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, { force: true });
     appendLog(net, "Node defaults restored successfully.");
   });
-  kgwNodeSmallOwnerTraceR44D(net, "restore-defaults", "r44d-owner-complete", {});
+
+  kgwNodeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-complete", {
+    patch: "R29B",
+    owner: "node-r51-settings-owner"
+  });
 }
 
 function kgwNodeR51IsRunning(text) {
@@ -2056,9 +2291,103 @@ function installActions(root) {
   if (!root.dataset.kgwNodeCommandComposerInlineOwnerR7) {
     root.dataset.kgwNodeCommandComposerInlineOwnerR7 = "1";
 
+    /* KGW_NODE_COMMAND_CHECKBOX_FIRST_CLICK_FIX_TRACE_PATCH_R31
+     Native checkbox first-click fix:
+     - pointerdown/click/change traces are scoped to this existing Node root owner.
+     - native checkbox clicks are not preventDefault() blocked.
+     - checked state is committed from the change event.
+     - non-checkbox fallback keeps the legacy click toggle path.
+   */
+    root.addEventListener("pointerdown", (event) => {
+      const toggle = event.target.closest("[data-node-command-option-toggle-r7]");
+      if (!toggle || !root.contains(toggle)) return;
+
+      kgwNodeSmallOwnerTraceR44D(toggle.dataset.net, "command-checkbox", "r31-node-command-checkbox-pointerdown", {
+        patch: "R31",
+        owner: "node-command-composer-r7",
+        option: String(toggle.dataset.nodeCommandOptionToggleR7 || ""),
+        tag: String(toggle.tagName || ""),
+        type: String(toggle.type || ""),
+        checkedBefore: Boolean(toggle.checked),
+        trusted: Boolean(event && event.isTrusted)
+      });
+    });
+
+    root.addEventListener("change", (event) => {
+      const toggle = event.target.closest("[data-node-command-option-toggle-r7]");
+      if (!toggle || !root.contains(toggle)) return;
+
+      const net = toggle.dataset.net;
+      const option = toggle.dataset.nodeCommandOptionToggleR7;
+      const enabled = Boolean(toggle.checked);
+
+      kgwNodeSmallOwnerTraceR44D(net, "command-checkbox", "r31-node-command-checkbox-change-begin", {
+        patch: "R31",
+        owner: "node-command-composer-r7",
+        option: String(option || ""),
+        checked: enabled,
+        trusted: Boolean(event && event.isTrusted)
+      });
+
+      try {
+        if (typeof kgwNodeCommandInlineStateR7 === "function") {
+          const state = kgwNodeCommandInlineStateR7(net);
+          state[String(option)] = enabled;
+          updateCommand(net);
+          if (typeof kgwNodeRefreshInlineCommandTogglesR7 === "function") {
+            kgwNodeRefreshInlineCommandTogglesR7(net);
+          }
+        } else if (typeof kgwNodeToggleCommandOptionR7 === "function") {
+          kgwNodeToggleCommandOptionR7(net, option);
+        }
+
+        queueMicrotask(() => {
+          kgwNodeSmallOwnerTraceR44D(net, "command-checkbox", "r31-node-command-checkbox-change-after-microtask", {
+            patch: "R31",
+            owner: "node-command-composer-r7",
+            option: String(option || ""),
+            checkedAfter: Boolean(toggle.checked)
+          });
+        });
+      } catch (error) {
+        kgwNodeSmallOwnerTraceR44D(net, "command-checkbox", "r31-node-command-checkbox-change-failed", {
+          patch: "R31",
+          owner: "node-command-composer-r7",
+          option: String(option || ""),
+          message: error && error.message ? error.message : String(error)
+        });
+      }
+    });
+
     root.addEventListener("click", (event) => {
       const toggle = event.target.closest("[data-node-command-option-toggle-r7]");
       if (toggle && root.contains(toggle)) {
+        const isNativeCheckbox = toggle.matches && toggle.matches("input[type='checkbox']");
+
+        kgwNodeSmallOwnerTraceR44D(toggle.dataset.net, "command-checkbox", "r31-node-command-checkbox-click", {
+          patch: "R31",
+          owner: "node-command-composer-r7",
+          option: String(toggle.dataset.nodeCommandOptionToggleR7 || ""),
+          tag: String(toggle.tagName || ""),
+          type: String(toggle.type || ""),
+          isNativeCheckbox: Boolean(isNativeCheckbox),
+          checkedAtClick: Boolean(toggle.checked),
+          trusted: Boolean(event && event.isTrusted)
+        });
+
+        if (isNativeCheckbox) {
+          event.stopPropagation();
+          queueMicrotask(() => {
+            kgwNodeSmallOwnerTraceR44D(toggle.dataset.net, "command-checkbox", "r31-node-command-checkbox-click-after-microtask", {
+              patch: "R31",
+              owner: "node-command-composer-r7",
+              option: String(toggle.dataset.nodeCommandOptionToggleR7 || ""),
+              checkedAfter: Boolean(toggle.checked)
+            });
+          });
+          return;
+        }
+
         event.preventDefault();
         event.stopPropagation();
         kgwNodeToggleCommandOptionR7(toggle.dataset.net, toggle.dataset.nodeCommandOptionToggleR7);
