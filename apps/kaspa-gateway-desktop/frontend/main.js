@@ -150,8 +150,93 @@ const initializedTabs = new Set();
 let bootRunning = false;
 let bootDone = false;
 
+/* KGW_SHELL_BOOT_CONTENT_SETTINGS_BOUNDARY_PATCH_R63F
+ * Targeted async-safe boundary repair for canonical shell startup content.
+ * This keeps R59C as the single shell display and active-tab owner.
+ */
+function kgwShellCanonicalDefaultTabR63F() {
+  return "kaspa-node";
+}
+
+function kgwShellCanonicalVisibleTabsR63F() {
+  /* KGW_SHELL_R63F_STARTUP_BOUNDARY_NOT_DISPLAY_FILTER_R71C
+   * R63F is a startup safety boundary, not a permanent Settings display filter.
+   * All real tab visibility must come from the R59C/R71 shell display owners.
+   */
+  try {
+    const ids = typeof allTabIds === "function" ? allTabIds() : [];
+    if (Array.isArray(ids) && ids.length) {
+      return new Set(ids);
+    }
+  } catch (_) {}
+
+  return new Set(["explorer", "kaspa-node", "kaspa-bridge", "analysis", "top-addresses", "log", "settings"]);
+}
+
+function kgwShellResolveStartupTabR63F(candidate, reason = "startup") {
+  const requested = String(candidate || "").replace(/^#/, "").trim();
+  const canonical = (() => {
+    try {
+      return window.kgwShellDisplayAndActiveTabOwnerR59C || null;
+    } catch (_) {
+      return null;
+    }
+  })();
+
+  if (canonical && typeof canonical.resolveTabId === "function") {
+    const resolved = canonical.resolveTabId(requested, "r63f-" + reason);
+    if (resolved) return resolved;
+  }
+
+  const allowed = kgwShellCanonicalVisibleTabsR63F();
+  if (requested && allowed.has(requested)) return requested;
+
+  return kgwShellCanonicalDefaultTabR63F();
+}
+
+function kgwShellApplyDisplayOwnerBeforeBootR63F(reason = "boot-before-open-tab") {
+  try {
+    const shell = window.kgwShellDisplayPreferencesR71;
+    if (shell && typeof shell.read === "function" && typeof shell.apply === "function") {
+      const stored = shell.read();
+      shell.apply(stored && typeof stored === "object" ? stored : shell.defaults ? shell.defaults() : null, "r63f-" + reason);
+      return true;
+    }
+  } catch (_) {}
+
+  try {
+    const canonical = window.kgwShellDisplayAndActiveTabOwnerR59C;
+    if (canonical && typeof canonical.read === "function" && typeof canonical.applyPreferences === "function") {
+      const stored = canonical.read();
+      canonical.applyPreferences(stored && typeof stored === "object" ? stored : canonical.defaults(), "r63f-" + reason);
+      return true;
+    }
+  } catch (_) {}
+
+  try {
+    const canonical = window.kgwShellDisplayAndActiveTabOwnerR59C;
+    if (canonical && typeof canonical.defaults === "function" && typeof canonical.applyPreferences === "function") {
+      canonical.applyPreferences(canonical.defaults(), "r63f-" + reason);
+      return true;
+    }
+  } catch (_) {}
+
+  return false;
+}
+
+
 function tabById(tabId) {
-  return KGW_TABS.find((tab) => tab.id === tabId) || KGW_TABS[0];
+  const resolvedTabId = kgwShellResolveStartupTabR63F(tabId, "tab-by-id");
+  const exact = KGW_TABS.find((tab) => tab.id === resolvedTabId);
+  if (exact) return exact;
+
+  const canonicalDefault = KGW_TABS.find((tab) => tab.id === kgwShellCanonicalDefaultTabR63F());
+  if (canonicalDefault) return canonicalDefault;
+
+  const settingsTab = KGW_TABS.find((tab) => tab.id === "settings");
+  if (settingsTab) return settingsTab;
+
+  throw new Error("No valid KGW tab configuration is available.");
 }
 
 function allTabIds() {
@@ -281,12 +366,16 @@ function currentSelectedTabId() {
     document.querySelector('[data-tab][aria-selected="true"]');
 
   const buttonTab = activeButton?.dataset?.tab;
-  if (buttonTab && allTabIds().includes(buttonTab)) return buttonTab;
+  if (buttonTab && allTabIds().includes(buttonTab)) {
+    return kgwShellResolveStartupTabR63F(buttonTab, "current-selected-button");
+  }
 
   const hash = String(window.location.hash || "").replace(/^#/, "");
-  if (hash && allTabIds().includes(hash)) return hash;
+  if (hash && allTabIds().includes(hash)) {
+    return kgwShellResolveStartupTabR63F(hash, "current-selected-hash");
+  }
 
-  return "explorer";
+  return kgwShellCanonicalDefaultTabR63F();
 }
 
 function forcePanelIntoViewport(tabId) {
@@ -513,6 +602,35 @@ function kgwMainTabTraceR35C(tabId, phase, details) {
 async function openTab(tabId) {
   shellLog.log("openTab", tabId);
 
+  const requestedTabId = String(tabId || "");
+  /* KGW_SHELL_DISPLAY_OWNER_SCOPE_REPAIR_R60
+   * openTab must not reference the canonical resolver by lexical scope.
+   * The canonical owner is published on window by apply(), so openTab resolves through that published owner when available.
+   */
+  const kgwCanonicalOwnerR60 = (() => {
+    try {
+      return window.kgwShellDisplayAndActiveTabOwnerR59C || null;
+    } catch (_) {
+      return null;
+    }
+  })();
+
+  const resolvedTabId = kgwCanonicalOwnerR60 && typeof kgwCanonicalOwnerR60.resolveTabId === "function"
+    ? kgwCanonicalOwnerR60.resolveTabId(requestedTabId, "openTab")
+    : requestedTabId;
+
+  if (resolvedTabId && resolvedTabId !== requestedTabId) {
+    try {
+      kgwMainTabTraceR35C(resolvedTabId, "r59c-canonical-open-tab-resolve", {
+        requestedTabId,
+        resolvedTabId,
+        activeHash: String(window.location.hash || "")
+      });
+    } catch (_) {}
+
+    tabId = resolvedTabId;
+  }
+
   kgwCloseCalendarPopoversForTabLifecycleR11B("open-tab-before-init");
 
   const tab = tabById(tabId);
@@ -520,7 +638,7 @@ async function openTab(tabId) {
   activateTab(tab.id);
 
   kgwMainTabTraceR35C(tab.id, "r35c-open-tab", {
-    requestedTabId: String(tabId || ""),
+    requestedTabId: String(requestedTabId || ""),
     activeHash: String(window.location.hash || "")
   });
 
@@ -605,7 +723,7 @@ ${String(error && error.stack || error)}
 
 async function boot() {
   shellLog.log("boot start", location.href);
-if (bootRunning || bootDone) return;
+  if (bootRunning || bootDone) return;
 
   bootRunning = true;
 
@@ -613,8 +731,10 @@ if (bootRunning || bootDone) return;
     bindShellControls();
     bindNavigation();
 
+    kgwShellApplyDisplayOwnerBeforeBootR63F("boot-before-open-tab");
+
     const hash = String(window.location.hash || "").replace(/^#/, "");
-    const initial = allTabIds().includes(hash) ? hash : "explorer";
+    const initial = kgwShellResolveStartupTabR63F(hash, "boot-initial");
 
     await openTab(initial);
 
@@ -1110,10 +1230,14 @@ console.log("[KGW Explorer][busy-ui] global controller installed");
   }
 
   function defaults() {
+    /* KGW_SHELL_DISPLAY_AND_ACTIVE_TAB_OWNER_R59C
+     * Canonical defaults owned by the single shell display and active-tab owner.
+     */
     return {
-      languages: keys(languageOptions),
-      currencies: keys(currencyOptions),
-      tabs: keys(tabOptions)
+      languages: ["en"],
+      currencies: ["USD"],
+      tabs: ["kaspa-node", "kaspa-bridge", "settings"],
+      activeTab: "kaspa-node"
     };
   }
 
@@ -1219,44 +1343,566 @@ console.log("[KGW Explorer][busy-ui] global controller installed");
     }
   }
 
-  function applyTabs(selectedTabs) {
-    const visibleTabs = new Set(selectedTabs);
-    const tabButtons = Array.from(document.querySelectorAll("[data-tab]"));
+  /* KGW_SHELL_DISPLAY_AND_ACTIVE_TAB_OWNER_R59C
+ * Canonical shell display and active-tab owner.
+ * This is the single owner for visible tabs and active tab normalization.
+ */
+function kgwShellDisplayOwnerTabButtonsR59C() {
+  return Array.from(document.querySelectorAll("[data-tab]"));
+}
 
-    let activeWasHidden = false;
-    let firstVisible = null;
-    let settingsButton = null;
+function kgwShellDisplayOwnerTabVisibleR59C(button) {
+  if (!button) return false;
+  if (button.hidden) return false;
+  if (button.dataset && button.dataset.kgwDisplayVisible === "false") return false;
+  if (button.getAttribute("aria-hidden") === "true") return false;
+  if (button.style && button.style.display === "none") return false;
+  return true;
+}
+
+function kgwShellDisplayOwnerTabIdVisibleR59C(tabId) {
+  const requested = String(tabId || "");
+  if (!requested) return false;
+
+  const buttons = kgwShellDisplayOwnerTabButtonsR59C();
+  if (!buttons.length) return true;
+
+  const matching = buttons.filter((button) => button && button.dataset && button.dataset.tab === requested);
+  if (!matching.length) return true;
+
+  return matching.some((button) => kgwShellDisplayOwnerTabVisibleR59C(button));
+}
+
+function kgwShellDisplayOwnerPreferredTabIdR59C() {
+  const preferredOrder = ["kaspa-node", "kaspa-bridge", "settings"];
+  const buttons = kgwShellDisplayOwnerTabButtonsR59C();
+
+  for (const tabId of preferredOrder) {
+    const button = buttons.find((item) => item && item.dataset && item.dataset.tab === tabId && kgwShellDisplayOwnerTabVisibleR59C(item));
+    if (button) return tabId;
+  }
+
+  const firstVisible = buttons.find((item) => item && item.dataset && item.dataset.tab && kgwShellDisplayOwnerTabVisibleR59C(item));
+  return firstVisible && firstVisible.dataset ? firstVisible.dataset.tab : defaults().activeTab;
+}
+
+function kgwShellDisplayOwnerResolveTabIdR59C(tabId, reason = "resolve") {
+  const requested = String(tabId || "").trim();
+
+  if (requested && kgwShellDisplayOwnerTabIdVisibleR59C(requested)) {
+    return requested;
+  }
+
+  const fallback = kgwShellDisplayOwnerPreferredTabIdR59C();
+
+  try {
+    shellLog.log("canonical tab resolved", {
+      patch: "R59C",
+      reason,
+      requestedTab: requested || null,
+      fallbackTab: fallback || null
+    });
+  } catch (_) {}
+
+  return fallback || requested || defaults().activeTab;
+}
+
+function kgwShellDisplayOwnerActiveButtonR59C() {
+  return kgwShellDisplayOwnerTabButtonsR59C().find((button) => (
+    button &&
+    (
+      button.classList.contains("active") ||
+      button.classList.contains("is-active") ||
+      button.getAttribute("aria-selected") === "true" ||
+      button.getAttribute("aria-current") === "page"
+    )
+  )) || null;
+}
+
+function kgwShellDisplayOwnerEnsureActiveTabR59C(reason = "ensure-active") {
+  const activeButton = kgwShellDisplayOwnerActiveButtonR59C();
+  const activeTabId = activeButton && activeButton.dataset ? activeButton.dataset.tab : "";
+  const resolvedTabId = kgwShellDisplayOwnerResolveTabIdR59C(activeTabId, reason);
+
+  if (!resolvedTabId || resolvedTabId === activeTabId) {
+    return false;
+  }
+
+  window.setTimeout(() => {
+    try {
+      void openTab(resolvedTabId);
+    } catch (_) {}
+  }, 0);
+
+  return true;
+}
+
+function kgwShellDisplayOwnerPublishR59C() {
+  try {
+    window.kgwShellDisplayAndActiveTabOwnerR59C = {
+      marker: "KGW_SHELL_DISPLAY_AND_ACTIVE_TAB_OWNER_R59C",
+      defaults,
+      read,
+      save,
+      applyPreferences: apply,
+      resolveTabId: kgwShellDisplayOwnerResolveTabIdR59C,
+      ensureActiveTab: kgwShellDisplayOwnerEnsureActiveTabR59C
+    };
+  } catch (_) {}
+}
+
+/* KGW_SHELL_DIRECT_DISPLAY_APPLY_OWNER_R73
+ * main.js remains the runtime owner for visible top tabs and shell dropdown filtering.
+ * Settings may request this owner, but main.js performs the actual DOM update.
+ */
+/* KGW_SHELL_ACTUAL_DOM_OWNER_R75
+ * Canonical runtime DOM application for display preferences.
+ * Strengthens the existing main.js shell owner instead of adding a parallel UI layer.
+ */
+function kgwShellAsArrayR75(value, fallback) {
+  const list = Array.isArray(value) ? value : fallback;
+  return Array.from(new Set(list.map((item) => String(item || "").trim()).filter(Boolean)));
+}
+
+function kgwShellKnownLanguagesR75() {
+  return ["en", "ar", "de", "es", "fr", "hi", "id", "ja", "ko", "ru", "tr", "zh-CN"];
+}
+
+function kgwShellKnownCurrenciesR75() {
+  return ["USD", "SAR", "EUR", "GBP", "CHF", "AUD", "CAD", "JPY", "KRW", "RUB", "CNY", "TRY", "INR", "IDR", "HKD", "SGD", "BRL"];
+}
+
+function kgwShellOptionValueR75(option) {
+  return String(
+    option?.value ||
+    option?.dataset?.value ||
+    option?.dataset?.language ||
+    option?.dataset?.currency ||
+    option?.getAttribute?.("data-lang") ||
+    option?.getAttribute?.("data-currency") ||
+    option?.textContent ||
+    ""
+  ).trim();
+}
+
+function kgwShellSelectLooksLikeSetR75(select, universe, kind) {
+  if (!select || !select.options) return false;
+
+  const attr = [
+    select.id,
+    select.name,
+    select.className,
+    select.getAttribute("aria-label"),
+    select.getAttribute("data-testid"),
+    select.dataset?.role,
+    select.dataset?.kind
+  ].map((item) => String(item || "").toLowerCase()).join(" ");
+
+  if (attr.includes(kind)) return true;
+
+  const values = Array.from(select.options).map((option) => kgwShellOptionValueR75(option)).filter(Boolean);
+  if (!values.length) return false;
+
+  const known = new Set(universe);
+  const hits = values.filter((value) => known.has(value)).length;
+
+  return hits >= 2 && hits >= Math.ceil(values.length * 0.5);
+}
+
+function kgwShellCollectSelectsForKindR75(selectors, universe, kind) {
+  const nodes = [];
+
+  selectors.forEach((selector) => {
+    try {
+      document.querySelectorAll(selector).forEach((node) => {
+        if (node && node.tagName === "SELECT" && !nodes.includes(node)) nodes.push(node);
+      });
+    } catch (_) {}
+  });
+
+  try {
+    document.querySelectorAll("select").forEach((node) => {
+      if (kgwShellSelectLooksLikeSetR75(node, universe, kind) && !nodes.includes(node)) {
+        nodes.push(node);
+      }
+    });
+  } catch (_) {}
+
+  return nodes;
+}
+
+function kgwShellApplySelectVisibilityR75(select, allowedValues, reason) {
+  const allowed = new Set((Array.isArray(allowedValues) ? allowedValues : []).map((item) => String(item || "")));
+  let shown = 0;
+  let hidden = 0;
+  let firstAllowed = "";
+
+  Array.from(select.options || []).forEach((option) => {
+    const value = kgwShellOptionValueR75(option);
+    const visible = allowed.size === 0 || allowed.has(value);
+
+    if (visible && !firstAllowed) firstAllowed = value;
+
+    option.hidden = !visible;
+    option.disabled = !visible;
+
+    if (visible) {
+      option.style.removeProperty("display");
+      shown += 1;
+    } else {
+      option.style.setProperty("display", "none", "important");
+      hidden += 1;
+    }
+  });
+
+  if (firstAllowed && !allowed.has(String(select.value || ""))) {
+    select.value = firstAllowed;
+    try {
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    } catch (_) {}
+  }
+
+  select.dataset.kgwDisplayReason = String(reason || "");
+  select.dataset.kgwDisplayShown = String(shown);
+  select.dataset.kgwDisplayHidden = String(hidden);
+
+  return { shown, hidden };
+}
+
+function kgwShellApplyLooseMenuVisibilityR75(kind, allowedValues, reason) {
+  const universe = kind === "language" ? kgwShellKnownLanguagesR75() : kgwShellKnownCurrenciesR75();
+  const allowed = new Set((Array.isArray(allowedValues) ? allowedValues : []).map((item) => String(item || "")));
+  const universeSet = new Set(universe);
+
+  const selectors = kind === "language"
+    ? [
+        "[data-language-option]",
+        "[data-lang-option]",
+        "[data-lang]",
+        "[data-language]",
+        "[data-value]"
+      ]
+    : [
+        "[data-currency-option]",
+        "[data-currency]",
+        "[data-value]"
+      ];
+
+  const nodes = [];
+  selectors.forEach((selector) => {
+    try {
+      document.querySelectorAll(selector).forEach((node) => {
+        if (node && !nodes.includes(node)) nodes.push(node);
+      });
+    } catch (_) {}
+  });
+
+  let shown = 0;
+  let hidden = 0;
+
+  nodes.forEach((node) => {
+    const value = String(
+      node.dataset?.value ||
+      node.dataset?.language ||
+      node.dataset?.currency ||
+      node.getAttribute?.("data-lang") ||
+      node.getAttribute?.("data-currency") ||
+      ""
+    ).trim();
+
+    if (!value || !universeSet.has(value)) return;
+
+    const visible = allowed.size === 0 || allowed.has(value);
+    node.hidden = !visible;
+    node.setAttribute("aria-hidden", visible ? "false" : "true");
+
+    if (visible) {
+      node.style.removeProperty("display");
+      shown += 1;
+    } else {
+      node.style.setProperty("display", "none", "important");
+      hidden += 1;
+    }
+
+    node.dataset.kgwDisplayReason = String(reason || "");
+  });
+
+  return { shown, hidden };
+}
+
+function kgwShellNormalizeDisplayPrefsR73(prefs) {
+  const source = prefs && typeof prefs === "object" ? prefs : {};
+
+  const unique = (value, fallback) => {
+    const list = Array.isArray(value) ? value : fallback;
+    return Array.from(new Set(list.map((item) => String(item || "").trim()).filter(Boolean)));
+  };
+
+  const tabs = unique(source.tabs, ["kaspa-node", "kaspa-bridge", "settings"]);
+  if (!tabs.includes("settings")) tabs.push("settings");
+
+  return {
+    languages: unique(source.languages, ["en"]),
+    currencies: unique(source.currencies, ["USD"]),
+    tabs
+  };
+}
+
+/* KGW_SHELL_LANGUAGE_CURRENCY_SELECT_OWNER_R78 */
+function kgwShellLanguageLabelsR78() {
+  return {
+    "en": "English",
+    "ar": "Arabic",
+    "de": "German",
+    "es": "Spanish",
+    "fr": "French",
+    "hi": "Hindi",
+    "id": "Indonesian",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "ru": "Russian",
+    "tr": "Turkish",
+    "zh-CN": "Chinese (Simplified)"
+  };
+}
+
+function kgwShellCurrencyLabelsR78() {
+  return {
+    "USD": "USD",
+    "KAS": "KAS",
+    "SAR": "SAR",
+    "EUR": "EUR",
+    "GBP": "GBP",
+    "CHF": "CHF",
+    "AUD": "AUD",
+    "CAD": "CAD",
+    "JPY": "JPY",
+    "KRW": "KRW",
+    "RUB": "RUB",
+    "CNY": "CNY",
+    "TRY": "TRY",
+    "INR": "INR",
+    "IDR": "IDR",
+    "HKD": "HKD",
+    "SGD": "SGD",
+    "BRL": "BRL"
+  };
+}
+
+function kgwShellEnsureSelectOptionR78(select, value, label, i18nKey) {
+  if (!select || !value) return false;
+
+  const existing = Array.from(select.options || []).find((option) => String(option.value || "") === String(value));
+  if (existing) {
+    if (!existing.textContent || existing.textContent.trim() === "") existing.textContent = label || value;
+    if (i18nKey && !existing.dataset.i18n) existing.dataset.i18n = i18nKey;
+    return false;
+  }
+
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = label || value;
+  if (i18nKey) option.dataset.i18n = i18nKey;
+  select.appendChild(option);
+  return true;
+}
+
+function kgwShellEnsureSelectUniverseR78(select, kind) {
+  if (!select) return 0;
+
+  const labels = kind === "language" ? kgwShellLanguageLabelsR78() : kgwShellCurrencyLabelsR78();
+  let added = 0;
+
+  Object.entries(labels).forEach(([value, label]) => {
+    const i18nKey = kind === "language"
+      ? (value === "zh-CN" ? "common.lang.zh.cn" : "common.lang." + value)
+      : "ui.shell." + value.toLowerCase();
+
+    if (kgwShellEnsureSelectOptionR78(select, value, label, i18nKey)) {
+      added += 1;
+    }
+  });
+
+  return added;
+}
+
+function kgwShellSelectIsExplicitShellOwnerR78(select, kind) {
+  if (!select) return false;
+  const id = String(select.id || "");
+  if (kind === "language" && id === "shellLanguageSelect") return true;
+  if (kind === "currency" && id === "shellCurrencySelect") return true;
+  return false;
+}
+
+function kgwShellSetSelectOptionsVisibleR73(selectors, allowedValues, reason) {
+  const languageUniverse = kgwShellKnownLanguagesR75();
+  const currencyUniverse = kgwShellKnownCurrenciesR75();
+
+  const allowed = Array.isArray(allowedValues) ? allowedValues.map((item) => String(item || "")) : [];
+  const kind = allowed.some((value) => languageUniverse.includes(value)) ? "language" : "currency";
+  const universe = kind === "language" ? languageUniverse : currencyUniverse;
+
+  const ownerSelectors = kind === "language"
+    ? ["#shellLanguageSelect"].concat(selectors || [])
+    : ["#shellCurrencySelect"].concat(selectors || []);
+
+  const nodes = kgwShellCollectSelectsForKindR75(ownerSelectors, universe, kind);
+
+  const explicit = kind === "language"
+    ? document.getElementById("shellLanguageSelect")
+    : document.getElementById("shellCurrencySelect");
+
+  if (explicit && !nodes.includes(explicit)) {
+    nodes.unshift(explicit);
+  }
+
+  let shown = 0;
+  let hidden = 0;
+  let added = 0;
+
+  nodes.forEach((select) => {
+    if (kgwShellSelectIsExplicitShellOwnerR78(select, kind)) {
+      added += kgwShellEnsureSelectUniverseR78(select, kind);
+    }
+
+    const stats = kgwShellApplySelectVisibilityR75(select, allowed, reason);
+    shown += stats.shown;
+    hidden += stats.hidden;
+  });
+
+  try {
+    kgwMainTabTraceR35C("settings", "r78-select-options-dom", {
+      reason: String(reason || ""),
+      kind,
+      selectCount: String(nodes.length),
+      shown: String(shown),
+      hidden: String(hidden),
+      added: String(added),
+      ownerIds: nodes.map((node) => String(node.id || "")).join(","),
+      allowed: allowed.join(",")
+    });
+  } catch (_) {}
+}
+
+function kgwShellSetMenuOptionsVisibleR73(optionSelectors, allowedValues, reason) {
+  const languageUniverse = kgwShellKnownLanguagesR75();
+  const allowed = Array.isArray(allowedValues) ? allowedValues.map((item) => String(item || "")) : [];
+  const kind = allowed.some((value) => languageUniverse.includes(value)) ? "language" : "currency";
+  const stats = kgwShellApplyLooseMenuVisibilityR75(kind, allowed, reason);
+
+  try {
+    kgwMainTabTraceR35C("settings", "r75-menu-options-dom", {
+      reason: String(reason || ""),
+      kind,
+      shown: String(stats.shown),
+      hidden: String(stats.hidden),
+      allowed: allowed.join(",")
+    });
+  } catch (_) {}
+}
+
+function kgwShellApplyDisplayPreferencesDirectR73(prefs, reason = "direct-shell-apply") {
+  const normalized = kgwShellNormalizeDisplayPrefsR73(prefs);
+
+  try {
+    applyTabs(normalized.tabs);
+  } catch (error) {
+    try {
+      kgwMainTabTraceR35C("settings", "r75-direct-apply-tabs-error", {
+        reason: String(reason || ""),
+        message: String(error && error.message || error)
+      });
+    } catch (_) {}
+  }
+
+  kgwShellSetSelectOptionsVisibleR73([
+    "#shellLanguageSelect",
+    "#languageSelect",
+    "#kgwLanguageSelect",
+    "#appLanguageSelect",
+    "#settingsLanguageSelect",
+    "select[name='language']",
+    "select[data-language-select]",
+    "select[id*='language' i]"
+  ], normalized.languages, reason);
+
+  kgwShellSetSelectOptionsVisibleR73([
+    "#shellCurrencySelect",
+    "#currencySelect",
+    "#kgwCurrencySelect",
+    "#appCurrencySelect",
+    "#settingsCurrencySelect",
+    "select[name='currency']",
+    "select[data-currency-select]",
+    "select[id*='currency' i]"
+  ], normalized.currencies, reason);
+
+  kgwShellSetMenuOptionsVisibleR73([], normalized.languages, reason);
+  kgwShellSetMenuOptionsVisibleR73([], normalized.currencies, reason);
+
+  try {
+    window.dispatchEvent(new CustomEvent("kgw:shell-display-applied-r78", {
+      detail: normalized
+    }));
+  } catch (_) {}
+
+  try {
+    kgwMainTabTraceR35C("settings", "r78-direct-shell-apply", {
+      reason: String(reason || ""),
+      languages: normalized.languages.join(","),
+      currencies: normalized.currencies.join(","),
+      tabs: normalized.tabs.join(",")
+    });
+  } catch (_) {}
+
+  return normalized;
+}
+
+try {
+  window.kgwShellApplyDisplayPreferencesDirectR73 = kgwShellApplyDisplayPreferencesDirectR73;
+} catch (_) {}
+
+function applyTabs(selectedTabs) {
+    const normalizedTabs = kgwShellAsArrayR75(selectedTabs, ["kaspa-node", "kaspa-bridge", "settings"]);
+    if (!normalizedTabs.includes("settings")) normalizedTabs.push("settings");
+
+    const visibleTabs = new Set(normalizedTabs);
+    const tabButtons = Array.from(document.querySelectorAll("[data-tab]"));
+    let shown = 0;
+    let hidden = 0;
 
     for (const button of tabButtons) {
-      const tabId = button.dataset.tab;
+      const tabId = String(button.dataset.tab || "");
       const isSettings = tabId === "settings";
       const visible = isSettings || visibleTabs.has(tabId);
 
-      if (isSettings) settingsButton = button;
-      if (!firstVisible && visible && !isSettings) firstVisible = button;
+      button.hidden = !visible;
 
-      if (!visible && (button.classList.contains("active") || button.classList.contains("is-active"))) {
-        activeWasHidden = true;
-      }
-
-      if (button.hidden !== !visible) button.hidden = !visible;
-      /* KGW_TAB_VISIBILITY_UNIFIED_OWNER_FIX_R1
-       * main.js is the only runtime owner for top tab visibility.
-       * Use inline !important when hiding because legacy compact tab CSS uses display !important.
-       */
       if (visible) {
         button.style.removeProperty("display");
+        button.classList.remove("kgw-display-hidden");
+        shown += 1;
       } else {
         button.style.setProperty("display", "none", "important");
+        button.classList.add("kgw-display-hidden");
+        hidden += 1;
       }
+
       button.setAttribute("aria-hidden", visible ? "false" : "true");
       button.dataset.kgwDisplayVisible = visible ? "true" : "false";
+      button.dataset.kgwDisplayOwner = "R75";
     }
 
-    if (activeWasHidden) {
-      const target = firstVisible || settingsButton;
-      if (target) window.setTimeout(() => target.click(), 0);
-    }
+    try {
+      kgwMainTabTraceR35C("settings", "r75-apply-tabs-dom", {
+        tabs: normalizedTabs.join(","),
+        buttons: String(tabButtons.length),
+        shown: String(shown),
+        hidden: String(hidden)
+      });
+    } catch (_) {}
+
+    kgwShellDisplayOwnerEnsureActiveTabR59C("apply-tabs-r75");
   }
 
   function apply(input, reason = "apply") {
@@ -1267,6 +1913,9 @@ console.log("[KGW Explorer][busy-ui] global controller installed");
     applyTabs(prefs.tabs);
 
     document.documentElement.dataset.kgwDisplayPreferencesR71 = reason;
+    kgwShellDisplayOwnerPublishR59C();
+    kgwShellDisplayOwnerEnsureActiveTabR59C(reason);
+
     return prefs;
   }
 

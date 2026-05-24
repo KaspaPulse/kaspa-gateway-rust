@@ -122,7 +122,7 @@ async fn fetch_kaspa_prices_uncached() -> Result<KaspaPriceSnapshot, String> {
     let sources = [
         (
             "CoinGecko simple price",
-            "https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd,sar",
+            "https://api.coingecko.com/api/v3/simple/price?ids=kaspa&vs_currencies=usd,sar,eur,gbp,chf,aud,cad,jpy,krw,rub,cny,try,inr,idr,hkd,sgd,brl",
         ),
         ("Kaspa API price", "https://api.kaspa.org/info/price"),
     ];
@@ -140,6 +140,16 @@ async fn fetch_kaspa_prices_uncached() -> Result<KaspaPriceSnapshot, String> {
                     }
                     if let Some(sar) = number_at_path(&json, &["kaspa", "sar"]) {
                         prices.insert("sar".to_string(), sar);
+                    }
+
+                    // KGW_R81C_PRICE_SERVICE_EXTRA_DISPLAY_CURRENCIES
+                    for code in [
+                        "eur", "gbp", "chf", "aud", "cad", "jpy", "krw", "rub", "cny", "try",
+                        "inr", "idr", "hkd", "sgd", "brl",
+                    ] {
+                        if let Some(value) = number_at_path(&json, &["kaspa", code]) {
+                            prices.insert(code.to_string(), value);
+                        }
                     }
                 } else if let Some(usd) = find_number_by_key_name(&json, &["price", "usd"]) {
                     prices.insert("usd".to_string(), usd);

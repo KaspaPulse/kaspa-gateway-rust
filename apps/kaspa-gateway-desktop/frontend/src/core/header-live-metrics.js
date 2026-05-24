@@ -118,6 +118,97 @@ function kgwOwnMetricValueElement(kind, element) {
 }
 
 
+
+
+/* KGW_HEADER_SELECTED_CURRENCY_CANONICAL_WRITER_R85B
+ * Makes the existing live metrics price writer respect #shellCurrencySelect.
+ * This prevents the periodic live metrics USD snapshot from overwriting selected currency rendering.
+ */
+function kgwHeaderTraceR85B(phase, details) {
+  try {
+    const payload = Object.assign(
+      {
+        scope: "header",
+        owner: "KGW_HEADER_SELECTED_CURRENCY_CANONICAL_WRITER_R85B",
+        phase,
+      },
+      details || {},
+    );
+
+    if (typeof globalThis.kgwUiTrace === "function") {
+      globalThis.kgwUiTrace(payload);
+    }
+  } catch (_) {
+    // Trace must never break header metrics.
+  }
+}
+
+function kgwHeaderSelectedCurrencyR85B() {
+  const select = document.querySelector("#shellCurrencySelect");
+  const raw = select && select.value ? String(select.value) : "USD";
+  const currency = raw.trim().toUpperCase();
+  return currency || "USD";
+}
+
+function kgwHeaderPriceSnapshotR85B() {
+  const snapshot = globalThis.kgwHeaderLastKaspaPricesR81C;
+  return snapshot && typeof snapshot === "object" ? snapshot : {};
+}
+
+function kgwHeaderNumericPriceR85B(prices, currency) {
+  const lower = String(currency || "USD").toLowerCase();
+  const upper = lower.toUpperCase();
+  const raw = prices[lower] ?? prices[upper];
+  const value = Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function kgwHeaderFormatCurrencyR85B(currency, value) {
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: value >= 1 ? 4 : 8,
+    }).format(value);
+  } catch (_) {
+    return currency + " " + String(value);
+  }
+}
+
+function kgwHeaderSelectedCurrencyMetricValueR85B(metricValue, currentText) {
+  const currency = kgwHeaderSelectedCurrencyR85B();
+  const prices = kgwHeaderPriceSnapshotR85B();
+  const selectedValue =
+    currency === "USD"
+      ? kgwExtractUsdPriceFromMetricValue(metricValue)
+      : kgwHeaderNumericPriceR85B(prices, currency);
+
+  const hasCachedSelectedValue = selectedValue !== null && selectedValue > 0;
+
+  kgwHeaderTraceR85B("r85b-selected-currency-price-writer", {
+    currency,
+    hasCachedSelectedValue,
+    hasR81CRefresh: typeof globalThis.kgwHeaderRefreshSelectedCurrencyPriceR81C === "function",
+  });
+
+  if (hasCachedSelectedValue) {
+    return kgwHeaderFormatCurrencyR85B(currency, selectedValue);
+  }
+
+  if (currency !== "USD") {
+    if (typeof globalThis.kgwHeaderRefreshSelectedCurrencyPriceR81C === "function") {
+      globalThis.kgwHeaderRefreshSelectedCurrencyPriceR81C("r85b-missing-selected-currency-cache");
+    }
+
+    const existing = String(currentText || "").trim();
+    if (existing && !/^\$/.test(existing) && !/^USD\b/i.test(existing)) {
+      return existing;
+    }
+  }
+
+  return metricValue;
+}
+
 function kgwSetMetric(kind, metric) {
   const ids = kgwMetricIds(kind);
   const valueEl = document.getElementById(ids.valueId);
@@ -128,16 +219,25 @@ function kgwSetMetric(kind, metric) {
   kgwOwnMetricValueElement(kind, valueEl);
 
   const status = metric?.status || "error";
-  const value = metric?.value || (status === "error" ? "Error" : "Loading");
+  const rawValue = metric?.value || (status === "error" ? "Error" : "Loading");
+  const value =
+    kind === "price" && status === "ok"
+      ? kgwHeaderSelectedCurrencyMetricValueR85B(rawValue, valueEl.textContent)
+      : rawValue;
   const source = metric?.source || "Rust backend";
   const updatedAt = kgwFormatLocalDateTime(metric?.updated_at_epoch_ms);
   const error = metric?.error || "";
 
   valueEl.textContent = value;
+
+  if (kind === "price") {
+    valueEl.dataset.kgwSelectedCurrency = kgwHeaderSelectedCurrencyR85B();
+    valueEl.dataset.kgwPriceWriter = "KGW_HEADER_SELECTED_CURRENCY_CANONICAL_WRITER_R85B";
+  }
   valueEl.dataset.liveStatus = status;
 
   if (kind === "price" && status === "ok") {
-    kgwPublishKaspaUsdPrice(value);
+    kgwPublishKaspaUsdPrice(rawValue);
   }
 
   if (boxEl) {
@@ -183,6 +283,83 @@ async function kgwRefreshHeaderMetrics(force) {
   }
 }
 
+
+/* KGW_HEADER_PRICE_INIT_BINDING_OWNER_R83B
+ * Bridges the selected-currency price owner into the canonical header live metrics init path.
+ * This preserves the existing header-live-metrics owner instead of adding another loader.
+ */
+function kgwHeaderPriceTraceR83B(phase, details) {
+  try {
+    const payload = Object.assign(
+      {
+        scope: "header",
+        owner: "KGW_HEADER_PRICE_INIT_BINDING_OWNER_R83B",
+        phase,
+      },
+      details || {},
+    );
+
+    if (typeof globalThis.kgwUiTrace === "function") {
+      globalThis.kgwUiTrace(payload);
+    }
+  } catch (_) {
+    // Trace must never break header metrics.
+  }
+}
+
+function kgwHeaderEnsureSelectedCurrencyPriceOwnerR83B(reason) {
+  const select = document.querySelector("#shellCurrencySelect");
+  const priceEl =
+    document.querySelector("#kgwHeaderPrice") ||
+    document.querySelector("[data-kgw-metric='price']") ||
+    document.querySelector("[data-metric='price']") ||
+    document.querySelector("[data-header-metric='price']");
+
+  kgwHeaderPriceTraceR83B("r83b-header-price-owner-ensure", {
+    reason: reason || "unknown",
+    hasSelect: !!select,
+    hasPriceElement: !!priceEl,
+    hasR81CRefresh: typeof globalThis.kgwHeaderRefreshSelectedCurrencyPriceR81C === "function",
+  });
+
+  if (typeof globalThis.kgwHeaderRefreshSelectedCurrencyPriceR81C === "function") {
+    globalThis.kgwHeaderRefreshSelectedCurrencyPriceR81C(reason || "header-init-r83b");
+    return true;
+  }
+
+  return false;
+}
+
+function kgwHeaderBindCurrencySelectFallbackR83B() {
+  const select = document.querySelector("#shellCurrencySelect");
+
+  if (!select) {
+    kgwHeaderPriceTraceR83B("r83b-currency-select-missing", {});
+    return false;
+  }
+
+  if (select.dataset.kgwHeaderPriceInitBindingOwnerR83B === "1") {
+    return true;
+  }
+
+  select.dataset.kgwHeaderPriceInitBindingOwnerR83B = "1";
+  select.addEventListener("change", () => {
+    kgwHeaderEnsureSelectedCurrencyPriceOwnerR83B("shell-currency-change-r83b");
+  });
+
+  kgwHeaderPriceTraceR83B("r83b-currency-select-bound", {
+    optionCount: select.options ? select.options.length : 0,
+    selectedCurrency: select.value || "",
+  });
+
+  return true;
+}
+
+function kgwHeaderBootSelectedCurrencyPriceR83B(reason) {
+  kgwHeaderBindCurrencySelectFallbackR83B();
+  kgwHeaderEnsureSelectedCurrencyPriceOwnerR83B(reason || "boot-r83b");
+}
+
 export function initHeaderLiveMetrics() {
   if (kgwLiveMetricsStarted) return;
 
@@ -190,6 +367,7 @@ export function initHeaderLiveMetrics() {
 
   kgwSetClock();
   kgwRefreshHeaderMetrics(true);
+  kgwHeaderBootSelectedCurrencyPriceR83B("initHeaderLiveMetrics-r83b");
 
   if (kgwClockTimer) window.clearInterval(kgwClockTimer);
   if (kgwMetricsTimer) window.clearInterval(kgwMetricsTimer);
@@ -201,9 +379,13 @@ export function initHeaderLiveMetrics() {
 }
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initHeaderLiveMetrics, { once: true });
+  document.addEventListener("DOMContentLoaded", () => {
+    initHeaderLiveMetrics();
+    kgwHeaderBootSelectedCurrencyPriceR83B("DOMContentLoaded-r83b");
+  }, { once: true });
 } else {
   initHeaderLiveMetrics();
+  kgwHeaderBootSelectedCurrencyPriceR83B("module-loaded-r83b");
 }
 
 /* KGW REAL HEADER CLOCK + ENGLISH TOOLTIPS START */
@@ -362,4 +544,169 @@ setInterval(() => {
   kgwRefreshClockAndEnglishTooltips();
 }, 15000);
 /* KGW REAL HEADER CLOCK + ENGLISH TOOLTIPS END */
+
+/* KGW_HEADER_PRICE_SELECTED_CURRENCY_OWNER_R81C
+ * Keeps the header KAS price synchronized with the actual shell currency select.
+ * This owner is intentionally limited to header-live-metrics.js and does not touch Settings.
+ */
+(function kgwHeaderPriceSelectedCurrencyOwnerR81C() {
+  const OWNER = "KGW_HEADER_PRICE_SELECTED_CURRENCY_OWNER_R81C";
+  if (globalThis[OWNER]) return;
+  globalThis[OWNER] = true;
+
+  const DISPLAY_CURRENCIES = ["usd","sar","eur","gbp","chf","aud","cad","jpy","krw","rub","cny","try","inr","idr","hkd","sgd","brl"];
+
+  function trace(phase, details) {
+    try {
+      const payload = Object.assign(
+        {
+          scope: "header",
+          owner: OWNER,
+          phase,
+        },
+        details || {},
+      );
+      if (typeof globalThis.kgwUiTrace === "function") {
+        globalThis.kgwUiTrace(payload);
+      }
+    } catch (_) {
+      // Trace must never break runtime UI.
+    }
+  }
+
+  function shellCurrencySelect() {
+    return document.querySelector("#shellCurrencySelect");
+  }
+
+  function selectedCurrency() {
+    const select = shellCurrencySelect();
+    const raw = select && select.value ? String(select.value) : "USD";
+    const normalized = raw.trim().toUpperCase();
+    return normalized || "USD";
+  }
+
+  function findPriceElement() {
+    return (
+      document.querySelector("#kgwHeaderPrice") ||
+      document.querySelector("[data-kgw-metric='price']") ||
+      document.querySelector("[data-metric='price']") ||
+      document.querySelector("[data-header-metric='price']")
+    );
+  }
+
+  function invokeCommand(command, payload) {
+    const tauri = globalThis.__TAURI__;
+    const invoke =
+      (tauri && tauri.core && tauri.core.invoke) ||
+      (tauri && tauri.tauri && tauri.tauri.invoke) ||
+      globalThis.__TAURI_INVOKE__;
+
+    if (typeof invoke !== "function") {
+      throw new Error("Tauri invoke is not available for " + command);
+    }
+
+    return invoke(command, payload);
+  }
+
+  function normalizePrices(result) {
+    if (!result || typeof result !== "object") return {};
+    if (result.prices && typeof result.prices === "object") return result.prices;
+    return result;
+  }
+
+  function numericPrice(prices, currency) {
+    const lower = String(currency || "USD").toLowerCase();
+    const upper = lower.toUpperCase();
+    const direct = prices[lower] ?? prices[upper];
+    const value = Number(direct);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+
+  function renderSelectedCurrencyPrice(prices, reason) {
+    const currency = selectedCurrency();
+    const value = numericPrice(prices, currency);
+    const el = findPriceElement();
+
+    trace("r81c-price-selected-currency", {
+      currency,
+      hasElement: !!el,
+      hasValue: value !== null,
+      reason: reason || "unknown",
+    });
+
+    if (!el || value === null) return false;
+
+    const formatted = new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: value >= 1 ? 4 : 8,
+    }).format(value);
+
+    el.textContent = formatted;
+    el.setAttribute("data-kgw-selected-currency", currency);
+    el.setAttribute("data-kgw-price-source", "kgw_get_kaspa_prices");
+    return true;
+  }
+
+  async function refreshSelectedCurrencyPrice(reason) {
+    const currency = selectedCurrency();
+
+    trace("r81c-currency-price-refresh", {
+      currency,
+      reason: reason || "manual",
+    });
+
+    try {
+      const result = await invokeCommand("kgw_get_kaspa_prices");
+      const prices = normalizePrices(result);
+      globalThis.kgwHeaderLastKaspaPricesR81C = prices;
+      renderSelectedCurrencyPrice(prices, reason || "refresh");
+    } catch (error) {
+      trace("r81c-currency-price-refresh-error", {
+        currency,
+        message: error && error.message ? error.message : String(error),
+      });
+    }
+  }
+
+  function bindCurrencySelect() {
+    const select = shellCurrencySelect();
+
+    if (!select) {
+      trace("r81c-currency-select-missing", {});
+      return false;
+    }
+
+    if (select.dataset.kgwHeaderPriceCurrencyOwnerR81C === "1") {
+      return true;
+    }
+
+    select.dataset.kgwHeaderPriceCurrencyOwnerR81C = "1";
+
+    select.addEventListener("change", () => {
+      refreshSelectedCurrencyPrice("shell-currency-change");
+    });
+
+    trace("r81c-currency-select-bound", {
+      optionCount: select.options ? select.options.length : 0,
+      selectedCurrency: selectedCurrency(),
+      displayCurrencies: DISPLAY_CURRENCIES,
+    });
+
+    return true;
+  }
+
+  function boot() {
+    bindCurrencySelect();
+    refreshSelectedCurrencyPrice("boot");
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
+  } else {
+    boot();
+  }
+
+  globalThis.kgwHeaderRefreshSelectedCurrencyPriceR81C = refreshSelectedCurrencyPrice;
+})();
 

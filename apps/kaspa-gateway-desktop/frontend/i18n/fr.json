@@ -170,6 +170,12 @@
     },
     "tabs": {
       "kaspabridge": "Kaspa Bridge"
+    },
+    "autofixPorts": {
+      "button": "Auto Fix Ports",
+      "conflictingButton": "Auto Fix Conflicting Ports",
+      "title": "Auto-fix conflicting instance ports only.",
+      "changedPrefix": "KGW Auto Fix Ports changed"
     }
   },
   "bridge.serviceEventPlanningDescription": "KGW service-event planning for all bridges in parallel. mainnet/testnet10 use master; testnet12 uses tn12.",

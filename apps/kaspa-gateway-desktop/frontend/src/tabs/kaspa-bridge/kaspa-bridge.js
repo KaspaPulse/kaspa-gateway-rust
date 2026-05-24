@@ -3021,7 +3021,7 @@ function bridgeApplyPortAutofixR37(activeNet) {
   if (typeof appendLog === "function") {
     appendLog(
       net,
-      "KGW Auto Fix Ports changed " + String(allChanged.length) + " conflicting instance port(s)." +
+      kgwBridgeAutoFixTextR54D3("changedPrefix") + " " + String(allChanged.length) + " conflicting instance port(s)." +
         (finalValidation && finalValidation.ok ? " Conflicts cleared." : " Some conflicts remain.")
     );
   }
@@ -3050,9 +3050,9 @@ function bridgeRefreshPortAutofixButtonsR37(reason) {
       : "No auto-fixable instance port conflicts for this network.";
 
     if (enabled) {
-      button.textContent = "Auto Fix Conflicting Ports";
+      button.textContent = kgwBridgeAutoFixTextR54D3("conflictingButton");
     } else {
-      button.textContent = "Auto Fix Ports";
+      button.textContent = kgwBridgeAutoFixTextR54D3("button");
     }
   }
 }
@@ -3067,6 +3067,41 @@ function bridgeSchedulePortAutofixRefreshR37(net, reason) {
     }
     bridgeRefreshPortAutofixButtonsR37(reason || "scheduled");
   }, 80);
+}
+
+/* KGW_BRIDGE_AUTOFIX_I18N_PATCH_R54D3
+ * Local i18n wrapper for existing Bridge Auto Fix labels/log prefix.
+ */
+function kgwBridgeAutoFixTextR54D3(key) {
+  const map = {
+    button: "bridge.autofixPorts.button",
+    conflictingButton: "bridge.autofixPorts.conflictingButton",
+    title: "bridge.autofixPorts.title",
+    changedPrefix: "bridge.autofixPorts.changedPrefix"
+  };
+  const i18nKey = map[key] || map.button;
+
+  try {
+    if (typeof t === "function") return t(i18nKey);
+  } catch (_) {}
+
+  try {
+    if (typeof translate === "function") return translate(i18nKey);
+  } catch (_) {}
+
+  try {
+    if (typeof i18n === "function") return i18n(i18nKey);
+  } catch (_) {}
+
+  try {
+    if (window && typeof window.kgwT === "function") return window.kgwT(i18nKey);
+  } catch (_) {}
+
+  try {
+    if (window && window.kgwI18n && typeof window.kgwI18n.t === "function") return window.kgwI18n.t(i18nKey);
+  } catch (_) {}
+
+  return i18nKey;
 }
 
 function bridgeInstallPortAutofixButtonR37(root) {
@@ -3104,8 +3139,8 @@ function bridgeInstallPortAutofixButtonR37(root) {
     }
 
     button.className = "kgw-bridge-port-autofix-next-to-stop-r44";
-    button.textContent = "Auto Fix Ports";
-    button.title = "Auto-fix conflicting instance ports only.";
+    button.textContent = kgwBridgeAutoFixTextR54D3("button");
+    button.title = kgwBridgeAutoFixTextR54D3("title");
     button.style.display = "inline-flex";
     button.style.alignItems = "center";
     button.style.justifyContent = "center";

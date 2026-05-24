@@ -366,6 +366,228 @@ function kgwDisplaySelectionBindMinimumGuardsR1() {
   });
 }
 
+/* KGW_SHELL_DISPLAY_AND_ACTIVE_TAB_OWNER_R59C
+ * Canonical settings adapter.
+ * Settings prepares state and delegates shell decisions to the canonical owner in main.js.
+ */
+const KGW_SHELL_DISPLAY_DEFAULT_CHECKS_R59C = Object.freeze({
+  "language:en": true,
+  "currency:USD": true,
+  "tab:kaspa-node": true,
+  "tab:kaspa-bridge": true,
+  "tab:settings": true,
+  "tab:explorer": false,
+  "tab:analysis": false,
+  "tab:top-addresses": false,
+  "tab:log": false
+});
+
+function kgwSettingsSetDisplayCheckboxR59C(key, checked) {
+  let node = null;
+
+  if (key.startsWith("language:")) {
+    node = q('[data-settings-language="' + CSS.escape(key.slice("language:".length)) + '"]');
+  } else if (key.startsWith("currency:")) {
+    node = q('[data-settings-currency="' + CSS.escape(key.slice("currency:".length)) + '"]');
+  } else if (key.startsWith("tab:")) {
+    node = q('[data-settings-visible-tab="' + CSS.escape(key.slice("tab:".length)) + '"]');
+  }
+
+  if (node && node.type === "checkbox") {
+    node.checked = Boolean(checked);
+  }
+}
+
+/* KGW_SETTINGS_DISPLAY_CHECKBOX_AND_SAVE_OWNER_PATCH_R65
+ * Settings display checkbox and save owner repair.
+ * settings.js remains the Settings state owner.
+ * main.js remains the Shell display application owner.
+ */
+function kgwSettingsDisplayKeyForNodeR65(node) {
+  if (!node || !node.dataset) return "";
+
+  if (node.dataset.settingsLanguage) {
+    return "language:" + node.dataset.settingsLanguage;
+  }
+
+  if (node.dataset.settingsCurrency) {
+    return "currency:" + node.dataset.settingsCurrency;
+  }
+
+  if (node.dataset.settingsVisibleTab) {
+    return "tab:" + node.dataset.settingsVisibleTab;
+  }
+
+  return "";
+}
+
+function kgwSettingsDisplayNodesR65() {
+  return qa("[data-settings-language], [data-settings-currency], [data-settings-visible-tab]")
+    .filter((node) => node && node.type === "checkbox");
+}
+
+function kgwSettingsDisplayNodeForKeyR69(key) {
+  if (!key || typeof key !== "string") return null;
+
+  if (key.startsWith("language:")) {
+    return q(`[data-settings-language="${CSS.escape(key.slice("language:".length))}"]`);
+  }
+
+  if (key.startsWith("currency:")) {
+    return q(`[data-settings-currency="${CSS.escape(key.slice("currency:".length))}"]`);
+  }
+
+  if (key.startsWith("tab:")) {
+    return q(`[data-settings-visible-tab="${CSS.escape(key.slice("tab:".length))}"]`);
+  }
+
+  return null;
+}
+
+function kgwSettingsDisplayChecksWithDefaultsR65(checks) {
+  /* KGW_SETTINGS_DISPLAY_DEFAULTS_R69
+   * Canonical display defaults must clear every display language, currency, and tab first.
+   * Previous behavior preserved stale all-selected keys from the current Settings UI.
+   */
+  const next = Object.assign({}, checks || {});
+
+  Object.keys(next).forEach((key) => {
+    if (key.startsWith("language:") || key.startsWith("currency:") || key.startsWith("tab:")) {
+      next[key] = false;
+    }
+  });
+
+  kgwSettingsDisplayNodesR65().forEach((node) => {
+    const key = kgwSettingsDisplayKeyForNodeR65(node);
+    if (key) next[key] = false;
+    if (node.id) next[node.id] = false;
+  });
+
+  Object.entries(KGW_SHELL_DISPLAY_DEFAULT_CHECKS_R59C).forEach(([key, value]) => {
+    const enabled = !!value;
+    next[key] = enabled;
+
+    const node = kgwSettingsDisplayNodeForKeyR69(key);
+    if (node && node.id) {
+      next[node.id] = enabled;
+    }
+  });
+
+  next.settingsLangSelectAll = false;
+  next.settingsCurrencySelectAll = false;
+  next.settingsTabSelectAll = false;
+
+  return next;
+}
+
+function kgwSettingsSelectedDisplayKeysR65(checks, prefix) {
+  if (!checks || typeof checks !== "object") return [];
+  return Object.entries(checks)
+    .filter(([key, value]) => key.startsWith(prefix) && !!value)
+    .map(([key]) => key.slice(prefix.length));
+}
+
+function kgwSettingsDisplayStateLooksLegacyAllSelectedR65(state) {
+  const checks = state && typeof state === "object" ? state.checks : null;
+  if (!checks || typeof checks !== "object") return true;
+
+  const languageNodes = qa("[data-settings-language]");
+  const currencyNodes = qa("[data-settings-currency]");
+  const tabNodes = qa("[data-settings-visible-tab]");
+
+  const selectedLanguages = kgwSettingsSelectedDisplayKeysR65(checks, "language:");
+  const selectedCurrencies = kgwSettingsSelectedDisplayKeysR65(checks, "currency:");
+  const selectedTabs = kgwSettingsSelectedDisplayKeysR65(checks, "tab:");
+
+  const allLanguagesSelected = languageNodes.length > 1 && selectedLanguages.length >= languageNodes.length;
+  const allCurrenciesSelected = currencyNodes.length > 1 && selectedCurrencies.length >= currencyNodes.length;
+  const allTabsSelected = tabNodes.length > 3 && selectedTabs.length >= tabNodes.length;
+
+  const noDisplayKeys =
+    selectedLanguages.length === 0 ||
+    selectedCurrencies.length === 0 ||
+    selectedTabs.length === 0;
+
+  return noDisplayKeys || allLanguagesSelected || allCurrenciesSelected || allTabsSelected;
+}
+
+function kgwSettingsApplyDisplayChecksR65(checks, reason = "display-checks") {
+  const source = checks && typeof checks === "object" ? checks : {};
+
+  kgwSettingsDisplayNodesR65().forEach((node) => {
+    const key = kgwSettingsDisplayKeyForNodeR65(node);
+    if (!key) return;
+
+    const checked = source[key] === true;
+    node.checked = checked;
+
+    if (node.id) {
+      source[node.id] = checked;
+    }
+  });
+
+  updateSelectAll("#settingsLangSelectAll", "[data-settings-language]");
+  updateSelectAll("#settingsCurrencySelectAll", "[data-settings-currency]");
+  updateSelectAll("#settingsTabSelectAll", "[data-settings-visible-tab]");
+
+  try {
+    settingsLogger().log("display checkboxes applied", {
+      patch: "R69",
+      reason
+    });
+  } catch (_) {}
+
+  try {
+    kgwSettingsUiTraceR48B3("settings-display", "r69-display-checks-applied", {
+      reason: String(reason || ""),
+      languages: kgwSettingsSelectedDisplayKeysR65(source, "language:").join(","),
+      currencies: kgwSettingsSelectedDisplayKeysR65(source, "currency:").join(","),
+      tabs: kgwSettingsSelectedDisplayKeysR65(source, "tab:").join(",")
+    });
+  } catch (_) {}
+}
+
+function kgwSettingsBuildCanonicalDefaultStateR65(reason = "display-defaults-r65", persist = false) {
+  const baseState = collectState();
+  baseState.checks = kgwSettingsDisplayChecksWithDefaultsR65(baseState.checks);
+
+  kgwSettingsApplyDisplayChecksR65(baseState.checks, reason);
+
+  const state = collectState();
+  state.checks = kgwSettingsDisplayChecksWithDefaultsR65(state.checks);
+  kgwSettingsApplyDisplayChecksR65(state.checks, reason + "-verified");
+
+  const finalState = collectState();
+  finalState.checks = kgwSettingsDisplayChecksWithDefaultsR65(finalState.checks);
+
+  if (persist) {
+    try {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(finalState, null, 2));
+    } catch (_) {}
+  }
+
+  kgwSettingsApplyShellDisplayFromState(finalState, reason);
+  return finalState;
+}
+
+function kgwSettingsReapplyDisplayStateR65(state, reason = "display-state-r65") {
+  const checks = state && typeof state === "object" && state.checks && typeof state.checks === "object"
+    ? state.checks
+    : null;
+
+  if (!checks) {
+    return kgwSettingsBuildCanonicalDefaultStateR65(reason + "-fallback", true);
+  }
+
+  kgwSettingsApplyDisplayChecksR65(checks, reason);
+  return collectState();
+}
+
+
+function kgwSettingsApplyDisplayDefaultsR59C(reason = "startup-defaults", persist = false) {
+  return kgwSettingsBuildCanonicalDefaultStateR65(reason, persist);
+}
+
 function collectState() {
   const state = {
     inputs: {},
@@ -444,49 +666,59 @@ function kgwSettingsDisplayPrefsFromCanonicalState(state) {
   const checks = state && typeof state === "object" ? state.checks : null;
   if (!checks || typeof checks !== "object") return null;
 
-  const prefs = { languages: [], currencies: [], tabs: [] };
+  const languages = kgwSettingsSelectedDisplayKeysR65(checks, "language:");
+  const currencies = kgwSettingsSelectedDisplayKeysR65(checks, "currency:");
+  const tabs = kgwSettingsSelectedDisplayKeysR65(checks, "tab:");
 
-  Object.entries(checks).forEach(([key, checked]) => {
-    if (!checked) return;
+  const normalizedLanguages = languages.length ? Array.from(new Set(languages)) : ["en"];
+  const normalizedCurrencies = currencies.length ? Array.from(new Set(currencies)) : ["USD"];
+  const normalizedTabs = tabs.length ? Array.from(new Set(tabs)) : ["kaspa-node", "kaspa-bridge", "settings"];
 
-    if (key.startsWith("language:")) {
-      prefs.languages.push(key.slice("language:".length));
-      return;
-    }
+  if (!normalizedTabs.includes("settings")) {
+    normalizedTabs.push("settings");
+  }
 
-    if (key.startsWith("currency:")) {
-      prefs.currencies.push(key.slice("currency:".length));
-      return;
-    }
-
-    if (key.startsWith("tab:")) {
-      prefs.tabs.push(key.slice("tab:".length));
-    }
-  });
-
-  prefs.languages = Array.from(new Set(prefs.languages));
-  prefs.currencies = Array.from(new Set(prefs.currencies));
-  prefs.tabs = Array.from(new Set(prefs.tabs));
-
-  return prefs.languages.length || prefs.currencies.length || prefs.tabs.length ? prefs : null;
+  return {
+    languages: normalizedLanguages,
+    currencies: normalizedCurrencies,
+    tabs: normalizedTabs
+  };
 }
 
 function kgwSettingsApplyShellDisplayFromState(state, reason = "settings") {
+  /* KGW_SETTINGS_DIRECT_VISUAL_ONLY_R76B */
   const prefs = kgwSettingsDisplayPrefsFromCanonicalState(state);
-  const shell = window.kgwShellDisplayPreferencesR71;
+  if (!prefs) {
+    kgwSettingsUiTraceR48B3("settings-display-apply", "r76b-apply-no-prefs", {
+      reason: String(reason || "")
+    });
+    return null;
+  }
 
-  if (!prefs || !shell) return;
+  const applied = [];
+  const errors = [];
 
   try {
-    if (typeof shell.save === "function") shell.save(prefs);
-    if (typeof shell.apply === "function") shell.apply(prefs, reason);
-  } catch (_) {}
+    if (window.kgwShellApplyDisplayPreferencesDirectR73 && typeof window.kgwShellApplyDisplayPreferencesDirectR73 === "function") {
+      window.kgwShellApplyDisplayPreferencesDirectR73(prefs, reason);
+      applied.push("direct-r76b");
+    } else {
+      errors.push("direct-r76b:missing-window-owner");
+    }
+  } catch (error) {
+    errors.push("direct-r76b:" + String(error && error.message || error));
+  }
 
-  try {
-    window.dispatchEvent(new CustomEvent("kgw:shell-display-preferences-changed", {
-      detail: prefs
-    }));
-  } catch (_) {}
+  kgwSettingsUiTraceR48B3("settings-display-apply", "r76b-direct-shell-apply", {
+    reason: String(reason || ""),
+    languages: Array.isArray(prefs.languages) ? prefs.languages.join(",") : "",
+    currencies: Array.isArray(prefs.currencies) ? prefs.currencies.join(",") : "",
+    tabs: Array.isArray(prefs.tabs) ? prefs.tabs.join(",") : "",
+    applied: applied.join(","),
+    errors: errors.join(" | ")
+  });
+
+  return prefs;
 }
 
 
@@ -554,24 +786,75 @@ async function kgwSettingsRepairDynamicPathsBeforeSaveR4() {
   await kgwSettingsLoadDynamicPathDefaultsR4("save-repair");
 }
 
-async function saveState() {
-  await kgwSettingsRepairDynamicPathsBeforeSaveR4();
+/* KGW_SETTINGS_SINGLE_SAVE_FLIGHT_R75 */
+let kgwSettingsSaveInFlightR75 = false;
 
-  if (!kgwDisplaySelectionValidateForSaveR1()) {
-    setSaveEnabled(true);
-    return;
+async function saveState() {
+  if (kgwSettingsSaveInFlightR75) {
+    kgwSettingsUiTraceR48B3("settings-action", "r75-save-skip-busy", {
+      targetId: "settingsSaveSettings"
+    });
+    return false;
   }
 
-  const state = collectState();
+  kgwSettingsSaveInFlightR75 = true;
+
+  kgwSettingsUiTraceR48B3("settings-action", "r75-save-begin", {
+    targetId: "settingsSaveSettings"
+  });
 
   try {
-    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state, null, 2));
-  } catch (_) {}
+    await kgwSettingsRepairDynamicPathsBeforeSaveR4();
 
-  kgwSettingsApplyShellDisplayFromState(state, "settings-save");
+    if (!kgwDisplaySelectionValidateForSaveR1()) {
+      kgwSettingsUiTraceR48B3("settings-action", "r75-save-validation-failed", {
+        targetId: "settingsSaveSettings"
+      });
+      setSaveEnabled(true);
+      return false;
+    }
 
-  setSaveEnabled(false);
-  settingsLogger().log("settings saved");
+    const collected = collectState();
+    const state = kgwSettingsReapplyDisplayStateR65(collected, "settings-save-r75");
+
+    try {
+      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state, null, 2));
+    } catch (error) {
+      kgwSettingsUiTraceR48B3("settings-action", "r75-save-storage-error", {
+        message: String(error && error.message || error)
+      });
+    }
+
+    const prefs = kgwSettingsApplyShellDisplayFromState(state, "settings-save-r75");
+
+    setSaveEnabled(false);
+    settingsLogger().log("settings saved", {
+      patch: "R75",
+      owner: "settings-single-save-direct-shell"
+    });
+
+    kgwSettingsUiTraceR48B3("settings-action", "r75-save-complete", {
+      targetId: "settingsSaveSettings",
+      hasPrefs: Boolean(prefs),
+      languages: prefs && Array.isArray(prefs.languages) ? prefs.languages.join(",") : "",
+      currencies: prefs && Array.isArray(prefs.currencies) ? prefs.currencies.join(",") : "",
+      tabs: prefs && Array.isArray(prefs.tabs) ? prefs.tabs.join(",") : ""
+    });
+
+    return true;
+  } catch (error) {
+    kgwSettingsUiTraceR48B3("settings-action", "r75-save-error", {
+      targetId: "settingsSaveSettings",
+      message: String(error && error.message || error)
+    });
+    try {
+      console.error("[settings] save failed", error);
+    } catch (_) {}
+    setSaveEnabled(true);
+    return false;
+  } finally {
+    kgwSettingsSaveInFlightR75 = false;
+  }
 }
 
 async function resetDefaults(options = {}) {
@@ -596,14 +879,11 @@ async function resetDefaults(options = {}) {
     settingsBackupPath: "",
     settingsApiProfile: "default",
     settingsApiTimeout: "30",
-    settingsRetryAttempts: "5",
-    settingsBackoffFactor: "4.0",
-    settingsMaxWorkers: "10",
-    settingsMaxPages: "10000",
-    settingsPageDelay: "0.05",
-    settingsPriceCacheHours: "0.25",
-    settingsNetworkCacheHours: "0.25",
-    settingsRefreshInterval: "60"
+    settingsApiRetries: "3",
+    settingsApiRateLimit: "60",
+    settingsCacheTtl: "300",
+    settingsMaxConnections: "10",
+    settingsRequestTimeout: "30"
   };
 
   Object.entries(defaults).forEach(([id, value]) => {
@@ -611,27 +891,18 @@ async function resetDefaults(options = {}) {
     if (node) node.value = value;
   });
 
-  const firstEndpoint = q(".tree-row");
-  if (firstEndpoint) selectEndpoint(firstEndpoint);
-
   activateOuter("api-performance");
   activateInner("general");
 
-  updateSelectAll("#settingsLangSelectAll", "[data-settings-language]");
-  updateSelectAll("#settingsCurrencySelectAll", "[data-settings-currency]");
-  updateSelectAll("#settingsTabSelectAll", "[data-settings-visible-tab]");
-
-  kgwDisplaySelectionEnsureDefaultsR1("reset-defaults");
+  const state = kgwSettingsBuildCanonicalDefaultStateR65("settings-reset-defaults-r69", shouldClearStorage);
+  kgwDisplaySelectionEnsureDefaultsR1("reset-defaults-r69-guard");
 
   if (shouldApplyShell) {
-    kgwSettingsApplyShellDisplayFromState(collectState(), "settings-reset-defaults");
+    kgwSettingsApplyShellDisplayFromState(state, "settings-reset-defaults-r69");
   }
 
   setSaveEnabled(false);
 
-  /* KGW_RESTORE_DEFAULTS_DYNAMIC_PATHS_FULL_REWRITE_FIX_R2
-   * Restore Defaults must finish by applying backend-owned dynamic file paths.
-   */
   await kgwSettingsLoadDynamicPathDefaultsR4("reset-defaults");
 }
 
@@ -764,12 +1035,24 @@ function bindStaticActions() {
   const save = q("#settingsSaveSettings");
   if (save && save.dataset.bound !== "true") {
     save.dataset.bound = "true";
-    save.addEventListener("click", (event) => {
-      kgwSettingsUiTraceR48B3("settings-action", "r48b3-save-settings-click", {
+    save.dataset.kgwSettingsSaveOwner = "R75";
+    save.addEventListener("click", async (event) => {
+      if (event && typeof event.preventDefault === "function") event.preventDefault();
+
+      kgwSettingsUiTraceR48B3("settings-action", "r75-save-press", {
         trusted: Boolean(event && event.isTrusted),
-        targetId: "settingsSaveSettings"
+        targetId: "settingsSaveSettings",
+        disabled: Boolean(save.disabled)
       });
-      saveState();
+
+      if (save.disabled) {
+        kgwSettingsUiTraceR48B3("settings-action", "r75-save-skip-disabled", {
+          targetId: "settingsSaveSettings"
+        });
+        return;
+      }
+
+      await saveState();
     });
   }
 
@@ -824,29 +1107,60 @@ function bindStaticActions() {
   });
 }
 
+/* KGW_SETTINGS_STALE_DISPLAY_STATE_NORMALIZER_R63F
+ * Normalizes stale saved display selections that predate the canonical R59C shell owner.
+ */
+function kgwSettingsDisplayStateNeedsCanonicalResetR63F(state) {
+  if (!state || typeof state !== "object" || !state.checks || typeof state.checks !== "object") {
+    return true;
+  }
+
+  const checks = state.checks;
+  const selectedLanguages = Object.entries(checks).filter(([key, value]) => key.startsWith("language:") && value).map(([key]) => key.slice("language:".length));
+  const selectedCurrencies = Object.entries(checks).filter(([key, value]) => key.startsWith("currency:") && value).map(([key]) => key.slice("currency:".length));
+  const selectedTabs = Object.entries(checks).filter(([key, value]) => key.startsWith("tab:") && value).map(([key]) => key.slice("tab:".length));
+
+  const requiredTabs = ["kaspa-node", "kaspa-bridge", "settings"];
+  const forbiddenTabs = ["explorer", "analysis", "top-addresses", "log"];
+
+  if (selectedLanguages.length !== 1 || selectedLanguages[0] !== "en") return true;
+  if (selectedCurrencies.length !== 1 || selectedCurrencies[0] !== "USD") return true;
+
+  for (const tabId of requiredTabs) {
+    if (!selectedTabs.includes(tabId)) return true;
+  }
+
+  for (const tabId of forbiddenTabs) {
+    if (selectedTabs.includes(tabId)) return true;
+  }
+
+  return false;
+}
+
+
 function loadSavedState() {
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || "null");
     if (saved) {
-      applyState(saved);
-      const repaired = kgwDisplaySelectionEnsureDefaultsR1("settings-load");
-      const state = collectState();
-
-      if (repaired.length) {
-        try {
-          localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state, null, 2));
-        } catch (_) {}
+      if (kgwSettingsDisplayStateLooksLegacyAllSelectedR65(saved)) {
+        const state = kgwSettingsBuildCanonicalDefaultStateR65("settings-load-legacy-all-selected-r69", true);
+        window.setTimeout(() => kgwSettingsApplyShellDisplayFromState(state, "settings-load-legacy-all-selected-r69"), 0);
+        void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-legacy-all-selected-r69");
+        return;
       }
 
-      window.setTimeout(() => kgwSettingsApplyShellDisplayFromState(state, "settings-load"), 0);
-      void kgwSettingsLoadDynamicPathDefaultsR4("settings-load");
+      applyState(saved);
+      const state = kgwSettingsReapplyDisplayStateR65(saved, "settings-load-r69");
+
+      window.setTimeout(() => kgwSettingsApplyShellDisplayFromState(state, "settings-load-r69"), 0);
+      void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-r69");
     } else {
-      kgwDisplaySelectionEnsureDefaultsR1("settings-load-defaults");
-      void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-defaults");
+      kgwSettingsBuildCanonicalDefaultStateR65("settings-load-defaults-r69", true);
+      void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-defaults-r69");
     }
   } catch (_) {
-    kgwDisplaySelectionEnsureDefaultsR1("settings-load-error");
-    void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-error");
+    kgwSettingsBuildCanonicalDefaultStateR65("settings-load-error-defaults-r69", false);
+    void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-error-r69");
   }
 }
 

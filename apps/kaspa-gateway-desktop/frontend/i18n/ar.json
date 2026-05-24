@@ -169,6 +169,12 @@
     },
     "tabs": {
       "kaspabridge": "جسر كاسبا"
+    },
+    "autofixPorts": {
+      "button": "إصلاح المنافذ تلقائيًا",
+      "conflictingButton": "إصلاح المنافذ المتضاربة تلقائيًا",
+      "title": "إصلاح منافذ مثيلات الجسر المتضاربة فقط.",
+      "changedPrefix": "قام KGW Auto Fix Ports بتغيير"
     }
   },
   "bridge.serviceEventPlanningDescription": "تخطيط أحداث خدمة KGW لجميع الجسور بالتوازي. تستخدم mainnet/testnet10 فرع master، وتستخدم testnet12 فرع tn12.",

@@ -1,6 +1,33 @@
 #!/usr/bin/env node
 "use strict";
 
+/* KGW_R59C_OWNER_REGISTRY
+ * Registered canonical owner:
+ * - shellDisplayAndActiveTabOwner => KGW_SHELL_DISPLAY_AND_ACTIVE_TAB_OWNER_R59C
+ */
+const KGW_R59C_OWNER_REGISTRY = Object.freeze({
+  shellDisplayAndActiveTabOwner: Object.freeze({
+    marker: "KGW_SHELL_DISPLAY_AND_ACTIVE_TAB_OWNER_R59C",
+    files: Object.freeze([
+      "apps/kaspa-gateway-desktop/frontend/main.js",
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js"
+    ])
+  })
+});
+
+/* KGW_R54D3_OWNER_REGISTRY
+ * Registered owner retained:
+ * - bridgeAutoFixI18n => KGW_BRIDGE_AUTOFIX_I18N_PATCH_R54D3
+ * Shell display ownership moved to KGW_SHELL_DISPLAY_AND_ACTIVE_TAB_OWNER_R59C.
+ */
+const KGW_R54D3_OWNER_REGISTRY = Object.freeze({
+  bridgeAutoFixI18n: Object.freeze({
+    marker: "KGW_BRIDGE_AUTOFIX_I18N_PATCH_R54D3",
+    files: Object.freeze([
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+    ])
+  })
+});
 // KGW_RUNTIME_REPOSITORY_BINDING_UNIFIED_GATE_R21C
 // The runtime repository binding gate is intentionally read-only.
 // Canonical command:
