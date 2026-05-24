@@ -678,11 +678,47 @@ function ic(net, instanceId, name) {
   return Boolean(el && el.checked);
 }
 
+
+// KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B
+const KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B = "KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B";
+
+function kgwBridgeInstanceCommandStateKeyR13B(net, instanceId, name) {
+  return `${String(net || "mainnet")}::${String(instanceId || "1")}::${String(name || "")}`;
+}
+
+function kgwBridgeInstanceCommandOptionEnabledR13B(net, instanceId, name) {
+  const key = kgwBridgeInstanceCommandStateKeyR13B(net, instanceId, name);
+  window.__kgwBridgeInstanceCommandComposerR13B = window.__kgwBridgeInstanceCommandComposerR13B || {};
+  return window.__kgwBridgeInstanceCommandComposerR13B[key] !== false;
+}
+
+function kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, name) {
+  return kgwBridgeInstanceCommandOptionEnabledR13B(net, instanceId, name);
+}
+
+function kgwBridgeInstanceCommandCheckboxR13B(net, instanceId, name) {
+  const enabled = kgwBridgeInstanceCommandOptionEnabledR13B(net, instanceId, name);
+  return `<input type="checkbox" class="kgw-command-option-checkbox-r9 kgw-bridge-instance-command-checkbox-r13b" data-bridge-instance-command-option-toggle-r13b="${esc(String(name))}" data-net="${esc(String(net))}" data-instance-id="${esc(String(instanceId))}" ${enabled ? "checked" : ""} aria-label="${enabled ? "Included in command" : "Excluded from command"}" title="${enabled ? "Included in command" : "Excluded from command"}">`;
+}
+
+function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
+  const key = kgwBridgeInstanceCommandStateKeyR13B(net, instanceId, name);
+  window.__kgwBridgeInstanceCommandComposerR13B = window.__kgwBridgeInstanceCommandComposerR13B || {};
+  window.__kgwBridgeInstanceCommandComposerR13B[key] = Boolean(enabled);
+  updateCommand(net);
+  bridgeSyncInstancePreviewRowsR8B(net);
+}
+
+
 function addFlag(lines, net, name, flag) {
+  if (!kgwBridgeCommandShouldIncludeR7(net, name)) return; // KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
+
   if (c(net, name)) lines.push(flag);
 }
 
 function addValue(lines, net, name, flag) {
+  if (!kgwBridgeCommandShouldIncludeR7(net, name)) return; // KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
+
   const value = v(net, name);
   if (value) lines.push(`${flag}=${value}`);
 }
@@ -693,11 +729,104 @@ function addBoolValue(lines, net, name, flag) {
 }
 
 
-function cardInput(net, name, label, value = "", placeholder = "", span = "") {
+
+// KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
+const KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7 = "KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7";
+
+function kgwBridgeCommandInlineStateKeyR7(net) {
+  return String(net || "mainnet");
+}
+
+function kgwBridgeCommandInlineStateR7(net) {
+  const key = kgwBridgeCommandInlineStateKeyR7(net);
+  window.__kgwBridgeCommandComposerInlineR7 = window.__kgwBridgeCommandComposerInlineR7 || {};
+  window.__kgwBridgeCommandComposerInlineR7[key] = window.__kgwBridgeCommandComposerInlineR7[key] || {};
+  return window.__kgwBridgeCommandComposerInlineR7[key];
+}
+
+function kgwBridgeCommandOptionEnabledR7(net, name) {
+  const state = kgwBridgeCommandInlineStateR7(net);
+  return state[String(name)] !== false;
+}
+
+function kgwBridgeCommandShouldIncludeR7(net, name) {
+  return kgwBridgeCommandOptionEnabledR7(net, name);
+}
+
+function kgwBridgeCommandInlineToggleR7(net, name) {
+  const enabled = kgwBridgeCommandOptionEnabledR7(net, name);
+  const label = enabled ? "Included" : "Excluded";
+  return `<input type="checkbox" class="kgw-command-option-checkbox-r9" data-bridge-command-option-toggle-r7="${esc(String(name))}" data-net="${esc(String(net))}" ${enabled ? "checked" : ""} aria-label="${enabled ? "Included in command" : "Excluded from command"}" title="${enabled ? "Included in command" : "Excluded from command"}">`; // KGW_BRIDGE_COMMAND_COMPOSER_CHECKBOX_ONLY_R9
+}
+
+function kgwBridgeRefreshInlineCommandTogglesR7(net) {
+  document.querySelectorAll(`[data-bridge-command-option-toggle-r7][data-net="${CSS.escape(String(net))}"]`).forEach((el) => {
+    const name = el.dataset.bridgeCommandOptionToggleR7;
+    const enabled = kgwBridgeCommandOptionEnabledR7(net, name);
+    el.checked = enabled;
+    el.setAttribute("aria-label", enabled ? "Included in command" : "Excluded from command");
+    el.setAttribute("title", enabled ? "Included in command" : "Excluded from command");
+    el.classList.toggle("is-on", enabled);
+    el.classList.toggle("is-off", !enabled);
+  });
+}
+
+function kgwBridgeToggleCommandOptionR7(net, name) {
+  const state = kgwBridgeCommandInlineStateR7(net);
+  const key = String(name);
+  state[key] = state[key] === false;
+  kgwBridgeRefreshInlineCommandTogglesR7(net);
+  updateCommand(net);
+}
+
+
+// KGW_BRIDGE_DIFFICULTY_DATALIST_R16C
+const KGW_BRIDGE_DIFFICULTY_DATALIST_R16C = "KGW_BRIDGE_DIFFICULTY_DATALIST_R16C";
+
+function kgwBridgeDifficultyPresetValuesR16C() {
+  return [
+    "1",
+    "2",
+    "4",
+    "8",
+    "16",
+    "32",
+    "64",
+    "128",
+    "256",
+    "512",
+    "1024",
+    "2048",
+    "4096",
+    "8192",
+    "16384",
+    "32768",
+    "65536"
+  ];
+}
+
+function kgwBridgeDifficultyDatalistIdR16C() {
+  return "kgw-bridge-difficulty-presets-r16c";
+}
+
+function kgwBridgeDifficultyDatalistR16C() {
+  return `<datalist id="${kgwBridgeDifficultyDatalistIdR16C()}">${kgwBridgeDifficultyPresetValuesR16C().map((value) => `<option value="${esc(value)}"></option>`).join("")}</datalist>`;
+}
+
+function kgwBridgeDifficultyInputAttrsR16C(name) {
+  const key = String(name || "");
+  if (!["minShareDiff", "sharesPerMin", "instanceDiff", "instanceSharesPerMin"].includes(key)) return "";
+  return `list="${kgwBridgeDifficultyDatalistIdR16C()}" inputmode="numeric" autocomplete="off" data-kgw-difficulty-preset-r16c="${esc(key)}"`;
+}
+
+function cardInput(net, name, label, value = "", placeholder = "", span = "", inputAttrs = "") {
   return `
     <div class="bridge-v7-card${span ? " " + span : ""}">
-      <span>${esc(label)}</span>
-      <input id="${id(net, name)}" type="text" value="${esc(value)}" placeholder="${esc(placeholder)}">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net, name)}
+        <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
+      </span> <!-- KGW_BRIDGE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->
+      <input ${inputAttrs} id="${id(net, name)}" type="text" value="${esc(value)}" placeholder="${esc(placeholder)}">
     </div>`;
 }
 
@@ -709,7 +838,10 @@ function cardSelect(net, name, label, options, value = "", span = "") {
 
   return `
     <div class="bridge-v7-card${span ? " " + span : ""}">
-      <span>${esc(label)}</span>
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net, name)}
+        <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
+      </span> <!-- KGW_BRIDGE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->
       <select id="${id(net, name)}">${opts}</select>
     </div>`;
 }
@@ -725,7 +857,10 @@ function cardCheck(net, name, label, checked = false, span = "") {
 function instanceInput(net, instanceId, name, label, value = "", placeholder = "", span = "") {
   return `
     <div class="bridge-v7-card${span ? " " + span : ""}">
-      <span>${esc(label)}</span>
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeInstanceCommandCheckboxR13B(net, instanceId, name)}
+        <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
+      </span> <!-- KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B -->
       <input id="${iid(net, instanceId, name)}" type="text" value="${esc(value)}" placeholder="${esc(placeholder)}">
     </div>`;
 }
@@ -738,7 +873,10 @@ function instanceSelect(net, instanceId, name, label, options, value = "", span 
 
   return `
     <div class="bridge-v7-card${span ? " " + span : ""}">
-      <span>${esc(label)}</span>
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeInstanceCommandCheckboxR13B(net, instanceId, name)}
+        <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
+      </span> <!-- KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B -->
       <select id="${iid(net, instanceId, name)}">${opts}</select>
     </div>`;
 }
@@ -768,8 +906,8 @@ function renderRuntime(net) {
 function renderDifficulty(net) {
   return `
     <div class="bridge-v7-grid">
-      ${cardInput(net.key, "minShareDiff", "--min-share-diff", "8192")}
-      ${cardInput(net.key, "sharesPerMin", "--shares-per-min", "30")}
+      ${cardInput(net.key, "minShareDiff", "--min-share-diff", "8192", "", "", kgwBridgeDifficultyInputAttrsR16C("minShareDiff"))}
+      ${cardInput(net.key, "sharesPerMin", "--shares-per-min", "30", "", "", kgwBridgeDifficultyInputAttrsR16C("sharesPerMin"))}
       ${cardSelect(net.key, "varDiff", "--var-diff", ["true", "false"], "true")}
       ${cardSelect(net.key, "varDiffStats", "--var-diff-stats", ["true", "false"], "true")}
       ${cardSelect(net.key, "pow2Clamp", "--pow2-clamp", ["true", "false"], "true")}
@@ -903,16 +1041,17 @@ function bridgeInstanceReadSupplement(net, instanceId, fieldName, fallbackValue)
 function bridgeBuildUpstreamInstanceArg(net, instance) {
   const instanceId = instance?.id;
   let parts = [];
+  // KGW_BRIDGE_INSTANCE_UPSTREAM_SERIALIZATION_CHECKBOX_R13B
 
-  parts = bridgeInstanceAppend(parts, "port", bridgeInstancePortValue(bridgeInstanceReadSupplement(net, instanceId, "instancePort", instance?.instancePort)));
-  parts = bridgeInstanceAppend(parts, "diff", bridgeInstancePlainValue(bridgeInstanceReadSupplement(net, instanceId, "instanceDiff", instance?.instanceDiff)));
-  parts = bridgeInstanceAppend(parts, "prom", bridgeInstancePortValue(bridgeInstanceReadSupplement(net, instanceId, "instanceProm", instance?.instanceProm)));
+  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instancePort")) parts = bridgeInstanceAppend(parts, "port", bridgeInstancePortValue(bridgeInstanceReadSupplement(net, instanceId, "instancePort", instance?.instancePort)));
+  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceDiff")) parts = bridgeInstanceAppend(parts, "diff", bridgeInstancePlainValue(bridgeInstanceReadSupplement(net, instanceId, "instanceDiff", instance?.instanceDiff)));
+  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceProm")) parts = bridgeInstanceAppend(parts, "prom", bridgeInstancePortValue(bridgeInstanceReadSupplement(net, instanceId, "instanceProm", instance?.instanceProm)));
 
-  parts = bridgeInstanceAppend(parts, "log", bridgeInstanceReadSupplement(net, instanceId, "instanceLogToFile", instance?.instanceLogToFile));
-  parts = bridgeInstanceAppend(parts, "var_diff", bridgeInstanceReadSupplement(net, instanceId, "instanceVarDiff", instance?.instanceVarDiff));
-  parts = bridgeInstanceAppend(parts, "shares_per_min", bridgeInstanceReadSupplement(net, instanceId, "instanceSharesPerMin", instance?.instanceSharesPerMin));
-  parts = bridgeInstanceAppend(parts, "var_diff_stats", bridgeInstanceReadSupplement(net, instanceId, "instanceVarDiffStats", instance?.instanceVarDiffStats));
-  parts = bridgeInstanceAppend(parts, "pow2_clamp", bridgeInstanceReadSupplement(net, instanceId, "instancePow2Clamp", instance?.instancePow2Clamp));
+  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceLogToFile")) parts = bridgeInstanceAppend(parts, "log", bridgeInstanceReadSupplement(net, instanceId, "instanceLogToFile", instance?.instanceLogToFile));
+  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceVarDiff")) parts = bridgeInstanceAppend(parts, "var_diff", bridgeInstanceReadSupplement(net, instanceId, "instanceVarDiff", instance?.instanceVarDiff));
+  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceSharesPerMin")) parts = bridgeInstanceAppend(parts, "shares_per_min", bridgeInstanceReadSupplement(net, instanceId, "instanceSharesPerMin", instance?.instanceSharesPerMin));
+  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceVarDiffStats")) parts = bridgeInstanceAppend(parts, "var_diff_stats", bridgeInstanceReadSupplement(net, instanceId, "instanceVarDiffStats", instance?.instanceVarDiffStats));
+  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instancePow2Clamp")) parts = bridgeInstanceAppend(parts, "pow2_clamp", bridgeInstanceReadSupplement(net, instanceId, "instancePow2Clamp", instance?.instancePow2Clamp));
 
   return parts.join(",");
 }
@@ -1470,7 +1609,10 @@ function renderInstances(net) {
           class="bridge-v7-instance-panel bridge-v7-instance-panel-r7b ${String(activeInstance[net]) === String(instance.id) || (!activeInstance[net] && index === 0) ? "active" : ""}"
           data-bridge-instance-panel="${instance.id}">
           <label class="bridge-v7-card bridge-v7-instance-preview-card-r8b">
-            <span>--instance preview</span>
+            <span class="kgw-command-option-title-row-r8e">
+              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instance")}
+              <span class="kgw-command-option-title-text-r8e">--instance preview</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <input
               readonly
               data-bridge-instance-preview="true"
@@ -1481,22 +1623,34 @@ function renderInstances(net) {
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span>port</span>
+            <span class="kgw-command-option-title-row-r8e">
+              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instancePort")}
+              <span class="kgw-command-option-title-text-r8e">port</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <input id="${id(net, `instancePort-${instance.id}`)}" data-bridge-instance-field="instancePort" value="${instance.instancePort || ""}" placeholder="5558" />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span>diff</span>
-            <input id="${id(net, `instanceDiff-${instance.id}`)}" data-bridge-instance-field="instanceDiff" value="${instance.instanceDiff || "2048"}" placeholder="2048" />
+            <span class="kgw-command-option-title-row-r8e">
+              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceDiff")}
+              <span class="kgw-command-option-title-text-r8e">diff</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
+            <input id="${id(net, `instanceDiff-${instance.id}`)}" data-bridge-instance-field="instanceDiff" value="${instance.instanceDiff || "2048"}" placeholder="2048" ${kgwBridgeDifficultyInputAttrsR16C("instanceDiff")} />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span>prom</span>
+            <span class="kgw-command-option-title-row-r8e">
+              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceProm")}
+              <span class="kgw-command-option-title-text-r8e">prom</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <input id="${id(net, `instanceProm-${instance.id}`)}" data-bridge-instance-field="instanceProm" value="${instance.instanceProm || ""}" placeholder="2115" />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span>log</span>
+            <span class="kgw-command-option-title-row-r8e">
+              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceLogToFile")}
+              <span class="kgw-command-option-title-text-r8e">log</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${id(net, `instanceLogToFile-${instance.id}`)}" data-bridge-instance-field="instanceLogToFile">
               <option value="false" ${instance.instanceLogToFile !== "true" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instanceLogToFile === "true" ? "selected" : ""}>true</option>
@@ -1504,7 +1658,10 @@ function renderInstances(net) {
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span>var_diff</span>
+            <span class="kgw-command-option-title-row-r8e">
+              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceVarDiff")}
+              <span class="kgw-command-option-title-text-r8e">var_diff</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${id(net, `instanceVarDiff-${instance.id}`)}" data-bridge-instance-field="instanceVarDiff">
               <option value="false" ${instance.instanceVarDiff !== "true" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instanceVarDiff === "true" ? "selected" : ""}>true</option>
@@ -1512,7 +1669,10 @@ function renderInstances(net) {
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span>var_stats</span>
+            <span class="kgw-command-option-title-row-r8e">
+              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceVarDiffStats")}
+              <span class="kgw-command-option-title-text-r8e">var_stats</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${id(net, `instanceVarDiffStats-${instance.id}`)}" data-bridge-instance-field="instanceVarDiffStats">
               <option value="false" ${instance.instanceVarDiffStats !== "true" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instanceVarDiffStats === "true" ? "selected" : ""}>true</option>
@@ -1520,12 +1680,18 @@ function renderInstances(net) {
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span>shares/min</span>
-            <input id="${id(net, `instanceSharesPerMin-${instance.id}`)}" data-bridge-instance-field="instanceSharesPerMin" value="${instance.instanceSharesPerMin || ""}" placeholder="optional" />
+            <span class="kgw-command-option-title-row-r8e">
+              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceSharesPerMin")}
+              <span class="kgw-command-option-title-text-r8e">shares/min</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
+            <input id="${id(net, `instanceSharesPerMin-${instance.id}`)}" data-bridge-instance-field="instanceSharesPerMin" value="${instance.instanceSharesPerMin || ""}" placeholder="optional" ${kgwBridgeDifficultyInputAttrsR16C("instanceSharesPerMin")} />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span>pow2</span>
+            <span class="kgw-command-option-title-row-r8e">
+              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instancePow2Clamp")}
+              <span class="kgw-command-option-title-text-r8e">pow2</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${id(net, `instancePow2Clamp-${instance.id}`)}" data-bridge-instance-field="instancePow2Clamp">
               <option value="false" ${instance.instancePow2Clamp !== "true" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instancePow2Clamp === "true" ? "selected" : ""}>true</option>
@@ -1577,16 +1743,25 @@ function renderInprocessNodeSettings(net) {
       <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="rpc" hidden>
         <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.rpcListen">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.rpcListen", "--rpclisten"))}</span>
-            <input id="${id(net.key, "inprocessRpcListen")}" type="text" value="127.0.0.1:${esc(net.kaspadPort)}">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessRpcListen")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.rpcListen">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.rpcListen", "--rpclisten"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessRpcListen")}" type="text" value="127.0.0.1:${esc(net.kaspadPort)}">
           </div>
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.rpcListenBorsh">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.rpcListenBorsh", "--rpclisten-borsh"))}</span>
-            <input id="${id(net.key, "inprocessRpcListenBorsh")}" type="text" value="">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessRpcListenBorsh")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.rpcListenBorsh">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.rpcListenBorsh", "--rpclisten-borsh"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessRpcListenBorsh")}" type="text" value="">
           </div>
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.rpcListenJson">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.rpcListenJson", "--rpclisten-json"))}</span>
-            <input id="${id(net.key, "inprocessRpcListenJson")}" type="text" value="">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessRpcListenJson")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.rpcListenJson">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.rpcListenJson", "--rpclisten-json"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessRpcListenJson")}" type="text" value="">
           </div>
           <label class="bridge-v7-card check danger">
             <input id="${id(net.key, "inprocessUnsafeRpc")}" type="checkbox">
@@ -1611,28 +1786,43 @@ function renderInprocessNodeSettings(net) {
       <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="p2p" hidden>
         <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.listen">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.listen", "--listen"))}</span>
-            <input id="${id(net.key, "inprocessListen")}" type="text" value="">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessListen")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.listen">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.listen", "--listen"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessListen")}" type="text" value="">
           </div>
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.addPeer">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.addPeer", "--addpeer"))}</span>
-            <input id="${id(net.key, "inprocessAddPeer")}" type="text" value="">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessAddPeer")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.addPeer">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.addPeer", "--addpeer"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessAddPeer")}" type="text" value="">
           </div>
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.connect">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.connect", "--connect"))}</span>
-            <input id="${id(net.key, "inprocessConnect")}" type="text" value="">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessConnect")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.connect">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.connect", "--connect"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessConnect")}" type="text" value="">
           </div>
           <label class="bridge-v7-card check">
             <input id="${id(net.key, "inprocessDisableUpnp")}" type="checkbox">
             <span data-i18n="bridge.inprocessNodeSettings.disableUpnp">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.disableUpnp", "--disable-upnp"))}</span>
           </label>
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.maxInpeers">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.maxInpeers", "--maxinpeers"))}</span>
-            <input id="${id(net.key, "inprocessMaxInpeers")}" type="number" min="0" step="1" value="">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessMaxInpeers")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.maxInpeers">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.maxInpeers", "--maxinpeers"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessMaxInpeers")}" type="number" min="0" step="1" value="">
           </div>
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.outpeers">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.outpeers", "--outpeers"))}</span>
-            <input id="${id(net.key, "inprocessOutpeers")}" type="number" min="0" step="1" value="">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessOutpeers")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.outpeers">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.outpeers", "--outpeers"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessOutpeers")}" type="number" min="0" step="1" value="">
           </div>
         </div>
       </section>
@@ -1644,16 +1834,25 @@ function renderInprocessNodeSettings(net) {
             <span data-i18n="bridge.inprocessNodeSettings.perfMetrics">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.perfMetrics", "--perf-metrics"))}</span>
           </label>
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.perfMetricsIntervalSec">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.perfMetricsIntervalSec", "--perf-metrics-interval-sec"))}</span>
-            <input id="${id(net.key, "inprocessPerfMetricsIntervalSec")}" type="number" min="1" step="1" value="">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessPerfMetricsIntervalSec")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.perfMetricsIntervalSec">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.perfMetricsIntervalSec", "--perf-metrics-interval-sec"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessPerfMetricsIntervalSec")}" type="number" min="1" step="1" value="">
           </div>
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.logLevel">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.logLevel", "--loglevel"))}</span>
-            <input id="${id(net.key, "inprocessLogLevel")}" type="text" value="">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessLogLevel")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.logLevel">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.logLevel", "--loglevel"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessLogLevel")}" type="text" value="">
           </div>
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.ramScale">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.ramScale", "--ram-scale"))}</span>
-            <input id="${id(net.key, "inprocessRamScale")}" type="number" min="0.1" step="0.1" value="">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessRamScale")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.ramScale">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.ramScale", "--ram-scale"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessRamScale")}" type="number" min="0.1" step="0.1" value="">
           </div>
         </div>
       </section>
@@ -1661,8 +1860,11 @@ function renderInprocessNodeSettings(net) {
       <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="advanced" hidden>
         <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.configfile">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.configfile", "--configfile"))}</span>
-            <input id="${id(net.key, "inprocessConfigfile")}" type="text" value="">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessConfigfile")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.configfile">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.configfile", "--configfile"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessConfigfile")}" type="text" value="">
           </div>
           <label class="bridge-v7-card check">
             <input id="${id(net.key, "inprocessYes")}" type="checkbox">
@@ -1674,8 +1876,11 @@ function renderInprocessNodeSettings(net) {
       <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="danger" hidden>
         <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
           <div class="bridge-v7-card">
-            <span data-i18n="bridge.inprocessNodeSettings.overrideParamsFile">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.overrideParamsFile", "--override-params-file"))}</span>
-            <input id="${id(net.key, "inprocessOverrideParamsFile")}" type="text" value="">
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessOverrideParamsFile")}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.overrideParamsFile">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.overrideParamsFile", "--override-params-file"))}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="${id(net.key, "inprocessOverrideParamsFile")}" type="text" value="">
           </div>
           <label class="bridge-v7-card check danger">
             <input id="${id(net.key, "inprocessDevnet")}" type="checkbox">
@@ -1710,7 +1915,8 @@ function renderSections(net) {
 
   const panels = sections.map(([key, , body], index) => {
     const panelId = key === "instances" ? ` id="${id(net.key, "instances")}"` : "";
-    return `<section${panelId} class="bridge-v7-section${index === 0 ? " active" : ""}" data-net="${net.key}" data-bridge-section-panel="${key}"${index === 0 ? "" : " hidden"}>${body}</section>`;
+    return `
+    ${kgwBridgeDifficultyDatalistR16C()}<section${panelId} class="bridge-v7-section${index === 0 ? " active" : ""}" data-net="${net.key}" data-bridge-section-panel="${key}"${index === 0 ? "" : " hidden"}>${body}</section>`;
   }).join("");
 
   return `
@@ -2264,6 +2470,19 @@ function bridgeInprocessAddKaspadValueArgV12D(lines, flag, value) {
 }
 
 
+// KGW_BRIDGE_INPROCESS_SERIALIZATION_CHECKBOX_R13B
+function bridgeInprocessAddKaspadValueArgR13B(lines, net, name, flag, value) {
+  if (!kgwBridgeCommandShouldIncludeR7(net, name)) return;
+  bridgeInprocessAddKaspadValueArgV12D(lines, flag, value);
+}
+
+function bridgeInprocessAddKaspadFlagR13B(lines, net, name, flag) {
+  if (!kgwBridgeCommandShouldIncludeR7(net, name)) return;
+  if (c(net, name)) lines.push(flag);
+}
+
+
+
 function buildCommandLines(net) {
   bridgeSyncModeControls(net);
   bridgeEnsureInstanceState(net);
@@ -2298,36 +2517,36 @@ function buildCommandLines(net) {
       }
     }
 
-    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--rpclisten", v(net, "inprocessRpcListen") || `127.0.0.1:${profile.kaspadPort}`);
-    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--rpclisten-borsh", v(net, "inprocessRpcListenBorsh"));
-    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--rpclisten-json", v(net, "inprocessRpcListenJson"));
+    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessRpcListen", "--rpclisten", v(net, "inprocessRpcListen") || `127.0.0.1:${profile.kaspadPort}`);
+    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessRpcListenBorsh", "--rpclisten-borsh", v(net, "inprocessRpcListenBorsh"));
+    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessRpcListenJson", "--rpclisten-json", v(net, "inprocessRpcListenJson"));
 
-    if (c(net, "inprocessUnsafeRpc")) kaspadArgs.push("--unsaferpc");
-    if (c(net, "inprocessUtxoIndex")) kaspadArgs.push("--utxoindex");
-    if (c(net, "inprocessArchival")) kaspadArgs.push("--archival");
+    bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessUnsafeRpc", "--unsaferpc");
+    bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessUtxoIndex", "--utxoindex");
+    bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessArchival", "--archival");
 
-    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--listen", v(net, "inprocessListen"));
-    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--addpeer", v(net, "inprocessAddPeer"));
-    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--connect", v(net, "inprocessConnect"));
+    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessListen", "--listen", v(net, "inprocessListen"));
+    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessAddPeer", "--addpeer", v(net, "inprocessAddPeer"));
+    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessConnect", "--connect", v(net, "inprocessConnect"));
 
-    if (c(net, "inprocessDisableUpnp")) kaspadArgs.push("--disable-upnp");
+    bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessDisableUpnp", "--disable-upnp");
 
-    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--maxinpeers", v(net, "inprocessMaxInpeers"));
-    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--outpeers", v(net, "inprocessOutpeers"));
+    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessMaxInpeers", "--maxinpeers", v(net, "inprocessMaxInpeers"));
+    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessOutpeers", "--outpeers", v(net, "inprocessOutpeers"));
 
-    if (c(net, "inprocessPerfMetrics")) kaspadArgs.push("--perf-metrics");
-    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--perf-metrics-interval-sec", v(net, "inprocessPerfMetricsIntervalSec"));
-    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--loglevel", v(net, "inprocessLogLevel"));
-    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--ram-scale", v(net, "inprocessRamScale"));
+    bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessPerfMetrics", "--perf-metrics");
+    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessPerfMetricsIntervalSec", "--perf-metrics-interval-sec", v(net, "inprocessPerfMetricsIntervalSec"));
+    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessLogLevel", "--loglevel", v(net, "inprocessLogLevel"));
+    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessRamScale", "--ram-scale", v(net, "inprocessRamScale"));
 
-    bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--configfile", v(net, "inprocessConfigfile"));
-    if (c(net, "inprocessYes")) kaspadArgs.push("--yes");
+    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessConfigfile", "--configfile", v(net, "inprocessConfigfile"));
+    bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessYes", "--yes");
 
     if (net !== "mainnet") {
-      bridgeInprocessAddKaspadValueArgV12D(kaspadArgs, "--override-params-file", v(net, "inprocessOverrideParamsFile"));
-      if (c(net, "inprocessDevnet")) kaspadArgs.push("--devnet");
-      if (c(net, "inprocessSimnet")) kaspadArgs.push("--simnet");
-      if (c(net, "inprocessEnableUnsyncedMining")) kaspadArgs.push("--enable-unsynced-mining");
+      bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessOverrideParamsFile", "--override-params-file", v(net, "inprocessOverrideParamsFile"));
+      bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessDevnet", "--devnet");
+      bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessSimnet", "--simnet");
+      bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessEnableUnsyncedMining", "--enable-unsynced-mining");
     }
   }
 
@@ -2349,9 +2568,9 @@ function buildCommandLines(net) {
 
   for (const instance of bridgeInstances[net]) {
     const instanceDefinition = bridgeBuildUpstreamInstanceArg(net, instance);
-    if (instanceDefinition) {
+    if (instanceDefinition && kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, "instance")) {
       lines.push(`--instance=${instanceDefinition}`);
-    }
+    } // KGW_BRIDGE_INSTANCE_WHOLE_ARG_CHECKBOX_R13B
   }
 
   if (c(net, "internalCpuMiner") && net !== "mainnet") {
@@ -3634,6 +3853,43 @@ async function kgwBridgeHandleLogActionV29(action, net, button) {
 /* KGW_LOG_ACTIONS_SCOPED_OWNER_V29_END */
 
 function installActions(root) {
+  if (!root.dataset.kgwBridgeInstancesCommandCheckboxOwnerR13B) {
+    root.dataset.kgwBridgeInstancesCommandCheckboxOwnerR13B = "1"; // KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_ACTION_R13B
+
+    root.addEventListener("change", (event) => {
+      const include = event.target.closest("[data-bridge-instance-command-option-toggle-r13b]");
+      if (include && root.contains(include)) {
+        kgwBridgeSetInstanceCommandOptionR13B(
+          include.dataset.net,
+          include.dataset.instanceId,
+          include.dataset.bridgeInstanceCommandOptionToggleR13B,
+          include.checked
+        );
+      }
+    });
+  }
+  if (!root.dataset.kgwBridgeCommandComposerInlineOwnerR7) {
+    root.dataset.kgwBridgeCommandComposerInlineOwnerR7 = "1";
+
+    root.addEventListener("click", (event) => {
+      const toggle = event.target.closest("[data-bridge-command-option-toggle-r7]");
+      if (toggle && root.contains(toggle)) {
+        event.preventDefault();
+        event.stopPropagation();
+        kgwBridgeToggleCommandOptionR7(toggle.dataset.net, toggle.dataset.bridgeCommandOptionToggleR7);
+      }
+    });
+
+    root.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const toggle = event.target.closest("[data-bridge-command-option-toggle-r7]");
+      if (toggle && root.contains(toggle)) {
+        event.preventDefault();
+        event.stopPropagation();
+        kgwBridgeToggleCommandOptionR7(toggle.dataset.net, toggle.dataset.bridgeCommandOptionToggleR7);
+      }
+    });
+  }
   // KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D_ACTIONS
   if (root && !root.dataset.kgwBridgeInprocessNodeTabsV12B) {
     root.dataset.kgwBridgeInprocessNodeTabsV12B = "true";

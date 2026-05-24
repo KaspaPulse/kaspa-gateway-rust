@@ -675,10 +675,14 @@ function c(net, name) {
 }
 
 function addFlag(lines, net, name, flag) {
+  if (!kgwNodeCommandShouldIncludeR7(net, name)) return; // KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
+
   if (c(net, name)) lines.push(flag);
 }
 
 function addValue(lines, net, name, flag) {
+  if (!kgwNodeCommandShouldIncludeR7(net, name)) return; // KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
+
   const value = v(net, name);
   if (value) lines.push(`${flag}=${value}`);
 }
@@ -693,10 +697,64 @@ function addHostPort(lines, net, enabledName, flag, hostName, portName) {
   else if (host) lines.push(`${flag}=${host}`);
 }
 
+
+// KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
+const KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7 = "KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7";
+
+function kgwNodeCommandInlineStateKeyR7(net) {
+  return String(net || "mainnet");
+}
+
+function kgwNodeCommandInlineStateR7(net) {
+  const key = kgwNodeCommandInlineStateKeyR7(net);
+  window.__kgwNodeCommandComposerInlineR7 = window.__kgwNodeCommandComposerInlineR7 || {};
+  window.__kgwNodeCommandComposerInlineR7[key] = window.__kgwNodeCommandComposerInlineR7[key] || {};
+  return window.__kgwNodeCommandComposerInlineR7[key];
+}
+
+function kgwNodeCommandOptionEnabledR7(net, name) {
+  const state = kgwNodeCommandInlineStateR7(net);
+  return state[String(name)] !== false;
+}
+
+function kgwNodeCommandShouldIncludeR7(net, name) {
+  return kgwNodeCommandOptionEnabledR7(net, name);
+}
+
+function kgwNodeCommandInlineToggleR7(net, name) {
+  const enabled = kgwNodeCommandOptionEnabledR7(net, name);
+  const label = enabled ? "Included" : "Excluded";
+  return `<input type="checkbox" class="kgw-command-option-checkbox-r9" data-node-command-option-toggle-r7="${esc(String(name))}" data-net="${esc(String(net))}" ${enabled ? "checked" : ""} aria-label="${enabled ? "Included in command" : "Excluded from command"}" title="${enabled ? "Included in command" : "Excluded from command"}">`; // KGW_NODE_COMMAND_COMPOSER_CHECKBOX_ONLY_R9
+}
+
+function kgwNodeRefreshInlineCommandTogglesR7(net) {
+  document.querySelectorAll(`[data-node-command-option-toggle-r7][data-net="${CSS.escape(String(net))}"]`).forEach((el) => {
+    const name = el.dataset.nodeCommandOptionToggleR7;
+    const enabled = kgwNodeCommandOptionEnabledR7(net, name);
+    el.checked = enabled;
+    el.setAttribute("aria-label", enabled ? "Included in command" : "Excluded from command");
+    el.setAttribute("title", enabled ? "Included in command" : "Excluded from command");
+    el.classList.toggle("is-on", enabled);
+    el.classList.toggle("is-off", !enabled);
+  });
+}
+
+function kgwNodeToggleCommandOptionR7(net, name) {
+  const state = kgwNodeCommandInlineStateR7(net);
+  const key = String(name);
+  state[key] = state[key] === false;
+  kgwNodeRefreshInlineCommandTogglesR7(net);
+  updateCommand(net);
+}
+
+
 function cardInput(net, name, label, value = "", placeholder = "", span2 = false) {
   return `
     <div class="node-v6-card${span2 ? " span2" : ""}">
-      <span>${esc(label)}</span>
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwNodeCommandInlineToggleR7(net, name)}
+        <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
+      </span> <!-- KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->
       <input id="${id(net, name)}" type="text" value="${esc(value)}" placeholder="${esc(placeholder)}">
     </div>`;
 }
@@ -709,7 +767,10 @@ function cardSelect(net, name, label, options, value = "", span2 = false) {
 
   return `
     <div class="node-v6-card${span2 ? " span2" : ""}">
-      <span>${esc(label)}</span>
+      <span class="kgw-command-option-title-row-r8e">
+        ${kgwNodeCommandInlineToggleR7(net, name)}
+        <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
+      </span> <!-- KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->
       <select id="${id(net, name)}">${opts}</select>
     </div>`;
 }
@@ -1992,6 +2053,28 @@ async function kgwNodeHandleLogActionV29(action, net, button) {
 /* KGW_LOG_ACTIONS_SCOPED_OWNER_V29_END */
 
 function installActions(root) {
+  if (!root.dataset.kgwNodeCommandComposerInlineOwnerR7) {
+    root.dataset.kgwNodeCommandComposerInlineOwnerR7 = "1";
+
+    root.addEventListener("click", (event) => {
+      const toggle = event.target.closest("[data-node-command-option-toggle-r7]");
+      if (toggle && root.contains(toggle)) {
+        event.preventDefault();
+        event.stopPropagation();
+        kgwNodeToggleCommandOptionR7(toggle.dataset.net, toggle.dataset.nodeCommandOptionToggleR7);
+      }
+    });
+
+    root.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const toggle = event.target.closest("[data-node-command-option-toggle-r7]");
+      if (toggle && root.contains(toggle)) {
+        event.preventDefault();
+        event.stopPropagation();
+        kgwNodeToggleCommandOptionR7(toggle.dataset.net, toggle.dataset.nodeCommandOptionToggleR7);
+      }
+    });
+  }
   // KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26: Node settings actions are scoped to the exact network that changed.
   if (window.KGW_NODE_SETTINGS_OWNER_V19 && typeof window.KGW_NODE_SETTINGS_OWNER_V19.install === "function") {
     window.KGW_NODE_SETTINGS_OWNER_V19.install(root);

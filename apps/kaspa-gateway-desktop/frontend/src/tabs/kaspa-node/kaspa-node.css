@@ -518,3 +518,272 @@ button[data-kgw-settings-owner-v19-disabled="false"] {
   font-size: 11px !important;
   opacity: .9 !important;
 }
+
+/* KGW_NODE_COMMAND_COMPOSER_TINY_TOGGLE_CSS_R8A */
+.kgw-command-tiny-toggle-r8a,
+.kgw-command-inline-toggle-r7 {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-block !important;
+  width: 16px !important;
+  min-width: 16px !important;
+  max-width: 16px !important;
+  height: 16px !important;
+  min-height: 16px !important;
+  max-height: 16px !important;
+  flex: 0 0 16px !important;
+  margin: 0 6px 0 0 !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(148, 163, 184, 0.7) !important;
+  vertical-align: -2px !important;
+  cursor: pointer !important;
+  overflow: hidden !important;
+  text-indent: -9999px !important;
+  line-height: 0 !important;
+}
+
+.kgw-command-tiny-toggle-r8a.is-included,
+.kgw-command-inline-toggle-r7.is-included {
+  background: #2f80ff !important;
+  border-color: #72a8ff !important;
+  box-shadow: 0 0 0 1px rgba(47, 128, 255, 0.24) !important;
+  opacity: 1 !important;
+}
+
+.kgw-command-tiny-toggle-r8a.is-excluded,
+.kgw-command-inline-toggle-r7.is-excluded {
+  background: rgba(148, 163, 184, 0.18) !important;
+  border-color: rgba(148, 163, 184, 0.45) !important;
+  box-shadow: none !important;
+  opacity: 0.42 !important;
+}
+
+/* KGW_NODE_COMMAND_COMPOSER_TINY_BUTTON_CSS_R8C */
+fieldset .kgw-command-option-dot-r8c,
+label .kgw-command-option-dot-r8c,
+.kgw-command-option-dot-r8c {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  inline-size: 14px !important;
+  block-size: 14px !important;
+  width: 14px !important;
+  height: 14px !important;
+  min-inline-size: 14px !important;
+  min-block-size: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  margin: 0 6px 0 0 !important;
+  padding: 0 !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(118, 144, 180, 0.82) !important;
+  background: rgba(80, 94, 118, 0.36) !important;
+  box-shadow: none !important;
+  line-height: 1 !important;
+  font-size: 0 !important;
+  color: transparent !important;
+  overflow: hidden !important;
+  text-indent: -9999px !important;
+  vertical-align: -2px !important;
+  cursor: pointer !important;
+  flex: 0 0 14px !important;
+}
+
+fieldset .kgw-command-option-dot-r8c span,
+label .kgw-command-option-dot-r8c span,
+.kgw-command-option-dot-r8c span {
+  display: block !important;
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 2px !important;
+  background: transparent !important;
+}
+
+fieldset .kgw-command-option-dot-r8c.is-on,
+label .kgw-command-option-dot-r8c.is-on,
+.kgw-command-option-dot-r8c.is-on {
+  background: #2563eb !important;
+  border-color: #60a5fa !important;
+  opacity: 1 !important;
+}
+
+fieldset .kgw-command-option-dot-r8c.is-on span,
+label .kgw-command-option-dot-r8c.is-on span,
+.kgw-command-option-dot-r8c.is-on span {
+  background: rgba(255, 255, 255, 0.92) !important;
+}
+
+fieldset .kgw-command-option-dot-r8c.is-off,
+label .kgw-command-option-dot-r8c.is-off,
+.kgw-command-option-dot-r8c.is-off {
+  background: rgba(100, 116, 139, 0.20) !important;
+  border-color: rgba(148, 163, 184, 0.42) !important;
+  opacity: 0.48 !important;
+}
+
+fieldset .kgw-command-option-dot-r8c:hover,
+label .kgw-command-option-dot-r8c:hover,
+.kgw-command-option-dot-r8c:hover {
+  transform: none !important;
+  filter: brightness(1.1) !important;
+}
+
+/* KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_CSS_R8E */
+.kgw-command-option-title-row-r8e {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+  max-width: 100% !important;
+  vertical-align: middle !important;
+}
+
+.kgw-command-option-title-text-r8e {
+  display: inline !important;
+  line-height: 1.2 !important;
+}
+
+fieldset .kgw-command-switch-r8e,
+label .kgw-command-switch-r8e,
+.kgw-command-switch-r8e {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  inline-size: 30px !important;
+  block-size: 16px !important;
+  width: 30px !important;
+  height: 16px !important;
+  min-width: 30px !important;
+  min-height: 16px !important;
+  max-width: 30px !important;
+  max-height: 16px !important;
+  flex: 0 0 30px !important;
+  margin: 0 !important;
+  padding: 2px !important;
+  border: 1px solid rgba(148, 163, 184, 0.55) !important;
+  border-radius: 999px !important;
+  background: rgba(100, 116, 139, 0.24) !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  vertical-align: middle !important;
+  overflow: hidden !important;
+  text-indent: 0 !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+fieldset .kgw-command-switch-r8e span,
+label .kgw-command-switch-r8e span,
+.kgw-command-switch-r8e span {
+  display: block !important;
+  inline-size: 10px !important;
+  block-size: 10px !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: rgba(226, 232, 240, 0.82) !important;
+  transform: translateX(0) !important;
+  transition: transform 120ms ease, background 120ms ease !important;
+}
+
+fieldset .kgw-command-switch-r8e.is-on,
+label .kgw-command-switch-r8e.is-on,
+.kgw-command-switch-r8e.is-on {
+  background: #2563eb !important;
+  border-color: #60a5fa !important;
+  opacity: 1 !important;
+}
+
+fieldset .kgw-command-switch-r8e.is-on span,
+label .kgw-command-switch-r8e.is-on span,
+.kgw-command-switch-r8e.is-on span {
+  background: #ffffff !important;
+  transform: translateX(14px) !important;
+}
+
+fieldset .kgw-command-switch-r8e.is-off,
+label .kgw-command-switch-r8e.is-off,
+.kgw-command-switch-r8e.is-off {
+  background: rgba(100, 116, 139, 0.18) !important;
+  border-color: rgba(148, 163, 184, 0.38) !important;
+  opacity: 0.58 !important;
+}
+
+fieldset .kgw-command-switch-r8e:focus-visible,
+label .kgw-command-switch-r8e:focus-visible,
+.kgw-command-switch-r8e:focus-visible {
+  outline: 2px solid rgba(96, 165, 250, 0.72) !important;
+  outline-offset: 2px !important;
+}
+
+/* Neutralize previous failed visual shapes while keeping old class harmless if present. */
+.kgw-command-option-dot-r8c,
+.kgw-command-tiny-toggle-r8a,
+.kgw-command-inline-toggle-r7 {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+/* KGW_NODE_COMMAND_COMPOSER_CHECKBOX_ONLY_CSS_R9 */
+.kgw-command-option-title-row-r8e {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  white-space: nowrap !important;
+  vertical-align: middle !important;
+}
+
+.kgw-command-option-title-text-r8e {
+  display: inline !important;
+  line-height: 1.2 !important;
+}
+
+.kgw-command-option-checkbox-r9 {
+  appearance: auto !important;
+  -webkit-appearance: checkbox !important;
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  max-width: 14px !important;
+  max-height: 14px !important;
+  margin: 0 5px 0 0 !important;
+  padding: 0 !important;
+  vertical-align: -2px !important;
+  cursor: pointer !important;
+  accent-color: #2563eb !important;
+  flex: 0 0 14px !important;
+}
+
+/* Neutralize previous switch/dot visual attempts. */
+.kgw-command-switch-r8e,
+.kgw-command-option-dot-r8c,
+.kgw-command-tiny-toggle-r8a,
+.kgw-command-inline-toggle-r7 {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: none !important;
+  max-height: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}

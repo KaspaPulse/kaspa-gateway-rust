@@ -1,6 +1,14 @@
 #!/usr/bin/env node
 "use strict";
 
+// KGW_RUNTIME_REPOSITORY_BINDING_UNIFIED_GATE_R21C
+// The runtime repository binding gate is intentionally read-only.
+// Canonical command:
+//   node tools/kgw_runtime_repository_binding_gate.cjs --strict --online --json
+// Compatibility wrappers:
+//   node tools/kgw_runtime_repository_binding_audit.cjs
+//   powershell -NoProfile -ExecutionPolicy Bypass -File tools/kgw_runtime_repository_binding_audit.ps1
+
 /*
  * KGW_CANONICAL_GLOBAL_OWNER_GATE_R3C_REGISTRY_REFINEMENT
  *
@@ -562,6 +570,129 @@ const OWNER_REGISTRY = {
     ]
   },
 
+
+  // KGW_COMMAND_COMPOSER_GLOBAL_OWNER_GATE_REGISTRY_R2B_SAFE_GATE
+  nodeCommandComposer: {
+    ownerId: "KGW_NODE_COMMAND_COMPOSER_OWNER",
+    description: "Node tab command composer, option include/exclude model, command preview serializer, scoped defaults, and node command UI ownership.",
+    activeFiles: [
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js",
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.css"
+    ],
+    referenceFiles: [
+      "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs",
+      "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs",
+      "crates/kaspa-gateway-rk-node/src/kgw_real_owner_runtime.rs",
+      "config/runtime-repository-bindings.json"
+    ],
+    requiredMarkers: [
+      "KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7",
+      "KGW_NODE_COMMAND_COMPOSER_CHECKBOX_ONLY_R9",
+      "KGW_NODE_COMMAND_COMPOSER_CHECKBOX_ONLY_CSS_R9"
+    ],
+    requiredFiles: [
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js",
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.css"
+    ],
+    forbiddenMarkers: [
+      "KGW_NODE_COMMAND_COMPOSER_DUPLICATE_OWNER",
+      "KGW_NODE_COMMAND_COMPOSER_OVERLAY_WORKAROUND",
+      "KGW_NODE_COMMAND_COMPOSER_MUTATION_OBSERVER_LAYER",
+      "KGW_NODE_COMMAND_COMPOSER_DOCUMENT_CAPTURE_LAYER"
+    ],
+    responsibilities: [
+      "node command preview ownership",
+      "node command option include/exclude state",
+      "node option serialization into one command model",
+      "node scoped default IP/port values",
+      "node validated select-based option values where applicable",
+      "no duplicate node command builder",
+      "no overlay workaround and no MutationObserver workaround"
+    ]
+  },
+
+  bridgeCommandComposer: {
+    ownerId: "KGW_BRIDGE_COMMAND_COMPOSER_OWNER",
+    description: "Bridge tab command composer, option include/exclude model, command preview serializer, IP/default/difficulty option ownership.",
+    activeFiles: [
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.css"
+    ],
+    referenceFiles: [
+      "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs",
+      "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs",
+      "crates/kaspa-gateway-rk-bridge/src/lib.rs",
+      "config/runtime-repository-bindings.json"
+    ],
+    requiredMarkers: [
+      "KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7",
+      "KGW_BRIDGE_COMMAND_COMPOSER_CHECKBOX_ONLY_R9",
+      "KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B",
+      "KGW_BRIDGE_INPROCESS_SERIALIZATION_CHECKBOX_R13B",
+      "KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B",
+      "KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B",
+      "KGW_BRIDGE_INSTANCE_UPSTREAM_SERIALIZATION_CHECKBOX_R13B",
+      "KGW_BRIDGE_INSTANCE_WHOLE_ARG_CHECKBOX_R13B",
+      "KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_ACTION_R13B",
+      "KGW_BRIDGE_INPROCESS_INSTANCES_COMMAND_CHECKBOX_CSS_R13B",
+      "KGW_BRIDGE_DIFFICULTY_DATALIST_R16C",
+      "KGW_BRIDGE_DIFFICULTY_DATALIST_CSS_R16C"
+    ],
+    requiredFiles: [
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.css"
+    ],
+    forbiddenMarkers: [
+      "KGW_BRIDGE_COMMAND_COMPOSER_DUPLICATE_OWNER",
+      "KGW_BRIDGE_COMMAND_COMPOSER_OVERLAY_WORKAROUND",
+      "KGW_BRIDGE_COMMAND_COMPOSER_MUTATION_OBSERVER_LAYER",
+      "KGW_BRIDGE_COMMAND_COMPOSER_DOCUMENT_CAPTURE_LAYER"
+    ],
+    responsibilities: [
+      "bridge command preview ownership",
+      "bridge command option include/exclude state",
+      "bridge option serialization into one command model",
+      "bridge scoped default IP/port values",
+      "bridge validated difficulty/share select values",
+      "bridge var-diff and shares-per-min command option ownership",
+      "no duplicate bridge command builder",
+      "no overlay workaround and no MutationObserver workaround"
+    ]
+  },
+
+  commandComposerRuntimeMapping: {
+    ownerId: "KGW_COMMAND_COMPOSER_RUNTIME_MAPPING_OWNER",
+    description: "Runtime-side command argument mapping for Node/Bridge command composer output.",
+    activeFiles: [
+      "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs",
+      "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs",
+      "crates/kaspa-gateway-rk-bridge/src/lib.rs",
+      "crates/kaspa-gateway-rk-node/src/kgw_real_owner_runtime.rs"
+    ],
+    referenceFiles: [
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js",
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
+      "config/runtime-repository-bindings.json"
+    ],
+    requiredMarkers: [],
+    requiredFiles: [
+      "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs",
+      "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs"
+    ],
+    forbiddenMarkers: [
+      "KGW_COMMAND_COMPOSER_RUNTIME_DUPLICATE_MAPPING",
+      "KGW_COMMAND_COMPOSER_FAKE_COMMAND_LAYER",
+      "KGW_COMMAND_COMPOSER_PARALLEL_ARG_BUILDER"
+    ],
+    responsibilities: [
+      "runtime command argument mapping",
+      "node/bridge command payload compatibility",
+      "keep frontend preview and runtime args consistent",
+      "no parallel runtime argument mapper",
+      "no fake command preview/runtime divergence"
+    ]
+  },
+
   traceBackendGate: {
     ownerId: "KGW_TRACE_BACKEND_GATE_OWNER",
     description: "Rust backend trace gate and dev-only file sink ownership.",
@@ -998,3 +1129,4 @@ module.exports = {
   OWNER_REGISTRY,
   runGate
 };
+
