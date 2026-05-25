@@ -2450,5 +2450,13 @@
   "explorer.export.modal.pdfPending": "PDF-Export ist für Phase 2 vorgesehen.",
   "explorer.export.modal.cancelButton": "Abbrechen",
   "explorer.export.modal.saveMessage": "Wähle aus, wo die Datei gespeichert werden soll.",
-  "calendar.close": "Schließen"
+  "calendar.close": "Schließen",
+  "bridge.autofixPorts.button": "Ports automatisch beheben",
+  "bridge.autofixPorts.conflictingButton": "Ports automatisch beheben",
+  "bridge.autofixPorts.fixingButton": "Ports werden behoben...",
+  "bridge.autofixPorts.fixedButton": "Ports behoben",
+  "bridge.autofixPorts.failedButton": "Auto-Fix fehlgeschlagen",
+  "bridge.autofixPorts.disabledButton": "Ports automatisch beheben",
+  "bridge.autofixPorts.title": "Ports automatisch beheben",
+  "bridge.autofixPorts.changedPrefix": "Geänderte Ports"
 }

@@ -2427,5 +2427,13 @@
   "explorer.export.modal.pdfPending": "تصدير PDF في المرحلة الثانية.",
   "explorer.export.modal.cancelButton": "إلغاء",
   "explorer.export.modal.saveMessage": "حدد مسار حفظ الملف.",
-  "calendar.close": "إغلاق"
+  "calendar.close": "إغلاق",
+  "bridge.autofixPorts.button": "إصلاح المنافذ تلقائيًا",
+  "bridge.autofixPorts.conflictingButton": "إصلاح المنافذ تلقائيًا",
+  "bridge.autofixPorts.fixingButton": "جارٍ إصلاح المنافذ...",
+  "bridge.autofixPorts.fixedButton": "تم إصلاح المنافذ",
+  "bridge.autofixPorts.failedButton": "فشل إصلاح المنافذ",
+  "bridge.autofixPorts.disabledButton": "إصلاح المنافذ تلقائيًا",
+  "bridge.autofixPorts.title": "إصلاح المنافذ تلقائيًا",
+  "bridge.autofixPorts.changedPrefix": "المنافذ التي تغيرت"
 }

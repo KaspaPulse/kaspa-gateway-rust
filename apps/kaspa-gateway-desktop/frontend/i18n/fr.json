@@ -2451,5 +2451,13 @@
   "explorer.export.modal.pdfPending": "L’export PDF est prévu pour la phase 2.",
   "explorer.export.modal.cancelButton": "Annuler",
   "explorer.export.modal.saveMessage": "Choisissez où enregistrer le fichier.",
-  "calendar.close": "Fermer"
+  "calendar.close": "Fermer",
+  "bridge.autofixPorts.button": "Corriger les ports automatiquement",
+  "bridge.autofixPorts.conflictingButton": "Corriger les ports automatiquement",
+  "bridge.autofixPorts.fixingButton": "Correction des ports...",
+  "bridge.autofixPorts.fixedButton": "Ports corrigés",
+  "bridge.autofixPorts.failedButton": "Correction automatique échouée",
+  "bridge.autofixPorts.disabledButton": "Corriger les ports automatiquement",
+  "bridge.autofixPorts.title": "Corriger les ports automatiquement",
+  "bridge.autofixPorts.changedPrefix": "Ports modifiés"
 }

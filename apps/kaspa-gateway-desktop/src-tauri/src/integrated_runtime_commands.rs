@@ -101,6 +101,9 @@ fn kgw_worker_role_from_request(
 fn kgw_worker_start(
     role: &str,
     settings: &kaspa_gateway_rk_node::NodeSettings,
+    bridge_structured_instances: Option<String>,
+    bridge_config_path: Option<String>,
+    bridge_instance_listens_override: Option<Vec<String>>,
 ) -> Result<String, String> {
     let network = settings.network.as_str().to_string();
     let role = role.trim().to_ascii_lowercase();
@@ -196,7 +199,6 @@ fn kgw_worker_start(
 
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let logs = Arc::new(Mutex::new(VecDeque::new()));
-
     let mut command = Command::new(exe);
 
     command
@@ -229,6 +231,24 @@ fn kgw_worker_start(
     } else {
         command.arg("--stratum").arg(&settings.stratum_listen);
         command.arg("--node-mode").arg(bridge_node_mode);
+
+        // KGW_BRIDGE_DUAL_CLI_CONFIG_REAL_RUNNER_R122
+        // Config route wins over UI/CLI instances to avoid mixing two instance sources.
+        if let Some(config_path) = bridge_config_path
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            command.arg("--bridge-config").arg(config_path);
+        } else {
+            let bridge_instance_listens = bridge_instance_listens_override.unwrap_or_else(|| {
+                kgw_bridge_structured_instance_listens_r120(bridge_structured_instances.as_deref())
+            });
+
+            for listen in &bridge_instance_listens {
+                command.arg("--bridge-instance-listen").arg(listen);
+            }
+        }
 
         if bridge_node_mode == "inprocess" {
             if settings.enable_utxo_index {
@@ -629,6 +649,103 @@ fn kgw_command_preview_normalize_listen(value: String) -> String {
     }
 }
 
+// KGW_BRIDGE_DUAL_CLI_CONFIG_REAL_RUNNER_R122
+// KGW_BRIDGE_PREVIEW_ALL_INSTANCES_R123
+fn kgw_bridge_preview_instance_clause_listen_r123(instance_clause: &str) -> Option<String> {
+    let clean = instance_clause.trim();
+
+    if clean.is_empty() {
+        return None;
+    }
+
+    for raw_part in clean.split(',') {
+        let part = raw_part.trim();
+        let Some((raw_key, raw_value)) = part.split_once('=').or_else(|| part.split_once(':'))
+        else {
+            continue;
+        };
+
+        let key = raw_key
+            .trim()
+            .trim_start_matches('-')
+            .replace('-', "_")
+            .to_ascii_lowercase();
+
+        if !matches!(
+            key.as_str(),
+            "port" | "stratum" | "stratum_port" | "stratum_listen" | "listen"
+        ) {
+            continue;
+        }
+
+        let value = raw_value.trim().trim_matches('"').trim_matches('\'');
+
+        if let Some(port) = kgw_bridge_normalize_instance_port_r110f(value) {
+            return Some(kgw_command_preview_normalize_listen(port));
+        }
+
+        let tail = value.rsplit(':').next().unwrap_or(value).trim();
+        if let Some(port) = kgw_bridge_normalize_instance_port_r110f(tail) {
+            return Some(kgw_command_preview_normalize_listen(port));
+        }
+    }
+
+    None
+}
+
+// KGW_BRIDGE_PREVIEW_ALL_INSTANCES_R123
+fn kgw_bridge_command_preview_instance_listens_r123(command_preview: Option<&str>) -> Vec<String> {
+    let Some(preview) = command_preview
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    else {
+        return Vec::new();
+    };
+
+    let parts = preview.split_whitespace().collect::<Vec<_>>();
+    let mut listens = Vec::<String>::new();
+    let mut index = 0usize;
+
+    while index < parts.len() {
+        let part = parts[index];
+
+        let value = if let Some(value) = part.strip_prefix("--instance=") {
+            Some(value)
+        } else if part == "--instance" {
+            index += 1;
+            parts.get(index).copied()
+        } else {
+            None
+        };
+
+        if let Some(instance_clause) = value {
+            if let Some(listen) = kgw_bridge_preview_instance_clause_listen_r123(instance_clause) {
+                if !listens.iter().any(|existing| existing == &listen) {
+                    listens.push(listen);
+                }
+            }
+        }
+
+        index += 1;
+    }
+
+    listens
+}
+
+fn kgw_bridge_config_path_from_preview_r122(command_preview: Option<&str>) -> Option<String> {
+    let preview = command_preview?.trim();
+
+    if preview.is_empty() {
+        return None;
+    }
+
+    kgw_command_preview_find_cli_value(preview, "--config")
+        .or_else(|| kgw_command_preview_find_cli_value(preview, "--bridge-config"))
+        .or_else(|| kgw_command_preview_find_cli_value(preview, "--config-path"))
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+}
+
 fn kgw_apply_command_preview_overrides(
     settings: &mut kaspa_gateway_rk_node::NodeSettings,
     node_command_preview: Option<String>,
@@ -706,6 +823,201 @@ fn kgw_apply_command_preview_overrides(
     }
 }
 
+// KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F
+fn kgw_bridge_instance_value_r110f(serialized: &str, wanted_key: &str) -> Option<String> {
+    let wanted = wanted_key.trim().to_ascii_lowercase();
+
+    for raw_part in serialized.split(',') {
+        let part = raw_part.trim();
+        let Some((raw_key, raw_value)) = part.split_once('=') else {
+            continue;
+        };
+
+        let key = raw_key
+            .trim()
+            .trim_start_matches('-')
+            .replace('-', "_")
+            .to_ascii_lowercase();
+        let value = raw_value.trim();
+
+        if value.is_empty() {
+            continue;
+        }
+
+        let matched = match wanted.as_str() {
+            "port" => matches!(
+                key.as_str(),
+                "port" | "stratum" | "stratum_port" | "stratum_listen" | "listen"
+            ),
+            _ => key == wanted,
+        };
+
+        if matched {
+            return Some(value.to_string());
+        }
+    }
+
+    None
+}
+
+// KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F
+fn kgw_bridge_normalize_instance_port_r110f(value: &str) -> Option<String> {
+    let clean = value.trim().trim_start_matches(':').trim();
+
+    if clean.is_empty() {
+        return None;
+    }
+
+    if !clean.chars().all(|ch| ch.is_ascii_digit()) {
+        return None;
+    }
+
+    let Ok(port) = clean.parse::<u16>() else {
+        return None;
+    };
+
+    if port == 0 {
+        return None;
+    }
+
+    Some(format!(":{port}"))
+}
+
+// KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F
+// KGW_BRIDGE_DUAL_CLI_REAL_RUNNER_R120
+fn kgw_bridge_normalize_instance_listen_r120(value: &str) -> Option<String> {
+    let clean = value.trim().trim_matches('"').trim_matches('\'');
+
+    if clean.is_empty() {
+        return None;
+    }
+
+    if let Some(port) = kgw_bridge_normalize_instance_port_r110f(clean) {
+        return Some(port);
+    }
+
+    let tail = clean.rsplit(':').next().unwrap_or(clean).trim();
+    kgw_bridge_normalize_instance_port_r110f(tail)
+}
+
+// KGW_BRIDGE_DUAL_CLI_REAL_RUNNER_R120
+fn kgw_bridge_instance_value_r120(serialized: &str, wanted_key: &str) -> Option<String> {
+    let wanted = wanted_key.trim().replace('-', "_").to_ascii_lowercase();
+
+    let normalized = serialized
+        .replace('{', "")
+        .replace('}', "")
+        .replace('[', "")
+        .replace(']', "")
+        .replace('"', "")
+        .replace("\\r", ",")
+        .replace("\\n", ",");
+
+    for raw_part in normalized.split(|ch| ch == ',' || ch == ';') {
+        let part = raw_part.trim();
+        let Some((raw_key, raw_value)) = part.split_once('=').or_else(|| part.split_once(':'))
+        else {
+            continue;
+        };
+
+        let key = raw_key
+            .trim()
+            .trim_start_matches('-')
+            .replace('-', "_")
+            .to_ascii_lowercase();
+
+        let value = raw_value.trim().trim_matches('\'');
+
+        if value.is_empty() {
+            continue;
+        }
+
+        let matched = match wanted.as_str() {
+            "port" => matches!(
+                key.as_str(),
+                "port"
+                    | "stratum"
+                    | "stratum_port"
+                    | "stratumport"
+                    | "stratum_listen"
+                    | "stratumlisten"
+                    | "listen"
+            ),
+            _ => key == wanted,
+        };
+
+        if matched {
+            return Some(value.to_string());
+        }
+    }
+
+    None
+}
+
+// KGW_BRIDGE_DUAL_CLI_REAL_RUNNER_R120
+fn kgw_bridge_structured_instance_listens_r120(serialized: Option<&str>) -> Vec<String> {
+    let Some(raw) = serialized.map(str::trim).filter(|value| !value.is_empty()) else {
+        return Vec::new();
+    };
+
+    let mut listens = Vec::<String>::new();
+
+    for object_like in raw.split('{').skip(1) {
+        let chunk = object_like.split('}').next().unwrap_or(object_like);
+
+        if let Some(listen) = kgw_bridge_instance_value_r120(chunk, "port")
+            .as_deref()
+            .and_then(kgw_bridge_normalize_instance_listen_r120)
+        {
+            if !listens.iter().any(|existing| existing == &listen) {
+                listens.push(listen);
+            }
+        }
+    }
+
+    if listens.is_empty() {
+        if let Some(listen) = kgw_bridge_instance_value_r120(raw, "port")
+            .as_deref()
+            .and_then(kgw_bridge_normalize_instance_listen_r120)
+        {
+            listens.push(listen);
+        }
+    }
+
+    listens
+}
+
+fn kgw_apply_bridge_active_instance_runtime_overrides_r110f(
+    settings: &mut kaspa_gateway_rk_node::NodeSettings,
+    bridge_active_instance_id: Option<String>,
+    bridge_active_instance: Option<String>,
+    bridge_active_instance_port: Option<String>,
+    bridge_structured_instances: Option<String>,
+) {
+    let _ = bridge_active_instance_id;
+
+    let structured_ports =
+        kgw_bridge_structured_instance_listens_r120(bridge_structured_instances.as_deref());
+
+    let explicit_port = bridge_active_instance_port
+        .as_deref()
+        .and_then(kgw_bridge_normalize_instance_port_r110f);
+
+    let serialized_port = match bridge_active_instance.as_deref() {
+        Some(serialized) => kgw_bridge_instance_value_r110f(serialized, "port")
+            .as_deref()
+            .and_then(kgw_bridge_normalize_instance_port_r110f),
+        None => None,
+    };
+
+    if let Some(port) = explicit_port
+        .or(serialized_port)
+        .or_else(|| structured_ports.first().cloned())
+    {
+        settings.stratum_listen = kgw_command_preview_normalize_listen(port);
+    }
+}
+
 #[tauri::command]
 pub fn kgw_kgw_apply_node_settings_v1(
     network: String,
@@ -714,10 +1026,26 @@ pub fn kgw_kgw_apply_node_settings_v1(
     node_command_preview: Option<String>,
     bridge_command_preview: Option<String>,
     runtime_role: Option<String>,
+    bridge_active_instance_id: Option<String>,
+    bridge_active_instance: Option<String>,
+    bridge_active_instance_port: Option<String>,
+    bridge_structured_instances: Option<String>,
 ) -> Result<String, String> {
     let mut settings =
         kaspa_gateway_rk_node::NodeSettings::from_strings(network, node_kind, bridge_kind)
             .map_err(|error| error.to_string())?;
+
+    let bridge_config_path_for_worker =
+        kgw_bridge_config_path_from_preview_r122(bridge_command_preview.as_deref());
+
+    let bridge_instance_listens_from_preview =
+        kgw_bridge_command_preview_instance_listens_r123(bridge_command_preview.as_deref());
+
+    let bridge_instance_listens_override = if bridge_instance_listens_from_preview.is_empty() {
+        None
+    } else {
+        Some(bridge_instance_listens_from_preview)
+    };
 
     kgw_apply_command_preview_overrides(
         &mut settings,
@@ -725,9 +1053,25 @@ pub fn kgw_kgw_apply_node_settings_v1(
         bridge_command_preview,
     );
 
+    let bridge_structured_instances_for_worker = bridge_structured_instances.clone();
+
+    kgw_apply_bridge_active_instance_runtime_overrides_r110f(
+        &mut settings,
+        bridge_active_instance_id,
+        bridge_active_instance,
+        bridge_active_instance_port,
+        bridge_structured_instances,
+    );
+
     let role = kgw_worker_role_from_request(runtime_role.as_deref(), &settings);
 
-    kgw_worker_start(&role, &settings)
+    kgw_worker_start(
+        &role,
+        &settings,
+        bridge_structured_instances_for_worker,
+        bridge_config_path_for_worker,
+        bridge_instance_listens_override,
+    )
 }
 
 #[tauri::command]

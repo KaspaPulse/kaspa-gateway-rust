@@ -111,7 +111,13 @@ const OWNER_REGISTRY = {
       "KGW_BRIDGE_INSTANCE_PHASE1_UPSTREAM_SERIALIZER_R1C",
       "KGW_BRIDGE_INSTANCES_UI_PORT_VALIDATOR_R5",
       "KGW_BRIDGE_INSTANCES_FIELDS_TRASH_R6"
-    ],
+    ,
+      "KGW_BRIDGE_PORT_CONFLICT_AUTOFIX_PATCH_R37",
+      "KGW_BRIDGE_AUTOFIX_GLOBAL_USED_PORTS_PATCH_R45",
+      "KGW_BRIDGE_INSTANCE_PORT_CONFLICT_REPAIR_R110G",
+      "KGW_BRIDGE_SCOPED_START_CONFLICT_R110H",
+      "existing-bridge-port-conflict-owner-r5-r33",
+      "KGW_BRIDGE_AUTOFIX_BUTTON_INITIAL_LABEL_R111G"],
     requiredFiles: [],
     forbiddenMarkers: [
       "KGW_BRIDGE_INSTANCE_PATCH",
@@ -130,7 +136,56 @@ const OWNER_REGISTRY = {
       "instance default false values",
       "instance explicit port/diff/prom fields",
       "instance port conflict validation"
+    ,
+      "bridge Auto Fix Ports ownership and trace boundary",
+      "bridge port conflict Start blocker ownership",
+      "scoped active-instance Start validation",
+      "Bridge Auto Fix Ports initial visible label must not show raw i18n key"]
+  },
+
+
+  // KGW_R111C_BRIDGE_CONFLICT_RUNTIME_OWNER_REGISTRY
+  bridgeActiveInstanceRuntimeContract: {
+    ownerId: "KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_OWNER",
+    description: "Bridge selected instance payload and Rust runtime override contract.",
+    activeFiles: [
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
+      "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs"
+    ],
+    referenceFiles: [],
+    requiredMarkers: [
+      "KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F"
+    ],
+    requiredFiles: [],
+    forbiddenMarkers: [],
+    responsibilities: [
+      "frontend active Bridge instance payload fields",
+      "backend active Bridge instance parameter contract",
+      "runtime stratum_listen override from selected Bridge instance"
     ]
+  },
+
+
+  // KGW_R111C_BRIDGE_CONFLICT_RUNTIME_OWNER_REGISTRY
+  bridgeRuntimeStartOwner: {
+    ownerId: "KGW_BRIDGE_RUNTIME_START_OWNER",
+    description: "Bridge Start/Stop frontend runtime action owner and trace boundary.",
+    activeFiles: [
+      "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+    ],
+    referenceFiles: [],
+    requiredMarkers: [
+      "KGW_BRIDGE_RUNTIME_OWNER_TRACE_R64D"
+    ,
+      "KGW_BRIDGE_RUNTIME_START_SCOPED_CONFLICT_R111F"],
+    requiredFiles: [],
+    forbiddenMarkers: [],
+    responsibilities: [
+      "Bridge Start/Stop action routing",
+      "Bridge runtime frontend trace phases",
+      "Tauri invoke boundary for Bridge runtime actions"
+    ,
+      "retired global R33 pre-start blocker and registered scoped conflict preflight"]
   },
 
   calendar: {
@@ -289,7 +344,8 @@ const OWNER_REGISTRY = {
       "locale coverage",
       "dynamic literal blocking",
       "runtime i18n API"
-    ]
+    ,
+      "Bridge Auto Fix Ports i18n keys must not fall back to raw bridge.autofixPorts.* keys"]
   },
 
   // KGW_GLOBAL_OWNER_GATE_TRACE_REGISTRY_R52B

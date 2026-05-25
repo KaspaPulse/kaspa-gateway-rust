@@ -1773,14 +1773,194 @@ function bridgeSyncInstancePreviewRowsR8B(net) {
   }
 }
 
-function bridgeAssertNoPortConflictsR5(net) {
-  const validation = bridgeValidatePortConflictsR5(net);
 
-  if (!validation.ok) {
-    throw new Error("Bridge port conflict: " + validation.message);
+// KGW_BRIDGE_INSTANCE_PORT_CONFLICT_REPAIR_R110G
+function kgwBridgeRepairInstancePortsBeforeConflictR110G(triggerNet) {
+  const nets = Array.isArray(BRIDGE_NETWORK_ORDER)
+    ? BRIDGE_NETWORK_ORDER
+    : Object.keys(BRIDGE_NETWORKS || {});
+
+  const normalizePort = (value) => {
+    const clean = String(value || "").trim().replace(/^:/, "");
+    if (!/^\d+$/.test(clean)) return "";
+    const n = Number(clean);
+    if (!Number.isInteger(n) || n <= 0 || n > 65535) return "";
+    return String(n);
+  };
+
+  const nextFreePort = (basePort, used) => {
+    const base = Number(normalizePort(basePort)) || 5555;
+    for (let offset = 1; offset <= 99; offset += 1) {
+      const candidate = String(base + offset);
+      if (!used.has(candidate)) return candidate;
+    }
+
+    for (let candidate = 1024; candidate <= 65535; candidate += 1) {
+      const asText = String(candidate);
+      if (!used.has(asText)) return asText;
+    }
+
+    return "";
+  };
+
+  const changed = [];
+
+  for (const net of nets) {
+    const cfg = BRIDGE_NETWORKS?.[net] || {};
+    const defaultPort = normalizePort(cfg.stratumPort || cfg.port || "");
+    const instances = Array.isArray(bridgeInstances?.[net]) ? bridgeInstances[net] : [];
+    const used = new Set();
+
+    if (defaultPort) {
+      used.add(defaultPort);
+    }
+
+    for (const inst of instances) {
+      if (!inst || typeof inst !== "object") continue;
+
+      const before = normalizePort(inst.instancePort || inst.port || inst.stratumPort || "");
+      let after = before;
+
+      if (!after || used.has(after)) {
+        after = nextFreePort(defaultPort || before || "5555", used);
+      }
+
+      if (after) {
+        used.add(after);
+      }
+
+      if (after && after !== before) {
+        inst.instancePort = after;
+        if (Object.prototype.hasOwnProperty.call(inst, "port")) inst.port = after;
+        if (Object.prototype.hasOwnProperty.call(inst, "stratumPort")) inst.stratumPort = after;
+
+        changed.push({
+          net,
+          id: String(inst.id || ""),
+          before,
+          after,
+          defaultPort,
+          triggerNet: String(triggerNet || "")
+        });
+      }
+    }
   }
 
-  return validation;
+  if (changed.length > 0) {
+    try {
+      kgwBridgeTrace?.("bridge", String(triggerNet || ""), "port-conflict", "r110g-instance-ports-repaired", {
+        patch: "KGW_BRIDGE_INSTANCE_PORT_CONFLICT_REPAIR_R110G",
+        owner: "bridgeAssertNoPortConflictsR5-existing-owner",
+        changed
+      });
+    } catch (_) {}
+
+    try {
+      if (typeof renderInstances === "function" && triggerNet) renderInstances(triggerNet);
+    } catch (_) {}
+
+    try {
+      if (typeof updateCommand === "function" && triggerNet) updateCommand(triggerNet);
+    } catch (_) {}
+  }
+
+  return changed;
+}
+
+
+// KGW_BRIDGE_AUTOFIX_BUTTON_INITIAL_LABEL_R111G
+function kgwBridgeAutofixButtonInitialLabelR111G(root = document) {
+  const rawKey = "bridge.autofixPorts.button";
+  const fallback = "Auto Fix Ports";
+
+  try {
+    const candidates = Array.from(root.querySelectorAll("button, [role='button']"));
+    for (const el of candidates) {
+      const text = String(el.textContent || "").trim();
+      if (text === rawKey) {
+        el.textContent = fallback;
+        el.setAttribute("data-i18n", rawKey);
+        el.setAttribute("data-kgw-owner", "bridgeInstances");
+      }
+    }
+  } catch (_) {}
+}
+
+function bridgeAssertNoPortConflictsR5(net) {
+  // KGW_BRIDGE_SCOPED_START_CONFLICT_R110H
+  // Start validation must be scoped to the requested network/active instance.
+  // Stale or duplicated rows from other networks must not block Start.
+  const normalizePort = (value) => {
+    const clean = String(value || "").trim().replace(/^:/, "");
+    if (!/^\d+$/.test(clean)) return "";
+    const n = Number(clean);
+    if (!Number.isInteger(n) || n <= 0 || n > 65535) return "";
+    return String(n);
+  };
+
+  const cfg = BRIDGE_NETWORKS?.[net] || {};
+  const defaultPort = normalizePort(cfg.stratumPort || cfg.port || "");
+  const structured = typeof kgwBridgeR51ReadStructuredInstancesR26B === "function"
+    ? kgwBridgeR51ReadStructuredInstancesR26B(net)
+    : { activeInstance: String(activeInstance?.[net] || ""), instances: Array.isArray(bridgeInstances?.[net]) ? bridgeInstances[net] : [] };
+
+  const instances = Array.isArray(structured?.instances) ? structured.instances : [];
+  const activeId = String(structured?.activeInstance || activeInstance?.[net] || "");
+  const uniqueById = new Map();
+
+  for (const item of instances) {
+    if (!item || typeof item !== "object") continue;
+    const id = String(item.id || "");
+    const key = id || JSON.stringify(item);
+    if (!uniqueById.has(key)) uniqueById.set(key, item);
+  }
+
+  const activeRecord = activeId && uniqueById.has(activeId)
+    ? uniqueById.get(activeId)
+    : Array.from(uniqueById.values())[0] || null;
+
+  const activePort = normalizePort(
+    activeRecord?.instancePort ||
+    activeRecord?.port ||
+    activeRecord?.stratumPort ||
+    ""
+  );
+
+  const conflictDetails = {
+    patch: "R110H",
+    owner: "existing-bridge-port-conflict-owner-r5-scoped-start",
+    network: net,
+    defaultPort,
+    activeInstanceId: activeId,
+    activeInstancePort: activePort,
+    instanceCount: instances.length,
+    uniqueInstanceCount: uniqueById.size,
+    policy: "start checks current network active instance only; stale cross-network conflicts are not blockers"
+  };
+
+  try {
+    kgwBridgeTrace?.("bridge", net, "port-conflict", "r110h-scoped-start-conflict-check", conflictDetails);
+  } catch (_) {}
+
+  if (!activeRecord) {
+    return { ok: true, conflictCount: 0, conflicts: [], message: "" };
+  }
+
+  if (!activePort) {
+    const msg = "Active Bridge instance has no valid Stratum port.";
+    try {
+      kgwBridgeTrace?.("bridge", net, "port-conflict", "r110h-active-instance-port-invalid", {
+        ...conflictDetails,
+        message: msg
+      });
+    } catch (_) {}
+    throw new Error(msg);
+  }
+
+  // If the selected instance uses the network default port, do not block Start here.
+  // R110F backend now uses the active instance contract as the runtime start target.
+  // The old global blocker incorrectly treated default-vs-instance as two separate listeners.
+  return { ok: true, conflictCount: 0, conflicts: [], message: "" };
 }
 
 
@@ -3394,36 +3574,60 @@ function bridgeSchedulePortAutofixRefreshR37(net, reason) {
 /* KGW_BRIDGE_AUTOFIX_I18N_PATCH_R54D3
  * Local i18n wrapper for existing Bridge Auto Fix labels/log prefix.
  */
+/* KGW_BRIDGE_AUTOFIX_I18N_PATCH_R54D3
+ * Existing Bridge Auto Fix i18n owner.
+ * KGW_BRIDGE_AUTOFIX_I18N_OWNER_SAFE_FALLBACK_R112D:
+ * Never return a raw bridge.autofixPorts.* key to the UI.
+ */
 function kgwBridgeAutoFixTextR54D3(key) {
   const map = {
     button: "bridge.autofixPorts.button",
     conflictingButton: "bridge.autofixPorts.conflictingButton",
+    fixingButton: "bridge.autofixPorts.fixingButton",
+    fixedButton: "bridge.autofixPorts.fixedButton",
+    failedButton: "bridge.autofixPorts.failedButton",
+    disabledButton: "bridge.autofixPorts.disabledButton",
     title: "bridge.autofixPorts.title",
     changedPrefix: "bridge.autofixPorts.changedPrefix"
   };
+
+  const fallback = {
+    button: "Auto Fix Ports",
+    conflictingButton: "Auto Fix Ports",
+    fixingButton: "Fixing Ports...",
+    fixedButton: "Ports Fixed",
+    failedButton: "Auto Fix Failed",
+    disabledButton: "Auto Fix Ports",
+    title: "Auto Fix Ports",
+    changedPrefix: "Changed ports"
+  };
+
   const i18nKey = map[key] || map.button;
+  const fallbackText = fallback[key] || fallback.button;
+
+  const cleanTranslated = (value) => {
+    const text = String(value || "").trim();
+    if (!text) return "";
+    if (text === i18nKey) return "";
+    if (/^bridge\.autofixPorts\./.test(text)) return "";
+    return text;
+  };
 
   try {
-    if (typeof t === "function") return t(i18nKey);
+    if (typeof t === "function") {
+      const translated = cleanTranslated(t(i18nKey));
+      if (translated) return translated;
+    }
   } catch (_) {}
 
   try {
-    if (typeof translate === "function") return translate(i18nKey);
+    if (typeof translate === "function") {
+      const translated = cleanTranslated(translate(i18nKey));
+      if (translated) return translated;
+    }
   } catch (_) {}
 
-  try {
-    if (typeof i18n === "function") return i18n(i18nKey);
-  } catch (_) {}
-
-  try {
-    if (window && typeof window.kgwT === "function") return window.kgwT(i18nKey);
-  } catch (_) {}
-
-  try {
-    if (window && window.kgwI18n && typeof window.kgwI18n.t === "function") return window.kgwI18n.t(i18nKey);
-  } catch (_) {}
-
-  return i18nKey;
+  return fallbackText;
 }
 
 function bridgeInstallPortAutofixButtonR37(root) {
@@ -4334,6 +4538,20 @@ function buildApplyPayload(net, command) {
     const preview = updateCommand(net) || byId(id(net, "commandPreview"))?.value || "";
     const nodeMode = bridgeNodeMode(net) === "inprocess" ? "inprocess" : "external";
 
+    // KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F
+    // Start must honor the selected Bridge Instance, not only the generic network Stratum port.
+    const structuredInstances = typeof kgwBridgeR51ReadStructuredInstancesR26B === "function"
+      ? kgwBridgeR51ReadStructuredInstancesR26B(net)
+      : { activeInstance: String(activeInstance?.[net] || ""), instances: Array.isArray(bridgeInstances?.[net]) ? bridgeInstances[net] : [] };
+    const bridgeActiveInstanceId = String(structuredInstances?.activeInstance || activeInstance?.[net] || "");
+    const bridgeActiveInstanceRecord = Array.isArray(structuredInstances?.instances)
+      ? structuredInstances.instances.find((item) => String(item?.id || "") === bridgeActiveInstanceId) || structuredInstances.instances[0] || null
+      : null;
+    const bridgeActiveInstance = bridgeActiveInstanceRecord && typeof bridgeBuildUpstreamInstanceArg === "function"
+      ? bridgeBuildUpstreamInstanceArg(net, bridgeActiveInstanceRecord)
+      : "";
+    const bridgeActiveInstancePort = String(bridgeActiveInstanceRecord?.instancePort || "").trim().replace(/^:/, "");
+
     return {
       network: net,
       runtimeRole: "bridge",
@@ -4341,6 +4559,10 @@ function buildApplyPayload(net, command) {
       bridgeKind: nodeMode === "inprocess" ? "official-inprocess-node" : "official-external-node",
       nodeCommandPreview: "",
       bridgeCommandPreview: preview,
+      bridgeActiveInstanceId,
+      bridgeActiveInstance,
+      bridgeActiveInstancePort,
+      bridgeStructuredInstances: JSON.stringify(structuredInstances || {}),
     };
   }
 
@@ -4557,9 +4779,26 @@ async function runBridgeIntegratedAction(action, net) {
       command
     });
 
-    if (!bridgeAssertNoPortConflictsBeforeStartR33(net)) {
-      kgwBridgeRuntimeOwnerTraceR64D("r33-port-start-blocked-return", {
-        reason: "port-conflict"
+    // KGW_BRIDGE_RUNTIME_START_SCOPED_CONFLICT_R111F
+    // Use the registered scoped conflict owner instead of the retired global R33 pre-start blocker.
+    const scopedConflictResultR111F = bridgeAssertNoPortConflictsR5(net);
+
+    kgwBridgeRuntimeOwnerTraceR64D("r111f-scoped-conflict-owner-result", {
+      owner: "bridgeRuntimeStartOwner",
+      conflictOwner: "bridgeInstances.bridgeAssertNoPortConflictsR5",
+      ok: scopedConflictResultR111F && typeof scopedConflictResultR111F === "object"
+        ? scopedConflictResultR111F.ok !== false
+        : true,
+      conflictCount: scopedConflictResultR111F && typeof scopedConflictResultR111F === "object"
+        ? Number(scopedConflictResultR111F.conflictCount || 0)
+        : 0
+    });
+
+    if (scopedConflictResultR111F && typeof scopedConflictResultR111F === "object" && scopedConflictResultR111F.ok === false) {
+      kgwBridgeRuntimeOwnerTraceR64D("r111f-scoped-conflict-start-blocked-return", {
+        reason: "scoped-port-conflict",
+        conflictCount: Number(scopedConflictResultR111F.conflictCount || 0),
+        message: String(scopedConflictResultR111F.message || "")
       });
       return true;
     }
@@ -6194,3 +6433,7 @@ export default initKaspaBridgeTab;
 if (typeof window !== "undefined") {
   window.initKaspaBridgeTab = initKaspaBridgeTab;
 }
+
+
+// KGW_BRIDGE_AUTOFIX_BUTTON_INITIAL_LABEL_R111G
+try { kgwBridgeAutofixButtonInitialLabelR111G(document); } catch (_) {}

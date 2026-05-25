@@ -2435,5 +2435,13 @@
   "bridge.inprocessNodeSettings.overrideParamsFile": "--override-params-file",
   "bridge.inprocessNodeSettings.devnet": "--devnet",
   "bridge.inprocessNodeSettings.simnet": "--simnet",
-  "bridge.inprocessNodeSettings.enableUnsyncedMining": "--enable-unsynced-mining"
+  "bridge.inprocessNodeSettings.enableUnsyncedMining": "--enable-unsynced-mining",
+  "bridge.autofixPorts.button": "Auto Fix Ports",
+  "bridge.autofixPorts.conflictingButton": "Auto Fix Ports",
+  "bridge.autofixPorts.fixingButton": "Fixing Ports...",
+  "bridge.autofixPorts.fixedButton": "Ports Fixed",
+  "bridge.autofixPorts.failedButton": "Auto Fix Failed",
+  "bridge.autofixPorts.disabledButton": "Auto Fix Ports",
+  "bridge.autofixPorts.title": "自动修复端口",
+  "bridge.autofixPorts.changedPrefix": "已更改的端口"
 }
