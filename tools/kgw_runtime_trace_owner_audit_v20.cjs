@@ -248,64 +248,107 @@ try {
 
   run("cargo", ["check", "-p", "kaspa-gateway-desktop", "--no-default-features", "--features", "official-kaspa-runtime-all rkstratum_cpu_miner"], repoRoot);
 
-  const appRoot = abs("apps/kaspa-gateway-desktop");
-  const devProbe = cp.spawn("npm.cmd", ["run", "tauri", "--", "dev", "--features", "official-kaspa-runtime-all rkstratum_cpu_miner"], {
-    cwd: appRoot,
-    shell: false,
-    windowsHide: false
-  });
+  /* KGW_RUNTIME_TRACE_OWNER_OPTIONAL_DEV_PROBE_FIX_R100A3
+   * The program-wide unified gate must be deterministic and must not open
+   * a long-running Tauri dev process by default. The previous hard-coded
+   * npm.cmd spawn could fail with spawn EINVAL on Windows gate runners.
+   *
+   * Dev probe is now opt-in only:
+   *   KGW_TRACE_AUDIT_DEV_PROBE=1
+   */
+  const devProbeEnabled = String(process.env.KGW_TRACE_AUDIT_DEV_PROBE || "").trim() === "1";
 
-  let stdout = "";
-  let stderr = "";
-  let exited = false;
-  let exitCode = null;
-  let exitSignal = null;
+  if (!devProbeEnabled) {
+    addFinding("INFO", "Tauri dev 12-second probe", {
+      skipped: true,
+      reason: "Disabled by default for stable unified gate execution.",
+      enableWith: "KGW_TRACE_AUDIT_DEV_PROBE=1",
+      patch: "R100A3"
+    });
+  } else {
+    const appRoot = abs("apps/kaspa-gateway-desktop");
+    const npmCommand =
+      process.env.KGW_NPM_CMD ||
+      (process.platform === "win32" && fs.existsSync("C:\\Program Files\\nodejs\\npm.cmd")
+        ? "C:\\Program Files\\nodejs\\npm.cmd"
+        : (process.platform === "win32" ? "npm.cmd" : "npm"));
 
-  devProbe.stdout.on("data", (chunk) => {
-    stdout += chunk.toString();
-  });
+    const devProbe = cp.spawn(
+      npmCommand,
+      ["run", "tauri", "--", "dev", "--features", "official-kaspa-runtime-all rkstratum_cpu_miner"],
+      {
+        cwd: appRoot,
+        shell: process.platform === "win32",
+        windowsHide: true
+      }
+    );
 
-  devProbe.stderr.on("data", (chunk) => {
-    stderr += chunk.toString();
-  });
+    let stdout = "";
+    let stderr = "";
+    let exited = false;
+    let exitCode = null;
+    let exitSignal = null;
+    let spawnError = null;
 
-  devProbe.on("exit", (code, signal) => {
-    exited = true;
-    exitCode = code;
-    exitSignal = signal;
-  });
+    devProbe.stdout.on("data", (chunk) => {
+      stdout += chunk.toString();
+    });
 
-  const start = Date.now();
-  while (Date.now() - start < 12000) {
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
-    if (exited) break;
+    devProbe.stderr.on("data", (chunk) => {
+      stderr += chunk.toString();
+    });
+
+    devProbe.on("error", (error) => {
+      spawnError = error && error.message ? error.message : String(error);
+      exited = true;
+    });
+
+    devProbe.on("exit", (code, signal) => {
+      exited = true;
+      exitCode = code;
+      exitSignal = signal;
+    });
+
+    const start = Date.now();
+    while (Date.now() - start < 12000) {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
+      if (exited) break;
+    }
+
+    if (!exited) {
+      try {
+        devProbe.kill("SIGTERM");
+      } catch (_) {}
+    }
+
+    save(
+      "DEV_PROBE_12_SECONDS.log",
+      "Enabled: true" +
+        "\nCommand: " + npmCommand +
+        "\nExitedWithin12Seconds: " + exited +
+        "\nExitCode: " + exitCode +
+        "\nExitSignal: " + exitSignal +
+        "\nSpawnError: " + (spawnError || "") +
+        "\n\n--- STDOUT ---\n" + stdout +
+        "\n\n--- STDERR ---\n" + stderr
+    );
+
+    addFinding(exited && !spawnError ? "ERROR" : "INFO", "Tauri dev 12-second probe", {
+      enabled: true,
+      command: npmCommand,
+      exitedWithin12Seconds: exited,
+      exitCode,
+      exitSignal,
+      spawnError,
+      stdoutTail: stdout.slice(-4000),
+      stderrTail: stderr.slice(-4000),
+      interpretation: spawnError
+        ? "The optional dev probe could not spawn; this no longer blocks the unified gate unless explicitly reviewed."
+        : (exited
+          ? "The app/dev process returned to PowerShell quickly. Frontend runtime trace cannot appear if the app exits before UI interaction."
+          : "The dev process stayed alive for 12 seconds. Lack of trace is more likely command registration/printing/frontend loading, not immediate exit.")
+    });
   }
-
-  if (!exited) {
-    try {
-      devProbe.kill("SIGTERM");
-    } catch (_) {}
-  }
-
-  save(
-    "DEV_PROBE_12_SECONDS.log",
-    "ExitedWithin12Seconds: " + exited +
-      "\nExitCode: " + exitCode +
-      "\nExitSignal: " + exitSignal +
-      "\n\n--- STDOUT ---\n" + stdout +
-      "\n\n--- STDERR ---\n" + stderr
-  );
-
-  addFinding(exited ? "ERROR" : "INFO", "Tauri dev 12-second probe", {
-    exitedWithin12Seconds: exited,
-    exitCode,
-    exitSignal,
-    stdoutTail: stdout.slice(-4000),
-    stderrTail: stderr.slice(-4000),
-    interpretation: exited
-      ? "The app/dev process returned to PowerShell quickly. Frontend runtime trace cannot appear if the app exits before UI interaction."
-      : "The dev process stayed alive for 12 seconds. Lack of trace is more likely command registration/printing/frontend loading, not immediate exit."
-  });
 
   const critical = [];
 

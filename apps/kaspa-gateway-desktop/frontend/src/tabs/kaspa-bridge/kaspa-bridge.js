@@ -1581,6 +1581,81 @@ function bridgeFindNearestUnusedPortR9(startPort, usedPorts) {
   return String(port);
 }
 
+function bridgePortIsInsideAnyKnownRangeR91(net, kind, port) {
+  const normalized = bridgeNormalizePortR9(port);
+  if (!bridgePortIsValidR9(normalized)) return false;
+
+  const currentProfile = bridgePortProfileR35B(net);
+  const staticProfile = bridgeStaticPortProfileR91(net);
+  const ranges = [
+    currentProfile && currentProfile[kind],
+    staticProfile && staticProfile[kind]
+  ].filter(Boolean);
+
+  return ranges.some((range) => bridgePortInRangeR35B(normalized, range));
+}
+
+function bridgeInstancePortShouldFollowExternalRangeR91(net, kind, value) {
+  const normalized = bridgeNormalizePortR9(value);
+
+  if (!normalized) return true;
+  if (!bridgePortIsValidR9(normalized)) return true;
+
+  return bridgePortIsInsideAnyKnownRangeR91(net, kind, normalized);
+}
+
+function bridgeAddUsedPortR91(used, value) {
+  const normalized = bridgeNormalizePortR9(value);
+  if (bridgePortIsValidR9(normalized)) used.add(String(normalized));
+}
+
+function bridgeUsedPortSetExcludingNetworkInstancesR91(activeNet) {
+  const used = new Set();
+
+  for (const profile of BRIDGE_NETWORKS) {
+    const net = profile.key;
+
+    bridgeAddUsedPortR91(used, profile.kaspadPort);
+    bridgeAddUsedPortR91(used, profile.stratumPort);
+    bridgeAddUsedPortR91(used, profile.promPort);
+
+    const fields = [
+      "stratumPort",
+      "promPort",
+      "webDashboardPort",
+      "healthCheckPort",
+      "kaspadAddress",
+      "inprocessRpcListen",
+      "inprocessRpcListenBorsh",
+      "inprocessRpcListenJson",
+      "inprocessListen"
+    ];
+
+    for (const field of fields) {
+      const value = v(net, field);
+      for (const port of bridgeExtractPortsFromTextR5(value)) {
+        bridgeAddUsedPortR91(used, port);
+      }
+    }
+  }
+
+  for (const [net, list] of Object.entries(bridgeInstances)) {
+    if (String(net) === String(activeNet)) continue;
+    if (!Array.isArray(list)) continue;
+
+    for (const instance of list) {
+      bridgeAddUsedPortR91(used, instance && instance.instancePort);
+      bridgeAddUsedPortR91(used, instance && instance.instanceProm);
+
+      for (const port of bridgeExtractPortsFromTextR5(instance && instance.instance || "")) {
+        bridgeAddUsedPortR91(used, port);
+      }
+    }
+  }
+
+  return used;
+}
+
 function bridgeAssignMissingInstancePortsR9(net, instance) {
   const profile = bridgePortProfileR35B(net);
   const used = bridgeUsedPortSetR9(net, instance.id);
@@ -1588,27 +1663,90 @@ function bridgeAssignMissingInstancePortsR9(net, instance) {
   const currentPort = bridgeNormalizePortR9(instance.instancePort);
   const currentProm = bridgeNormalizePortR9(instance.instanceProm);
 
-  const instancePort = bridgePortIsValidR9(currentPort)
+  const followStratumRange = bridgeInstancePortShouldFollowExternalRangeR91(net, "stratum", currentPort);
+  const followPromRange = bridgeInstancePortShouldFollowExternalRangeR91(net, "prom", currentProm);
+
+  const instancePort = !followStratumRange && bridgePortIsValidR9(currentPort)
     ? currentPort
     : bridgeFindRecommendedOrNearestUnusedPortR35B(net, "stratum", used, profile.stratum.instanceStart);
 
-  const instanceProm = bridgePortIsValidR9(currentProm)
+  const instanceProm = !followPromRange && bridgePortIsValidR9(currentProm)
     ? currentProm
     : bridgeFindRecommendedOrNearestUnusedPortR35B(net, "prom", used, profile.prom.instanceStart);
 
-  bridgeTracePortProfileR35B(net, "r35b-assign-missing-instance-ports-r9", {
+  bridgeTracePortProfileR35B(net, "r91-assign-instance-ports-from-external-range", {
     instanceId: String(instance && instance.id || ""),
-    acceptedManualInstancePort: Boolean(currentPort && bridgePortIsValidR9(currentPort)),
-    acceptedManualInstanceProm: Boolean(currentProm && bridgePortIsValidR9(currentProm)),
+    acceptedManualInstancePort: Boolean(!followStratumRange && currentPort && bridgePortIsValidR9(currentPort)),
+    acceptedManualInstanceProm: Boolean(!followPromRange && currentProm && bridgePortIsValidR9(currentProm)),
     instancePort,
     instanceProm,
-    policy: "manual valid ports are accepted; recommendations are soft"
+    stratumRange: [profile.stratum.min, profile.stratum.max],
+    promRange: [profile.prom.min, profile.prom.max],
+    stratumExternalBase: String(profile.stratum.externalBase || ""),
+    promExternalBase: String(profile.prom.externalBase || ""),
+    policy: "instances follow bridge-level external port settings unless a valid out-of-range manual port is clearly set"
   });
 
   return { ...instance, instancePort, instanceProm };
 }
 
+function bridgeReassignInstancePortsFromExternalRangeR91(net, reason) {
+  net = bridgeInstanceNetworkKeyR15(net, net);
+  if (!Array.isArray(bridgeInstances[net])) return false;
+
+  const profile = bridgePortProfileR35B(net);
+  const used = bridgeUsedPortSetExcludingNetworkInstancesR91(net);
+  let changed = false;
+
+  bridgeInstances[net] = bridgeInstances[net].map((raw, index) => {
+    const instance = bridgeNormalizeInstanceRecord(raw, raw && raw.id ? raw.id : Date.now() + index);
+    const currentPort = bridgeNormalizePortR9(instance.instancePort);
+    const currentProm = bridgeNormalizePortR9(instance.instanceProm);
+
+    const shouldFollowPort = bridgeInstancePortShouldFollowExternalRangeR91(net, "stratum", currentPort);
+    const shouldFollowProm = bridgeInstancePortShouldFollowExternalRangeR91(net, "prom", currentProm);
+
+    let instancePort = currentPort;
+    let instanceProm = currentProm;
+
+    if (shouldFollowPort) {
+      instancePort = bridgeFindRecommendedOrNearestUnusedPortR35B(net, "stratum", used, Number(profile.stratum.instanceStart) + index);
+      changed = changed || instancePort !== currentPort;
+    } else {
+      bridgeAddUsedPortR91(used, instancePort);
+    }
+
+    if (shouldFollowProm) {
+      instanceProm = bridgeFindRecommendedOrNearestUnusedPortR35B(net, "prom", used, Number(profile.prom.instanceStart) + index);
+      changed = changed || instanceProm !== currentProm;
+    } else {
+      bridgeAddUsedPortR91(used, instanceProm);
+    }
+
+    return {
+      ...instance,
+      instance: "",
+      instancePort,
+      instanceProm
+    };
+  });
+
+  if (changed) {
+    bridgeTracePortProfileR35B(net, "r91-reassign-instances-from-external-range", {
+      reason: String(reason || ""),
+      stratumRange: [profile.stratum.min, profile.stratum.max],
+      promRange: [profile.prom.min, profile.prom.max],
+      stratumExternalBase: String(profile.stratum.externalBase || ""),
+      promExternalBase: String(profile.prom.externalBase || ""),
+      instanceCount: bridgeInstances[net].length
+    });
+  }
+
+  return changed;
+}
+
 function bridgeCreateInstanceRecordR9(net) {
+  bridgeReassignInstancePortsFromExternalRangeR91(net, "before-create-instance");
   const record = bridgeDefaultInstanceRecord(Date.now() + Math.floor(Math.random() * 1000));
   return bridgeAssignMissingInstancePortsR9(net, record);
 }
@@ -2211,41 +2349,115 @@ function renderInprocessNodeSettings(net) {
       </section>
     </div>`;
 }
+/* KGW_BRIDGE_FLAT_TWO_TABS_ULTRA_COMPACT_OWNER_R101N
+ * Existing Bridge settings owner refinement.
+ * Bridge top-level settings tabs are General / Advanced only.
+ * General uses flat ultra-compact fields; Advanced keeps complex owners safely.
+ */
+function kgwBridgeFlatSectionFieldsR101N(html) {
+  return String(html || "")
+    .replace(/^\s*<div\s+class=["']bridge-v7-grid["']>\s*/i, "")
+    .replace(/\s*<\/div>\s*$/i, "");
+}
+
+function kgwBridgeFlatGroupBodyR101N(sections) {
+  return sections.map((body) => kgwBridgeFlatSectionFieldsR101N(body)).join("\n");
+}
+
 function renderSections(net) {
-  const sections = [
-    ["runtime", "Runtime", renderRuntime(net)],
-    ["inprocess-node", "In-Process Node", renderInprocessNodeSettings(net)],
-    ["difficulty", "Difficulty", renderDifficulty(net)],
-    ["logging", "Logging", renderLogging(net)],
-    ["ports", "Ports / Paths", renderPorts(net)],
-    ...(net.key === "mainnet" ? [] : [["cpu", "CPU Miner", renderCpuMiner(net)]]),
-    ["instances", "Instances", renderInstances(net.key)]
+  /* KGW_BRIDGE_GROUPED_SETTINGS_TABS_OWNER_R101G */
+  /* KGW_BRIDGE_GROUPED_SETTINGS_TABS_COMPACT_FIX_R101H */
+  /* KGW_BRIDGE_FLAT_TWO_TABS_ULTRA_COMPACT_OWNER_R101N */
+  /* KGW_BRIDGE_FOUR_TABS_ULTRA_COMPACT_FIX_R101O */
+  /* KGW_BRIDGE_MERGE_ADVANCED_INTO_GENERAL_R101P
+   * Advanced fields are merged into General because there is enough space.
+   * Bridge internal tabs are General / In-Processor / Instances.
+   */
+  const groups = [
+    ["general", "General"],
+    ["inprocessor", "In-Processor"],
+    ["instances", "Instances"]
   ];
 
-  const tabs = sections.map(([key, label], index) =>
-    `<button type="button" class="bridge-v7-section-tab${index === 0 ? " active" : ""}" data-net="${net.key}" data-bridge-section-tab="${key}">${label}</button>`
+  const tabs = groups.map(([key, label], index) =>
+    `<button type="button" class="bridge-v7-section-tab bridge-v7-section-tab--grouped bridge-v7-section-tab--flat${index === 0 ? " active" : ""}" data-net="${net.key}" data-bridge-section-tab="${key}">${label}</button>`
   ).join("");
 
-  const panels = sections.map(([key, , body], index) => {
-    const panelId = key === "instances" ? ` id="${id(net.key, "instances")}"` : "";
-    return `
-    ${kgwBridgeDifficultyDatalistR16C()}<section${panelId} class="bridge-v7-section${index === 0 ? " active" : ""}" data-net="${net.key}" data-bridge-section-panel="${key}"${index === 0 ? "" : " hidden"}>${body}</section>`;
-  }).join("");
+  const generalFields = kgwBridgeFlatGroupBodyR101N([
+    renderRuntime(net),
+    renderLogging(net),
+    renderDifficulty(net),
+    renderPorts(net),
+    ...(net.key === "mainnet" ? [] : [renderCpuMiner(net)])
+  ]);
+
+  const panels = `
+    <section class="bridge-v7-section bridge-v7-section-group bridge-v7-section-group--flat active" data-net="${net.key}" data-bridge-section-panel="general">
+      ${kgwBridgeDifficultyDatalistR16C()}
+      <div class="bridge-v7-flat-eight-grid" data-bridge-flat-grid="general">${generalFields}</div>
+    </section>
+    <section class="bridge-v7-section bridge-v7-section-group bridge-v7-section-group--flat bridge-v7-section-group--standalone" data-net="${net.key}" data-bridge-section-panel="inprocessor" hidden>
+      <div class="bridge-v7-flat-complex-block bridge-v7-flat-inprocess-block" data-bridge-flat-complex="inprocessor">
+        ${renderInprocessNodeSettings(net)}
+      </div>
+    </section>
+    <section id="${id(net.key, "instances")}" class="bridge-v7-section bridge-v7-section-group bridge-v7-section-group--flat bridge-v7-section-group--standalone" data-net="${net.key}" data-bridge-section-panel="instances" hidden>
+      <div class="bridge-v7-flat-complex-block bridge-v7-flat-instances-block" data-bridge-flat-complex="instances">
+        ${renderInstances(net.key)}
+      </div>
+    </section>`;
 
   return `
-    <div class="bridge-v7-section-tabs">${tabs}</div>
-    <div class="bridge-v7-sections">${panels}</div>`;
+    <div class="bridge-v7-section-tabs bridge-v7-section-tabs--grouped bridge-v7-section-tabs--flat">${tabs}</div>
+    <div class="bridge-v7-sections bridge-v7-sections--grouped bridge-v7-sections--flat bridge-v7-sections--four-tabs">${panels}</div>`;
+}
+
+/* KGW_BRIDGE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U
+ * Default Bridge inner tab is Live Bridge Monitor.
+ * Last selected inner tab is saved per network.
+ */
+function kgwBridgeInnerTabStorageKeyR101U(net) {
+  return `kgw.bridge.innerTab.${String(net || "unknown")}`;
+}
+
+function kgwBridgeNormalizeInnerTabR101U(value) {
+  return value === "settings" || value === "log" ? value : "log";
+}
+
+function kgwBridgeResolveInnerTabR101U(net) {
+  try {
+    return kgwBridgeNormalizeInnerTabR101U(localStorage.getItem(kgwBridgeInnerTabStorageKeyR101U(net)));
+  } catch (_) {
+    return "log";
+  }
+}
+
+function kgwBridgeSaveInnerTabR101U(net, selected) {
+  const normalized = kgwBridgeNormalizeInnerTabR101U(selected);
+  try {
+    localStorage.setItem(kgwBridgeInnerTabStorageKeyR101U(net), normalized);
+  } catch (_) {}
+  return normalized;
 }
 
 function renderNetworkPanel(net, index) {
+  /* KGW_BRIDGE_LIVE_MONITOR_TAB_LABEL_ORDER_R101S */
+  /* KGW_BRIDGE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U
+   * Settings is no longer the default inner panel.
+   * Default is Live Bridge Monitor unless a valid saved tab exists for this network.
+   */
+  const activeInnerTab = kgwBridgeResolveInnerTabR101U(net.key);
+  const logActive = activeInnerTab === "log";
+  const settingsActive = activeInnerTab === "settings";
+
   return `
     <div class="bridge-v7-network-panel${index === 0 ? " active" : ""}" data-bridge-network-panel="${net.key}"${index === 0 ? "" : " hidden"}>
       <div class="bridge-v7-inner-tabs">
-        <button type="button" class="bridge-v7-inner-tab active" data-net="${net.key}" data-bridge-inner-tab="settings">Settings</button>
-        <button type="button" class="bridge-v7-inner-tab" data-net="${net.key}" data-bridge-inner-tab="log">Log</button>
+        <button type="button" class="bridge-v7-inner-tab${logActive ? " active" : ""}" data-net="${net.key}" data-bridge-inner-tab="log">Live Bridge Monitor</button>
+        <button type="button" class="bridge-v7-inner-tab${settingsActive ? " active" : ""}" data-net="${net.key}" data-bridge-inner-tab="settings">Settings</button>
       </div>
 
-      <div class="bridge-v7-inner-panel active" data-net="${net.key}" data-bridge-inner-panel="settings">
+      <div class="bridge-v7-inner-panel${settingsActive ? " active" : ""}" data-net="${net.key}" data-bridge-inner-panel="settings"${settingsActive ? "" : " hidden"}>
         <section class="bridge-v7-command">
           <div class="bridge-v7-command-title">Command Preview</div>
           <textarea id="${id(net.key, "commandPreview")}" readonly spellcheck="false" wrap="soft"></textarea>
@@ -2274,7 +2486,7 @@ function renderNetworkPanel(net, index) {
 
       </div>
 
-      <div class="bridge-v7-inner-panel" data-net="${net.key}" data-bridge-inner-panel="log" hidden>
+      <div class="bridge-v7-inner-panel${logActive ? " active" : ""}" data-net="${net.key}" data-bridge-inner-panel="log"${logActive ? "" : " hidden"}>
         <div class="bridge-v7-log-toolbar">
           <button type="button" data-bridge-action="copy-log" data-net="${net.key}">Copy Log</button>
           <button type="button" data-bridge-action="clear-log" data-net="${net.key}">Clear Log</button>
@@ -2512,8 +2724,118 @@ const KGW_BRIDGE_PORT_PROFILES_R35B = Object.freeze({
   })
 });
 
-function bridgePortProfileR35B(net) {
+/* KGW_BRIDGE_INSTANCE_EXTERNAL_PORT_RANGE_OWNER_R91
+ * Existing Bridge port-profile owner refinement.
+ * Instance stratum/prometheus port ranges are now derived from the current
+ * bridge-level network settings outside the instance editor:
+ * - stratum instances follow --stratum-port + 1 onward.
+ * - prom instances follow --prom-port + 1 onward.
+ * - each network remains isolated: mainnet, testnet10, testnet12.
+ * - valid clearly manual out-of-range instance ports are preserved.
+ */
+function bridgeStaticPortProfileR91(net) {
   return KGW_BRIDGE_PORT_PROFILES_R35B[String(net || "")] || KGW_BRIDGE_PORT_PROFILES_R35B.mainnet;
+}
+
+function bridgeNormalizePortLiteralR91(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+
+  const hostMatch = text.match(/(?:^|[^0-9])(?:127\.0\.0\.1|0\.0\.0\.0|localhost)?:(\d{1,5})(?:$|[^0-9])/i);
+  if (hostMatch) {
+    const port = Number(hostMatch[1]);
+    return Number.isInteger(port) && port >= 1 && port <= 65535 ? String(port) : "";
+  }
+
+  const plain = text.replace(/^:/, "");
+  if (/^\d{1,5}$/.test(plain)) {
+    const port = Number(plain);
+    return Number.isInteger(port) && port >= 1 && port <= 65535 ? String(port) : "";
+  }
+
+  const extracted = typeof bridgeExtractPortsFromTextR5 === "function"
+    ? bridgeExtractPortsFromTextR5(text)
+    : [];
+
+  return extracted && extracted.length ? String(extracted[0]) : "";
+}
+
+function bridgeExternalBasePortR91(net, kind, fallbackRange) {
+  const profile = bridgeProfile(net) || {};
+  const fieldByKind = {
+    stratum: "stratumPort",
+    prom: "promPort",
+    dashboard: "webDashboardPort"
+  };
+
+  const profileFieldByKind = {
+    stratum: "stratumPort",
+    prom: "promPort",
+    dashboard: "dashboardPort"
+  };
+
+  const fieldName = fieldByKind[kind] || "stratumPort";
+  const profileFieldName = profileFieldByKind[kind] || fieldName;
+
+  const current = typeof v === "function" ? v(net, fieldName) : "";
+  const profileValue = profile && profile[profileFieldName] ? profile[profileFieldName] : "";
+
+  return bridgeNormalizePortLiteralR91(current) ||
+    bridgeNormalizePortLiteralR91(profileValue) ||
+    bridgeNormalizePortLiteralR91(fallbackRange && fallbackRange.preferred) ||
+    bridgeNormalizePortLiteralR91(fallbackRange && fallbackRange.min) ||
+    "";
+}
+
+function bridgeRangeFromExternalBaseR91(basePort, fallbackRange) {
+  const fallback = fallbackRange || {};
+  const base = Number(bridgeNormalizePortLiteralR91(basePort));
+
+  if (!Number.isInteger(base) || base < 1 || base > 65535) {
+    return { ...fallback };
+  }
+
+  if (Number(fallback.preferred) === base) {
+    return {
+      ...fallback,
+      externalBase: String(base),
+      externalOwner: "static-profile-matching-current-bridge-setting",
+      dynamicFromExternalSetting: false
+    };
+  }
+
+  const start = base < 65535 ? base + 1 : base;
+  const max = Math.min(65535, start + 98);
+
+  return {
+    ...fallback,
+    min: start,
+    max,
+    preferred: base,
+    instanceStart: start,
+    externalBase: String(base),
+    externalOwner: "bridge-level-port-setting",
+    dynamicFromExternalSetting: true
+  };
+}
+
+function bridgePortProfileR35B(net) {
+  const staticProfile = bridgeStaticPortProfileR91(net);
+
+  return {
+    stratum: Object.freeze(bridgeRangeFromExternalBaseR91(
+      bridgeExternalBasePortR91(net, "stratum", staticProfile.stratum),
+      staticProfile.stratum
+    )),
+    prom: Object.freeze(bridgeRangeFromExternalBaseR91(
+      bridgeExternalBasePortR91(net, "prom", staticProfile.prom),
+      staticProfile.prom
+    )),
+    dashboard: Object.freeze(bridgeRangeFromExternalBaseR91(
+      bridgeExternalBasePortR91(net, "dashboard", staticProfile.dashboard),
+      staticProfile.dashboard
+    ))
+  };
 }
 
 function bridgeNormalizePortSoftR35B(value) {
@@ -3646,6 +3968,7 @@ function updateCommand(net) {
 
   try {
     bridgeSyncModeControls(net);
+    bridgeReassignInstancePortsFromExternalRangeR91(net, "update-command");
     bridgeSyncInstancePreviewRowsR8B(net);
 
     const lines = buildCommandLines(net);
@@ -3733,8 +4056,25 @@ function kgwBridgeExplicitTraceR27D(net, action, phase, details) {
     }
   } catch (_) {}
 }
+/* KGW_BRIDGE_LAST_NETWORK_RESTORE_R101W2 */
+const KGW_BRIDGE_LAST_NETWORK_KEY_R101W2 = "kgw.bridge.lastNetwork";
+function kgwBridgeNormalizeNetworkR101W2(value) {
+  const normalized = String(value || "").trim();
+  return normalized === "mainnet" || normalized === "testnet10" || normalized === "testnet12" ? normalized : "";
+}
+function kgwBridgeReadLastNetworkR101W2() {
+  try { return kgwBridgeNormalizeNetworkR101W2(localStorage.getItem(KGW_BRIDGE_LAST_NETWORK_KEY_R101W2)); } catch (_) { return ""; }
+}
+function kgwBridgeSaveLastNetworkR101W2(net) {
+  const normalized = kgwBridgeNormalizeNetworkR101W2(net);
+  if (!normalized) return "";
+  try { localStorage.setItem(KGW_BRIDGE_LAST_NETWORK_KEY_R101W2, normalized); } catch (_) {}
+  return normalized;
+}
+
 function installNetworkTabs(root) {
   // KGW_R63_DIRECT_BRIDGE_NETWORK_TAB_SWITCH_OWNER
+  // KGW_BRIDGE_LAST_NETWORK_RESTORE_R101W2
   const networkTabSelector = "[data-bridge-network-tab]";
   const networkPanelSelector = "[data-bridge-network-panel]";
 
@@ -3743,24 +4083,13 @@ function installNetworkTabs(root) {
     return element.dataset.net || element.dataset.bridgeNetworkTab || element.dataset.bridgeNetworkPanel || "";
   }
 
-  function allNetworkTabs() {
-    return Array.from(root.querySelectorAll(networkTabSelector));
-  }
+  function allNetworkTabs() { return Array.from(root.querySelectorAll(networkTabSelector)); }
+  function allNetworkPanels() { return Array.from(root.querySelectorAll(networkPanelSelector)); }
 
-  function allNetworkPanels() {
-    return Array.from(root.querySelectorAll(networkPanelSelector));
-  }
-
-  function selectBridgeNetwork(net, reason = "manual") {
-    const normalized = String(net || "").trim();
-
+  function selectBridgeNetwork(net, reason = "manual", persist = false) {
+    const normalized = kgwBridgeNormalizeNetworkR101W2(net);
     if (!normalized) return;
-
-    kgwBridgeExplicitTraceR27D(normalized, "internal-navigation", "r45d-bridge-network-select", {
-      patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
-      reason: String(reason || ""),
-      selected: normalized
-    });
+    if (persist) kgwBridgeSaveLastNetworkR101W2(normalized);
 
     const tabs = allNetworkTabs();
     const panels = allNetworkPanels();
@@ -3768,7 +4097,6 @@ function installNetworkTabs(root) {
     for (const tab of tabs) {
       const tabNet = normalizeNetFromElement(tab);
       const active = tabNet === normalized;
-
       tab.classList.toggle("active", active);
       tab.classList.toggle("is-active", active);
       tab.classList.toggle("selected", active);
@@ -3779,7 +4107,6 @@ function installNetworkTabs(root) {
     for (const panel of panels) {
       const panelNet = normalizeNetFromElement(panel);
       const active = panelNet === normalized;
-
       panel.hidden = !active;
       panel.classList.toggle("active", active);
       panel.classList.toggle("is-active", active);
@@ -3787,58 +4114,37 @@ function installNetworkTabs(root) {
       panel.style.display = active ? "" : "none";
     }
 
-    if (typeof updateCommand === "function") {
-      updateCommand(normalized);
-    }
-
+    if (typeof updateCommand === "function") updateCommand(normalized);
     if (typeof kgwBridgeR51RefreshOne === "function") {
       window.setTimeout(() => kgwBridgeR51RefreshOne(normalized, "network-tab-" + reason), 50);
       window.setTimeout(() => kgwBridgeR51RefreshOne(normalized, "network-tab-" + reason + "+700ms"), 700);
-    }
-
-    if (typeof appendLog === "function") {
     }
   }
 
   root.addEventListener("click", (event) => {
     const tab = event.target.closest(networkTabSelector);
-
     if (!tab || !root.contains(tab)) return;
-
     const net = normalizeNetFromElement(tab);
-
     if (!net) return;
-
     event.preventDefault();
     event.stopPropagation();
-
     kgwBridgeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-bridge-network-tab-click", {
-      patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+      patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D+KGW_BRIDGE_LAST_NETWORK_RESTORE_R101W2",
       trusted: Boolean(event && event.isTrusted),
       selected: String(net || ""),
-      text: String(tab.textContent || "").trim()
+      text: String(tab.textContent || "").trim(),
+      persisted: true
     });
-
-    selectBridgeNetwork(net, "click");
+    selectBridgeNetwork(net, "click", true);
   }, true);
 
-  const existingActiveTab = allNetworkTabs().find((tab) => {
-    return tab.classList.contains("active") ||
-      tab.classList.contains("is-active") ||
-      tab.getAttribute("aria-selected") === "true" ||
-      tab.dataset.active === "true";
-  });
+  const saved = kgwBridgeReadLastNetworkR101W2();
+  const existingActiveTab = allNetworkTabs().find((tab) => tab.classList.contains("active") || tab.classList.contains("is-active") || tab.getAttribute("aria-selected") === "true" || tab.dataset.active === "true");
+  const defaultTab = (saved && allNetworkTabs().find((tab) => normalizeNetFromElement(tab) === saved)) || existingActiveTab || allNetworkTabs().find((tab) => normalizeNetFromElement(tab) === "mainnet") || allNetworkTabs()[0];
+  if (defaultTab) selectBridgeNetwork(normalizeNetFromElement(defaultTab), saved ? "saved-initial" : "initial", false);
 
-  const defaultTab =
-    existingActiveTab ||
-    allNetworkTabs().find((tab) => normalizeNetFromElement(tab) === "mainnet") ||
-    allNetworkTabs()[0];
-
-  if (defaultTab) {
-    selectBridgeNetwork(normalizeNetFromElement(defaultTab), "initial");
-  }
-
-  window.kgwBridgeSelectNetworkTabR63 = selectBridgeNetwork;
+  window.kgwBridgeSelectNetworkTabR63 = (net) => selectBridgeNetwork(net, "external", true);
+  window.kgwBridgeSelectNetworkTabR101W2 = window.kgwBridgeSelectNetworkTabR63;
 }
 
 function installDelegatedTabs(root) {
@@ -3846,14 +4152,15 @@ function installDelegatedTabs(root) {
     const innerTab = event.target.closest("[data-bridge-inner-tab]");
     if (innerTab) {
       const net = innerTab.dataset.net;
-      const selected = innerTab.dataset.bridgeInnerTab;
+      const selected = kgwBridgeSaveInnerTabR101U(net, innerTab.dataset.bridgeInnerTab);
       const panel = root.querySelector(`[data-bridge-network-panel="${net}"]`);
 
       kgwBridgeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-bridge-inner-tab-click", {
-        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D+KGW_BRIDGE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U",
         trusted: Boolean(event && event.isTrusted),
         selected: String(selected || ""),
-        text: String(innerTab.textContent || "").trim()
+        text: String(innerTab.textContent || "").trim(),
+        persisted: true
       });
 
       panel.querySelectorAll("[data-bridge-inner-tab]").forEach((item) => {
@@ -4711,11 +5018,133 @@ function kgwBridgeR51ReadSettings(net) {
     instanceCommandOptionInstanceCount: Object.keys(values[KGW_BRIDGE_R51_INSTANCE_COMMAND_OPTIONS_KEY_R38C] || {}).length
   });
 
+  return kgwBridgeR95BNormalizeNetworkPortValues(net, values, "read-settings");
+}
+
+/* KGW_BRIDGE_NETWORK_PORT_RANGE_R51_OWNER_FIX_R95B
+ * Existing R51 Bridge settings owner refinement.
+ *
+ * Runtime screenshots showed stale network-level bridge ports:
+ * - testnet10 was replayed as :5556 / :2113
+ * - testnet12 was replayed as :5557 / :2114
+ *
+ * Correct bridge-level network ranges already exist in KGW_BRIDGE_PORT_PROFILES_R35B:
+ * - mainnet   :5555 / :2112
+ * - testnet10 :5655 / :2212
+ * - testnet12 :5755 / :2312
+ *
+ * This patch normalizes only known stale sequential saved/default values while
+ * preserving explicit custom user ports.
+ */
+/* KGW_BRIDGE_PORT_ONLY_COLON_DISPLAY_FIX_R98
+ * Existing R95B/R51 Bridge settings owner refinement.
+ *
+ * Port-only UI fields must display plain numbers such as 5655, not :5655.
+ * Host:port fields and command preview syntax remain untouched.
+ */
+function kgwBridgeR98PlainPortOnlyValue(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/^:?(\d{1,5})$/);
+  if (!match) return text;
+
+  const port = Number(match[1]);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) return text;
+
+  return String(port);
+}
+
+function kgwBridgeR98SamePortValue(left, right) {
+  return kgwBridgeR98PlainPortOnlyValue(left) === kgwBridgeR98PlainPortOnlyValue(right);
+}
+
+function kgwBridgeR95BNormalizePlainPortValue(value) {
+  return kgwBridgeR98PlainPortOnlyValue(value);
+}
+
+function kgwBridgeR95BStorageFieldId(net, fieldName) {
+  return "bridge-" + String(net || "") + "-" + String(fieldName || "");
+}
+
+function kgwBridgeR95BPreferredPort(net, kind) {
+  const profile = typeof bridgeStaticPortProfileR91 === "function"
+    ? bridgeStaticPortProfileR91(net)
+    : (KGW_BRIDGE_PORT_PROFILES_R35B[String(net || "")] || KGW_BRIDGE_PORT_PROFILES_R35B.mainnet);
+
+  const range = profile && profile[kind];
+  return range && range.preferred ? kgwBridgeR98PlainPortOnlyValue(range.preferred) : "";
+}
+
+function kgwBridgeR95BKnownStaleSequentialPort(net, fieldName) {
+  const stale = {
+    testnet10: {
+      stratumPort: "5556",
+      promPort: "2113"
+    },
+    testnet12: {
+      stratumPort: "5557",
+      promPort: "2114"
+    }
+  };
+
+  return stale[String(net || "")] && stale[String(net || "")][fieldName]
+    ? stale[String(net || "")][fieldName]
+    : "";
+}
+
+function kgwBridgeR95BNormalizeNetworkPortValues(net, values, reason) {
+  if (!values || typeof values !== "object") return values;
+
+  const fields = [
+    { fieldName: "stratumPort", kind: "stratum" },
+    { fieldName: "promPort", kind: "prom" }
+  ];
+
+  const changes = [];
+
+  for (const field of fields) {
+    const storageId = kgwBridgeR95BStorageFieldId(net, field.fieldName);
+    const item = values[storageId];
+
+    if (!item || typeof item !== "object" || !("value" in item)) continue;
+
+    const current = kgwBridgeR95BNormalizePlainPortValue(item.value);
+    const stale = kgwBridgeR95BKnownStaleSequentialPort(net, field.fieldName);
+    const preferred = kgwBridgeR95BPreferredPort(net, field.kind);
+
+    if (stale && preferred && kgwBridgeR98SamePortValue(current, stale) && !kgwBridgeR98SamePortValue(current, preferred)) {
+      item.value = kgwBridgeR98PlainPortOnlyValue(preferred);
+      changes.push({
+        field: field.fieldName,
+        from: current,
+        to: item.value
+      });
+    } else if (current !== item.value && /^:?\d{1,5}$/.test(String(item.value || "").trim())) {
+      item.value = current;
+      changes.push({
+        field: field.fieldName,
+        from: String(item.value || ""),
+        to: current,
+        displayOnly: true
+      });
+    }
+  }
+
+  if (changes.length && typeof kgwBridgeSmallOwnerTraceR44D === "function") {
+    kgwBridgeSmallOwnerTraceR44D(net, "settings-persistence", "r98-normalize-port-only-display-values", {
+      patch: "R98",
+      owner: "bridge-r51-r95b-settings-owner",
+      reason: String(reason || ""),
+      changes
+    });
+  }
+
   return values;
 }
 
 function kgwBridgeR51WriteSettings(net, values) {
   if (!values || typeof values !== "object") return;
+
+  values = kgwBridgeR95BNormalizeNetworkPortValues(net, values, "write-settings");
 
   kgwBridgeR51ApplyStructuredInstancesR26B(net, values);
 
@@ -4736,6 +5165,10 @@ function kgwBridgeR51WriteSettings(net, values) {
   }
 
   kgwBridgeR51ApplyCommandOptionsR38C(net, values);
+
+  if (typeof bridgeReassignInstancePortsFromExternalRangeR91 === "function") {
+    bridgeReassignInstancePortsFromExternalRangeR91(net, "r95b-r51-write-settings-normalized-network-ports");
+  }
 
   bridgeSyncInstancePreviewRowsR8B(net);
   updateCommand(net);
@@ -4765,7 +5198,9 @@ function kgwBridgeR51LoadSavedSettings() {
   for (const net of kgwBridgeR51Keys()) {
     const saved = kgwBridgeR51Load("saved:" + net);
     if (saved) {
-      kgwBridgeR51WriteSettings(net, saved);
+      kgwBridgeR51WriteSettings(net, kgwBridgeR95BNormalizeNetworkPortValues(net, saved, "load-saved-settings"));
+    } else {
+      kgwBridgeR51WriteSettings(net, kgwBridgeR95BNormalizeNetworkPortValues(net, kgwBridgeR51ReadSettings(net), "load-current-settings"));
     }
   }
 }

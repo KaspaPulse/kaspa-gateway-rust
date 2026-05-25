@@ -1316,3 +1316,415 @@ label .kgw-command-switch-r8e:focus-visible,
 input[data-kgw-difficulty-preset-r16c] {
   font-variant-numeric: tabular-nums;
 }
+
+/* KGW_BRIDGE_GROUPED_SETTINGS_TABS_OWNER_R101G */
+#kaspa-bridge .bridge-v7-section-tabs--grouped {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+#kaspa-bridge .bridge-v7-sections--grouped {
+  display: block;
+  min-width: 0;
+  padding-bottom: 72px;
+}
+
+#kaspa-bridge .bridge-v7-section-group {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+#kaspa-bridge .bridge-v7-section-group-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 12px;
+  align-items: start;
+  min-width: 0;
+}
+
+#kaspa-bridge [data-bridge-section-panel="inprocessor"] .bridge-v7-section-group-body,
+#kaspa-bridge [data-bridge-section-panel="instances"] .bridge-v7-section-group-body {
+  grid-template-columns: 1fr;
+}
+
+#kaspa-bridge .bridge-v7-subsection {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.12);
+  padding: 10px;
+  overflow: visible;
+}
+
+#kaspa-bridge .bridge-v7-subsection-title {
+  font-size: 12px;
+  font-weight: 800;
+  margin: 0 0 8px;
+  opacity: 0.9;
+}
+
+#kaspa-bridge .bridge-v7-subsection .bridge-v7-section {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+#kaspa-bridge .bridge-v7-subsection .bridge-v7-grid,
+#kaspa-bridge .bridge-v7-subsection .bridge-v7-field {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* KGW_BRIDGE_GROUPED_SETTINGS_TABS_COMPACT_FIX_R101H */
+#kaspa-bridge .bridge-v7-section-tabs--grouped {
+  gap: 6px;
+  margin: 6px 0 8px;
+}
+
+#kaspa-bridge .bridge-v7-section-tab--grouped {
+  min-height: 28px;
+  padding: 5px 10px;
+  font-size: 11px;
+  border-radius: 10px;
+}
+
+#kaspa-bridge .bridge-v7-sections--grouped {
+  padding-bottom: 36px;
+}
+
+#kaspa-bridge .bridge-v7-section-group-body {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+#kaspa-bridge [data-bridge-section-panel="inprocessor"] .bridge-v7-section-group-body,
+#kaspa-bridge [data-bridge-section-panel="instances"] .bridge-v7-section-group-body {
+  grid-template-columns: 1fr;
+}
+
+#kaspa-bridge .bridge-v7-subsection {
+  padding: 7px;
+  border-radius: 10px;
+}
+
+#kaspa-bridge .bridge-v7-subsection-title {
+  font-size: 11px;
+  line-height: 1.15;
+  margin-bottom: 6px;
+}
+
+#kaspa-bridge .bridge-v7-grid {
+  gap: 6px 8px;
+  grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+}
+
+#kaspa-bridge .bridge-v7-field {
+  gap: 3px;
+  min-width: 0;
+}
+
+#kaspa-bridge .bridge-v7-field label,
+#kaspa-bridge .bridge-v7-field .bridge-v7-label {
+  font-size: 10.5px;
+  line-height: 1.15;
+}
+
+#kaspa-bridge .bridge-v7-field input,
+#kaspa-bridge .bridge-v7-field select,
+#kaspa-bridge .bridge-v7-field textarea {
+  min-height: 26px;
+  padding: 4px 7px;
+  font-size: 11px;
+  border-radius: 8px;
+}
+
+#kaspa-bridge .bridge-v7-subsection p,
+#kaspa-bridge .bridge-v7-subsection small,
+#kaspa-bridge .bridge-v7-subsection .hint,
+#kaspa-bridge .bridge-v7-subsection .muted {
+  font-size: 10.5px;
+  line-height: 1.25;
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+/* KGW_BRIDGE_FLAT_TWO_TABS_ULTRA_COMPACT_OWNER_R101N */
+#kaspa-bridge .bridge-v7-section-tabs--flat {
+  margin: 4px 0 6px;
+  gap: 5px;
+}
+
+#kaspa-bridge .bridge-v7-section-tab--flat {
+  min-height: 24px;
+  padding: 3px 9px;
+  font-size: 10.5px;
+  border-radius: 9px;
+}
+
+#kaspa-bridge .bridge-v7-sections--flat {
+  display: block;
+  padding-bottom: 10px;
+}
+
+#kaspa-bridge .bridge-v7-section-group--flat {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+}
+
+#kaspa-bridge .bridge-v7-flat-eight-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px 5px;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+#kaspa-bridge .bridge-v7-flat-eight-grid .bridge-v7-card {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 3px 5px;
+  border-radius: 6px;
+  gap: 1px;
+  overflow: hidden;
+}
+
+#kaspa-bridge .bridge-v7-flat-eight-grid .bridge-v7-card span,
+#kaspa-bridge .bridge-v7-flat-eight-grid .kgw-command-option-title-text-r8e {
+  font-size: 9.5px;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#kaspa-bridge .bridge-v7-flat-eight-grid .bridge-v7-card input,
+#kaspa-bridge .bridge-v7-flat-eight-grid .bridge-v7-card select,
+#kaspa-bridge .bridge-v7-flat-eight-grid .bridge-v7-card textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 22px;
+  height: 22px;
+  padding: 2px 5px;
+  font-size: 10px;
+  line-height: 1.05;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+#kaspa-bridge .bridge-v7-flat-eight-grid .bridge-v7-card textarea {
+  height: 34px;
+  min-height: 34px;
+}
+
+#kaspa-bridge .bridge-v7-flat-eight-grid .bridge-v7-card.span2 {
+  grid-column: span 2;
+}
+
+#kaspa-bridge .bridge-v7-flat-complex-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 8px;
+  min-width: 0;
+}
+
+#kaspa-bridge .bridge-v7-flat-complex-block {
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.10);
+  overflow: visible;
+}
+
+#kaspa-bridge .bridge-v7-flat-complex-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 0 0 6px;
+  opacity: 0.9;
+}
+
+#kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-grid,
+#kaspa-bridge .bridge-v7-flat-complex-block .bridge-v12d-inprocess-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 4px 5px;
+  min-width: 0;
+}
+
+#kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-card {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 3px 5px;
+  border-radius: 6px;
+  gap: 1px;
+  overflow: hidden;
+}
+
+#kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-card input,
+#kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-card select,
+#kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-card textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 22px;
+  height: 22px;
+  padding: 2px 5px;
+  font-size: 10px;
+  line-height: 1.05;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+#kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-card textarea {
+  height: 34px;
+  min-height: 34px;
+}
+
+#kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-card.span2 {
+  grid-column: span 2;
+}
+
+#kaspa-bridge .bridge-v12d-node-tabs,
+#kaspa-bridge .bridge-v7-instance-tabs {
+  gap: 4px;
+  margin: 4px 0 6px;
+}
+
+#kaspa-bridge .bridge-v12d-node-tab,
+#kaspa-bridge .bridge-v7-instance-pill-r7b,
+#kaspa-bridge .bridge-v7-instance-add {
+  min-height: 24px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  border-radius: 8px;
+}
+
+#kaspa-bridge .bridge-v7-instance-stack,
+#kaspa-bridge .bridge-v7-instance-panel {
+  min-width: 0;
+  max-width: 100%;
+}
+
+#kaspa-bridge .bridge-v7-instance-panel.active {
+  display: block;
+}
+
+#kaspa-bridge .bridge-v7-instance-panel.active .bridge-v7-card {
+  margin-bottom: 5px;
+}
+
+@media (max-width: 1760px) {
+  #kaspa-bridge .bridge-v7-flat-eight-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v12d-inprocess-grid {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1500px) {
+  #kaspa-bridge .bridge-v7-flat-eight-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v12d-inprocess-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1320px) {
+  #kaspa-bridge .bridge-v7-flat-eight-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v12d-inprocess-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1120px) {
+  #kaspa-bridge .bridge-v7-flat-eight-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v12d-inprocess-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 920px) {
+  #kaspa-bridge .bridge-v7-flat-eight-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v12d-inprocess-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 740px) {
+  #kaspa-bridge .bridge-v7-flat-eight-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v12d-inprocess-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  #kaspa-bridge .bridge-v7-flat-eight-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v7-grid,
+  #kaspa-bridge .bridge-v7-flat-complex-block .bridge-v12d-inprocess-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* KGW_BRIDGE_FOUR_TABS_ULTRA_COMPACT_FIX_R101O */
+#kaspa-bridge .bridge-v7-sections--four-tabs {
+  padding-bottom: 10px;
+}
+
+#kaspa-bridge .bridge-v7-section-group--standalone {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+}
+
+#kaspa-bridge .bridge-v7-section-group--standalone .bridge-v7-flat-complex-block {
+  margin: 0;
+}
+
+#kaspa-bridge [data-bridge-section-panel="inprocessor"] .bridge-v7-flat-complex-block,
+#kaspa-bridge [data-bridge-section-panel="instances"] .bridge-v7-flat-complex-block {
+  padding: 6px;
+  border-radius: 10px;
+}
+
+#kaspa-bridge [data-bridge-section-panel="inprocessor"] .bridge-v7-flat-complex-title,
+#kaspa-bridge [data-bridge-section-panel="instances"] .bridge-v7-flat-complex-title {
+  display: none;
+}
+
+#kaspa-bridge [data-bridge-section-panel="inprocessor"] .bridge-v12d-node-tabs,
+#kaspa-bridge [data-bridge-section-panel="instances"] .bridge-v7-instance-tabs {
+  margin-top: 0;
+}
+
+#kaspa-bridge [data-bridge-section-panel="advanced"] .bridge-v7-flat-eight-grid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+
+#kaspa-bridge [data-bridge-section-panel="general"] .bridge-v7-flat-eight-grid {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}

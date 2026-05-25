@@ -195,11 +195,19 @@ function kgwShellResolveStartupTabR63F(candidate, reason = "startup") {
 }
 
 function kgwShellApplyDisplayOwnerBeforeBootR63F(reason = "boot-before-open-tab") {
+  /* KGW_SHELL_ANY_SAVED_MAIN_TAB_RESTORE_R102C
+   * Existing display owners still apply preferences; after each apply, schedule saved-tab restoration.
+   */
+  const scheduleRestore = (suffix) => {
+    try { kgwShellScheduleSavedMainTabRestoreR102C(String(reason || "") + "-" + suffix); } catch (_) {}
+  };
+
   try {
     const shell = window.kgwShellDisplayPreferencesR71;
     if (shell && typeof shell.read === "function" && typeof shell.apply === "function") {
       const stored = shell.read();
       shell.apply(stored && typeof stored === "object" ? stored : shell.defaults ? shell.defaults() : null, "r63f-" + reason);
+      scheduleRestore("r71-apply");
       return true;
     }
   } catch (_) {}
@@ -209,6 +217,7 @@ function kgwShellApplyDisplayOwnerBeforeBootR63F(reason = "boot-before-open-tab"
     if (canonical && typeof canonical.read === "function" && typeof canonical.applyPreferences === "function") {
       const stored = canonical.read();
       canonical.applyPreferences(stored && typeof stored === "object" ? stored : canonical.defaults(), "r63f-" + reason);
+      scheduleRestore("r59c-read-apply");
       return true;
     }
   } catch (_) {}
@@ -217,16 +226,20 @@ function kgwShellApplyDisplayOwnerBeforeBootR63F(reason = "boot-before-open-tab"
     const canonical = window.kgwShellDisplayAndActiveTabOwnerR59C;
     if (canonical && typeof canonical.defaults === "function" && typeof canonical.applyPreferences === "function") {
       canonical.applyPreferences(canonical.defaults(), "r63f-" + reason);
+      scheduleRestore("r59c-default-apply");
       return true;
     }
   } catch (_) {}
 
+  scheduleRestore("no-apply-owner");
   return false;
 }
 
 
 function tabById(tabId) {
-  const resolvedTabId = kgwShellResolveStartupTabR63F(tabId, "tab-by-id");
+  /* KGW_SHELL_ANY_SAVED_MAIN_TAB_RESTORE_R102C */
+  const requestedKnownTabR102C = kgwShellKnownMainTabR102C(tabId);
+  const resolvedTabId = requestedKnownTabR102C || kgwShellResolveStartupTabR63F(tabId, "tab-by-id");
   const exact = KGW_TABS.find((tab) => tab.id === resolvedTabId);
   if (exact) return exact;
 
@@ -599,35 +612,151 @@ function kgwMainTabTraceR35C(tabId, phase, details) {
 }
 // KGW_EXPLICIT_MAIN_TAB_TRACE_OWNER_R35C_END
 
-async function openTab(tabId) {
+/* KGW_SHELL_LAST_FULL_LOCATION_RESTORE_R101W2
+ * Corrected version of R101W.
+ * Persists/restores the last valid top-level app tab without removing async from openTab/boot.
+ */
+const KGW_SHELL_LAST_MAIN_TAB_KEY_R101W2 = "kgw.shell.lastMainTab";
+
+function kgwShellIsValidMainTabR101W2(tabId) {
+  const candidate = String(tabId || "").trim();
+  if (!candidate) return false;
+  try { tabById(candidate); return true; } catch (_) { return false; }
+}
+
+function kgwShellReadLastMainTabR101W2() {
+  try {
+    const saved = localStorage.getItem(KGW_SHELL_LAST_MAIN_TAB_KEY_R101W2);
+    return kgwShellIsValidMainTabR101W2(saved) ? saved : "";
+  } catch (_) { return ""; }
+}
+
+function kgwShellSaveLastMainTabR101W2(tabId) {
+  const candidate = String(tabId || "").trim();
+  if (!kgwShellIsValidMainTabR101W2(candidate)) return "";
+  try { localStorage.setItem(KGW_SHELL_LAST_MAIN_TAB_KEY_R101W2, candidate); } catch (_) {}
+  return candidate;
+}
+
+function kgwShellResolveStartupTabR101W2(hashValue, reason = "startup") {
+  /* R101Y_SAFE_USER_LOCATION_PERSISTENCE_FIX */
+  /* KGW_SHELL_ANY_SAVED_MAIN_TAB_RESTORE_R102C
+   * Saved user location is app state, not a temporary button visibility decision.
+   */
+  const saved = kgwShellSavedMainTabR102C();
+  if (saved) return saved;
+
+  const requested = kgwShellKnownMainTabR102C(hashValue);
+  if (requested) return requested;
+
+  return kgwShellResolveStartupTabR63F("", reason + "-default");
+}
+
+/* KGW_SHELL_ANY_SAVED_MAIN_TAB_RESTORE_R102C
+ * Restore any known saved main tab, even when its button is temporarily hidden during boot/display preference loading.
+ * Corrected parser patch: function body extraction ignores default parameter objects such as options = {}.
+ */
+let kgwShellPendingSavedMainTabR102C = "";
+
+function kgwShellKnownMainTabR102C(tabId) {
+  const candidate = String(tabId || "").replace(/^#/, "").trim();
+  if (!candidate) return "";
+  try {
+    if (Array.isArray(KGW_TABS) && KGW_TABS.some((tab) => tab && tab.id === candidate)) return candidate;
+  } catch (_) {}
+  return "";
+}
+
+function kgwShellSavedMainTabR102C() {
+  try {
+    return kgwShellKnownMainTabR102C(kgwShellReadLastMainTabR101W2());
+  } catch (_) {
+    return "";
+  }
+}
+
+function kgwShellShouldBypassDisplayFilterR102C(tabId, options) {
+  const requested = kgwShellKnownMainTabR102C(tabId);
+  if (!requested) return false;
+  const openOptions = options && typeof options === "object" ? options : {};
+  if (openOptions.allowHiddenSavedTab === true) return true;
+  const saved = kgwShellSavedMainTabR102C();
+  return Boolean(saved && saved === requested && openOptions.persist !== true);
+}
+
+function kgwShellScheduleSavedMainTabRestoreR102C(reason = "schedule") {
+  const saved = kgwShellSavedMainTabR102C();
+  if (!saved) return false;
+  kgwShellPendingSavedMainTabR102C = saved;
+
+  [0, 80, 250, 800, 1600].forEach((delay) => {
+    window.setTimeout(() => {
+      const pending = kgwShellKnownMainTabR102C(kgwShellPendingSavedMainTabR102C || kgwShellSavedMainTabR102C());
+      if (!pending) return;
+
+      try {
+        const activeButton = typeof kgwShellDisplayOwnerActiveButtonR59C === "function" ? kgwShellDisplayOwnerActiveButtonR59C() : null;
+        const activeTabId = activeButton && activeButton.dataset ? String(activeButton.dataset.tab || "") : String(window.location.hash || "").replace(/^#/, "");
+        if (activeTabId === pending) return;
+      } catch (_) {}
+
+      try {
+        kgwMainTabTraceR35C(pending, "r102c-saved-main-tab-deferred-restore", {
+          reason: String(reason || ""),
+          delay,
+          activeHash: String(window.location.hash || ""),
+          visibleNow: typeof kgwShellDisplayOwnerTabIdVisibleR59C === "function" ? kgwShellDisplayOwnerTabIdVisibleR59C(pending) : null
+        });
+      } catch (_) {}
+
+      try {
+        void openTab(pending, {
+          persist: false,
+          allowHiddenSavedTab: true,
+          reason: "r102c-deferred-saved-main-tab-restore"
+        });
+      } catch (_) {}
+    }, delay);
+  });
+
+  return true;
+}
+
+async function openTab(tabId, options = {}) {
   shellLog.log("openTab", tabId);
 
   const requestedTabId = String(tabId || "");
-  /* KGW_SHELL_DISPLAY_OWNER_SCOPE_REPAIR_R60
-   * openTab must not reference the canonical resolver by lexical scope.
-   * The canonical owner is published on window by apply(), so openTab resolves through that published owner when available.
-   */
+  const openOptions = options && typeof options === "object" ? options : {};
+  const openReason = String(openOptions.reason || "programmatic");
+  const shouldPersistLastMainTabR101Y = openOptions.persist === true;
+  const shouldBypassDisplayFilterR102C = kgwShellShouldBypassDisplayFilterR102C(requestedTabId, openOptions);
+  /* KGW_SHELL_DISPLAY_OWNER_SCOPE_REPAIR_R60 */
+  /* KGW_SHELL_LAST_FULL_LOCATION_RESTORE_R101W2 */
+  /* R101Y_SAFE_USER_LOCATION_PERSISTENCE_FIX */
+  /* KGW_SHELL_ANY_SAVED_MAIN_TAB_RESTORE_R102C */
   const kgwCanonicalOwnerR60 = (() => {
-    try {
-      return window.kgwShellDisplayAndActiveTabOwnerR59C || null;
-    } catch (_) {
-      return null;
-    }
+    try { return window.kgwShellDisplayAndActiveTabOwnerR59C || null; } catch (_) { return null; }
   })();
 
-  const resolvedTabId = kgwCanonicalOwnerR60 && typeof kgwCanonicalOwnerR60.resolveTabId === "function"
-    ? kgwCanonicalOwnerR60.resolveTabId(requestedTabId, "openTab")
-    : requestedTabId;
+  const resolvedTabId = shouldBypassDisplayFilterR102C
+    ? kgwShellKnownMainTabR102C(requestedTabId)
+    : (kgwCanonicalOwnerR60 && typeof kgwCanonicalOwnerR60.resolveTabId === "function"
+      ? kgwCanonicalOwnerR60.resolveTabId(requestedTabId, "openTab")
+      : requestedTabId);
 
   if (resolvedTabId && resolvedTabId !== requestedTabId) {
     try {
       kgwMainTabTraceR35C(resolvedTabId, "r59c-canonical-open-tab-resolve", {
         requestedTabId,
         resolvedTabId,
-        activeHash: String(window.location.hash || "")
+        activeHash: String(window.location.hash || ""),
+        openReason,
+        persistAllowed: shouldPersistLastMainTabR101Y,
+        bypassDisplayFilterR102C: shouldBypassDisplayFilterR102C
       });
     } catch (_) {}
-
+    tabId = resolvedTabId;
+  } else if (resolvedTabId) {
     tabId = resolvedTabId;
   }
 
@@ -637,9 +766,18 @@ async function openTab(tabId) {
   await initTab(tab);
   activateTab(tab.id);
 
+  if (shouldPersistLastMainTabR101Y) {
+    kgwShellSaveLastMainTabR101W2(tab.id);
+    kgwShellPendingSavedMainTabR102C = tab.id;
+  }
+
   kgwMainTabTraceR35C(tab.id, "r35c-open-tab", {
     requestedTabId: String(requestedTabId || ""),
-    activeHash: String(window.location.hash || "")
+    activeHash: String(window.location.hash || ""),
+    persistedLastMainTab: kgwShellReadLastMainTabR101W2(),
+    persistAllowed: shouldPersistLastMainTabR101Y,
+    openReason,
+    bypassDisplayFilterR102C: shouldBypassDisplayFilterR102C
   });
 
   window.dispatchEvent(new CustomEvent("kgw:tab-opened", { detail: { tabId: tab.id } }));
@@ -656,14 +794,19 @@ function bindNavigation() {
 
     button.addEventListener("click", async (event) => {
       try {
+        const trusted = Boolean(event && event.isTrusted);
         kgwMainTabTraceR35C(button.dataset.tab, "r35c-tab-click", {
-          trusted: Boolean(event && event.isTrusted),
+          trusted,
           text: String(button.textContent || "").trim(),
           id: String(button.id || ""),
-          className: String(button.className || "")
+          className: String(button.className || ""),
+          persistRequested: trusted
         });
 
-        await openTab(button.dataset.tab);
+        await openTab(button.dataset.tab, {
+          persist: trusted,
+          reason: trusted ? "trusted-main-tab-click" : "untrusted-main-tab-click"
+        });
       } catch (error) {
         kgwFatal(error, "shell");
       }
@@ -731,12 +874,21 @@ async function boot() {
     bindShellControls();
     bindNavigation();
 
+    const savedBeforeDisplayR102C = kgwShellSavedMainTabR102C();
+    if (savedBeforeDisplayR102C) kgwShellPendingSavedMainTabR102C = savedBeforeDisplayR102C;
+
     kgwShellApplyDisplayOwnerBeforeBootR63F("boot-before-open-tab");
 
     const hash = String(window.location.hash || "").replace(/^#/, "");
-    const initial = kgwShellResolveStartupTabR63F(hash, "boot-initial");
+    const initial = kgwShellResolveStartupTabR101W2(hash, "boot-initial");
 
-    await openTab(initial);
+    await openTab(initial, {
+      persist: false,
+      allowHiddenSavedTab: Boolean(savedBeforeDisplayR102C && savedBeforeDisplayR102C === initial),
+      reason: "boot-restore"
+    });
+
+    kgwShellScheduleSavedMainTabRestoreR102C("boot-after-open-tab");
 
     bootDone = true;
   } catch (error) {
@@ -1250,17 +1402,35 @@ console.log("[KGW Explorer][busy-ui] global controller installed");
   }
 
   function normalize(input) {
+    /* KGW_SETTINGS_FULL_PERSISTENCE_CONTRACT_FIX_R104
+     * R71 previously validated saved values against defaults only.
+     * That dropped user-saved languages/currencies/tabs at boot.
+     * Validate against all known options and use defaults only as fallback.
+     */
     const base = defaults();
     const prefs = input && typeof input === "object" ? input : base;
+    const knownLanguages = keys(languageOptions);
+    const knownCurrencies = keys(currencyOptions);
+    const knownTabs = Array.from(new Set(keys(tabOptions).concat(["settings"])));
 
-    return {
-      languages: uniqueKnown(prefs.languages, base.languages, base.languages),
-      currencies: uniqueKnown(prefs.currencies, base.currencies, base.currencies),
-      tabs: uniqueKnown(prefs.tabs, base.tabs, base.tabs)
+    const normalized = {
+      languages: uniqueKnown(prefs.languages, knownLanguages, base.languages),
+      currencies: uniqueKnown(prefs.currencies, knownCurrencies, base.currencies),
+      tabs: uniqueKnown(prefs.tabs, knownTabs, base.tabs)
     };
+
+    if (!normalized.tabs.includes("settings")) {
+      normalized.tabs.push("settings");
+    }
+
+    return normalized;
   }
 
   function readCanonicalSettingsState() {
+    /* KGW_SETTINGS_FULL_PERSISTENCE_CONTRACT_FIX_R104
+     * Canonical Settings state is authoritative when it contains any valid display keys.
+     * A user intentionally selecting all options is valid and must not be reduced to defaults.
+     */
     try {
       const saved = JSON.parse(localStorage.getItem(canonicalSettingsKey) || "null");
       const checks = saved && typeof saved === "object" ? saved.checks : null;
@@ -1286,8 +1456,13 @@ console.log("[KGW Explorer][busy-ui] global controller installed");
         }
       });
 
-      const hasAny = prefs.languages.length > 0 || prefs.currencies.length > 0 || prefs.tabs.length > 0;
-      return hasAny ? normalize(prefs) : null;
+      const normalized = normalize(prefs);
+      const hasDisplayContract =
+        prefs.languages.length > 0 &&
+        prefs.currencies.length > 0 &&
+        prefs.tabs.length > 0;
+
+      return hasDisplayContract ? normalized : null;
     } catch {
       return null;
     }
@@ -1422,18 +1597,34 @@ function kgwShellDisplayOwnerActiveButtonR59C() {
 function kgwShellDisplayOwnerEnsureActiveTabR59C(reason = "ensure-active") {
   const activeButton = kgwShellDisplayOwnerActiveButtonR59C();
   const activeTabId = activeButton && activeButton.dataset ? activeButton.dataset.tab : "";
-  const resolvedTabId = kgwShellDisplayOwnerResolveTabIdR59C(activeTabId, reason);
+  const savedTabId = kgwShellSavedMainTabR102C();
+  let resolvedTabId = kgwShellDisplayOwnerResolveTabIdR59C(activeTabId, reason);
+
+  /* R101Y_SAFE_USER_LOCATION_PERSISTENCE_FIX */
+  /* KGW_SHELL_ANY_SAVED_MAIN_TAB_RESTORE_R102C
+   * Do not force kaspa-node while a saved known tab is temporarily hidden during boot/settings display load.
+   */
+  if ((!activeTabId || resolvedTabId !== activeTabId) && savedTabId) {
+    resolvedTabId = savedTabId;
+    kgwShellPendingSavedMainTabR102C = savedTabId;
+  }
 
   if (!resolvedTabId || resolvedTabId === activeTabId) {
+    kgwShellScheduleSavedMainTabRestoreR102C("ensure-active-no-change");
     return false;
   }
 
   window.setTimeout(() => {
     try {
-      void openTab(resolvedTabId);
+      void openTab(resolvedTabId, {
+        persist: false,
+        allowHiddenSavedTab: Boolean(savedTabId && savedTabId === resolvedTabId),
+        reason: savedTabId && savedTabId === resolvedTabId ? "display-owner-restore-saved-tab" : "display-owner-ensure-active"
+      });
     } catch (_) {}
   }, 0);
 
+  kgwShellScheduleSavedMainTabRestoreR102C("ensure-active-after-schedule");
   return true;
 }
 

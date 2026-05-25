@@ -36,8 +36,8 @@ impl KaspaRuntimeNetwork {
 
     pub fn revision(self) -> &'static str {
         match self {
-            Self::Mainnet => "d7f9b1590ca68c95ebe9f7242b822ecdf867de7e",
-            Self::Testnet10 | Self::Testnet12 => "f197b5ca00a92825f9962db1b3ed0f5d00455464",
+            Self::Mainnet => "a07d8b38d45f38a02a1f35f601e874358f6c7846",
+            Self::Testnet10 | Self::Testnet12 => "eeb351ee911e2df906d21203dec8db3a195c6b33",
         }
     }
 

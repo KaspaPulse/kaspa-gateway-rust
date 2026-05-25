@@ -488,27 +488,23 @@ function kgwSettingsSelectedDisplayKeysR65(checks, prefix) {
 }
 
 function kgwSettingsDisplayStateLooksLegacyAllSelectedR65(state) {
+  /* KGW_SETTINGS_FULL_PERSISTENCE_CONTRACT_FIX_R104
+   * Selecting every displayed language/currency/tab is a valid user choice.
+   * Only missing display contract keys are legacy/invalid.
+   */
   const checks = state && typeof state === "object" ? state.checks : null;
   if (!checks || typeof checks !== "object") return true;
-
-  const languageNodes = qa("[data-settings-language]");
-  const currencyNodes = qa("[data-settings-currency]");
-  const tabNodes = qa("[data-settings-visible-tab]");
 
   const selectedLanguages = kgwSettingsSelectedDisplayKeysR65(checks, "language:");
   const selectedCurrencies = kgwSettingsSelectedDisplayKeysR65(checks, "currency:");
   const selectedTabs = kgwSettingsSelectedDisplayKeysR65(checks, "tab:");
-
-  const allLanguagesSelected = languageNodes.length > 1 && selectedLanguages.length >= languageNodes.length;
-  const allCurrenciesSelected = currencyNodes.length > 1 && selectedCurrencies.length >= currencyNodes.length;
-  const allTabsSelected = tabNodes.length > 3 && selectedTabs.length >= tabNodes.length;
 
   const noDisplayKeys =
     selectedLanguages.length === 0 ||
     selectedCurrencies.length === 0 ||
     selectedTabs.length === 0;
 
-  return noDisplayKeys || allLanguagesSelected || allCurrenciesSelected || allTabsSelected;
+  return noDisplayKeys;
 }
 
 function kgwSettingsApplyDisplayChecksR65(checks, reason = "display-checks") {
@@ -1139,28 +1135,33 @@ function kgwSettingsDisplayStateNeedsCanonicalResetR63F(state) {
 
 
 function loadSavedState() {
+  /* KGW_SETTINGS_FULL_PERSISTENCE_CONTRACT_FIX_R104
+   * Valid user-saved state is authoritative.
+   * Do not collapse all-selected choices into defaults.
+   */
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || "null");
     if (saved) {
       if (kgwSettingsDisplayStateLooksLegacyAllSelectedR65(saved)) {
-        const state = kgwSettingsBuildCanonicalDefaultStateR65("settings-load-legacy-all-selected-r69", true);
-        window.setTimeout(() => kgwSettingsApplyShellDisplayFromState(state, "settings-load-legacy-all-selected-r69"), 0);
-        void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-legacy-all-selected-r69");
+        const state = kgwSettingsBuildCanonicalDefaultStateR65("settings-load-missing-display-contract-r104", true);
+        window.setTimeout(() => kgwSettingsApplyShellDisplayFromState(state, "settings-load-missing-display-contract-r104"), 0);
+        void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-missing-display-contract-r104");
         return;
       }
 
       applyState(saved);
-      const state = kgwSettingsReapplyDisplayStateR65(saved, "settings-load-r69");
+      const state = kgwSettingsReapplyDisplayStateR65(saved, "settings-load-r104");
 
-      window.setTimeout(() => kgwSettingsApplyShellDisplayFromState(state, "settings-load-r69"), 0);
-      void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-r69");
-    } else {
-      kgwSettingsBuildCanonicalDefaultStateR65("settings-load-defaults-r69", true);
-      void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-defaults-r69");
+      window.setTimeout(() => kgwSettingsApplyShellDisplayFromState(state, "settings-load-r104"), 0);
+      void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-r104");
+      return;
     }
+
+    kgwSettingsBuildCanonicalDefaultStateR65("settings-load-defaults-r104", true);
+    void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-defaults-r104");
   } catch (_) {
-    kgwSettingsBuildCanonicalDefaultStateR65("settings-load-error-defaults-r69", false);
-    void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-error-r69");
+    kgwSettingsBuildCanonicalDefaultStateR65("settings-load-error-defaults-r104", false);
+    void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-error-r104");
   }
 }
 

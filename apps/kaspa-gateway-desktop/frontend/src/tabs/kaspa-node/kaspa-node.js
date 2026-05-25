@@ -1127,39 +1127,103 @@ function renderPaths(net) {
     </div>`;
 }
 
+/* KGW_NODE_FLAT_SIX_COLUMN_OWNER_R101K
+ * Existing Node settings owner refinement.
+ * Flatten section bodies into one compact six-column field grid per tab.
+ */
+function kgwNodeFlatSectionFieldsR101K(html) {
+  return String(html || "")
+    .replace(/^\s*<div\s+class=["']node-v6-grid["']>\s*/i, "")
+    .replace(/\s*<\/div>\s*$/i, "");
+}
+
+function kgwNodeFlatGroupBodyR101K(sections) {
+  return sections.map(([, body]) => kgwNodeFlatSectionFieldsR101K(body)).join("\n");
+}
+
 function renderSections(net) {
-  const sections = [
-    ["runtime", "Runtime", renderRuntime(net)],
-    ["network", "Network", renderNetwork(net)],
-    ["rpc", "RPC", renderRpc(net)],
-    ["peers", "Peers", renderPeers(net)],
-    ["database", "Database", renderDatabase(net)],
-    ["rocksdb", "RocksDB", renderRocksDb(net)],
-    ["paths", "Paths", renderPaths(net)]
+  /* KGW_NODE_GROUPED_SETTINGS_TABS_OWNER_R101G */
+  /* KGW_NODE_FLAT_SIX_COLUMN_OWNER_R101K
+   * General and Advanced remain the only Node internal settings tabs.
+   * Each tab is rendered as one flat compact six-column field grid.
+   */
+  const groups = [
+    ["general", "General", [
+      ["runtime", renderRuntime(net)],
+      ["network", renderNetwork(net)],
+      ["rpc", renderRpc(net)]
+    ]],
+    ["advanced", "Advanced", [
+      ["peers", renderPeers(net)],
+      ["database", renderDatabase(net)],
+      ["rocksdb", renderRocksDb(net)],
+      ["paths", renderPaths(net)]
+    ]]
   ];
 
-  const tabs = sections.map(([key, label], index) =>
-    `<button type="button" class="node-v6-section-tab${index === 0 ? " active" : ""}" data-net="${net.key}" data-node-section-tab="${key}">${label}</button>`
+  const tabs = groups.map(([key, label], index) =>
+    `<button type="button" class="node-v6-section-tab node-v6-section-tab--grouped${index === 0 ? " active" : ""}" data-net="${net.key}" data-node-section-tab="${key}">${label}</button>`
   ).join("");
 
-  const panels = sections.map(([key, , body], index) =>
-    `<section class="node-v6-section${index === 0 ? " active" : ""}" data-net="${net.key}" data-node-section-panel="${key}"${index === 0 ? "" : " hidden"}>${body}</section>`
-  ).join("");
+  const panels = groups.map(([groupKey, , sections], groupIndex) => {
+    const fields = kgwNodeFlatGroupBodyR101K(sections);
+    return `
+    <section class="node-v6-section node-v6-section-group node-v6-section-group--flat${groupIndex === 0 ? " active" : ""}" data-net="${net.key}" data-node-section-panel="${groupKey}"${groupIndex === 0 ? "" : " hidden"}>
+      <div class="node-v6-flat-six-grid" data-node-flat-grid="${groupKey}">${fields}</div>
+    </section>`;
+  }).join("");
 
   return `
-    <div class="node-v6-section-tabs">${tabs}</div>
-    <div class="node-v6-sections">${panels}</div>`;
+    <div class="node-v6-section-tabs node-v6-section-tabs--grouped">${tabs}</div>
+    <div class="node-v6-sections node-v6-sections--grouped node-v6-sections--flat">${panels}</div>`;
+}
+
+/* KGW_NODE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U
+ * Default Node inner tab is Live Node Monitor.
+ * Last selected inner tab is saved per network.
+ */
+function kgwNodeInnerTabStorageKeyR101U(net) {
+  return `kgw.node.innerTab.${String(net || "unknown")}`;
+}
+
+function kgwNodeNormalizeInnerTabR101U(value) {
+  return value === "settings" || value === "log" ? value : "log";
+}
+
+function kgwNodeResolveInnerTabR101U(net) {
+  try {
+    return kgwNodeNormalizeInnerTabR101U(localStorage.getItem(kgwNodeInnerTabStorageKeyR101U(net)));
+  } catch (_) {
+    return "log";
+  }
+}
+
+function kgwNodeSaveInnerTabR101U(net, selected) {
+  const normalized = kgwNodeNormalizeInnerTabR101U(selected);
+  try {
+    localStorage.setItem(kgwNodeInnerTabStorageKeyR101U(net), normalized);
+  } catch (_) {}
+  return normalized;
 }
 
 function renderNetworkPanel(net, index) {
+  /* KGW_NODE_LIVE_MONITOR_TAB_LABEL_ORDER_R101S */
+  /* KGW_NODE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U
+   * Settings is no longer the default inner panel.
+   * Default is Live Node Monitor unless a valid saved tab exists for this network.
+   */
+  const activeInnerTab = kgwNodeResolveInnerTabR101U(net.key);
+  const logActive = activeInnerTab === "log";
+  const settingsActive = activeInnerTab === "settings";
+
   return `
     <div class="node-v6-network-panel${index === 0 ? " active" : ""}" data-node-network-panel="${net.key}"${index === 0 ? "" : " hidden"}>
       <div class="node-v6-inner-tabs">
-        <button type="button" class="node-v6-inner-tab active" data-net="${net.key}" data-node-inner-tab="settings">Settings</button>
-        <button type="button" class="node-v6-inner-tab" data-net="${net.key}" data-node-inner-tab="log">Log</button>
+        <button type="button" class="node-v6-inner-tab${logActive ? " active" : ""}" data-net="${net.key}" data-node-inner-tab="log">Live Node Monitor</button>
+        <button type="button" class="node-v6-inner-tab${settingsActive ? " active" : ""}" data-net="${net.key}" data-node-inner-tab="settings">Settings</button>
       </div>
 
-      <div class="node-v6-inner-panel active" data-net="${net.key}" data-node-inner-panel="settings">
+      <div class="node-v6-inner-panel${settingsActive ? " active" : ""}" data-net="${net.key}" data-node-inner-panel="settings"${settingsActive ? "" : " hidden"}>
         <section class="node-v6-command">
           <div class="node-v6-command-title">Command Preview</div>
           <textarea id="${id(net.key, "commandPreview")}" readonly spellcheck="false" wrap="soft"></textarea>
@@ -1188,7 +1252,7 @@ function renderNetworkPanel(net, index) {
 
       </div>
 
-      <div class="node-v6-inner-panel" data-net="${net.key}" data-node-inner-panel="log" hidden>
+      <div class="node-v6-inner-panel${logActive ? " active" : ""}" data-net="${net.key}" data-node-inner-panel="log"${logActive ? "" : " hidden"}>
         <div class="node-v6-log-toolbar">
           <button type="button" data-node-action="copy-log" data-net="${net.key}">Copy Log</button>
           <button type="button" data-node-action="clear-log" data-net="${net.key}">Clear Log</button>
@@ -1353,39 +1417,75 @@ function kgwNodeExplicitTraceR27D(net, action, phase, details) {
     }
   } catch (_) {}
 }
+/* KGW_NODE_LAST_NETWORK_RESTORE_R101W2 */
+const KGW_NODE_LAST_NETWORK_KEY_R101W2 = "kgw.node.lastNetwork";
+function kgwNodeNormalizeNetworkR101W2(value) {
+  const normalized = String(value || "").trim();
+  return normalized === "mainnet" || normalized === "testnet10" || normalized === "testnet12" ? normalized : "";
+}
+function kgwNodeReadLastNetworkR101W2() {
+  try { return kgwNodeNormalizeNetworkR101W2(localStorage.getItem(KGW_NODE_LAST_NETWORK_KEY_R101W2)); } catch (_) { return ""; }
+}
+function kgwNodeSaveLastNetworkR101W2(net) {
+  const normalized = kgwNodeNormalizeNetworkR101W2(net);
+  if (!normalized) return "";
+  try { localStorage.setItem(KGW_NODE_LAST_NETWORK_KEY_R101W2, normalized); } catch (_) {}
+  return normalized;
+}
+
 function installNetworkTabs(root) {
-  const tabs = root.querySelectorAll("[data-node-network-tab]");
-  const panels = root.querySelectorAll("[data-node-network-panel]");
+  /* KGW_NODE_LAST_NETWORK_RESTORE_R101W2 */
+  const tabs = Array.from(root.querySelectorAll("[data-node-network-tab]"));
+  const panels = Array.from(root.querySelectorAll("[data-node-network-panel]"));
+
+  function selectNodeNetwork(selected, reason = "manual", persist = false) {
+    const normalized = kgwNodeNormalizeNetworkR101W2(selected);
+    if (!normalized) return;
+    if (persist) kgwNodeSaveLastNetworkR101W2(normalized);
+
+    tabs.forEach((item) => {
+      const active = item.dataset.nodeNetworkTab === normalized;
+      item.classList.toggle("active", active);
+      item.setAttribute("aria-selected", active ? "true" : "false");
+      item.dataset.active = active ? "true" : "false";
+    });
+
+    panels.forEach((panel) => {
+      const active = panel.dataset.nodeNetworkPanel === normalized;
+      panel.classList.toggle("active", active);
+      panel.hidden = !active;
+      panel.dataset.active = active ? "true" : "false";
+    });
+
+    if (normalized && kgwIsBridgeOwnedNodeLockedR65E(normalized)) {
+      kgwNodeApplyBridgeOwnedDisplayOnlyR65E(normalized, true, "network-tab-select-" + reason);
+      kgwNodeR51SetRuntimeButtons(normalized, false, true);
+    }
+
+    kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2("network-tab-" + reason);
+  }
 
   tabs.forEach((tab) => {
     tab.addEventListener("click", (event) => {
       const selected = tab.dataset.nodeNetworkTab;
-
       kgwNodeExplicitTraceR27D(selected || "unknown", "internal-navigation", "r45d-node-network-tab-click", {
-        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D+KGW_NODE_LAST_NETWORK_RESTORE_R101W2",
         trusted: Boolean(event && event.isTrusted),
         selected: String(selected || ""),
-        text: String(tab.textContent || "").trim()
+        text: String(tab.textContent || "").trim(),
+        persisted: true
       });
-
-      tabs.forEach((item) => item.classList.toggle("active", item === tab));
-
-      panels.forEach((panel) => {
-        const active = panel.dataset.nodeNetworkPanel === selected;
-        panel.classList.toggle("active", active);
-        panel.hidden = !active;
-      });
-
-      if (selected && kgwIsBridgeOwnedNodeLockedR65E(selected)) {
-        kgwNodeApplyBridgeOwnedDisplayOnlyR65E(selected, true, "network-tab-select");
-        kgwNodeR51SetRuntimeButtons(selected, false, true);
-      }
-
-      kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2("network-tab-click");
+      selectNodeNetwork(selected, "click", true);
     });
   });
 
+  const saved = kgwNodeReadLastNetworkR101W2();
+  const existingActiveTab = tabs.find((tab) => tab.classList.contains("active") || tab.getAttribute("aria-selected") === "true" || tab.dataset.active === "true");
+  const defaultTab = (saved && tabs.find((tab) => tab.dataset.nodeNetworkTab === saved)) || existingActiveTab || tabs.find((tab) => tab.dataset.nodeNetworkTab === "mainnet") || tabs[0];
+  if (defaultTab) selectNodeNetwork(defaultTab.dataset.nodeNetworkTab, saved ? "saved-initial" : "initial", false);
+
   kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2("network-tabs-installed");
+  window.kgwNodeSelectNetworkTabR101W2 = (net) => selectNodeNetwork(net, "external", true);
 }
 
 function installDelegatedTabs(root) {
@@ -1393,14 +1493,15 @@ function installDelegatedTabs(root) {
     const innerTab = event.target.closest("[data-node-inner-tab]");
     if (innerTab) {
       const net = innerTab.dataset.net;
-      const selected = innerTab.dataset.nodeInnerTab;
+      const selected = kgwNodeSaveInnerTabR101U(net, innerTab.dataset.nodeInnerTab);
       const panel = root.querySelector(`[data-node-network-panel="${net}"]`);
 
       kgwNodeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-node-inner-tab-click", {
-        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
+        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D+KGW_NODE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U",
         trusted: Boolean(event && event.isTrusted),
         selected: String(selected || ""),
-        text: String(innerTab.textContent || "").trim()
+        text: String(innerTab.textContent || "").trim(),
+        persisted: true
       });
 
       panel.querySelectorAll("[data-node-inner-tab]").forEach((item) => {

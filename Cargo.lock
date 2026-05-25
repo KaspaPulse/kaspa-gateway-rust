@@ -3723,7 +3723,7 @@ dependencies = [
 [[package]]
 name = "kaspa-addresses"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "borsh",
  "js-sys",
@@ -3738,7 +3738,7 @@ dependencies = [
 [[package]]
 name = "kaspa-addresses"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "borsh",
  "js-sys",
@@ -3753,7 +3753,7 @@ dependencies = [
 [[package]]
 name = "kaspa-addressmanager"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "borsh",
  "igd-next",
@@ -3775,7 +3775,7 @@ dependencies = [
 [[package]]
 name = "kaspa-addressmanager"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "borsh",
  "igd-next",
@@ -3797,7 +3797,7 @@ dependencies = [
 [[package]]
 name = "kaspa-alloc"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "mimalloc",
 ]
@@ -3805,7 +3805,7 @@ dependencies = [
 [[package]]
 name = "kaspa-alloc"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "mimalloc",
 ]
@@ -3813,7 +3813,7 @@ dependencies = [
 [[package]]
 name = "kaspa-build-info"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "duct",
  "faster-hex 0.9.0",
@@ -3822,7 +3822,7 @@ dependencies = [
 [[package]]
 name = "kaspa-connectionmanager"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "duration-string",
  "futures-util",
@@ -3840,7 +3840,7 @@ dependencies = [
 [[package]]
 name = "kaspa-connectionmanager"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "duration-string",
  "futures-util",
@@ -3858,7 +3858,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "arc-swap",
  "async-channel 2.5.0",
@@ -3899,7 +3899,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "arc-swap",
  "async-channel 2.5.0",
@@ -3943,7 +3943,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus-client"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "ahash 0.8.12",
  "cfg-if",
@@ -3972,7 +3972,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus-client"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "ahash 0.8.12",
  "borsh",
@@ -4002,7 +4002,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus-core"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -4039,7 +4039,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus-core"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -4078,7 +4078,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus-notify"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "async-channel 2.5.0",
  "cfg-if",
@@ -4098,7 +4098,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus-notify"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "async-channel 2.5.0",
  "cfg-if",
@@ -4118,7 +4118,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus-wasm"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "cfg-if",
  "faster-hex 0.9.0",
@@ -4143,7 +4143,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus-wasm"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "cfg-if",
  "faster-hex 0.9.0",
@@ -4168,7 +4168,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensusmanager"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "duration-string",
  "futures",
@@ -4188,7 +4188,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensusmanager"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "duration-string",
  "futures",
@@ -4208,7 +4208,7 @@ dependencies = [
 [[package]]
 name = "kaspa-core"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -4228,7 +4228,7 @@ dependencies = [
 [[package]]
 name = "kaspa-core"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -4248,7 +4248,7 @@ dependencies = [
 [[package]]
 name = "kaspa-database"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "bincode",
  "enum-primitive-derive",
@@ -4271,7 +4271,7 @@ dependencies = [
 [[package]]
 name = "kaspa-database"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "bincode",
  "enum-primitive-derive",
@@ -4448,7 +4448,7 @@ dependencies = [
 [[package]]
 name = "kaspa-grpc-client"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "async-channel 2.5.0",
  "async-stream",
@@ -4481,7 +4481,7 @@ dependencies = [
 [[package]]
 name = "kaspa-grpc-client"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "async-channel 2.5.0",
  "async-stream",
@@ -4514,7 +4514,7 @@ dependencies = [
 [[package]]
 name = "kaspa-grpc-core"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "async-channel 2.5.0",
  "async-stream",
@@ -4546,7 +4546,7 @@ dependencies = [
 [[package]]
 name = "kaspa-grpc-core"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "async-channel 2.5.0",
  "async-stream",
@@ -4578,7 +4578,7 @@ dependencies = [
 [[package]]
 name = "kaspa-grpc-server"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "async-channel 2.5.0",
  "async-stream",
@@ -4614,7 +4614,7 @@ dependencies = [
 [[package]]
 name = "kaspa-grpc-server"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "async-channel 2.5.0",
  "async-stream",
@@ -4650,7 +4650,7 @@ dependencies = [
 [[package]]
 name = "kaspa-hashes"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "blake2b_simd",
  "borsh",
@@ -4669,7 +4669,7 @@ dependencies = [
 [[package]]
 name = "kaspa-hashes"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "blake2b_simd",
  "blake3",
@@ -4690,7 +4690,7 @@ dependencies = [
 [[package]]
 name = "kaspa-index-core"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
@@ -4710,7 +4710,7 @@ dependencies = [
 [[package]]
 name = "kaspa-index-core"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
@@ -4730,7 +4730,7 @@ dependencies = [
 [[package]]
 name = "kaspa-index-processor"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
@@ -4756,7 +4756,7 @@ dependencies = [
 [[package]]
 name = "kaspa-index-processor"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
@@ -4782,7 +4782,7 @@ dependencies = [
 [[package]]
 name = "kaspa-math"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "borsh",
  "faster-hex 0.9.0",
@@ -4802,7 +4802,7 @@ dependencies = [
 [[package]]
 name = "kaspa-math"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "borsh",
  "faster-hex 0.9.0",
@@ -4822,7 +4822,7 @@ dependencies = [
 [[package]]
 name = "kaspa-merkle"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "kaspa-hashes 1.1.0",
 ]
@@ -4830,7 +4830,7 @@ dependencies = [
 [[package]]
 name = "kaspa-merkle"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "kaspa-hashes 1.2.0-toc.2",
 ]
@@ -4838,7 +4838,7 @@ dependencies = [
 [[package]]
 name = "kaspa-mining"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "futures-util",
  "itertools 0.13.0",
@@ -4864,7 +4864,7 @@ dependencies = [
 [[package]]
 name = "kaspa-mining"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "futures-util",
  "itertools 0.13.0",
@@ -4890,7 +4890,7 @@ dependencies = [
 [[package]]
 name = "kaspa-mining-errors"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "kaspa-consensus-core 1.1.0",
  "thiserror 1.0.69",
@@ -4899,7 +4899,7 @@ dependencies = [
 [[package]]
 name = "kaspa-mining-errors"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "kaspa-consensus-core 1.2.0-toc.2",
  "thiserror 2.0.18",
@@ -4908,7 +4908,7 @@ dependencies = [
 [[package]]
 name = "kaspa-muhash"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "kaspa-hashes 1.1.0",
  "kaspa-math 1.1.0",
@@ -4919,7 +4919,7 @@ dependencies = [
 [[package]]
 name = "kaspa-muhash"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "kaspa-hashes 1.2.0-toc.2",
  "kaspa-math 1.2.0-toc.2",
@@ -4930,7 +4930,7 @@ dependencies = [
 [[package]]
 name = "kaspa-notify"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
@@ -4962,7 +4962,7 @@ dependencies = [
 [[package]]
 name = "kaspa-notify"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
@@ -4994,7 +4994,7 @@ dependencies = [
 [[package]]
 name = "kaspa-p2p-flows"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "async-trait",
  "chrono",
@@ -5027,7 +5027,7 @@ dependencies = [
 [[package]]
 name = "kaspa-p2p-flows"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "async-trait",
  "chrono",
@@ -5064,7 +5064,7 @@ dependencies = [
 [[package]]
 name = "kaspa-p2p-lib"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "borsh",
  "ctrlc",
@@ -5096,7 +5096,7 @@ dependencies = [
 [[package]]
 name = "kaspa-p2p-lib"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "borsh",
  "ctrlc",
@@ -5128,7 +5128,7 @@ dependencies = [
 [[package]]
 name = "kaspa-p2p-mining"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "kaspa-consensus-core 1.1.0",
  "kaspa-consensusmanager 1.1.0",
@@ -5146,7 +5146,7 @@ dependencies = [
 [[package]]
 name = "kaspa-p2p-mining"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "kaspa-consensus-core 1.2.0-toc.2",
  "kaspa-consensusmanager 1.2.0-toc.2",
@@ -5164,7 +5164,7 @@ dependencies = [
 [[package]]
 name = "kaspa-perf-monitor"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "kaspa-core 1.1.0",
  "log",
@@ -5177,7 +5177,7 @@ dependencies = [
 [[package]]
 name = "kaspa-perf-monitor"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "kaspa-core 1.2.0-toc.2",
  "log",
@@ -5190,7 +5190,7 @@ dependencies = [
 [[package]]
 name = "kaspa-pow"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "js-sys",
  "kaspa-consensus-client 1.1.0",
@@ -5206,7 +5206,7 @@ dependencies = [
 [[package]]
 name = "kaspa-pow"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "js-sys",
  "kaspa-consensus-client 1.2.0-toc.2",
@@ -5222,7 +5222,7 @@ dependencies = [
 [[package]]
 name = "kaspa-rpc-core"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
@@ -5264,7 +5264,7 @@ dependencies = [
 [[package]]
 name = "kaspa-rpc-core"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
@@ -5306,7 +5306,7 @@ dependencies = [
 [[package]]
 name = "kaspa-rpc-macros"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "convert_case 0.6.0",
  "proc-macro-error",
@@ -5319,7 +5319,7 @@ dependencies = [
 [[package]]
 name = "kaspa-rpc-macros"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "convert_case 0.6.0",
  "proc-macro-error",
@@ -5332,7 +5332,7 @@ dependencies = [
 [[package]]
 name = "kaspa-rpc-service"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "async-trait",
  "kaspa-addresses 1.1.0",
@@ -5363,7 +5363,7 @@ dependencies = [
 [[package]]
 name = "kaspa-rpc-service"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "async-trait",
  "kaspa-addresses 1.2.0-toc.2",
@@ -5395,7 +5395,7 @@ dependencies = [
 [[package]]
 name = "kaspa-seq-commit"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "kaspa-hashes 1.2.0-toc.2",
  "kaspa-merkle 1.2.0-toc.2",
@@ -5406,7 +5406,7 @@ dependencies = [
 [[package]]
 name = "kaspa-smt"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "blake3",
  "kaspa-hashes 1.2.0-toc.2",
@@ -5417,7 +5417,7 @@ dependencies = [
 [[package]]
 name = "kaspa-smt-store"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "kaspa-consensus-core 1.2.0-toc.2",
  "kaspa-core 1.2.0-toc.2",
@@ -5437,7 +5437,7 @@ dependencies = [
 [[package]]
 name = "kaspa-stratum-bridge"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5484,7 +5484,7 @@ dependencies = [
 [[package]]
 name = "kaspa-stratum-bridge"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5533,7 +5533,7 @@ dependencies = [
 [[package]]
 name = "kaspa-system-info"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "kaspa-utils 1.2.0-toc.2",
  "mac_address",
@@ -5545,7 +5545,7 @@ dependencies = [
 [[package]]
 name = "kaspa-txscript"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "blake2b_simd",
  "borsh",
@@ -5576,7 +5576,7 @@ dependencies = [
 [[package]]
 name = "kaspa-txscript"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "ark-bn254",
  "ark-ec",
@@ -5619,7 +5619,7 @@ dependencies = [
 [[package]]
 name = "kaspa-txscript-errors"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "secp256k1",
  "thiserror 1.0.69",
@@ -5628,7 +5628,7 @@ dependencies = [
 [[package]]
 name = "kaspa-txscript-errors"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "borsh",
  "kaspa-hashes 1.2.0-toc.2",
@@ -5639,7 +5639,7 @@ dependencies = [
 [[package]]
 name = "kaspa-utils"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "arc-swap",
  "async-channel 2.5.0",
@@ -5669,7 +5669,7 @@ dependencies = [
 [[package]]
 name = "kaspa-utils"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "arc-swap",
  "async-channel 2.5.0",
@@ -5695,7 +5695,7 @@ dependencies = [
 [[package]]
 name = "kaspa-utils-tower"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "bytes",
  "cfg-if",
@@ -5712,7 +5712,7 @@ dependencies = [
 [[package]]
 name = "kaspa-utils-tower"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "bytes",
  "cfg-if",
@@ -5729,7 +5729,7 @@ dependencies = [
 [[package]]
 name = "kaspa-utxoindex"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "futures",
  "kaspa-consensus-core 1.1.0",
@@ -5749,7 +5749,7 @@ dependencies = [
 [[package]]
 name = "kaspa-utxoindex"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "futures",
  "kaspa-consensus-core 1.2.0-toc.2",
@@ -5769,7 +5769,7 @@ dependencies = [
 [[package]]
 name = "kaspa-wasm-core"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "faster-hex 0.9.0",
  "hexplay",
@@ -5781,7 +5781,7 @@ dependencies = [
 [[package]]
 name = "kaspa-wasm-core"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "faster-hex 0.9.0",
  "hexplay",
@@ -5793,7 +5793,7 @@ dependencies = [
 [[package]]
 name = "kaspa-wrpc-server"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "async-trait",
  "borsh",
@@ -5822,7 +5822,7 @@ dependencies = [
 [[package]]
 name = "kaspa-wrpc-server"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "async-trait",
  "borsh",
@@ -5851,7 +5851,7 @@ dependencies = [
 [[package]]
 name = "kaspad"
 version = "1.1.0"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=d7f9b1590ca68c95ebe9f7242b822ecdf867de7e#d7f9b1590ca68c95ebe9f7242b822ecdf867de7e"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=a07d8b38d45f38a02a1f35f601e874358f6c7846#a07d8b38d45f38a02a1f35f601e874358f6c7846"
 dependencies = [
  "async-channel 2.5.0",
  "cfg-if",
@@ -5902,7 +5902,7 @@ dependencies = [
 [[package]]
 name = "kaspad"
 version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=f197b5ca00a92825f9962db1b3ed0f5d00455464#f197b5ca00a92825f9962db1b3ed0f5d00455464"
+source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
 dependencies = [
  "async-channel 2.5.0",
  "cfg-if",
