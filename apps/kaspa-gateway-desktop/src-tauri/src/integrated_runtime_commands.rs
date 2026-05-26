@@ -215,8 +215,10 @@ fn kgw_worker_start(
         .stdin(Stdio::null());
 
     if role == "bridge" {
-        let bridge_rust_log = std::env::var("RUST_LOG")
-            .unwrap_or_else(|_| "info,kaspa_stratum_bridge=debug".to_string());
+        // KGW_BRIDGE_NORMAL_LOG_DEFAULT_R130
+        // Normal bridge runs must not default to verbose protocol DEBUG logs.
+        // Developers can still opt in explicitly by setting RUST_LOG before launch.
+        let bridge_rust_log = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
         command.env("RUST_LOG", bridge_rust_log);
     }
 
