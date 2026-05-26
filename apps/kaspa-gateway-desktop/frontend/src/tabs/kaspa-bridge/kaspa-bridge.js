@@ -4929,6 +4929,7 @@ async function runBridgeIntegratedAction(action, net) {
           bridgeStartWasInprocess
         });
         if (typeof appendLog === "function") appendLog(net, "KGW bridge start confirmed.");
+        kgwBridgeR51KickRawLogLiveR134E(net, "bridge-start-confirmed");
       } else if (blocked) {
         if (typeof appendLog === "function") appendLog(net, "KGW bridge start blocked or failed: " + raw);
       } else {
@@ -5603,9 +5604,35 @@ async function kgwBridgeR51RefreshOne(net, reason = "live") {
     if (delta) {
       KGW_BRIDGE_R51_LAST_LOGS[net] = logs;
       appendLog(net, delta);
+    } else if (logs && KGW_BRIDGE_R51_LAST_LOGS[net] !== logs) {
+      // KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E
+      // Track raw runtime log snapshots even when the visible delta is empty.
+      KGW_BRIDGE_R51_LAST_LOGS[net] = logs;
     }
   } catch {
     // Runtime may not be ready yet.
+  }
+}
+
+
+// KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E
+// Raw bridge log live helper only: no parsing, no ASIC table, no bridge behavior duplication.
+function kgwBridgeR51KickRawLogLiveR134E(net, reason = "bridge-start") {
+  try {
+    KGW_BRIDGE_R51_LAST_LOGS[net] = "";
+
+    if (typeof kgwBridgeR51StartLiveRefresh === "function") {
+      kgwBridgeR51StartLiveRefresh();
+    }
+
+    if (typeof kgwBridgeR51RefreshOne === "function") {
+      window.setTimeout(function () { kgwBridgeR51RefreshOne(net, reason + "-0"); }, 0);
+      window.setTimeout(function () { kgwBridgeR51RefreshOne(net, reason + "-350"); }, 350);
+      window.setTimeout(function () { kgwBridgeR51RefreshOne(net, reason + "-1000"); }, 1000);
+      window.setTimeout(function () { kgwBridgeR51RefreshOne(net, reason + "-2500"); }, 2500);
+    }
+  } catch (error) {
+    console.warn("[KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E_FAILED]", error);
   }
 }
 
