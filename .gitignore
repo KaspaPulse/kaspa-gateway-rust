@@ -133,3 +133,15 @@ kaspa-gateway-rust.zip
 graphify-out/.graphify_python
 graphify-out/cost.json
 graphify-out/cache/
+
+# Local test artifacts and Graphify working backups
+artifacts/
+graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
+graphify-out/.graphify_root
+graphify-out/.vocab.txt
+graphify-out/.graphify_detect.json
+graphify-out/.graphify_extract.json
+graphify-out/.graphify_ast.json
+graphify-out/.graphify_semantic.json
+graphify-out/.graphify_chunk_*.json
+graphify-out/.needs_update
