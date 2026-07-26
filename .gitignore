@@ -128,3 +128,7 @@ apps/kaspa-gateway-desktop/.vite/
 # KGW generated snapshots
 kaspa-gateway-rust.xml
 kaspa-gateway-rust.zip
+.codex/hooks.json
+graphify-out/.graphify_python
+graphify-out/cost.json
+graphify-out/cache/
