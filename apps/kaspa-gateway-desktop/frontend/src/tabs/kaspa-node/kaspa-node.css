@@ -1242,3 +1242,64 @@ label .kgw-command-switch-r8e:focus-visible,
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+#kaspa-node .kgw-network-policy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 8px;
+  padding: 9px 12px;
+  border: 1px solid rgba(79, 209, 197, 0.28);
+  border-radius: 10px;
+  background: rgba(18, 34, 42, 0.72);
+}
+
+#kaspa-node .kgw-network-policy.is-experimental {
+  border-color: rgba(245, 158, 11, 0.52);
+  background: rgba(69, 42, 10, 0.36);
+}
+
+#kaspa-node .kgw-network-policy strong,
+#kaspa-node .kgw-network-policy span {
+  display: block;
+}
+
+#kaspa-node .kgw-network-policy > div > span {
+  margin-top: 2px;
+  color: var(--muted, #9eb0ba);
+  font-size: 11px;
+}
+
+#kaspa-node .kgw-network-policy-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+#kaspa-node .kgw-network-policy-status {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+#kaspa-node .kgw-network-policy-status[data-state="running"] {
+  color: #63e6be;
+  background: rgba(16, 185, 129, 0.16);
+}
+
+#kaspa-node .kgw-network-policy-status[data-state="disabled"] {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.14);
+}
+
+@media (max-width: 720px) {
+  #kaspa-node .kgw-network-policy {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

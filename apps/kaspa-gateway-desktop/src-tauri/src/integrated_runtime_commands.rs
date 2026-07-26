@@ -98,6 +98,22 @@ fn kgw_worker_role_from_request(
     "node".to_string()
 }
 
+fn kgw_validate_network_start_policy(
+    network: kaspa_gateway_rk_node::KgwNetwork,
+    experimental_network_opt_in: Option<bool>,
+) -> Result<(), String> {
+    if network == kaspa_gateway_rk_node::KgwNetwork::Testnet12
+        && experimental_network_opt_in != Some(true)
+    {
+        return Err(
+            "start_blocked=true;start_allowed=false;network=testnet12;block_reason=experimental-network-opt-in-required;message=Testnet 12 is experimental and disabled by default. Enable it explicitly in this network tab before starting."
+                .to_string(),
+        );
+    }
+
+    Ok(())
+}
+
 fn kgw_worker_start(
     role: &str,
     settings: &kaspa_gateway_rk_node::NodeSettings,
@@ -297,6 +313,20 @@ fn kgw_worker_start(
 
     if let Some(stderr) = child.stderr.take() {
         kgw_worker_spawn_reader("stderr".to_string(), stderr, Arc::clone(&logs));
+    }
+
+    std::thread::sleep(std::time::Duration::from_millis(750));
+
+    if let Some(exit_status) = child.try_wait().map_err(|error| error.to_string())? {
+        let captured = logs
+            .lock()
+            .map(|guard| guard.iter().cloned().collect::<Vec<_>>().join(" | "))
+            .unwrap_or_else(|_| "worker log lock failed".to_string());
+
+        return Err(format!(
+            "self-worker exited during startup;role={};network={};status={};logs={}",
+            role, network, exit_status, captured
+        ));
     }
 
     let pid = child.id();
@@ -568,10 +598,19 @@ pub fn kgw_kgw_runtime_logs_v1(
 
 fn kgw_safe_runtime_appdir_root() -> std::path::PathBuf {
     if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
-        std::path::PathBuf::from(local_app_data).join("rusty-kaspa")
+        std::path::PathBuf::from(local_app_data)
+            .join("KaspaGateway")
+            .join("nodes")
     } else {
-        std::env::temp_dir().join("rusty-kaspa")
+        std::env::temp_dir().join("KaspaGateway").join("nodes")
     }
+}
+
+fn kgw_network_runtime_appdir(network: kaspa_gateway_rk_node::KgwNetwork) -> String {
+    kgw_safe_runtime_appdir_root()
+        .join(network.as_str())
+        .to_string_lossy()
+        .to_string()
 }
 
 fn kgw_safe_runtime_appdir(value: String) -> String {
@@ -1032,10 +1071,13 @@ pub fn kgw_kgw_apply_node_settings_v1(
     bridge_active_instance: Option<String>,
     bridge_active_instance_port: Option<String>,
     bridge_structured_instances: Option<String>,
+    experimental_network_opt_in: Option<bool>,
 ) -> Result<String, String> {
     let mut settings =
         kaspa_gateway_rk_node::NodeSettings::from_strings(network, node_kind, bridge_kind)
             .map_err(|error| error.to_string())?;
+
+    kgw_validate_network_start_policy(settings.network, experimental_network_opt_in)?;
 
     let bridge_config_path_for_worker =
         kgw_bridge_config_path_from_preview_r122(bridge_command_preview.as_deref());
@@ -1054,6 +1096,7 @@ pub fn kgw_kgw_apply_node_settings_v1(
         node_command_preview,
         bridge_command_preview,
     );
+    settings.app_dir_name = kgw_network_runtime_appdir(settings.network);
 
     let bridge_structured_instances_for_worker = bridge_structured_instances.clone();
 

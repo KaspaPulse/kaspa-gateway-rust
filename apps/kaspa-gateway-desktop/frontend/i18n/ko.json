@@ -177,7 +177,7 @@
       "changedPrefix": "KGW Auto Fix Ports changed"
     }
   },
-  "bridge.serviceEventPlanningDescription": "KGW service-event planning for all bridges in parallel. mainnet/testnet10 use master; testnet12 uses tn12.",
+  "bridge.serviceEventPlanningDescription": "KGW service-event planning for all bridges in parallel. mainnet/testnet10 use official stable v2.0.1; testnet12 is experimental and opt-in.",
   "coinbase": "코인베이스",
   "common": {
     "loading": "Loading",
@@ -1545,7 +1545,7 @@
       "kaspanode": "Kaspa Node"
     }
   },
-  "node.serviceEventPlanningDescription": "KGW service-event planning for mainnet, testnet10, and testnet12. mainnet/testnet10 use master; testnet12 uses tn12.",
+  "node.serviceEventPlanningDescription": "KGW service-event planning for mainnet, testnet10, and testnet12. mainnet/testnet10 use official stable v2.0.1; testnet12 is experimental and opt-in.",
   "outgoing": "발신",
   "runtime.ready": "준비됨",
   "runtime.shellErrorNavigationPreserved": "Shell/runtime error. Navigation was preserved.",

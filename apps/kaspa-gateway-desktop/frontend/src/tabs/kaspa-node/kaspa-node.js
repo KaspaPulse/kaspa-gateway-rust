@@ -661,12 +661,9 @@ function kgwGuardBlockReasonV3(fields, raw) {
   return "guard blocked without detailed reason";
 }
 
-/* KGW_NODE_RUSTY_KASPA_ROOT_ONLY_DEFAULT_PATHS_FIX_R5
- * Canonical node runtime default path owner.
- * The only generated default path is the current user's LocalAppData rusty-kaspa root.
- * Example runtime value: %LOCALAPPDATA%\rusty-kaspa.
- * No network suffix, no logs suffix, no KGW app-data root.
- * Kaspa owns/completes internal database layout below this root.
+/* Canonical isolated node runtime paths.
+ * Each network owns a separate database below:
+ * %LOCALAPPDATA%\KaspaGateway\nodes\<network>
  */
 function kgwNodeBackendInvokeR5(command, payload = {}) {
   const invoke =
@@ -698,8 +695,10 @@ function kgwNodeExtractUserLocalAppDataR5(paths) {
   return "%LOCALAPPDATA%";
 }
 
-function kgwNodeRustyKaspaLocalAppDataRootR5(paths = {}) {
-  return kgwNodeJoinPathR5(kgwNodeExtractUserLocalAppDataR5(paths), "rusty-kaspa");
+function kgwNodeRustyKaspaLocalAppDataRootR5(paths = {}, net = "mainnet") {
+  const appRoot = kgwNodeJoinPathR5(kgwNodeExtractUserLocalAppDataR5(paths), "KaspaGateway");
+  const nodesRoot = kgwNodeJoinPathR5(appRoot, "nodes");
+  return kgwNodeJoinPathR5(nodesRoot, String(net || "mainnet"));
 }
 
 function kgwNodeIsEmptyOrGeneratedPathR5(value) {
@@ -719,11 +718,11 @@ async function kgwNodeLoadEnvironmentPathHintsR5() {
 async function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsR5(net, options = {}) {
   const force = options.force === true;
   const pathHints = await kgwNodeLoadEnvironmentPathHintsR5();
-  const rustyRoot = kgwNodeRustyKaspaLocalAppDataRootR5(pathHints);
+  const rustyRoot = kgwNodeRustyKaspaLocalAppDataRootR5(pathHints, net);
 
   const values = {
     appDir: rustyRoot,
-    logDir: rustyRoot,
+    logDir: kgwNodeJoinPathR5(rustyRoot, "logs"),
     configFile: "",
     rocksDbWalDir: "",
     overrideParamsFile: ""
@@ -751,10 +750,43 @@ function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
 }
 
 const NODE_NETWORKS = [
-  { key: "mainnet", label: "MAINNET", testnet: false, netsuffix: "" },
-  { key: "testnet10", label: "TESTNET10", testnet: true, netsuffix: "10" },
-  { key: "testnet12", label: "TESTNET12", testnet: true, netsuffix: "12" }
+  { key: "mainnet", label: "MAINNET", testnet: false, netsuffix: "", enabledByDefault: true, runtime: "Official stable v2.0.1" },
+  { key: "testnet10", label: "TESTNET10", testnet: true, netsuffix: "10", enabledByDefault: true, runtime: "Official stable v2.0.1" },
+  { key: "testnet12", label: "TESTNET12", testnet: true, netsuffix: "12", enabledByDefault: false, experimental: true, runtime: "Experimental TN12 build" }
 ];
+
+function kgwNodeNetworkPolicyKey(net) {
+  return `kgw.node.network.enabled.${String(net || "unknown")}`;
+}
+
+function kgwNodeNetworkProfile(net) {
+  return NODE_NETWORKS.find((item) => item.key === net) || null;
+}
+
+function kgwNodeNetworkEnabled(net) {
+  const profile = kgwNodeNetworkProfile(net);
+  try {
+    const stored = localStorage.getItem(kgwNodeNetworkPolicyKey(net));
+    if (stored === "1") return true;
+    if (stored === "0") return false;
+  } catch (_) {}
+  return profile ? profile.enabledByDefault !== false : false;
+}
+
+function kgwNodeSetNetworkEnabled(net, enabled) {
+  try {
+    localStorage.setItem(kgwNodeNetworkPolicyKey(net), enabled ? "1" : "0");
+  } catch (_) {}
+}
+
+function kgwNodeNetworkPolicyMessage(net) {
+  const profile = kgwNodeNetworkProfile(net);
+  if (!profile) return "";
+  if (profile.experimental) {
+    return "Experimental network. Disabled by default and requires explicit opt-in.";
+  }
+  return `${profile.runtime}. RPC remains loopback-only and data is isolated per network.`;
+}
 
 function byId(id) {
   return document.getElementById(id);
@@ -1218,6 +1250,19 @@ function renderNetworkPanel(net, index) {
 
   return `
     <div class="node-v6-network-panel${index === 0 ? " active" : ""}" data-node-network-panel="${net.key}"${index === 0 ? "" : " hidden"}>
+      <section class="kgw-network-policy${net.experimental ? " is-experimental" : ""}" data-net="${net.key}">
+        <div>
+          <strong>${net.label}</strong>
+          <span>${esc(kgwNodeNetworkPolicyMessage(net.key))}</span>
+        </div>
+        <div class="kgw-network-policy-controls">
+          <span id="${id(net.key, "policyStatus")}" class="kgw-network-policy-status">Stopped</span>
+          <label>
+            <input type="checkbox" data-node-network-enabled="${net.key}" data-net="${net.key}"${kgwNodeNetworkEnabled(net.key) ? " checked" : ""}>
+            Enabled
+          </label>
+        </div>
+      </section>
       <div class="node-v6-inner-tabs">
         <button type="button" class="node-v6-inner-tab${logActive ? " active" : ""}" data-net="${net.key}" data-node-inner-tab="log">Live Node Monitor</button>
         <button type="button" class="node-v6-inner-tab${settingsActive ? " active" : ""}" data-net="${net.key}" data-node-inner-tab="settings">Settings</button>
@@ -1237,7 +1282,7 @@ function renderNetworkPanel(net, index) {
           </div>
 
           <div class="node-v6-status">
-            <label><input id="${id(net.key, "startOnLaunch")}" type="checkbox"> Launch</label>
+            <label><input id="${id(net.key, "startOnLaunch")}" type="checkbox"> Auto-start</label>
             <label><input id="${id(net.key, "autoRestart")}" type="checkbox" checked> Restart</label>
           </div>
         </section>
@@ -1601,6 +1646,7 @@ function nodeRuntimeArgs(net, command) {
       nodeCommandPreview: preview,
       bridgeCommandPreview: "",
       runtimeRole: "node",
+      experimentalNetworkOptIn: net === "testnet12" && kgwNodeNetworkEnabled(net),
     };
   }
 
@@ -1649,6 +1695,12 @@ async function runNodeIntegratedAction(action, net) {
 
   const command = commandByAction[action];
   if (!command) return false;
+
+  if (action === "start" && !kgwNodeNetworkEnabled(net)) {
+    appendLog(net, "KGW node start blocked: this network is disabled. Enable it in the network policy bar first.");
+    kgwNodeR51SetRuntimeButtons(net, false, false);
+    return true;
+  }
 
   if (action === "start" || action === "stop") {
     const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
@@ -1979,11 +2031,18 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
   if (!panel) return;
 
   const displayOnlyLocked = Boolean(bridgeInprocessLocked || kgwIsBridgeOwnedNodeLockedR65E(net));
+  const networkEnabled = kgwNodeNetworkEnabled(net);
   kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, displayOnlyLocked, "runtime-buttons");
 
   const start = panel.querySelector('[data-node-action="start"][data-net="' + net + '"]');
   const stop = panel.querySelector('[data-node-action="stop"][data-net="' + net + '"]');
   const lockMessage = "This node is owned by Bridge in-process mode. Stop the bridge first.";
+  const policyStatus = byId(id(net, "policyStatus"));
+
+  if (policyStatus) {
+    policyStatus.textContent = networkEnabled ? (running ? "Running" : "Stopped") : "Disabled";
+    policyStatus.dataset.state = networkEnabled ? (running ? "running" : "stopped") : "disabled";
+  }
 
   for (const field of kgwNodeR51Fields(net)) {
     field.disabled = Boolean(displayOnlyLocked);
@@ -2000,12 +2059,19 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
   }
 
   if (start) {
-    start.disabled = Boolean(running || displayOnlyLocked);
-    start.style.opacity = running || displayOnlyLocked ? "0.45" : "";
-    start.style.cursor = running || displayOnlyLocked ? "not-allowed" : "";
-    start.setAttribute("aria-disabled", running || displayOnlyLocked ? "true" : "false");
+    const startBlocked = Boolean(running || displayOnlyLocked || !networkEnabled);
+    start.disabled = startBlocked;
+    start.style.opacity = startBlocked ? "0.45" : "";
+    start.style.cursor = startBlocked ? "not-allowed" : "";
+    start.setAttribute("aria-disabled", startBlocked ? "true" : "false");
     start.dataset.kgwBridgeInprocessLockedV7 = displayOnlyLocked ? "true" : "false";
-    start.title = displayOnlyLocked ? lockMessage : running ? "Node is running. Stop it before starting again." : "Start node";
+    start.title = displayOnlyLocked
+      ? lockMessage
+      : !networkEnabled
+        ? "Enable this network before starting it."
+        : running
+          ? "Node is running. Stop it before starting again."
+          : "Start node";
   }
 
   if (stop) {
@@ -2625,6 +2691,29 @@ function installActions(root) {
     }
 
     const net = netFromEvent(event);
+
+    if (target.matches("[data-node-network-enabled]")) {
+      const profile = kgwNodeNetworkProfile(net);
+      let enabled = Boolean(target.checked);
+
+      if (enabled && profile?.experimental) {
+        const confirmed = window.confirm(
+          "Testnet 12 is experimental and uses a separate non-production runtime. Enable it only for isolated testing. Continue?"
+        );
+        if (!confirmed) {
+          enabled = false;
+          target.checked = false;
+        }
+      }
+
+      kgwNodeSetNetworkEnabled(net, enabled);
+      kgwNodeR51SetRuntimeButtons(net, false, kgwIsBridgeOwnedNodeLockedR65E(net));
+
+      if (!enabled) {
+        void runNodeIntegratedAction("stop", net);
+      }
+    }
+
     scopedUpdate(net, event.isTrusted ? "trusted-change" : "programmatic-change");
   }, true);
 
@@ -2709,6 +2798,7 @@ const nodeRoot = root || document.getElementById("kaspa-node");
   renderAllNetworks(nodeRoot);
   kgwNodeR51CaptureFactoryDefaults();
   kgwNodeR51LoadSavedSettings();
+  NODE_NETWORKS.forEach((net) => kgwNodeR51SetRuntimeButtons(net.key, false, false));
   installNetworkTabs(nodeRoot);
   installDelegatedTabs(nodeRoot);
   installActions(nodeRoot);
@@ -3105,4 +3195,3 @@ window.kgwV67RuntimeFeaturePolicy = kgwV67RuntimeFeaturePolicy;
 /* R35 settings persistence for existing Node tab. */
 /* R37 bottom placement for Node settings buttons. */
 /* R38 UI freeze protection for Node Start/Stop. */
-

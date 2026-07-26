@@ -703,8 +703,8 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
     let role_key = role.trim().to_ascii_lowercase();
     let network =
         kgw_self_worker_arg_value(&args, "--network").unwrap_or_else(|| "mainnet".to_string());
-    let appdir =
-        kgw_self_worker_arg_value(&args, "--appdir").unwrap_or_else(kgw_self_worker_default_appdir);
+    let appdir = kgw_self_worker_arg_value(&args, "--appdir")
+        .unwrap_or_else(|| kgw_self_worker_default_appdir(&network));
     let rpc = kgw_self_worker_arg_value(&args, "--rpc")
         .unwrap_or_else(|| kgw_self_worker_default_rpc(&network).to_string());
     let stratum = kgw_self_worker_arg_value(&args, "--stratum")
@@ -884,15 +884,25 @@ fn kgw_bridge_config_instance_listens_r122(config_path: &str) -> Result<Vec<Stri
     Ok(listens)
 }
 
-fn kgw_self_worker_default_appdir() -> String {
+fn kgw_self_worker_default_appdir(network: &str) -> String {
+    let network = match network.trim().to_ascii_lowercase().as_str() {
+        "testnet" | "testnet10" => "testnet10",
+        "testnet12" | "tn12" => "testnet12",
+        _ => "mainnet",
+    };
+
     if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
         std::path::PathBuf::from(local_app_data)
-            .join("rusty-kaspa")
+            .join("KaspaGateway")
+            .join("nodes")
+            .join(network)
             .to_string_lossy()
             .to_string()
     } else {
         std::env::temp_dir()
-            .join("rusty-kaspa")
+            .join("KaspaGateway")
+            .join("nodes")
+            .join(network)
             .to_string_lossy()
             .to_string()
     }
@@ -934,9 +944,18 @@ fn kgw_run_node_self_worker(
     settings.archival = archival;
 
     let runtime = kaspa_gateway_rk_node::KgwRealOwnerRuntime::new();
-    let _status = runtime
+    let status = runtime
         .start_node_owner_session(&settings)
         .map_err(|error| error.to_string())?;
+
+    if !status.official_core_running {
+        return Err(format!(
+            "official core did not start;network={};policy={};message={}",
+            settings.network.as_str(),
+            status.start_policy.as_str(),
+            status.last_message
+        ));
+    }
 
     loop {
         std::thread::sleep(std::time::Duration::from_secs(10));

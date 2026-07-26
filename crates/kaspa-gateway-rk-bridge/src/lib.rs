@@ -29,22 +29,22 @@ impl BridgeRuntimeNetwork {
 
     pub fn branch(self) -> &'static str {
         match self {
-            Self::Mainnet => "master",
-            Self::Testnet10 | Self::Testnet12 => "RKStratumTN12",
+            Self::Mainnet | Self::Testnet10 => "stable",
+            Self::Testnet12 => "RKStratumTN12",
         }
     }
 
     pub fn revision(self) -> &'static str {
         match self {
-            Self::Mainnet => "a07d8b38d45f38a02a1f35f601e874358f6c7846",
-            Self::Testnet10 | Self::Testnet12 => "eeb351ee911e2df906d21203dec8db3a195c6b33",
+            Self::Mainnet | Self::Testnet10 => "cfafeb4c093fa37a303f1b9f19c58f986b870ce3",
+            Self::Testnet12 => "eeb351ee911e2df906d21203dec8db3a195c6b33",
         }
     }
 
     pub fn family(self) -> BridgeRuntimeFamily {
         match self {
-            Self::Mainnet => BridgeRuntimeFamily::Mainline,
-            Self::Testnet10 | Self::Testnet12 => BridgeRuntimeFamily::Tn12,
+            Self::Mainnet | Self::Testnet10 => BridgeRuntimeFamily::Mainline,
+            Self::Testnet12 => BridgeRuntimeFamily::Tn12,
         }
     }
 
@@ -82,7 +82,7 @@ pub enum BridgeRuntimeFamily {
 impl BridgeRuntimeFamily {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::Mainline => "mainline-master",
+            Self::Mainline => "official-stable-v2.0.1",
             Self::Tn12 => "tn12-only",
         }
     }
@@ -732,7 +732,35 @@ pub fn all_parallel_bridge_plans_v1() -> Result<Vec<BridgeRuntimePlan>, BridgeRu
 }
 
 pub fn official_kaspa_bridge_summary_v1() -> &'static str {
-    "Kaspa bridge follows the KGW service-event mechanism. mainnet/testnet10 use official rusty-kaspa master branch; testnet12 uses official rusty-kaspa tn12 branch. Bridge start uses KaspaApi and listen_and_serve_with_shutdown inside owner."
+    "Kaspa bridge follows the KGW service-event mechanism. mainnet/testnet10 use official rusty-kaspa v2.0.1; testnet12 remains an explicit experimental tn12 build. Bridge start uses KaspaApi and listen_and_serve_with_shutdown inside owner."
+}
+
+#[cfg(test)]
+mod runtime_binding_tests {
+    use super::{BridgeRuntimeFamily, BridgeRuntimeNetwork};
+
+    const STABLE_REV: &str = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3";
+    const TN12_REV: &str = "eeb351ee911e2df906d21203dec8db3a195c6b33";
+
+    #[test]
+    fn mainnet_and_testnet10_share_the_official_stable_runtime() {
+        for network in [
+            BridgeRuntimeNetwork::Mainnet,
+            BridgeRuntimeNetwork::Testnet10,
+        ] {
+            assert_eq!(network.family(), BridgeRuntimeFamily::Mainline);
+            assert_eq!(network.branch(), "stable");
+            assert_eq!(network.revision(), STABLE_REV);
+        }
+    }
+
+    #[test]
+    fn testnet12_remains_on_the_separate_experimental_runtime() {
+        let network = BridgeRuntimeNetwork::Testnet12;
+        assert_eq!(network.family(), BridgeRuntimeFamily::Tn12);
+        assert_eq!(network.branch(), "RKStratumTN12");
+        assert_eq!(network.revision(), TN12_REV);
+    }
 }
 
 #[cfg(feature = "official-kaspa-runtime-mainline")]

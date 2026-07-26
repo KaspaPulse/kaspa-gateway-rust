@@ -29,22 +29,22 @@ impl KaspaRuntimeNetwork {
 
     pub fn branch(self) -> &'static str {
         match self {
-            Self::Mainnet => "master",
-            Self::Testnet10 | Self::Testnet12 => "RKStratumTN12",
+            Self::Mainnet | Self::Testnet10 => "stable",
+            Self::Testnet12 => "RKStratumTN12",
         }
     }
 
     pub fn revision(self) -> &'static str {
         match self {
-            Self::Mainnet => "a07d8b38d45f38a02a1f35f601e874358f6c7846",
-            Self::Testnet10 | Self::Testnet12 => "eeb351ee911e2df906d21203dec8db3a195c6b33",
+            Self::Mainnet | Self::Testnet10 => "cfafeb4c093fa37a303f1b9f19c58f986b870ce3",
+            Self::Testnet12 => "eeb351ee911e2df906d21203dec8db3a195c6b33",
         }
     }
 
     pub fn family(self) -> KaspaRuntimeFamily {
         match self {
-            Self::Mainnet => KaspaRuntimeFamily::Mainline,
-            Self::Testnet10 | Self::Testnet12 => KaspaRuntimeFamily::Tn12,
+            Self::Mainnet | Self::Testnet10 => KaspaRuntimeFamily::Mainline,
+            Self::Testnet12 => KaspaRuntimeFamily::Tn12,
         }
     }
 
@@ -74,7 +74,7 @@ pub enum KaspaRuntimeFamily {
 impl KaspaRuntimeFamily {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::Mainline => "mainline-master",
+            Self::Mainline => "official-stable-v2.0.1",
             Self::Tn12 => "tn12-only",
         }
     }
@@ -542,7 +542,32 @@ pub fn all_parallel_runtime_plans_v1() -> Result<Vec<KaspaRuntimePlan>, KaspaRun
 }
 
 pub fn official_kaspa_runtime_summary_v1() -> &'static str {
-    "KGW mechanism applied to all node networks and bridges in parallel: settings -> runtime decision -> service events -> owner plan/status. mainnet/testnet10 use official master branch; testnet12 uses official tn12 branch. No local clone, no downloaded exe, no frontend-owned runtime start."
+    "KGW mechanism applied to all node networks and bridges in parallel: settings -> runtime decision -> service events -> owner plan/status. mainnet/testnet10 use official stable v2.0.1; testnet12 is an explicit experimental tn12 runtime. No local clone, no downloaded exe, no frontend-owned runtime start."
+}
+
+#[cfg(test)]
+mod runtime_binding_tests {
+    use super::{KaspaRuntimeFamily, KaspaRuntimeNetwork};
+
+    const STABLE_REV: &str = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3";
+    const TN12_REV: &str = "eeb351ee911e2df906d21203dec8db3a195c6b33";
+
+    #[test]
+    fn mainnet_and_testnet10_share_the_official_stable_runtime() {
+        for network in [KaspaRuntimeNetwork::Mainnet, KaspaRuntimeNetwork::Testnet10] {
+            assert_eq!(network.family(), KaspaRuntimeFamily::Mainline);
+            assert_eq!(network.branch(), "stable");
+            assert_eq!(network.revision(), STABLE_REV);
+        }
+    }
+
+    #[test]
+    fn testnet12_remains_on_the_separate_experimental_runtime() {
+        let network = KaspaRuntimeNetwork::Testnet12;
+        assert_eq!(network.family(), KaspaRuntimeFamily::Tn12);
+        assert_eq!(network.branch(), "RKStratumTN12");
+        assert_eq!(network.revision(), TN12_REV);
+    }
 }
 
 #[cfg(feature = "official-kaspa-runtime-mainline")]

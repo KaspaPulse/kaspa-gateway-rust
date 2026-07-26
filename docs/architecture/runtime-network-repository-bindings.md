@@ -4,15 +4,15 @@
 
 | Network | Family | Repository | Branch | Feature |
 |---|---|---|---|---|
-| mainnet | mainline | https://github.com/kaspanet/rusty-kaspa.git | master | official-kaspa-runtime-mainline |
-| testnet10 | tn12 | https://github.com/LiveLaughLove13/rusty-kaspa.git | RKStratumTN12 | official-kaspa-runtime-tn12 |
-| testnet12 | tn12 | https://github.com/LiveLaughLove13/rusty-kaspa.git | RKStratumTN12 | official-kaspa-runtime-tn12 |
+| mainnet | mainline | https://github.com/kaspanet/rusty-kaspa.git | stable | official-kaspa-runtime-mainline |
+| testnet10 | mainline | https://github.com/kaspanet/rusty-kaspa.git | stable | official-kaspa-runtime-mainline |
+| testnet12 | tn12 (experimental) | https://github.com/LiveLaughLove13/rusty-kaspa.git | RKStratumTN12 | official-kaspa-runtime-tn12 |
 
 ## Decision
 
-Mainnet remains bound to kaspanet/rusty-kaspa master.
+Mainnet and Testnet10 are pinned to the official kaspanet/rusty-kaspa stable v2.0.1 revision.
 
-Testnet10 and Testnet12 are bound to LiveLaughLove13/rusty-kaspa RKStratumTN12 for both node and bridge dependencies.
+Testnet12 remains a separate experimental binding, is disabled by default, and requires explicit runtime opt-in.
 
 ## Important rule
 
@@ -33,7 +33,7 @@ Changing this binding requires:
 crates/kaspa-gateway-rk-node/Cargo.toml
 ```
 
-Mainline aliases, used by mainnet:
+Mainline aliases, used by mainnet and testnet10:
 
 ```text
 kaspad-lib-mainline
@@ -41,7 +41,7 @@ kaspa-core-mainline
 kaspa-utils-mainline
 ```
 
-TN12 aliases, now used by testnet10 and testnet12:
+TN12 aliases, used only by experimental testnet12:
 
 ```text
 kaspad-lib-tn12
@@ -55,13 +55,13 @@ kaspa-utils-tn12
 crates/kaspa-gateway-rk-bridge/Cargo.toml
 ```
 
-Mainline alias, used by mainnet:
+Mainline alias, used by mainnet and testnet10:
 
 ```text
 kaspa-stratum-bridge-mainline
 ```
 
-TN12 alias, now used by testnet10 and testnet12:
+TN12 alias, used only by experimental testnet12:
 
 ```text
 kaspa-stratum-bridge-tn12
@@ -78,8 +78,8 @@ crates/kaspa-gateway-rk-bridge/src/lib.rs
 Current mapping:
 
 ```text
-mainnet             -> master / Mainline
-testnet10/testnet12 -> RKStratumTN12 / Tn12
+mainnet/testnet10 -> stable v2.0.1 / Mainline
+testnet12         -> RKStratumTN12 / Tn12 (explicit opt-in)
 ```
 
 ## Permanent audit
@@ -93,8 +93,8 @@ node tools\kgw_runtime_repository_binding_audit.cjs
 Expected result:
 
 ```text
-network=mainnet;family=mainline;branch=master;node_repo=https://github.com/kaspanet/rusty-kaspa.git;bridge_repo=https://github.com/kaspanet/rusty-kaspa.git
-network=testnet10;family=tn12;branch=RKStratumTN12;node_repo=https://github.com/LiveLaughLove13/rusty-kaspa.git;bridge_repo=https://github.com/LiveLaughLove13/rusty-kaspa.git
+network=mainnet;family=mainline;branch=stable;node_repo=https://github.com/kaspanet/rusty-kaspa.git;bridge_repo=https://github.com/kaspanet/rusty-kaspa.git
+network=testnet10;family=mainline;branch=stable;node_repo=https://github.com/kaspanet/rusty-kaspa.git;bridge_repo=https://github.com/kaspanet/rusty-kaspa.git
 network=testnet12;family=tn12;branch=RKStratumTN12;node_repo=https://github.com/LiveLaughLove13/rusty-kaspa.git;bridge_repo=https://github.com/LiveLaughLove13/rusty-kaspa.git
 status=PASS
 ```

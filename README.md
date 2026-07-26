@@ -37,9 +37,9 @@ Runtime bindings are pinned to explicit git revisions, not floating branches:
 
 | Network | Runtime family | Repository | Branch | Pinned revision |
 |---|---:|---|---|---|
-| mainnet | mainline | https://github.com/kaspanet/rusty-kaspa.git | master | `4969c6c31bec6a1a31e17c2e8a43532e17834240` |
-| testnet10 | tn12 | https://github.com/LiveLaughLove13/rusty-kaspa.git | RKStratumTN12 | `a6a408943e1a62cd46fab3e6032c90cf152ab2ad` |
-| testnet12 | tn12 | https://github.com/LiveLaughLove13/rusty-kaspa.git | RKStratumTN12 | `a6a408943e1a62cd46fab3e6032c90cf152ab2ad` |
+| mainnet | mainline | https://github.com/kaspanet/rusty-kaspa.git | stable | `cfafeb4c093fa37a303f1b9f19c58f986b870ce3` |
+| testnet10 | mainline | https://github.com/kaspanet/rusty-kaspa.git | stable | `cfafeb4c093fa37a303f1b9f19c58f986b870ce3` |
+| testnet12 | tn12 (experimental) | https://github.com/LiveLaughLove13/rusty-kaspa.git | RKStratumTN12 | `eeb351ee911e2df906d21203dec8db3a195c6b33` |
 
 Release validation includes:
 
@@ -136,9 +136,9 @@ config/runtime-repository-bindings.json
 
 | Network | Runtime family | Repository | Branch | Purpose |
 |---|---:|---|---|---|
-| `mainnet` | `mainline` | `https://github.com/kaspanet/rusty-kaspa.git` | `master` | Official mainnet node and Stratum bridge runtime |
-| `testnet10` | `tn12` | `https://github.com/LiveLaughLove13/rusty-kaspa.git` | `RKStratumTN12` | Testnet node and Stratum bridge runtime with RKStratum/TN support |
-| `testnet12` | `tn12` | `https://github.com/LiveLaughLove13/rusty-kaspa.git` | `RKStratumTN12` | Testnet node and Stratum bridge runtime with RKStratum/TN support |
+| `mainnet` | `mainline` | `https://github.com/kaspanet/rusty-kaspa.git` | `stable` | Official stable mainnet node and Stratum bridge runtime |
+| `testnet10` | `mainline` | `https://github.com/kaspanet/rusty-kaspa.git` | `stable` | Official stable TN10 node and Stratum bridge runtime |
+| `testnet12` | `tn12` | `https://github.com/LiveLaughLove13/rusty-kaspa.git` | `RKStratumTN12` | Experimental opt-in TN12 runtime |
 
 ### Important runtime policy
 
@@ -674,7 +674,7 @@ Recommended development environment:
 
 - Windows 10/11 for desktop packaging and NSIS installer builds.
 - PowerShell 7+.
-- Rust toolchain compatible with the workspace `rust-version`.
+- Rust 1.91 or newer (required by the pinned Rusty Kaspa v2.0.1 runtime).
 - Node.js and npm.
 - Tauri CLI dependency installed through project npm dependencies.
 - Git.
@@ -1102,5 +1102,3 @@ Desktop framework:
 ```text
 https://tauri.app/
 ```
-
-

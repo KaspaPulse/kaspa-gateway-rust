@@ -2,8 +2,8 @@
 mod integrated_runtime_commands;
 
 use integrated_runtime_commands::{
-    kgw_kgw_apply_node_settings_v1, kgw_kgw_disable_network_v1, kgw_kgw_runtime_logs_v1,
-    kgw_runtime_owner_status_v1, kgw_runtime_owner_summary_v1,
+    kgw_kgw_apply_node_settings_v1, kgw_kgw_node_bridge_service_plan_v1,
+    kgw_runtime_owner_summary_v1,
 };
 
 fn assert_contains_all(text: &str, parts: &[&str]) {
@@ -28,53 +28,28 @@ fn exact_kgw_controller_summary_mentions_event_flow() {
 }
 
 #[test]
-fn apply_node_settings_starts_owned_worker_for_testnet10() {
-    let applied = kgw_kgw_apply_node_settings_v1(
+fn testnet10_uses_the_official_stable_runtime_family() {
+    let plan = kgw_kgw_node_bridge_service_plan_v1(
         "testnet10".to_string(),
-        "integrated-inproc".to_string(),
-        "official-inprocess-node".to_string(),
-        None,
-        None,
-        Some("node".to_string()),
-        None,
-        None,
-        None,
-        None,
+        "integrated-as-daemon".to_string(),
+        "disabled".to_string(),
+        true,
     )
-    .expect("apply_node_settings should succeed");
-
-    let status_result =
-        kgw_runtime_owner_status_v1(Some("testnet10".to_string()), Some("node".to_string()));
-    let logs_result =
-        kgw_kgw_runtime_logs_v1(Some("testnet10".to_string()), Some("node".to_string()));
-
-    let disabled_result =
-        kgw_kgw_disable_network_v1("testnet10".to_string(), Some("node".to_string()));
-
-    let status = status_result.expect("status should succeed");
-    let _logs = logs_result.expect("logs should succeed");
-    let disabled = disabled_result.expect("cleanup should succeed");
+    .expect("testnet10 plan should succeed");
 
     assert_contains_all(
-        &applied,
+        &plan,
         &[
-            "parallel-owned-self-worker started",
-            "role=node",
             "network=testnet10",
-            "same_exe=true",
-            "external_kaspad_exe=false",
-            "uses_kaspa_libraries=true",
-            "same_db_path=true",
-            "exclusive_node_owner_per_network=true",
+            "family=official-stable-v2.0.1",
+            "branch=stable",
         ],
     );
-    assert!(!status.trim().is_empty());
-    assert!(!disabled.trim().is_empty());
 }
 
 #[test]
-fn disable_network_stops_owned_worker_for_testnet12() {
-    let applied = kgw_kgw_apply_node_settings_v1(
+fn testnet12_requires_explicit_experimental_opt_in() {
+    let error = kgw_kgw_apply_node_settings_v1(
         "testnet12".to_string(),
         "integrated-inproc".to_string(),
         "official-inprocess-node".to_string(),
@@ -85,24 +60,18 @@ fn disable_network_stops_owned_worker_for_testnet12() {
         None,
         None,
         None,
+        None,
     )
-    .expect("apply_node_settings should succeed");
-
-    let disabled = kgw_kgw_disable_network_v1("testnet12".to_string(), Some("node".to_string()))
-        .expect("disable should succeed");
+    .expect_err("testnet12 must be blocked without explicit opt-in");
 
     assert_contains_all(
-        &applied,
+        &error,
         &[
-            "parallel-owned-self-worker started",
-            "role=node",
             "network=testnet12",
-            "same_exe=true",
-            "external_kaspad_exe=false",
-            "uses_kaspa_libraries=true",
+            "start_blocked=true",
+            "experimental-network-opt-in-required",
         ],
     );
-    assert!(!disabled.trim().is_empty());
 }
 
 #[test]
@@ -114,6 +83,7 @@ fn unsupported_network_is_rejected() {
         None,
         None,
         Some("node".to_string()),
+        None,
         None,
         None,
         None,

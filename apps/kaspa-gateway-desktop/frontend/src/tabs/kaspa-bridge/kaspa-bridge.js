@@ -647,12 +647,9 @@ function kgwI18nTextR41(key, fallback) {
 }
 
 
-/* KGW_BRIDGE_RUSTY_KASPA_ROOT_ONLY_DEFAULT_PATHS_FIX_R5
- * Canonical bridge runtime default path owner.
- * The only generated default path is the current user's LocalAppData rusty-kaspa root.
- * Example runtime value: %LOCALAPPDATA%\rusty-kaspa.
- * No bridge suffix, no network suffix, no KGW app-data root.
- * Kaspa bridge/runtime owns/completes any internal layout below this root.
+/* Canonical isolated bridge/node runtime paths.
+ * In-process bridge mode shares the same network-specific database at:
+ * %LOCALAPPDATA%\KaspaGateway\nodes\<network>
  */
 function kgwBridgeBackendInvokeR5(command, payload = {}) {
   const invoke =
@@ -684,8 +681,10 @@ function kgwBridgeExtractUserLocalAppDataR5(paths) {
   return "%LOCALAPPDATA%";
 }
 
-function kgwBridgeRustyKaspaLocalAppDataRootR5(paths = {}) {
-  return kgwBridgeJoinPathR5(kgwBridgeExtractUserLocalAppDataR5(paths), "rusty-kaspa");
+function kgwBridgeRustyKaspaLocalAppDataRootR5(paths = {}, net = "mainnet") {
+  const appRoot = kgwBridgeJoinPathR5(kgwBridgeExtractUserLocalAppDataR5(paths), "KaspaGateway");
+  const nodesRoot = kgwBridgeJoinPathR5(appRoot, "nodes");
+  return kgwBridgeJoinPathR5(nodesRoot, String(net || "mainnet"));
 }
 
 function kgwBridgeIsEmptyOrGeneratedPathR5(value) {
@@ -705,7 +704,7 @@ async function kgwBridgeLoadEnvironmentPathHintsR5() {
 async function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsR5(net, options = {}) {
   const force = options.force === true;
   const pathHints = await kgwBridgeLoadEnvironmentPathHintsR5();
-  const rustyRoot = kgwBridgeRustyKaspaLocalAppDataRootR5(pathHints);
+  const rustyRoot = kgwBridgeRustyKaspaLocalAppDataRootR5(pathHints, net);
 
   const values = {
     appdir: rustyRoot,
@@ -736,10 +735,43 @@ function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
  * These are defaults only. Manual valid unused ports remain accepted anywhere.
  */
 const BRIDGE_NETWORKS = [
-  { key: "mainnet", label: "MAINNET", testnet: false, netsuffix: "", kaspadPort: "16110", stratumPort: ":5555", promPort: ":2112", dashboardPort: "3030" },
-  { key: "testnet10", label: "TESTNET10", testnet: true, netsuffix: "10", kaspadPort: "16210", stratumPort: ":5655", promPort: ":2212", dashboardPort: "3130" },
-  { key: "testnet12", label: "TESTNET12", testnet: true, netsuffix: "12", kaspadPort: "16310", stratumPort: ":5755", promPort: ":2312", dashboardPort: "3230" }
+  { key: "mainnet", label: "MAINNET", testnet: false, netsuffix: "", kaspadPort: "16110", stratumPort: ":5555", promPort: ":2112", dashboardPort: "3030", enabledByDefault: true, runtime: "Official stable v2.0.1" },
+  { key: "testnet10", label: "TESTNET10", testnet: true, netsuffix: "10", kaspadPort: "16210", stratumPort: ":5655", promPort: ":2212", dashboardPort: "3130", enabledByDefault: true, runtime: "Official stable v2.0.1" },
+  { key: "testnet12", label: "TESTNET12", testnet: true, netsuffix: "12", kaspadPort: "16310", stratumPort: ":5755", promPort: ":2312", dashboardPort: "3230", enabledByDefault: false, experimental: true, runtime: "Experimental TN12 build" }
 ];
+
+function kgwBridgeNetworkPolicyKey(net) {
+  return `kgw.bridge.network.enabled.${String(net || "unknown")}`;
+}
+
+function kgwBridgeNetworkProfile(net) {
+  return BRIDGE_NETWORKS.find((item) => item.key === net) || null;
+}
+
+function kgwBridgeNetworkEnabled(net) {
+  const profile = kgwBridgeNetworkProfile(net);
+  try {
+    const stored = localStorage.getItem(kgwBridgeNetworkPolicyKey(net));
+    if (stored === "1") return true;
+    if (stored === "0") return false;
+  } catch (_) {}
+  return profile ? profile.enabledByDefault !== false : false;
+}
+
+function kgwBridgeSetNetworkEnabled(net, enabled) {
+  try {
+    localStorage.setItem(kgwBridgeNetworkPolicyKey(net), enabled ? "1" : "0");
+  } catch (_) {}
+}
+
+function kgwBridgeNetworkPolicyMessage(net) {
+  const profile = kgwBridgeNetworkProfile(net);
+  if (!profile) return "";
+  if (profile.experimental) {
+    return "Experimental network. Disabled by default and requires explicit opt-in.";
+  }
+  return `${profile.runtime}. External local-node mode is recommended for mining bridges.`;
+}
 
 const bridgeInstances = {
   mainnet: [{ id: 1 }],
@@ -2632,6 +2664,19 @@ function renderNetworkPanel(net, index) {
 
   return `
     <div class="bridge-v7-network-panel${index === 0 ? " active" : ""}" data-bridge-network-panel="${net.key}"${index === 0 ? "" : " hidden"}>
+      <section class="kgw-network-policy${net.experimental ? " is-experimental" : ""}" data-net="${net.key}">
+        <div>
+          <strong>${net.label}</strong>
+          <span>${esc(kgwBridgeNetworkPolicyMessage(net.key))}</span>
+        </div>
+        <div class="kgw-network-policy-controls">
+          <span id="${id(net.key, "policyStatus")}" class="kgw-network-policy-status">Stopped</span>
+          <label>
+            <input type="checkbox" data-bridge-network-enabled="${net.key}" data-net="${net.key}"${kgwBridgeNetworkEnabled(net.key) ? " checked" : ""}>
+            Enabled
+          </label>
+        </div>
+      </section>
       <div class="bridge-v7-inner-tabs">
         <button type="button" class="bridge-v7-inner-tab${logActive ? " active" : ""}" data-net="${net.key}" data-bridge-inner-tab="log">Live Bridge Monitor</button>
         <button type="button" class="bridge-v7-inner-tab${settingsActive ? " active" : ""}" data-net="${net.key}" data-bridge-inner-tab="settings">Settings</button>
@@ -2651,7 +2696,7 @@ function renderNetworkPanel(net, index) {
           </div>
 
           <div class="bridge-v7-status">
-            <label><input id="${id(net.key, "launch")}" type="checkbox"> Launch</label>
+            <label><input id="${id(net.key, "launch")}" type="checkbox"> Auto-start</label>
             <label><input id="${id(net.key, "restart")}" type="checkbox" checked> Restart</label>
           </div>
         </section>
@@ -4563,6 +4608,7 @@ function buildApplyPayload(net, command) {
       bridgeActiveInstance,
       bridgeActiveInstancePort,
       bridgeStructuredInstances: JSON.stringify(structuredInstances || {}),
+      experimentalNetworkOptIn: net === "testnet12" && kgwBridgeNetworkEnabled(net),
     };
   }
 
@@ -4772,6 +4818,14 @@ async function runBridgeIntegratedAction(action, net) {
       action: String(action || "")
     });
     return false;
+  }
+
+  if (action === "start" && !kgwBridgeNetworkEnabled(net)) {
+    if (typeof appendLog === "function") {
+      appendLog(net, "KGW bridge start blocked: this network is disabled. Enable it in the network policy bar first.");
+    }
+    kgwBridgeR51SetRuntimeButtons(net, false);
+    return true;
   }
 
   if (action === "start") {
@@ -5542,14 +5596,26 @@ function kgwBridgeR51SetRuntimeButtons(net, running) {
   const panel = kgwBridgeR51Panel(net);
   if (!panel) return;
 
+  const networkEnabled = kgwBridgeNetworkEnabled(net);
   const start = panel.querySelector(`[data-bridge-action="start"][data-net="${net}"]`);
   const stop = panel.querySelector(`[data-bridge-action="stop"][data-net="${net}"]`);
+  const policyStatus = byId(id(net, "policyStatus"));
+
+  if (policyStatus) {
+    policyStatus.textContent = networkEnabled ? (running ? "Running" : "Stopped") : "Disabled";
+    policyStatus.dataset.state = networkEnabled ? (running ? "running" : "stopped") : "disabled";
+  }
 
   if (start) {
-    start.disabled = Boolean(running);
-    start.style.opacity = running ? "0.45" : "";
-    start.style.cursor = running ? "not-allowed" : "";
-    start.title = running ? "Bridge is running. Stop it before starting again." : "Start bridge";
+    const startBlocked = Boolean(running || !networkEnabled);
+    start.disabled = startBlocked;
+    start.style.opacity = startBlocked ? "0.45" : "";
+    start.style.cursor = startBlocked ? "not-allowed" : "";
+    start.title = !networkEnabled
+      ? "Enable this network before starting it."
+      : running
+        ? "Bridge is running. Stop it before starting again."
+        : "Start bridge";
   }
 
   if (stop) {
@@ -6165,6 +6231,29 @@ function installActions(root) {
     if (target.readOnly || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
 
     const net = netFromEvent(event);
+
+    if (target.matches("[data-bridge-network-enabled]")) {
+      const profile = kgwBridgeNetworkProfile(net);
+      let enabled = Boolean(target.checked);
+
+      if (enabled && profile?.experimental) {
+        const confirmed = window.confirm(
+          "Testnet 12 is experimental and uses a separate non-production runtime. Enable it only for isolated testing. Continue?"
+        );
+        if (!confirmed) {
+          enabled = false;
+          target.checked = false;
+        }
+      }
+
+      kgwBridgeSetNetworkEnabled(net, enabled);
+      kgwBridgeR51SetRuntimeButtons(net, false);
+
+      if (!enabled) {
+        void runBridgeIntegratedAction("stop", net);
+      }
+    }
+
     scopedUpdate(net, event.isTrusted ? "trusted-change" : "programmatic-change");
   }, true);
 
@@ -6257,6 +6346,7 @@ const bridgeRoot = root || document.getElementById("kaspa-bridge");
   renderAllNetworks(bridgeRoot);
   kgwBridgeR51CaptureFactoryDefaults();
   kgwBridgeR51LoadSavedSettings();
+  BRIDGE_NETWORKS.forEach((net) => kgwBridgeR51SetRuntimeButtons(net.key, false));
   bridgeSyncAllModeControls();
   installNetworkTabs(bridgeRoot);
   installDelegatedTabs(bridgeRoot);

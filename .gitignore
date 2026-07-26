@@ -113,6 +113,7 @@ _audit_reports/
 repomix-output*.xml
 .kgw-audit-reports/
 .kgw-audit-backups/
+artifacts/live-network-smoke/
 
 # KGW integrated runtime data must not be committed
 apps/kaspa-gateway-desktop/src-tauri/kaspa-gateway-rk-node/

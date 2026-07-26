@@ -37,7 +37,7 @@ const checks = [
   ["mainnet", /mainnet/i.test(controller) || /Mainnet/.test(controller)],
   ["testnet10", /testnet10/i.test(controller) || /Testnet10/.test(controller)],
   ["testnet12", /testnet12/i.test(controller) || /Testnet12/.test(controller)],
-  ["mainline or master owner", /mainline|master/i.test(controller)],
+  ["stable mainline owner", /stable|mainline/i.test(controller)],
   ["tn12 owner", /tn12/i.test(controller)],
   ["distinct rpc ports", /16110/.test(controller) && /16210/.test(controller) && /16310/.test(controller)],
   ["tauri module registered", libRs.includes("integrated_runtime_commands")]

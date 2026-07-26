@@ -5,6 +5,20 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[features]
+default = []
+live-network-probe = [
+    "dep:kaspa-grpc-client-live",
+    "dep:kaspa-rpc-core-live",
+    "dep:serde_json",
+    "dep:tokio"
+]
+
+[[bin]]
+name = "kgw-live-probe"
+path = "src/bin/kgw-live-probe.rs"
+required-features = ["live-network-probe"]
+
 [dependencies]
 clap.workspace = true
 kaspa-gateway-api = { path = "../../crates/kaspa-gateway-api" }
@@ -16,4 +30,7 @@ kaspa-gateway-runtime = { path = "../../crates/kaspa-gateway-runtime" }
 kaspa-gateway-security = { path = "../../crates/kaspa-gateway-security" }
 kaspa-gateway-observability = { path = "../../crates/kaspa-gateway-observability" }
 
-
+kaspa-grpc-client-live = { package = "kaspa-grpc-client", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3", optional = true }
+kaspa-rpc-core-live = { package = "kaspa-rpc-core", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3", optional = true }
+serde_json = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"], optional = true }
