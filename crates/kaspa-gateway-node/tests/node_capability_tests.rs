@@ -4,9 +4,9 @@ use kaspa_gateway_node::{MiningConnectivityMode, NodeCapabilities, NodeEndpoint}
 fn default_node_capabilities_are_integrated_bridge_ready() {
     let caps = NodeCapabilities::default();
 
-    assert!(!caps.node_available);
-    assert!(!caps.rpc_available);
-    assert!(!caps.mining_endpoint_available);
+    assert!(caps.node_available);
+    assert!(caps.rpc_available);
+    assert!(caps.mining_endpoint_available);
 
     match caps.mining_mode {
         MiningConnectivityMode::IntegratedBridge => {}
