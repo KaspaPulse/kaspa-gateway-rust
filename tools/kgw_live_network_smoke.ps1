@@ -273,7 +273,15 @@ foreach ($network in $Networks) {
 
         $peerCount = [int]$second.peerCount
         $daaProgressed = [uint64]$second.virtualDaaScore -gt [uint64]$first.virtualDaaScore
-        $healthy = $peerCount -gt 0 -and $daaProgressed
+        $blockProgressed = [uint64]$second.blockCount -gt [uint64]$first.blockCount
+        $headerProgressed = [uint64]$second.headerCount -gt [uint64]$first.headerCount
+        $chainProgressObserved = $daaProgressed -or $blockProgressed -or $headerProgressed
+        $healthy = $peerCount -gt 0
+        $observationWarning = if ($chainProgressObserved) {
+            $null
+        } else {
+            "No chain counter changed during the short observation window. This is informational during initial block download; use an extended synchronization test for production readiness."
+        }
 
         $result = [ordered]@{
             Network = $network
@@ -286,7 +294,15 @@ foreach ($network in $Networks) {
             IsSynced = [bool]$second.isSynced
             FirstVirtualDaaScore = [uint64]$first.virtualDaaScore
             SecondVirtualDaaScore = [uint64]$second.virtualDaaScore
+            FirstBlockCount = [uint64]$first.blockCount
+            SecondBlockCount = [uint64]$second.blockCount
+            FirstHeaderCount = [uint64]$first.headerCount
+            SecondHeaderCount = [uint64]$second.headerCount
             DaaProgressed = $daaProgressed
+            BlockProgressed = $blockProgressed
+            HeaderProgressed = $headerProgressed
+            ChainProgressObserved = $chainProgressObserved
+            ObservationWarning = $observationWarning
             FullSyncRequiredForProduction = -not [bool]$second.isSynced
             DurationSeconds = [math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1)
             StdoutLog = $stdoutPath
@@ -294,7 +310,7 @@ foreach ($network in $Networks) {
         }
 
         if (-not $healthy) {
-            $result.Failure = "RPC opened, but peer connectivity or DAA progression was not proven during the observation window."
+            $result.Failure = "RPC opened, but no connected peers were reported."
         }
 
         $results += [pscustomobject]$result

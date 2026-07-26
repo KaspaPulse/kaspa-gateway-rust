@@ -821,6 +821,7 @@
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_bridgeportownerpriorityr37",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_bridgereadinstancefield",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_clampsize",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_id",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_installall",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_installdelegatedtabs",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_installfornetwork",
@@ -849,7 +850,6 @@
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgelogcpuminerdiagnostic",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgelogoutputv29",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgenetfromsettingseventr6",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgenetworkpolicykey",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgenormalizeinnertabr101u",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgenormalizenetworkr101w2",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgeownednodelockstorer65e",
@@ -859,7 +859,6 @@
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgerustykaspalocalappdatarootr5",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgesaveinnertabr101u",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgesavelastnetworkr101w2",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgesetnetworkenabled",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgesettingsactionisr6",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgesettingsfeedbacklocksr11",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgetranslateruntime",
@@ -867,16 +866,19 @@
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwflashlogactionbutton",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwisbridgeownednodelockedr65e",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwsetbridgeownednodelockr65e",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwsettingstracebuttondetailsr29b",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwsettingstracedatasetr29b",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwsettingstraceeventdetailsr29b",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwsettingstracepreviewsnapshotr29b",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwsettingstracetargetsnapshotr29b",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_logoutput",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_makebutton",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_readableruntimesummary",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_readsize",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_removetoolbarduplicates",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_root",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_storagekey",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_toolbar",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_writesize",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_yesno"
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_writesize"
     ],
     "9": [
       "crates_kaspa_gateway_api_src_lib",
@@ -2076,26 +2078,37 @@
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_invokewithtimeout",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgw_bridge_runtime_in_flight",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgecurrentnodemodefromuir65f",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgelogautoscrollenabledr27",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgelogautoscrollkeyr27",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgenetworkenabled",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgenetworkpolicykey",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgenormalizenodemoder65f",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgepreviewdeclaresinprocessr65f",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51delta",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51fields",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51isrunning",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51kickrawlogliver134e",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51maybeactivitynotice",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51panel",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51refreshall",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51refreshone",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51setruntimebuttons",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51startliverefresh",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgesetlogautoscrollr27",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgesetnetworkenabled",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgestartwasinprocessr65f",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgev7blockinprocessifnodeownerrunning",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgev7runtimerunningfromtext",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwextractbridgeownerflags",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwi18ntextr41",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwinstallbridgelogautoscrollcontrolsr27",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwloadbridgeownercommandpreview",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_parseruntimekeyvalueresponse",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_readableruntimesummary",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_runbridgeintegratedaction",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_selectinstance",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_stringifyruntimeresult"
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_stringifyruntimeresult",
+      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_yesno"
     ],
     "31": [
       "apps_kaspa_gateway_desktop_src_tauri_src_runtime_commands",
@@ -2931,17 +2944,11 @@
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_fallbacktext",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_feedbackmap",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_feedbacktext",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_id",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_install",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_isactionbutton",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_isarabic",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_isfeedbacklabel",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_issettingscontrol",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwsettingstracebuttondetailsr29b",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwsettingstracedatasetr29b",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwsettingstraceeventdetailsr29b",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwsettingstracepreviewsnapshotr29b",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwsettingstracetargetsnapshotr29b",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_lower",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_networkof",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_rememberoriginallabel",
@@ -3319,11 +3326,9 @@
     ],
     "73": [
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51capturefactorydefaults",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51fields",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51keys",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51load",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51loadsavedsettings",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51panel",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51readcommandoptionsr38c",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51readinstancecommandoptionsr38c",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridger51readsettings",
@@ -3715,13 +3720,8 @@
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_bridgesyncallmodecontrols",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_initkaspabridgetab",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_installkgwbridger51bottomstyle",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgelogautoscrollenabledr27",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgelogautoscrollkeyr27",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgenetworkpolicymessage",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgenetworkprofile",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwbridgesetlogautoscrollr27",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwi18ntextr41",
-      "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_kgwinstallbridgelogautoscrollcontrolsr27",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_renderallnetworks",
       "apps_kaspa_gateway_desktop_frontend_src_tabs_kaspa_bridge_kaspa_bridge_updateallcommands"
     ],
@@ -3899,7 +3899,7 @@
     "5": 0.08411703239289446,
     "6": 0.08291316526610644,
     "7": 0.06167527251864601,
-    "8": 0.04155374887082204,
+    "8": 0.04130808950086059,
     "9": 0.07067901234567901,
     "10": 0.06807017543859649,
     "11": 0.10675990675990676,
@@ -3921,7 +3921,7 @@
     "27": 0.06976744186046512,
     "28": 0.12367864693446089,
     "29": 0.11074197120708748,
-    "30": 0.1206896551724138,
+    "30": 0.08076923076923077,
     "31": 0.1906906906906907,
     "32": 0.09523809523809523,
     "33": 0.1380952380952381,
@@ -3947,7 +3947,7 @@
     "53": 0.2564102564102564,
     "54": 0.21082621082621084,
     "55": 0.09333333333333334,
-    "56": 0.11954022988505747,
+    "56": 0.15942028985507245,
     "57": 0.15942028985507245,
     "58": 0.23550724637681159,
     "59": 0.17786561264822134,
@@ -3964,7 +3964,7 @@
     "70": 0.16339869281045752,
     "71": 0.1111111111111111,
     "72": 0.20588235294117646,
-    "73": 0.16374269005847952,
+    "73": 0.19117647058823528,
     "74": 0.11764705882352941,
     "75": 0.125,
     "76": 0.25833333333333336,
@@ -3991,7 +3991,7 @@
     "97": 0.2222222222222222,
     "98": 0.42857142857142855,
     "99": 0.25,
-    "100": 0.21794871794871795,
+    "100": 0.35714285714285715,
     "101": 0.42857142857142855,
     "102": 0.3333333333333333,
     "103": 0.2857142857142857,
@@ -4131,41 +4131,8 @@
       "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
     }
   ],
-  "questions": [
-    {
-      "type": "bridge_node",
-      "question": "Why does `DatabaseManager` connect `Result` to `real_reports.rs`, `kaspa-gateway-config/src/lib.rs`, `i18n_commands.rs`, `export_commands.rs`, `commands.rs`, `address_book.rs`, `data_enforcement_commands.rs`, `top_addresses_deep.rs`, `default_user_data_dir`, `explorer_services.rs`, `settings_commands.rs`, `settings.rs`, `python_migration_real.rs`, `migration.rs`, `config_commands.rs`, `analysis_commands.rs`, `transaction_analysis.rs`?",
-      "why": "High betweenness centrality (0.071) - this node is a cross-community bridge."
-    },
-    {
-      "type": "bridge_node",
-      "question": "Why does `default_user_data_dir()` connect `default_user_data_dir` to `kaspa-gateway-config/src/lib.rs`, `export_commands.rs`, `commands.rs`, `app_logger.rs`, `top_addresses_deep.rs`, `settings_commands.rs`, `python_migration_real.rs`, `migration.rs`, `config_commands.rs`, `analysis_commands.rs`, `real_reports.rs`, `i18n_commands.rs`, `address_book.rs`, `data_enforcement_commands.rs`, `explorer_services.rs`, `security_hardening.rs`, `persistent_logs.rs`, `transaction_analysis.rs`, `settings.rs`?",
-      "why": "High betweenness centrality (0.047) - this node is a cross-community bridge."
-    },
-    {
-      "type": "bridge_node",
-      "question": "Why does `AppRuntime` connect `kaspa-gateway-config/src/lib.rs` to `Result`, `Result`, `kaspa-gateway-node/src/lib.rs`, `kaspa-gateway-core/src/lib.rs`?",
-      "why": "High betweenness centrality (0.039) - this node is a cross-community bridge."
-    },
-    {
-      "type": "isolated_nodes",
-      "question": "What connects `shellLog`, `loadedModules`, `mountedTabs` to the rest of the system?",
-      "why": "253 weakly-connected nodes found - possible documentation gaps or missing edges."
-    },
-    {
-      "type": "low_cohesion",
-      "question": "Should `Result` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.0506464081034253 - nodes in this community are weakly interconnected."
-    },
-    {
-      "type": "low_cohesion",
-      "question": "Should `KgwNetwork` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.05604719764011799 - nodes in this community are weakly interconnected."
-    },
-    {
-      "type": "low_cohesion",
-      "question": "Should `kaspa-gateway-config/src/lib.rs` be split into smaller, more focused modules?",
-      "why": "Cohesion score 0.05717171717171717 - nodes in this community are weakly interconnected."
-    }
-  ]
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
 }
