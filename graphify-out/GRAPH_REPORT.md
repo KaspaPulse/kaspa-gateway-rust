@@ -1,16 +1,16 @@
 # Graph Report - kaspa-gateway-rust  (2026-07-28)
 
 ## Corpus Check
-- 163 files · ~269,984 words
+- 165 files · ~273,234 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3862 nodes · 9977 edges · 176 communities (168 shown, 8 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 116 edges (avg confidence: 0.7)
+- 3946 nodes · 10107 edges · 196 communities (177 shown, 19 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 128 edges (avg confidence: 0.71)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `4794e093`
+- Built from commit: `c064107f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -171,47 +171,67 @@
 - extraction-spec.md
 - initKaspaBridgeTab
 - kgwInstallNodeLogAutoScrollControlsR27
+- kgwInvokeExplorerGroupedTransactions
+- kgwNodeSmallOwnerTraceR44D
+- kgwSettingsTraceButtonDetailsR29B
+- kgw_start_button_gate.ps1
+- database_paths_from_default_user_dir
+- kgw_inproc_node_only.rs
+- kaspa-gateway-rk-node/src/lib.rs
+- kgwNodeApplyRustyKaspaRootOnlyDefaultPathsR5
+- kgw_inproc_owner_tests.rs
+- AppCacheRepository
+- Arc
+- AsRef
+- HashMap
+- Into
+- Option
+- PathBuf
+- Result
+- String
+- Vec
+- VecDeque
 
 ## God Nodes (most connected - your core abstractions)
 1. `DatabaseManager` - 46 edges
 2. `default_user_data_dir()` - 42 edges
 3. `qs()` - 41 edges
-4. `KgwNetwork` - 37 edges
-5. `KaspaApiClient` - 35 edges
-6. `installActions()` - 29 edges
+4. `KaspaApiClient` - 35 edges
+5. `KgwNetwork` - 34 edges
+6. `installActions()` - 30 edges
 7. `microscopeLog()` - 27 edges
 8. `TransactionRecord` - 27 edges
-9. `NodeSettings` - 27 edges
-10. `Kaspa Gateway Rust` - 27 edges
+9. `Kaspa Gateway Rust` - 27 edges
+10. `fetchTransactions()` - 26 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `main()` --calls--> `default_config_path()`  [INFERRED]
+  apps/kaspa-gateway-cli/src/main.rs → crates/kaspa-gateway-config/src/lib.rs
 - `main()` --calls--> `runtime_check_default()`  [INFERRED]
   apps/kaspa-gateway-cli/src/main.rs → crates/kaspa-gateway-runtime/src/lib.rs
+- `database_paths_from_default_user_dir()` --calls--> `default_user_data_dir()`  [INFERRED]
+  apps/kaspa-gateway-cli/src/main.rs → crates/kaspa-gateway-config/src/lib.rs
 - `address_book_stats()` --calls--> `default_user_data_dir()`  [INFERRED]
   apps/kaspa-gateway-desktop/src-tauri/src/address_book.rs → crates/kaspa-gateway-config/src/lib.rs
 - `database_manager()` --calls--> `default_user_data_dir()`  [INFERRED]
   apps/kaspa-gateway-desktop/src-tauri/src/address_book.rs → crates/kaspa-gateway-config/src/lib.rs
-- `database_manager()` --calls--> `default_user_data_dir()`  [INFERRED]
-  apps/kaspa-gateway-desktop/src-tauri/src/analysis_commands.rs → crates/kaspa-gateway-config/src/lib.rs
-- `app_log_dir()` --calls--> `default_user_data_dir()`  [INFERRED]
-  apps/kaspa-gateway-desktop/src-tauri/src/app_logger.rs → crates/kaspa-gateway-config/src/lib.rs
 
 ## Import Cycles
 - 2-file cycle: `crates/kaspa-gateway-rk-node/src/kgw_real_owner_runtime.rs -> crates/kaspa-gateway-rk-node/src/kgw_service_controller.rs -> crates/kaspa-gateway-rk-node/src/kgw_real_owner_runtime.rs`
 
-## Communities (176 total, 8 thin omitted)
+## Communities (196 total, 19 thin omitted)
 
 ### Community 0 - "Result"
-Cohesion: 0.18
-Nodes (6): Option, Vec, TransactionFilter, TransactionRecord, TransactionsRepository, validate_non_empty()
+Cohesion: 0.20
+Nodes (6): initialize_sqlite_transactions_schema(), Result, Vec, TransactionFilter, TransactionsRepository, validate_non_empty()
 
 ### Community 1 - "KgwNetwork"
 Cohesion: 0.06
 Nodes (57): Args, default_prometheus_for_network(), embedded_fd_budget_fits_windows_default_limit(), embedded_fd_budget_removes_legacy_1024_floor_behavior(), kgw_apply_embedded_fd_limits_mainline(), kgw_apply_embedded_fd_limits_tn12(), kgw_claim_single_inproc_official_core(), kgw_embedded_core_fd_budget() (+49 more)
 
 ### Community 2 - "kaspa-gateway-config/src/lib.rs"
-Cohesion: 0.08
-Nodes (63): Cli, Commands, database_manager_from_default_user_dir(), database_paths_from_default_user_dir(), main(), Box, Error, Result (+55 more)
+Cohesion: 0.17
+Nodes (29): rejects_unsafe_output_path(), default_config_for_root(), default_config_is_valid(), default_config_path(), default_user_data_dir(), GatewayConfig, GatewayPaths, get_assets_path() (+21 more)
 
 ### Community 3 - "settings.js"
 Cohesion: 0.07
@@ -254,8 +274,8 @@ Cohesion: 0.16
 Nodes (36): build_minimal_pdf(), build_pdf_content_stream(), csv_cell(), database_manager(), default_export_path(), default_format(), default_target(), ensure_extension() (+28 more)
 
 ### Community 13 - "integrated_runtime_commands.rs"
-Cohesion: 0.10
-Nodes (61): controller(), kgw_all_parallel_node_bridge_plans_v1(), kgw_apply_bridge_active_instance_runtime_overrides_r110f(), kgw_apply_command_preview_overrides(), kgw_bridge_command_preview_instance_listens_r123(), kgw_bridge_config_path_from_preview_r122(), kgw_bridge_instance_value_r110f(), kgw_bridge_instance_value_r120() (+53 more)
+Cohesion: 0.08
+Nodes (75): controller(), kgw_all_parallel_node_bridge_plans_v1(), kgw_apply_bridge_active_instance_runtime_overrides_r110f(), kgw_apply_command_preview_overrides(), kgw_bridge_command_preview_instance_listens_r123(), kgw_bridge_config_path_from_preview_r122(), kgw_bridge_instance_value_r110f(), kgw_bridge_instance_value_r120() (+67 more)
 
 ### Community 14 - "settings_commands.rs"
 Cohesion: 0.14
@@ -266,8 +286,8 @@ Cohesion: 0.07
 Nodes (29): app_info_is_available(), AppInfo, format_kas(), format_with_currency(), GatewayError, is_kaspa_address_like(), kaspa_address_accepts_safe_prefixes(), KaspaAddress (+21 more)
 
 ### Community 16 - "official_kaspa_runtime.rs"
-Cohesion: 0.09
-Nodes (31): all_parallel_runtime_plans_log_v1(), Option, Result, String, runtime_owner_plan_for_network_v1(), runtime_owner_status_for_network_v1(), runtime_owner_summary_v1(), all_parallel_runtime_plans_v1() (+23 more)
+Cohesion: 0.12
+Nodes (15): all_parallel_runtime_plans_v1(), KaspaBridgeRuntimeMode, KaspaNodeRuntimeMode, KaspaRuntimeFamily, KaspaRuntimePlan, KaspaRuntimeServiceEvent, KaspaRuntimeServiceEventKind, KaspaRuntimeSettings (+7 more)
 
 ### Community 17 - "python_migration_real.rs"
 Cohesion: 0.13
@@ -295,15 +315,15 @@ Nodes (47): bindCurrencySelect(), boot(), findPriceElement(), initHeaderLiveMetr
 
 ### Community 23 - "kaspa-node.js"
 Cohesion: 0.07
-Nodes (42): id(), installDelegatedTabs(), installNetworkTabs(), KGW_NODE_R51_LAST_ACTIVITY_NOTICE, KGW_NODE_R51_LAST_LOGS, KGW_NODE_R51_LAST_STATUS, kgwFinalIsolatedAdapterInvokeV1(), kgwFinalIsolatedAdapterStartV1() (+34 more)
+Nodes (40): id(), installDelegatedTabs(), KGW_NODE_R51_LAST_ACTIVITY_NOTICE, KGW_NODE_R51_LAST_LOGS, KGW_NODE_R51_LAST_STATUS, KGW_NODE_R51_TRANSITIONS, kgwFinalIsolatedAdapterInvokeV1(), kgwFinalIsolatedAdapterStartV1() (+32 more)
 
 ### Community 24 - "config_commands.rs"
 Cohesion: 0.18
 Nodes (45): config_default(), config_import_python_config(), config_load(), config_save(), currency_codes_are_normalized(), database_manager(), default_config_is_valid(), default_currencies() (+37 more)
 
 ### Community 25 - "build_kgw_inproc_plan"
-Cohesion: 0.08
-Nodes (30): KgwInProcNodeOnly, KgwInProcNodeOnlyStatus, main_handle_reports_kgw_mechanism_ported(), main_handle_returns_inproc_plan(), Result, Self, build_kgw_inproc_plan(), explicit_opt_in_is_blocked_until_owned_dependencies_exist() (+22 more)
+Cohesion: 0.15
+Nodes (20): Result, build_kgw_inproc_plan(), explicit_opt_in_is_blocked_until_owned_dependencies_exist(), KgwInprocError, KgwInprocPlan, KgwInprocRuntimeState, KgwInprocStartRequest, KgwInprocStep (+12 more)
 
 ### Community 26 - "analysis_commands.rs"
 Cohesion: 0.13
@@ -334,8 +354,8 @@ Cohesion: 0.08
 Nodes (36): normalizeDateInputValue(), explorerSaveAddressMemo, explorerState, formatKas(), formatUsd(), kgwClean2Kas(), kgwClean2Usd(), kgwSummaryFormatUsd() (+28 more)
 
 ### Community 33 - "installActions"
-Cohesion: 0.14
-Nodes (36): appendLog(), byId(), initKaspaNodeTab(), installActions(), installKgwNodeR51BottomStyle(), kgwBridgeOwnedNodeLockStoreR65E(), kgwIsBridgeOwnedNodeLockedR65E(), kgwNodeApplyBridgeOwnedDisplayOnlyR65E() (+28 more)
+Cohesion: 0.28
+Nodes (17): installActions(), installNetworkTabs(), kgwBridgeOwnedNodeLockStoreR65E(), kgwIsBridgeOwnedNodeLockedR65E(), kgwNodeApplyBridgeOwnedDisplayOnlyR65E(), kgwNodeExplicitTraceR27D(), kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2(), kgwNodeInstallBridgeOwnedDisplayOnlyHydrationR65H2() (+9 more)
 
 ### Community 34 - "real_reports.rs"
 Cohesion: 0.18
@@ -470,8 +490,8 @@ Cohesion: 0.15
 Nodes (13): properties, Identifier, default, description, type, description, oneOf, type (+5 more)
 
 ### Community 67 - "diagnostics.rs"
-Cohesion: 0.09
-Nodes (37): append_log(), clean_field(), clear_logs(), DesktopDiagnosticsReport, DesktopLogEntry, diagnostics_report(), list_logs(), LogState (+29 more)
+Cohesion: 0.27
+Nodes (17): append_log(), clean_field(), clear_logs(), DesktopDiagnosticsReport, DesktopLogEntry, diagnostics_report(), list_logs(), LogState (+9 more)
 
 ### Community 68 - "tauri.conf.json"
 Cohesion: 0.10
@@ -506,8 +526,8 @@ Cohesion: 0.12
 Nodes (14): approved, approvedSameAsEnglish, criticalKeys, dictionaries, frontendRoot, fs, i18nDir, isApprovedSameAsEnglish() (+6 more)
 
 ### Community 76 - "cardInput"
-Cohesion: 0.26
-Nodes (16): cardCheck(), cardInput(), cardSelect(), esc(), kgwNodeCommandInlineToggleR7(), kgwNodeNetworkPolicyMessage(), renderAllNetworks(), renderDatabase() (+8 more)
+Cohesion: 0.29
+Nodes (15): cardCheck(), cardInput(), cardSelect(), esc(), kgwNodeCommandInlineToggleR7(), kgwNodeNetworkPolicyMessage(), renderDatabase(), renderNetwork() (+7 more)
 
 ### Community 77 - "settings.rs"
 Cohesion: 0.45
@@ -530,12 +550,12 @@ Cohesion: 0.40
 Nodes (14): fetch_optional_json(), find_number_string(), first_number_string(), full_network_analytics_report(), FullNetworkAnalyticsReport, metric_card(), NetworkMetricCard, push_warning_if_missing() (+6 more)
 
 ### Community 82 - "normalizeDateInputValue"
-Cohesion: 0.23
-Nodes (11): AppCacheRepository, DatabaseManager, initialize_addr_schema(), initialize_addresses_schema(), initialize_app_data_schema(), initialize_sqlite_transactions_schema(), initialize_transactions_schema(), initialize_tx_schema() (+3 more)
+Cohesion: 0.17
+Nodes (14): AppSettingsRepository, DatabaseManager, DatabasePaths, initialize_addr_schema(), initialize_addresses_schema(), initialize_app_data_schema(), initialize_transactions_schema(), initialize_tx_schema() (+6 more)
 
 ### Community 83 - "kgwNodeR51RefreshOne"
-Cohesion: 0.22
-Nodes (14): getTauriInvoke(), invokeNodeIntegratedRuntime(), invokeWithTimeout(), kgwExtractNodeOwnerFlags(), kgwGuardBlockReasonV3(), kgwLoadNodeOwnerCommandPreview(), kgwNodeR51BridgeInprocessLockedV7(), kgwNodeR51Delta() (+6 more)
+Cohesion: 0.18
+Nodes (17): getTauriInvoke(), invokeNodeIntegratedRuntime(), invokeWithTimeout(), kgwExtractNodeOwnerFlags(), kgwGuardBlockReasonV3(), kgwLoadNodeOwnerCommandPreview(), kgwNodeAssertStartEvidence(), kgwNodeR51BridgeInprocessLockedV7() (+9 more)
 
 ### Community 84 - "kgw_parallel_self_worker_runtime_gate.cjs"
 Cohesion: 0.15
@@ -578,8 +598,8 @@ Cohesion: 0.20
 Nodes (10): type, webviews, windows, items, description, items, type, description (+2 more)
 
 ### Community 94 - "kgwInvokeExplorerDaySummaries"
-Cohesion: 0.15
-Nodes (20): address_record_from_row(), AddressRecord, DatabaseKind, DbError, internal_cache_expires(), internal_manager_initializes_all(), is_kaspa_address_like(), KnownNameRecord (+12 more)
+Cohesion: 0.12
+Nodes (21): address_record_from_row(), AddressesRepository, AddressRecord, DatabaseKind, DbError, is_kaspa_address_like(), KnownNameRecord, normalize_direction() (+13 more)
 
 ### Community 95 - "CapabilityRemote"
 Cohesion: 0.22
@@ -602,8 +622,8 @@ Cohesion: 0.43
 Nodes (7): file_check(), final_release_qa_report(), FinalReleaseQaReport, policy_check(), QaCheck, String, Vec
 
 ### Community 102 - "kgwNodeApplyRustyKaspaRootOnlyDefaultPathsR5"
-Cohesion: 0.33
-Nodes (7): kgwNodeApplyRustyKaspaRootOnlyDefaultPathsR5(), kgwNodeBackendInvokeR5(), kgwNodeExtractUserLocalAppDataR5(), kgwNodeIsEmptyOrGeneratedPathR5(), kgwNodeJoinPathR5(), kgwNodeLoadEnvironmentPathHintsR5(), kgwNodeRustyKaspaLocalAppDataRootR5()
+Cohesion: 0.07
+Nodes (22): assert, assertIncludes(), ClassList, createHarness(), dataKey(), dynamicClickTests(), extractBetween(), flush() (+14 more)
 
 ### Community 103 - "permissions"
 Cohesion: 0.17
@@ -632,10 +652,6 @@ Nodes (4): Install-WingetPackage(), Invoke-LiveProbe(), Refresh-ProcessPath(), W
 ### Community 112 - "kgw_runtime_repository_binding_audit.cjs"
 Cohesion: 0.40
 Nodes (4): args, cp, extraArgs, result
-
-### Community 130 - "Self"
-Cohesion: 0.15
-Nodes (6): AddressesRepository, DatabasePaths, AsRef, Path, PathBuf, Self
 
 ### Community 131 - "database_root"
 Cohesion: 0.33
@@ -725,6 +741,10 @@ Nodes (4): anyOf, description, $schema, title
 Cohesion: 0.40
 Nodes (4): anyOf, description, $schema, title
 
+### Community 154 - "AppSettingsRepository"
+Cohesion: 0.14
+Nodes (20): AppRuntime, readiness_report_initializes_required_files(), AsRef, Path, PathBuf, Result, Self, String (+12 more)
+
 ### Community 155 - "Live Kaspa Network Smoke Test"
 Cohesion: 0.40
 Nodes (4): Live Kaspa Network Smoke Test, Operating policy, Production readiness, Run on Windows
@@ -790,28 +810,64 @@ Cohesion: 0.22
 Nodes (13): BRIDGE_NETWORKS, bridgeSyncAllModeControls(), initKaspaBridgeTab(), installKgwBridgeR51BottomStyle(), kgwBridgeLogAutoScrollEnabledR27(), kgwBridgeLogAutoScrollKeyR27(), kgwBridgeNetworkPolicyMessage(), kgwBridgeNetworkProfile() (+5 more)
 
 ### Community 175 - "kgwInstallNodeLogAutoScrollControlsR27"
-Cohesion: 0.50
-Nodes (5): kgwI18nTextR41(), kgwInstallNodeLogAutoScrollControlsR27(), kgwNodeLogAutoScrollEnabledR27(), kgwNodeLogAutoScrollKeyR27(), kgwNodeSetLogAutoScrollR27()
+Cohesion: 0.20
+Nodes (15): appendLog(), byId(), initKaspaNodeTab(), installKgwNodeR51BottomStyle(), kgwI18nTextR41(), kgwInstallNodeLogAutoScrollControlsR27(), kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(), kgwNodeLogAutoScrollEnabledR27() (+7 more)
+
+### Community 176 - "kgwInvokeExplorerGroupedTransactions"
+Cohesion: 0.11
+Nodes (25): api_settings_to_value(), ApiProfile, ApiSettings, ConfigError, DbFilenames, decrypt_legacy_api_keys(), default_api_profile(), default_api_profile_contains_python_endpoints() (+17 more)
+
+### Community 177 - "kgwNodeSmallOwnerTraceR44D"
+Cohesion: 0.26
+Nodes (13): kgwNodeR51CaptureFactoryDefaults(), kgwNodeR51Keys(), kgwNodeR51Load(), kgwNodeR51LoadSavedSettings(), kgwNodeR51ReadCommandOptionsR38C(), kgwNodeR51ReadSettings(), kgwNodeR51RefreshAll(), kgwNodeR51RestoreDefaults() (+5 more)
+
+### Community 178 - "kgwSettingsTraceButtonDetailsR29B"
+Cohesion: 0.26
+Nodes (8): build_official_kaspa_runtime_plan_v1(), KaspaRuntimeError, KaspaRuntimeNetwork, Result, Self, runtime_service_events_from_settings_v1(), validate_listen(), validate_safe_value()
+
+### Community 179 - "kgw_start_button_gate.ps1"
+Cohesion: 0.83
+Nodes (3): Add-Failure(), Read-RequiredFile(), Run-LocalCommand()
+
+### Community 180 - "database_paths_from_default_user_dir"
+Cohesion: 0.36
+Nodes (9): Cli, Commands, database_manager_from_default_user_dir(), database_paths_from_default_user_dir(), main(), Box, Error, Result (+1 more)
+
+### Community 181 - "kgw_inproc_node_only.rs"
+Cohesion: 0.27
+Nodes (5): KgwInProcNodeOnly, KgwInProcNodeOnlyStatus, main_handle_reports_kgw_mechanism_ported(), main_handle_returns_inproc_plan(), Self
+
+### Community 182 - "kaspa-gateway-rk-node/src/lib.rs"
+Cohesion: 0.39
+Nodes (8): all_parallel_runtime_plans_log_v1(), Option, Result, String, runtime_owner_plan_for_network_v1(), runtime_owner_status_for_network_v1(), runtime_owner_summary_v1(), official_kaspa_runtime_summary_v1()
+
+### Community 183 - "kgwNodeApplyRustyKaspaRootOnlyDefaultPathsR5"
+Cohesion: 0.33
+Nodes (7): kgwNodeApplyRustyKaspaRootOnlyDefaultPathsR5(), kgwNodeBackendInvokeR5(), kgwNodeExtractUserLocalAppDataR5(), kgwNodeIsEmptyOrGeneratedPathR5(), kgwNodeJoinPathR5(), kgwNodeLoadEnvironmentPathHintsR5(), kgwNodeRustyKaspaLocalAppDataRootR5()
+
+### Community 184 - "kgw_inproc_owner_tests.rs"
+Cohesion: 0.29
+Nodes (5): kgw_inproc_summary_v1(), explicit_opt_in_does_not_start_without_owned_kaspad_dependencies(), kgw_inproc_lifecycle_matches_reference_shape(), kgw_inproc_owner_is_single_canonical_owner(), summary_declares_no_clone_no_source_cache()
 
 ## Knowledge Gaps
-- **424 isolated node(s):** `Repository Structure`, `Mandatory Graphify Lifecycle`, `Local-First Workflow`, `Network Invariants`, `Raw Process Log Invariants` (+419 more)
+- **432 isolated node(s):** `KGW_NODE_R51_LAST_STATUS`, `KGW_NODE_R51_LAST_LOGS`, `KGW_NODE_R51_LAST_ACTIVITY_NOTICE`, `KGW_NODE_R51_TRANSITIONS`, `kgwNodeSettingsFeedbackLocksR11` (+427 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **8 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **19 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `default_user_data_dir()` connect `kaspa-gateway-config/src/lib.rs` to `database_root`, `explorer_tab.rs`, `export_commands.rs`, `commands.rs`, `app_logger.rs`, `top_addresses_deep.rs`, `default_user_data_dir`, `settings_commands.rs`, `python_migration_real.rs`, `migration.rs`, `config_commands.rs`, `analysis_commands.rs`, `real_reports.rs`, `i18n_commands.rs`, `address_book.rs`, `data_enforcement_commands.rs`, `explorer_services.rs`, `security_hardening.rs`, `persistent_logs.rs`, `transaction_analysis.rs`, `diagnostics.rs`, `settings.rs`?**
-  _High betweenness centrality (0.056) - this node is a cross-community bridge._
-- **Why does `DatabaseManager` connect `normalizeDateInputValue` to `kaspa-gateway-config/src/lib.rs`, `database_root`, `explorer_tab.rs`, `export_commands.rs`, `commands.rs`, `Self`, `top_addresses_deep.rs`, `default_user_data_dir`, `repository_tests.rs`, `settings_commands.rs`, `python_migration_real.rs`, `migration.rs`, `config_commands.rs`, `analysis_commands.rs`, `real_reports.rs`, `i18n_commands.rs`, `address_book.rs`, `data_enforcement_commands.rs`, `explorer_services.rs`, `transaction_analysis.rs`, `diagnostics.rs`, `settings.rs`, `kgwInvokeExplorerDaySummaries`?**
-  _High betweenness centrality (0.054) - this node is a cross-community bridge._
-- **Why does `AppRuntime` connect `diagnostics.rs` to `kaspa-gateway-config/src/lib.rs`, `Result`, `kaspa-gateway-core/src/lib.rs`, `normalizeDateInputValue`, `kaspa-gateway-node/src/lib.rs`?**
-  _High betweenness centrality (0.030) - this node is a cross-community bridge._
-- **What connects `Repository Structure`, `Mandatory Graphify Lifecycle`, `Local-First Workflow` to the rest of the system?**
-  _424 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Why does `DatabaseManager` connect `normalizeDateInputValue` to `Result`, `database_root`, `explorer_tab.rs`, `export_commands.rs`, `commands.rs`, `top_addresses_deep.rs`, `default_user_data_dir`, `repository_tests.rs`, `settings_commands.rs`, `python_migration_real.rs`, `migration.rs`, `config_commands.rs`, `analysis_commands.rs`, `AppSettingsRepository`, `real_reports.rs`, `i18n_commands.rs`, `address_book.rs`, `data_enforcement_commands.rs`, `explorer_services.rs`, `database_paths_from_default_user_dir`, `transaction_analysis.rs`, `settings.rs`, `kgwInvokeExplorerDaySummaries`?**
+  _High betweenness centrality (0.058) - this node is a cross-community bridge._
+- **Why does `default_user_data_dir()` connect `kaspa-gateway-config/src/lib.rs` to `database_root`, `explorer_tab.rs`, `export_commands.rs`, `commands.rs`, `app_logger.rs`, `top_addresses_deep.rs`, `default_user_data_dir`, `settings_commands.rs`, `python_migration_real.rs`, `migration.rs`, `config_commands.rs`, `analysis_commands.rs`, `AppSettingsRepository`, `real_reports.rs`, `i18n_commands.rs`, `address_book.rs`, `data_enforcement_commands.rs`, `explorer_services.rs`, `database_paths_from_default_user_dir`, `security_hardening.rs`, `persistent_logs.rs`, `transaction_analysis.rs`, `settings.rs`?**
+  _High betweenness centrality (0.039) - this node is a cross-community bridge._
+- **Why does `AppRuntime` connect `AppSettingsRepository` to `kaspa-gateway-config/src/lib.rs`, `Result`, `kaspa-gateway-core/src/lib.rs`, `normalizeDateInputValue`, `kaspa-gateway-node/src/lib.rs`?**
+  _High betweenness centrality (0.028) - this node is a cross-community bridge._
+- **What connects `KGW_NODE_R51_LAST_STATUS`, `KGW_NODE_R51_LAST_LOGS`, `KGW_NODE_R51_LAST_ACTIVITY_NOTICE` to the rest of the system?**
+  _432 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `KgwNetwork` be split into smaller, more focused modules?**
   _Cohesion score 0.05604719764011799 - nodes in this community are weakly interconnected._
-- **Should `kaspa-gateway-config/src/lib.rs` be split into smaller, more focused modules?**
-  _Cohesion score 0.07578947368421053 - nodes in this community are weakly interconnected._
 - **Should `settings.js` be split into smaller, more focused modules?**
   _Cohesion score 0.06545114539504442 - nodes in this community are weakly interconnected._
+- **Should `analysis.js` be split into smaller, more focused modules?**
+  _Cohesion score 0.057387057387057384 - nodes in this community are weakly interconnected._
