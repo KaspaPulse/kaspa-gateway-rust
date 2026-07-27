@@ -22,7 +22,7 @@ fn exact_kgw_controller_summary_mentions_event_flow() {
             "NodeSettings",
             "KaspadServiceEvents::from_node_settings",
             "controller event loop",
-            "testnet12 uses tn12",
+            "testnet12 uses the opt-in experimental tn12 runtime",
         ],
     );
 }
