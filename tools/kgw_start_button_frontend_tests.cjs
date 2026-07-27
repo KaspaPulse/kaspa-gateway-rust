@@ -1,0 +1,583 @@
+#!/usr/bin/env node
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+
+const repo = process.cwd();
+const nodeJsPath = path.join(
+  repo,
+  "apps",
+  "kaspa-gateway-desktop",
+  "frontend",
+  "src",
+  "tabs",
+  "kaspa-node",
+  "kaspa-node.js",
+);
+const source = fs.readFileSync(nodeJsPath, "utf8");
+
+function fail(message) {
+  console.error("KGW start button frontend tests FAILED");
+  console.error(message);
+  process.exit(1);
+}
+
+function assertIncludes(text, needle, message) {
+  assert.ok(text.includes(needle), message + " (`" + needle + "` missing)");
+}
+
+function extractBetween(text, start, end) {
+  const startIndex = text.indexOf(start);
+  assert.ok(startIndex >= 0, "missing start marker: " + start);
+  const endIndex = text.indexOf(end, startIndex + start.length);
+  assert.ok(endIndex > startIndex, "missing end marker: " + end);
+  return text.slice(startIndex, endIndex);
+}
+
+function staticPlacementTests() {
+  const settingsPanel = extractBetween(
+    source,
+    'data-node-inner-panel="settings"',
+    'data-node-inner-panel="log"',
+  );
+  const logPanel = extractBetween(source, 'data-node-inner-panel="log"', "</div>`;");
+
+  assertIncludes(settingsPanel, 'data-node-action="start"', "Settings must own Start");
+  assertIncludes(settingsPanel, 'data-node-action="stop"', "Settings must own Stop");
+  assertIncludes(settingsPanel, "data-node-network-enabled", "Settings must own network enable");
+  assertIncludes(settingsPanel, "kgw-network-policy", "Settings must own network policy");
+  assertIncludes(settingsPanel, "runtimeError", "Settings must expose runtime errors");
+  assertIncludes(settingsPanel, "runtimeStatus", "Settings must expose runtime status");
+
+  assert.ok(!logPanel.includes('data-node-action="start"'), "Live Node Monitor must not contain Start");
+  assert.ok(!logPanel.includes('data-node-action="stop"'), "Live Node Monitor must not contain Stop");
+  assert.ok(!logPanel.includes("data-node-network-enabled"), "Live Node Monitor must not contain network enable");
+  assert.ok(!logPanel.includes("kgw-network-policy"), "Live Node Monitor must not contain network policy");
+  assertIncludes(logPanel, 'data-node-action="copy-log"', "Live Node Monitor must contain Copy Log");
+  assertIncludes(logPanel, 'data-node-action="clear-log"', "Live Node Monitor must contain Clear Log");
+  assertIncludes(logPanel, "node-v6-log-metadata", "Live Node Monitor must contain stream/source metadata");
+
+  const startMatches = source.match(/<button[^>]+data-node-action="start"/g) || [];
+  const stopMatches = source.match(/<button[^>]+data-node-action="stop"/g) || [];
+  assert.strictEqual(startMatches.length, 1, "Start control markup must not be duplicated");
+  assert.strictEqual(stopMatches.length, 1, "Stop control markup must not be duplicated");
+  assert.ok(!/<button[^>]+id=[^>]+data-node-action="start"/.test(source), "Start control must not use duplicate generated IDs");
+  assert.ok(!/<button[^>]+data-node-action="start"[^>]+id=/.test(source), "Start control must not use duplicate generated IDs");
+  assert.ok(!/<button[^>]+id=[^>]+data-node-action="stop"/.test(source), "Stop control must not use duplicate generated IDs");
+  assert.ok(!/<button[^>]+data-node-action="stop"[^>]+id=/.test(source), "Stop control must not use duplicate generated IDs");
+
+  assert.ok(!/appendLog\([^)]*initialized/i.test(source), "Synthetic initialized text must not be inserted into raw logs");
+  assert.ok(!/appendLog\([^)]*node settings saved/i.test(source), "Settings success text must not be inserted into raw logs");
+  assert.ok(!/appendLog\([^)]*node .* response/i.test(source), "Synthetic start response text must not be inserted into raw logs");
+}
+
+class ClassList {
+  constructor(owner) {
+    this.owner = owner;
+    this.items = new Set();
+  }
+
+  add(...items) {
+    for (const item of items) this.items.add(String(item));
+    this.sync();
+  }
+
+  remove(...items) {
+    for (const item of items) this.items.delete(String(item));
+    this.sync();
+  }
+
+  contains(item) {
+    return this.items.has(String(item));
+  }
+
+  toggle(item, force) {
+    const key = String(item);
+    const enabled = force === undefined ? !this.items.has(key) : Boolean(force);
+    if (enabled) this.items.add(key);
+    else this.items.delete(key);
+    this.sync();
+    return enabled;
+  }
+
+  setFromString(value) {
+    this.items = new Set(String(value || "").split(/\s+/).filter(Boolean));
+    this.sync();
+  }
+
+  sync() {
+    this.owner.attributes.class = Array.from(this.items).join(" ");
+  }
+
+  toString() {
+    return Array.from(this.items).join(" ");
+  }
+}
+
+function dataKey(attr) {
+  return attr
+    .slice("data-".length)
+    .replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+class TestElement {
+  constructor(tagName, document) {
+    this.tagName = String(tagName || "").toUpperCase();
+    this.ownerDocument = document;
+    this.parentElement = null;
+    this.children = [];
+    this.attributes = {};
+    this.dataset = {};
+    this.classList = new ClassList(this);
+    this.style = { setProperty(name, value) { this[name] = value; } };
+    this.listeners = new Map();
+    this.hidden = false;
+    this.disabled = false;
+    this.readOnly = false;
+    this.checked = false;
+    this.value = "";
+    this.textContent = "";
+    this.id = "";
+    this.type = "";
+  }
+
+  appendChild(child) {
+    child.parentElement = this;
+    this.children.push(child);
+    return child;
+  }
+
+  append(...nodes) {
+    for (const node of nodes) this.appendChild(node);
+  }
+
+  remove() {
+    if (!this.parentElement) return;
+    this.parentElement.children = this.parentElement.children.filter((child) => child !== this);
+    this.parentElement = null;
+  }
+
+  contains(node) {
+    if (node === this) return true;
+    return walk(this).includes(node);
+  }
+
+  setAttribute(name, value) {
+    const key = String(name);
+    const stringValue = String(value);
+    this.attributes[key] = stringValue;
+    if (key === "id") this.id = stringValue;
+    if (key === "class") this.classList.setFromString(stringValue);
+    if (key === "type") this.type = stringValue;
+    if (key === "value") this.value = stringValue;
+    if (key === "hidden") this.hidden = true;
+    if (key === "disabled") this.disabled = true;
+    if (key === "readonly") this.readOnly = true;
+    if (key === "checked") this.checked = true;
+    if (key.startsWith("data-")) this.dataset[dataKey(key)] = stringValue;
+  }
+
+  getAttribute(name) {
+    return this.attributes[String(name)] ?? null;
+  }
+
+  addEventListener(type, handler, options = false) {
+    const list = this.listeners.get(type) || [];
+    list.push({ handler, capture: options === true || Boolean(options && options.capture) });
+    this.listeners.set(type, list);
+  }
+
+  dispatchEvent(event) {
+    event.target = event.target || this;
+    event.currentTarget = null;
+    event.defaultPrevented = false;
+    event.cancelBubble = false;
+    event.immediateStopped = false;
+    event.preventDefault = () => { event.defaultPrevented = true; };
+    event.stopPropagation = () => { event.cancelBubble = true; };
+    event.stopImmediatePropagation = () => {
+      event.cancelBubble = true;
+      event.immediateStopped = true;
+    };
+
+    const path = [];
+    let current = this;
+    while (current) {
+      path.unshift(current);
+      current = current.parentElement;
+    }
+
+    for (const node of path) {
+      const listeners = (node.listeners.get(event.type) || []).filter((item) => item.capture);
+      for (const listener of listeners) {
+        event.currentTarget = node;
+        listener.handler(event);
+        if (event.immediateStopped) return !event.defaultPrevented;
+      }
+      if (event.cancelBubble) return !event.defaultPrevented;
+    }
+
+    for (const node of path.reverse()) {
+      const listeners = (node.listeners.get(event.type) || []).filter((item) => !item.capture);
+      for (const listener of listeners) {
+        event.currentTarget = node;
+        listener.handler(event);
+        if (event.immediateStopped) return !event.defaultPrevented;
+      }
+      if (event.cancelBubble) return !event.defaultPrevented;
+    }
+
+    return !event.defaultPrevented;
+  }
+
+  click() {
+    if (this.disabled) return false;
+    return this.dispatchEvent({ type: "click", isTrusted: true });
+  }
+
+  matches(selector) {
+    return matchesSelector(this, selector);
+  }
+
+  closest(selector) {
+    let current = this;
+    while (current) {
+      if (current.matches(selector)) return current;
+      current = current.parentElement;
+    }
+    return null;
+  }
+
+  querySelectorAll(selector) {
+    return querySelectorAll(this, selector);
+  }
+
+  querySelector(selector) {
+    return this.querySelectorAll(selector)[0] || null;
+  }
+
+  set innerHTML(value) {
+    this.children = [];
+    parseHtmlInto(this, String(value || ""));
+  }
+
+  get innerHTML() {
+    return "";
+  }
+}
+
+class TestDocument extends TestElement {
+  constructor() {
+    super("#document", null);
+    this.ownerDocument = this;
+    this.readyState = "complete";
+    this.head = new TestElement("head", this);
+    this.body = new TestElement("body", this);
+    this.appendChild(this.head);
+    this.appendChild(this.body);
+  }
+
+  createElement(tagName) {
+    return new TestElement(tagName, this);
+  }
+
+  getElementById(id) {
+    return walk(this).find((item) => item.id === id) || null;
+  }
+}
+
+function walk(root) {
+  const out = [];
+  for (const child of root.children || []) {
+    out.push(child);
+    out.push(...walk(child));
+  }
+  return out;
+}
+
+function parseHtmlInto(parent, html) {
+  const stack = [parent];
+  const tokens = html.match(/<\/?[^>]+>|[^<]+/g) || [];
+  const voidTags = new Set(["INPUT", "BR", "HR", "IMG", "META", "LINK"]);
+
+  for (const token of tokens) {
+    if (token.startsWith("</")) {
+      if (stack.length > 1) stack.pop();
+      continue;
+    }
+
+    if (token.startsWith("<")) {
+      const tagMatch = token.match(/^<\s*([A-Za-z0-9-]+)/);
+      if (!tagMatch) continue;
+      const element = parent.ownerDocument.createElement(tagMatch[1]);
+      const attrText = token.replace(/^<\s*[A-Za-z0-9-]+/, "").replace(/\/?\s*>$/, "");
+      const attrRegex = /([:@A-Za-z0-9_-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)))?/g;
+      let attrMatch;
+      while ((attrMatch = attrRegex.exec(attrText))) {
+        const name = attrMatch[1];
+        const value = attrMatch[2] ?? attrMatch[3] ?? attrMatch[4] ?? "";
+        element.setAttribute(name, value);
+      }
+      stack[stack.length - 1].appendChild(element);
+      if (!voidTags.has(element.tagName) && !token.endsWith("/>")) stack.push(element);
+      continue;
+    }
+
+    const text = token.replace(/\s+/g, " ").trim();
+    if (text) {
+      const current = stack[stack.length - 1];
+      current.textContent = (current.textContent + " " + text).trim();
+    }
+  }
+}
+
+function querySelectorAll(root, selector) {
+  const selectors = String(selector).split(",").map((item) => item.trim()).filter(Boolean);
+  const nodes = walk(root);
+  return nodes.filter((node) => selectors.some((part) => matchesDescendantSelector(node, part)));
+}
+
+function matchesDescendantSelector(node, selector) {
+  const parts = selector.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return false;
+  if (!matchesSelector(node, parts[parts.length - 1])) return false;
+
+  let current = node.parentElement;
+  for (let index = parts.length - 2; index >= 0; index -= 1) {
+    while (current && !matchesSelector(current, parts[index])) {
+      current = current.parentElement;
+    }
+    if (!current) return false;
+    current = current.parentElement;
+  }
+
+  return true;
+}
+
+function matchesSelector(node, selector) {
+  const alternatives = String(selector).split(",").map((item) => item.trim()).filter(Boolean);
+  if (alternatives.length > 1) return alternatives.some((item) => matchesSelector(node, item));
+
+  let rest = alternatives[0] || "";
+  const tagMatch = rest.match(/^[A-Za-z0-9_-]+/);
+  if (tagMatch) {
+    if (node.tagName !== tagMatch[0].toUpperCase()) return false;
+    rest = rest.slice(tagMatch[0].length);
+  }
+
+  const idMatches = [...rest.matchAll(/#([A-Za-z0-9_-]+)/g)];
+  for (const match of idMatches) {
+    if (node.id !== match[1]) return false;
+  }
+
+  const classMatches = [...rest.matchAll(/\.([A-Za-z0-9_-]+)/g)];
+  for (const match of classMatches) {
+    if (!node.classList.contains(match[1])) return false;
+  }
+
+  const attrMatches = [...rest.matchAll(/\[([^\]=~\^\$\*\|]+)(?:=(?:"([^"]*)"|'([^']*)'|([^\]]+)))?\]/g)];
+  for (const match of attrMatches) {
+    const attr = match[1].trim();
+    const expected = match[2] ?? match[3] ?? (match[4] ? match[4].replace(/^['"]|['"]$/g, "") : undefined);
+    const actual = node.getAttribute(attr);
+    if (expected === undefined) {
+      if (actual === null) return false;
+    } else if (actual !== expected) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function createHarness() {
+  const document = new TestDocument();
+  const storage = new Map();
+  const timers = [];
+  const window = {
+    document,
+    listeners: new Map(),
+    localStorage: {
+      getItem(key) { return storage.has(String(key)) ? storage.get(String(key)) : null; },
+      setItem(key, value) { storage.set(String(key), String(value)); },
+      removeItem(key) { storage.delete(String(key)); },
+    },
+    setTimeout(callback) {
+      timers.push(callback);
+      return timers.length;
+    },
+    clearTimeout() {},
+    setInterval() { return 1; },
+    clearInterval() {},
+    queueMicrotask(callback) { Promise.resolve().then(callback); },
+    confirm() { return false; },
+    navigator: { clipboard: { writeText: async () => {} } },
+    console: { ...console, debug() {} },
+    CustomEvent: class CustomEvent {
+      constructor(type, options) {
+        this.type = type;
+        this.detail = options && options.detail;
+      }
+    },
+    Event: class Event {
+      constructor(type, options) {
+        this.type = type;
+        this.bubbles = Boolean(options && options.bubbles);
+      }
+    },
+  };
+  window.addEventListener = (type, handler) => {
+    const list = window.listeners.get(type) || [];
+    list.push(handler);
+    window.listeners.set(type, list);
+  };
+  window.dispatchEvent = (event) => {
+    for (const handler of window.listeners.get(event.type) || []) handler(event);
+    return true;
+  };
+  window.window = window;
+  document.defaultView = window;
+
+  const root = document.createElement("section");
+  root.setAttribute("id", "kaspa-node");
+  root.setAttribute("class", "page node-v6-root");
+  root.setAttribute("data-kgw-tab", "kaspa-node");
+  const shell = document.createElement("div");
+  shell.setAttribute("class", "node-v6-shell");
+  const tabs = document.createElement("div");
+  tabs.setAttribute("class", "node-v6-network-tabs");
+  for (const [net, label, active] of [
+    ["mainnet", "Mainnet", true],
+    ["testnet10", "Testnet 10", false],
+    ["testnet12", "Testnet 12 · Experimental", false],
+  ]) {
+    const button = document.createElement("button");
+    button.setAttribute("type", "button");
+    button.setAttribute("class", "node-v6-network-tab" + (active ? " active" : ""));
+    button.setAttribute("data-node-network-tab", net);
+    button.setAttribute("data-net", net);
+    button.textContent = label;
+    tabs.appendChild(button);
+  }
+  const panels = document.createElement("div");
+  panels.setAttribute("id", "nodeNetworkPanels");
+  panels.setAttribute("class", "node-v6-network-panels");
+  shell.appendChild(tabs);
+  shell.appendChild(panels);
+  root.appendChild(shell);
+  document.body.appendChild(root);
+
+  const sandbox = {
+    window,
+    document,
+    console: window.console,
+    navigator: window.navigator,
+    localStorage: window.localStorage,
+    setTimeout: window.setTimeout,
+    clearTimeout: window.clearTimeout,
+    setInterval: window.setInterval,
+    clearInterval: window.clearInterval,
+    queueMicrotask: window.queueMicrotask,
+    CustomEvent: window.CustomEvent,
+    Event: window.Event,
+  };
+  sandbox.globalThis = sandbox;
+
+  const executable = source
+    .replace(/export\s+async\s+function\s+initKaspaNodeTab/, "async function initKaspaNodeTab")
+    .replace(/export\s+default\s+initKaspaNodeTab\s*;/, "")
+    + "\nwindow.__kgwStartButtonTest = { initKaspaNodeTab };\n";
+  vm.runInNewContext(executable, sandbox, { filename: nodeJsPath });
+
+  return { window, document, root };
+}
+
+async function flush() {
+  await Promise.resolve();
+  await Promise.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+}
+
+async function dynamicClickTests() {
+  const { window, document, root } = createHarness();
+  await window.__kgwStartButtonTest.initKaspaNodeTab(root);
+  await flush();
+
+  const mainnetLogPanel = root.querySelector('[data-node-network-panel="mainnet"] [data-node-inner-panel="log"]');
+  const mainnetSettingsPanel = root.querySelector('[data-node-network-panel="mainnet"] [data-node-inner-panel="settings"]');
+  assert.ok(mainnetLogPanel, "mainnet log panel must render");
+  assert.ok(mainnetSettingsPanel, "mainnet settings panel must render");
+  assert.strictEqual(mainnetLogPanel.querySelectorAll('[data-node-action="start"]').length, 0, "rendered Live Node Monitor must not contain Start");
+  assert.strictEqual(mainnetLogPanel.querySelectorAll('[data-node-action="stop"]').length, 0, "rendered Live Node Monitor must not contain Stop");
+  assert.strictEqual(mainnetSettingsPanel.querySelectorAll('[data-node-action="start"]').length, 1, "rendered Settings must contain one Start");
+  assert.strictEqual(mainnetSettingsPanel.querySelectorAll('[data-node-action="stop"]').length, 1, "rendered Settings must contain one Stop");
+
+  const calls = [];
+  window.__TAURI__ = {
+    tauri: {
+      invoke: async (command, payload) => {
+        calls.push({ command, payload });
+        if (command !== "kgw_kgw_apply_node_settings_v1") return "ignored";
+        return "parallel-owned-self-worker started;role=node;network=" + payload.network + ";pid=4242;owner=self-worker;runtime_state=running";
+      },
+    },
+  };
+
+  calls.length = 0;
+  root.querySelector('[data-node-action="start"][data-net="mainnet"]').click();
+  await flush();
+  assert.strictEqual(calls.length, 1, "mainnet Start click must invoke exactly once");
+  assert.strictEqual(calls[0].command, "kgw_kgw_apply_node_settings_v1");
+  assert.strictEqual(calls[0].payload.network, "mainnet");
+  assert.strictEqual(calls[0].payload.nodeKind, "integrated-as-daemon");
+  assert.strictEqual(calls[0].payload.bridgeKind, "disable");
+  assert.strictEqual(calls[0].payload.runtimeRole, "node");
+
+  root.querySelector('[data-node-network-tab="testnet10"]').click();
+  calls.length = 0;
+  root.querySelector('[data-node-action="start"][data-net="testnet10"]').click();
+  await flush();
+  assert.strictEqual(calls.length, 1, "testnet10 Start click must invoke exactly once after tab switch");
+  assert.strictEqual(calls[0].command, "kgw_kgw_apply_node_settings_v1");
+  assert.strictEqual(calls[0].payload.network, "testnet10");
+
+  calls.length = 0;
+  const testnet12Start = root.querySelector('[data-node-action="start"][data-net="testnet12"]');
+  testnet12Start.click();
+  await flush();
+  assert.strictEqual(calls.length, 0, "testnet12 Start must not invoke while opt-in is disabled");
+
+  window.__TAURI__.tauri.invoke = async (command, payload) => {
+    calls.push({ command, payload });
+    throw new Error("spawn_failed=true;runtime_role=node;network=mainnet;source=self-worker;error=Access is denied.");
+  };
+  const mainnetStart = root.querySelector('[data-node-action="start"][data-net="mainnet"]');
+  mainnetStart.disabled = false;
+  calls.length = 0;
+  mainnetStart.click();
+  await flush();
+  const errorNode = document.getElementById("node-mainnet-runtimeError");
+  const statusNode = document.getElementById("node-mainnet-runtimeStatus");
+  const evidenceNode = document.getElementById("node-mainnet-runtimeEvidence");
+  assert.strictEqual(calls.length, 1, "failed Start click must still invoke exactly once");
+  assert.strictEqual(mainnetStart.disabled, false, "failed Start must restore button state");
+  assert.ok(
+    errorNode.textContent.includes("Access is denied."),
+    "failed Start must expose original error, actual text: " + errorNode.textContent + "; status=" + statusNode.textContent + "; evidence=" + evidenceNode.textContent,
+  );
+
+  const rawLog = document.getElementById("node-mainnet-logOutput").textContent;
+  assert.ok(!/initialized|parallel-owned-self-worker started|KGW node start response/i.test(rawLog), "raw log must not contain synthetic startup success text");
+}
+
+(async () => {
+  try {
+    staticPlacementTests();
+    await dynamicClickTests();
+    console.log("KGW start button frontend tests PASSED");
+  } catch (error) {
+    fail(error && error.stack ? error.stack : String(error));
+  }
+})();

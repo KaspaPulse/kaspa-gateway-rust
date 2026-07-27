@@ -1034,6 +1034,8 @@ function appendLog(net, message) {
     const cleanLine = rawLine.trimEnd();
 
     if (!cleanLine.trim()) continue;
+    if (/^(MAINNET|TESTNET10|TESTNET12)\s+initialized\.$/i.test(cleanLine)) continue;
+    if (/^(Saved node settings loaded|Node settings saved successfully|Node defaults restored successfully|Current node settings saved as defaults)\.?$/i.test(cleanLine)) continue;
     if (/^Node\s+(status|logs)\s*\[/i.test(cleanLine)) continue;
     if (/^Bridge\s+(status|logs)\s*\[/i.test(cleanLine)) continue;
     if (/^KGW\s+/i.test(cleanLine)) continue;
@@ -1250,25 +1252,26 @@ function renderNetworkPanel(net, index) {
 
   return `
     <div class="node-v6-network-panel${index === 0 ? " active" : ""}" data-node-network-panel="${net.key}"${index === 0 ? "" : " hidden"}>
-      <section class="kgw-network-policy${net.experimental ? " is-experimental" : ""}" data-net="${net.key}">
-        <div>
-          <strong>${net.label}</strong>
-          <span>${esc(kgwNodeNetworkPolicyMessage(net.key))}</span>
-        </div>
-        <div class="kgw-network-policy-controls">
-          <span id="${id(net.key, "policyStatus")}" class="kgw-network-policy-status">Stopped</span>
-          <label>
-            <input type="checkbox" data-node-network-enabled="${net.key}" data-net="${net.key}"${kgwNodeNetworkEnabled(net.key) ? " checked" : ""}>
-            Enabled
-          </label>
-        </div>
-      </section>
       <div class="node-v6-inner-tabs">
         <button type="button" class="node-v6-inner-tab${logActive ? " active" : ""}" data-net="${net.key}" data-node-inner-tab="log">Live Node Monitor</button>
         <button type="button" class="node-v6-inner-tab${settingsActive ? " active" : ""}" data-net="${net.key}" data-node-inner-tab="settings">Settings</button>
       </div>
 
-      <div class="node-v6-inner-panel${settingsActive ? " active" : ""}" data-net="${net.key}" data-node-inner-panel="settings"${settingsActive ? "" : " hidden"}>
+      <div class="node-v6-inner-panel${settingsActive ? " active" : ""}" data-net="${net.key}" data-node-inner-panel="settings" data-node-settings-panel="${net.key}"${settingsActive ? "" : " hidden"}>
+        <section class="kgw-network-policy${net.experimental ? " is-experimental" : ""}" data-net="${net.key}">
+          <div>
+            <strong>${net.label}</strong>
+            <span>${esc(kgwNodeNetworkPolicyMessage(net.key))}</span>
+          </div>
+          <div class="kgw-network-policy-controls">
+            <span id="${id(net.key, "policyStatus")}" class="kgw-network-policy-status">Stopped</span>
+            <label>
+              <input type="checkbox" data-node-network-enabled="${net.key}" data-net="${net.key}"${kgwNodeNetworkEnabled(net.key) ? " checked" : ""}>
+              Enabled
+            </label>
+          </div>
+        </section>
+
         <section class="node-v6-command">
           <div class="node-v6-command-title">Command Preview</div>
           <textarea id="${id(net.key, "commandPreview")}" readonly spellcheck="false" wrap="soft"></textarea>
@@ -1284,7 +1287,11 @@ function renderNetworkPanel(net, index) {
           <div class="node-v6-status">
             <label><input id="${id(net.key, "startOnLaunch")}" type="checkbox"> Auto-start</label>
             <label><input id="${id(net.key, "autoRestart")}" type="checkbox" checked> Restart</label>
+            <span id="${id(net.key, "runtimeStatus")}" class="node-v6-runtime-status-pill" data-state="stopped">Stopped</span>
+            <span id="${id(net.key, "runtimeEvidence")}" class="node-v6-runtime-evidence">No process owner</span>
           </div>
+
+          <div id="${id(net.key, "runtimeError")}" class="node-v6-runtime-error" role="status" aria-live="polite" hidden></div>
         </section>
 
         ${renderSections(net)}
@@ -1299,6 +1306,7 @@ function renderNetworkPanel(net, index) {
 
       <div class="node-v6-inner-panel${logActive ? " active" : ""}" data-net="${net.key}" data-node-inner-panel="log"${logActive ? "" : " hidden"}>
         <div class="node-v6-log-toolbar">
+          <span class="node-v6-log-metadata" data-net="${net.key}">Network: ${net.label} · Source: self-worker · Streams: stdout/stderr</span>
           <button type="button" data-node-action="copy-log" data-net="${net.key}">Copy Log</button>
           <button type="button" data-node-action="clear-log" data-net="${net.key}">Clear Log</button>
         </div>
@@ -1594,7 +1602,15 @@ const KGW_NODE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_node_runtime_flags_v
 
 function getTauriInvoke() {
   const tauri = window.__TAURI__;
-  return tauri?.core?.invoke || tauri?.invoke || window.__TAURI_INVOKE__ || null;
+  const candidates = [
+    tauri?.core?.invoke && tauri.core.invoke.bind(tauri.core),
+    tauri?.tauri?.invoke && tauri.tauri.invoke.bind(tauri.tauri),
+    tauri?.invoke && tauri.invoke.bind(tauri),
+    window.__TAURI_INVOKE__,
+    window.__TAURI_IPC__
+  ];
+
+  return candidates.find((candidate) => typeof candidate === "function") || null;
 }
 
 function stringifyRuntimeResult(result) {
@@ -1632,6 +1648,66 @@ function parseRuntimeFields(result) {
   }
 
   return fields;
+}
+
+function kgwNodeSetRuntimeNotice(net, state, evidence = "", errorText = null) {
+  const status = byId(id(net, "runtimeStatus"));
+  const evidenceNode = byId(id(net, "runtimeEvidence"));
+  const errorNode = byId(id(net, "runtimeError"));
+  const normalizedState = String(state || "Stopped");
+  const stateKey = normalizedState.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "stopped";
+
+  if (status) {
+    status.textContent = normalizedState;
+    status.dataset.state = stateKey;
+  }
+
+  if (evidenceNode) {
+    evidenceNode.textContent = evidence || "No process owner";
+  }
+
+  if (errorNode && errorText !== null && errorText !== undefined) {
+    const text = String(errorText || "").trim();
+    errorNode.textContent = text;
+    errorNode.hidden = !text;
+  }
+}
+
+function kgwNodeRuntimeEvidence(result) {
+  const text = stringifyRuntimeResult(result);
+  const fields = parseRuntimeFields(text);
+  const pid = String(fields.pid || "").trim();
+  const owner = fields.owner || fields.source || "self-worker";
+  const role = fields.role || fields.runtime_role || fields.runtimeRole || "node";
+  const state = fields.runtime_state || fields.runtimeState || (pid ? "running" : "");
+
+  return {
+    text,
+    fields,
+    pid,
+    owner,
+    role,
+    state,
+  };
+}
+
+function kgwNodeAssertStartEvidence(net, result) {
+  const evidence = kgwNodeRuntimeEvidence(result);
+  const responseNetwork = String(evidence.fields.network || "").trim();
+
+  if (/start_blocked=true|start_allowed=false/i.test(evidence.text)) {
+    throw new Error(evidence.text);
+  }
+
+  if (responseNetwork && responseNetwork !== String(net || "")) {
+    throw new Error("Backend start response used the wrong network: " + evidence.text);
+  }
+
+  if (!/^[0-9]+$/.test(evidence.pid)) {
+    throw new Error("Backend start response did not include process ID evidence: " + evidence.text);
+  }
+
+  return evidence;
 }
 
 
@@ -1697,18 +1773,18 @@ async function runNodeIntegratedAction(action, net) {
   if (!command) return false;
 
   if (action === "start" && !kgwNodeNetworkEnabled(net)) {
-    appendLog(net, "KGW node start blocked: this network is disabled. Enable it in the network policy bar first.");
+    kgwNodeSetRuntimeNotice(net, "Disabled", "No process owner", "This network is disabled. Enable it in Settings before starting.");
     kgwNodeR51SetRuntimeButtons(net, false, false);
     return true;
   }
 
   if (action === "start" || action === "stop") {
-    const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
+    const bridgeInprocessLocked = kgwIsBridgeOwnedNodeLockedR65E(net);
 
     if (bridgeInprocessLocked) {
       kgwNodeR51SetRuntimeButtons(net, false, true);
       kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, true, "action-guard");
-      appendLog(net, "KGW node " + action + " blocked: this network is display-only because Bridge in-process mode owns the node runtime. Stop the bridge first.");
+      kgwNodeSetRuntimeNotice(net, "Blocked", "Bridge in-process owner", "This network is display-only because Bridge in-process mode owns the node runtime. Stop the bridge first.");
       return true;
     }
   }
@@ -1719,24 +1795,44 @@ async function runNodeIntegratedAction(action, net) {
 
   const inFlightKey = net + ":" + action;
   if (window.__kgwR29NodeInFlight.has(inFlightKey)) {
-    appendLog(net, "KGW node " + action + " already in progress. Duplicate click ignored.");
+    kgwNodeSetRuntimeNotice(net, action === "start" ? "Starting" : "Stopping", "Transition in progress", "A " + action + " request is already in progress for this network.");
     return true;
   }
 
   window.__kgwR29NodeInFlight.add(inFlightKey);
+  KGW_NODE_R51_TRANSITIONS[net] = action === "start" ? "starting" : "stopping";
+  kgwNodeSetRuntimeNotice(net, action === "start" ? "Starting" : "Stopping", "Waiting for backend response", "");
+  kgwNodeR51SetRuntimeButtons(net, action === "stop", kgwIsBridgeOwnedNodeLockedR65E(net));
 
   try {
-    updateCommand(net);
-    appendLog(net, "KGW node " + action + " requested via existing button.");
-    appendLog(net, "KGW node flags: " + (byId(id(net, "commandPreview"))?.value || ""));
-
     const result = await invokeNodeIntegratedRuntime(command, net);
-    appendLog(net, "KGW node " + action + " response: " + stringifyRuntimeResult(result));
+
+    if (action === "start") {
+      const evidence = kgwNodeAssertStartEvidence(net, result);
+      kgwNodeSetRuntimeNotice(
+        net,
+        "Running",
+        "pid=" + evidence.pid + ";owner=" + evidence.owner + ";role=" + evidence.role,
+        ""
+      );
+      KGW_NODE_R51_TRANSITIONS[net] = "";
+      kgwNodeR51SetRuntimeButtons(net, true, kgwIsBridgeOwnedNodeLockedR65E(net));
+    } else {
+      kgwNodeSetRuntimeNotice(net, "Stopped", "No process owner", "");
+      KGW_NODE_R51_TRANSITIONS[net] = "";
+      kgwNodeR51SetRuntimeButtons(net, false, kgwIsBridgeOwnedNodeLockedR65E(net));
+    }
+
     return true;
   } catch (error) {
-    appendLog(net, "KGW node " + action + " failed: " + normalizeRuntimeError(error));
+    KGW_NODE_R51_TRANSITIONS[net] = "";
+    const errorText = normalizeRuntimeError(error);
+    const runningAfterFailure = action === "stop";
+    kgwNodeR51SetRuntimeButtons(net, runningAfterFailure, kgwIsBridgeOwnedNodeLockedR65E(net));
+    kgwNodeSetRuntimeNotice(net, runningAfterFailure ? "Running" : "Stopped", runningAfterFailure ? "Stop failed" : "No process owner", errorText);
     return true;
   } finally {
+    KGW_NODE_R51_TRANSITIONS[net] = "";
     window.__kgwR29NodeInFlight.delete(inFlightKey);
   }
 }
@@ -1745,6 +1841,7 @@ const KGW_NODE_R51_STORAGE_PREFIX = "kgw.node.direct.v51.";
 const KGW_NODE_R51_LAST_STATUS = {};
 const KGW_NODE_R51_LAST_LOGS = {};
 const KGW_NODE_R51_LAST_ACTIVITY_NOTICE = {};
+const KGW_NODE_R51_TRANSITIONS = {};
 let KGW_NODE_R51_TIMER = null;
 
 function kgwNodeR51Keys() {
@@ -1925,7 +2022,6 @@ function kgwNodeR51LoadSavedSettings() {
     const saved = kgwNodeR51Load("saved:" + net);
     if (saved) {
       kgwNodeR51WriteSettings(net, saved);
-      appendLog(net, "Saved node settings loaded.");
     }
   }
 }
@@ -1954,7 +2050,6 @@ function kgwNodeR51SaveSettings(net) {
   });
 
   kgwNodeR51Store("saved:" + net, values);
-  appendLog(net, "Node settings saved successfully.");
 
   const saved = kgwNodeR51Load("saved:" + net);
   kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-complete", {
@@ -1984,7 +2079,6 @@ function kgwNodeR51SetAsDefaults(net) {
   });
 
   kgwNodeR51Store("default:" + net, values);
-  appendLog(net, "Current node settings saved as defaults.");
 
   const stored = kgwNodeR51Load("default:" + net);
   kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-complete", {
@@ -2012,7 +2106,6 @@ function kgwNodeR51RestoreDefaults(net) {
     });
     kgwNodeR51WriteSettings(net, defaults);
     kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, { force: true });
-    appendLog(net, "Node defaults restored successfully.");
   });
 
   kgwNodeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-complete", {
@@ -2032,17 +2125,37 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
 
   const displayOnlyLocked = Boolean(bridgeInprocessLocked || kgwIsBridgeOwnedNodeLockedR65E(net));
   const networkEnabled = kgwNodeNetworkEnabled(net);
+  const transition = String(KGW_NODE_R51_TRANSITIONS[net] || "");
+  const starting = transition === "starting";
+  const stopping = transition === "stopping";
+  const transitionActive = Boolean(starting || stopping);
   kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, displayOnlyLocked, "runtime-buttons");
 
   const start = panel.querySelector('[data-node-action="start"][data-net="' + net + '"]');
   const stop = panel.querySelector('[data-node-action="stop"][data-net="' + net + '"]');
   const lockMessage = "This node is owned by Bridge in-process mode. Stop the bridge first.";
   const policyStatus = byId(id(net, "policyStatus"));
+  const runtimeState = !networkEnabled
+    ? "Disabled"
+    : starting
+      ? "Starting"
+      : stopping
+        ? "Stopping"
+        : running
+          ? "Running"
+          : "Stopped";
 
   if (policyStatus) {
-    policyStatus.textContent = networkEnabled ? (running ? "Running" : "Stopped") : "Disabled";
-    policyStatus.dataset.state = networkEnabled ? (running ? "running" : "stopped") : "disabled";
+    policyStatus.textContent = runtimeState;
+    policyStatus.dataset.state = runtimeState.toLowerCase();
   }
+
+  kgwNodeSetRuntimeNotice(
+    net,
+    runtimeState,
+    running || starting ? "Self-worker process owner" : "No process owner",
+    ""
+  );
 
   for (const field of kgwNodeR51Fields(net)) {
     field.disabled = Boolean(displayOnlyLocked);
@@ -2059,7 +2172,7 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
   }
 
   if (start) {
-    const startBlocked = Boolean(running || displayOnlyLocked || !networkEnabled);
+    const startBlocked = Boolean(running || transitionActive || displayOnlyLocked || !networkEnabled);
     start.disabled = startBlocked;
     start.style.opacity = startBlocked ? "0.45" : "";
     start.style.cursor = startBlocked ? "not-allowed" : "";
@@ -2069,18 +2182,31 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
       ? lockMessage
       : !networkEnabled
         ? "Enable this network before starting it."
-        : running
+        : starting
+          ? "Node is starting."
+          : stopping
+            ? "Node is stopping."
+            : running
           ? "Node is running. Stop it before starting again."
           : "Start node";
   }
 
   if (stop) {
-    stop.disabled = Boolean(!running || displayOnlyLocked);
-    stop.style.opacity = running && !displayOnlyLocked ? "" : "0.45";
-    stop.style.cursor = running && !displayOnlyLocked ? "" : "not-allowed";
-    stop.setAttribute("aria-disabled", !running || displayOnlyLocked ? "true" : "false");
+    const stopEnabled = Boolean((running || starting) && !stopping && !displayOnlyLocked);
+    stop.disabled = !stopEnabled;
+    stop.style.opacity = stopEnabled ? "" : "0.45";
+    stop.style.cursor = stopEnabled ? "" : "not-allowed";
+    stop.setAttribute("aria-disabled", stopEnabled ? "false" : "true");
     stop.dataset.kgwBridgeInprocessLockedV7 = displayOnlyLocked ? "true" : "false";
-    stop.title = displayOnlyLocked ? lockMessage : running ? "Stop node" : "Node is not running";
+    stop.title = displayOnlyLocked
+      ? lockMessage
+      : starting
+        ? "Stop node startup"
+        : stopping
+          ? "Node is stopping."
+          : running
+            ? "Stop node"
+            : "Node is not running";
   }
 }
 
@@ -2728,20 +2854,22 @@ function installActions(root) {
 
     const lockedBeforeAction = kgwIsBridgeOwnedNodeLockedR65E(net);
 
-    kgwNodeExplicitTraceR27D(net, String(action || "unknown"), "r27d-action-click", {
-      trusted: Boolean(event && event.isTrusted),
-      disabled: Boolean(button.disabled || lockedBeforeAction),
-      id: String(button.id || ""),
-      text: String(button.textContent || "").trim(),
-      bridgeOwnedDisplayOnly: Boolean(lockedBeforeAction)
-    });
+    if (action !== "start" && action !== "stop") {
+      kgwNodeExplicitTraceR27D(net, String(action || "unknown"), "r27d-action-click", {
+        trusted: Boolean(event && event.isTrusted),
+        disabled: Boolean(button.disabled || lockedBeforeAction),
+        id: String(button.id || ""),
+        text: String(button.textContent || "").trim(),
+        bridgeOwnedDisplayOnly: Boolean(lockedBeforeAction)
+      });
+    }
 
     if (lockedBeforeAction && (action === "start" || action === "stop" || action === "save-settings" || action === "set-defaults" || action === "restore-defaults" || action === "copy-command")) {
       event.preventDefault();
       event.stopPropagation();
       kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, true, "click-guard");
       if (typeof appendLog === "function" && (action === "start" || action === "stop")) {
-        appendLog(net, "KGW node " + action + " blocked: this network is display-only because Bridge in-process mode owns the node runtime. Stop the bridge first.");
+        kgwNodeSetRuntimeNotice(net, "Blocked", "Bridge in-process owner", "This network is display-only because Bridge in-process mode owns the node runtime. Stop the bridge first.");
       }
       return;
     }
@@ -2806,9 +2934,6 @@ updateAllCommands();
   NODE_NETWORKS.forEach((net) => kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net.key, { force: false })); /* KGW_NODE_DYNAMIC_PATHS_INIT_R3 */
   installKgwNodeR51BottomStyle();
   kgwNodeR51StartLiveRefresh();
-
-  NODE_NETWORKS.forEach((net) => appendLog(net.key, `${net.label} initialized.`));
-
 
   setTimeout(kgwInstallNodeLogAutoScrollControlsR27, 0);
 }

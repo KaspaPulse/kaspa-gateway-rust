@@ -20,6 +20,7 @@ struct KgwParallelSelfWorker {
     child: Child,
     logs: Arc<Mutex<VecDeque<String>>>,
     started_ms: u128,
+    exit_logged: bool,
 }
 
 static KGW_PARALLEL_SELF_WORKERS: OnceLock<Mutex<HashMap<String, KgwParallelSelfWorker>>> =
@@ -27,6 +28,17 @@ static KGW_PARALLEL_SELF_WORKERS: OnceLock<Mutex<HashMap<String, KgwParallelSelf
 
 fn kgw_parallel_self_workers() -> &'static Mutex<HashMap<String, KgwParallelSelfWorker>> {
     KGW_PARALLEL_SELF_WORKERS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+#[cfg(test)]
+fn kgw_worker_uses_test_command() -> bool {
+    std::env::var_os("KGW_TEST_SELF_WORKER_COMMAND").is_some()
+        || std::env::var_os("KGW_TEST_SELF_WORKER_MISSING_COMMAND").is_some()
+}
+
+#[cfg(not(test))]
+fn kgw_worker_uses_test_command() -> bool {
+    false
 }
 
 fn kgw_worker_now_ms() -> u128 {
@@ -60,8 +72,29 @@ fn kgw_worker_push_log(logs: &Arc<Mutex<VecDeque<String>>>, line: impl Into<Stri
     }
 }
 
-fn kgw_worker_spawn_reader<R>(_label: String, reader: R, logs: Arc<Mutex<VecDeque<String>>>)
-where
+fn kgw_worker_format_process_line(
+    role: &str,
+    network: &str,
+    stream: &str,
+    line: impl AsRef<str>,
+) -> String {
+    format!(
+        "kgw_raw_process_log_v1;network={};source=self-worker;runtime_role={};stream={};received_ms={};line={}",
+        network,
+        role,
+        stream,
+        kgw_worker_now_ms(),
+        line.as_ref()
+    )
+}
+
+fn kgw_worker_spawn_reader<R>(
+    role: String,
+    network: String,
+    stream: String,
+    reader: R,
+    logs: Arc<Mutex<VecDeque<String>>>,
+) where
     R: std::io::Read + Send + 'static,
 {
     std::thread::spawn(move || {
@@ -69,13 +102,76 @@ where
 
         for line in buffered.lines() {
             match line {
-                Ok(line) => kgw_worker_push_log(&logs, line),
+                Ok(line) => kgw_worker_push_log(
+                    &logs,
+                    kgw_worker_format_process_line(&role, &network, &stream, line),
+                ),
                 Err(_error) => {
+                    kgw_worker_push_log(
+                        &logs,
+                        format!(
+                            "kgw_process_reader_error_v1;network={};source=self-worker;runtime_role={};stream={};received_ms={};error={}",
+                            network,
+                            role,
+                            stream,
+                            kgw_worker_now_ms(),
+                            _error
+                        ),
+                    );
                     break;
                 }
             }
         }
     });
+}
+
+fn kgw_worker_command(
+    role: &str,
+    network: &str,
+    settings: &kaspa_gateway_rk_node::NodeSettings,
+) -> Result<Command, String> {
+    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+    let mut command = Command::new(exe);
+
+    #[cfg(test)]
+    if let Some(path) = std::env::var_os("KGW_TEST_SELF_WORKER_MISSING_COMMAND") {
+        let mut missing = Command::new(path);
+        missing
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::null());
+        return Ok(missing);
+    }
+
+    #[cfg(test)]
+    if std::env::var_os("KGW_TEST_SELF_WORKER_COMMAND").is_some() {
+        command
+            .arg("--exact")
+            .arg("integrated_runtime_commands::kgw_test_self_worker_hold")
+            .arg("--nocapture")
+            .env("KGW_TEST_SELF_WORKER_CHILD", "1")
+            .env("KGW_TEST_SELF_WORKER_ROLE", role)
+            .env("KGW_TEST_SELF_WORKER_NETWORK", network)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::null());
+        return Ok(command);
+    }
+
+    command
+        .arg("--kgw-self-worker")
+        .arg(role)
+        .arg("--network")
+        .arg(network)
+        .arg("--appdir")
+        .arg(&settings.app_dir_name)
+        .arg("--rpc")
+        .arg(&settings.rpc_endpoint)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .stdin(Stdio::null());
+
+    Ok(command)
 }
 
 fn kgw_worker_role_from_request(
@@ -147,7 +243,7 @@ fn kgw_worker_start(
                 .is_none();
 
             if running {
-                return Ok(format!(
+                return Err(format!(
                     "start_blocked=true;start_allowed=false;runtime_role=bridge;network={};node_mode=inprocess;block_reason=node-tab-owner-running;message=Cannot start bridge in-process because the same-network node is already running. Stop the node first or use external bridge mode.;node_pid={};appdir={}",
                     network,
                     existing.child.id(),
@@ -175,7 +271,7 @@ fn kgw_worker_start(
                 .is_none();
 
             if running && existing.node_mode == "inprocess" {
-                return Ok(format!(
+                return Err(format!(
                     "start_blocked=true;start_allowed=false;runtime_role=node;network={};node_mode=inprocess;block_reason=bridge-inprocess-owner-running;message=Cannot start node because bridge in-process owns this network. Stop the bridge first.;bridge_pid={};appdir={}",
                     network,
                     existing.child.id(),
@@ -200,8 +296,8 @@ fn kgw_worker_start(
             .map_err(|error| error.to_string())?
             .is_none()
         {
-            return Ok(format!(
-                "parallel-owned-self-worker already running;role={};network={};pid={};appdir={};node_mode={}",
+            return Err(format!(
+                "start_blocked=true;start_allowed=false;block_reason=duplicate-owner;runtime_role={};network={};pid={};appdir={};node_mode={};message=Process owner already exists for this network and role.",
                 existing.role,
                 existing.network,
                 existing.child.id(),
@@ -213,22 +309,8 @@ fn kgw_worker_start(
         workers.remove(&key);
     }
 
-    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let logs = Arc::new(Mutex::new(VecDeque::new()));
-    let mut command = Command::new(exe);
-
-    command
-        .arg("--kgw-self-worker")
-        .arg(&role)
-        .arg("--network")
-        .arg(&network)
-        .arg("--appdir")
-        .arg(&settings.app_dir_name)
-        .arg("--rpc")
-        .arg(&settings.rpc_endpoint)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .stdin(Stdio::null());
+    let mut command = kgw_worker_command(&role, &network, settings)?;
 
     if role == "bridge" {
         // KGW_BRIDGE_NORMAL_LOG_DEFAULT_R130
@@ -238,15 +320,17 @@ fn kgw_worker_start(
         command.env("RUST_LOG", bridge_rust_log);
     }
 
+    let test_command = kgw_worker_uses_test_command();
+
     if role == "node" {
-        if settings.enable_utxo_index {
+        if settings.enable_utxo_index && !test_command {
             command.arg("--utxoindex");
         }
 
-        if settings.archival {
+        if settings.archival && !test_command {
             command.arg("--archival");
         }
-    } else {
+    } else if !test_command {
         command.arg("--stratum").arg(&settings.stratum_listen);
         command.arg("--node-mode").arg(bridge_node_mode);
 
@@ -305,14 +389,31 @@ fn kgw_worker_start(
         }
     }
 
-    let mut child = command.spawn().map_err(|error| error.to_string())?;
+    let mut child = command.spawn().map_err(|error| {
+        format!(
+            "spawn_failed=true;runtime_role={};network={};source=self-worker;error={}",
+            role, network, error
+        )
+    })?;
 
     if let Some(stdout) = child.stdout.take() {
-        kgw_worker_spawn_reader("stdout".to_string(), stdout, Arc::clone(&logs));
+        kgw_worker_spawn_reader(
+            role.clone(),
+            network.clone(),
+            "stdout".to_string(),
+            stdout,
+            Arc::clone(&logs),
+        );
     }
 
     if let Some(stderr) = child.stderr.take() {
-        kgw_worker_spawn_reader("stderr".to_string(), stderr, Arc::clone(&logs));
+        kgw_worker_spawn_reader(
+            role.clone(),
+            network.clone(),
+            "stderr".to_string(),
+            stderr,
+            Arc::clone(&logs),
+        );
     }
 
     std::thread::sleep(std::time::Duration::from_millis(750));
@@ -346,11 +447,12 @@ fn kgw_worker_start(
             child,
             logs,
             started_ms: kgw_worker_now_ms(),
+            exit_logged: false,
         },
     );
 
     Ok(format!(
-        "parallel-owned-self-worker started;role={};network={};pid={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};stratum={};node_mode={};same_db_path=true;exclusive_node_owner_per_network=true",
+        "parallel-owned-self-worker started;role={};network={};pid={};owner=self-worker;runtime_state=running;same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};stratum={};node_mode={};same_db_path=true;exclusive_node_owner_per_network=true",
         role,
         network,
         pid,
@@ -465,11 +567,24 @@ fn kgw_worker_status(
             }
         }
 
-        let running = worker
-            .child
-            .try_wait()
-            .map_err(|error| error.to_string())?
-            .is_none();
+        let exit_status = worker.child.try_wait().map_err(|error| error.to_string())?;
+        let running = exit_status.is_none();
+
+        if let Some(status) = exit_status {
+            if !worker.exit_logged {
+                kgw_worker_push_log(
+                    &worker.logs,
+                    format!(
+                        "kgw_process_exit_v1;network={};source=self-worker;runtime_role={};stream=process;received_ms={};status={}",
+                        worker.network,
+                        worker.role,
+                        kgw_worker_now_ms(),
+                        status
+                    ),
+                );
+                worker.exit_logged = true;
+            }
+        }
 
         lines.push(format!(
             "parallel-owned-self-worker status;role={};network={};pid={};running={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};started_ms={};node_mode={}",
@@ -1252,4 +1367,23 @@ pub fn kgw_kgw_smoke_stop_network_v1(network: String) -> Result<String, String> 
         "smoke_stop_network accepted\n{}\nstatus={}\nlogs=\n{}",
         accepted, status, logs
     ))
+}
+
+#[cfg(test)]
+#[test]
+fn kgw_test_self_worker_hold() {
+    if std::env::var_os("KGW_TEST_SELF_WORKER_CHILD").is_none() {
+        return;
+    }
+
+    let role = std::env::var("KGW_TEST_SELF_WORKER_ROLE").unwrap_or_else(|_| "node".to_string());
+    let network =
+        std::env::var("KGW_TEST_SELF_WORKER_NETWORK").unwrap_or_else(|_| "mainnet".to_string());
+
+    println!("test-self-worker stdout role={role} network={network}");
+    eprintln!("test-self-worker stderr role={role} network={network}");
+
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(10));
+    }
 }
