@@ -365,8 +365,8 @@
     "semantic_hash": "8b78b1238b229b24b1adabec493ef27a"
   },
   "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs": {
-    "mtime": 1785196262.9721837,
-    "ast_hash": "ad6a423686d2b97640444a8b2ed97b16",
+    "mtime": 1785223593.9165707,
+    "ast_hash": "f60bcad7bcf1acac14cab398ae3bfd0a",
     "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs": {
@@ -480,8 +480,8 @@
     "semantic_hash": "7a2e43d4a875d00e1dfa5e677cf0771b"
   },
   "apps/kaspa-gateway-desktop/src-tauri/tests/integrated_runtime_ipc_smoke_tests.rs": {
-    "mtime": 1785194171.1625893,
-    "ast_hash": "3d3bc8ec51152c9b6443de610b0ddb2d",
+    "mtime": 1785225267.664155,
+    "ast_hash": "92e2cbd0db7e4367ef32c7e1b06ab079",
     "semantic_hash": ""
   },
   "config/runtime-repository-bindings.json": {
@@ -880,8 +880,8 @@
     "semantic_hash": ""
   },
   "tools/kgw_desktop_diagnostic_launch.ps1": {
-    "mtime": 1785193572.066051,
-    "ast_hash": "9276fff360719517b21002bf32732e16",
+    "mtime": 1785223711.3765247,
+    "ast_hash": "d9167c340c6e97ac675fd4f40840c381",
     "semantic_hash": ""
   }
 }

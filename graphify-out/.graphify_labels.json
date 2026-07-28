@@ -186,5 +186,17 @@
   "184": "Result",
   "185": "String",
   "186": "kgw_runtime_repository_binding_audit.ps1",
-  "187": "Vec"
+  "187": "Vec",
+  "188": "Internationalization",
+  "189": "kgwShellResolveStartupTabR63F",
+  "190": "desktop-schema.json",
+  "191": "Arc",
+  "192": "AsRef",
+  "193": "HashMap",
+  "194": "Into",
+  "195": "Option",
+  "196": "PathBuf",
+  "197": "Result",
+  "198": "Vec",
+  "199": "VecDeque"
 }
