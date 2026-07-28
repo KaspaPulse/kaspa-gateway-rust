@@ -14,12 +14,13 @@ $stderrLog = Join-Path $diagnosticDirectory "desktop.stderr.log"
 $launcherLog = Join-Path $diagnosticDirectory "launcher.log"
 $processLog = Join-Path $diagnosticDirectory "processes.log"
 $portLog = Join-Path $diagnosticDirectory "ports.log"
+$childProcessLog = Join-Path $diagnosticDirectory "child-process.log"
 $windowsEventLog = Join-Path $diagnosticDirectory "windows-events.log"
 $summaryFile = Join-Path $diagnosticDirectory "summary.json"
 $zipFile = "$diagnosticDirectory.zip"
 $executable = Join-Path $Repository "target\debug\kaspa-gateway-desktop.exe"
 $buildLog = Join-Path $diagnosticDirectory "build.log"
-$expectedNodePorts = @(16110, 17110, 18110, 16210, 17210, 18210, 16310, 17310, 18310)
+$expectedNodePorts = @(16110, 16210, 16310)
 
 New-Item -ItemType Directory -Path $diagnosticDirectory -Force | Out-Null
 New-Item -ItemType File -Path $stdoutLog -Force | Out-Null
@@ -27,6 +28,7 @@ New-Item -ItemType File -Path $stderrLog -Force | Out-Null
 New-Item -ItemType File -Path $launcherLog -Force | Out-Null
 New-Item -ItemType File -Path $processLog -Force | Out-Null
 New-Item -ItemType File -Path $portLog -Force | Out-Null
+New-Item -ItemType File -Path $childProcessLog -Force | Out-Null
 
 function Write-Diagnostic {
     param(
@@ -42,6 +44,22 @@ function Write-Diagnostic {
 
     Add-Content -LiteralPath $launcherLog -Value $line -Encoding utf8
     Write-Host $line
+}
+
+function Test-KgwRuntimePollingTrace {
+    param([Parameter(Mandatory)][string]$Line)
+
+    if (-not $Line.StartsWith("[KGW_START_TRACE]", [System.StringComparison]::Ordinal)) {
+        return $false
+    }
+
+    return $Line -match "kgw_runtime_owner_status_v1|kgw_kgw_runtime_logs_v1"
+}
+
+function Write-ChildEvidence {
+    param([Parameter(Mandatory)][string]$Line)
+
+    Add-Content -LiteralPath $childProcessLog -Value $Line -Encoding utf8
 }
 
 function Show-NewLogLines {
@@ -69,7 +87,23 @@ function Show-NewLogLines {
     for ($index = $LineCount.Value; $index -lt $lines.Count; $index++) {
         $line = [string]$lines[$index]
 
-        if ($line.StartsWith("[KGW_START_TRACE]", [System.StringComparison]::Ordinal)) {
+        if ($line.StartsWith("[KGW_CHILD_STDERR]", [System.StringComparison]::Ordinal)) {
+            Write-ChildEvidence -Line $line
+            Write-Host "[$Label] $line" -ForegroundColor Yellow
+        }
+        elseif ($line.StartsWith("[KGW_CHILD_STDOUT]", [System.StringComparison]::Ordinal)) {
+            Write-ChildEvidence -Line $line
+            Write-Host "[$Label] $line" -ForegroundColor DarkCyan
+        }
+        elseif ($line.StartsWith("[KGW_START_TRACE]", [System.StringComparison]::Ordinal)) {
+            if ($line -match "native\.child_pid_recorded|self-worker-exited-during-startup") {
+                Write-ChildEvidence -Line $line
+            }
+
+            if (Test-KgwRuntimePollingTrace -Line $line) {
+                continue
+            }
+
             Write-Host "[$Label] $line" -ForegroundColor Cyan
         }
         elseif ($Label -eq "STDERR") {
@@ -193,6 +227,43 @@ function Write-PortSnapshot {
     }
 }
 
+function Get-ChildProcessEvidenceSummary {
+    if (-not (Test-Path -LiteralPath $childProcessLog)) {
+        return [ordered]@{
+            line_count = 0
+            pids = @()
+            exit_markers = @()
+        }
+    }
+
+    $lines = @(Get-Content -LiteralPath $childProcessLog -ErrorAction SilentlyContinue)
+    $pids = New-Object System.Collections.Generic.HashSet[string]
+    $exitMarkers = New-Object System.Collections.Generic.List[string]
+
+    foreach ($line in $lines) {
+        foreach ($match in [regex]::Matches($line, '\\?"pid\\?"\s*:\s*(?<pid>[0-9]+)')) {
+            if ($match.Groups["pid"].Success) {
+                [void]$pids.Add($match.Groups["pid"].Value)
+            }
+        }
+
+        if ($line -match "self-worker-exited-during-startup") {
+            $exitMarkers.Add($line)
+        }
+    }
+
+    $pidValues = @()
+    foreach ($pidValue in $pids) {
+        $pidValues += $pidValue
+    }
+
+    return [ordered]@{
+        line_count = $lines.Count
+        pids = $pidValues
+        exit_markers = @($exitMarkers)
+    }
+}
+
 Set-Location $Repository
 
 $branch = (git branch --show-current).Trim()
@@ -204,6 +275,7 @@ Write-Diagnostic -Message "Branch=$branch"
 Write-Diagnostic -Message "Commit=$commit"
 Write-Diagnostic -Message "DiagnosticDirectory=$diagnosticDirectory"
 Write-Diagnostic -Message "ExpectedNodePorts=$($expectedNodePorts -join ',')"
+Write-Diagnostic -Message "ChildProcessLog=$childProcessLog"
 
 if ($status.Count -eq 0) {
     Write-Diagnostic -Message "WorktreeStatus=clean"
@@ -354,6 +426,7 @@ finally {
         executable_sha256 = $executableHash
         kgw_start_trace = $env:KGW_START_TRACE
         expected_node_ports = $expectedNodePorts
+        child_process_evidence = Get-ChildProcessEvidenceSummary
         desktop_pid = if ($desktopProcess) { $desktopProcess.Id } else { $null }
         exit_code = $exitCode
         started_at = $startedAt.ToString("O")
@@ -364,6 +437,7 @@ finally {
             launcher = $launcherLog
             stdout = $stdoutLog
             stderr = $stderrLog
+            child_process = $childProcessLog
             processes = $processLog
             ports = $portLog
             windows_events = $windowsEventLog
@@ -389,6 +463,6 @@ finally {
 
     Write-Host ""
     Write-Host "DIAGNOSTIC CAPTURE COMPLETED" -ForegroundColor Green
-    Write-Host "Upload this archive:" -ForegroundColor Green
+    Write-Host "ZIP archive:" -ForegroundColor Green
     Write-Host $zipFile -ForegroundColor Cyan
 }

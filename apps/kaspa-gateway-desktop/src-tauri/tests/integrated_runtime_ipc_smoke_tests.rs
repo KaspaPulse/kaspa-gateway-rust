@@ -138,6 +138,84 @@ fn start_command_is_registered_and_payload_matches_frontend() {
 }
 
 #[test]
+fn production_self_worker_arguments_match_child_parser() {
+    let _guard = runtime_test_lock().lock().unwrap();
+    std::env::remove_var("KGW_TEST_SELF_WORKER_COMMAND");
+    std::env::remove_var("KGW_TEST_SELF_WORKER_FAIL_COMMAND");
+    std::env::remove_var("KGW_TEST_SELF_WORKER_MISSING_COMMAND");
+
+    let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
+        "mainnet".to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+    )
+    .expect("mainnet settings should parse");
+    settings.app_dir_name = "D:\\kgw-test\\nodes\\mainnet".to_string();
+    settings.rpc_endpoint = "127.0.0.1:16110".to_string();
+    settings.enable_utxo_index = true;
+    settings.archival = false;
+
+    let args =
+        integrated_runtime_commands::kgw_worker_node_command_args_for_test_v1("node", &settings)
+            .expect("production node worker args should be generated");
+
+    assert_eq!(
+        args,
+        vec![
+            "--kgw-self-worker",
+            "node",
+            "--network",
+            "mainnet",
+            "--appdir",
+            "D:\\kgw-test\\nodes\\mainnet",
+            "--rpc",
+            "127.0.0.1:16110",
+            "--utxoindex",
+        ]
+    );
+
+    let lib_rs = include_str!("../src/lib.rs");
+    for key in [
+        "--kgw-self-worker",
+        "--network",
+        "--appdir",
+        "--rpc",
+        "--utxoindex",
+    ] {
+        assert!(
+            lib_rs.contains(key),
+            "child parser must recognize production argument `{key}`"
+        );
+    }
+}
+
+#[test]
+fn worker_entrypoint_is_selected_before_desktop_mode() {
+    let main_rs = include_str!("../src/main.rs");
+    let self_worker_index = main_rs
+        .find("try_run_kgw_self_worker_from_args")
+        .expect("main must check the self-worker entrypoint");
+    let desktop_index = main_rs
+        .find("kaspa_gateway_desktop_lib::run")
+        .expect("main must run the desktop after self-worker check");
+
+    assert!(
+        self_worker_index < desktop_index,
+        "self-worker entrypoint must be evaluated before desktop mode"
+    );
+
+    let lib_rs = include_str!("../src/lib.rs");
+    assert_contains_all(
+        lib_rs,
+        &[
+            "args.iter().any(|arg| arg == \"--kgw-self-worker\")",
+            "kgw_run_node_self_worker",
+            "std::process::exit(1)",
+        ],
+    );
+}
+
+#[test]
 fn start_trace_marker_format_is_registered_and_safe() {
     let lib_rs = include_str!("../src/lib.rs");
     assert!(
@@ -173,6 +251,29 @@ fn start_trace_marker_format_is_registered_and_safe() {
 }
 
 #[test]
+fn child_trace_line_redacts_sensitive_fields_without_truncating() {
+    let line = "startup failure token=abc123 wallet=kaspa:qprv000000000000000000000000000000000000000000000000000000000000 diagnostic_tail=COMPLETE-CHILD-STDERR-END";
+    let mirror = integrated_runtime_commands::kgw_worker_format_child_mirror_line_v1(
+        "node", "mainnet", "stderr", 4242, line,
+    );
+
+    assert!(mirror.starts_with("[KGW_CHILD_STDERR] "));
+    assert_contains_all(
+        &mirror,
+        &[
+            "\"network\":\"mainnet\"",
+            "\"runtimeRole\":\"node\"",
+            "\"pid\":4242",
+            "COMPLETE-CHILD-STDERR-END",
+        ],
+    );
+    assert!(
+        !mirror.contains("abc123") && !mirror.contains("kaspa:qprv"),
+        "child mirror line must redact sensitive values: {mirror}"
+    );
+}
+
+#[test]
 fn mainnet_and_testnet10_normalize_to_supported_networks() {
     assert_eq!(
         kaspa_gateway_rk_node::KgwNetwork::parse("mainnet")
@@ -192,6 +293,74 @@ fn mainnet_and_testnet10_normalize_to_supported_networks() {
             .as_str(),
         "testnet10"
     );
+}
+
+#[test]
+fn mainnet_and_testnet10_test_workers_stay_alive_through_startup_verification() {
+    let _guard = runtime_test_lock().lock().unwrap();
+    std::env::set_var("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
+
+    for network in ["mainnet", "testnet10"] {
+        let started = kgw_kgw_apply_node_settings_v1(
+            network.to_string(),
+            "integrated-as-daemon".to_string(),
+            "disable".to_string(),
+            None,
+            None,
+            Some("node".to_string()),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap_or_else(|error| panic!("{network} test worker should start: {error}"));
+
+        assert_contains_all(
+            &started,
+            &[
+                "parallel-owned-self-worker started",
+                &format!("network={network}"),
+                "pid=",
+                "runtime_state=running",
+                "same_exe=true",
+                "external_kaspad_exe=false",
+            ],
+        );
+
+        let status = kgw_runtime_owner_summary_for_test(network);
+        assert_contains_all(
+            &status,
+            &[
+                "parallel-owned-self-worker status",
+                &format!("network={network}"),
+                "role=node",
+                "running=true",
+            ],
+        );
+
+        let stopped = kgw_kgw_disable_network_v1(network.to_string(), Some("node".to_string()))
+            .unwrap_or_else(|error| panic!("{network} test worker should stop: {error}"));
+        assert_contains_all(
+            &stopped,
+            &[
+                "parallel-owned-self-worker stopped",
+                &format!("network={network}"),
+                "pid=",
+            ],
+        );
+    }
+
+    std::env::remove_var("KGW_TEST_SELF_WORKER_COMMAND");
+}
+
+fn kgw_runtime_owner_summary_for_test(network: &str) -> String {
+    integrated_runtime_commands::kgw_runtime_owner_status_v1(
+        Some(network.to_string()),
+        Some("node".to_string()),
+    )
+    .unwrap_or_else(|error| panic!("{network} status should be readable: {error}"))
 }
 
 #[test]
@@ -273,6 +442,57 @@ fn duplicate_owner_for_one_network_is_rejected() {
 }
 
 #[test]
+fn node_start_trace_uses_same_exe_mode_not_external() {
+    let _guard = runtime_test_lock().lock().unwrap();
+    std::env::set_var("KGW_START_TRACE", "1");
+    std::env::set_var("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    let _ = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
+    let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
+
+    let started = kgw_kgw_apply_node_settings_v1(
+        "mainnet".to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+        None,
+        None,
+        Some("node".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect("test worker start should succeed");
+    assert_contains_all(
+        &started,
+        &[
+            "parallel-owned-self-worker started",
+            "network=mainnet",
+            "node_mode=same-exe-self-worker",
+        ],
+    );
+
+    let trace_text = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1().join("\n");
+    assert_contains_all(
+        &trace_text,
+        &[
+            "\"stage\":\"native.spawn_plan_created\"",
+            "\\\"nodeMode\\\":\\\"same-exe-self-worker\\\"",
+            "\\\"externalKaspadExe\\\":false",
+        ],
+    );
+    assert!(
+        !trace_text.contains("\\\"runtimeRole\\\":\\\"node\\\",\\\"nodeMode\\\":\\\"external\\\"")
+            && !trace_text.contains("\"runtimeRole\":\"node\",\"nodeMode\":\"external\""),
+        "node starts must not be traced as external mode: {trace_text}"
+    );
+
+    let _ = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()));
+    std::env::remove_var("KGW_TEST_SELF_WORKER_COMMAND");
+    std::env::remove_var("KGW_START_TRACE");
+}
+
+#[test]
 fn success_response_contains_process_start_evidence_and_stream_logs() {
     let _guard = runtime_test_lock().lock().unwrap();
     std::env::set_var("KGW_TEST_SELF_WORKER_COMMAND", "1");
@@ -326,6 +546,76 @@ fn success_response_contains_process_start_evidence_and_stream_logs() {
 
     let _ = kgw_kgw_disable_network_v1("testnet10".to_string(), Some("node".to_string()));
     std::env::remove_var("KGW_TEST_SELF_WORKER_COMMAND");
+}
+
+#[test]
+fn early_self_worker_exit_preserves_complete_safe_stderr_and_returns_error() {
+    let _guard = runtime_test_lock().lock().unwrap();
+    let complete_tail = "COMPLETE-SELF-WORKER-STDERR-END";
+    let child_stderr = format!(
+        "forced startup failure token=abc123 wallet=kaspa:qprv000000000000000000000000000000000000000000000000000000000000 diagnostic_tail={complete_tail}"
+    );
+    std::env::set_var("KGW_START_TRACE", "1");
+    std::env::set_var("KGW_TEST_SELF_WORKER_FAIL_COMMAND", &child_stderr);
+    let _ = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
+    let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
+
+    let error = kgw_kgw_apply_node_settings_v1(
+        "mainnet".to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+        None,
+        None,
+        Some("node".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect_err("early child exit must remain an error");
+
+    assert_contains_all(
+        &error,
+        &[
+            "self-worker exited during startup",
+            "role=node",
+            "network=mainnet",
+            "status=exit code: 1",
+            "stream=stdout",
+            "stream=stderr",
+            complete_tail,
+        ],
+    );
+    assert!(
+        !error.contains("parallel-owned-self-worker started"),
+        "startup success must not be returned after an early child exit: {error}"
+    );
+    assert!(
+        !error.contains("abc123") && !error.contains("kaspa:qprv"),
+        "startup error must expose only safe stderr: {error}"
+    );
+
+    let trace_text = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1().join("\n");
+    assert_contains_all(
+        &trace_text,
+        &[
+            "[KGW_CHILD_STDOUT]",
+            "[KGW_CHILD_STDERR]",
+            "\"network\":\"mainnet\"",
+            "\"runtimeRole\":\"node\"",
+            "\"stage\":\"native.startup_response_returned\"",
+            "\"result\":\"error\"",
+            complete_tail,
+        ],
+    );
+    assert!(
+        !trace_text.contains("abc123") && !trace_text.contains("kaspa:qprv"),
+        "trace output must redact sensitive child fields: {trace_text}"
+    );
+
+    std::env::remove_var("KGW_TEST_SELF_WORKER_FAIL_COMMAND");
+    std::env::remove_var("KGW_START_TRACE");
 }
 
 #[test]

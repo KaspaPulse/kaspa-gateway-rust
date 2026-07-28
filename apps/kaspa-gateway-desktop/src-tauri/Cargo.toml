@@ -40,7 +40,7 @@ sha2 = "0.11.0"
 printpdf = { version = "0.9.1", default-features = false }
 zip = "6.0.0"
 [features]
-default = []
+default = ["official-kaspa-runtime-mainline"]
 
 rkstratum_cpu_miner = [
     "kaspa-gateway-rk-bridge/rkstratum_cpu_miner"
