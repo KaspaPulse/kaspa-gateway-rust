@@ -193,10 +193,7 @@
   "191": "Arc",
   "192": "AsRef",
   "193": "HashMap",
-  "194": "Into",
-  "195": "Option",
-  "196": "PathBuf",
-  "197": "Result",
-  "198": "Vec",
-  "199": "VecDeque"
+  "194": "description",
+  "195": "Value",
+  "196": "Vec"
 }
