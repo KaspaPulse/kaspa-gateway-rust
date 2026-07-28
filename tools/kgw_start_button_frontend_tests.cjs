@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const assert = require("assert");
+const { webcrypto } = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
@@ -423,6 +424,8 @@ function createHarness(options = {}) {
     queueMicrotask(callback) { Promise.resolve().then(callback); },
     confirm() { return false; },
     navigator: { clipboard: { writeText: async () => {} } },
+    crypto: webcrypto,
+    TextEncoder,
     console: { ...console, debug() {} },
     CustomEvent: class CustomEvent {
       constructor(type, options) {
@@ -492,6 +495,8 @@ function createHarness(options = {}) {
     setInterval: window.setInterval,
     clearInterval: window.clearInterval,
     queueMicrotask: window.queueMicrotask,
+    crypto: window.crypto,
+    TextEncoder: window.TextEncoder,
     CustomEvent: window.CustomEvent,
     Event: window.Event,
   };
@@ -511,6 +516,7 @@ async function flush() {
   await Promise.resolve();
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setTimeout(resolve, 25));
 }
 
 function startCalls(calls) {
@@ -523,6 +529,10 @@ function traceCalls(calls) {
 
 function traceStages(calls) {
   return traceCalls(calls).map((call) => call.payload.stage);
+}
+
+function copyCalls(calls) {
+  return calls.filter((call) => call.command === "kgw_copy_text_to_clipboard_v1");
 }
 
 function parsedTraceDetails(call) {
@@ -673,6 +683,135 @@ async function tracePayloadSafetyTests() {
   assert.ok(!/nodeCommandPreview|bridgeCommandPreview|--rpc|--appdir|--stratum/i.test(serializedTrace), "trace payload must not expose command arguments or preview fields");
 }
 
+async function copyLogFrontendTests() {
+  const calls = [];
+  let copyReject = null;
+  let copyPending = false;
+  let resolvePendingCopy = null;
+  let navigatorWriteCount = 0;
+  const { window, document, root } = createHarness({
+    tauri: {
+      core: {
+        invoke: async (command, payload) => {
+          calls.push({ command, payload });
+          if (command === "kgw_start_trace_frontend_v1") return true;
+          if (command === "kgw_copy_text_to_clipboard_v1") {
+            if (copyReject) throw copyReject;
+            if (copyPending) {
+              return await new Promise((resolve) => {
+                resolvePendingCopy = resolve;
+              });
+            }
+            return "clipboard_write_v1;network=" + payload.network + ";characters=" + payload.characterCount + ";lines=" + payload.lineCount + ";sha256=" + payload.sha256 + ";copied=true";
+          }
+          if (command === "kgw_runtime_owner_status_v1") return "parallel-owned-self-worker status;role=node;network=" + payload.network + ";running=false";
+          if (command === "kgw_kgw_runtime_logs_v1") return "";
+          return true;
+        },
+      },
+    },
+  });
+
+  window.navigator.clipboard.writeText = async () => {
+    navigatorWriteCount += 1;
+    throw new Error("browser clipboard must not be used for Copy Log");
+  };
+
+  await window.__kgwStartButtonTest.initKaspaNodeTab(root);
+  await flush();
+  calls.length = 0;
+
+  const mainnetLog = document.getElementById("node-mainnet-logOutput");
+  const mainnetCopy = root.querySelector('[data-node-action="copy-log"][data-net="mainnet"]');
+  mainnetLog.textContent = "mainnet raw line 1\nmainnet raw line 2";
+  mainnetCopy.click();
+  await flush();
+
+  assert.strictEqual(copyCalls(calls).length, 1, "Copy Log must invoke native clipboard exactly once");
+  const copied = copyCalls(calls)[0].payload;
+  assert.strictEqual(copied.network, "mainnet", "Copy Log must pass the active network");
+  assert.strictEqual(copied.text, "mainnet raw line 1\r\nmainnet raw line 2", "Copy Log must preserve multiline raw text order with Windows line endings");
+  assert.strictEqual(copied.lineCount, 2, "Copy Log must pass line count metadata");
+  assert.strictEqual(copied.characterCount, Array.from(copied.text).length, "Copy Log must pass character count metadata");
+  assert.strictEqual(String(copied.sha256 || "").length, 64, "Copy Log should pass SHA-256 metadata when Web Crypto is available");
+  assert.strictEqual(navigatorWriteCount, 0, "Copy Log must not use navigator.clipboard as the primary path");
+  assert.ok(traceStages(calls).includes("frontend.copy_log_click_observed"), "Copy Log physical-style click must be traced");
+  assert.ok(traceStages(calls).includes("frontend.copy_log_network_resolved"), "Copy Log network resolution must be traced");
+  assert.ok(traceStages(calls).includes("frontend.copy_log_content_prepared"), "Copy Log content metadata must be traced");
+  assert.ok(traceStages(calls).includes("frontend.copy_log_dispatched"), "Copy Log native dispatch must be traced");
+  assert.ok(traceStages(calls).includes("frontend.copy_log_succeeded"), "Copy Log success feedback must be traced after native success");
+  assert.ok(!JSON.stringify(traceCalls(calls).map((call) => call.payload)).includes("mainnet raw line"), "Copy Log trace must exclude raw clipboard content");
+  assert.strictEqual(mainnetLog.textContent, "mainnet raw line 1\nmainnet raw line 2", "Copy Log must not insert synthetic content into raw logs");
+
+  calls.length = 0;
+  copyReject = new Error("native clipboard failure");
+  mainnetCopy.textContent = "Copy Log";
+  mainnetCopy.disabled = false;
+  mainnetCopy.click();
+  await flush();
+  assert.strictEqual(copyCalls(calls).length, 1, "Clipboard failure must still call native clipboard once");
+  assert.ok(traceStages(calls).includes("frontend.copy_log_failed"), "Clipboard failure must be traced");
+  assert.strictEqual(mainnetCopy.disabled, false, "Clipboard failure must restore the button state");
+  assert.ok(/copy failed/i.test(mainnetCopy.textContent), "Clipboard failure must not display Copied feedback");
+  assert.ok(root.querySelector('.kgw-copy-log-status-v1[data-net="mainnet"]').textContent.includes("native clipboard failure"), "Clipboard failure must be visible");
+  copyReject = null;
+
+  calls.length = 0;
+  mainnetLog.textContent = "MAINNET log is empty.";
+  mainnetCopy.textContent = "Copy Log";
+  mainnetCopy.click();
+  await flush();
+  assert.strictEqual(copyCalls(calls).length, 0, "Empty or placeholder logs must not invoke native clipboard");
+  assert.ok(traceStages(calls).includes("frontend.copy_log_failed"), "Empty Copy Log rejection must be traced");
+
+  calls.length = 0;
+  mainnetLog.textContent = "duplicate guard line";
+  copyPending = true;
+  resolvePendingCopy = null;
+  mainnetCopy.disabled = false;
+  mainnetCopy.textContent = "Copy Log";
+  mainnetCopy.click();
+  mainnetCopy.click();
+  await flush();
+  assert.strictEqual(copyCalls(calls).length, 1, "Duplicate Copy Log clicks must not invoke native clipboard twice");
+  assert.strictEqual(typeof resolvePendingCopy, "function", "pending Copy Log test must hold the native clipboard promise");
+  resolvePendingCopy("clipboard_write_v1;network=mainnet;characters=20;lines=1;copied=true");
+  copyPending = false;
+  await flush();
+
+  const testnet10Tab = root.querySelector('[data-node-network-tab="testnet10"]');
+  testnet10Tab.click();
+  await flush();
+  const testnet10Log = document.getElementById("node-testnet10-logOutput");
+  const testnet10Copy = root.querySelector('[data-node-action="copy-log"][data-net="testnet10"]');
+  mainnetLog.textContent = "mainnet must not be copied";
+  testnet10Log.textContent = "testnet10 raw line 1\ntestnet10 raw line 2";
+  calls.length = 0;
+  testnet10Copy.click();
+  await flush();
+  assert.strictEqual(copyCalls(calls).length, 1, "testnet10 Copy Log must invoke native clipboard once");
+  assert.strictEqual(copyCalls(calls)[0].payload.network, "testnet10", "Copy Log must pass testnet10 when testnet10 is active");
+  assert.ok(copyCalls(calls)[0].payload.text.includes("testnet10 raw line 1"), "Copy Log must copy the active network buffer");
+  assert.ok(!copyCalls(calls)[0].payload.text.includes("mainnet must not be copied"), "Copy Log must not mix mainnet into testnet10");
+
+  calls.length = 0;
+  testnet10Log.textContent = "testnet10 clear target";
+  mainnetLog.textContent = "mainnet should remain after clear";
+  root.querySelector('[data-node-action="clear-log"][data-net="testnet10"]').click();
+  await flush();
+  assert.strictEqual(testnet10Log.textContent, "", "Clear Log must affect the active network log");
+  assert.strictEqual(mainnetLog.textContent, "mainnet should remain after clear", "Clear Log must not clear another network log");
+
+  const largeLines = Array.from({ length: 1600 }, (_, index) => "large raw line " + index);
+  testnet10Log.textContent = largeLines.join("\n");
+  calls.length = 0;
+  testnet10Copy.textContent = "Copy Log";
+  testnet10Copy.click();
+  await flush();
+  const largeCopy = copyCalls(calls)[0].payload.text;
+  assert.strictEqual(largeCopy, largeLines.join("\r\n"), "Large Copy Log text must not be silently truncated or reordered");
+}
+
 (async () => {
   try {
     staticPlacementTests();
@@ -680,7 +819,8 @@ async function tracePayloadSafetyTests() {
     await dynamicClickTests();
     await missingInvokeApiVisibleErrorTest();
     await tracePayloadSafetyTests();
-    console.log("KGW start button frontend tests PASSED");
+    await copyLogFrontendTests();
+    console.log("KGW start button and Copy Log frontend tests PASSED");
   } catch (error) {
     fail(error && error.stack ? error.stack : String(error));
   }

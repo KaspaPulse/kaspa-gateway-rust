@@ -444,6 +444,340 @@ fn kgw_frontend_button_trace_v1(
 
     true
 }
+
+fn kgw_clipboard_normalize_network_v1(network: &str) -> Result<String, String> {
+    let clean = network.trim().to_ascii_lowercase();
+    match clean.as_str() {
+        "mainnet" | "testnet10" | "testnet12" => Ok(clean),
+        _ => Err(format!(
+            "clipboard_write_failed=true;reason=unsupported-network;network={};message=Copy Log received an unsupported network.",
+            kgw_clipboard_safe_field_v1(network, "unknown")
+        )),
+    }
+}
+
+fn kgw_clipboard_safe_field_v1(value: &str, fallback: &str) -> String {
+    let clean = value
+        .chars()
+        .map(|ch| {
+            if ch == '\r' || ch == '\n' || ch.is_control() {
+                ' '
+            } else {
+                ch
+            }
+        })
+        .collect::<String>()
+        .trim()
+        .to_string();
+
+    if clean.is_empty() {
+        fallback.to_string()
+    } else {
+        clean.chars().take(160).collect()
+    }
+}
+
+fn kgw_clipboard_safe_error_v1(error: &str) -> String {
+    let clean = kgw_clipboard_safe_field_v1(error, "clipboard write failed");
+    let lowered = clean.to_ascii_lowercase();
+    if lowered.contains("secret")
+        || lowered.contains("token")
+        || lowered.contains("private")
+        || lowered.contains("mnemonic")
+        || lowered.contains("wallet")
+        || lowered.contains("address")
+    {
+        "clipboard write failed with a sensitive native error".to_string()
+    } else {
+        clean
+    }
+}
+
+fn kgw_clipboard_character_count_v1(text: &str) -> u64 {
+    text.chars().count() as u64
+}
+
+fn kgw_clipboard_line_count_v1(text: &str) -> u64 {
+    if text.is_empty() {
+        0
+    } else {
+        text.split('\n').count() as u64
+    }
+}
+
+fn kgw_clipboard_sha256_v1(text: &str) -> String {
+    use sha2::{Digest, Sha256};
+
+    let digest = Sha256::digest(text.as_bytes());
+    digest
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>()
+}
+
+fn kgw_clipboard_trace_details_v1(
+    character_count: u64,
+    line_count: u64,
+    sha256: &str,
+    implementation: &str,
+    extra: serde_json::Value,
+) -> String {
+    serde_json::json!({
+        "characterCount": character_count,
+        "lineCount": line_count,
+        "sha256": sha256,
+        "implementation": implementation,
+        "extra": extra,
+    })
+    .to_string()
+}
+
+fn kgw_copy_text_to_clipboard_inner_v1<F>(
+    network: String,
+    text: String,
+    metadata_character_count: u64,
+    metadata_line_count: u64,
+    metadata_sha256: Option<String>,
+    writer: F,
+) -> Result<String, String>
+where
+    F: FnOnce(String) -> Result<(), String>,
+{
+    let network = kgw_clipboard_normalize_network_v1(&network)?;
+    let character_count = kgw_clipboard_character_count_v1(&text);
+    let line_count = kgw_clipboard_line_count_v1(&text);
+    let sha256 = kgw_clipboard_sha256_v1(&text);
+    let implementation = "tauri-plugin-clipboard-manager";
+    let supplied_sha256 = metadata_sha256
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("");
+
+    integrated_runtime_commands::kgw_start_trace_emit_v1(
+        "native",
+        "native.clipboard_write_entered",
+        &network,
+        "copy-log",
+        "entered",
+        Some(&kgw_clipboard_trace_details_v1(
+            character_count,
+            line_count,
+            &sha256,
+            implementation,
+            serde_json::json!({
+                "metadataCharacterCount": metadata_character_count,
+                "metadataLineCount": metadata_line_count,
+                "metadataSha256Present": !supplied_sha256.is_empty(),
+            }),
+        )),
+    );
+
+    let fail = |reason: &str, message: String| -> String {
+        integrated_runtime_commands::kgw_start_trace_emit_v1(
+            "native",
+            "native.clipboard_write_failed",
+            &network,
+            "copy-log",
+            "error",
+            Some(&kgw_clipboard_trace_details_v1(
+                character_count,
+                line_count,
+                &sha256,
+                implementation,
+                serde_json::json!({
+                    "reason": reason,
+                    "safeError": kgw_clipboard_safe_error_v1(&message),
+                }),
+            )),
+        );
+        message
+    };
+
+    if text.trim().is_empty() {
+        return Err(fail(
+            "empty-log-buffer",
+            format!(
+                "clipboard_write_failed=true;network={network};reason=empty-log-buffer;message=Copy Log requires a non-empty raw log buffer."
+            ),
+        ));
+    }
+
+    if character_count != metadata_character_count || line_count != metadata_line_count {
+        return Err(fail(
+            "metadata-mismatch",
+            format!(
+                "clipboard_write_failed=true;network={network};reason=metadata-mismatch;actual_characters={character_count};actual_lines={line_count};metadata_characters={metadata_character_count};metadata_lines={metadata_line_count};message=Copy Log metadata did not match the supplied text."
+            ),
+        ));
+    }
+
+    if !supplied_sha256.is_empty() && supplied_sha256 != sha256 {
+        return Err(fail(
+            "sha256-mismatch",
+            format!(
+                "clipboard_write_failed=true;network={network};reason=sha256-mismatch;message=Copy Log SHA-256 metadata did not match the supplied text."
+            ),
+        ));
+    }
+
+    match writer(text) {
+        Ok(()) => {
+            integrated_runtime_commands::kgw_start_trace_emit_v1(
+                "native",
+                "native.clipboard_write_succeeded",
+                &network,
+                "copy-log",
+                "ok",
+                Some(&kgw_clipboard_trace_details_v1(
+                    character_count,
+                    line_count,
+                    &sha256,
+                    implementation,
+                    serde_json::json!({
+                        "confirmed": true,
+                    }),
+                )),
+            );
+
+            Ok(format!(
+                "clipboard_write_v1;network={network};characters={character_count};lines={line_count};sha256={sha256};implementation={implementation};copied=true"
+            ))
+        }
+        Err(error) => Err(fail(
+            "native-clipboard-error",
+            format!(
+                "clipboard_write_failed=true;network={network};reason=native-clipboard-error;error={}",
+                error
+            ),
+        )),
+    }
+}
+
+#[tauri::command]
+fn kgw_copy_text_to_clipboard_v1(
+    app: tauri::AppHandle,
+    network: String,
+    text: String,
+    character_count: u64,
+    line_count: u64,
+    sha256: Option<String>,
+) -> Result<String, String> {
+    kgw_copy_text_to_clipboard_inner_v1(
+        network,
+        text,
+        character_count,
+        line_count,
+        sha256,
+        |value| {
+            use tauri_plugin_clipboard_manager::ClipboardExt;
+            app.clipboard()
+                .write_text(value)
+                .map_err(|error| error.to_string())
+        },
+    )
+}
+
+#[cfg(test)]
+mod kgw_clipboard_tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+
+    fn char_count(text: &str) -> u64 {
+        text.chars().count() as u64
+    }
+
+    #[test]
+    fn clipboard_success_returns_success_after_writer_accepts_text() {
+        let copied = Arc::new(Mutex::new(None::<String>));
+        let copied_for_writer = Arc::clone(&copied);
+        let text = "mainnet raw line 1\r\nmainnet raw line 2".to_string();
+        let sha256 = kgw_clipboard_sha256_v1(&text);
+
+        let result = kgw_copy_text_to_clipboard_inner_v1(
+            "mainnet".to_string(),
+            text.clone(),
+            char_count(&text),
+            2,
+            Some(sha256.clone()),
+            move |value| {
+                *copied_for_writer.lock().unwrap() = Some(value);
+                Ok(())
+            },
+        )
+        .expect("clipboard success should be returned after writer success");
+
+        assert!(result.contains("clipboard_write_v1"));
+        assert!(result.contains("network=mainnet"));
+        assert!(result.contains("copied=true"));
+        assert!(result.contains(&format!("sha256={sha256}")));
+        assert_eq!(copied.lock().unwrap().as_deref(), Some(text.as_str()));
+    }
+
+    #[test]
+    fn clipboard_failure_propagates_original_native_error() {
+        let text = "testnet10 raw line".to_string();
+        let error = kgw_copy_text_to_clipboard_inner_v1(
+            "testnet10".to_string(),
+            text.clone(),
+            char_count(&text),
+            1,
+            Some(kgw_clipboard_sha256_v1(&text)),
+            |_value| Err("native clipboard permission denied".to_string()),
+        )
+        .expect_err("native clipboard failure must remain an error");
+
+        assert!(error.contains("clipboard_write_failed=true"));
+        assert!(error.contains("network=testnet10"));
+        assert!(error.contains("native clipboard permission denied"));
+    }
+
+    #[test]
+    fn empty_clipboard_content_is_rejected_before_writer() {
+        let error = kgw_copy_text_to_clipboard_inner_v1(
+            "mainnet".to_string(),
+            "   \r\n  ".to_string(),
+            7,
+            2,
+            None,
+            |_value| panic!("empty content must not reach the clipboard writer"),
+        )
+        .expect_err("empty clipboard text must be rejected");
+
+        assert!(error.contains("empty-log-buffer"));
+        assert!(error.contains("network=mainnet"));
+    }
+
+    #[test]
+    fn clipboard_trace_excludes_raw_content_and_records_hash() {
+        std::env::set_var("KGW_START_TRACE", "1");
+        let _ = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
+
+        let text = "mainnet secret raw content should not appear".to_string();
+        let sha256 = kgw_clipboard_sha256_v1(&text);
+        let result = kgw_copy_text_to_clipboard_inner_v1(
+            "mainnet".to_string(),
+            text.clone(),
+            char_count(&text),
+            1,
+            Some(sha256.clone()),
+            |_value| Ok(()),
+        )
+        .expect("clipboard trace success should succeed");
+
+        assert!(result.contains("copied=true"));
+
+        let trace = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1().join("\n");
+        assert!(trace.contains("native.clipboard_write_entered"));
+        assert!(trace.contains("native.clipboard_write_succeeded"));
+        assert!(trace.contains(&sha256));
+        assert!(!trace.contains("secret raw content"));
+        assert!(!trace.contains(&text));
+
+        std::env::remove_var("KGW_START_TRACE");
+    }
+}
+
 #[tauri::command]
 fn kgw_open_exported_file_v1(path: String) -> Result<(), String> {
     use std::path::PathBuf;
@@ -523,6 +857,7 @@ pub fn run() {
     app_logger::init_tracing_bridge();
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(commands::DesktopRuntimeState::default())
         .manage(diagnostics::LogState::default())
         .invoke_handler(tauri::generate_handler![
@@ -675,6 +1010,7 @@ pub fn run() {
             migration::migrate_python_data,
             kgw_start_trace_frontend_v1,
             kgw_frontend_button_trace_v1,
+            kgw_copy_text_to_clipboard_v1,
             kgw_open_exported_file_v1,
         ])
         .setup(|app| {

@@ -15,6 +15,7 @@ $launcherLog = Join-Path $diagnosticDirectory "launcher.log"
 $processLog = Join-Path $diagnosticDirectory "processes.log"
 $portLog = Join-Path $diagnosticDirectory "ports.log"
 $childProcessLog = Join-Path $diagnosticDirectory "child-process.log"
+$clipboardLog = Join-Path $diagnosticDirectory "clipboard.log"
 $windowsEventLog = Join-Path $diagnosticDirectory "windows-events.log"
 $summaryFile = Join-Path $diagnosticDirectory "summary.json"
 $zipFile = "$diagnosticDirectory.zip"
@@ -29,6 +30,10 @@ New-Item -ItemType File -Path $launcherLog -Force | Out-Null
 New-Item -ItemType File -Path $processLog -Force | Out-Null
 New-Item -ItemType File -Path $portLog -Force | Out-Null
 New-Item -ItemType File -Path $childProcessLog -Force | Out-Null
+New-Item -ItemType File -Path $clipboardLog -Force | Out-Null
+
+$script:InitialClipboardFingerprint = $null
+$script:LatestClipboardFingerprint = $null
 
 function Write-Diagnostic {
     param(
@@ -60,6 +65,92 @@ function Write-ChildEvidence {
     param([Parameter(Mandatory)][string]$Line)
 
     Add-Content -LiteralPath $childProcessLog -Value $Line -Encoding utf8
+}
+
+function Get-SafeDiagnosticText {
+    param([AllowNull()][string]$Value)
+
+    $text = if ($null -eq $Value) { "" } else { [string]$Value }
+    $clean = ($text -replace "[`r`n`t]", " ").Trim()
+
+    if ($clean -match "secret|token|private|mnemonic|wallet|address") {
+        return "redacted-sensitive-value"
+    }
+
+    if ($clean.Length -gt 220) {
+        return $clean.Substring(0, 220)
+    }
+
+    return $clean
+}
+
+function Get-ClipboardFingerprint {
+    param([Parameter(Mandatory)][string]$Reason)
+
+    try {
+        $text = Get-Clipboard -Raw -ErrorAction Stop
+        if ($null -eq $text) {
+            $text = ""
+        }
+
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes([string]$text)
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            $hashBytes = $sha.ComputeHash($bytes)
+        }
+        finally {
+            $sha.Dispose()
+        }
+
+        $hash = -join ($hashBytes | ForEach-Object { $_.ToString("x2") })
+        $lineCount = if ([string]::IsNullOrEmpty($text)) { 0 } else { ([regex]::Split([string]$text, "`r`n|`n|`r")).Count }
+
+        return [ordered]@{
+            timestamp = (Get-Date).ToString("O")
+            reason = $Reason
+            available = $true
+            character_count = ([string]$text).Length
+            line_count = $lineCount
+            sha256 = $hash
+        }
+    }
+    catch {
+        return [ordered]@{
+            timestamp = (Get-Date).ToString("O")
+            reason = $Reason
+            available = $false
+            character_count = $null
+            line_count = $null
+            sha256 = $null
+            error = Get-SafeDiagnosticText -Value $_.Exception.Message
+        }
+    }
+}
+
+function Write-ClipboardSnapshot {
+    param([Parameter(Mandatory)][string]$Reason)
+
+    $fingerprint = Get-ClipboardFingerprint -Reason $Reason
+    $script:LatestClipboardFingerprint = $fingerprint
+    if ($Reason -eq "before-launch") {
+        $script:InitialClipboardFingerprint = $fingerprint
+    }
+
+    $json = $fingerprint | ConvertTo-Json -Depth 4 -Compress
+    Add-Content -LiteralPath $clipboardLog -Value $json -Encoding utf8
+
+    $changed = $false
+    if ($script:InitialClipboardFingerprint -and $fingerprint.available -and $script:InitialClipboardFingerprint.available) {
+        $changed = [string]$script:InitialClipboardFingerprint.sha256 -ne [string]$fingerprint.sha256
+    }
+
+    Write-Diagnostic -Message "ClipboardSnapshot reason=$Reason available=$($fingerprint.available) characters=$($fingerprint.character_count) lines=$($fingerprint.line_count) sha256=$($fingerprint.sha256) changed_from_launch=$changed"
+}
+
+function Test-KgwClipboardTrace {
+    param([Parameter(Mandatory)][string]$Line)
+
+    return $Line -match "copy_log_|clipboard_write_"
 }
 
 function Show-NewLogLines {
@@ -98,6 +189,28 @@ function Show-NewLogLines {
         elseif ($line.StartsWith("[KGW_START_TRACE]", [System.StringComparison]::Ordinal)) {
             if ($line -match "native\.child_pid_recorded|self-worker-exited-during-startup") {
                 Write-ChildEvidence -Line $line
+            }
+
+            if (Test-KgwClipboardTrace -Line $line) {
+                Add-Content -LiteralPath $clipboardLog -Value $line -Encoding utf8
+
+                if ($line -match "copy_log_succeeded|clipboard_write_succeeded") {
+                    Write-Host "[$Label] $line" -ForegroundColor Green
+                    Write-ClipboardSnapshot -Reason "after-clipboard-success-trace"
+                    continue
+                }
+
+                if ($line -match "copy_log_failed|clipboard_write_failed") {
+                    Write-Host "[$Label] $line" -ForegroundColor Yellow
+                    Write-ClipboardSnapshot -Reason "after-clipboard-failure-trace"
+                    continue
+                }
+
+                Write-Host "[$Label] $line" -ForegroundColor Magenta
+                if ($line -match "copy_log_dispatched|clipboard_write_entered") {
+                    Write-ClipboardSnapshot -Reason "after-clipboard-dispatch-trace"
+                }
+                continue
             }
 
             if (Test-KgwRuntimePollingTrace -Line $line) {
@@ -264,6 +377,32 @@ function Get-ChildProcessEvidenceSummary {
     }
 }
 
+function Get-ClipboardEvidenceSummary {
+    if (-not (Test-Path -LiteralPath $clipboardLog)) {
+        return [ordered]@{
+            log = $clipboardLog
+            line_count = 0
+            initial = $script:InitialClipboardFingerprint
+            latest = $script:LatestClipboardFingerprint
+            changed_from_launch = $false
+        }
+    }
+
+    $lineCount = @(Get-Content -LiteralPath $clipboardLog -ErrorAction SilentlyContinue).Count
+    $changed = $false
+    if ($script:InitialClipboardFingerprint -and $script:LatestClipboardFingerprint -and $script:InitialClipboardFingerprint.available -and $script:LatestClipboardFingerprint.available) {
+        $changed = [string]$script:InitialClipboardFingerprint.sha256 -ne [string]$script:LatestClipboardFingerprint.sha256
+    }
+
+    return [ordered]@{
+        log = $clipboardLog
+        line_count = $lineCount
+        initial = $script:InitialClipboardFingerprint
+        latest = $script:LatestClipboardFingerprint
+        changed_from_launch = $changed
+    }
+}
+
 Set-Location $Repository
 
 $branch = (git branch --show-current).Trim()
@@ -276,6 +415,7 @@ Write-Diagnostic -Message "Commit=$commit"
 Write-Diagnostic -Message "DiagnosticDirectory=$diagnosticDirectory"
 Write-Diagnostic -Message "ExpectedNodePorts=$($expectedNodePorts -join ',')"
 Write-Diagnostic -Message "ChildProcessLog=$childProcessLog"
+Write-Diagnostic -Message "ClipboardLog=$clipboardLog"
 
 if ($status.Count -eq 0) {
     Write-Diagnostic -Message "WorktreeStatus=clean"
@@ -330,6 +470,7 @@ $env:KGW_LOG_LEVEL = "trace"
 $env:KGW_START_TRACE = "1"
 $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--enable-logging=stderr --v=1"
 Write-Diagnostic -Message "KGW_START_TRACE=1"
+Write-ClipboardSnapshot -Reason "before-launch"
 
 $startedAt = Get-Date
 $desktopProcess = $null
@@ -417,6 +558,7 @@ finally {
     }
 
     $finishedAt = Get-Date
+    Write-ClipboardSnapshot -Reason "after-application-close"
 
     $summary = [ordered]@{
         repository = $Repository
@@ -427,6 +569,7 @@ finally {
         kgw_start_trace = $env:KGW_START_TRACE
         expected_node_ports = $expectedNodePorts
         child_process_evidence = Get-ChildProcessEvidenceSummary
+        clipboard_evidence = Get-ClipboardEvidenceSummary
         desktop_pid = if ($desktopProcess) { $desktopProcess.Id } else { $null }
         exit_code = $exitCode
         started_at = $startedAt.ToString("O")
@@ -438,6 +581,7 @@ finally {
             stdout = $stdoutLog
             stderr = $stderrLog
             child_process = $childProcessLog
+            clipboard = $clipboardLog
             processes = $processLog
             ports = $portLog
             windows_events = $windowsEventLog

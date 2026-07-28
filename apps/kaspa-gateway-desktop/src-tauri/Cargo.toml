@@ -20,6 +20,7 @@ tauri-build.workspace = true
 
 [dependencies]
 tauri-plugin-dialog = "2"
+tauri-plugin-clipboard-manager = "2"
 kaspa-gateway-rk-bridge = { path = "../../../crates/kaspa-gateway-rk-bridge" }
 kaspa-gateway-rk-node = { path = "../../../crates/kaspa-gateway-rk-node" }
 tracing-subscriber.workspace = true

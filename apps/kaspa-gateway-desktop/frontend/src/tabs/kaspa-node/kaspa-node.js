@@ -700,6 +700,131 @@ function kgwStartTraceFrontendR1(stage, options = {}) {
   return true;
 }
 
+function kgwNodeClipboardCharacterCountV1(text) {
+  return Array.from(String(text ?? "")).length;
+}
+
+function kgwNodeClipboardLineCountV1(text) {
+  const value = String(text ?? "");
+  return value ? value.split("\n").length : 0;
+}
+
+function kgwNodeNormalizeClipboardLineEndingsV1(text) {
+  return String(text ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\n/g, "\r\n");
+}
+
+async function kgwNodeSha256HexV1(text) {
+  try {
+    const cryptoApi = window.crypto || globalThis.crypto;
+    const Encoder = window.TextEncoder || globalThis.TextEncoder;
+    if (!cryptoApi?.subtle?.digest || typeof Encoder !== "function") return "";
+
+    const bytes = new Encoder().encode(String(text ?? ""));
+    const digest = await cryptoApi.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(digest))
+      .map((value) => value.toString(16).padStart(2, "0"))
+      .join("");
+  } catch (_) {
+    return "";
+  }
+}
+
+function kgwNodeClipboardSafeErrorV1(error) {
+  const text = String(error && error.message ? error.message : error || "clipboard write failed")
+    .replace(/[\r\n\t]+/g, " ")
+    .trim();
+  if (/(secret|token|private|mnemonic|wallet|address)/i.test(text)) {
+    return "clipboard write failed with a sensitive error";
+  }
+  return (text || "clipboard write failed").slice(0, 360);
+}
+
+function kgwNodeClipboardPlaceholderTextV1(net) {
+  const profile = NODE_NETWORKS.find((item) => item.key === net);
+  return `${profile?.label || net} log is empty.`;
+}
+
+function kgwNodeClipboardStatusElementV1(net) {
+  const out = kgwNodeLogOutputV29(net);
+  const toolbar = out?.closest?.('[data-node-inner-panel="log"]')?.querySelector?.(".node-v6-log-toolbar");
+  if (!toolbar) return null;
+
+  let status = toolbar.querySelector('.kgw-copy-log-status-v1[data-net="' + net + '"]');
+  if (!status) {
+    status = document.createElement("span");
+    status.setAttribute("class", "kgw-copy-log-status-v1");
+    status.dataset.net = net;
+    status.setAttribute("data-net", net);
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    toolbar.appendChild(status);
+  }
+  return status;
+}
+
+function kgwNodeSetClipboardStatusV1(net, message, state = "info") {
+  const status = kgwNodeClipboardStatusElementV1(net);
+  if (!status) return false;
+
+  status.textContent = String(message || "");
+  status.dataset.state = String(state || "info");
+  status.hidden = !status.textContent;
+  return true;
+}
+
+function kgwNodeReadClipboardRawLogBufferV1(net) {
+  const out = kgwNodeLogOutputV29(net);
+  const tag = String(out?.tagName || "").toUpperCase();
+  const readsValue = tag === "TEXTAREA" || tag === "INPUT";
+  const rawText = String(out ? (readsValue ? out.value : out.textContent) : "");
+  const placeholder = kgwNodeClipboardPlaceholderTextV1(net);
+  const isPlaceholder = rawText.trim() === placeholder.trim();
+  const normalizedText = kgwNodeNormalizeClipboardLineEndingsV1(rawText);
+
+  return {
+    out,
+    rawText,
+    normalizedText,
+    isPlaceholder,
+    characterCount: kgwNodeClipboardCharacterCountV1(normalizedText),
+    lineCount: kgwNodeClipboardLineCountV1(normalizedText)
+  };
+}
+
+async function kgwNodeDispatchClipboardWriteV1(net, text, metadata) {
+  const resolved = kgwResolvePublicTauriInvokeR1();
+  if (typeof resolved.invoke !== "function") {
+    throw new Error("Tauri invoke API is not available. Expected window.__TAURI__.core.invoke from Tauri 2 with withGlobalTauri enabled.");
+  }
+
+  kgwStartTraceFrontendR1("frontend.copy_log_dispatched", {
+    network: net,
+    action: "copy-log",
+    result: "dispatched",
+    details: {
+      commandName: "kgw_copy_text_to_clipboard_v1",
+      implementation: "native-tauri-command",
+      characterCount: metadata.characterCount,
+      lineCount: metadata.lineCount,
+      sha256: metadata.sha256 || "",
+      payloadFieldCount: 5
+    }
+  });
+
+  return await invokeWithTimeout(
+    resolved.invoke,
+    "kgw_copy_text_to_clipboard_v1",
+    {
+      network: net,
+      text,
+      characterCount: metadata.characterCount,
+      lineCount: metadata.lineCount,
+      sha256: metadata.sha256 || ""
+    },
+    KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS
+  );
+}
+
 function kgwNodeTraceNetworkFromElementR1(element, root = document.getElementById("kaspa-node")) {
   const carrier = element?.closest?.("[data-net], [data-network], [data-node-network-panel], [data-node-inner-panel]");
   const raw = [
@@ -761,12 +886,29 @@ function kgwNodeInstallStartTraceDocumentClickObserverR1(root) {
     if (!button || !nodeRoot || !nodeRoot.contains(button)) return;
 
     const action = String(button.dataset.nodeAction || "").trim();
-    if (action !== "start" && action !== "stop") return;
-
     const network = kgwNodeTraceNetworkFromElementR1(button, nodeRoot);
     const activeNetwork = kgwNodeTraceActiveNetworkR1(nodeRoot);
     const belongsToSettings = Boolean(button.closest('[data-node-inner-panel="settings"]'));
     const belongsToLiveNodeMonitor = Boolean(button.closest('[data-node-inner-panel="log"]'));
+
+    if (action === "copy-log") {
+      kgwStartTraceFrontendR1("frontend.copy_log_click_observed", {
+        network,
+        action: "copy-log",
+        result: "observed",
+        details: {
+          trusted: Boolean(event && event.isTrusted),
+          belongsToSettings,
+          belongsToLiveNodeMonitor,
+          selectedNetwork: activeNetwork,
+          buttonDisabled: Boolean(button.disabled),
+          inFlight: button.dataset.kgwCopyLogInFlightV1 === "1"
+        }
+      });
+      return;
+    }
+
+    if (action !== "start" && action !== "stop") return;
 
     kgwStartTraceFrontendR1("frontend.capture_click_observed", {
       network,
@@ -2864,6 +3006,22 @@ function kgwNodeFlashLogActionButtonV29(button, doneLabel) {
   }, 1600);
 }
 
+function kgwNodeCopyLogFailureV1(net, button, error, details = {}) {
+  const safeError = kgwNodeClipboardSafeErrorV1(error);
+  kgwNodeSetClipboardStatusV1(net, safeError, "error");
+  kgwNodeFlashLogActionButtonV29(button, kgwNodeTranslateRuntimeV29("log.copyFailed", "Copy failed"));
+  kgwStartTraceFrontendR1("frontend.copy_log_failed", {
+    network: net,
+    action: "copy-log",
+    result: "error",
+    details: {
+      ...details,
+      safeError,
+      userFeedbackDisplayed: true
+    }
+  });
+}
+
 async function kgwNodeHandleLogActionV29(action, net, button) {
   
   kgwNodeSmallOwnerTraceR44D(net, String(action || "log-action"), "r51b3-node-log-action-click", {
@@ -2874,14 +3032,124 @@ async function kgwNodeHandleLogActionV29(action, net, button) {
   });
   kgwNodeSmallOwnerTraceR44D(net, String(action || "log-action"), "r44d-owner-begin", {});
   const out = kgwNodeLogOutputV29(net);
-  if (!out) return;
+  if (!out && action !== "copy-log") return;
 
   if (action === "copy-log") {
-    const text = String(out.value || out.textContent || "");
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(text).catch(() => {});
+    const nodeRoot = document.getElementById("kaspa-node");
+    const activeNetwork = kgwNodeTraceActiveNetworkR1(nodeRoot);
+    const belongsToLiveNodeMonitor = Boolean(button?.closest?.('[data-node-inner-panel="log"]'));
+    const copyNetwork = String(net || "").trim();
+
+    if (!copyNetwork) {
+      kgwNodeCopyLogFailureV1(net, button, "Copy Log could not resolve the active network.", {
+        reason: "missing-network",
+        activeNetwork,
+        belongsToLiveNodeMonitor
+      });
+      return;
     }
-    kgwNodeFlashLogActionButtonV29(button, kgwNodeTranslateRuntimeV29("log.copied", "Copied"));
+
+    kgwStartTraceFrontendR1("frontend.copy_log_network_resolved", {
+      network: copyNetwork,
+      action: "copy-log",
+      result: activeNetwork && activeNetwork !== copyNetwork ? "error" : "ok",
+      details: {
+        activeNetwork,
+        buttonNetwork: copyNetwork,
+        belongsToLiveNodeMonitor
+      }
+    });
+
+    if (activeNetwork && activeNetwork !== copyNetwork) {
+      kgwNodeCopyLogFailureV1(copyNetwork, button, "Copy Log network mismatch; active network changed before copy started.", {
+        reason: "network-mismatch",
+        activeNetwork,
+        buttonNetwork: copyNetwork,
+        belongsToLiveNodeMonitor
+      });
+      return;
+    }
+
+    if (button?.dataset?.kgwCopyLogInFlightV1 === "1") {
+      kgwNodeCopyLogFailureV1(copyNetwork, button, "Copy Log is already in progress for this network.", {
+        reason: "duplicate-copy",
+        activeNetwork,
+        belongsToLiveNodeMonitor
+      });
+      return;
+    }
+
+    const originalDisabled = Boolean(button && button.disabled);
+    if (button) {
+      button.dataset.kgwCopyLogInFlightV1 = "1";
+      button.disabled = true;
+    }
+
+    try {
+      const buffer = kgwNodeReadClipboardRawLogBufferV1(copyNetwork);
+
+      if (!buffer.out || buffer.isPlaceholder || !buffer.normalizedText.trim()) {
+        kgwStartTraceFrontendR1("frontend.copy_log_content_prepared", {
+          network: copyNetwork,
+          action: "copy-log",
+          result: "error",
+          details: {
+            rawLogBufferSelected: Boolean(buffer.out),
+            placeholderRejected: Boolean(buffer.isPlaceholder),
+            characterCount: buffer.characterCount,
+            lineCount: buffer.lineCount,
+            sha256: ""
+          }
+        });
+        throw new Error("Copy Log requires a non-empty raw log buffer for " + copyNetwork + ".");
+      }
+
+      const sha256 = await kgwNodeSha256HexV1(buffer.normalizedText);
+      const metadata = {
+        characterCount: buffer.characterCount,
+        lineCount: buffer.lineCount,
+        sha256
+      };
+
+      kgwStartTraceFrontendR1("frontend.copy_log_content_prepared", {
+        network: copyNetwork,
+        action: "copy-log",
+        result: "ok",
+        details: {
+          rawLogBufferSelected: true,
+          placeholderRejected: false,
+          characterCount: metadata.characterCount,
+          lineCount: metadata.lineCount,
+          sha256: metadata.sha256 || ""
+        }
+      });
+
+      await kgwNodeDispatchClipboardWriteV1(copyNetwork, buffer.normalizedText, metadata);
+
+      kgwNodeFlashLogActionButtonV29(button, kgwNodeTranslateRuntimeV29("log.copied", "Copied"));
+      kgwNodeSetClipboardStatusV1(copyNetwork, kgwNodeTranslateRuntimeV29("log.copied", "Copied"), "ok");
+      kgwStartTraceFrontendR1("frontend.copy_log_succeeded", {
+        network: copyNetwork,
+        action: "copy-log",
+        result: "ok",
+        details: {
+          characterCount: metadata.characterCount,
+          lineCount: metadata.lineCount,
+          sha256: metadata.sha256 || "",
+          userFeedbackDisplayed: true
+        }
+      });
+    } catch (error) {
+      kgwNodeCopyLogFailureV1(copyNetwork, button, error, {
+        activeNetwork,
+        belongsToLiveNodeMonitor
+      });
+    } finally {
+      if (button) {
+        button.disabled = originalDisabled;
+        delete button.dataset.kgwCopyLogInFlightV1;
+      }
+    }
     return;
   }
 
@@ -3207,7 +3475,15 @@ function installActions(root) {
     }
 
     if (action === "copy-log" || action === "clear-log") {
-      kgwNodeHandleLogActionV29(action, net, button).catch(function () {});
+      event.preventDefault();
+      event.stopPropagation();
+      kgwNodeHandleLogActionV29(action, net, button).catch(function (error) {
+        if (action === "copy-log") {
+          kgwNodeCopyLogFailureV1(net, button, error, {
+            reason: "unhandled-copy-error"
+          });
+        }
+      });
       return;
     }
 
