@@ -400,6 +400,26 @@ fn kgw_ui_trace_should_print_v1(level: &str, action: &str, phase: &str, details:
 }
 
 #[tauri::command]
+fn kgw_start_trace_frontend_v1(
+    stage: String,
+    network: String,
+    action: String,
+    result: String,
+    details: Option<String>,
+) -> bool {
+    integrated_runtime_commands::kgw_start_trace_emit_v1(
+        "frontend",
+        &stage,
+        &network,
+        &action,
+        &result,
+        details.as_deref(),
+    );
+
+    integrated_runtime_commands::kgw_start_trace_enabled_v1()
+}
+
+#[tauri::command]
 fn kgw_frontend_button_trace_v1(
     scope: String,
     net: String,
@@ -653,6 +673,7 @@ pub fn run() {
             export_system::export_data,
             migration::preview_python_migration,
             migration::migrate_python_data,
+            kgw_start_trace_frontend_v1,
             kgw_frontend_button_trace_v1,
             kgw_open_exported_file_v1,
         ])

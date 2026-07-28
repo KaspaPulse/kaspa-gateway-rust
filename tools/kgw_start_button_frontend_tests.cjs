@@ -16,6 +16,13 @@ const nodeJsPath = path.join(
   "kaspa-node.js",
 );
 const source = fs.readFileSync(nodeJsPath, "utf8");
+const tauriConfigPath = path.join(
+  repo,
+  "apps",
+  "kaspa-gateway-desktop",
+  "src-tauri",
+  "tauri.conf.json",
+);
 
 function fail(message) {
   console.error("KGW start button frontend tests FAILED");
@@ -36,12 +43,15 @@ function extractBetween(text, start, end) {
 }
 
 function staticPlacementTests() {
+  const renderStart = source.indexOf("function renderNetworkPanel");
+  assert.ok(renderStart >= 0, "missing renderNetworkPanel source");
+  const renderSource = source.slice(renderStart);
   const settingsPanel = extractBetween(
-    source,
+    renderSource,
     'data-node-inner-panel="settings"',
     'data-node-inner-panel="log"',
   );
-  const logPanel = extractBetween(source, 'data-node-inner-panel="log"', "</div>`;");
+  const logPanel = extractBetween(renderSource, 'data-node-inner-panel="log"', "</div>`;");
 
   assertIncludes(settingsPanel, 'data-node-action="start"', "Settings must own Start");
   assertIncludes(settingsPanel, 'data-node-action="stop"', "Settings must own Stop");
@@ -391,7 +401,7 @@ function matchesSelector(node, selector) {
   return true;
 }
 
-function createHarness() {
+function createHarness(options = {}) {
   const document = new TestDocument();
   const storage = new Map();
   const timers = [];
@@ -427,6 +437,9 @@ function createHarness() {
       }
     },
   };
+  if (options.tauri) {
+    window.__TAURI__ = options.tauri;
+  }
   window.addEventListener = (type, handler) => {
     const list = window.listeners.get(type) || [];
     list.push(handler);
@@ -487,7 +500,7 @@ function createHarness() {
   const executable = source
     .replace(/export\s+async\s+function\s+initKaspaNodeTab/, "async function initKaspaNodeTab")
     .replace(/export\s+default\s+initKaspaNodeTab\s*;/, "")
-    + "\nwindow.__kgwStartButtonTest = { initKaspaNodeTab };\n";
+    + "\nwindow.__kgwStartButtonTest = { initKaspaNodeTab, getTauriInvoke, kgwResolvePublicTauriInvokeR1, kgwStartTraceTauriShapeR1 };\n";
   vm.runInNewContext(executable, sandbox, { filename: nodeJsPath });
 
   return { window, document, root };
@@ -498,6 +511,22 @@ async function flush() {
   await Promise.resolve();
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
+}
+
+function startCalls(calls) {
+  return calls.filter((call) => call.command === "kgw_kgw_apply_node_settings_v1");
+}
+
+function traceCalls(calls) {
+  return calls.filter((call) => call.command === "kgw_start_trace_frontend_v1");
+}
+
+function traceStages(calls) {
+  return traceCalls(calls).map((call) => call.payload.stage);
+}
+
+function parsedTraceDetails(call) {
+  return JSON.parse(call.payload.details || "{}");
 }
 
 async function dynamicClickTests() {
@@ -528,29 +557,33 @@ async function dynamicClickTests() {
   calls.length = 0;
   root.querySelector('[data-node-action="start"][data-net="mainnet"]').click();
   await flush();
-  assert.strictEqual(calls.length, 1, "mainnet Start click must invoke exactly once");
-  assert.strictEqual(calls[0].command, "kgw_kgw_apply_node_settings_v1");
-  assert.strictEqual(calls[0].payload.network, "mainnet");
-  assert.strictEqual(calls[0].payload.nodeKind, "integrated-as-daemon");
-  assert.strictEqual(calls[0].payload.bridgeKind, "disable");
-  assert.strictEqual(calls[0].payload.runtimeRole, "node");
+  assert.strictEqual(startCalls(calls).length, 1, "mainnet Start click must invoke exactly once");
+  assert.strictEqual(startCalls(calls)[0].payload.network, "mainnet");
+  assert.strictEqual(startCalls(calls)[0].payload.nodeKind, "integrated-as-daemon");
+  assert.strictEqual(startCalls(calls)[0].payload.bridgeKind, "disable");
+  assert.strictEqual(startCalls(calls)[0].payload.runtimeRole, "node");
+  assert.ok(traceStages(calls).includes("frontend.capture_click_observed"), "capture observer must trace the physical-style Start click");
+  const capture = traceCalls(calls).find((call) => call.payload.stage === "frontend.capture_click_observed");
+  assert.strictEqual(capture.payload.network, "mainnet");
+  assert.strictEqual(capture.payload.action, "start");
+  assert.strictEqual(parsedTraceDetails(capture).belongsToSettings, true, "capture trace must report Settings ownership");
 
   root.querySelector('[data-node-network-tab="testnet10"]').click();
   calls.length = 0;
   root.querySelector('[data-node-action="start"][data-net="testnet10"]').click();
   await flush();
-  assert.strictEqual(calls.length, 1, "testnet10 Start click must invoke exactly once after tab switch");
-  assert.strictEqual(calls[0].command, "kgw_kgw_apply_node_settings_v1");
-  assert.strictEqual(calls[0].payload.network, "testnet10");
+  assert.strictEqual(startCalls(calls).length, 1, "testnet10 Start click must invoke exactly once after tab switch");
+  assert.strictEqual(startCalls(calls)[0].payload.network, "testnet10");
 
   calls.length = 0;
   const testnet12Start = root.querySelector('[data-node-action="start"][data-net="testnet12"]');
   testnet12Start.click();
   await flush();
-  assert.strictEqual(calls.length, 0, "testnet12 Start must not invoke while opt-in is disabled");
+  assert.strictEqual(startCalls(calls).length, 0, "testnet12 Start must not invoke while opt-in is disabled");
 
   window.__TAURI__.tauri.invoke = async (command, payload) => {
     calls.push({ command, payload });
+    if (command === "kgw_start_trace_frontend_v1") return true;
     throw new Error("spawn_failed=true;runtime_role=node;network=mainnet;source=self-worker;error=Access is denied.");
   };
   const mainnetStart = root.querySelector('[data-node-action="start"][data-net="mainnet"]');
@@ -561,8 +594,10 @@ async function dynamicClickTests() {
   const errorNode = document.getElementById("node-mainnet-runtimeError");
   const statusNode = document.getElementById("node-mainnet-runtimeStatus");
   const evidenceNode = document.getElementById("node-mainnet-runtimeEvidence");
-  assert.strictEqual(calls.length, 1, "failed Start click must still invoke exactly once");
+  assert.strictEqual(startCalls(calls).length, 1, "failed Start click must still invoke exactly once");
   assert.strictEqual(mainnetStart.disabled, false, "failed Start must restore button state");
+  assert.ok(traceStages(calls).includes("frontend.invoke_rejected"), "failed Start must trace invoke rejection");
+  assert.ok(traceStages(calls).includes("frontend.button_state_restored_after_failure"), "failed Start must trace button restoration");
   assert.ok(
     errorNode.textContent.includes("Access is denied."),
     "failed Start must expose original error, actual text: " + errorNode.textContent + "; status=" + statusNode.textContent + "; evidence=" + evidenceNode.textContent,
@@ -572,10 +607,79 @@ async function dynamicClickTests() {
   assert.ok(!/initialized|parallel-owned-self-worker started|KGW node start response/i.test(rawLog), "raw log must not contain synthetic startup success text");
 }
 
+function configuredTauriInvokeResolverTests() {
+  const tauriConfig = JSON.parse(fs.readFileSync(tauriConfigPath, "utf8"));
+  assert.strictEqual(tauriConfig.app.withGlobalTauri, true, "Tauri config must expose the supported global API");
+
+  const calls = [];
+  const { window } = createHarness({
+    tauri: {
+      core: {
+        invoke: async (command, payload) => {
+          calls.push({ command, payload });
+          return true;
+        },
+      },
+    },
+  });
+
+  const resolved = window.__kgwStartButtonTest.kgwResolvePublicTauriInvokeR1();
+  assert.strictEqual(resolved.adapter, "window.__TAURI__.core.invoke", "Tauri 2 global core invoke must win");
+  assert.strictEqual(typeof resolved.invoke, "function", "resolver must return a public invoke function");
+  assert.strictEqual(resolved.shape.hasCoreInvoke, true, "resolver shape must detect core.invoke");
+  assert.strictEqual(resolved.shape.expectedConfiguredGlobal, "window.__TAURI__.core.invoke");
+}
+
+async function missingInvokeApiVisibleErrorTest() {
+  const { window, document, root } = createHarness();
+  await window.__kgwStartButtonTest.initKaspaNodeTab(root);
+  await flush();
+
+  const start = root.querySelector('[data-node-action="start"][data-net="mainnet"]');
+  start.disabled = false;
+  start.click();
+  await flush();
+
+  const errorNode = document.getElementById("node-mainnet-runtimeError");
+  assert.ok(errorNode.textContent.includes("Tauri invoke API is not available"), "missing invoke API must be visible in the UI");
+  assert.strictEqual(start.disabled, false, "missing invoke API must restore Start button state");
+}
+
+async function tracePayloadSafetyTests() {
+  const calls = [];
+  const { window, root } = createHarness({
+    tauri: {
+      core: {
+        invoke: async (command, payload) => {
+          calls.push({ command, payload });
+          if (command === "kgw_kgw_apply_node_settings_v1") {
+            return "parallel-owned-self-worker started;role=node;network=" + payload.network + ";pid=4242;owner=self-worker;runtime_state=running";
+          }
+          return true;
+        },
+      },
+    },
+  });
+
+  await window.__kgwStartButtonTest.initKaspaNodeTab(root);
+  await flush();
+  calls.length = 0;
+  root.querySelector('[data-node-action="start"][data-net="mainnet"]').click();
+  await flush();
+
+  assert.strictEqual(startCalls(calls).length, 1, "trace safety run must invoke Start exactly once");
+  const serializedTrace = JSON.stringify(traceCalls(calls).map((call) => call.payload));
+  assert.ok(!/secret|token|private|mnemonic|wallet/i.test(serializedTrace), "trace payload must exclude secret-like fields");
+  assert.ok(!/nodeCommandPreview|bridgeCommandPreview|--rpc|--appdir|--stratum/i.test(serializedTrace), "trace payload must not expose command arguments or preview fields");
+}
+
 (async () => {
   try {
     staticPlacementTests();
+    configuredTauriInvokeResolverTests();
     await dynamicClickTests();
+    await missingInvokeApiVisibleErrorTest();
+    await tracePayloadSafetyTests();
     console.log("KGW start button frontend tests PASSED");
   } catch (error) {
     fail(error && error.stack ? error.stack : String(error));

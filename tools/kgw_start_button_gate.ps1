@@ -37,16 +37,18 @@ $NodeJsRel = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node
 $NodeJs = Read-RequiredFile $NodeJsRel
 
 if ($NodeJs) {
-    $settingsIndex = $NodeJs.IndexOf('data-node-inner-panel="settings"')
-    $logIndex = $NodeJs.IndexOf('data-node-inner-panel="log"')
-    $renderEndIndex = $NodeJs.IndexOf('</div>`;', $logIndex)
+    $renderStartIndex = $NodeJs.IndexOf("function renderNetworkPanel")
+    $RenderNodeJs = if ($renderStartIndex -ge 0) { $NodeJs.Substring($renderStartIndex) } else { "" }
+    $settingsIndex = $RenderNodeJs.IndexOf('data-node-inner-panel="settings"')
+    $logIndex = $RenderNodeJs.IndexOf('data-node-inner-panel="log"')
+    $renderEndIndex = $RenderNodeJs.IndexOf('</div>`;', $logIndex)
 
-    if ($settingsIndex -lt 0 -or $logIndex -lt 0 -or $renderEndIndex -lt 0 -or $settingsIndex -ge $logIndex) {
+    if ($renderStartIndex -lt 0 -or $settingsIndex -lt 0 -or $logIndex -lt 0 -or $renderEndIndex -lt 0 -or $settingsIndex -ge $logIndex) {
         Add-Failure "Could not verify Settings and Live Node Monitor panel ordering."
     }
     else {
-        $settingsBlock = $NodeJs.Substring($settingsIndex, $logIndex - $settingsIndex)
-        $logBlock = $NodeJs.Substring($logIndex, $renderEndIndex - $logIndex)
+        $settingsBlock = $RenderNodeJs.Substring($settingsIndex, $logIndex - $settingsIndex)
+        $logBlock = $RenderNodeJs.Substring($logIndex, $renderEndIndex - $logIndex)
 
         if ($settingsBlock -notmatch 'data-node-action="start"') { Add-Failure "Settings panel is missing Start." }
         if ($settingsBlock -notmatch 'data-node-action="stop"') { Add-Failure "Settings panel is missing Stop." }

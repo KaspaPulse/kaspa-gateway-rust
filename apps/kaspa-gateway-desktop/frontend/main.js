@@ -150,6 +150,66 @@ const initializedTabs = new Set();
 let bootRunning = false;
 let bootDone = false;
 
+function kgwStartTraceShellResolveInvokeR1() {
+  const tauri = window.__TAURI__;
+  const candidates = [
+    { adapter: "window.__TAURI__.core.invoke", owner: tauri?.core, invoke: tauri?.core?.invoke },
+    { adapter: "window.__TAURI__.tauri.invoke", owner: tauri?.tauri, invoke: tauri?.tauri?.invoke },
+    { adapter: "window.__TAURI__.invoke", owner: tauri, invoke: tauri?.invoke }
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate.invoke === "function") {
+      return {
+        adapter: candidate.adapter,
+        invoke: candidate.invoke.bind(candidate.owner)
+      };
+    }
+  }
+
+  return { adapter: "missing", invoke: null };
+}
+
+function kgwStartTraceShellShapeR1(adapter) {
+  const tauri = window.__TAURI__;
+  const keys = (value) => value && typeof value === "object" ? Object.keys(value).sort().slice(0, 24) : [];
+
+  return {
+    adapter,
+    hasGlobalTauri: Boolean(tauri),
+    globalKeys: keys(tauri),
+    coreKeys: keys(tauri?.core),
+    tauriKeys: keys(tauri?.tauri),
+    hasCoreInvoke: typeof tauri?.core?.invoke === "function",
+    hasTauriInvoke: typeof tauri?.tauri?.invoke === "function",
+    hasRootInvoke: typeof tauri?.invoke === "function",
+    expectedConfiguredGlobal: "window.__TAURI__.core.invoke"
+  };
+}
+
+function kgwStartTraceShellR1(stage, result, details = {}) {
+  const resolved = kgwStartTraceShellResolveInvokeR1();
+  if (typeof resolved.invoke !== "function") return false;
+
+  const safeDetails = {
+    ...details,
+    invokeAdapter: resolved.adapter,
+    shape: kgwStartTraceShellShapeR1(resolved.adapter)
+  };
+
+  resolved.invoke("kgw_start_trace_frontend_v1", {
+    stage: String(stage || "frontend.shell"),
+    network: "ui",
+    action: "boot",
+    result: String(result || "ok"),
+    details: JSON.stringify(safeDetails)
+  }).catch(function (error) {
+    console.error("[KGW_START_TRACE_SHELL_FAILED]", error && error.message ? error.message : String(error));
+  });
+
+  return true;
+}
+
 /* KGW_SHELL_BOOT_CONTENT_SETTINGS_BOUNDARY_PATCH_R63F
  * Targeted async-safe boundary repair for canonical shell startup content.
  * This keeps R59C as the single shell display and active-tab owner.
@@ -891,6 +951,13 @@ async function boot() {
     kgwShellScheduleSavedMainTabRestoreR102C("boot-after-open-tab");
 
     bootDone = true;
+    kgwStartTraceShellR1("frontend.application_boot_completed", "ok", {
+      initialTab: initial,
+      hashPresent: Boolean(hash)
+    });
+    kgwStartTraceShellR1("frontend.tauri_invoke_api_availability", "available", {
+      initialTab: initial
+    });
   } catch (error) {
     kgwFatal(error, "shell");
   } finally {

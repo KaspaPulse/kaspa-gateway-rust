@@ -601,6 +601,222 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
 })();
 // END_KGW_SETTINGS_OWNER_V19
 
+const KGW_START_TRACE_COMMAND_V1 = "kgw_start_trace_frontend_v1";
+
+function kgwStartTraceSafeTextR1(value, fallback = "") {
+  const text = String(value ?? "").replace(/[\r\n\t]+/g, " ").trim();
+  return (text || fallback).slice(0, 220);
+}
+
+function kgwStartTraceSafeDetailsR1(details) {
+  const source = details && typeof details === "object" ? details : {};
+  const blocked = /(secret|token|private|mnemonic|wallet|address|commandPreview|completeCommand|arguments|appDir|path|rpcEndpoint|stratum)/i;
+  const out = {};
+
+  for (const [key, value] of Object.entries(source)) {
+    if (blocked.test(key)) {
+      out[key] = "[redacted]";
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      out[key] = value.slice(0, 24).map((item) => kgwStartTraceSafeTextR1(item));
+    } else if (value && typeof value === "object") {
+      out[key] = kgwStartTraceSafeDetailsR1(value);
+    } else if (typeof value === "boolean" || typeof value === "number") {
+      out[key] = value;
+    } else {
+      out[key] = kgwStartTraceSafeTextR1(value);
+    }
+  }
+
+  return out;
+}
+
+function kgwStartTraceTauriShapeR1(adapterName = "") {
+  const tauri = window.__TAURI__;
+  const keys = (value) => value && typeof value === "object" ? Object.keys(value).sort().slice(0, 24) : [];
+
+  return {
+    adapter: kgwStartTraceSafeTextR1(adapterName, "missing"),
+    hasGlobalTauri: Boolean(tauri),
+    globalKeys: keys(tauri),
+    coreKeys: keys(tauri?.core),
+    tauriKeys: keys(tauri?.tauri),
+    hasCoreInvoke: typeof tauri?.core?.invoke === "function",
+    hasTauriInvoke: typeof tauri?.tauri?.invoke === "function",
+    hasRootInvoke: typeof tauri?.invoke === "function",
+    expectedConfiguredGlobal: "window.__TAURI__.core.invoke"
+  };
+}
+
+function kgwResolvePublicTauriInvokeR1() {
+  const tauri = window.__TAURI__;
+  const candidates = [
+    { adapter: "window.__TAURI__.core.invoke", owner: tauri?.core, invoke: tauri?.core?.invoke },
+    { adapter: "window.__TAURI__.tauri.invoke", owner: tauri?.tauri, invoke: tauri?.tauri?.invoke },
+    { adapter: "window.__TAURI__.invoke", owner: tauri, invoke: tauri?.invoke }
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate.invoke === "function") {
+      return {
+        adapter: candidate.adapter,
+        invoke: candidate.invoke.bind(candidate.owner),
+        shape: kgwStartTraceTauriShapeR1(candidate.adapter)
+      };
+    }
+  }
+
+  return {
+    adapter: "missing",
+    invoke: null,
+    shape: kgwStartTraceTauriShapeR1("missing")
+  };
+}
+
+function kgwStartTraceFrontendR1(stage, options = {}) {
+  const resolved = kgwResolvePublicTauriInvokeR1();
+  if (typeof resolved.invoke !== "function") return false;
+
+  const network = kgwStartTraceSafeTextR1(options.network || options.net, "unknown");
+  const action = kgwStartTraceSafeTextR1(options.action, "unknown");
+  const result = kgwStartTraceSafeTextR1(options.result, "observed");
+  const details = kgwStartTraceSafeDetailsR1({
+    ...(options.details && typeof options.details === "object" ? options.details : {}),
+    invokeAdapter: resolved.adapter
+  });
+
+  resolved.invoke(KGW_START_TRACE_COMMAND_V1, {
+    stage: kgwStartTraceSafeTextR1(stage, "frontend.unknown"),
+    network,
+    action,
+    result,
+    details: JSON.stringify(details)
+  }).catch(function (error) {
+    console.error("[KGW_START_TRACE_FRONTEND_FAILED]", error && error.message ? error.message : String(error));
+  });
+
+  return true;
+}
+
+function kgwNodeTraceNetworkFromElementR1(element, root = document.getElementById("kaspa-node")) {
+  const carrier = element?.closest?.("[data-net], [data-network], [data-node-network-panel], [data-node-inner-panel]");
+  const raw = [
+    element?.dataset?.net,
+    element?.dataset?.network,
+    carrier?.dataset?.net,
+    carrier?.dataset?.network,
+    carrier?.dataset?.nodeNetworkPanel,
+    carrier?.id,
+    carrier?.className
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  if (raw.includes("testnet12") || raw.includes("tn12")) return "testnet12";
+  if (raw.includes("testnet10") || raw.includes("tn10")) return "testnet10";
+  if (raw.includes("mainnet")) return "mainnet";
+
+  const active = kgwNodeTraceActiveNetworkR1(root);
+  return active || "mainnet";
+}
+
+function kgwNodeTraceActiveNetworkR1(root = document.getElementById("kaspa-node")) {
+  if (!root) return "";
+
+  const panels = Array.from(root.querySelectorAll("[data-node-network-panel]"));
+  const activePanel = panels.find((panel) =>
+    !panel.hidden &&
+    (panel.classList.contains("active") || panel.dataset.active === "true")
+  );
+  if (activePanel?.dataset?.nodeNetworkPanel) return activePanel.dataset.nodeNetworkPanel;
+
+  const tab = Array.from(root.querySelectorAll("[data-node-network-tab]")).find((item) =>
+    item.classList.contains("active") ||
+    item.getAttribute("aria-selected") === "true" ||
+    item.dataset.active === "true"
+  );
+  return tab?.dataset?.nodeNetworkTab || "";
+}
+
+function kgwNodeTraceStartButtonStateR1(net) {
+  const panel = kgwNodeR51Panel(net);
+  const start = panel?.querySelector?.('[data-node-action="start"][data-net="' + net + '"]');
+  const stop = panel?.querySelector?.('[data-node-action="stop"][data-net="' + net + '"]');
+
+  return {
+    startRendered: Boolean(start),
+    startDisabled: Boolean(start?.disabled),
+    stopRendered: Boolean(stop),
+    stopDisabled: Boolean(stop?.disabled)
+  };
+}
+
+function kgwNodeInstallStartTraceDocumentClickObserverR1(root) {
+  if (window.__kgwStartTraceDocumentClickObserverR1 === true) return;
+  window.__kgwStartTraceDocumentClickObserverR1 = true;
+
+  document.addEventListener("click", function (event) {
+    const button = event.target?.closest?.("[data-node-action]");
+    const nodeRoot = root || document.getElementById("kaspa-node");
+    if (!button || !nodeRoot || !nodeRoot.contains(button)) return;
+
+    const action = String(button.dataset.nodeAction || "").trim();
+    if (action !== "start" && action !== "stop") return;
+
+    const network = kgwNodeTraceNetworkFromElementR1(button, nodeRoot);
+    const activeNetwork = kgwNodeTraceActiveNetworkR1(nodeRoot);
+    const belongsToSettings = Boolean(button.closest('[data-node-inner-panel="settings"]'));
+    const belongsToLiveNodeMonitor = Boolean(button.closest('[data-node-inner-panel="log"]'));
+
+    kgwStartTraceFrontendR1("frontend.capture_click_observed", {
+      network,
+      action,
+      result: "observed",
+      details: {
+        trusted: Boolean(event && event.isTrusted),
+        belongsToSettings,
+        belongsToLiveNodeMonitor,
+        selectedNetwork: activeNetwork,
+        buttonDisabled: Boolean(button.disabled),
+        buttonAction: action
+      }
+    });
+  }, true);
+}
+
+function kgwNodeTraceRenderedStartControlsR1(root) {
+  for (const profile of NODE_NETWORKS) {
+    const net = profile.key;
+    const settingsPanel = root.querySelector('[data-node-network-panel="' + net + '"] [data-node-inner-panel="settings"]');
+    const start = settingsPanel?.querySelector?.('[data-node-action="start"][data-net="' + net + '"]');
+
+    kgwStartTraceFrontendR1("frontend.settings_subtab_rendered", {
+      network: net,
+      action: "render",
+      result: settingsPanel ? "ok" : "missing",
+      details: {
+        belongsToSettings: Boolean(settingsPanel),
+        selectedNetwork: kgwNodeTraceActiveNetworkR1(root)
+      }
+    });
+    kgwStartTraceFrontendR1("frontend.start_control_rendered", {
+      network: net,
+      action: "start",
+      result: start ? "ok" : "missing",
+      details: {
+        belongsToSettings: Boolean(start && settingsPanel && settingsPanel.contains(start)),
+        startDisabled: Boolean(start?.disabled)
+      }
+    });
+  }
+}
+
+function kgwNodeRuntimeActionForCommandR1(command) {
+  if (command === "kgw_kgw_apply_node_settings_v1") return "start";
+  if (command === "kgw_kgw_disable_network_v1") return "stop";
+  return "runtime";
+}
+
 function kgwNodeSmallOwnerTraceR44D(net, action, phase, details) {
   try {
     const safeNet = String(net || "unknown");
@@ -1601,16 +1817,7 @@ const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 30000;
 const KGW_NODE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_node_runtime_flags_v1";
 
 function getTauriInvoke() {
-  const tauri = window.__TAURI__;
-  const candidates = [
-    tauri?.core?.invoke && tauri.core.invoke.bind(tauri.core),
-    tauri?.tauri?.invoke && tauri.tauri.invoke.bind(tauri.tauri),
-    tauri?.invoke && tauri.invoke.bind(tauri),
-    window.__TAURI_INVOKE__,
-    window.__TAURI_IPC__
-  ];
-
-  return candidates.find((candidate) => typeof candidate === "function") || null;
+  return kgwResolvePublicTauriInvokeR1().invoke;
 }
 
 function stringifyRuntimeResult(result) {
@@ -1754,12 +1961,67 @@ function invokeWithTimeout(invoke, command, args, timeoutMs) {
 }
 
 async function invokeNodeIntegratedRuntime(command, net) {
-  const invoke = getTauriInvoke();
-  if (!invoke) {
-    throw new Error("Tauri invoke is unavailable in this window.");
+  const action = kgwNodeRuntimeActionForCommandR1(command);
+  const resolved = kgwResolvePublicTauriInvokeR1();
+
+  kgwStartTraceFrontendR1("frontend.invoke_adapter_selected", {
+    network: net,
+    action,
+    result: resolved.invoke ? "selected" : "missing",
+    details: {
+      commandName: command,
+      adapter: resolved.adapter,
+      shape: resolved.shape
+    }
+  });
+
+  if (!resolved.invoke) {
+    throw new Error("Tauri invoke API is not available. Expected window.__TAURI__.core.invoke from Tauri 2 with withGlobalTauri enabled.");
   }
 
-  return await invokeWithTimeout(invoke, command, nodeRuntimeArgs(net, command), KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS);
+  const args = nodeRuntimeArgs(net, command);
+  kgwStartTraceFrontendR1("frontend.invoke_dispatched", {
+    network: net,
+    action,
+    result: "dispatched",
+    details: {
+      commandName: command,
+      payloadFieldCount: Object.keys(args).length,
+      nodePreviewPresent: Boolean(args.nodeCommandPreview),
+      bridgePreviewPresent: Boolean(args.bridgeCommandPreview),
+      runtimeRolePresent: Boolean(args.runtimeRole),
+      timeoutMs: KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS
+    }
+  });
+
+  try {
+    const result = await invokeWithTimeout(resolved.invoke, command, args, KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS);
+    const evidence = kgwNodeRuntimeEvidence(result);
+    kgwStartTraceFrontendR1("frontend.invoke_resolved", {
+      network: net,
+      action,
+      result: "resolved",
+      details: {
+        commandName: command,
+        hasPid: /^[0-9]+$/.test(evidence.pid),
+        owner: evidence.owner,
+        role: evidence.role,
+        state: evidence.state
+      }
+    });
+    return result;
+  } catch (error) {
+    kgwStartTraceFrontendR1("frontend.invoke_rejected", {
+      network: net,
+      action,
+      result: "rejected",
+      details: {
+        commandName: command,
+        error: normalizeRuntimeError(error)
+      }
+    });
+    throw error;
+  }
 }
 
 
@@ -1772,7 +2034,49 @@ async function runNodeIntegratedAction(action, net) {
   const command = commandByAction[action];
   if (!command) return false;
 
-  if (action === "start" && !kgwNodeNetworkEnabled(net)) {
+  const nodeRoot = document.getElementById("kaspa-node");
+  const activeNetwork = kgwNodeTraceActiveNetworkR1(nodeRoot);
+  const profile = kgwNodeNetworkProfile(net);
+  const networkEnabled = kgwNodeNetworkEnabled(net);
+
+  kgwStartTraceFrontendR1("frontend.start_action_identified", {
+    network: net,
+    action,
+    result: "identified",
+    details: {
+      commandName: command,
+      action,
+      controlNetwork: net,
+      activeNetwork
+    }
+  });
+  kgwStartTraceFrontendR1("frontend.active_network_resolved", {
+    network: net,
+    action,
+    result: activeNetwork && activeNetwork !== net ? "mismatch" : "ok",
+    details: {
+      controlNetwork: net,
+      activeNetwork,
+      selectedNetwork: activeNetwork || net
+    }
+  });
+
+  if (action === "start") {
+    const experimentalNetwork = Boolean(profile?.experimental);
+    const explicitOptIn = experimentalNetwork && networkEnabled;
+    kgwStartTraceFrontendR1("frontend.experimental_opt_in_evaluated", {
+      network: net,
+      action,
+      result: !experimentalNetwork || explicitOptIn ? "allowed" : "blocked",
+      details: {
+        experimentalNetwork,
+        explicitOptIn,
+        networkEnabled
+      }
+    });
+  }
+
+  if (action === "start" && !networkEnabled) {
     kgwNodeSetRuntimeNotice(net, "Disabled", "No process owner", "This network is disabled. Enable it in Settings before starting.");
     kgwNodeR51SetRuntimeButtons(net, false, false);
     return true;
@@ -1830,6 +2134,16 @@ async function runNodeIntegratedAction(action, net) {
     const runningAfterFailure = action === "stop";
     kgwNodeR51SetRuntimeButtons(net, runningAfterFailure, kgwIsBridgeOwnedNodeLockedR65E(net));
     kgwNodeSetRuntimeNotice(net, runningAfterFailure ? "Running" : "Stopped", runningAfterFailure ? "Stop failed" : "No process owner", errorText);
+    kgwStartTraceFrontendR1("frontend.button_state_restored_after_failure", {
+      network: net,
+      action,
+      result: "restored",
+      details: {
+        error: errorText,
+        runningAfterFailure,
+        state: kgwNodeTraceStartButtonStateR1(net)
+      }
+    });
     return true;
   } finally {
     KGW_NODE_R51_TRANSITIONS[net] = "";
@@ -2924,6 +3238,20 @@ const nodeRoot = root || document.getElementById("kaspa-node");
   nodeRoot.dataset.kgwNodeV6Ready = "true";
 
   renderAllNetworks(nodeRoot);
+  kgwNodeTraceRenderedStartControlsR1(nodeRoot);
+  kgwNodeInstallStartTraceDocumentClickObserverR1(nodeRoot);
+  {
+    const resolved = kgwResolvePublicTauriInvokeR1();
+    kgwStartTraceFrontendR1("frontend.tauri_invoke_api_availability", {
+      network: kgwNodeTraceActiveNetworkR1(nodeRoot) || "mainnet",
+      action: "init",
+      result: resolved.invoke ? "available" : "missing",
+      details: {
+        adapter: resolved.adapter,
+        shape: resolved.shape
+      }
+    });
+  }
   kgwNodeR51CaptureFactoryDefaults();
   kgwNodeR51LoadSavedSettings();
   NODE_NETWORKS.forEach((net) => kgwNodeR51SetRuntimeButtons(net.key, false, false));

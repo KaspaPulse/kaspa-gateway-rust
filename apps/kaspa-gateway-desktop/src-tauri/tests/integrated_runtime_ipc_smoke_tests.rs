@@ -116,6 +116,10 @@ fn start_command_is_registered_and_payload_matches_frontend() {
         lib_rs.contains("integrated_runtime_commands::kgw_kgw_disable_network_v1"),
         "stop command must be registered in tauri generate_handler"
     );
+    assert!(
+        lib_rs.contains("kgw_start_trace_frontend_v1"),
+        "start trace frontend command must be registered in tauri generate_handler"
+    );
 
     for field in [
         "network",
@@ -131,6 +135,41 @@ fn start_command_is_registered_and_payload_matches_frontend() {
             "frontend start payload must contain `{field}`"
         );
     }
+}
+
+#[test]
+fn start_trace_marker_format_is_registered_and_safe() {
+    let lib_rs = include_str!("../src/lib.rs");
+    assert!(
+        lib_rs.contains("kgw_start_trace_frontend_v1"),
+        "native trace command must be registered"
+    );
+
+    let marker = integrated_runtime_commands::kgw_start_trace_format_v1(
+        "native",
+        "native.tauri_command_entered",
+        "mainnet",
+        "start",
+        "entered",
+        Some("{\"secret\":\"abc\",\"wallet\":\"kaspa:abc\",\"completeCommand\":\"--rpc 127.0.0.1:16110\"}"),
+    );
+
+    assert!(marker.starts_with("[KGW_START_TRACE] "));
+    assert_contains_all(
+        &marker,
+        &[
+            "\"timestamp\":",
+            "\"stage\":\"native.tauri_command_entered\"",
+            "\"network\":\"mainnet\"",
+            "\"action\":\"start\"",
+            "\"result\":\"entered\"",
+            "\\\"redacted\\\":true",
+        ],
+    );
+    assert!(
+        !marker.contains("kaspa:abc") && !marker.contains("--rpc") && !marker.contains("abc"),
+        "trace marker must not expose sensitive fields: {marker}"
+    );
 }
 
 #[test]
@@ -293,7 +332,9 @@ fn success_response_contains_process_start_evidence_and_stream_logs() {
 fn spawn_failure_remains_an_error() {
     let _guard = runtime_test_lock().lock().unwrap();
     let missing = std::env::temp_dir().join("kgw-missing-self-worker-command.exe");
+    std::env::set_var("KGW_START_TRACE", "1");
     std::env::set_var("KGW_TEST_SELF_WORKER_MISSING_COMMAND", &missing);
+    let _ = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
     let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
 
     let error = kgw_kgw_apply_node_settings_v1(
@@ -316,5 +357,20 @@ fn spawn_failure_remains_an_error() {
         &["spawn_failed=true", "runtime_role=node", "network=mainnet"],
     );
 
+    let trace_lines = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
+    let trace_text = trace_lines.join("\n");
+    assert_contains_all(
+        &trace_text,
+        &[
+            "[KGW_START_TRACE]",
+            "\"stage\":\"native.tauri_command_entered\"",
+            "\"stage\":\"native.spawn_failed\"",
+            "\"stage\":\"native.startup_response_returned\"",
+            "\"network\":\"mainnet\"",
+            "\"action\":\"start\"",
+        ],
+    );
+
     std::env::remove_var("KGW_TEST_SELF_WORKER_MISSING_COMMAND");
+    std::env::remove_var("KGW_START_TRACE");
 }
