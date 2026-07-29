@@ -3,13 +3,44 @@ mod integrated_runtime_commands;
 
 use integrated_runtime_commands::{
     kgw_kgw_apply_node_settings_v1, kgw_kgw_disable_network_v1,
-    kgw_kgw_node_bridge_service_plan_v1, kgw_kgw_runtime_logs_v1, kgw_runtime_owner_summary_v1,
+    kgw_kgw_node_bridge_service_plan_v1, kgw_kgw_runtime_clear_logs_v1, kgw_kgw_runtime_logs_v1,
+    kgw_runtime_owner_summary_v1,
 };
 use std::sync::{Mutex, OnceLock};
 
 fn runtime_test_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
     LOCK.get_or_init(|| Mutex::new(()))
+}
+
+struct RuntimeWorkerTestGuard;
+
+impl RuntimeWorkerTestGuard {
+    fn new() -> Self {
+        clear_runtime_worker_test_env();
+        let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
+        Self
+    }
+}
+
+impl Drop for RuntimeWorkerTestGuard {
+    fn drop(&mut self) {
+        let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
+        clear_runtime_worker_test_env();
+    }
+}
+
+fn clear_runtime_worker_test_env() {
+    for key in [
+        "KGW_TEST_SELF_WORKER_COMMAND",
+        "KGW_TEST_SELF_WORKER_FAIL_COMMAND",
+        "KGW_TEST_SELF_WORKER_MISSING_COMMAND",
+        "KGW_TEST_SELF_WORKER_STDOUT",
+        "KGW_TEST_SELF_WORKER_STDERR",
+        "KGW_START_TRACE",
+    ] {
+        std::env::remove_var(key);
+    }
 }
 
 fn assert_contains_all(text: &str, parts: &[&str]) {
@@ -254,7 +285,7 @@ fn start_trace_marker_format_is_registered_and_safe() {
 fn child_trace_line_redacts_sensitive_fields_without_truncating() {
     let line = "startup failure token=abc123 wallet=kaspa:qprv000000000000000000000000000000000000000000000000000000000000 diagnostic_tail=COMPLETE-CHILD-STDERR-END";
     let mirror = integrated_runtime_commands::kgw_worker_format_child_mirror_line_v1(
-        "node", "mainnet", "stderr", 4242, line,
+        "node", "mainnet", None, "stderr", 4242, line,
     );
 
     assert!(mirror.starts_with("[KGW_CHILD_STDERR] "));
@@ -263,6 +294,7 @@ fn child_trace_line_redacts_sensitive_fields_without_truncating() {
         &[
             "\"network\":\"mainnet\"",
             "\"runtimeRole\":\"node\"",
+            "\"bridgeInstanceId\":null",
             "\"pid\":4242",
             "COMPLETE-CHILD-STDERR-END",
         ],
@@ -270,6 +302,390 @@ fn child_trace_line_redacts_sensitive_fields_without_truncating() {
     assert!(
         !mirror.contains("abc123") && !mirror.contains("kaspa:qprv"),
         "child mirror line must redact sensitive values: {mirror}"
+    );
+
+    let bridge_mirror = integrated_runtime_commands::kgw_worker_format_child_mirror_line_v1(
+        "bridge",
+        "testnet10",
+        Some("bridge-a"),
+        "stdout",
+        4343,
+        "bridge stdout ready",
+    );
+    assert_contains_all(
+        &bridge_mirror,
+        &[
+            "\"network\":\"testnet10\"",
+            "\"runtimeRole\":\"bridge\"",
+            "\"bridgeInstanceId\":\"bridge-a\"",
+            "\"stream\":\"stdout\"",
+        ],
+    );
+}
+
+#[test]
+fn typed_raw_log_entry_preserves_text_and_keeps_metadata_separate() {
+    let line = format!(
+        "2026-07-28 15:10:50.082+03:00 [INFO ] kaspad path=C:\\Kaspa\\node;equals=value;json={{\"ok\":true}};unicode={}",
+        '\u{03a9}'
+    );
+    let stdout = integrated_runtime_commands::kgw_raw_log_entry_for_test_v1(
+        10, "mainnet", "node", None, "stdout", &line,
+    );
+    let stderr = integrated_runtime_commands::kgw_raw_log_entry_for_test_v1(
+        11,
+        "mainnet",
+        "node",
+        None,
+        "stderr",
+        "stderr raw line ; equals=value",
+    );
+
+    assert_eq!(stdout.raw_text, line);
+    assert_eq!(stderr.raw_text, "stderr raw line ; equals=value");
+    assert_eq!(stdout.network, "mainnet");
+    assert_eq!(stdout.runtime_role, "node");
+    assert_eq!(stdout.stream, "stdout");
+    assert!(
+        !stdout.raw_text.contains("kgw_raw_process_log_v1")
+            && !stdout.raw_text.contains("source=self-worker")
+            && !stdout.raw_text.contains("received_ms="),
+        "transport metadata must stay out of raw_text: {stdout:?}"
+    );
+}
+
+#[test]
+fn typed_raw_log_text_is_sorted_by_sequence() {
+    let second = integrated_runtime_commands::kgw_raw_log_entry_for_test_v1(
+        2,
+        "mainnet",
+        "node",
+        None,
+        "stdout",
+        "second raw line",
+    );
+    let first = integrated_runtime_commands::kgw_raw_log_entry_for_test_v1(
+        1,
+        "mainnet",
+        "node",
+        None,
+        "stderr",
+        "first raw line",
+    );
+
+    let text =
+        integrated_runtime_commands::kgw_raw_log_text_from_entries_for_test_v1(vec![second, first]);
+
+    assert_eq!(text, "first raw line\nsecond raw line");
+}
+
+#[test]
+fn child_stdout_and_stderr_fixtures_survive_unchanged() {
+    let _guard = runtime_test_lock().lock().unwrap();
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    let stdout_line = format!(
+        "stdout fixture;equals=value;json={{\"line\":\"stdout\"}};unicode={};path=C:\\Kaspa\\kaspad.exe",
+        '\u{03a9}'
+    );
+    let stderr_line = format!(
+        "stderr fixture;equals=value;json={{\"line\":\"stderr\"}};unicode={};path=C:\\Kaspa\\stderr.log",
+        '\u{03a9}'
+    );
+    std::env::set_var("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    std::env::set_var("KGW_TEST_SELF_WORKER_STDOUT", &stdout_line);
+    std::env::set_var("KGW_TEST_SELF_WORKER_STDERR", &stderr_line);
+
+    kgw_kgw_apply_node_settings_v1(
+        "mainnet".to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+        None,
+        None,
+        Some("node".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect("custom fixture worker should start");
+
+    let logs = kgw_kgw_runtime_logs_v1(Some("mainnet".to_string()), Some("node".to_string()), None)
+        .expect("typed raw logs should be readable");
+
+    assert!(
+        logs.entries
+            .iter()
+            .any(|entry| entry.stream == "stdout" && entry.raw_text == stdout_line),
+        "captured stdout line must survive unchanged: {logs:?}"
+    );
+    assert!(
+        logs.entries
+            .iter()
+            .any(|entry| entry.stream == "stderr" && entry.raw_text == stderr_line),
+        "captured stderr line must survive unchanged: {logs:?}"
+    );
+    assert!(
+        logs.entries.iter().all(|entry| {
+            !entry.raw_text.contains("kgw_raw_process_log_v1")
+                && !entry.raw_text.contains("network=mainnet")
+                && !entry.raw_text.contains("source=self-worker")
+                && !entry.raw_text.contains("runtime_role=node")
+                && !entry.raw_text.contains("received_ms=")
+        }),
+        "transport metadata must never be copied into raw_text: {logs:?}"
+    );
+}
+
+#[test]
+fn raw_log_buffers_are_isolated_by_network_role_and_bridge_instance() {
+    let _guard = runtime_test_lock().lock().unwrap();
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    std::env::set_var("KGW_TEST_SELF_WORKER_COMMAND", "1");
+
+    std::env::set_var("KGW_TEST_SELF_WORKER_STDOUT", "mainnet node stdout only");
+    std::env::set_var("KGW_TEST_SELF_WORKER_STDERR", "mainnet node stderr only");
+    kgw_kgw_apply_node_settings_v1(
+        "mainnet".to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+        None,
+        None,
+        Some("node".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect("mainnet node fixture should start");
+
+    std::env::set_var("KGW_TEST_SELF_WORKER_STDOUT", "testnet10 node stdout only");
+    std::env::set_var("KGW_TEST_SELF_WORKER_STDERR", "testnet10 node stderr only");
+    kgw_kgw_apply_node_settings_v1(
+        "testnet10".to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+        None,
+        None,
+        Some("node".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect("testnet10 node fixture should start");
+
+    std::env::set_var("KGW_TEST_SELF_WORKER_STDOUT", "mainnet bridge stdout only");
+    std::env::set_var("KGW_TEST_SELF_WORKER_STDERR", "mainnet bridge stderr only");
+    kgw_kgw_apply_node_settings_v1(
+        "mainnet".to_string(),
+        "remote".to_string(),
+        "official-external-node".to_string(),
+        None,
+        None,
+        Some("bridge".to_string()),
+        Some("bridge-a".to_string()),
+        Some("port=5556".to_string()),
+        Some("5556".to_string()),
+        None,
+        None,
+    )
+    .expect("mainnet bridge fixture should start");
+
+    std::env::set_var(
+        "KGW_TEST_SELF_WORKER_STDOUT",
+        "testnet10 bridge stdout only",
+    );
+    std::env::set_var(
+        "KGW_TEST_SELF_WORKER_STDERR",
+        "testnet10 bridge stderr only",
+    );
+    kgw_kgw_apply_node_settings_v1(
+        "testnet10".to_string(),
+        "remote".to_string(),
+        "official-external-node".to_string(),
+        None,
+        None,
+        Some("bridge".to_string()),
+        Some("bridge-b".to_string()),
+        Some("port=6556".to_string()),
+        Some("6556".to_string()),
+        None,
+        None,
+    )
+    .expect("testnet10 bridge fixture should start");
+
+    let mainnet_node =
+        kgw_kgw_runtime_logs_v1(Some("mainnet".to_string()), Some("node".to_string()), None)
+            .expect("mainnet node logs should be readable");
+    let testnet10_node = kgw_kgw_runtime_logs_v1(
+        Some("testnet10".to_string()),
+        Some("node".to_string()),
+        None,
+    )
+    .expect("testnet10 node logs should be readable");
+    let mainnet_bridge = kgw_kgw_runtime_logs_v1(
+        Some("mainnet".to_string()),
+        Some("bridge".to_string()),
+        Some("bridge-a".to_string()),
+    )
+    .expect("mainnet bridge logs should be readable");
+    let wrong_bridge_instance = kgw_kgw_runtime_logs_v1(
+        Some("mainnet".to_string()),
+        Some("bridge".to_string()),
+        Some("bridge-b".to_string()),
+    )
+    .expect("wrong bridge instance logs should be readable");
+    let testnet10_bridge = kgw_kgw_runtime_logs_v1(
+        Some("testnet10".to_string()),
+        Some("bridge".to_string()),
+        Some("bridge-b".to_string()),
+    )
+    .expect("testnet10 bridge logs should be readable");
+    let wrong_testnet10_bridge_instance = kgw_kgw_runtime_logs_v1(
+        Some("testnet10".to_string()),
+        Some("bridge".to_string()),
+        Some("bridge-a".to_string()),
+    )
+    .expect("wrong testnet10 bridge instance logs should be readable");
+
+    assert!(
+        mainnet_node
+            .entries
+            .iter()
+            .all(|entry| entry.network == "mainnet" && entry.runtime_role == "node"),
+        "mainnet node entries must not mix roles or networks: {mainnet_node:?}"
+    );
+    assert!(
+        testnet10_node
+            .entries
+            .iter()
+            .all(|entry| entry.network == "testnet10" && entry.runtime_role == "node"),
+        "testnet10 node entries must not mix mainnet records: {testnet10_node:?}"
+    );
+    assert!(
+        mainnet_bridge.entries.iter().all(|entry| {
+            entry.network == "mainnet"
+                && entry.runtime_role == "bridge"
+                && entry.bridge_instance_id.as_deref() == Some("bridge-a")
+        }),
+        "bridge entries must stay scoped to role and instance: {mainnet_bridge:?}"
+    );
+    assert!(
+        mainnet_node
+            .entries
+            .iter()
+            .any(|entry| entry.raw_text == "mainnet node stdout only")
+            && !mainnet_node
+                .entries
+                .iter()
+                .any(|entry| entry.raw_text.contains("bridge stdout")),
+        "node logs must not contain bridge records: {mainnet_node:?}"
+    );
+    assert!(
+        testnet10_node
+            .entries
+            .iter()
+            .any(|entry| entry.raw_text == "testnet10 node stdout only")
+            && !testnet10_node
+                .entries
+                .iter()
+                .any(|entry| entry.raw_text.contains("mainnet node")),
+        "testnet10 logs must not contain mainnet records: {testnet10_node:?}"
+    );
+    assert!(
+        mainnet_bridge
+            .entries
+            .iter()
+            .any(|entry| entry.raw_text == "mainnet bridge stdout only"),
+        "bridge logs must contain actual bridge child output: {mainnet_bridge:?}"
+    );
+    assert!(
+        testnet10_bridge.entries.iter().all(|entry| {
+            entry.network == "testnet10"
+                && entry.runtime_role == "bridge"
+                && entry.bridge_instance_id.as_deref() == Some("bridge-b")
+        }),
+        "testnet10 bridge entries must stay scoped to network, role, and instance: {testnet10_bridge:?}"
+    );
+    assert!(
+        testnet10_bridge
+            .entries
+            .iter()
+            .any(|entry| entry.raw_text == "testnet10 bridge stdout only")
+            && !testnet10_bridge
+                .entries
+                .iter()
+                .any(|entry| entry.raw_text.contains("mainnet bridge")),
+        "testnet10 bridge logs must not contain mainnet bridge records: {testnet10_bridge:?}"
+    );
+    assert!(
+        wrong_bridge_instance.entries.is_empty(),
+        "bridge instance buffers must not mix: {wrong_bridge_instance:?}"
+    );
+    assert!(
+        wrong_testnet10_bridge_instance.entries.is_empty(),
+        "testnet10 bridge instance buffers must not mix: {wrong_testnet10_bridge_instance:?}"
+    );
+
+    kgw_kgw_runtime_clear_logs_v1(
+        Some("testnet10".to_string()),
+        Some("node".to_string()),
+        None,
+    )
+    .expect("testnet10 node clear should succeed");
+
+    let cleared_testnet10 = kgw_kgw_runtime_logs_v1(
+        Some("testnet10".to_string()),
+        Some("node".to_string()),
+        None,
+    )
+    .expect("cleared testnet10 node logs should be readable");
+    let remaining_mainnet =
+        kgw_kgw_runtime_logs_v1(Some("mainnet".to_string()), Some("node".to_string()), None)
+            .expect("mainnet node logs should remain readable");
+
+    assert!(
+        cleared_testnet10.entries.is_empty(),
+        "selected buffer should clear"
+    );
+    assert!(
+        remaining_mainnet
+            .entries
+            .iter()
+            .any(|entry| entry.raw_text == "mainnet node stdout only"),
+        "clearing testnet10 node must not clear mainnet node: {remaining_mainnet:?}"
+    );
+
+    kgw_kgw_runtime_clear_logs_v1(
+        Some("mainnet".to_string()),
+        Some("bridge".to_string()),
+        Some("bridge-a".to_string()),
+    )
+    .expect("mainnet bridge clear should succeed");
+
+    let cleared_bridge = kgw_kgw_runtime_logs_v1(
+        Some("mainnet".to_string()),
+        Some("bridge".to_string()),
+        Some("bridge-a".to_string()),
+    )
+    .expect("cleared bridge logs should be readable");
+    let remaining_node =
+        kgw_kgw_runtime_logs_v1(Some("mainnet".to_string()), Some("node".to_string()), None)
+            .expect("mainnet node logs should remain readable after bridge clear");
+
+    assert!(
+        cleared_bridge.entries.is_empty(),
+        "selected bridge buffer should clear"
+    );
+    assert!(
+        remaining_node
+            .entries
+            .iter()
+            .any(|entry| entry.raw_text == "mainnet node stdout only"),
+        "clearing bridge logs must not clear node logs: {remaining_node:?}"
     );
 }
 
@@ -398,19 +814,36 @@ fn duplicate_owner_for_one_network_is_rejected() {
     std::thread::sleep(std::time::Duration::from_millis(250));
 
     let mainnet_logs =
-        kgw_kgw_runtime_logs_v1(Some("mainnet".to_string()), Some("node".to_string()))
+        kgw_kgw_runtime_logs_v1(Some("mainnet".to_string()), Some("node".to_string()), None)
             .expect("mainnet logs should be readable");
 
-    assert_contains_all(
-        &mainnet_logs,
-        &[
-            "kgw_raw_process_log_v1",
-            "network=mainnet",
-            "source=self-worker",
-            "runtime_role=node",
-            "stream=stdout",
-            "stream=stderr",
-        ],
+    assert!(
+        mainnet_logs
+            .entries
+            .iter()
+            .all(|entry| entry.network == "mainnet" && entry.runtime_role == "node"),
+        "mainnet node log entries must keep typed network and role metadata: {mainnet_logs:?}"
+    );
+    assert!(
+        mainnet_logs
+            .entries
+            .iter()
+            .any(|entry| entry.stream == "stdout")
+            && mainnet_logs
+                .entries
+                .iter()
+                .any(|entry| entry.stream == "stderr"),
+        "mainnet node logs must include typed stdout and stderr entries: {mainnet_logs:?}"
+    );
+    assert!(
+        mainnet_logs
+            .entries
+            .iter()
+            .all(|entry| !entry.raw_text.contains("kgw_raw_process_log_v1")
+                && !entry.raw_text.contains("network=mainnet")
+                && !entry.raw_text.contains("runtime_role=node")
+                && !entry.raw_text.contains("stream=stdout")),
+        "raw_text must not contain transport metadata: {mainnet_logs:?}"
     );
 
     let duplicate = kgw_kgw_apply_node_settings_v1(
@@ -527,21 +960,34 @@ fn success_response_contains_process_start_evidence_and_stream_logs() {
 
     std::thread::sleep(std::time::Duration::from_millis(250));
 
-    let logs = kgw_kgw_runtime_logs_v1(Some("testnet10".to_string()), Some("node".to_string()))
-        .expect("logs should be readable");
+    let logs = kgw_kgw_runtime_logs_v1(
+        Some("testnet10".to_string()),
+        Some("node".to_string()),
+        None,
+    )
+    .expect("logs should be readable");
 
-    assert_contains_all(
-        &logs,
-        &[
-            "kgw_raw_process_log_v1",
-            "network=testnet10",
-            "source=self-worker",
-            "runtime_role=node",
-            "stream=stdout",
-            "stream=stderr",
-            "test-self-worker stdout",
-            "test-self-worker stderr",
-        ],
+    assert!(
+        logs.entries.iter().any(|entry| entry.stream == "stdout"
+            && entry.raw_text == "test-self-worker stdout role=node network=testnet10"),
+        "stdout raw_text must survive unchanged: {logs:?}"
+    );
+    assert!(
+        logs.entries.iter().any(|entry| entry.stream == "stderr"
+            && entry.raw_text == "test-self-worker stderr role=node network=testnet10"),
+        "stderr raw_text must survive unchanged: {logs:?}"
+    );
+    assert!(
+        logs.entries.iter().all(|entry| {
+            entry.network == "testnet10"
+                && entry.runtime_role == "node"
+                && entry.source == "self-worker"
+                && !entry.raw_text.contains("kgw_raw_process_log_v1")
+                && !entry.raw_text.contains("source=self-worker")
+                && !entry.raw_text.contains("runtime_role=")
+                && !entry.raw_text.contains("received_ms=")
+        }),
+        "typed metadata must stay outside raw_text: {logs:?}"
     );
 
     let _ = kgw_kgw_disable_network_v1("testnet10".to_string(), Some("node".to_string()));
@@ -582,8 +1028,6 @@ fn early_self_worker_exit_preserves_complete_safe_stderr_and_returns_error() {
             "role=node",
             "network=mainnet",
             "status=exit code: 1",
-            "stream=stdout",
-            "stream=stderr",
             complete_tail,
         ],
     );

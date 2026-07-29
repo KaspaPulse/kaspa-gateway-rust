@@ -16,6 +16,7 @@ $processLog = Join-Path $diagnosticDirectory "processes.log"
 $portLog = Join-Path $diagnosticDirectory "ports.log"
 $childProcessLog = Join-Path $diagnosticDirectory "child-process.log"
 $clipboardLog = Join-Path $diagnosticDirectory "clipboard.log"
+$clipboardPayloadDirectory = Join-Path $diagnosticDirectory "clipboard-payloads"
 $windowsEventLog = Join-Path $diagnosticDirectory "windows-events.log"
 $summaryFile = Join-Path $diagnosticDirectory "summary.json"
 $zipFile = "$diagnosticDirectory.zip"
@@ -31,9 +32,13 @@ New-Item -ItemType File -Path $processLog -Force | Out-Null
 New-Item -ItemType File -Path $portLog -Force | Out-Null
 New-Item -ItemType File -Path $childProcessLog -Force | Out-Null
 New-Item -ItemType File -Path $clipboardLog -Force | Out-Null
+New-Item -ItemType Directory -Path $clipboardPayloadDirectory -Force | Out-Null
+
+. (Join-Path $PSScriptRoot "kgw_raw_log_clipboard_capture.ps1")
 
 $script:InitialClipboardFingerprint = $null
 $script:LatestClipboardFingerprint = $null
+$script:ClipboardEventCaptures = New-Object System.Collections.Generic.List[object]
 
 function Write-Diagnostic {
     param(
@@ -147,6 +152,39 @@ function Write-ClipboardSnapshot {
     Write-Diagnostic -Message "ClipboardSnapshot reason=$Reason available=$($fingerprint.available) characters=$($fingerprint.character_count) lines=$($fingerprint.line_count) sha256=$($fingerprint.sha256) changed_from_launch=$changed"
 }
 
+function Write-ClipboardEventCapture {
+    param(
+        [Parameter(Mandatory)][string]$Reason,
+        [Parameter(Mandatory)][string]$TraceLine
+    )
+
+    $capture = New-KgwRawLogClipboardCaptureFromClipboardV1 `
+        -TraceLine $TraceLine `
+        -OutputDirectory $clipboardPayloadDirectory `
+        -Reason $Reason
+
+    $script:LatestClipboardFingerprint = [ordered]@{
+        timestamp = $capture.capture_timestamp
+        reason = $Reason
+        available = ($null -ne $capture.actual_sha256)
+        character_count = $capture.character_count
+        line_count = $capture.line_count
+        sha256 = $capture.actual_sha256
+        event_stage = $capture.event_stage
+        payload_file = $capture.payload_file
+    }
+
+    [void]$script:ClipboardEventCaptures.Add($capture)
+    Add-Content -LiteralPath $clipboardLog -Value (($capture | ConvertTo-Json -Depth 6 -Compress)) -Encoding utf8
+
+    $message = "ClipboardEventCapture reason=$Reason stage=$($capture.event_stage) network=$($capture.network) runtime_role=$($capture.runtime_role) bridge_instance=$($capture.bridge_instance_id) characters=$($capture.character_count) lines=$($capture.line_count) expected_sha256=$($capture.expected_sha256) actual_sha256=$($capture.actual_sha256) sha256_match=$($capture.sha256_match) payload=$($capture.payload_file)"
+    if ($capture.valid) {
+        Write-Diagnostic -Message $message
+    } else {
+        Write-Diagnostic -Level "ERROR" -Message "$message errors=$($capture.errors -join ' | ')"
+    }
+}
+
 function Test-KgwClipboardTrace {
     param([Parameter(Mandatory)][string]$Line)
 
@@ -196,7 +234,7 @@ function Show-NewLogLines {
 
                 if ($line -match "copy_log_succeeded|clipboard_write_succeeded") {
                     Write-Host "[$Label] $line" -ForegroundColor Green
-                    Write-ClipboardSnapshot -Reason "after-clipboard-success-trace"
+                    Write-ClipboardEventCapture -Reason "clipboard-success-trace" -TraceLine $line
                     continue
                 }
 
@@ -384,6 +422,9 @@ function Get-ClipboardEvidenceSummary {
             line_count = 0
             initial = $script:InitialClipboardFingerprint
             latest = $script:LatestClipboardFingerprint
+            event_captures = @($script:ClipboardEventCaptures)
+            successful_event_capture_count = @($script:ClipboardEventCaptures | Where-Object { $_.valid }).Count
+            failed_event_capture_count = @($script:ClipboardEventCaptures | Where-Object { -not $_.valid }).Count
             changed_from_launch = $false
         }
     }
@@ -399,6 +440,9 @@ function Get-ClipboardEvidenceSummary {
         line_count = $lineCount
         initial = $script:InitialClipboardFingerprint
         latest = $script:LatestClipboardFingerprint
+        event_captures = @($script:ClipboardEventCaptures)
+        successful_event_capture_count = @($script:ClipboardEventCaptures | Where-Object { $_.valid }).Count
+        failed_event_capture_count = @($script:ClipboardEventCaptures | Where-Object { -not $_.valid }).Count
         changed_from_launch = $changed
     }
 }
@@ -416,6 +460,7 @@ Write-Diagnostic -Message "DiagnosticDirectory=$diagnosticDirectory"
 Write-Diagnostic -Message "ExpectedNodePorts=$($expectedNodePorts -join ',')"
 Write-Diagnostic -Message "ChildProcessLog=$childProcessLog"
 Write-Diagnostic -Message "ClipboardLog=$clipboardLog"
+Write-Diagnostic -Message "ClipboardPayloadDirectory=$clipboardPayloadDirectory"
 
 if ($status.Count -eq 0) {
     Write-Diagnostic -Message "WorktreeStatus=clean"

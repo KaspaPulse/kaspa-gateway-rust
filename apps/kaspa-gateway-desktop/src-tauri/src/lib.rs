@@ -456,6 +456,35 @@ fn kgw_clipboard_normalize_network_v1(network: &str) -> Result<String, String> {
     }
 }
 
+fn kgw_clipboard_normalize_runtime_role_v1(runtime_role: Option<&str>) -> String {
+    let clean = runtime_role
+        .unwrap_or("unknown")
+        .trim()
+        .to_ascii_lowercase();
+
+    match clean.as_str() {
+        "node" | "bridge" => clean,
+        _ => "unknown".to_string(),
+    }
+}
+
+fn kgw_clipboard_normalize_bridge_instance_id_v1(
+    bridge_instance_id: Option<&str>,
+) -> Option<String> {
+    let clean = bridge_instance_id?
+        .chars()
+        .filter(|ch| !ch.is_control() && *ch != '\0' && *ch != '\r' && *ch != '\n')
+        .collect::<String>()
+        .trim()
+        .to_string();
+
+    if clean.is_empty() {
+        None
+    } else {
+        Some(clean.chars().take(128).collect())
+    }
+}
+
 fn kgw_clipboard_safe_field_v1(value: &str, fallback: &str) -> String {
     let clean = value
         .chars()
@@ -534,6 +563,8 @@ fn kgw_clipboard_trace_details_v1(
 
 fn kgw_copy_text_to_clipboard_inner_v1<F>(
     network: String,
+    runtime_role: Option<String>,
+    bridge_instance_id: Option<String>,
     text: String,
     metadata_character_count: u64,
     metadata_line_count: u64,
@@ -544,6 +575,9 @@ where
     F: FnOnce(String) -> Result<(), String>,
 {
     let network = kgw_clipboard_normalize_network_v1(&network)?;
+    let runtime_role = kgw_clipboard_normalize_runtime_role_v1(runtime_role.as_deref());
+    let bridge_instance_id =
+        kgw_clipboard_normalize_bridge_instance_id_v1(bridge_instance_id.as_deref());
     let character_count = kgw_clipboard_character_count_v1(&text);
     let line_count = kgw_clipboard_line_count_v1(&text);
     let sha256 = kgw_clipboard_sha256_v1(&text);
@@ -566,6 +600,8 @@ where
             &sha256,
             implementation,
             serde_json::json!({
+                "runtimeRole": runtime_role.clone(),
+                "bridgeInstanceId": bridge_instance_id.clone(),
                 "metadataCharacterCount": metadata_character_count,
                 "metadataLineCount": metadata_line_count,
                 "metadataSha256Present": !supplied_sha256.is_empty(),
@@ -586,6 +622,8 @@ where
                 &sha256,
                 implementation,
                 serde_json::json!({
+                    "runtimeRole": runtime_role.clone(),
+                    "bridgeInstanceId": bridge_instance_id.clone(),
                     "reason": reason,
                     "safeError": kgw_clipboard_safe_error_v1(&message),
                 }),
@@ -635,6 +673,8 @@ where
                     &sha256,
                     implementation,
                     serde_json::json!({
+                        "runtimeRole": runtime_role.clone(),
+                        "bridgeInstanceId": bridge_instance_id.clone(),
                         "confirmed": true,
                     }),
                 )),
@@ -658,6 +698,8 @@ where
 fn kgw_copy_text_to_clipboard_v1(
     app: tauri::AppHandle,
     network: String,
+    runtime_role: Option<String>,
+    bridge_instance_id: Option<String>,
     text: String,
     character_count: u64,
     line_count: u64,
@@ -665,6 +707,8 @@ fn kgw_copy_text_to_clipboard_v1(
 ) -> Result<String, String> {
     kgw_copy_text_to_clipboard_inner_v1(
         network,
+        runtime_role,
+        bridge_instance_id,
         text,
         character_count,
         line_count,
@@ -696,6 +740,8 @@ mod kgw_clipboard_tests {
 
         let result = kgw_copy_text_to_clipboard_inner_v1(
             "mainnet".to_string(),
+            Some("node".to_string()),
+            None,
             text.clone(),
             char_count(&text),
             2,
@@ -719,6 +765,8 @@ mod kgw_clipboard_tests {
         let text = "testnet10 raw line".to_string();
         let error = kgw_copy_text_to_clipboard_inner_v1(
             "testnet10".to_string(),
+            Some("node".to_string()),
+            None,
             text.clone(),
             char_count(&text),
             1,
@@ -736,6 +784,8 @@ mod kgw_clipboard_tests {
     fn empty_clipboard_content_is_rejected_before_writer() {
         let error = kgw_copy_text_to_clipboard_inner_v1(
             "mainnet".to_string(),
+            Some("node".to_string()),
+            None,
             "   \r\n  ".to_string(),
             7,
             2,
@@ -757,6 +807,8 @@ mod kgw_clipboard_tests {
         let sha256 = kgw_clipboard_sha256_v1(&text);
         let result = kgw_copy_text_to_clipboard_inner_v1(
             "mainnet".to_string(),
+            Some("bridge".to_string()),
+            Some("bridge-a".to_string()),
             text.clone(),
             char_count(&text),
             1,
@@ -771,6 +823,8 @@ mod kgw_clipboard_tests {
         assert!(trace.contains("native.clipboard_write_entered"));
         assert!(trace.contains("native.clipboard_write_succeeded"));
         assert!(trace.contains(&sha256));
+        assert!(trace.contains("\\\"runtimeRole\\\":\\\"bridge\\\""));
+        assert!(trace.contains("\\\"bridgeInstanceId\\\":\\\"bridge-a\\\""));
         assert!(!trace.contains("secret raw content"));
         assert!(!trace.contains(&text));
 
@@ -855,9 +909,21 @@ fn kgw_open_exported_file_v1(path: String) -> Result<(), String> {
 
 pub fn run() {
     app_logger::init_tracing_bridge();
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_clipboard_manager::init());
+
+    #[cfg(feature = "e2e-test")]
+    let builder = builder
+        .plugin(tauri_plugin_wdio_webdriver::init())
+        .plugin(tauri_plugin_wdio::init());
+
+    #[cfg(feature = "e2e-test")]
+    let context = tauri::generate_context!("tauri.e2e.conf.json");
+    #[cfg(not(feature = "e2e-test"))]
+    let context = tauri::generate_context!();
+
+    builder
         .manage(commands::DesktopRuntimeState::default())
         .manage(diagnostics::LogState::default())
         .invoke_handler(tauri::generate_handler![
@@ -866,10 +932,12 @@ pub fn run() {
             integrated_runtime_commands::kgw_runtime_owner_plan_v1,
             integrated_runtime_commands::kgw_all_parallel_node_bridge_plans_v1,
             integrated_runtime_commands::kgw_kgw_runtime_logs_v1,
+            integrated_runtime_commands::kgw_kgw_runtime_clear_logs_v1,
             integrated_runtime_commands::kgw_kgw_real_owner_summary_v1,
             integrated_runtime_commands::kgw_kgw_real_owner_feature_status_v1,
             integrated_runtime_commands::kgw_kgw_apply_node_settings_v1,
             integrated_runtime_commands::kgw_kgw_disable_network_v1,
+            integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1,
             integrated_runtime_commands::kgw_kgw_smoke_start_network_v1,
             integrated_runtime_commands::kgw_kgw_smoke_stop_network_v1,
             integrated_runtime_commands::kgw_kgw_node_bridge_service_plan_v1,
@@ -1024,7 +1092,7 @@ pub fn run() {
                 kgw_trace_finalize_session_r69f2();
             }
         })
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running Kaspa Gateway desktop app");
 }
 

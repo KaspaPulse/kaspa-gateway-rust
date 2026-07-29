@@ -136,6 +136,10 @@ graphify-out/cache/
 
 # Local test artifacts and Graphify working backups
 artifacts/
+artifacts/desktop-diagnostics/
+artifacts/live-raw-log-matrix/
+artifacts/cargo-targets/
+.kgw-cargo-targets/
 graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
 graphify-out/.graphify_root
 graphify-out/.vocab.txt

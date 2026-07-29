@@ -1,10 +1,14 @@
+use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static KGW_CONTROLLER: OnceLock<Arc<kaspa_gateway_rk_node::KgwServiceController>> = OnceLock::new();
+static KGW_RAW_PROCESS_LOG_SEQUENCE_V1: AtomicU64 = AtomicU64::new(1);
+const KGW_RAW_PROCESS_LOG_BUFFER_LIMIT_V1: usize = 4096;
 
 fn controller() -> &'static Arc<kaspa_gateway_rk_node::KgwServiceController> {
     KGW_CONTROLLER.get_or_init(kaspa_gateway_rk_node::KgwServiceController::spawn)
@@ -15,12 +19,51 @@ struct KgwParallelSelfWorker {
     role: String,
     network: String,
     appdir: String,
+    bridge_instance_id: Option<String>,
 
     node_mode: String,
     child: Child,
-    logs: Arc<Mutex<VecDeque<String>>>,
+    logs: Arc<Mutex<VecDeque<KgwRuntimeRawLogEntryV1>>>,
     started_ms: u128,
     exit_logged: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KgwRuntimeRawLogEntryV1 {
+    pub sequence: u64,
+    pub network: String,
+    pub source: String,
+    pub runtime_role: String,
+    pub bridge_instance_id: Option<String>,
+    pub stream: String,
+    pub received_ms: u64,
+    pub raw_text: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KgwRuntimeDiagnosticRecordV1 {
+    pub diagnostic_event: String,
+    pub network: String,
+    pub source: String,
+    pub runtime_role: String,
+    pub bridge_instance_id: Option<String>,
+    pub received_ms: u64,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KgwRuntimeLogsReportV1 {
+    pub version: String,
+    pub network: Option<String>,
+    pub runtime_role: Option<String>,
+    pub bridge_instance_id: Option<String>,
+    pub source: String,
+    pub buffer_limit: usize,
+    pub entries: Vec<KgwRuntimeRawLogEntryV1>,
+    pub diagnostics: Vec<KgwRuntimeDiagnosticRecordV1>,
 }
 
 static KGW_PARALLEL_SELF_WORKERS: OnceLock<Mutex<HashMap<String, KgwParallelSelfWorker>>> =
@@ -47,6 +90,14 @@ fn kgw_worker_now_ms() -> u128 {
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_millis())
         .unwrap_or_default()
+}
+
+fn kgw_worker_now_ms_u64() -> u64 {
+    u64::try_from(kgw_worker_now_ms()).unwrap_or(u64::MAX)
+}
+
+fn kgw_worker_next_raw_log_sequence_v1() -> u64 {
+    KGW_RAW_PROCESS_LOG_SEQUENCE_V1.fetch_add(1, Ordering::SeqCst)
 }
 
 pub(crate) fn kgw_start_trace_enabled_v1() -> bool {
@@ -204,36 +255,84 @@ fn kgw_worker_key(role: &str, network: &str) -> String {
     )
 }
 
-fn kgw_worker_push_log(logs: &Arc<Mutex<VecDeque<String>>>, line: impl Into<String>) {
-    let line = line.into().trim_end_matches('\r').to_string();
+fn kgw_worker_clean_optional_identifier_v1(value: Option<String>) -> Option<String> {
+    let clean = value?
+        .chars()
+        .filter(|ch| !ch.is_control() && *ch != '\0' && *ch != '\r' && *ch != '\n')
+        .collect::<String>()
+        .trim()
+        .to_string();
 
-    if line.trim().is_empty() {
-        return;
-    }
-
-    if let Ok(mut guard) = logs.lock() {
-        if guard.len() >= 4096 {
-            guard.pop_front();
-        }
-
-        guard.push_back(line);
+    if clean.is_empty() {
+        None
+    } else {
+        Some(clean.chars().take(128).collect())
     }
 }
 
-fn kgw_worker_format_process_line(
+fn kgw_worker_push_raw_log(
+    logs: &Arc<Mutex<VecDeque<KgwRuntimeRawLogEntryV1>>>,
+    entry: KgwRuntimeRawLogEntryV1,
+) {
+    if let Ok(mut guard) = logs.lock() {
+        if guard.len() >= KGW_RAW_PROCESS_LOG_BUFFER_LIMIT_V1 {
+            guard.pop_front();
+        }
+
+        guard.push_back(entry);
+    }
+}
+
+fn kgw_worker_raw_log_entry_v1(
     role: &str,
     network: &str,
+    bridge_instance_id: Option<&str>,
     stream: &str,
-    line: impl AsRef<str>,
+    line: String,
+) -> KgwRuntimeRawLogEntryV1 {
+    KgwRuntimeRawLogEntryV1 {
+        sequence: kgw_worker_next_raw_log_sequence_v1(),
+        network: network.to_string(),
+        source: "self-worker".to_string(),
+        runtime_role: role.to_string(),
+        bridge_instance_id: bridge_instance_id.map(str::to_string),
+        stream: stream.to_string(),
+        received_ms: kgw_worker_now_ms_u64(),
+        raw_text: line,
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn kgw_raw_log_entry_for_test_v1(
+    sequence: u64,
+    network: &str,
+    runtime_role: &str,
+    bridge_instance_id: Option<&str>,
+    stream: &str,
+    raw_text: &str,
+) -> KgwRuntimeRawLogEntryV1 {
+    KgwRuntimeRawLogEntryV1 {
+        sequence,
+        network: network.to_string(),
+        source: "self-worker".to_string(),
+        runtime_role: runtime_role.to_string(),
+        bridge_instance_id: bridge_instance_id.map(str::to_string),
+        stream: stream.to_string(),
+        received_ms: 1,
+        raw_text: raw_text.to_string(),
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn kgw_raw_log_text_from_entries_for_test_v1(
+    mut entries: Vec<KgwRuntimeRawLogEntryV1>,
 ) -> String {
-    format!(
-        "kgw_raw_process_log_v1;network={};source=self-worker;runtime_role={};stream={};received_ms={};line={}",
-        network,
-        role,
-        stream,
-        kgw_worker_now_ms(),
-        line.as_ref()
-    )
+    entries.sort_by_key(|entry| entry.sequence);
+    entries
+        .into_iter()
+        .map(|entry| entry.raw_text)
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 pub(crate) fn kgw_worker_safe_child_line_v1(line: &str) -> String {
@@ -314,6 +413,7 @@ pub(crate) fn kgw_worker_safe_child_line_v1(line: &str) -> String {
 pub(crate) fn kgw_worker_format_child_mirror_line_v1(
     role: &str,
     network: &str,
+    bridge_instance_id: Option<&str>,
     stream: &str,
     child_pid: u32,
     line: &str,
@@ -324,14 +424,20 @@ pub(crate) fn kgw_worker_format_child_mirror_line_v1(
         "[KGW_CHILD_STDERR]"
     };
     let safe_line = kgw_worker_safe_child_line_v1(line);
+    let bridge_instance_json = bridge_instance_id
+        .filter(|value| !value.trim().is_empty())
+        .map(|value| format!("\"{}\"", kgw_start_trace_json_escape_v1(value.trim())))
+        .unwrap_or_else(|| "null".to_string());
 
     format!(
-        "{} {{\"timestamp\":{},\"network\":\"{}\",\"runtimeRole\":\"{}\",\"pid\":{},\"stage\":\"child.{}\",\"action\":\"start\",\"result\":\"line\",\"line\":\"{}\"}}",
+        "{} {{\"timestamp\":{},\"eventKind\":\"diagnostic_transport_record\",\"network\":\"{}\",\"runtimeRole\":\"{}\",\"bridgeInstanceId\":{},\"pid\":{},\"stage\":\"diagnostic_transport.child.{}\",\"stream\":\"{}\",\"action\":\"start\",\"result\":\"line\",\"safeText\":\"{}\"}}",
         prefix,
         kgw_worker_now_ms(),
         kgw_start_trace_json_escape_v1(network),
         kgw_start_trace_json_escape_v1(role),
+        bridge_instance_json,
         child_pid,
+        kgw_start_trace_json_escape_v1(stream),
         kgw_start_trace_json_escape_v1(stream),
         kgw_start_trace_json_escape_v1(&safe_line)
     )
@@ -447,10 +553,11 @@ fn kgw_worker_apply_current_dir_v1(command: &mut Command) {
 fn kgw_worker_spawn_reader<R>(
     role: String,
     network: String,
+    bridge_instance_id: Option<String>,
     stream: String,
     child_pid: u32,
     reader: R,
-    logs: Arc<Mutex<VecDeque<String>>>,
+    logs: Arc<Mutex<VecDeque<KgwRuntimeRawLogEntryV1>>>,
 ) where
     R: std::io::Read + Send + 'static,
 {
@@ -462,28 +569,40 @@ fn kgw_worker_spawn_reader<R>(
                 Ok(line) => {
                     if kgw_start_trace_enabled_v1() {
                         let mirror = kgw_worker_format_child_mirror_line_v1(
-                            &role, &network, &stream, child_pid, &line,
+                            &role,
+                            &network,
+                            bridge_instance_id.as_deref(),
+                            &stream,
+                            child_pid,
+                            &line,
                         );
                         eprintln!("{mirror}");
                         kgw_start_trace_capture_test_line_v1(&mirror);
                     }
 
-                    kgw_worker_push_log(
-                        &logs,
-                        kgw_worker_format_process_line(&role, &network, &stream, line),
+                    let entry = kgw_worker_raw_log_entry_v1(
+                        &role,
+                        &network,
+                        bridge_instance_id.as_deref(),
+                        &stream,
+                        line,
                     );
+                    kgw_worker_push_raw_log(&logs, entry);
                 }
                 Err(_error) => {
-                    kgw_worker_push_log(
-                        &logs,
-                        format!(
-                            "kgw_process_reader_error_v1;network={};source=self-worker;runtime_role={};stream={};received_ms={};error={}",
-                            network,
-                            role,
-                            stream,
-                            kgw_worker_now_ms(),
-                            _error
-                        ),
+                    kgw_start_trace_emit_v1(
+                        "native",
+                        "native.diagnostic_transport_reader_error",
+                        &network,
+                        "read-child-line",
+                        "error",
+                        Some(&format!(
+                            "{{\"eventKind\":\"diagnostic_transport_record\",\"runtimeRole\":\"{}\",\"stream\":\"{}\",\"pid\":{},\"error\":\"{}\"}}",
+                            kgw_start_trace_json_escape_v1(&role),
+                            kgw_start_trace_json_escape_v1(&stream),
+                            child_pid,
+                            kgw_start_trace_json_escape_v1(&_error.to_string())
+                        )),
                     );
                     break;
                 }
@@ -623,6 +742,7 @@ fn kgw_validate_network_start_policy(
 fn kgw_worker_start(
     role: &str,
     settings: &kaspa_gateway_rk_node::NodeSettings,
+    bridge_instance_id: Option<String>,
     bridge_structured_instances: Option<String>,
     bridge_config_path: Option<String>,
     bridge_instance_listens_override: Option<Vec<String>>,
@@ -637,6 +757,11 @@ fn kgw_worker_start(
             "external"
         };
     let trace_node_mode = kgw_worker_node_mode_for_trace_v1(&role, bridge_node_mode);
+    let bridge_instance_id = if role == "bridge" {
+        kgw_worker_clean_optional_identifier_v1(bridge_instance_id)
+    } else {
+        None
+    };
     let has_bridge_config_path = bridge_config_path
         .as_deref()
         .map(str::trim)
@@ -945,6 +1070,7 @@ fn kgw_worker_start(
         kgw_worker_spawn_reader(
             role.clone(),
             network.clone(),
+            bridge_instance_id.clone(),
             "stdout".to_string(),
             pid,
             stdout,
@@ -973,6 +1099,7 @@ fn kgw_worker_start(
         kgw_worker_spawn_reader(
             role.clone(),
             network.clone(),
+            bridge_instance_id.clone(),
             "stderr".to_string(),
             pid,
             stderr,
@@ -1016,7 +1143,7 @@ fn kgw_worker_start(
             .map(|guard| {
                 guard
                     .iter()
-                    .map(|line| kgw_worker_safe_child_line_v1(line))
+                    .map(|entry| kgw_worker_safe_child_line_v1(&entry.raw_text))
                     .collect::<Vec<_>>()
                     .join(" | ")
             })
@@ -1040,6 +1167,7 @@ fn kgw_worker_start(
             role: role.clone(),
             network: network.clone(),
             appdir: settings.app_dir_name.clone(),
+            bridge_instance_id,
             node_mode: stored_node_mode.clone(),
             child,
             logs,
@@ -1106,6 +1234,7 @@ fn kgw_worker_stop(network: &str, runtime_role: Option<&str>) -> Result<Option<S
     Ok(Some(lines.join("\n")))
 }
 
+#[tauri::command]
 pub fn kgw_shutdown_all_runtime_workers_v1() -> Result<String, String> {
     let mut workers = kgw_parallel_self_workers()
         .lock()
@@ -1169,15 +1298,18 @@ fn kgw_worker_status(
 
         if let Some(status) = exit_status {
             if !worker.exit_logged {
-                kgw_worker_push_log(
-                    &worker.logs,
-                    format!(
-                        "kgw_process_exit_v1;network={};source=self-worker;runtime_role={};stream=process;received_ms={};status={}",
-                        worker.network,
-                        worker.role,
-                        kgw_worker_now_ms(),
-                        status
-                    ),
+                kgw_start_trace_emit_v1(
+                    "native",
+                    "native.diagnostic_transport_process_exit",
+                    &worker.network,
+                    "status",
+                    "observed",
+                    Some(&format!(
+                        "{{\"eventKind\":\"diagnostic_transport_record\",\"runtimeRole\":\"{}\",\"pid\":{},\"status\":\"{}\"}}",
+                        kgw_start_trace_json_escape_v1(&worker.role),
+                        worker.child.id(),
+                        kgw_start_trace_json_escape_v1(&status.to_string())
+                    )),
                 );
                 worker.exit_logged = true;
             }
@@ -1205,13 +1337,16 @@ fn kgw_worker_status(
 fn kgw_worker_logs(
     network: Option<&str>,
     runtime_role: Option<&str>,
-) -> Result<Option<String>, String> {
+    bridge_instance_id: Option<&str>,
+) -> Result<Option<KgwRuntimeLogsReportV1>, String> {
     let workers = kgw_parallel_self_workers()
         .lock()
         .map_err(|_| "parallel self-worker lock failed".to_string())?;
 
     let wanted_network = network.map(|value| value.trim().to_ascii_lowercase());
     let wanted_role = runtime_role.map(|value| value.trim().to_ascii_lowercase());
+    let wanted_bridge_instance_id =
+        kgw_worker_clean_optional_identifier_v1(bridge_instance_id.map(str::to_string));
 
     let mut matched_worker = false;
     let mut lines = Vec::new();
@@ -1229,6 +1364,12 @@ fn kgw_worker_logs(
             }
         }
 
+        if let Some(ref value) = wanted_bridge_instance_id {
+            if worker.bridge_instance_id.as_ref() != Some(value) {
+                continue;
+            }
+        }
+
         matched_worker = true;
 
         if let Ok(logs) = worker.logs.lock() {
@@ -1236,15 +1377,117 @@ fn kgw_worker_logs(
         }
     }
 
-    if lines.is_empty() {
-        if matched_worker {
-            Ok(Some(String::new()))
-        } else {
-            Ok(None)
-        }
-    } else {
-        Ok(Some(lines.join("\n")))
+    if !matched_worker {
+        return Ok(None);
     }
+
+    lines.sort_by_key(|entry| entry.sequence);
+
+    Ok(Some(KgwRuntimeLogsReportV1 {
+        version: "kgw_runtime_logs_v1".to_string(),
+        network: wanted_network,
+        runtime_role: wanted_role,
+        bridge_instance_id: wanted_bridge_instance_id,
+        source: "self-worker".to_string(),
+        buffer_limit: KGW_RAW_PROCESS_LOG_BUFFER_LIMIT_V1,
+        entries: lines,
+        diagnostics: Vec::new(),
+    }))
+}
+
+fn kgw_worker_clear_logs(
+    network: Option<&str>,
+    runtime_role: Option<&str>,
+    bridge_instance_id: Option<&str>,
+) -> Result<bool, String> {
+    let workers = kgw_parallel_self_workers()
+        .lock()
+        .map_err(|_| "parallel self-worker lock failed".to_string())?;
+
+    let wanted_network = network.map(|value| value.trim().to_ascii_lowercase());
+    let wanted_role = runtime_role.map(|value| value.trim().to_ascii_lowercase());
+    let wanted_bridge_instance_id =
+        kgw_worker_clean_optional_identifier_v1(bridge_instance_id.map(str::to_string));
+    let mut matched_worker = false;
+
+    for worker in workers.values() {
+        if let Some(ref value) = wanted_network {
+            if &worker.network != value {
+                continue;
+            }
+        }
+
+        if let Some(ref value) = wanted_role {
+            if &worker.role != value {
+                continue;
+            }
+        }
+
+        if let Some(ref value) = wanted_bridge_instance_id {
+            if worker.bridge_instance_id.as_ref() != Some(value) {
+                continue;
+            }
+        }
+
+        matched_worker = true;
+
+        if let Ok(mut logs) = worker.logs.lock() {
+            logs.clear();
+        }
+    }
+
+    Ok(matched_worker)
+}
+
+fn kgw_empty_runtime_logs_report_v1(
+    network: Option<String>,
+    runtime_role: Option<String>,
+    bridge_instance_id: Option<String>,
+    source: &str,
+    diagnostics: Vec<KgwRuntimeDiagnosticRecordV1>,
+) -> KgwRuntimeLogsReportV1 {
+    KgwRuntimeLogsReportV1 {
+        version: "kgw_runtime_logs_v1".to_string(),
+        network,
+        runtime_role,
+        bridge_instance_id,
+        source: source.to_string(),
+        buffer_limit: KGW_RAW_PROCESS_LOG_BUFFER_LIMIT_V1,
+        entries: Vec::new(),
+        diagnostics,
+    }
+}
+
+fn kgw_inprocess_diagnostic_logs_report_v1(
+    network: Option<String>,
+    runtime_role: Option<String>,
+    bridge_instance_id: Option<String>,
+    controller_logs: String,
+) -> KgwRuntimeLogsReportV1 {
+    let line_count = controller_logs.lines().count();
+    let diagnostics = if line_count == 0 {
+        Vec::new()
+    } else {
+        vec![KgwRuntimeDiagnosticRecordV1 {
+            diagnostic_event: "kgw_diagnostic_transport_record_v1".to_string(),
+            network: network.clone().unwrap_or_else(|| "unknown".to_string()),
+            source: "in-process-controller".to_string(),
+            runtime_role: runtime_role.clone().unwrap_or_else(|| "unknown".to_string()),
+            bridge_instance_id: bridge_instance_id.clone(),
+            received_ms: kgw_worker_now_ms_u64(),
+            message: format!(
+                "Controller diagnostics are available separately; no child stdout/stderr raw output is available for this component. diagnosticLineCount={line_count}"
+            ),
+        }]
+    };
+
+    kgw_empty_runtime_logs_report_v1(
+        network,
+        runtime_role,
+        bridge_instance_id,
+        "in-process-controller",
+        diagnostics,
+    )
 }
 fn parse_network(
     network: Option<String>,
@@ -1298,14 +1541,64 @@ pub fn kgw_runtime_owner_status_v1(
 pub fn kgw_kgw_runtime_logs_v1(
     network: Option<String>,
     runtime_role: Option<String>,
-) -> Result<String, String> {
-    if let Some(worker_logs) = kgw_worker_logs(network.as_deref(), runtime_role.as_deref())? {
+    bridge_instance_id: Option<String>,
+) -> Result<KgwRuntimeLogsReportV1, String> {
+    if let Some(worker_logs) = kgw_worker_logs(
+        network.as_deref(),
+        runtime_role.as_deref(),
+        bridge_instance_id.as_deref(),
+    )? {
         return Ok(worker_logs);
     }
-    let network = parse_network(network)?;
-    controller()
-        .logs(network)
-        .map_err(|error| error.to_string())
+
+    let bridge_instance_id = kgw_worker_clean_optional_identifier_v1(bridge_instance_id);
+    let runtime_role = runtime_role
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty());
+    let network_label = network
+        .as_deref()
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty());
+    let parsed_network = parse_network(network)?;
+    let controller_logs = controller()
+        .logs(parsed_network)
+        .map_err(|error| error.to_string())?;
+
+    Ok(kgw_inprocess_diagnostic_logs_report_v1(
+        network_label,
+        runtime_role,
+        bridge_instance_id,
+        controller_logs,
+    ))
+}
+
+#[tauri::command]
+pub fn kgw_kgw_runtime_clear_logs_v1(
+    network: Option<String>,
+    runtime_role: Option<String>,
+    bridge_instance_id: Option<String>,
+) -> Result<KgwRuntimeLogsReportV1, String> {
+    let _ = kgw_worker_clear_logs(
+        network.as_deref(),
+        runtime_role.as_deref(),
+        bridge_instance_id.as_deref(),
+    )?;
+
+    let bridge_instance_id = kgw_worker_clean_optional_identifier_v1(bridge_instance_id);
+    let runtime_role = runtime_role
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty());
+    let network_label = network
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty());
+
+    Ok(kgw_empty_runtime_logs_report_v1(
+        network_label,
+        runtime_role,
+        bridge_instance_id,
+        "self-worker",
+        Vec::new(),
+    ))
 }
 
 fn kgw_safe_runtime_appdir_root() -> std::path::PathBuf {
@@ -1917,6 +2210,7 @@ pub fn kgw_kgw_apply_node_settings_v1(
     );
     settings.app_dir_name = kgw_network_runtime_appdir(settings.network);
 
+    let bridge_active_instance_id_for_worker = bridge_active_instance_id.clone();
     let bridge_structured_instances_for_worker = bridge_structured_instances.clone();
 
     kgw_apply_bridge_active_instance_runtime_overrides_r110f(
@@ -1932,6 +2226,7 @@ pub fn kgw_kgw_apply_node_settings_v1(
     let result = kgw_worker_start(
         &role,
         &settings,
+        bridge_active_instance_id_for_worker,
         bridge_structured_instances_for_worker,
         bridge_config_path_for_worker,
         bridge_instance_listens_override,
@@ -2095,8 +2390,13 @@ fn kgw_test_self_worker_hold() {
     let network =
         std::env::var("KGW_TEST_SELF_WORKER_NETWORK").unwrap_or_else(|_| "mainnet".to_string());
 
-    println!("test-self-worker stdout role={role} network={network}");
-    eprintln!("test-self-worker stderr role={role} network={network}");
+    let stdout = std::env::var("KGW_TEST_SELF_WORKER_STDOUT")
+        .unwrap_or_else(|_| format!("test-self-worker stdout role={role} network={network}"));
+    let stderr = std::env::var("KGW_TEST_SELF_WORKER_STDERR")
+        .unwrap_or_else(|_| format!("test-self-worker stderr role={role} network={network}"));
+
+    println!("{stdout}");
+    eprintln!("{stderr}");
 
     loop {
         std::thread::sleep(std::time::Duration::from_secs(10));

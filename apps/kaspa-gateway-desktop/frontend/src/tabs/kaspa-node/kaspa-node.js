@@ -744,6 +744,10 @@ function kgwNodeClipboardPlaceholderTextV1(net) {
   return `${profile?.label || net} log is empty.`;
 }
 
+function kgwNodeLogEmptyStateV1(net) {
+  return document.getElementById("node-" + net + "-logEmpty");
+}
+
 function kgwNodeClipboardStatusElementV1(net) {
   const out = kgwNodeLogOutputV29(net);
   const toolbar = out?.closest?.('[data-node-inner-panel="log"]')?.querySelector?.(".node-v6-log-toolbar");
@@ -804,10 +808,12 @@ async function kgwNodeDispatchClipboardWriteV1(net, text, metadata) {
     details: {
       commandName: "kgw_copy_text_to_clipboard_v1",
       implementation: "native-tauri-command",
+      runtimeRole: metadata.runtimeRole || "node",
+      bridgeInstanceId: metadata.bridgeInstanceId || "",
       characterCount: metadata.characterCount,
       lineCount: metadata.lineCount,
       sha256: metadata.sha256 || "",
-      payloadFieldCount: 5
+      payloadFieldCount: 7
     }
   });
 
@@ -816,6 +822,8 @@ async function kgwNodeDispatchClipboardWriteV1(net, text, metadata) {
     "kgw_copy_text_to_clipboard_v1",
     {
       network: net,
+      runtimeRole: metadata.runtimeRole || "node",
+      bridgeInstanceId: metadata.bridgeInstanceId || "",
       text,
       characterCount: metadata.characterCount,
       lineCount: metadata.lineCount,
@@ -1257,7 +1265,7 @@ function cardInput(net, name, label, value = "", placeholder = "", span2 = false
         ${kgwNodeCommandInlineToggleR7(net, name)}
         <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
       </span> <!-- KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->
-      <input id="${id(net, name)}" type="text" value="${esc(value)}" placeholder="${esc(placeholder)}">
+      <input id="${id(net, name)}" data-testid="kgw-node-field-${esc(net)}-${esc(name)}" type="text" value="${esc(value)}" placeholder="${esc(placeholder)}">
     </div>`;
 }
 
@@ -1273,14 +1281,14 @@ function cardSelect(net, name, label, options, value = "", span2 = false) {
         ${kgwNodeCommandInlineToggleR7(net, name)}
         <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
       </span> <!-- KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->
-      <select id="${id(net, name)}">${opts}</select>
+      <select id="${id(net, name)}" data-testid="kgw-node-field-${esc(net)}-${esc(name)}">${opts}</select>
     </div>`;
 }
 
 function cardCheck(net, name, label, checked = false, span2 = false) {
   return `
     <label class="node-v6-card check${span2 ? " span2" : ""}">
-      <input id="${id(net, name)}" type="checkbox"${checked ? " checked" : ""}>
+      <input id="${id(net, name)}" data-testid="kgw-node-field-${esc(net)}-${esc(name)}" type="checkbox"${checked ? " checked" : ""}>
       <span>${esc(label)}</span>
     </label>`;
 }
@@ -1375,47 +1383,143 @@ function kgwInstallNodeLogAutoScrollControlsR27() {
 }
 // KGW_NODE_LOG_AUTOSCROLL_CONTROLS_R27_END
 
-function appendLog(net, message) {
-  // KGW_RESTORE_NODE_TAB_FROM_XML_R18_SAFE_RAW_LOGS
+const KGW_NODE_RAW_LOG_BUFFER_LIMIT_V1 = 4096;
+const KGW_NODE_RAW_LOG_BUFFERS_V1 = new Map();
+
+function kgwNodeRawLogBufferKeyV1(net, role = "node") {
+  return String(net || "").trim().toLowerCase() + ":" + String(role || "node").trim().toLowerCase();
+}
+
+function kgwNodeRawLogBufferV1(net, role = "node") {
+  const key = kgwNodeRawLogBufferKeyV1(net, role);
+  if (!KGW_NODE_RAW_LOG_BUFFERS_V1.has(key)) {
+    KGW_NODE_RAW_LOG_BUFFERS_V1.set(key, { records: new Map() });
+  }
+  return KGW_NODE_RAW_LOG_BUFFERS_V1.get(key);
+}
+
+function kgwNodeRawLogTextHasTransportWrapperV1(text) {
+  const value = String(text ?? "");
+  if (!value) return false;
+
+  const forbidden = [
+    "kgw_raw_process_log_v1",
+    "[KGW_CHILD_STDOUT]",
+    "[KGW_CHILD_STDERR]",
+    "diagnostic_transport_record",
+    ";source=self-worker;",
+    ";runtime_role=",
+    ";received_ms="
+  ];
+  if (forbidden.some((marker) => value.toLowerCase().includes(marker.toLowerCase()))) return true;
+
+  const trimmed = value.trimStart();
+  return trimmed.startsWith("{")
+    && /"stage"\s*:/.test(trimmed)
+    && /"network"\s*:/.test(trimmed)
+    && (/"source"\s*:/.test(trimmed) || /"eventKind"\s*:\s*"diagnostic_transport_record"/.test(trimmed));
+}
+
+function kgwNodeNormalizeRawLogEntryV1(entry, expectedNet, expectedRole = "node") {
+  if (!entry || typeof entry !== "object") return null;
+
+  const rawTextValue = entry.rawText ?? entry.raw_text ?? entry.line;
+  if (rawTextValue === undefined || rawTextValue === null) return null;
+  if (kgwNodeRawLogTextHasTransportWrapperV1(rawTextValue)) return null;
+
+  const sequence = Number(entry.sequence);
+  if (!Number.isSafeInteger(sequence) || sequence < 0) return null;
+
+  const network = String(entry.network || expectedNet || "").trim().toLowerCase();
+  const runtimeRole = String(entry.runtimeRole || entry.runtime_role || expectedRole || "node").trim().toLowerCase();
+  const stream = String(entry.stream || "").trim().toLowerCase();
+
+  if (network !== String(expectedNet || "").trim().toLowerCase()) return null;
+  if (runtimeRole !== String(expectedRole || "node").trim().toLowerCase()) return null;
+  if (stream !== "stdout" && stream !== "stderr") return null;
+
+  return Object.freeze({
+    sequence,
+    network,
+    runtimeRole,
+    stream,
+    receivedMs: Number(entry.receivedMs ?? entry.received_ms ?? 0) || 0,
+    rawText: String(rawTextValue)
+  });
+}
+
+function kgwNodeTrimRawLogBufferV1(buffer) {
+  const ordered = Array.from(buffer.records.keys()).sort((a, b) => a - b);
+  while (ordered.length > KGW_NODE_RAW_LOG_BUFFER_LIMIT_V1) {
+    const sequence = ordered.shift();
+    buffer.records.delete(sequence);
+  }
+}
+
+function kgwNodeVisibleRawLogTextV1(net, role = "node") {
+  const buffer = kgwNodeRawLogBufferV1(net, role);
+  return Array.from(buffer.records.values())
+    .sort((a, b) => a.sequence - b.sequence)
+    .map((entry) => entry.rawText)
+    .join("\n");
+}
+
+function kgwNodeRenderRawLogBufferV1(net, role = "node") {
   const out = byId(id(net, "logOutput"));
-  const profile = NODE_NETWORKS.find((item) => item.key === net);
-  const emptyText = `${profile?.label || net} log is empty.`;
+  if (!out) return false;
 
-  if (!out) return;
+  const text = kgwNodeVisibleRawLogTextV1(net, role);
+  out.textContent = text;
 
-  const previousText = out.textContent === emptyText ? "" : String(out.textContent || "");
-  const lines = previousText ? previousText.split("\n").filter(Boolean) : [];
-  const rawText = String(message ?? "");
-  const accepted = [];
+  const empty = kgwNodeLogEmptyStateV1(net);
+  if (empty) empty.hidden = text.length > 0;
 
-  for (const rawLine of rawText.split(/\r?\n/)) {
-    const cleanLine = rawLine.trimEnd();
-
-    if (!cleanLine.trim()) continue;
-    if (/^(MAINNET|TESTNET10|TESTNET12)\s+initialized\.$/i.test(cleanLine)) continue;
-    if (/^(Saved node settings loaded|Node settings saved successfully|Node defaults restored successfully|Current node settings saved as defaults)\.?$/i.test(cleanLine)) continue;
-    if (/^Node\s+(status|logs)\s*\[/i.test(cleanLine)) continue;
-    if (/^Bridge\s+(status|logs)\s*\[/i.test(cleanLine)) continue;
-    if (/^KGW\s+/i.test(cleanLine)) continue;
-    if (/parallel-owned-self-worker/i.test(cleanLine)) continue;
-
-    if (typeof nodeLogLineBelongsToNode === "function" && !nodeLogLineBelongsToNode(cleanLine)) {
-      continue;
-    }
-
-    accepted.push(cleanLine);
-  }
-
-  if (accepted.length === 0) {
-    if (out.textContent === emptyText) out.textContent = "";
-    return;
-  }
-
-  for (const line of accepted) lines.push(line);
-  while (lines.length > 3000) lines.shift();
-
-  out.textContent = lines.join("\n");
   if (kgwNodeLogAutoScrollEnabledR27(net)) out.scrollTop = out.scrollHeight;
+  return true;
+}
+
+function kgwNodeApplyRuntimeLogReportV1(net, role, report) {
+  const entries = Array.isArray(report?.entries) ? report.entries : [];
+  const buffer = kgwNodeRawLogBufferV1(net, role);
+  let accepted = 0;
+
+  for (const entry of entries) {
+    const normalized = kgwNodeNormalizeRawLogEntryV1(entry, net, role);
+    if (!normalized || buffer.records.has(normalized.sequence)) continue;
+    buffer.records.set(normalized.sequence, normalized);
+    accepted += 1;
+  }
+
+  if (accepted > 0) {
+    kgwNodeTrimRawLogBufferV1(buffer);
+  }
+
+  kgwNodeRenderRawLogBufferV1(net, role);
+  return accepted;
+}
+
+function kgwNodeClearRawLogBufferV1(net, role = "node") {
+  kgwNodeRawLogBufferV1(net, role).records.clear();
+  kgwNodeRenderRawLogBufferV1(net, role);
+}
+
+async function kgwNodeDispatchRuntimeLogClearV1(net, role = "node") {
+  const resolved = kgwResolvePublicTauriInvokeR1();
+  if (typeof resolved.invoke !== "function") return null;
+
+  return await invokeWithTimeout(
+    resolved.invoke,
+    "kgw_kgw_runtime_clear_logs_v1",
+    { network: net, runtimeRole: role },
+    KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS
+  );
+}
+
+function appendLog(net, message) {
+  // Raw monitor text is driven by typed runtime log reports. This legacy hook is
+  // intentionally inert so UI status strings cannot become fabricated raw lines.
+  void net;
+  void message;
 }
 
 function renderRuntime(net) {
@@ -1609,14 +1713,14 @@ function renderNetworkPanel(net, index) {
   const settingsActive = activeInnerTab === "settings";
 
   return `
-    <div class="node-v6-network-panel${index === 0 ? " active" : ""}" data-node-network-panel="${net.key}"${index === 0 ? "" : " hidden"}>
+    <div class="node-v6-network-panel${index === 0 ? " active" : ""}" data-node-network-panel="${net.key}" data-testid="kgw-node-panel-${net.key}"${index === 0 ? "" : " hidden"}>
       <div class="node-v6-inner-tabs">
-        <button type="button" class="node-v6-inner-tab${logActive ? " active" : ""}" data-net="${net.key}" data-node-inner-tab="log">Live Node Monitor</button>
-        <button type="button" class="node-v6-inner-tab${settingsActive ? " active" : ""}" data-net="${net.key}" data-node-inner-tab="settings">Settings</button>
+        <button type="button" class="node-v6-inner-tab${logActive ? " active" : ""}" data-net="${net.key}" data-node-inner-tab="log" data-testid="kgw-node-live-monitor-${net.key}">Live Node Monitor</button>
+        <button type="button" class="node-v6-inner-tab${settingsActive ? " active" : ""}" data-net="${net.key}" data-node-inner-tab="settings" data-testid="kgw-node-settings-${net.key}">Settings</button>
       </div>
 
       <div class="node-v6-inner-panel${settingsActive ? " active" : ""}" data-net="${net.key}" data-node-inner-panel="settings" data-node-settings-panel="${net.key}"${settingsActive ? "" : " hidden"}>
-        <section class="kgw-network-policy${net.experimental ? " is-experimental" : ""}" data-net="${net.key}">
+        <section class="kgw-network-policy${net.experimental ? " is-experimental" : ""}" data-net="${net.key}" data-testid="kgw-node-policy-${net.key}">
           <div>
             <strong>${net.label}</strong>
             <span>${esc(kgwNodeNetworkPolicyMessage(net.key))}</span>
@@ -1624,7 +1728,7 @@ function renderNetworkPanel(net, index) {
           <div class="kgw-network-policy-controls">
             <span id="${id(net.key, "policyStatus")}" class="kgw-network-policy-status">Stopped</span>
             <label>
-              <input type="checkbox" data-node-network-enabled="${net.key}" data-net="${net.key}"${kgwNodeNetworkEnabled(net.key) ? " checked" : ""}>
+              <input type="checkbox" data-node-network-enabled="${net.key}" data-testid="kgw-node-policy-enabled-${net.key}" data-net="${net.key}"${kgwNodeNetworkEnabled(net.key) ? " checked" : ""}>
               Enabled
             </label>
           </div>
@@ -1638,8 +1742,8 @@ function renderNetworkPanel(net, index) {
 
         <section class="node-v6-toolbar">
           <div class="node-v6-buttons">
-            <button type="button" class="good" data-node-action="start" data-net="${net.key}">Start</button>
-            <button type="button" data-node-action="stop" data-net="${net.key}">Stop</button>
+            <button type="button" class="good" data-node-action="start" data-testid="kgw-node-start-${net.key}" data-net="${net.key}">Start</button>
+            <button type="button" data-node-action="stop" data-testid="kgw-node-stop-${net.key}" data-net="${net.key}">Stop</button>
           </div>
 
           <div class="node-v6-status">
@@ -1662,13 +1766,14 @@ function renderNetworkPanel(net, index) {
 
       </div>
 
-      <div class="node-v6-inner-panel${logActive ? " active" : ""}" data-net="${net.key}" data-node-inner-panel="log"${logActive ? "" : " hidden"}>
+      <div class="node-v6-inner-panel${logActive ? " active" : ""}" data-net="${net.key}" data-node-inner-panel="log" data-testid="kgw-node-live-panel-${net.key}"${logActive ? "" : " hidden"}>
         <div class="node-v6-log-toolbar">
           <span class="node-v6-log-metadata" data-net="${net.key}">Network: ${net.label} · Source: self-worker · Streams: stdout/stderr</span>
-          <button type="button" data-node-action="copy-log" data-net="${net.key}">Copy Log</button>
-          <button type="button" data-node-action="clear-log" data-net="${net.key}">Clear Log</button>
+          <button type="button" data-node-action="copy-log" data-testid="kgw-node-copy-log-${net.key}" data-net="${net.key}">Copy Log</button>
+          <button type="button" data-node-action="clear-log" data-testid="kgw-node-clear-log-${net.key}" data-net="${net.key}">Clear Log</button>
         </div>
-        <pre id="${id(net.key, "logOutput")}" class="node-v6-log">${net.label} log is empty.</pre>
+        <div id="${id(net.key, "logEmpty")}" class="node-v6-log-empty" data-node-log-empty="${net.key}">No child stdout/stderr received yet.</div>
+        <pre id="${id(net.key, "logOutput")}" class="node-v6-log" data-testid="kgw-node-log-output-${net.key}"></pre>
       </div>
 </div>`;
 }
@@ -2847,13 +2952,9 @@ async function kgwNodeR51RefreshOne(net, reason = "live") {
   }
 
   try {
-    const logs = stringifyRuntimeResult(await invokeNodeIntegratedRuntime("kgw_kgw_runtime_logs_v1", net));
-    const delta = kgwNodeR51Delta(KGW_NODE_R51_LAST_LOGS[net], logs);
-
-    if (delta) {
-      KGW_NODE_R51_LAST_LOGS[net] = logs;
-      appendLog(net, delta);
-    }
+    const report = await invokeNodeIntegratedRuntime("kgw_kgw_runtime_logs_v1", net);
+    kgwNodeApplyRuntimeLogReportV1(net, "node", report);
+    KGW_NODE_R51_LAST_LOGS[net] = report;
   } catch {
     // Runtime may not be ready yet.
   }
@@ -3096,6 +3197,8 @@ async function kgwNodeHandleLogActionV29(action, net, button) {
           details: {
             rawLogBufferSelected: Boolean(buffer.out),
             placeholderRejected: Boolean(buffer.isPlaceholder),
+            runtimeRole: "node",
+            bridgeInstanceId: "",
             characterCount: buffer.characterCount,
             lineCount: buffer.lineCount,
             sha256: ""
@@ -3106,6 +3209,8 @@ async function kgwNodeHandleLogActionV29(action, net, button) {
 
       const sha256 = await kgwNodeSha256HexV1(buffer.normalizedText);
       const metadata = {
+        runtimeRole: "node",
+        bridgeInstanceId: "",
         characterCount: buffer.characterCount,
         lineCount: buffer.lineCount,
         sha256
@@ -3118,6 +3223,8 @@ async function kgwNodeHandleLogActionV29(action, net, button) {
         details: {
           rawLogBufferSelected: true,
           placeholderRejected: false,
+          runtimeRole: metadata.runtimeRole,
+          bridgeInstanceId: metadata.bridgeInstanceId,
           characterCount: metadata.characterCount,
           lineCount: metadata.lineCount,
           sha256: metadata.sha256 || ""
@@ -3133,6 +3240,8 @@ async function kgwNodeHandleLogActionV29(action, net, button) {
         action: "copy-log",
         result: "ok",
         details: {
+          runtimeRole: metadata.runtimeRole,
+          bridgeInstanceId: metadata.bridgeInstanceId,
           characterCount: metadata.characterCount,
           lineCount: metadata.lineCount,
           sha256: metadata.sha256 || "",
@@ -3154,8 +3263,8 @@ async function kgwNodeHandleLogActionV29(action, net, button) {
   }
 
   if (action === "clear-log") {
-    if ("value" in out) out.value = "";
-    out.textContent = "";
+    kgwNodeClearRawLogBufferV1(net, "node");
+    kgwNodeDispatchRuntimeLogClearV1(net, "node").catch(() => {});
     kgwNodeFlashLogActionButtonV29(button, kgwNodeTranslateRuntimeV29("log.deleted", "Deleted"));
   }
   kgwNodeSmallOwnerTraceR44D(net, String(action || "log-action"), "r44d-owner-complete", {});

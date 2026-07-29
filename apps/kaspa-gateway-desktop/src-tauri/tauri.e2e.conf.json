@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Kaspa Gateway",
+  "productName": "Kaspa Gateway E2E",
   "version": "0.1.0",
-  "identifier": "com.kaspapulse.kaspagateway",
+  "identifier": "com.kaspapulse.kaspagateway.e2e",
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
@@ -12,9 +12,9 @@
     "windows": [
       {
         "label": "main",
-        "title": "Kaspa Gateway",
-        "width": 1180,
-        "height": 760,
+        "title": "Kaspa Gateway E2E",
+        "width": 1280,
+        "height": 860,
         "minWidth": 960,
         "minHeight": 640,
         "resizable": true,
@@ -25,19 +25,19 @@
     ],
     "security": {
       "capabilities": [
-        "main-capability"
+        "main-capability",
+        "e2e-test-capability"
       ],
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; connect-src ipc: http://ipc.localhost"
     },
     "withGlobalTauri": true
   },
   "bundle": {
-    "active": true,
-    "targets": [
-      "nsis"
-    ],
+    "active": false,
+    "targets": [],
     "icon": [
       "icons/icon.ico"
     ]
   }
 }
+
