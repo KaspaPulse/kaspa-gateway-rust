@@ -293,6 +293,7 @@ fn validate_host(value: &str) -> Result<()> {
     let trimmed = value.trim();
 
     if trimmed.is_empty()
+        || value.chars().any(char::is_whitespace)
         || trimmed.contains('/')
         || trimmed.contains('\\')
         || trimmed.contains('\0')

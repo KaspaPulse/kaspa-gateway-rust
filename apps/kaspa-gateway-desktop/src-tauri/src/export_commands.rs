@@ -1986,7 +1986,13 @@ mod tests {
 
     #[test]
     fn rejects_unsafe_output_path() {
-        assert!(validate_output_path("C:\\temp\\report.csv").is_ok());
+        let valid_path = default_user_data_dir()
+            .expect("user data directory")
+            .join("exports")
+            .join("report.csv");
+
+        assert!(validate_output_path(valid_path.to_string_lossy().as_ref()).is_ok());
+        assert!(validate_output_path("C:\\temp\\report.csv").is_err());
         assert!(validate_output_path("bad && whoami").is_err());
     }
 

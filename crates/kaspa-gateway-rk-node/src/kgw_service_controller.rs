@@ -36,15 +36,15 @@ impl KgwNetwork {
 
     pub fn branch(self) -> &'static str {
         match self {
-            Self::Mainnet => "master",
-            Self::Testnet10 | Self::Testnet12 => "RKStratumTN12",
+            Self::Mainnet | Self::Testnet10 => "stable",
+            Self::Testnet12 => "RKStratumTN12",
         }
     }
 
     pub fn revision(self) -> &'static str {
         match self {
-            Self::Mainnet => "a07d8b38d45f38a02a1f35f601e874358f6c7846",
-            Self::Testnet10 | Self::Testnet12 => "eeb351ee911e2df906d21203dec8db3a195c6b33",
+            Self::Mainnet | Self::Testnet10 => "cfafeb4c093fa37a303f1b9f19c58f986b870ce3",
+            Self::Testnet12 => "eeb351ee911e2df906d21203dec8db3a195c6b33",
         }
     }
 
@@ -145,15 +145,19 @@ pub struct NodeSettings {
     pub bridge_internal_cpu_miner_template_poll_ms: Option<u64>,
 }
 
-fn kgw_service_runtime_appdir_root_string() -> String {
+fn kgw_service_runtime_appdir_string(network: KgwNetwork) -> String {
     if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
         std::path::PathBuf::from(local_app_data)
-            .join("rusty-kaspa")
+            .join("KaspaGateway")
+            .join("nodes")
+            .join(network.as_str())
             .to_string_lossy()
             .to_string()
     } else {
         std::env::temp_dir()
-            .join("rusty-kaspa")
+            .join("KaspaGateway")
+            .join("nodes")
+            .join(network.as_str())
             .to_string_lossy()
             .to_string()
     }
@@ -180,7 +184,7 @@ impl NodeSettings {
             bridge_kind,
             rpc_endpoint: network.rpc_endpoint().to_string(),
             stratum_listen: network.stratum_listen().to_string(),
-            app_dir_name: kgw_service_runtime_appdir_root_string(),
+            app_dir_name: kgw_service_runtime_appdir_string(network),
             enable_utxo_index: true,
             archival: false,
 
@@ -901,5 +905,5 @@ fn timestamp_ms() -> u128 {
 }
 
 pub fn exact_kgw_service_controller_summary_v1() -> &'static str {
-    "Exact KGW controller flow: NodeSettings -> KaspadServiceEvents::from_node_settings -> service_events sender -> controller event loop -> handle_event lifecycle. mainnet/testnet10 use master; testnet12 uses tn12."
+    "Exact KGW controller flow: NodeSettings -> KaspadServiceEvents::from_node_settings -> service_events sender -> controller event loop -> handle_event lifecycle. mainnet/testnet10 use official stable v2.0.1; testnet12 uses the opt-in experimental tn12 runtime."
 }

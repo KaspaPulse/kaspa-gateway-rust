@@ -38,12 +38,11 @@ pub struct KgwRuntimeFeatureStatus {
 impl KgwRuntimeFeatureStatus {
     pub fn for_network(network: KgwNetwork) -> Self {
         let (required_runtime_feature, runtime_feature_enabled) = match network {
-            KgwNetwork::Mainnet => (
+            KgwNetwork::Mainnet | KgwNetwork::Testnet10 => (
                 "official-kaspa-runtime-mainline",
                 cfg!(feature = "official-kaspa-runtime-mainline"),
             ),
-
-            KgwNetwork::Testnet10 | KgwNetwork::Testnet12 => (
+            KgwNetwork::Testnet12 => (
                 "official-kaspa-runtime-tn12",
                 cfg!(feature = "official-kaspa-runtime-tn12"),
             ),
@@ -373,9 +372,8 @@ fn kgw_runtime_appdir_root_string() -> String {
 }
 fn spawn_official_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwRealOwnerError> {
     match settings.network {
-        KgwNetwork::Mainnet => spawn_mainline_core_thread(settings),
-
-        KgwNetwork::Testnet10 | KgwNetwork::Testnet12 => spawn_tn12_core_thread(settings),
+        KgwNetwork::Mainnet | KgwNetwork::Testnet10 => spawn_mainline_core_thread(settings),
+        KgwNetwork::Testnet12 => spawn_tn12_core_thread(settings),
     }
 }
 
@@ -383,7 +381,7 @@ fn spawn_official_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, 
 fn spawn_mainline_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwRealOwnerError> {
     let mut args = kaspad_lib_mainline::args::Args::default();
 
-    args.appdir = Some(kgw_owner_safe_runtime_appdir(&settings.app_dir_name));
+    args.appdir = Some(kgw_owner_safe_runtime_appdir(settings.network));
     args.utxoindex = settings.enable_utxo_index;
     args.archival = settings.archival;
     args.yes = true;
@@ -438,7 +436,7 @@ fn spawn_mainline_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, 
 fn spawn_tn12_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwRealOwnerError> {
     let mut args = kaspad_lib_tn12::args::Args::default();
 
-    args.appdir = Some(kgw_owner_safe_runtime_appdir(&settings.app_dir_name));
+    args.appdir = Some(kgw_owner_safe_runtime_appdir(settings.network));
     args.utxoindex = settings.enable_utxo_index;
     args.archival = settings.archival;
     args.yes = true;
@@ -585,16 +583,21 @@ fn start_bridge_owner_if_requested(
 
 fn kgw_owner_safe_runtime_appdir_root() -> std::path::PathBuf {
     if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
-        std::path::PathBuf::from(local_app_data).join("rusty-kaspa")
+        std::path::PathBuf::from(local_app_data)
+            .join("KaspaGateway")
+            .join("nodes")
     } else {
-        std::env::temp_dir().join("rusty-kaspa")
+        std::env::temp_dir().join("KaspaGateway").join("nodes")
     }
 }
 
 #[allow(dead_code)]
 
-fn kgw_owner_safe_runtime_appdir(_value: &str) -> String {
-    kgw_runtime_appdir_root_string()
+fn kgw_owner_safe_runtime_appdir(network: KgwNetwork) -> String {
+    kgw_owner_safe_runtime_appdir_root()
+        .join(network.as_str())
+        .to_string_lossy()
+        .to_string()
 }
 fn default_prometheus_for_network(network: KgwNetwork) -> &'static str {
     match network {

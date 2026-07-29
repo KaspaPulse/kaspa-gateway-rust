@@ -1,0 +1,7 @@
+{
+  "browserName": "tauri",
+  "tauri:options": {
+    "application": "${KGW_E2E_APP_BINARY}"
+  }
+}
+

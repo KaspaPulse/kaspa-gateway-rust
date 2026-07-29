@@ -177,7 +177,7 @@
       "changedPrefix": "قام KGW Auto Fix Ports بتغيير"
     }
   },
-  "bridge.serviceEventPlanningDescription": "تخطيط أحداث خدمة KGW لجميع الجسور بالتوازي. تستخدم mainnet/testnet10 فرع master، وتستخدم testnet12 فرع tn12.",
+  "bridge.serviceEventPlanningDescription": "تخطيط أحداث خدمة KGW لجميع الجسور بالتوازي. تستخدم mainnet/testnet10 الإصدار الرسمي المستقر v2.0.1، وتبقى testnet12 تجريبية وتتطلب تفعيلًا صريحًا.",
   "coinbase": "كوينبيس",
   "common": {
     "loading": "جاري التحميل",
@@ -1542,7 +1542,7 @@
       "kaspanode": "عقدة كاسبا"
     }
   },
-  "node.serviceEventPlanningDescription": "تخطيط أحداث خدمة KGW لشبكات mainnet و testnet10 و testnet12. تستخدم mainnet/testnet10 فرع master، وتستخدم testnet12 فرع tn12.",
+  "node.serviceEventPlanningDescription": "تخطيط أحداث خدمة KGW لشبكات mainnet و testnet10 و testnet12. تستخدم mainnet/testnet10 الإصدار الرسمي المستقر v2.0.1، وتبقى testnet12 تجريبية وتتطلب تفعيلًا صريحًا.",
   "outgoing": "صادر",
   "runtime.ready": "جاهز",
   "runtime.shellErrorNavigationPreserved": "حدث خطأ في الواجهة/التشغيل. تم الحفاظ على التنقل.",

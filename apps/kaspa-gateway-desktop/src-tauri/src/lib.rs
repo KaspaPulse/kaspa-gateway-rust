@@ -400,6 +400,26 @@ fn kgw_ui_trace_should_print_v1(level: &str, action: &str, phase: &str, details:
 }
 
 #[tauri::command]
+fn kgw_start_trace_frontend_v1(
+    stage: String,
+    network: String,
+    action: String,
+    result: String,
+    details: Option<String>,
+) -> bool {
+    integrated_runtime_commands::kgw_start_trace_emit_v1(
+        "frontend",
+        &stage,
+        &network,
+        &action,
+        &result,
+        details.as_deref(),
+    );
+
+    integrated_runtime_commands::kgw_start_trace_enabled_v1()
+}
+
+#[tauri::command]
 fn kgw_frontend_button_trace_v1(
     scope: String,
     net: String,
@@ -424,6 +444,394 @@ fn kgw_frontend_button_trace_v1(
 
     true
 }
+
+fn kgw_clipboard_normalize_network_v1(network: &str) -> Result<String, String> {
+    let clean = network.trim().to_ascii_lowercase();
+    match clean.as_str() {
+        "mainnet" | "testnet10" | "testnet12" => Ok(clean),
+        _ => Err(format!(
+            "clipboard_write_failed=true;reason=unsupported-network;network={};message=Copy Log received an unsupported network.",
+            kgw_clipboard_safe_field_v1(network, "unknown")
+        )),
+    }
+}
+
+fn kgw_clipboard_normalize_runtime_role_v1(runtime_role: Option<&str>) -> String {
+    let clean = runtime_role
+        .unwrap_or("unknown")
+        .trim()
+        .to_ascii_lowercase();
+
+    match clean.as_str() {
+        "node" | "bridge" => clean,
+        _ => "unknown".to_string(),
+    }
+}
+
+fn kgw_clipboard_normalize_bridge_instance_id_v1(
+    bridge_instance_id: Option<&str>,
+) -> Option<String> {
+    let clean = bridge_instance_id?
+        .chars()
+        .filter(|ch| !ch.is_control() && *ch != '\0' && *ch != '\r' && *ch != '\n')
+        .collect::<String>()
+        .trim()
+        .to_string();
+
+    if clean.is_empty() {
+        None
+    } else {
+        Some(clean.chars().take(128).collect())
+    }
+}
+
+fn kgw_clipboard_safe_field_v1(value: &str, fallback: &str) -> String {
+    let clean = value
+        .chars()
+        .map(|ch| {
+            if ch == '\r' || ch == '\n' || ch.is_control() {
+                ' '
+            } else {
+                ch
+            }
+        })
+        .collect::<String>()
+        .trim()
+        .to_string();
+
+    if clean.is_empty() {
+        fallback.to_string()
+    } else {
+        clean.chars().take(160).collect()
+    }
+}
+
+fn kgw_clipboard_safe_error_v1(error: &str) -> String {
+    let clean = kgw_clipboard_safe_field_v1(error, "clipboard write failed");
+    let lowered = clean.to_ascii_lowercase();
+    if lowered.contains("secret")
+        || lowered.contains("token")
+        || lowered.contains("private")
+        || lowered.contains("mnemonic")
+        || lowered.contains("wallet")
+        || lowered.contains("address")
+    {
+        "clipboard write failed with a sensitive native error".to_string()
+    } else {
+        clean
+    }
+}
+
+fn kgw_clipboard_character_count_v1(text: &str) -> u64 {
+    text.chars().count() as u64
+}
+
+fn kgw_clipboard_line_count_v1(text: &str) -> u64 {
+    if text.is_empty() {
+        0
+    } else {
+        text.split('\n').count() as u64
+    }
+}
+
+fn kgw_clipboard_sha256_v1(text: &str) -> String {
+    use sha2::{Digest, Sha256};
+
+    let digest = Sha256::digest(text.as_bytes());
+    digest
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>()
+}
+
+fn kgw_clipboard_trace_details_v1(
+    character_count: u64,
+    line_count: u64,
+    sha256: &str,
+    implementation: &str,
+    extra: serde_json::Value,
+) -> String {
+    serde_json::json!({
+        "characterCount": character_count,
+        "lineCount": line_count,
+        "sha256": sha256,
+        "implementation": implementation,
+        "extra": extra,
+    })
+    .to_string()
+}
+
+fn kgw_copy_text_to_clipboard_inner_v1<F>(
+    network: String,
+    runtime_role: Option<String>,
+    bridge_instance_id: Option<String>,
+    text: String,
+    metadata_character_count: u64,
+    metadata_line_count: u64,
+    metadata_sha256: Option<String>,
+    writer: F,
+) -> Result<String, String>
+where
+    F: FnOnce(String) -> Result<(), String>,
+{
+    let network = kgw_clipboard_normalize_network_v1(&network)?;
+    let runtime_role = kgw_clipboard_normalize_runtime_role_v1(runtime_role.as_deref());
+    let bridge_instance_id =
+        kgw_clipboard_normalize_bridge_instance_id_v1(bridge_instance_id.as_deref());
+    let character_count = kgw_clipboard_character_count_v1(&text);
+    let line_count = kgw_clipboard_line_count_v1(&text);
+    let sha256 = kgw_clipboard_sha256_v1(&text);
+    let implementation = "tauri-plugin-clipboard-manager";
+    let supplied_sha256 = metadata_sha256
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("");
+
+    integrated_runtime_commands::kgw_start_trace_emit_v1(
+        "native",
+        "native.clipboard_write_entered",
+        &network,
+        "copy-log",
+        "entered",
+        Some(&kgw_clipboard_trace_details_v1(
+            character_count,
+            line_count,
+            &sha256,
+            implementation,
+            serde_json::json!({
+                "runtimeRole": runtime_role.clone(),
+                "bridgeInstanceId": bridge_instance_id.clone(),
+                "metadataCharacterCount": metadata_character_count,
+                "metadataLineCount": metadata_line_count,
+                "metadataSha256Present": !supplied_sha256.is_empty(),
+            }),
+        )),
+    );
+
+    let fail = |reason: &str, message: String| -> String {
+        integrated_runtime_commands::kgw_start_trace_emit_v1(
+            "native",
+            "native.clipboard_write_failed",
+            &network,
+            "copy-log",
+            "error",
+            Some(&kgw_clipboard_trace_details_v1(
+                character_count,
+                line_count,
+                &sha256,
+                implementation,
+                serde_json::json!({
+                    "runtimeRole": runtime_role.clone(),
+                    "bridgeInstanceId": bridge_instance_id.clone(),
+                    "reason": reason,
+                    "safeError": kgw_clipboard_safe_error_v1(&message),
+                }),
+            )),
+        );
+        message
+    };
+
+    if text.trim().is_empty() {
+        return Err(fail(
+            "empty-log-buffer",
+            format!(
+                "clipboard_write_failed=true;network={network};reason=empty-log-buffer;message=Copy Log requires a non-empty raw log buffer."
+            ),
+        ));
+    }
+
+    if character_count != metadata_character_count || line_count != metadata_line_count {
+        return Err(fail(
+            "metadata-mismatch",
+            format!(
+                "clipboard_write_failed=true;network={network};reason=metadata-mismatch;actual_characters={character_count};actual_lines={line_count};metadata_characters={metadata_character_count};metadata_lines={metadata_line_count};message=Copy Log metadata did not match the supplied text."
+            ),
+        ));
+    }
+
+    if !supplied_sha256.is_empty() && supplied_sha256 != sha256 {
+        return Err(fail(
+            "sha256-mismatch",
+            format!(
+                "clipboard_write_failed=true;network={network};reason=sha256-mismatch;message=Copy Log SHA-256 metadata did not match the supplied text."
+            ),
+        ));
+    }
+
+    match writer(text) {
+        Ok(()) => {
+            integrated_runtime_commands::kgw_start_trace_emit_v1(
+                "native",
+                "native.clipboard_write_succeeded",
+                &network,
+                "copy-log",
+                "ok",
+                Some(&kgw_clipboard_trace_details_v1(
+                    character_count,
+                    line_count,
+                    &sha256,
+                    implementation,
+                    serde_json::json!({
+                        "runtimeRole": runtime_role.clone(),
+                        "bridgeInstanceId": bridge_instance_id.clone(),
+                        "confirmed": true,
+                    }),
+                )),
+            );
+
+            Ok(format!(
+                "clipboard_write_v1;network={network};characters={character_count};lines={line_count};sha256={sha256};implementation={implementation};copied=true"
+            ))
+        }
+        Err(error) => Err(fail(
+            "native-clipboard-error",
+            format!(
+                "clipboard_write_failed=true;network={network};reason=native-clipboard-error;error={}",
+                error
+            ),
+        )),
+    }
+}
+
+#[tauri::command]
+fn kgw_copy_text_to_clipboard_v1(
+    app: tauri::AppHandle,
+    network: String,
+    runtime_role: Option<String>,
+    bridge_instance_id: Option<String>,
+    text: String,
+    character_count: u64,
+    line_count: u64,
+    sha256: Option<String>,
+) -> Result<String, String> {
+    kgw_copy_text_to_clipboard_inner_v1(
+        network,
+        runtime_role,
+        bridge_instance_id,
+        text,
+        character_count,
+        line_count,
+        sha256,
+        |value| {
+            use tauri_plugin_clipboard_manager::ClipboardExt;
+            app.clipboard()
+                .write_text(value)
+                .map_err(|error| error.to_string())
+        },
+    )
+}
+
+#[cfg(test)]
+mod kgw_clipboard_tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+
+    fn char_count(text: &str) -> u64 {
+        text.chars().count() as u64
+    }
+
+    #[test]
+    fn clipboard_success_returns_success_after_writer_accepts_text() {
+        let copied = Arc::new(Mutex::new(None::<String>));
+        let copied_for_writer = Arc::clone(&copied);
+        let text = "mainnet raw line 1\r\nmainnet raw line 2".to_string();
+        let sha256 = kgw_clipboard_sha256_v1(&text);
+
+        let result = kgw_copy_text_to_clipboard_inner_v1(
+            "mainnet".to_string(),
+            Some("node".to_string()),
+            None,
+            text.clone(),
+            char_count(&text),
+            2,
+            Some(sha256.clone()),
+            move |value| {
+                *copied_for_writer.lock().unwrap() = Some(value);
+                Ok(())
+            },
+        )
+        .expect("clipboard success should be returned after writer success");
+
+        assert!(result.contains("clipboard_write_v1"));
+        assert!(result.contains("network=mainnet"));
+        assert!(result.contains("copied=true"));
+        assert!(result.contains(&format!("sha256={sha256}")));
+        assert_eq!(copied.lock().unwrap().as_deref(), Some(text.as_str()));
+    }
+
+    #[test]
+    fn clipboard_failure_propagates_original_native_error() {
+        let text = "testnet10 raw line".to_string();
+        let error = kgw_copy_text_to_clipboard_inner_v1(
+            "testnet10".to_string(),
+            Some("node".to_string()),
+            None,
+            text.clone(),
+            char_count(&text),
+            1,
+            Some(kgw_clipboard_sha256_v1(&text)),
+            |_value| Err("native clipboard permission denied".to_string()),
+        )
+        .expect_err("native clipboard failure must remain an error");
+
+        assert!(error.contains("clipboard_write_failed=true"));
+        assert!(error.contains("network=testnet10"));
+        assert!(error.contains("native clipboard permission denied"));
+    }
+
+    #[test]
+    fn empty_clipboard_content_is_rejected_before_writer() {
+        let error = kgw_copy_text_to_clipboard_inner_v1(
+            "mainnet".to_string(),
+            Some("node".to_string()),
+            None,
+            "   \r\n  ".to_string(),
+            7,
+            2,
+            None,
+            |_value| panic!("empty content must not reach the clipboard writer"),
+        )
+        .expect_err("empty clipboard text must be rejected");
+
+        assert!(error.contains("empty-log-buffer"));
+        assert!(error.contains("network=mainnet"));
+    }
+
+    #[test]
+    fn clipboard_trace_excludes_raw_content_and_records_hash() {
+        std::env::set_var("KGW_START_TRACE", "1");
+        let _ = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
+
+        let text = "mainnet secret raw content should not appear".to_string();
+        let sha256 = kgw_clipboard_sha256_v1(&text);
+        let result = kgw_copy_text_to_clipboard_inner_v1(
+            "mainnet".to_string(),
+            Some("bridge".to_string()),
+            Some("bridge-a".to_string()),
+            text.clone(),
+            char_count(&text),
+            1,
+            Some(sha256.clone()),
+            |_value| Ok(()),
+        )
+        .expect("clipboard trace success should succeed");
+
+        assert!(result.contains("copied=true"));
+
+        let trace = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1().join("\n");
+        assert!(trace.contains("native.clipboard_write_entered"));
+        assert!(trace.contains("native.clipboard_write_succeeded"));
+        assert!(trace.contains(&sha256));
+        assert!(trace.contains("\\\"runtimeRole\\\":\\\"bridge\\\""));
+        assert!(trace.contains("\\\"bridgeInstanceId\\\":\\\"bridge-a\\\""));
+        assert!(!trace.contains("secret raw content"));
+        assert!(!trace.contains(&text));
+
+        std::env::remove_var("KGW_START_TRACE");
+    }
+}
+
 #[tauri::command]
 fn kgw_open_exported_file_v1(path: String) -> Result<(), String> {
     use std::path::PathBuf;
@@ -501,8 +909,21 @@ fn kgw_open_exported_file_v1(path: String) -> Result<(), String> {
 
 pub fn run() {
     app_logger::init_tracing_bridge();
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init());
+
+    #[cfg(feature = "e2e-test")]
+    let builder = builder
+        .plugin(tauri_plugin_wdio_webdriver::init())
+        .plugin(tauri_plugin_wdio::init());
+
+    #[cfg(feature = "e2e-test")]
+    let context = tauri::generate_context!("tauri.e2e.conf.json");
+    #[cfg(not(feature = "e2e-test"))]
+    let context = tauri::generate_context!();
+
+    builder
         .manage(commands::DesktopRuntimeState::default())
         .manage(diagnostics::LogState::default())
         .invoke_handler(tauri::generate_handler![
@@ -511,10 +932,12 @@ pub fn run() {
             integrated_runtime_commands::kgw_runtime_owner_plan_v1,
             integrated_runtime_commands::kgw_all_parallel_node_bridge_plans_v1,
             integrated_runtime_commands::kgw_kgw_runtime_logs_v1,
+            integrated_runtime_commands::kgw_kgw_runtime_clear_logs_v1,
             integrated_runtime_commands::kgw_kgw_real_owner_summary_v1,
             integrated_runtime_commands::kgw_kgw_real_owner_feature_status_v1,
             integrated_runtime_commands::kgw_kgw_apply_node_settings_v1,
             integrated_runtime_commands::kgw_kgw_disable_network_v1,
+            integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1,
             integrated_runtime_commands::kgw_kgw_smoke_start_network_v1,
             integrated_runtime_commands::kgw_kgw_smoke_stop_network_v1,
             integrated_runtime_commands::kgw_kgw_node_bridge_service_plan_v1,
@@ -653,7 +1076,9 @@ pub fn run() {
             export_system::export_data,
             migration::preview_python_migration,
             migration::migrate_python_data,
+            kgw_start_trace_frontend_v1,
             kgw_frontend_button_trace_v1,
+            kgw_copy_text_to_clipboard_v1,
             kgw_open_exported_file_v1,
         ])
         .setup(|app| {
@@ -667,7 +1092,7 @@ pub fn run() {
                 kgw_trace_finalize_session_r69f2();
             }
         })
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running Kaspa Gateway desktop app");
 }
 
@@ -703,8 +1128,8 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
     let role_key = role.trim().to_ascii_lowercase();
     let network =
         kgw_self_worker_arg_value(&args, "--network").unwrap_or_else(|| "mainnet".to_string());
-    let appdir =
-        kgw_self_worker_arg_value(&args, "--appdir").unwrap_or_else(kgw_self_worker_default_appdir);
+    let appdir = kgw_self_worker_arg_value(&args, "--appdir")
+        .unwrap_or_else(|| kgw_self_worker_default_appdir(&network));
     let rpc = kgw_self_worker_arg_value(&args, "--rpc")
         .unwrap_or_else(|| kgw_self_worker_default_rpc(&network).to_string());
     let stratum = kgw_self_worker_arg_value(&args, "--stratum")
@@ -884,15 +1309,25 @@ fn kgw_bridge_config_instance_listens_r122(config_path: &str) -> Result<Vec<Stri
     Ok(listens)
 }
 
-fn kgw_self_worker_default_appdir() -> String {
+fn kgw_self_worker_default_appdir(network: &str) -> String {
+    let network = match network.trim().to_ascii_lowercase().as_str() {
+        "testnet" | "testnet10" => "testnet10",
+        "testnet12" | "tn12" => "testnet12",
+        _ => "mainnet",
+    };
+
     if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
         std::path::PathBuf::from(local_app_data)
-            .join("rusty-kaspa")
+            .join("KaspaGateway")
+            .join("nodes")
+            .join(network)
             .to_string_lossy()
             .to_string()
     } else {
         std::env::temp_dir()
-            .join("rusty-kaspa")
+            .join("KaspaGateway")
+            .join("nodes")
+            .join(network)
             .to_string_lossy()
             .to_string()
     }
@@ -934,9 +1369,18 @@ fn kgw_run_node_self_worker(
     settings.archival = archival;
 
     let runtime = kaspa_gateway_rk_node::KgwRealOwnerRuntime::new();
-    let _status = runtime
+    let status = runtime
         .start_node_owner_session(&settings)
         .map_err(|error| error.to_string())?;
+
+    if !status.official_core_running {
+        return Err(format!(
+            "official core did not start;network={};policy={};message={}",
+            settings.network.as_str(),
+            status.start_policy.as_str(),
+            status.last_message
+        ));
+    }
 
     loop {
         std::thread::sleep(std::time::Duration::from_secs(10));

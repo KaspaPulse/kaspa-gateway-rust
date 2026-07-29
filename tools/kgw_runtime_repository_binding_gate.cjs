@@ -161,35 +161,51 @@ if (networks.mainnet && networks.mainnet.repo !== "https://github.com/kaspanet/r
   });
 }
 
-if (networks.mainnet && networks.mainnet.family !== "mainline") {
-  addFinding(findings, "error", "mainnet-family-must-be-mainline", { actual: networks.mainnet.family });
-}
-
-for (const net of ["testnet10", "testnet12"]) {
-  if (networks[net] && networks[net].family !== "tn12") {
-    addFinding(findings, "error", "testnet-family-must-be-tn12", { net, actual: networks[net].family });
-  }
-}
-
-if (networks.testnet10 && networks.testnet12) {
-  if (networks.testnet10.repo !== networks.testnet12.repo) {
-    addFinding(findings, "error", "testnet10-testnet12-repo-mismatch", {
-      testnet10: networks.testnet10.repo,
-      testnet12: networks.testnet12.repo
+for (const net of ["mainnet", "testnet10"]) {
+  if (networks[net] && networks[net].repo !== "https://github.com/kaspanet/rusty-kaspa.git") {
+    addFinding(findings, "error", "stable-network-must-use-official-kaspanet-repo", {
+      net,
+      expected: "https://github.com/kaspanet/rusty-kaspa.git",
+      actual: networks[net].repo
     });
   }
 
-  if (networks.testnet10.branch !== networks.testnet12.branch) {
-    addFinding(findings, "error", "testnet10-testnet12-branch-mismatch", {
-      testnet10: networks.testnet10.branch,
-      testnet12: networks.testnet12.branch
+  if (networks[net] && networks[net].family !== "mainline") {
+    addFinding(findings, "error", "stable-network-family-must-be-mainline", {
+      net,
+      actual: networks[net].family
+    });
+  }
+}
+
+if (networks.testnet12 && networks.testnet12.family !== "tn12") {
+  addFinding(findings, "error", "testnet12-family-must-be-tn12", {
+    actual: networks.testnet12.family
+  });
+}
+
+if (networks.mainnet && networks.testnet10) {
+  for (const key of ["repo", "branch", "rev", "feature"]) {
+    if (networks.mainnet[key] !== networks.testnet10[key]) {
+      addFinding(findings, "error", "mainnet-testnet10-stable-binding-mismatch", {
+        key,
+        mainnet: networks.mainnet[key],
+        testnet10: networks.testnet10[key]
+      });
+    }
+  }
+}
+
+if (networks.testnet12) {
+  if (networks.testnet12.experimental !== true) {
+    addFinding(findings, "error", "testnet12-must-be-marked-experimental", {
+      actual: networks.testnet12.experimental
     });
   }
 
-  if (networks.testnet10.rev !== networks.testnet12.rev) {
-    addFinding(findings, "error", "testnet10-testnet12-rev-mismatch", {
-      testnet10: networks.testnet10.rev,
-      testnet12: networks.testnet12.rev
+  if (networks.testnet12.enabledByDefault !== false) {
+    addFinding(findings, "error", "testnet12-must-be-disabled-by-default", {
+      actual: networks.testnet12.enabledByDefault
     });
   }
 }
@@ -206,11 +222,11 @@ if (!findings.some((x) => x.level === "error")) {
     ["node", "kaspad-lib-mainline", "kaspad", "mainnet", nodeCargo],
     ["node", "kaspa-core-mainline", "kaspa-core", "mainnet", nodeCargo],
     ["node", "kaspa-utils-mainline", "kaspa-utils", "mainnet", nodeCargo],
-    ["node", "kaspad-lib-tn12", "kaspad", "testnet10", nodeCargo],
-    ["node", "kaspa-core-tn12", "kaspa-core", "testnet10", nodeCargo],
-    ["node", "kaspa-utils-tn12", "kaspa-utils", "testnet10", nodeCargo],
+    ["node", "kaspad-lib-tn12", "kaspad", "testnet12", nodeCargo],
+    ["node", "kaspa-core-tn12", "kaspa-core", "testnet12", nodeCargo],
+    ["node", "kaspa-utils-tn12", "kaspa-utils", "testnet12", nodeCargo],
     ["bridge", "kaspa-stratum-bridge-mainline", "kaspa-stratum-bridge", "mainnet", bridgeCargo],
-    ["bridge", "kaspa-stratum-bridge-tn12", "kaspa-stratum-bridge", "testnet10", bridgeCargo]
+    ["bridge", "kaspa-stratum-bridge-tn12", "kaspa-stratum-bridge", "testnet12", bridgeCargo]
   ];
 
   for (const [scope, alias, expectedPackage, network, source] of aliases) {
@@ -256,26 +272,26 @@ if (!findings.some((x) => x.level === "error")) {
     }
   }
 
-  if (networks.mainnet) {
-    requireContains("kgw_service_controller.rs", serviceController, 'Self::Mainnet => "' + networks.mainnet.branch + '"', "mainnet service branch");
-    requireContains("kgw_service_controller.rs", serviceController, 'Self::Mainnet => "' + networks.mainnet.rev + '"', "mainnet service rev");
-    requireContains("official_kaspa_runtime.rs", officialRuntime, 'Self::Mainnet => "' + networks.mainnet.branch + '"', "mainnet node branch");
-    requireContains("official_kaspa_runtime.rs", officialRuntime, 'Self::Mainnet => "' + networks.mainnet.rev + '"', "mainnet node rev");
-    requireContains("src/lib.rs bridge runtime", bridgeRuntime, 'Self::Mainnet => "' + networks.mainnet.branch + '"', "mainnet bridge branch");
-    requireContains("src/lib.rs bridge runtime", bridgeRuntime, 'Self::Mainnet => "' + networks.mainnet.rev + '"', "mainnet bridge rev");
-    requireContains("official_kaspa_runtime.rs", officialRuntime, "Self::Mainnet => KaspaRuntimeFamily::Mainline", "mainnet node family");
-    requireContains("src/lib.rs bridge runtime", bridgeRuntime, "Self::Mainnet => BridgeRuntimeFamily::Mainline", "mainnet bridge family");
+  if (networks.mainnet && networks.testnet10) {
+    requireContains("kgw_service_controller.rs", serviceController, 'Self::Mainnet | Self::Testnet10 => "' + networks.mainnet.branch + '"', "stable service branch");
+    requireContains("kgw_service_controller.rs", serviceController, 'Self::Mainnet | Self::Testnet10 => "' + networks.mainnet.rev + '"', "stable service rev");
+    requireContains("official_kaspa_runtime.rs", officialRuntime, 'Self::Mainnet | Self::Testnet10 => "' + networks.mainnet.branch + '"', "stable node branch");
+    requireContains("official_kaspa_runtime.rs", officialRuntime, 'Self::Mainnet | Self::Testnet10 => "' + networks.mainnet.rev + '"', "stable node rev");
+    requireContains("src/lib.rs bridge runtime", bridgeRuntime, 'Self::Mainnet | Self::Testnet10 => "' + networks.mainnet.branch + '"', "stable bridge branch");
+    requireContains("src/lib.rs bridge runtime", bridgeRuntime, 'Self::Mainnet | Self::Testnet10 => "' + networks.mainnet.rev + '"', "stable bridge rev");
+    requireContains("official_kaspa_runtime.rs", officialRuntime, "Self::Mainnet | Self::Testnet10 => KaspaRuntimeFamily::Mainline", "stable node family");
+    requireContains("src/lib.rs bridge runtime", bridgeRuntime, "Self::Mainnet | Self::Testnet10 => BridgeRuntimeFamily::Mainline", "stable bridge family");
   }
 
-  if (networks.testnet10) {
-    requireContains("kgw_service_controller.rs", serviceController, 'Self::Testnet10 | Self::Testnet12 => "' + networks.testnet10.branch + '"', "testnet service branch");
-    requireContains("kgw_service_controller.rs", serviceController, 'Self::Testnet10 | Self::Testnet12 => "' + networks.testnet10.rev + '"', "testnet service rev");
-    requireContains("official_kaspa_runtime.rs", officialRuntime, 'Self::Testnet10 | Self::Testnet12 => "' + networks.testnet10.branch + '"', "testnet node branch");
-    requireContains("official_kaspa_runtime.rs", officialRuntime, 'Self::Testnet10 | Self::Testnet12 => "' + networks.testnet10.rev + '"', "testnet node rev");
-    requireContains("src/lib.rs bridge runtime", bridgeRuntime, 'Self::Testnet10 | Self::Testnet12 => "' + networks.testnet10.branch + '"', "testnet bridge branch");
-    requireContains("src/lib.rs bridge runtime", bridgeRuntime, 'Self::Testnet10 | Self::Testnet12 => "' + networks.testnet10.rev + '"', "testnet bridge rev");
-    requireContains("official_kaspa_runtime.rs", officialRuntime, "Self::Testnet10 | Self::Testnet12 => KaspaRuntimeFamily::Tn12", "testnet node family");
-    requireContains("src/lib.rs bridge runtime", bridgeRuntime, "Self::Testnet10 | Self::Testnet12 => BridgeRuntimeFamily::Tn12", "testnet bridge family");
+  if (networks.testnet12) {
+    requireContains("kgw_service_controller.rs", serviceController, 'Self::Testnet12 => "' + networks.testnet12.branch + '"', "testnet12 service branch");
+    requireContains("kgw_service_controller.rs", serviceController, 'Self::Testnet12 => "' + networks.testnet12.rev + '"', "testnet12 service rev");
+    requireContains("official_kaspa_runtime.rs", officialRuntime, 'Self::Testnet12 => "' + networks.testnet12.branch + '"', "testnet12 node branch");
+    requireContains("official_kaspa_runtime.rs", officialRuntime, 'Self::Testnet12 => "' + networks.testnet12.rev + '"', "testnet12 node rev");
+    requireContains("src/lib.rs bridge runtime", bridgeRuntime, 'Self::Testnet12 => "' + networks.testnet12.branch + '"', "testnet12 bridge branch");
+    requireContains("src/lib.rs bridge runtime", bridgeRuntime, 'Self::Testnet12 => "' + networks.testnet12.rev + '"', "testnet12 bridge rev");
+    requireContains("official_kaspa_runtime.rs", officialRuntime, "Self::Testnet12 => KaspaRuntimeFamily::Tn12", "testnet12 node family");
+    requireContains("src/lib.rs bridge runtime", bridgeRuntime, "Self::Testnet12 => BridgeRuntimeFamily::Tn12", "testnet12 bridge family");
   }
 
   lockSources = exists(files.cargoLock) ? parseLockGitSources(read(files.cargoLock)) : [];

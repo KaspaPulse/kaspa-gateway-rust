@@ -1,10 +1,14 @@
+use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 static KGW_CONTROLLER: OnceLock<Arc<kaspa_gateway_rk_node::KgwServiceController>> = OnceLock::new();
+static KGW_RAW_PROCESS_LOG_SEQUENCE_V1: AtomicU64 = AtomicU64::new(1);
+const KGW_RAW_PROCESS_LOG_BUFFER_LIMIT_V1: usize = 4096;
 
 fn controller() -> &'static Arc<kaspa_gateway_rk_node::KgwServiceController> {
     KGW_CONTROLLER.get_or_init(kaspa_gateway_rk_node::KgwServiceController::spawn)
@@ -15,11 +19,51 @@ struct KgwParallelSelfWorker {
     role: String,
     network: String,
     appdir: String,
+    bridge_instance_id: Option<String>,
 
     node_mode: String,
     child: Child,
-    logs: Arc<Mutex<VecDeque<String>>>,
+    logs: Arc<Mutex<VecDeque<KgwRuntimeRawLogEntryV1>>>,
     started_ms: u128,
+    exit_logged: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KgwRuntimeRawLogEntryV1 {
+    pub sequence: u64,
+    pub network: String,
+    pub source: String,
+    pub runtime_role: String,
+    pub bridge_instance_id: Option<String>,
+    pub stream: String,
+    pub received_ms: u64,
+    pub raw_text: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KgwRuntimeDiagnosticRecordV1 {
+    pub diagnostic_event: String,
+    pub network: String,
+    pub source: String,
+    pub runtime_role: String,
+    pub bridge_instance_id: Option<String>,
+    pub received_ms: u64,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KgwRuntimeLogsReportV1 {
+    pub version: String,
+    pub network: Option<String>,
+    pub runtime_role: Option<String>,
+    pub bridge_instance_id: Option<String>,
+    pub source: String,
+    pub buffer_limit: usize,
+    pub entries: Vec<KgwRuntimeRawLogEntryV1>,
+    pub diagnostics: Vec<KgwRuntimeDiagnosticRecordV1>,
 }
 
 static KGW_PARALLEL_SELF_WORKERS: OnceLock<Mutex<HashMap<String, KgwParallelSelfWorker>>> =
@@ -29,11 +73,178 @@ fn kgw_parallel_self_workers() -> &'static Mutex<HashMap<String, KgwParallelSelf
     KGW_PARALLEL_SELF_WORKERS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
+#[cfg(test)]
+fn kgw_worker_uses_test_command() -> bool {
+    std::env::var_os("KGW_TEST_SELF_WORKER_COMMAND").is_some()
+        || std::env::var_os("KGW_TEST_SELF_WORKER_FAIL_COMMAND").is_some()
+        || std::env::var_os("KGW_TEST_SELF_WORKER_MISSING_COMMAND").is_some()
+}
+
+#[cfg(not(test))]
+fn kgw_worker_uses_test_command() -> bool {
+    false
+}
+
 fn kgw_worker_now_ms() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|duration| duration.as_millis())
         .unwrap_or_default()
+}
+
+fn kgw_worker_now_ms_u64() -> u64 {
+    u64::try_from(kgw_worker_now_ms()).unwrap_or(u64::MAX)
+}
+
+fn kgw_worker_next_raw_log_sequence_v1() -> u64 {
+    KGW_RAW_PROCESS_LOG_SEQUENCE_V1.fetch_add(1, Ordering::SeqCst)
+}
+
+pub(crate) fn kgw_start_trace_enabled_v1() -> bool {
+    match std::env::var("KGW_START_TRACE") {
+        Ok(value) => matches!(
+            value.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        ),
+        Err(_) => false,
+    }
+}
+
+fn kgw_start_trace_json_escape_v1(value: &str) -> String {
+    let mut out = String::with_capacity(value.len() + 16);
+
+    for ch in value.chars() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            ch if ch.is_control() => out.push_str(&format!("\\u{:04x}", ch as u32)),
+            ch => out.push(ch),
+        }
+    }
+
+    out
+}
+
+fn kgw_start_trace_clean_field_v1(value: &str, fallback: &str) -> String {
+    let clean = value
+        .chars()
+        .map(|ch| {
+            if ch == '\r' || ch == '\n' || ch.is_control() {
+                ' '
+            } else {
+                ch
+            }
+        })
+        .collect::<String>()
+        .trim()
+        .to_string();
+
+    if clean.is_empty() {
+        return fallback.to_string();
+    }
+
+    clean.chars().take(160).collect()
+}
+
+fn kgw_start_trace_safe_details_v1(value: &str) -> String {
+    let lowered = value.to_ascii_lowercase();
+    if lowered.contains("secret")
+        || lowered.contains("token")
+        || lowered.contains("private")
+        || lowered.contains("mnemonic")
+        || lowered.contains("wallet")
+        || lowered.contains("address")
+    {
+        return "{\"redacted\":true,\"reason\":\"sensitive-field\"}".to_string();
+    }
+
+    let clean = value
+        .chars()
+        .map(|ch| {
+            if ch == '\r' || ch == '\n' || ch.is_control() {
+                ' '
+            } else {
+                ch
+            }
+        })
+        .collect::<String>();
+
+    clean.chars().take(1200).collect()
+}
+
+pub(crate) fn kgw_start_trace_format_v1(
+    source: &str,
+    stage: &str,
+    network: &str,
+    action: &str,
+    result: &str,
+    details: Option<&str>,
+) -> String {
+    let source = kgw_start_trace_clean_field_v1(source, "native");
+    let stage = kgw_start_trace_clean_field_v1(stage, "unknown");
+    let network = kgw_start_trace_clean_field_v1(network, "unknown");
+    let action = kgw_start_trace_clean_field_v1(action, "unknown");
+    let result = kgw_start_trace_clean_field_v1(result, "unknown");
+    let details = details.map(kgw_start_trace_safe_details_v1);
+
+    let mut line = format!(
+        "[KGW_START_TRACE] {{\"timestamp\":{},\"source\":\"{}\",\"stage\":\"{}\",\"network\":\"{}\",\"action\":\"{}\",\"result\":\"{}\"",
+        kgw_worker_now_ms(),
+        kgw_start_trace_json_escape_v1(&source),
+        kgw_start_trace_json_escape_v1(&stage),
+        kgw_start_trace_json_escape_v1(&network),
+        kgw_start_trace_json_escape_v1(&action),
+        kgw_start_trace_json_escape_v1(&result)
+    );
+
+    if let Some(details) = details {
+        line.push_str(",\"details\":\"");
+        line.push_str(&kgw_start_trace_json_escape_v1(&details));
+        line.push('"');
+    }
+
+    line.push('}');
+    line
+}
+
+#[cfg(test)]
+static KGW_START_TRACE_TEST_LINES_V1: OnceLock<Mutex<Vec<String>>> = OnceLock::new();
+
+#[cfg(test)]
+#[allow(dead_code)]
+pub(crate) fn kgw_start_trace_test_take_lines_v1() -> Vec<String> {
+    let sink = KGW_START_TRACE_TEST_LINES_V1.get_or_init(|| Mutex::new(Vec::new()));
+    match sink.lock() {
+        Ok(mut guard) => std::mem::take(&mut *guard),
+        Err(_) => Vec::new(),
+    }
+}
+
+pub(crate) fn kgw_start_trace_emit_v1(
+    source: &str,
+    stage: &str,
+    network: &str,
+    action: &str,
+    result: &str,
+    details: Option<&str>,
+) {
+    if !kgw_start_trace_enabled_v1() {
+        return;
+    }
+
+    let line = kgw_start_trace_format_v1(source, stage, network, action, result, details);
+    eprintln!("{line}");
+
+    #[cfg(test)]
+    {
+        let sink = KGW_START_TRACE_TEST_LINES_V1.get_or_init(|| Mutex::new(Vec::new()));
+        if let Ok(mut guard) = sink.lock() {
+            guard.push(line);
+        }
+    }
 }
 
 fn kgw_worker_key(role: &str, network: &str) -> String {
@@ -44,24 +255,310 @@ fn kgw_worker_key(role: &str, network: &str) -> String {
     )
 }
 
-fn kgw_worker_push_log(logs: &Arc<Mutex<VecDeque<String>>>, line: impl Into<String>) {
-    let line = line.into().trim_end_matches('\r').to_string();
+fn kgw_worker_clean_optional_identifier_v1(value: Option<String>) -> Option<String> {
+    let clean = value?
+        .chars()
+        .filter(|ch| !ch.is_control() && *ch != '\0' && *ch != '\r' && *ch != '\n')
+        .collect::<String>()
+        .trim()
+        .to_string();
 
-    if line.trim().is_empty() {
-        return;
-    }
-
-    if let Ok(mut guard) = logs.lock() {
-        if guard.len() >= 4096 {
-            guard.pop_front();
-        }
-
-        guard.push_back(line);
+    if clean.is_empty() {
+        None
+    } else {
+        Some(clean.chars().take(128).collect())
     }
 }
 
-fn kgw_worker_spawn_reader<R>(_label: String, reader: R, logs: Arc<Mutex<VecDeque<String>>>)
-where
+fn kgw_worker_push_raw_log(
+    logs: &Arc<Mutex<VecDeque<KgwRuntimeRawLogEntryV1>>>,
+    entry: KgwRuntimeRawLogEntryV1,
+) {
+    if let Ok(mut guard) = logs.lock() {
+        if guard.len() >= KGW_RAW_PROCESS_LOG_BUFFER_LIMIT_V1 {
+            guard.pop_front();
+        }
+
+        guard.push_back(entry);
+    }
+}
+
+fn kgw_worker_raw_log_entry_v1(
+    role: &str,
+    network: &str,
+    bridge_instance_id: Option<&str>,
+    stream: &str,
+    line: String,
+) -> KgwRuntimeRawLogEntryV1 {
+    KgwRuntimeRawLogEntryV1 {
+        sequence: kgw_worker_next_raw_log_sequence_v1(),
+        network: network.to_string(),
+        source: "self-worker".to_string(),
+        runtime_role: role.to_string(),
+        bridge_instance_id: bridge_instance_id.map(str::to_string),
+        stream: stream.to_string(),
+        received_ms: kgw_worker_now_ms_u64(),
+        raw_text: line,
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn kgw_raw_log_entry_for_test_v1(
+    sequence: u64,
+    network: &str,
+    runtime_role: &str,
+    bridge_instance_id: Option<&str>,
+    stream: &str,
+    raw_text: &str,
+) -> KgwRuntimeRawLogEntryV1 {
+    KgwRuntimeRawLogEntryV1 {
+        sequence,
+        network: network.to_string(),
+        source: "self-worker".to_string(),
+        runtime_role: runtime_role.to_string(),
+        bridge_instance_id: bridge_instance_id.map(str::to_string),
+        stream: stream.to_string(),
+        received_ms: 1,
+        raw_text: raw_text.to_string(),
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn kgw_raw_log_text_from_entries_for_test_v1(
+    mut entries: Vec<KgwRuntimeRawLogEntryV1>,
+) -> String {
+    entries.sort_by_key(|entry| entry.sequence);
+    entries
+        .into_iter()
+        .map(|entry| entry.raw_text)
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+pub(crate) fn kgw_worker_safe_child_line_v1(line: &str) -> String {
+    let clean = line
+        .chars()
+        .map(|ch| {
+            if ch == '\r' || ch == '\n' || ch.is_control() {
+                ' '
+            } else {
+                ch
+            }
+        })
+        .collect::<String>();
+
+    let mut redacted = Vec::new();
+    let mut redact_next = false;
+
+    for token in clean.split_whitespace() {
+        let lower = token.to_ascii_lowercase();
+
+        if redact_next {
+            redacted.push("[redacted-sensitive-value]".to_string());
+            redact_next = false;
+            continue;
+        }
+
+        if matches!(
+            lower.as_str(),
+            "--internal-cpu-miner-address"
+                | "--wallet"
+                | "--wallet-address"
+                | "--private-key"
+                | "--token"
+                | "--secret"
+                | "--mnemonic"
+        ) {
+            redacted.push(token.to_string());
+            redact_next = true;
+            continue;
+        }
+
+        if lower.starts_with("kaspa:")
+            || lower.starts_with("kaspatest:")
+            || lower.starts_with("kaspadev:")
+            || lower.starts_with("kaspareg:")
+        {
+            redacted.push("[redacted-wallet-address]".to_string());
+            continue;
+        }
+
+        if let Some((key, _value)) = token.split_once('=') {
+            let key_lower = key.to_ascii_lowercase();
+            if key_lower.contains("token")
+                || key_lower.contains("secret")
+                || key_lower.contains("private")
+                || key_lower.contains("mnemonic")
+                || key_lower == "wallet"
+                || key_lower == "wallet_address"
+                || key_lower == "wallet-address"
+                || key_lower == "internal_cpu_miner_address"
+                || key_lower == "internal-cpu-miner-address"
+            {
+                redacted.push(format!("{key}=[redacted-sensitive-value]"));
+                continue;
+            }
+        }
+
+        redacted.push(token.to_string());
+    }
+
+    if redacted.is_empty() {
+        String::new()
+    } else {
+        redacted.join(" ")
+    }
+}
+
+pub(crate) fn kgw_worker_format_child_mirror_line_v1(
+    role: &str,
+    network: &str,
+    bridge_instance_id: Option<&str>,
+    stream: &str,
+    child_pid: u32,
+    line: &str,
+) -> String {
+    let prefix = if stream == "stdout" {
+        "[KGW_CHILD_STDOUT]"
+    } else {
+        "[KGW_CHILD_STDERR]"
+    };
+    let safe_line = kgw_worker_safe_child_line_v1(line);
+    let bridge_instance_json = bridge_instance_id
+        .filter(|value| !value.trim().is_empty())
+        .map(|value| format!("\"{}\"", kgw_start_trace_json_escape_v1(value.trim())))
+        .unwrap_or_else(|| "null".to_string());
+
+    format!(
+        "{} {{\"timestamp\":{},\"eventKind\":\"diagnostic_transport_record\",\"network\":\"{}\",\"runtimeRole\":\"{}\",\"bridgeInstanceId\":{},\"pid\":{},\"stage\":\"diagnostic_transport.child.{}\",\"stream\":\"{}\",\"action\":\"start\",\"result\":\"line\",\"safeText\":\"{}\"}}",
+        prefix,
+        kgw_worker_now_ms(),
+        kgw_start_trace_json_escape_v1(network),
+        kgw_start_trace_json_escape_v1(role),
+        bridge_instance_json,
+        child_pid,
+        kgw_start_trace_json_escape_v1(stream),
+        kgw_start_trace_json_escape_v1(stream),
+        kgw_start_trace_json_escape_v1(&safe_line)
+    )
+}
+
+fn kgw_start_trace_capture_test_line_v1(_line: &str) {
+    #[cfg(test)]
+    {
+        let sink = KGW_START_TRACE_TEST_LINES_V1.get_or_init(|| Mutex::new(Vec::new()));
+        if let Ok(mut guard) = sink.lock() {
+            guard.push(_line.to_string());
+        }
+    }
+}
+
+fn kgw_worker_argument_names_for_trace_v1(command: &Command) -> Vec<String> {
+    let mut names = Vec::new();
+    let mut previous_flag: Option<String> = None;
+
+    for arg in command.get_args() {
+        let text = arg.to_string_lossy().to_string();
+
+        if text.starts_with("--") {
+            previous_flag = Some(text.clone());
+            names.push(text);
+            continue;
+        }
+
+        let placeholder = match previous_flag.as_deref() {
+            Some("--kgw-self-worker") => "<runtime-role>",
+            Some("--network") => "<network>",
+            Some("--appdir") => "<database-directory>",
+            Some("--rpc") => "<rpc-endpoint>",
+            Some("--stratum") => "<stratum-endpoint>",
+            Some("--node-mode") => "<node-mode>",
+            Some("--bridge-config") => "<bridge-config-path>",
+            Some("--bridge-instance-listen") => "<bridge-instance-listen>",
+            Some("--internal-cpu-miner-address") => "<redacted-wallet-address>",
+            Some("--internal-cpu-miner-threads") => "<thread-count>",
+            Some("--internal-cpu-miner-throttle-ms") => "<throttle-ms>",
+            Some("--internal-cpu-miner-template-poll-ms") => "<template-poll-ms>",
+            Some("--exact") => "<test-name>",
+            Some(flag) if flag.starts_with("--") => "<argument>",
+            _ => "<argument>",
+        };
+
+        names.push(placeholder.to_string());
+        previous_flag = None;
+    }
+
+    names
+}
+
+fn kgw_worker_endpoint_port_v1(endpoint: &str) -> Option<u16> {
+    endpoint
+        .rsplit(':')
+        .next()
+        .and_then(|value| value.trim().parse::<u16>().ok())
+}
+
+fn kgw_worker_node_mode_for_trace_v1(role: &str, bridge_node_mode: &str) -> String {
+    if role == "node" {
+        "same-exe-self-worker".to_string()
+    } else {
+        bridge_node_mode.to_string()
+    }
+}
+
+fn kgw_worker_spawn_plan_details_v1(
+    role: &str,
+    network: &str,
+    node_mode: &str,
+    settings: &kaspa_gateway_rk_node::NodeSettings,
+    command: &Command,
+    uses_test_command: bool,
+    has_bridge_config_path: bool,
+) -> String {
+    let executable_path = command.get_program().to_string_lossy().to_string();
+    let working_directory = command
+        .get_current_dir()
+        .map(|path| path.to_string_lossy().to_string())
+        .or_else(|| {
+            std::env::current_dir()
+                .ok()
+                .map(|path| path.to_string_lossy().to_string())
+        })
+        .unwrap_or_else(|| "unknown".to_string());
+
+    serde_json::json!({
+        "runtimeRole": role,
+        "network": network,
+        "nodeMode": node_mode,
+        "sameExecutable": true,
+        "externalKaspadExe": false,
+        "usesTestCommand": uses_test_command,
+        "hasBridgeConfigPath": has_bridge_config_path,
+        "executablePath": executable_path,
+        "workingDirectory": working_directory,
+        "argumentNames": kgw_worker_argument_names_for_trace_v1(command),
+        "databaseDirectory": settings.app_dir_name,
+        "rpcPort": kgw_worker_endpoint_port_v1(&settings.rpc_endpoint),
+        "stratumPort": kgw_worker_endpoint_port_v1(&settings.stratum_listen),
+    })
+    .to_string()
+}
+
+fn kgw_worker_apply_current_dir_v1(command: &mut Command) {
+    if let Ok(current_dir) = std::env::current_dir() {
+        command.current_dir(current_dir);
+    }
+}
+
+fn kgw_worker_spawn_reader<R>(
+    role: String,
+    network: String,
+    bridge_instance_id: Option<String>,
+    stream: String,
+    child_pid: u32,
+    reader: R,
+    logs: Arc<Mutex<VecDeque<KgwRuntimeRawLogEntryV1>>>,
+) where
     R: std::io::Read + Send + 'static,
 {
     std::thread::spawn(move || {
@@ -69,13 +566,141 @@ where
 
         for line in buffered.lines() {
             match line {
-                Ok(line) => kgw_worker_push_log(&logs, line),
+                Ok(line) => {
+                    if kgw_start_trace_enabled_v1() {
+                        let mirror = kgw_worker_format_child_mirror_line_v1(
+                            &role,
+                            &network,
+                            bridge_instance_id.as_deref(),
+                            &stream,
+                            child_pid,
+                            &line,
+                        );
+                        eprintln!("{mirror}");
+                        kgw_start_trace_capture_test_line_v1(&mirror);
+                    }
+
+                    let entry = kgw_worker_raw_log_entry_v1(
+                        &role,
+                        &network,
+                        bridge_instance_id.as_deref(),
+                        &stream,
+                        line,
+                    );
+                    kgw_worker_push_raw_log(&logs, entry);
+                }
                 Err(_error) => {
+                    kgw_start_trace_emit_v1(
+                        "native",
+                        "native.diagnostic_transport_reader_error",
+                        &network,
+                        "read-child-line",
+                        "error",
+                        Some(&format!(
+                            "{{\"eventKind\":\"diagnostic_transport_record\",\"runtimeRole\":\"{}\",\"stream\":\"{}\",\"pid\":{},\"error\":\"{}\"}}",
+                            kgw_start_trace_json_escape_v1(&role),
+                            kgw_start_trace_json_escape_v1(&stream),
+                            child_pid,
+                            kgw_start_trace_json_escape_v1(&_error.to_string())
+                        )),
+                    );
                     break;
                 }
             }
         }
     });
+}
+
+fn kgw_worker_command(
+    role: &str,
+    network: &str,
+    settings: &kaspa_gateway_rk_node::NodeSettings,
+) -> Result<Command, String> {
+    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+    let mut command = Command::new(exe);
+    kgw_worker_apply_current_dir_v1(&mut command);
+
+    #[cfg(test)]
+    if let Some(path) = std::env::var_os("KGW_TEST_SELF_WORKER_MISSING_COMMAND") {
+        let mut missing = Command::new(path);
+        kgw_worker_apply_current_dir_v1(&mut missing);
+        missing
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::null());
+        return Ok(missing);
+    }
+
+    #[cfg(test)]
+    if let Some(fail_line) = std::env::var_os("KGW_TEST_SELF_WORKER_FAIL_COMMAND") {
+        command
+            .arg("--exact")
+            .arg("integrated_runtime_commands::kgw_test_self_worker_fail")
+            .arg("--nocapture")
+            .env("KGW_TEST_SELF_WORKER_FAIL_CHILD", "1")
+            .env("KGW_TEST_SELF_WORKER_FAIL_STDERR", fail_line)
+            .env("KGW_TEST_SELF_WORKER_ROLE", role)
+            .env("KGW_TEST_SELF_WORKER_NETWORK", network)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::null());
+        return Ok(command);
+    }
+
+    #[cfg(test)]
+    if std::env::var_os("KGW_TEST_SELF_WORKER_COMMAND").is_some() {
+        command
+            .arg("--exact")
+            .arg("integrated_runtime_commands::kgw_test_self_worker_hold")
+            .arg("--nocapture")
+            .env("KGW_TEST_SELF_WORKER_CHILD", "1")
+            .env("KGW_TEST_SELF_WORKER_ROLE", role)
+            .env("KGW_TEST_SELF_WORKER_NETWORK", network)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::null());
+        return Ok(command);
+    }
+
+    command
+        .arg("--kgw-self-worker")
+        .arg(role)
+        .arg("--network")
+        .arg(network)
+        .arg("--appdir")
+        .arg(&settings.app_dir_name)
+        .arg("--rpc")
+        .arg(&settings.rpc_endpoint)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .stdin(Stdio::null());
+
+    Ok(command)
+}
+
+#[cfg(test)]
+pub(crate) fn kgw_worker_node_command_args_for_test_v1(
+    role: &str,
+    settings: &kaspa_gateway_rk_node::NodeSettings,
+) -> Result<Vec<String>, String> {
+    let normalized_role = role.trim().to_ascii_lowercase();
+    let network = settings.network.as_str().to_string();
+    let mut command = kgw_worker_command(&normalized_role, &network, settings)?;
+
+    if normalized_role == "node" {
+        if settings.enable_utxo_index && !kgw_worker_uses_test_command() {
+            command.arg("--utxoindex");
+        }
+
+        if settings.archival && !kgw_worker_uses_test_command() {
+            command.arg("--archival");
+        }
+    }
+
+    Ok(command
+        .get_args()
+        .map(|arg| arg.to_string_lossy().to_string())
+        .collect())
 }
 
 fn kgw_worker_role_from_request(
@@ -98,9 +723,26 @@ fn kgw_worker_role_from_request(
     "node".to_string()
 }
 
+fn kgw_validate_network_start_policy(
+    network: kaspa_gateway_rk_node::KgwNetwork,
+    experimental_network_opt_in: Option<bool>,
+) -> Result<(), String> {
+    if network == kaspa_gateway_rk_node::KgwNetwork::Testnet12
+        && experimental_network_opt_in != Some(true)
+    {
+        return Err(
+            "start_blocked=true;start_allowed=false;network=testnet12;block_reason=experimental-network-opt-in-required;message=Testnet 12 is experimental and disabled by default. Enable it explicitly in this network tab before starting."
+                .to_string(),
+        );
+    }
+
+    Ok(())
+}
+
 fn kgw_worker_start(
     role: &str,
     settings: &kaspa_gateway_rk_node::NodeSettings,
+    bridge_instance_id: Option<String>,
     bridge_structured_instances: Option<String>,
     bridge_config_path: Option<String>,
     bridge_instance_listens_override: Option<Vec<String>>,
@@ -114,6 +756,28 @@ fn kgw_worker_start(
         } else {
             "external"
         };
+    let trace_node_mode = kgw_worker_node_mode_for_trace_v1(&role, bridge_node_mode);
+    let bridge_instance_id = if role == "bridge" {
+        kgw_worker_clean_optional_identifier_v1(bridge_instance_id)
+    } else {
+        None
+    };
+    let has_bridge_config_path = bridge_config_path
+        .as_deref()
+        .map(str::trim)
+        .is_some_and(|value| !value.is_empty());
+
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.runtime_owner_check_started",
+        &network,
+        "start",
+        "checking",
+        Some(&format!(
+            "{{\"runtimeRole\":\"{}\",\"nodeMode\":\"{}\"}}",
+            role, trace_node_mode
+        )),
+    );
 
     let mut workers = kgw_parallel_self_workers()
         .lock()
@@ -131,7 +795,18 @@ fn kgw_worker_start(
                 .is_none();
 
             if running {
-                return Ok(format!(
+                kgw_start_trace_emit_v1(
+                    "native",
+                    "native.runtime_owner_checked",
+                    &network,
+                    "start",
+                    "blocked",
+                    Some(&format!(
+                        "{{\"runtimeRole\":\"bridge\",\"blockReason\":\"node-tab-owner-running\",\"existingPid\":{}}}",
+                        existing.child.id()
+                    )),
+                );
+                return Err(format!(
                     "start_blocked=true;start_allowed=false;runtime_role=bridge;network={};node_mode=inprocess;block_reason=node-tab-owner-running;message=Cannot start bridge in-process because the same-network node is already running. Stop the node first or use external bridge mode.;node_pid={};appdir={}",
                     network,
                     existing.child.id(),
@@ -159,7 +834,18 @@ fn kgw_worker_start(
                 .is_none();
 
             if running && existing.node_mode == "inprocess" {
-                return Ok(format!(
+                kgw_start_trace_emit_v1(
+                    "native",
+                    "native.runtime_owner_checked",
+                    &network,
+                    "start",
+                    "blocked",
+                    Some(&format!(
+                        "{{\"runtimeRole\":\"node\",\"blockReason\":\"bridge-inprocess-owner-running\",\"existingPid\":{}}}",
+                        existing.child.id()
+                    )),
+                );
+                return Err(format!(
                     "start_blocked=true;start_allowed=false;runtime_role=node;network={};node_mode=inprocess;block_reason=bridge-inprocess-owner-running;message=Cannot start node because bridge in-process owns this network. Stop the bridge first.;bridge_pid={};appdir={}",
                     network,
                     existing.child.id(),
@@ -184,8 +870,21 @@ fn kgw_worker_start(
             .map_err(|error| error.to_string())?
             .is_none()
         {
-            return Ok(format!(
-                "parallel-owned-self-worker already running;role={};network={};pid={};appdir={};node_mode={}",
+            kgw_start_trace_emit_v1(
+                "native",
+                "native.runtime_owner_checked",
+                &network,
+                "start",
+                "blocked",
+                Some(&format!(
+                    "{{\"runtimeRole\":\"{}\",\"blockReason\":\"duplicate-owner\",\"existingPid\":{},\"nodeMode\":\"{}\"}}",
+                    existing.role,
+                    existing.child.id(),
+                    existing.node_mode
+                )),
+            );
+            return Err(format!(
+                "start_blocked=true;start_allowed=false;block_reason=duplicate-owner;runtime_role={};network={};pid={};appdir={};node_mode={};message=Process owner already exists for this network and role.",
                 existing.role,
                 existing.network,
                 existing.child.id(),
@@ -197,22 +896,20 @@ fn kgw_worker_start(
         workers.remove(&key);
     }
 
-    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
-    let logs = Arc::new(Mutex::new(VecDeque::new()));
-    let mut command = Command::new(exe);
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.runtime_owner_checked",
+        &network,
+        "start",
+        "available",
+        Some(&format!(
+            "{{\"runtimeRole\":\"{}\",\"nodeMode\":\"{}\"}}",
+            role, trace_node_mode
+        )),
+    );
 
-    command
-        .arg("--kgw-self-worker")
-        .arg(&role)
-        .arg("--network")
-        .arg(&network)
-        .arg("--appdir")
-        .arg(&settings.app_dir_name)
-        .arg("--rpc")
-        .arg(&settings.rpc_endpoint)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .stdin(Stdio::null());
+    let logs = Arc::new(Mutex::new(VecDeque::new()));
+    let mut command = kgw_worker_command(&role, &network, settings)?;
 
     if role == "bridge" {
         // KGW_BRIDGE_NORMAL_LOG_DEFAULT_R130
@@ -222,15 +919,17 @@ fn kgw_worker_start(
         command.env("RUST_LOG", bridge_rust_log);
     }
 
+    let test_command = kgw_worker_uses_test_command();
+
     if role == "node" {
-        if settings.enable_utxo_index {
+        if settings.enable_utxo_index && !test_command {
             command.arg("--utxoindex");
         }
 
-        if settings.archival {
+        if settings.archival && !test_command {
             command.arg("--archival");
         }
-    } else {
+    } else if !test_command {
         command.arg("--stratum").arg(&settings.stratum_listen);
         command.arg("--node-mode").arg(bridge_node_mode);
 
@@ -289,21 +988,177 @@ fn kgw_worker_start(
         }
     }
 
-    let mut child = command.spawn().map_err(|error| error.to_string())?;
+    let spawn_plan_details = kgw_worker_spawn_plan_details_v1(
+        &role,
+        &network,
+        &trace_node_mode,
+        settings,
+        &command,
+        test_command,
+        has_bridge_config_path,
+    );
+
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.spawn_plan_created",
+        &network,
+        "start",
+        "ok",
+        Some(&spawn_plan_details),
+    );
+
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.spawn_attempted",
+        &network,
+        "start",
+        "attempting",
+        Some(&format!(
+            "{{\"runtimeRole\":\"{}\",\"nodeMode\":\"{}\"}}",
+            role, trace_node_mode
+        )),
+    );
+
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            kgw_start_trace_emit_v1(
+                "native",
+                "native.spawn_failed",
+                &network,
+                "start",
+                "error",
+                Some(&format!(
+                    "{{\"runtimeRole\":\"{}\",\"errorKind\":\"{:?}\"}}",
+                    role,
+                    error.kind()
+                )),
+            );
+            return Err(format!(
+                "spawn_failed=true;runtime_role={};network={};source=self-worker;error={}",
+                role, network, error
+            ));
+        }
+    };
+    let pid = child.id();
+
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.spawn_succeeded",
+        &network,
+        "start",
+        "ok",
+        Some(&format!(
+            "{{\"runtimeRole\":\"{}\",\"nodeMode\":\"{}\",\"pid\":{}}}",
+            role, trace_node_mode, pid
+        )),
+    );
+
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.child_pid_recorded",
+        &network,
+        "start",
+        "ok",
+        Some(&format!(
+            "{{\"runtimeRole\":\"{}\",\"nodeMode\":\"{}\",\"pid\":{}}}",
+            role, trace_node_mode, pid
+        )),
+    );
 
     if let Some(stdout) = child.stdout.take() {
-        kgw_worker_spawn_reader("stdout".to_string(), stdout, Arc::clone(&logs));
+        kgw_worker_spawn_reader(
+            role.clone(),
+            network.clone(),
+            bridge_instance_id.clone(),
+            "stdout".to_string(),
+            pid,
+            stdout,
+            Arc::clone(&logs),
+        );
+        kgw_start_trace_emit_v1(
+            "native",
+            "native.stdout_reader_attached",
+            &network,
+            "start",
+            "attached",
+            Some(&format!("{{\"runtimeRole\":\"{}\",\"pid\":{}}}", role, pid)),
+        );
+    } else {
+        kgw_start_trace_emit_v1(
+            "native",
+            "native.stdout_reader_attached",
+            &network,
+            "start",
+            "missing",
+            Some(&format!("{{\"runtimeRole\":\"{}\",\"pid\":{}}}", role, pid)),
+        );
     }
 
     if let Some(stderr) = child.stderr.take() {
-        kgw_worker_spawn_reader("stderr".to_string(), stderr, Arc::clone(&logs));
+        kgw_worker_spawn_reader(
+            role.clone(),
+            network.clone(),
+            bridge_instance_id.clone(),
+            "stderr".to_string(),
+            pid,
+            stderr,
+            Arc::clone(&logs),
+        );
+        kgw_start_trace_emit_v1(
+            "native",
+            "native.stderr_reader_attached",
+            &network,
+            "start",
+            "attached",
+            Some(&format!("{{\"runtimeRole\":\"{}\",\"pid\":{}}}", role, pid)),
+        );
+    } else {
+        kgw_start_trace_emit_v1(
+            "native",
+            "native.stderr_reader_attached",
+            &network,
+            "start",
+            "missing",
+            Some(&format!("{{\"runtimeRole\":\"{}\",\"pid\":{}}}", role, pid)),
+        );
     }
 
-    let pid = child.id();
+    std::thread::sleep(std::time::Duration::from_millis(750));
+
+    if let Some(exit_status) = child.try_wait().map_err(|error| error.to_string())? {
+        kgw_start_trace_emit_v1(
+            "native",
+            "native.startup_response_returned",
+            &network,
+            "start",
+            "error",
+            Some(&format!(
+                "{{\"runtimeRole\":\"{}\",\"nodeMode\":\"{}\",\"pid\":{},\"reason\":\"self-worker-exited-during-startup\",\"status\":\"{}\"}}",
+                role, trace_node_mode, pid, exit_status
+            )),
+        );
+        let captured = logs
+            .lock()
+            .map(|guard| {
+                guard
+                    .iter()
+                    .map(|entry| kgw_worker_safe_child_line_v1(&entry.raw_text))
+                    .collect::<Vec<_>>()
+                    .join(" | ")
+            })
+            .unwrap_or_else(|_| "worker log lock failed".to_string());
+
+        return Err(format!(
+            "self-worker exited during startup;role={};network={};pid={};status={};logs={}",
+            role, network, pid, exit_status, captured
+        ));
+    }
+
     let stored_node_mode = if role == "bridge" {
         bridge_node_mode.to_string()
     } else {
-        "node".to_string()
+        trace_node_mode.clone()
     };
 
     workers.insert(
@@ -312,15 +1167,17 @@ fn kgw_worker_start(
             role: role.clone(),
             network: network.clone(),
             appdir: settings.app_dir_name.clone(),
+            bridge_instance_id,
             node_mode: stored_node_mode.clone(),
             child,
             logs,
             started_ms: kgw_worker_now_ms(),
+            exit_logged: false,
         },
     );
 
     Ok(format!(
-        "parallel-owned-self-worker started;role={};network={};pid={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};stratum={};node_mode={};same_db_path=true;exclusive_node_owner_per_network=true",
+        "parallel-owned-self-worker started;role={};network={};pid={};owner=self-worker;runtime_state=running;same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};stratum={};node_mode={};same_db_path=true;exclusive_node_owner_per_network=true",
         role,
         network,
         pid,
@@ -377,6 +1234,7 @@ fn kgw_worker_stop(network: &str, runtime_role: Option<&str>) -> Result<Option<S
     Ok(Some(lines.join("\n")))
 }
 
+#[tauri::command]
 pub fn kgw_shutdown_all_runtime_workers_v1() -> Result<String, String> {
     let mut workers = kgw_parallel_self_workers()
         .lock()
@@ -435,11 +1293,27 @@ fn kgw_worker_status(
             }
         }
 
-        let running = worker
-            .child
-            .try_wait()
-            .map_err(|error| error.to_string())?
-            .is_none();
+        let exit_status = worker.child.try_wait().map_err(|error| error.to_string())?;
+        let running = exit_status.is_none();
+
+        if let Some(status) = exit_status {
+            if !worker.exit_logged {
+                kgw_start_trace_emit_v1(
+                    "native",
+                    "native.diagnostic_transport_process_exit",
+                    &worker.network,
+                    "status",
+                    "observed",
+                    Some(&format!(
+                        "{{\"eventKind\":\"diagnostic_transport_record\",\"runtimeRole\":\"{}\",\"pid\":{},\"status\":\"{}\"}}",
+                        kgw_start_trace_json_escape_v1(&worker.role),
+                        worker.child.id(),
+                        kgw_start_trace_json_escape_v1(&status.to_string())
+                    )),
+                );
+                worker.exit_logged = true;
+            }
+        }
 
         lines.push(format!(
             "parallel-owned-self-worker status;role={};network={};pid={};running={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};started_ms={};node_mode={}",
@@ -463,13 +1337,16 @@ fn kgw_worker_status(
 fn kgw_worker_logs(
     network: Option<&str>,
     runtime_role: Option<&str>,
-) -> Result<Option<String>, String> {
+    bridge_instance_id: Option<&str>,
+) -> Result<Option<KgwRuntimeLogsReportV1>, String> {
     let workers = kgw_parallel_self_workers()
         .lock()
         .map_err(|_| "parallel self-worker lock failed".to_string())?;
 
     let wanted_network = network.map(|value| value.trim().to_ascii_lowercase());
     let wanted_role = runtime_role.map(|value| value.trim().to_ascii_lowercase());
+    let wanted_bridge_instance_id =
+        kgw_worker_clean_optional_identifier_v1(bridge_instance_id.map(str::to_string));
 
     let mut matched_worker = false;
     let mut lines = Vec::new();
@@ -487,6 +1364,12 @@ fn kgw_worker_logs(
             }
         }
 
+        if let Some(ref value) = wanted_bridge_instance_id {
+            if worker.bridge_instance_id.as_ref() != Some(value) {
+                continue;
+            }
+        }
+
         matched_worker = true;
 
         if let Ok(logs) = worker.logs.lock() {
@@ -494,15 +1377,117 @@ fn kgw_worker_logs(
         }
     }
 
-    if lines.is_empty() {
-        if matched_worker {
-            Ok(Some(String::new()))
-        } else {
-            Ok(None)
-        }
-    } else {
-        Ok(Some(lines.join("\n")))
+    if !matched_worker {
+        return Ok(None);
     }
+
+    lines.sort_by_key(|entry| entry.sequence);
+
+    Ok(Some(KgwRuntimeLogsReportV1 {
+        version: "kgw_runtime_logs_v1".to_string(),
+        network: wanted_network,
+        runtime_role: wanted_role,
+        bridge_instance_id: wanted_bridge_instance_id,
+        source: "self-worker".to_string(),
+        buffer_limit: KGW_RAW_PROCESS_LOG_BUFFER_LIMIT_V1,
+        entries: lines,
+        diagnostics: Vec::new(),
+    }))
+}
+
+fn kgw_worker_clear_logs(
+    network: Option<&str>,
+    runtime_role: Option<&str>,
+    bridge_instance_id: Option<&str>,
+) -> Result<bool, String> {
+    let workers = kgw_parallel_self_workers()
+        .lock()
+        .map_err(|_| "parallel self-worker lock failed".to_string())?;
+
+    let wanted_network = network.map(|value| value.trim().to_ascii_lowercase());
+    let wanted_role = runtime_role.map(|value| value.trim().to_ascii_lowercase());
+    let wanted_bridge_instance_id =
+        kgw_worker_clean_optional_identifier_v1(bridge_instance_id.map(str::to_string));
+    let mut matched_worker = false;
+
+    for worker in workers.values() {
+        if let Some(ref value) = wanted_network {
+            if &worker.network != value {
+                continue;
+            }
+        }
+
+        if let Some(ref value) = wanted_role {
+            if &worker.role != value {
+                continue;
+            }
+        }
+
+        if let Some(ref value) = wanted_bridge_instance_id {
+            if worker.bridge_instance_id.as_ref() != Some(value) {
+                continue;
+            }
+        }
+
+        matched_worker = true;
+
+        if let Ok(mut logs) = worker.logs.lock() {
+            logs.clear();
+        }
+    }
+
+    Ok(matched_worker)
+}
+
+fn kgw_empty_runtime_logs_report_v1(
+    network: Option<String>,
+    runtime_role: Option<String>,
+    bridge_instance_id: Option<String>,
+    source: &str,
+    diagnostics: Vec<KgwRuntimeDiagnosticRecordV1>,
+) -> KgwRuntimeLogsReportV1 {
+    KgwRuntimeLogsReportV1 {
+        version: "kgw_runtime_logs_v1".to_string(),
+        network,
+        runtime_role,
+        bridge_instance_id,
+        source: source.to_string(),
+        buffer_limit: KGW_RAW_PROCESS_LOG_BUFFER_LIMIT_V1,
+        entries: Vec::new(),
+        diagnostics,
+    }
+}
+
+fn kgw_inprocess_diagnostic_logs_report_v1(
+    network: Option<String>,
+    runtime_role: Option<String>,
+    bridge_instance_id: Option<String>,
+    controller_logs: String,
+) -> KgwRuntimeLogsReportV1 {
+    let line_count = controller_logs.lines().count();
+    let diagnostics = if line_count == 0 {
+        Vec::new()
+    } else {
+        vec![KgwRuntimeDiagnosticRecordV1 {
+            diagnostic_event: "kgw_diagnostic_transport_record_v1".to_string(),
+            network: network.clone().unwrap_or_else(|| "unknown".to_string()),
+            source: "in-process-controller".to_string(),
+            runtime_role: runtime_role.clone().unwrap_or_else(|| "unknown".to_string()),
+            bridge_instance_id: bridge_instance_id.clone(),
+            received_ms: kgw_worker_now_ms_u64(),
+            message: format!(
+                "Controller diagnostics are available separately; no child stdout/stderr raw output is available for this component. diagnosticLineCount={line_count}"
+            ),
+        }]
+    };
+
+    kgw_empty_runtime_logs_report_v1(
+        network,
+        runtime_role,
+        bridge_instance_id,
+        "in-process-controller",
+        diagnostics,
+    )
 }
 fn parse_network(
     network: Option<String>,
@@ -556,22 +1541,81 @@ pub fn kgw_runtime_owner_status_v1(
 pub fn kgw_kgw_runtime_logs_v1(
     network: Option<String>,
     runtime_role: Option<String>,
-) -> Result<String, String> {
-    if let Some(worker_logs) = kgw_worker_logs(network.as_deref(), runtime_role.as_deref())? {
+    bridge_instance_id: Option<String>,
+) -> Result<KgwRuntimeLogsReportV1, String> {
+    if let Some(worker_logs) = kgw_worker_logs(
+        network.as_deref(),
+        runtime_role.as_deref(),
+        bridge_instance_id.as_deref(),
+    )? {
         return Ok(worker_logs);
     }
-    let network = parse_network(network)?;
-    controller()
-        .logs(network)
-        .map_err(|error| error.to_string())
+
+    let bridge_instance_id = kgw_worker_clean_optional_identifier_v1(bridge_instance_id);
+    let runtime_role = runtime_role
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty());
+    let network_label = network
+        .as_deref()
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty());
+    let parsed_network = parse_network(network)?;
+    let controller_logs = controller()
+        .logs(parsed_network)
+        .map_err(|error| error.to_string())?;
+
+    Ok(kgw_inprocess_diagnostic_logs_report_v1(
+        network_label,
+        runtime_role,
+        bridge_instance_id,
+        controller_logs,
+    ))
+}
+
+#[tauri::command]
+pub fn kgw_kgw_runtime_clear_logs_v1(
+    network: Option<String>,
+    runtime_role: Option<String>,
+    bridge_instance_id: Option<String>,
+) -> Result<KgwRuntimeLogsReportV1, String> {
+    let _ = kgw_worker_clear_logs(
+        network.as_deref(),
+        runtime_role.as_deref(),
+        bridge_instance_id.as_deref(),
+    )?;
+
+    let bridge_instance_id = kgw_worker_clean_optional_identifier_v1(bridge_instance_id);
+    let runtime_role = runtime_role
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty());
+    let network_label = network
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty());
+
+    Ok(kgw_empty_runtime_logs_report_v1(
+        network_label,
+        runtime_role,
+        bridge_instance_id,
+        "self-worker",
+        Vec::new(),
+    ))
 }
 
 fn kgw_safe_runtime_appdir_root() -> std::path::PathBuf {
     if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
-        std::path::PathBuf::from(local_app_data).join("rusty-kaspa")
+        std::path::PathBuf::from(local_app_data)
+            .join("KaspaGateway")
+            .join("nodes")
     } else {
-        std::env::temp_dir().join("rusty-kaspa")
+        std::env::temp_dir().join("KaspaGateway").join("nodes")
     }
+}
+
+fn kgw_network_runtime_appdir(network: kaspa_gateway_rk_node::KgwNetwork) -> String {
+    kgw_safe_runtime_appdir_root()
+        .join(network.as_str())
+        .to_string_lossy()
+        .to_string()
 }
 
 fn kgw_safe_runtime_appdir(value: String) -> String {
@@ -1032,10 +2076,120 @@ pub fn kgw_kgw_apply_node_settings_v1(
     bridge_active_instance: Option<String>,
     bridge_active_instance_port: Option<String>,
     bridge_structured_instances: Option<String>,
+    experimental_network_opt_in: Option<bool>,
 ) -> Result<String, String> {
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.tauri_command_entered",
+        &network,
+        "start",
+        "entered",
+        Some("{\"commandName\":\"kgw_kgw_apply_node_settings_v1\"}"),
+    );
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.payload_received_and_validated",
+        &network,
+        "start",
+        "received",
+        Some(&format!(
+            "{{\"hasNodeCommandPreview\":{},\"hasBridgeCommandPreview\":{},\"runtimeRole\":\"{}\",\"hasBridgeActiveInstance\":{},\"hasBridgeStructuredInstances\":{},\"experimentalOptIn\":{}}}",
+            node_command_preview
+                .as_deref()
+                .is_some_and(|value| !value.trim().is_empty()),
+            bridge_command_preview
+                .as_deref()
+                .is_some_and(|value| !value.trim().is_empty()),
+            runtime_role.as_deref().unwrap_or(""),
+            bridge_active_instance
+                .as_deref()
+                .is_some_and(|value| !value.trim().is_empty()),
+            bridge_structured_instances
+                .as_deref()
+                .is_some_and(|value| !value.trim().is_empty()),
+            experimental_network_opt_in == Some(true)
+        )),
+    );
+
     let mut settings =
-        kaspa_gateway_rk_node::NodeSettings::from_strings(network, node_kind, bridge_kind)
-            .map_err(|error| error.to_string())?;
+        match kaspa_gateway_rk_node::NodeSettings::from_strings(network, node_kind, bridge_kind) {
+            Ok(settings) => {
+                kgw_start_trace_emit_v1(
+                    "native",
+                    "native.payload_received_and_validated",
+                    settings.network.as_str(),
+                    "start",
+                    "validated",
+                    Some("{\"schema\":\"node-settings-v1\"}"),
+                );
+                settings
+            }
+            Err(error) => {
+                let error_text = error.to_string();
+                kgw_start_trace_emit_v1(
+                    "native",
+                    "native.payload_received_and_validated",
+                    "unknown",
+                    "start",
+                    "error",
+                    Some("{\"schema\":\"node-settings-v1\"}"),
+                );
+                kgw_start_trace_emit_v1(
+                    "native",
+                    "native.startup_response_returned",
+                    "unknown",
+                    "start",
+                    "error",
+                    Some("{\"reason\":\"payload-validation-failed\"}"),
+                );
+                return Err(error_text);
+            }
+        };
+
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.network_normalized",
+        settings.network.as_str(),
+        "start",
+        "ok",
+        Some(&format!(
+            "{{\"normalizedNetwork\":\"{}\"}}",
+            settings.network.as_str()
+        )),
+    );
+
+    let experimental_network = settings.network == kaspa_gateway_rk_node::KgwNetwork::Testnet12;
+    let experimental_allowed = !experimental_network || experimental_network_opt_in == Some(true);
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.experimental_opt_in_evaluated",
+        settings.network.as_str(),
+        "start",
+        if experimental_allowed {
+            "allowed"
+        } else {
+            "blocked"
+        },
+        Some(&format!(
+            "{{\"experimentalNetwork\":{},\"explicitOptIn\":{}}}",
+            experimental_network,
+            experimental_network_opt_in == Some(true)
+        )),
+    );
+
+    if let Err(error) =
+        kgw_validate_network_start_policy(settings.network, experimental_network_opt_in)
+    {
+        kgw_start_trace_emit_v1(
+            "native",
+            "native.startup_response_returned",
+            settings.network.as_str(),
+            "start",
+            "error",
+            Some("{\"reason\":\"experimental-network-policy\"}"),
+        );
+        return Err(error);
+    }
 
     let bridge_config_path_for_worker =
         kgw_bridge_config_path_from_preview_r122(bridge_command_preview.as_deref());
@@ -1054,7 +2208,9 @@ pub fn kgw_kgw_apply_node_settings_v1(
         node_command_preview,
         bridge_command_preview,
     );
+    settings.app_dir_name = kgw_network_runtime_appdir(settings.network);
 
+    let bridge_active_instance_id_for_worker = bridge_active_instance_id.clone();
     let bridge_structured_instances_for_worker = bridge_structured_instances.clone();
 
     kgw_apply_bridge_active_instance_runtime_overrides_r110f(
@@ -1067,13 +2223,25 @@ pub fn kgw_kgw_apply_node_settings_v1(
 
     let role = kgw_worker_role_from_request(runtime_role.as_deref(), &settings);
 
-    kgw_worker_start(
+    let result = kgw_worker_start(
         &role,
         &settings,
+        bridge_active_instance_id_for_worker,
         bridge_structured_instances_for_worker,
         bridge_config_path_for_worker,
         bridge_instance_listens_override,
-    )
+    );
+
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.startup_response_returned",
+        settings.network.as_str(),
+        "start",
+        if result.is_ok() { "ok" } else { "error" },
+        Some(&format!("{{\"runtimeRole\":\"{}\"}}", role)),
+    );
+
+    result
 }
 
 #[tauri::command]
@@ -1209,4 +2377,47 @@ pub fn kgw_kgw_smoke_stop_network_v1(network: String) -> Result<String, String> 
         "smoke_stop_network accepted\n{}\nstatus={}\nlogs=\n{}",
         accepted, status, logs
     ))
+}
+
+#[cfg(test)]
+#[test]
+fn kgw_test_self_worker_hold() {
+    if std::env::var_os("KGW_TEST_SELF_WORKER_CHILD").is_none() {
+        return;
+    }
+
+    let role = std::env::var("KGW_TEST_SELF_WORKER_ROLE").unwrap_or_else(|_| "node".to_string());
+    let network =
+        std::env::var("KGW_TEST_SELF_WORKER_NETWORK").unwrap_or_else(|_| "mainnet".to_string());
+
+    let stdout = std::env::var("KGW_TEST_SELF_WORKER_STDOUT")
+        .unwrap_or_else(|_| format!("test-self-worker stdout role={role} network={network}"));
+    let stderr = std::env::var("KGW_TEST_SELF_WORKER_STDERR")
+        .unwrap_or_else(|_| format!("test-self-worker stderr role={role} network={network}"));
+
+    println!("{stdout}");
+    eprintln!("{stderr}");
+
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(10));
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn kgw_test_self_worker_fail() {
+    if std::env::var_os("KGW_TEST_SELF_WORKER_FAIL_CHILD").is_none() {
+        return;
+    }
+
+    let role = std::env::var("KGW_TEST_SELF_WORKER_ROLE").unwrap_or_else(|_| "node".to_string());
+    let network =
+        std::env::var("KGW_TEST_SELF_WORKER_NETWORK").unwrap_or_else(|_| "mainnet".to_string());
+    let line = std::env::var("KGW_TEST_SELF_WORKER_FAIL_STDERR").unwrap_or_else(|_| {
+        format!("test-self-worker forced failure role={role} network={network}")
+    });
+
+    println!("test-self-worker failing stdout role={role} network={network}");
+    eprintln!("{line}");
+    std::process::exit(1);
 }
