@@ -77,7 +77,7 @@
   "apps/kaspa-gateway-desktop/frontend/main.js": {
     "mtime": 1785193405.519978,
     "ast_hash": "e8c638d013ec82122f91b22f35c636ed",
-    "semantic_hash": ""
+    "semantic_hash": "e8c638d013ec82122f91b22f35c636ed"
   },
   "apps/kaspa-gateway-desktop/frontend/src/app.js": {
     "mtime": 1785077273.3548799,
@@ -107,12 +107,12 @@
   "apps/kaspa-gateway-desktop/frontend/src/core/tauri-api.js": {
     "mtime": 1785193583.2519007,
     "ast_hash": "8dc82e356f554892239ae69976c7b18a",
-    "semantic_hash": ""
+    "semantic_hash": "8dc82e356f554892239ae69976c7b18a"
   },
   "apps/kaspa-gateway-desktop/frontend/src/core/tauri.js": {
     "mtime": 1785193587.4446285,
     "ast_hash": "6400d2690ad6614c20e28b1c11d20342",
-    "semantic_hash": ""
+    "semantic_hash": "6400d2690ad6614c20e28b1c11d20342"
   },
   "apps/kaspa-gateway-desktop/frontend/src/core/theme-color.js": {
     "mtime": 1785077273.3578818,
@@ -200,24 +200,24 @@
     "semantic_hash": "fcd5a6c42db68be6411d15046c52307d"
   },
   "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js": {
-    "mtime": 1785101006.172004,
-    "ast_hash": "9c0b9f25b7b8664ecf9233fd77e05402",
-    "semantic_hash": "9c0b9f25b7b8664ecf9233fd77e05402"
+    "mtime": 1785314294.5103161,
+    "ast_hash": "bf657726b80b7fa83115f7d9260a316e",
+    "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.template.js": {
-    "mtime": 1785101006.172004,
-    "ast_hash": "7328d2439b2bc7126a27f3dc139a3227",
-    "semantic_hash": "7328d2439b2bc7126a27f3dc139a3227"
+    "mtime": 1785314033.027431,
+    "ast_hash": "c579e733dbed61d2ed4bb1f0f0c9edbe",
+    "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js": {
-    "mtime": 1785233953.0345514,
-    "ast_hash": "831c3568f2f1d4227d5730e4595506a5",
+    "mtime": 1785314280.0239477,
+    "ast_hash": "a079b0cba058ef9006ab91ecbe2edcb7",
     "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.template.js": {
-    "mtime": 1785101006.1770785,
-    "ast_hash": "11dd9db81e6eb1c8514dbff8d6645b27",
-    "semantic_hash": "11dd9db81e6eb1c8514dbff8d6645b27"
+    "mtime": 1785314020.3746421,
+    "ast_hash": "b117d209078606f9d32aa15535a6f33a",
+    "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/frontend/src/tabs/log/log.js": {
     "mtime": 1785077273.3832974,
@@ -260,9 +260,9 @@
     "semantic_hash": "dc3aec645b3f48afb1dbcdd2467d8e8c"
   },
   "apps/kaspa-gateway-desktop/src-tauri/build.rs": {
-    "mtime": 1785077273.391752,
-    "ast_hash": "667702979da61fdc96948886b7cd7a33",
-    "semantic_hash": "667702979da61fdc96948886b7cd7a33"
+    "mtime": 1785316473.6621187,
+    "ast_hash": "47189971f0cf57a1de4f57031013bece",
+    "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/src-tauri/capabilities/default.json": {
     "mtime": 1785077273.391752,
@@ -270,23 +270,23 @@
     "semantic_hash": "ce1e9020f3f8fbb10f5ecf15c02badf8"
   },
   "apps/kaspa-gateway-desktop/src-tauri/gen/schemas/acl-manifests.json": {
-    "mtime": 1785230164.4281695,
+    "mtime": 1785329900.5146694,
     "ast_hash": "6a860735641c7b9240c9e7a5eb75a002",
-    "semantic_hash": ""
+    "semantic_hash": "6a860735641c7b9240c9e7a5eb75a002"
   },
   "apps/kaspa-gateway-desktop/src-tauri/gen/schemas/capabilities.json": {
-    "mtime": 1785077273.3927534,
+    "mtime": 1785329900.5156913,
     "ast_hash": "1bd92a74039cfa923e4943e8cabb6c44",
     "semantic_hash": "1bd92a74039cfa923e4943e8cabb6c44"
   },
   "apps/kaspa-gateway-desktop/src-tauri/gen/schemas/desktop-schema.json": {
-    "mtime": 1785230164.4562888,
-    "ast_hash": "ec3b20f93642397b2c5333f780503049",
+    "mtime": 1785329900.5341365,
+    "ast_hash": "04c73ab6d55e955e6a2294f66660096b",
     "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/src-tauri/gen/schemas/windows-schema.json": {
-    "mtime": 1785230164.4562888,
-    "ast_hash": "ec3b20f93642397b2c5333f780503049",
+    "mtime": 1785329900.543707,
+    "ast_hash": "04c73ab6d55e955e6a2294f66660096b",
     "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/src-tauri/src/address_book.rs": {
@@ -365,13 +365,13 @@
     "semantic_hash": "8b78b1238b229b24b1adabec493ef27a"
   },
   "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs": {
-    "mtime": 1785223593.9165707,
-    "ast_hash": "f60bcad7bcf1acac14cab398ae3bfd0a",
+    "mtime": 1785329795.8352098,
+    "ast_hash": "3211996e152221b120fd957a1316011a",
     "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs": {
-    "mtime": 1785234017.2981267,
-    "ast_hash": "7c5000c8367efcc4e70c9237e9471f96",
+    "mtime": 1785329803.1925957,
+    "ast_hash": "343eb9f9331a89a466f3427de085c458",
     "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/src-tauri/src/live_metrics.rs": {
@@ -475,14 +475,14 @@
     "semantic_hash": "48abae0b0490e0e8c17b457c07cc4985"
   },
   "apps/kaspa-gateway-desktop/src-tauri/tauri.conf.json": {
-    "mtime": 1785077273.4139109,
-    "ast_hash": "7a2e43d4a875d00e1dfa5e677cf0771b",
-    "semantic_hash": "7a2e43d4a875d00e1dfa5e677cf0771b"
+    "mtime": 1785313973.4425263,
+    "ast_hash": "f99304903c7620176e80c7b74adb06ea",
+    "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/src-tauri/tests/integrated_runtime_ipc_smoke_tests.rs": {
-    "mtime": 1785225267.664155,
-    "ast_hash": "92e2cbd0db7e4367ef32c7e1b06ab079",
-    "semantic_hash": ""
+    "mtime": 1785249852.5639198,
+    "ast_hash": "8dcc4a4b2034a47cf5f68ea80331b2a2",
+    "semantic_hash": "8dcc4a4b2034a47cf5f68ea80331b2a2"
   },
   "config/runtime-repository-bindings.json": {
     "mtime": 1785101006.1856868,
@@ -775,8 +775,8 @@
     "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/frontend/index.html": {
-    "mtime": 1785077273.3528333,
-    "ast_hash": "54b99f5ba1222965e6a35125eae812c7",
+    "mtime": 1785313996.5665083,
+    "ast_hash": "ecbfe57ecf5aeaba0f1bf861cf73d329",
     "semantic_hash": ""
   },
   "apps/kaspa-gateway-desktop/frontend/src/README.md": {
@@ -862,7 +862,7 @@
   "tools/kgw_ai_workflow_gate.ps1": {
     "mtime": 1785184801.214789,
     "ast_hash": "e01df388baf61d9aefff8eb7f6fbdf3e",
-    "semantic_hash": ""
+    "semantic_hash": "e01df388baf61d9aefff8eb7f6fbdf3e"
   },
   "docs/AI_DEVELOPMENT_WORKFLOW.md": {
     "mtime": 1785184774.8746805,
@@ -872,21 +872,121 @@
   "tools/kgw_start_button_frontend_tests.cjs": {
     "mtime": 1785230012.131845,
     "ast_hash": "daa30271c5d7a7fa7dfad6e6e4ad1a7c",
-    "semantic_hash": ""
+    "semantic_hash": "daa30271c5d7a7fa7dfad6e6e4ad1a7c"
   },
   "tools/kgw_start_button_gate.ps1": {
     "mtime": 1785194235.4599693,
     "ast_hash": "9f5a124da4ed545bd8cfa26eaf0fe85f",
-    "semantic_hash": ""
+    "semantic_hash": "9f5a124da4ed545bd8cfa26eaf0fe85f"
   },
   "tools/kgw_desktop_diagnostic_launch.ps1": {
-    "mtime": 1785234021.6319592,
-    "ast_hash": "1549cad27f499d7b30763f66dc4a49d9",
+    "mtime": 1785252565.1806166,
+    "ast_hash": "b07f04141cb4af82b40336871466dc6c",
     "semantic_hash": ""
   },
   "tools/kgw_copy_log_gate.ps1": {
     "mtime": 1785231906.2254298,
     "ast_hash": "48512afb6f11e4ab40c5e39a8b7b5591",
+    "semantic_hash": "48512afb6f11e4ab40c5e39a8b7b5591"
+  },
+  "tools/kgw_true_raw_log_frontend_tests.cjs": {
+    "mtime": 1785249372.749872,
+    "ast_hash": "024b70798597b4faa703bb57113b93f0",
+    "semantic_hash": "024b70798597b4faa703bb57113b93f0"
+  },
+  "tools/kgw_true_raw_log_gate.ps1": {
+    "mtime": 1785348672.380364,
+    "ast_hash": "efa1a3df4f8571627eb76398ad981b7c",
+    "semantic_hash": ""
+  },
+  "tools/kgw_live_raw_log_matrix.ps1": {
+    "mtime": 1785252606.4277794,
+    "ast_hash": "bd890bae83ee4370a133782628e033f5",
+    "semantic_hash": ""
+  },
+  "tools/kgw_raw_log_clipboard_capture.ps1": {
+    "mtime": 1785249069.8433347,
+    "ast_hash": "237a8bc1e1807aec89cd09656506f54f",
+    "semantic_hash": "237a8bc1e1807aec89cd09656506f54f"
+  },
+  "apps/kaspa-gateway-desktop/src-tauri/capabilities-e2e/e2e-test.json": {
+    "mtime": 1785316473.6631095,
+    "ast_hash": "b94ff26741b7505f667e2f4a60f5ed67",
+    "semantic_hash": ""
+  },
+  "apps/kaspa-gateway-desktop/src-tauri/tauri.e2e.conf.json": {
+    "mtime": 1785313973.443532,
+    "ast_hash": "d73377de8165cfa752788edde0eee48b",
+    "semantic_hash": ""
+  },
+  "e2e/capabilities/tauri-embedded.windows.json": {
+    "mtime": 1785314427.72339,
+    "ast_hash": "d7f4632ab56cc7da8cc23e9e2c2734c5",
+    "semantic_hash": ""
+  },
+  "e2e/helpers/assertions.mjs": {
+    "mtime": 1785314427.7253885,
+    "ast_hash": "d581399837833351d5850ce25c837cb3",
+    "semantic_hash": ""
+  },
+  "e2e/helpers/kgw_windows_clipboard.ps1": {
+    "mtime": 1785348295.861598,
+    "ast_hash": "7d7fc4ccfd678346b80163e5e9c662a3",
+    "semantic_hash": ""
+  },
+  "e2e/helpers/kgw_windows_evidence.ps1": {
+    "mtime": 1785348300.950281,
+    "ast_hash": "f63b904b7cbd23ef600aca7bfd003e29",
+    "semantic_hash": ""
+  },
+  "e2e/helpers/paths.mjs": {
+    "mtime": 1785314427.7243934,
+    "ast_hash": "1301afe9ddcf0fb6fbd913f04f9f992b",
+    "semantic_hash": ""
+  },
+  "e2e/helpers/tauri-app.mjs": {
+    "mtime": 1785315053.5738418,
+    "ast_hash": "98277fc3bae8afff466774a95348fd27",
+    "semantic_hash": ""
+  },
+  "e2e/helpers/windows.mjs": {
+    "mtime": 1785348320.9409986,
+    "ast_hash": "1af856055e077dad158f5bf9ac93d39c",
+    "semantic_hash": ""
+  },
+  "e2e/package.json": {
+    "mtime": 1785326620.5210042,
+    "ast_hash": "e1970c03d538b37020ef38da7d9a2b76",
+    "semantic_hash": ""
+  },
+  "e2e/specs/zero-touch-live-matrix.e2e.js": {
+    "mtime": 1785332898.375195,
+    "ast_hash": "916fce0785942ceebd31858a3c0e95da",
+    "semantic_hash": ""
+  },
+  "e2e/wdio.conf.mjs": {
+    "mtime": 1785314975.6349235,
+    "ast_hash": "b1d2c1224b6d203357f2d7892a76d670",
+    "semantic_hash": ""
+  },
+  "tools/kgw_full_local_gate.ps1": {
+    "mtime": 1785350721.4646294,
+    "ast_hash": "cbb369cc8885517146cc4fc9e23c64e5",
+    "semantic_hash": ""
+  },
+  "tools/kgw_zero_touch_e2e.ps1": {
+    "mtime": 1785348288.4913466,
+    "ast_hash": "665f4180905eda6832097ac09ef67c58",
+    "semantic_hash": ""
+  },
+  "tools/kgw_zero_touch_evidence.ps1": {
+    "mtime": 1785348809.0367672,
+    "ast_hash": "85f61e9a3e948112c426c428eff79621",
+    "semantic_hash": ""
+  },
+  "tools/kgw_zero_touch_result_writer_tests.ps1": {
+    "mtime": 1785348413.4474928,
+    "ast_hash": "b547770d09b6911b824b3d4ccffd18c7",
     "semantic_hash": ""
   }
 }
