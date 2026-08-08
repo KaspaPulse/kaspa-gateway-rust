@@ -19,7 +19,6 @@ official-kaspa-runtime-mainline = [
 official-kaspa-runtime-tn12 = [
     "kgw-inproc-owner",
     "dep:kaspad-lib-tn12",
-    "dep:kaspa-core-tn12",
     "dep:kaspa-utils-tn12",
     "kaspa-gateway-rk-bridge/official-kaspa-runtime-tn12"
 ]
@@ -38,5 +37,4 @@ kaspad-lib-mainline = { package = "kaspad", git = "https://github.com/kaspanet/r
 kaspa-utils-mainline = { package = "kaspa-utils", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3", optional = true }
 
 kaspad-lib-tn12 = { package = "kaspad", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", rev = "eeb351ee911e2df906d21203dec8db3a195c6b33", optional = true }
-kaspa-core-tn12 = { package = "kaspa-core", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", rev = "eeb351ee911e2df906d21203dec8db3a195c6b33", optional = true }
 kaspa-utils-tn12 = { package = "kaspa-utils", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", rev = "eeb351ee911e2df906d21203dec8db3a195c6b33", optional = true }
