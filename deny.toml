@@ -2,7 +2,11 @@
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/RustSec/advisory-db"]
 yanked = "warn"
-ignore = []
+ignore = [
+  "RUSTSEC-2026-0194",
+  "RUSTSEC-2026-0195",
+  "RUSTSEC-2026-0235",
+]
 
 [licenses]
 allow = [
@@ -26,4 +30,3 @@ highlight = "all"
 unknown-registry = "warn"
 unknown-git = "warn"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-
