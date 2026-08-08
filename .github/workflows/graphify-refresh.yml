@@ -29,7 +29,7 @@ jobs:
           graphify --version
 
       - name: Refresh source graph incrementally
-        run: graphify . --update --no-viz
+        run: graphify . --update --code-only --no-viz
 
       - name: Query changed flows
         run: |
