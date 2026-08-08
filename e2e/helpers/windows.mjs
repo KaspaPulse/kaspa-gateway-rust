@@ -43,7 +43,7 @@ export async function runPowerShell(script, args = [], options = {}) {
       stdout ? `stdout=${stdout}` : "",
       stderr ? `stderr=${stderr}` : "",
     ].filter(Boolean).join("\n");
-    throw new Error(message);
+    throw new Error(message, { cause: error });
   }
 }
 
