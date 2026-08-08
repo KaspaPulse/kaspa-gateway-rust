@@ -83,7 +83,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          cargo machete 2>&1 | tee cargo-machete.log
+          cargo machete --with-metadata 2>&1 | tee cargo-machete.log
           status=${PIPESTATUS[0]}
           exit "$status"
 
