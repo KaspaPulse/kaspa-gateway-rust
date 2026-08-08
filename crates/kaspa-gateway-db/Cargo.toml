@@ -8,10 +8,6 @@ build = "build.rs"
 
 [dependencies]
 rusqlite = { version = "0.37.0", features = ["bundled"] }
-serde_json = "1"
 duckdb.workspace = true
 serde.workspace = true
 thiserror.workspace = true
-
-
-
