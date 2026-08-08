@@ -1,4 +1,4 @@
-name: Repair Rust Clippy
+name: Cleanup Rust repair workflow
 
 on:
   push:
@@ -8,64 +8,19 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: repair-rust-clippy-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  repair:
+  cleanup:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           ref: agent/modernize-ci-toolchain
 
-      - name: Apply Rust 1.97 Clippy cleanup
+      - name: Remove temporary workflow
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path("crates/kaspa-gateway-config/src/lib.rs")
-          text = path.read_text(encoding="utf-8")
-
-          replacements = [
-              (
-                  """    if let Ok(exe) = env::current_exe() {\n        if let Some(parent) = exe.parent() {\n            return Ok(parent.to_path_buf());\n        }\n    }\n""",
-                  """    if let Ok(exe) = env::current_exe()\n        && let Some(parent) = exe.parent()\n    {\n        return Ok(parent.to_path_buf());\n    }\n""",
-              ),
-              (
-                  """                    if let Value::String(text) = child {\n                        if text.starts_with(\"keyring_managed:\") {\n                            *text = String::new();\n                        }\n                    }\n""",
-                  """                    if let Value::String(text) = child\n                        && text.starts_with(\"keyring_managed:\")\n                    {\n                        *text = String::new();\n                    }\n""",
-              ),
-          ]
-
-          changed = False
-          for old, new in replacements:
-              if old in text:
-                  text = text.replace(old, new, 1)
-                  changed = True
-              elif new not in text:
-                  raise SystemExit("expected Clippy target block not found")
-
-          if changed:
-              path.write_text(text, encoding="utf-8")
-          PY
-
-      - name: Check formatting and patch integrity
-        run: |
-          cargo fmt --all -- --check
-          git diff --check
-
-      - name: Commit cleanup
-        run: |
-          if git diff --quiet -- crates/kaspa-gateway-config/src/lib.rs; then
-            echo "Clippy cleanup already applied."
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add crates/kaspa-gateway-config/src/lib.rs
-          git commit -m "fix: satisfy Rust 1.97 clippy"
+          git rm .github/workflows/repair-rust-clippy.yml
+          git commit -m "ci: remove temporary Rust repair workflow"
           git push origin HEAD:agent/modernize-ci-toolchain
