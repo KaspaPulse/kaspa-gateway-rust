@@ -30,6 +30,7 @@ jobs:
           fail-on-severity: moderate
           fail-on-scopes: runtime, development, unknown
           allow-licenses: MIT, MIT-0, Apache-2.0, Apache-2.0 WITH LLVM-exception, Unlicense, BSD-3-Clause, BSD-2-Clause, 0BSD, BSL-1.0, ISC, CC0-1.0, Unicode-DFS-2016, Unicode-3.0, Zlib, MPL-2.0, LGPL-3.0-only, CDLA-Permissive-2.0, bzip2-1.0.6
+          allow-dependencies-licenses: pkg:cargo/brotli-decompressor@5.0.3, pkg:cargo/dbus@0.9.12
           show-openssf-scorecard: true
           show-patched-versions: true
 
