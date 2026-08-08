@@ -69,14 +69,70 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Cargo check
-        run: cargo check --locked --workspace --all-targets
+        id: cargo-check
+        shell: bash
+        run: |
+          set +e
+          cargo check --locked --workspace --all-targets 2>&1 | tee cargo-check.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+
+      - name: Upload cargo-check diagnostics
+        if: failure() && steps.cargo-check.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cargo-check-diagnostics
+          path: cargo-check.log
+          retention-days: 3
 
       - name: Clippy strict
-        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+        id: clippy
+        shell: bash
+        run: |
+          set +e
+          cargo clippy --locked --workspace --all-targets -- -D warnings 2>&1 | tee clippy.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+
+      - name: Upload clippy diagnostics
+        if: failure() && steps.clippy.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: clippy-diagnostics
+          path: clippy.log
+          retention-days: 3
 
       - name: Run Rust tests
-        run: cargo test --locked --workspace --all-targets
+        id: rust-tests
+        shell: bash
+        run: |
+          set +e
+          cargo test --locked --workspace --all-targets 2>&1 | tee rust-tests.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+
+      - name: Upload Rust test diagnostics
+        if: failure() && steps.rust-tests.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rust-test-diagnostics
+          path: rust-tests.log
+          retention-days: 3
 
       - name: npm audit
+        id: npm-audit
         working-directory: apps/kaspa-gateway-desktop
-        run: npm audit --audit-level=moderate
+        shell: bash
+        run: |
+          set +e
+          npm audit --audit-level=moderate 2>&1 | tee npm-audit.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+
+      - name: Upload npm-audit diagnostics
+        if: failure() && steps.npm-audit.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: npm-audit-diagnostics
+          path: apps/kaspa-gateway-desktop/npm-audit.log
+          retention-days: 3
