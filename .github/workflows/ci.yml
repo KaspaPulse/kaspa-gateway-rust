@@ -59,12 +59,28 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: apps/kaspa-gateway-desktop/package-lock.json
+          cache-dependency-path: |
+            apps/kaspa-gateway-desktop/package-lock.json
+            e2e/package-lock.json
           package-manager-cache: true
 
-      - name: Install npm dependencies
+      - name: Install desktop npm dependencies
         working-directory: apps/kaspa-gateway-desktop
         run: npm ci --ignore-scripts
+
+      - name: Install E2E npm dependencies
+        working-directory: e2e
+        run: npm ci --ignore-scripts
+
+      - name: Lint desktop JavaScript
+        working-directory: apps/kaspa-gateway-desktop
+        run: npm run lint
+
+      - name: Lint and syntax-check E2E JavaScript
+        working-directory: e2e
+        run: |
+          npm run lint
+          npm run check
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -120,8 +136,8 @@ jobs:
           path: rust-tests.log
           retention-days: 3
 
-      - name: npm audit
-        id: npm-audit
+      - name: Audit desktop npm tree
+        id: desktop-npm-audit
         working-directory: apps/kaspa-gateway-desktop
         shell: bash
         run: |
@@ -130,10 +146,28 @@ jobs:
           status=${PIPESTATUS[0]}
           exit "$status"
 
-      - name: Upload npm-audit diagnostics
-        if: failure() && steps.npm-audit.outcome == 'failure'
+      - name: Upload desktop npm audit diagnostics
+        if: failure() && steps.desktop-npm-audit.outcome == 'failure'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: npm-audit-diagnostics
+          name: desktop-npm-audit-diagnostics
           path: apps/kaspa-gateway-desktop/npm-audit.log
+          retention-days: 3
+
+      - name: Audit E2E npm tree
+        id: e2e-npm-audit
+        working-directory: e2e
+        shell: bash
+        run: |
+          set +e
+          npm audit --audit-level=moderate 2>&1 | tee npm-audit.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+
+      - name: Upload E2E npm audit diagnostics
+        if: failure() && steps.e2e-npm-audit.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-npm-audit-diagnostics
+          path: e2e/npm-audit.log
           retention-days: 3
