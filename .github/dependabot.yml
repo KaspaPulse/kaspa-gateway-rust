@@ -1,13 +1,57 @@
 version: 2
+
 updates:
-  - package-ecosystem: "cargo"
+  - package-ecosystem: cargo
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: weekly
+      day: monday
+      time: "03:30"
+      timezone: "Asia/Riyadh"
     open-pull-requests-limit: 5
+    groups:
+      cargo-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+        group-by: dependency-name
 
-  - package-ecosystem: "npm"
+  - package-ecosystem: npm
     directory: "/apps/kaspa-gateway-desktop"
     schedule:
-      interval: "weekly"
+      interval: weekly
+      day: monday
+      time: "03:40"
+      timezone: "Asia/Riyadh"
     open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:50"
+      timezone: "Asia/Riyadh"
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: rust-toolchain
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: "Asia/Riyadh"
+    open-pull-requests-limit: 2
