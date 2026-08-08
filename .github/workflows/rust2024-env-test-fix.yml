@@ -1,0 +1,221 @@
+name: Rust 2024 trace-test fix
+
+on:
+  push:
+    branches:
+      - chore/security-baseline-2026-08-08
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rust2024-trace-test-fix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migrate-and-validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: chore/security-baseline-2026-08-08
+
+      - name: Patch clipboard trace test for Rust 2024
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("apps/kaspa-gateway-desktop/src-tauri/src/lib.rs")
+          text = path.read_text(encoding="utf-8")
+
+          old_signature = '''fn kgw_copy_text_to_clipboard_inner_v1<F>(
+              network: String,
+              runtime_role: Option<String>,
+              bridge_instance_id: Option<String>,
+              text: String,
+              metadata_character_count: u64,
+              metadata_line_count: u64,
+              metadata_sha256: Option<String>,
+              writer: F,
+          ) -> Result<String, String>
+          where
+              F: FnOnce(String) -> Result<(), String>,
+          {
+          '''
+
+          new_signature = '''fn kgw_copy_text_to_clipboard_inner_v1<F>(
+              network: String,
+              runtime_role: Option<String>,
+              bridge_instance_id: Option<String>,
+              text: String,
+              metadata_character_count: u64,
+              metadata_line_count: u64,
+              metadata_sha256: Option<String>,
+              writer: F,
+          ) -> Result<String, String>
+          where
+              F: FnOnce(String) -> Result<(), String>,
+          {
+              kgw_copy_text_to_clipboard_inner_with_trace_v1(
+                  network,
+                  runtime_role,
+                  bridge_instance_id,
+                  text,
+                  metadata_character_count,
+                  metadata_line_count,
+                  metadata_sha256,
+                  writer,
+                  integrated_runtime_commands::kgw_start_trace_emit_v1,
+              )
+          }
+
+          fn kgw_copy_text_to_clipboard_inner_with_trace_v1<F, T>(
+              network: String,
+              runtime_role: Option<String>,
+              bridge_instance_id: Option<String>,
+              text: String,
+              metadata_character_count: u64,
+              metadata_line_count: u64,
+              metadata_sha256: Option<String>,
+              writer: F,
+              trace: T,
+          ) -> Result<String, String>
+          where
+              F: FnOnce(String) -> Result<(), String>,
+              T: Fn(&str, &str, &str, &str, &str, Option<&str>),
+          {
+          '''
+
+          if text.count(old_signature) != 1:
+              raise SystemExit("clipboard helper signature anchor drifted")
+          text = text.replace(old_signature, new_signature, 1)
+
+          helper_start = text.index("fn kgw_copy_text_to_clipboard_inner_with_trace_v1")
+          helper_end = text.index("\n#[tauri::command]\nfn kgw_copy_text_to_clipboard_v1", helper_start)
+          helper = text[helper_start:helper_end]
+          emitter = "integrated_runtime_commands::kgw_start_trace_emit_v1("
+          if helper.count(emitter) != 3:
+              raise SystemExit(f"expected 3 trace emitter calls, found {helper.count(emitter)}")
+          helper = helper.replace(emitter, "trace(")
+          text = text[:helper_start] + helper + text[helper_end:]
+
+          test_start = text.index("    #[test]\n    fn clipboard_trace_excludes_raw_content_and_records_hash()")
+          test_end = text.index("\n}\n\n#[tauri::command]", test_start)
+          test = text[test_start:test_end]
+
+          old_enable = '''        std::env::set_var("KGW_START_TRACE", "1");
+                  let _ = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
+          '''
+          new_enable = '''        let trace_lines = Arc::new(Mutex::new(Vec::<String>::new()));
+                  let trace_lines_for_emitter = Arc::clone(&trace_lines);
+          '''
+          if test.count(old_enable) != 1:
+              raise SystemExit("trace test enable anchor drifted")
+          test = test.replace(old_enable, new_enable, 1)
+
+          old_call = "        let result = kgw_copy_text_to_clipboard_inner_v1("
+          if test.count(old_call) != 1:
+              raise SystemExit("trace test helper call anchor drifted")
+          test = test.replace(
+              old_call,
+              "        let result = kgw_copy_text_to_clipboard_inner_with_trace_v1(",
+              1,
+          )
+
+          old_writer_end = '''            |_value| Ok(()),
+                  )
+          '''
+          new_writer_end = '''            |_value| Ok(()),
+                      move |source, stage, network, action, result, details| {
+                          trace_lines_for_emitter.lock().unwrap().push(
+                              integrated_runtime_commands::kgw_start_trace_format_v1(
+                                  source, stage, network, action, result, details,
+                              ),
+                          );
+                      },
+                  )
+          '''
+          if test.count(old_writer_end) != 1:
+              raise SystemExit("trace test writer anchor drifted")
+          test = test.replace(old_writer_end, new_writer_end, 1)
+
+          old_take = '''        let trace = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1().join("\\n");
+          '''
+          new_take = '''        let trace = trace_lines.lock().unwrap().join("\\n");
+          '''
+          if test.count(old_take) != 1:
+              raise SystemExit("trace test capture anchor drifted")
+          test = test.replace(old_take, new_take, 1)
+
+          old_disable = '''
+                  std::env::remove_var("KGW_START_TRACE");
+          '''
+          if test.count(old_disable) != 1:
+              raise SystemExit("trace test cleanup anchor drifted")
+          test = test.replace(old_disable, "\n", 1)
+
+          text = text[:test_start] + test + text[test_end:]
+          path.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Install Linux build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            protobuf-compiler
+
+      - name: Install Rust 1.97.1
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: 1.97.1
+          components: rustfmt
+
+      - name: Format and validate desktop tests
+        run: |
+          cargo fmt --all -- --check || cargo fmt --all
+          cargo fmt --all -- --check
+          cargo check --locked -p kaspa-gateway-desktop --tests
+
+      - name: Install Graphify
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "graphifyy==0.9.36"
+          graphify --version
+
+      - name: Refresh and query source graph
+        run: |
+          graphify . --update --code-only --no-viz
+          graphify query "How does clipboard trace emission flow through kgw_copy_text_to_clipboard_inner_with_trace_v1 and the production Tauri clipboard command?"
+          graphify query "How is clipboard trace testing isolated from process environment mutation after the Rust 2024 migration?"
+
+      - name: Validate generated snapshot
+        run: |
+          git diff --check
+          test -s graphify-out/graph.json
+          test -s graphify-out/manifest.json
+          test -s graphify-out/GRAPH_REPORT.md
+
+      - name: Commit validated source and Graphify snapshot
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/kaspa-gateway-desktop/src-tauri/src/lib.rs \
+            graphify-out/graph.json \
+            graphify-out/manifest.json \
+            graphify-out/GRAPH_REPORT.md
+          git rm .github/workflows/rust2024-env-test-fix.yml
+          git diff --cached --check
+          git commit -m "fix: isolate clipboard trace test from process environment"
+          git push origin HEAD:chore/security-baseline-2026-08-08
