@@ -30,7 +30,7 @@ jobs:
           text = path.read_text(encoding="utf-8")
           set_count = text.count("std::env::set_var(")
           remove_count = text.count("std::env::remove_var(")
-          if set_count != 19 or remove_count != 15:
+          if set_count != 21 or remove_count != 13:
               raise SystemExit(f"unexpected env mutation count: set={set_count} remove={remove_count}")
 
           text = text.replace("std::env::set_var(", "set_runtime_worker_test_env(")
