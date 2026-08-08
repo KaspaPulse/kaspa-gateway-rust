@@ -16,12 +16,12 @@ members = [
 ]
 
 [workspace.package]
-edition = "2021"
-rust-version = "1.91"
+edition = "2024"
+rust-version = "1.97"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/KaspaPulse/KaspaGateway"
-homepage = "https://github.com/KaspaPulse/KaspaGateway"
-documentation = "https://github.com/KaspaPulse/KaspaGateway"
+repository = "https://github.com/KaspaPulse/kaspa-gateway-rust"
+homepage = "https://github.com/KaspaPulse/kaspa-gateway-rust"
+documentation = "https://github.com/KaspaPulse/kaspa-gateway-rust"
 authors = ["KaspaPulse"]
 description = "Kaspa Gateway rewritten in Rust with secure modular architecture."
 
@@ -46,6 +46,3 @@ duckdb = { version = "1", features = ["bundled"] }
 clap = { version = "4", features = ["derive"] }
 tauri = { version = "2", features = [] }
 tauri-build = { version = "2", features = [] }
-
-
-
