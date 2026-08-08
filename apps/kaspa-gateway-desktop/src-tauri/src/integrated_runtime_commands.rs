@@ -1472,7 +1472,9 @@ fn kgw_inprocess_diagnostic_logs_report_v1(
             diagnostic_event: "kgw_diagnostic_transport_record_v1".to_string(),
             network: network.clone().unwrap_or_else(|| "unknown".to_string()),
             source: "in-process-controller".to_string(),
-            runtime_role: runtime_role.clone().unwrap_or_else(|| "unknown".to_string()),
+            runtime_role: runtime_role
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string()),
             bridge_instance_id: bridge_instance_id.clone(),
             received_ms: kgw_worker_now_ms_u64(),
             message: format!(

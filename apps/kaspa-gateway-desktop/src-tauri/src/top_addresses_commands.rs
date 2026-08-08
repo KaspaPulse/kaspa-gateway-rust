@@ -318,14 +318,14 @@ pub async fn fetch_top_addresses_rust(
 /* KGW_PHASE14_COMPLETE_TOP_ADDRESSES_WRAPPERS */
 
 #[tauri::command]
-pub fn top_addresses_load_known_names(
-) -> Result<Vec<crate::top_addresses_deep::KnownNameRecord>, String> {
+pub fn top_addresses_load_known_names()
+-> Result<Vec<crate::top_addresses_deep::KnownNameRecord>, String> {
     crate::top_addresses_deep::top_addresses_load_known_names_impl()
 }
 
 #[tauri::command]
-pub fn top_addresses_load_currency_rates(
-) -> Result<Vec<crate::top_addresses_deep::CurrencyRateRecord>, String> {
+pub fn top_addresses_load_currency_rates()
+-> Result<Vec<crate::top_addresses_deep::CurrencyRateRecord>, String> {
     crate::top_addresses_deep::top_addresses_load_currency_rates_impl()
 }
 

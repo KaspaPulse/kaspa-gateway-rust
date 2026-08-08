@@ -1,5 +1,5 @@
 use kaspa_gateway_api::{
-    build_api_url, validate_address_for_url, AddressBalanceRaw, ApiClientConfig, KaspaApiClient,
+    AddressBalanceRaw, ApiClientConfig, KaspaApiClient, build_api_url, validate_address_for_url,
 };
 use serde_json::json;
 use url::Url;

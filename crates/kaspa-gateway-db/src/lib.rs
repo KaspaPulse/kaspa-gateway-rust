@@ -4,7 +4,7 @@
 // Forbidden: HTTP API fetch orchestration, Tauri IPC ownership, and frontend/UI behavior.
 // ============================================================================
 
-use duckdb::{params, Connection, OptionalExt};
+use duckdb::{Connection, OptionalExt, params};
 use rusqlite as sqlite;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -757,9 +757,7 @@ impl TransactionsRepository {
             if record.amount_sompi < 0 {
                 eprintln!(
                     "[KGW][transactions][SQLITE-WRITER][ERROR] invalid negative amount index={} txid={} amount_sompi={}",
-                    index,
-                    record.txid,
-                    record.amount_sompi
+                    index, record.txid, record.amount_sompi
                 );
 
                 return Err(DbError::InvalidRecord(

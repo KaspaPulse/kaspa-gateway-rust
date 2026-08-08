@@ -62,8 +62,12 @@ fn main() {
         }
         Commands::Architecture => {
             println!("Kaspa Gateway Rust workspace is ready.");
-            println!("Core, config, security, API, DB, node, runtime, and observability crates are separated.");
-            println!("Bridge design note: mining connectivity is modeled as a capability, not a fixed external process.");
+            println!(
+                "Core, config, security, API, DB, node, runtime, and observability crates are separated."
+            );
+            println!(
+                "Bridge design note: mining connectivity is modeled as a capability, not a fixed external process."
+            );
         }
         Commands::ConfigPath => match default_config_path() {
             Ok(path) => println!("{}", path.display()),

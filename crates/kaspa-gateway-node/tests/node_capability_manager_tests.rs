@@ -1,6 +1,6 @@
 use kaspa_gateway_node::{
-    infer_binary_kind, MiningConnectivityMode, NodeBinaryKind, NodeCapabilityManager, NodeEndpoint,
-    NodeManagerConfig,
+    MiningConnectivityMode, NodeBinaryKind, NodeCapabilityManager, NodeEndpoint, NodeManagerConfig,
+    infer_binary_kind,
 };
 
 #[test]
@@ -105,10 +105,11 @@ fn launch_plan_is_built_without_shell_execution() {
     assert_eq!(plan.network, "mainnet");
     assert_eq!(plan.mining_mode, MiningConnectivityMode::IntegratedBridge);
     assert!(plan.args.iter().any(|arg| arg == "--utxoindex"));
-    assert!(plan
-        .args
-        .iter()
-        .any(|arg| arg == "--rpclisten=127.0.0.1:16110"));
+    assert!(
+        plan.args
+            .iter()
+            .any(|arg| arg == "--rpclisten=127.0.0.1:16110")
+    );
     assert!(plan.args.iter().any(|arg| arg == "--maxinpeers=32"));
     plan.validate().expect("plan must validate");
 }

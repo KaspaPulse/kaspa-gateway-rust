@@ -1474,8 +1474,16 @@ fn kgw_run_bridge_self_worker(
 
     eprintln!(
         "KGW_BRIDGE_DUAL_CLI_CONFIG_REAL_RUNNER_R122 launch_source={} node_mode={} network={} instance_count={} listens={}",
-        if bridge_config_path.is_some() { "config" } else { "cli_instances" },
-        if is_inprocess { "inprocess" } else { "external" },
+        if bridge_config_path.is_some() {
+            "config"
+        } else {
+            "cli_instances"
+        },
+        if is_inprocess {
+            "inprocess"
+        } else {
+            "external"
+        },
         network,
         instance_listens.len(),
         instance_listens.join("|")

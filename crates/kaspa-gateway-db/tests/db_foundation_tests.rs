@@ -1,6 +1,6 @@
 use kaspa_gateway_db::{
-    initialize_addresses_schema, initialize_app_data_schema, initialize_transactions_schema,
-    schema_version, DatabaseManager, DatabasePaths,
+    DatabaseManager, DatabasePaths, initialize_addresses_schema, initialize_app_data_schema,
+    initialize_transactions_schema, schema_version,
 };
 use std::path::PathBuf;
 

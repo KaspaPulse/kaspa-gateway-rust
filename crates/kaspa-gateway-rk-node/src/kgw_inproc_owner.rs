@@ -246,18 +246,21 @@ mod tests {
     fn plan_contains_kgw_inproc_lifecycle() {
         let plan = build_kgw_inproc_plan(KgwInprocStartRequest::default()).unwrap();
 
-        assert!(plan
-            .steps
-            .contains(&KgwInprocStep::ConvertConfigToKaspadArgs));
-        assert!(plan
-            .steps
-            .contains(&KgwInprocStep::ComputeFileDescriptorBudget));
+        assert!(
+            plan.steps
+                .contains(&KgwInprocStep::ConvertConfigToKaspadArgs)
+        );
+        assert!(
+            plan.steps
+                .contains(&KgwInprocStep::ComputeFileDescriptorBudget)
+        );
         assert!(plan.steps.contains(&KgwInprocStep::CreateCoreWithRuntime));
         assert!(plan.steps.contains(&KgwInprocStep::SpawnNamedKaspadThread));
         assert!(plan.steps.contains(&KgwInprocStep::StoreRpcCoreService));
-        assert!(plan
-            .steps
-            .contains(&KgwInprocStep::AttachRpcToApplicationServices));
+        assert!(
+            plan.steps
+                .contains(&KgwInprocStep::AttachRpcToApplicationServices)
+        );
         assert!(plan.steps.contains(&KgwInprocStep::ShutdownCore));
         assert!(plan.steps.contains(&KgwInprocStep::JoinKaspadThread));
     }

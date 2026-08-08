@@ -1,5 +1,5 @@
 use crate::app_logger;
-use crate::commands::{add_address, delete_address, list_addresses, DesktopAddressRecord};
+use crate::commands::{DesktopAddressRecord, add_address, delete_address, list_addresses};
 
 #[tauri::command]
 pub fn get_all_addresses() -> Result<Vec<DesktopAddressRecord>, String> {

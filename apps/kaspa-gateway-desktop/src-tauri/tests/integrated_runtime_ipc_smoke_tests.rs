@@ -260,7 +260,9 @@ fn start_trace_marker_format_is_registered_and_safe() {
         "mainnet",
         "start",
         "entered",
-        Some("{\"secret\":\"abc\",\"wallet\":\"kaspa:abc\",\"completeCommand\":\"--rpc 127.0.0.1:16110\"}"),
+        Some(
+            "{\"secret\":\"abc\",\"wallet\":\"kaspa:abc\",\"completeCommand\":\"--rpc 127.0.0.1:16110\"}",
+        ),
     );
 
     assert!(marker.starts_with("[KGW_START_TRACE] "));
