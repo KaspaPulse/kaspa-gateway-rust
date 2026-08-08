@@ -40,4 +40,16 @@ jobs:
         run: python3 -m pip install --user --disable-pip-version-check graphify-cli==1.2.1 && export PATH="$HOME/.local/bin:$PATH" && graphify . --update --code-only --no-viz && python3 -c "import json,pathlib; p=pathlib.Path('graphify-out/graph.json'); d=json.loads(p.read_text()); assert p.stat().st_size > 0 and d.get('nodes') is not None and d.get('edges') is not None"
 
       - name: "Commit validated repair"
-        run: rm .github/workflows/clippy-finalize.yml .github/scripts/finalize_clippy.py && git config user.name 'github-actions[bot]' && git config user.email '41898282+github-actions[bot]@users.noreply.github.com' && git add crates/kaspa-gateway-db/src/lib.rs crates/kaspa-gateway-config/src/lib.rs graphify-out .github/workflows/clippy-finalize.yml .github/scripts/finalize_clippy.py && git diff --cached --check && git diff --cached --quiet && exit 1 || true && git commit -m 'fix: satisfy Rust 1.97 strict clippy' && git push origin HEAD:chore/security-baseline-2026-08-08
+        shell: bash
+        run: |
+          rm .github/workflows/clippy-finalize.yml .github/scripts/finalize_clippy.py
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add crates/kaspa-gateway-db/src/lib.rs crates/kaspa-gateway-config/src/lib.rs graphify-out .github/workflows/clippy-finalize.yml .github/scripts/finalize_clippy.py
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+            exit 1
+          fi
+          git commit -m 'fix: satisfy Rust 1.97 strict clippy'
+          git push origin HEAD:chore/security-baseline-2026-08-08
