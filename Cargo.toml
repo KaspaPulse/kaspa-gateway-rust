@@ -1,5 +1,5 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
     "crates/kaspa-gateway-core",
     "crates/kaspa-gateway-config",
@@ -19,9 +19,9 @@ members = [
 edition = "2024"
 rust-version = "1.97.1"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/KaspaPulse/KaspaGateway"
-homepage = "https://github.com/KaspaPulse/KaspaGateway"
-documentation = "https://github.com/KaspaPulse/KaspaGateway"
+repository = "https://github.com/KaspaPulse/kaspa-gateway-rust"
+homepage = "https://github.com/KaspaPulse/kaspa-gateway-rust"
+documentation = "https://github.com/KaspaPulse/kaspa-gateway-rust"
 authors = ["KaspaPulse"]
 description = "Kaspa Gateway rewritten in Rust with secure modular architecture."
 
