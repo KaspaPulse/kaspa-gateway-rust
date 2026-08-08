@@ -79,7 +79,21 @@ jobs:
           retention-days: 3
 
       - name: Unused dependency scan
-        run: cargo machete
+        id: cargo-machete
+        shell: bash
+        run: |
+          set +e
+          cargo machete 2>&1 | tee cargo-machete.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+
+      - name: Upload cargo-machete diagnostics
+        if: failure() && steps.cargo-machete.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cargo-machete-diagnostics
+          path: cargo-machete.log
+          retention-days: 3
 
       - name: Duplicate dependency report
         run: cargo tree --locked -d
