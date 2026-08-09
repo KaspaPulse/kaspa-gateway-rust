@@ -56,6 +56,19 @@ text = replace_exact(
     3,
     "direction collapsible_if",
 )
+text = replace_exact(
+    text,
+    '''        if row_matches {
+            if !seen.insert(tx.id.clone()) {
+                continue;
+            }
+        }''',
+    '''        if row_matches && !seen.insert(tx.id.clone()) {
+            continue;
+        }''',
+    1,
+    "row_matches collapsible_if",
+)
 db.write_text(text, encoding="utf-8")
 
 cfg = Path("crates/kaspa-gateway-config/src/lib.rs")
@@ -91,3 +104,40 @@ text = replace_exact(
     "keyring collapsible_if",
 )
 cfg.write_text(text, encoding="utf-8")
+
+node_old = '''        if !accumulated.contains_key(&key) {
+            if let Some(tx) = transactions.remove(&tx_id) {
+                accumulated.insert(key, tx);
+            }
+        }'''
+node_new = '''        if !accumulated.contains_key(&key)
+            && let Some(tx) = transactions.remove(&tx_id)
+        {
+            accumulated.insert(key, tx);
+        }'''
+node_matches: list[Path] = []
+for root in (Path("crates"), Path("apps")):
+    if not root.exists():
+        continue
+    for path in root.rglob("*.rs"):
+        source = path.read_text(encoding="utf-8")
+        if node_old in source:
+            node_matches.append(path)
+
+if len(node_matches) != 1:
+    raise RuntimeError(
+        "node_rpc collapsible_if: expected exactly one source match, "
+        f"found {len(node_matches)}: {node_matches}"
+    )
+
+node_path = node_matches[0]
+node_text = node_path.read_text(encoding="utf-8")
+node_text = replace_exact(
+    node_text,
+    node_old,
+    node_new,
+    1,
+    f"node_rpc collapsible_if in {node_path}",
+)
+node_path.write_text(node_text, encoding="utf-8")
+print(f"Patched remaining node_rpc Clippy finding in {node_path}")
