@@ -869,8 +869,7 @@ impl TransactionsRepository {
         let mut found = Vec::new();
 
         for chunk in candidates.chunks(500) {
-            let placeholders = std::iter::repeat("?")
-                .take(chunk.len())
+            let placeholders = std::iter::repeat_n("?", chunk.len())
                 .collect::<Vec<_>>()
                 .join(",");
 
@@ -942,18 +941,18 @@ impl TransactionsRepository {
             params.push(Box::new(end_ms));
         }
 
-        if let Some(tx_type) = filter.tx_type {
-            if !tx_type.eq_ignore_ascii_case("ALL") {
-                query.push_str(" AND tx_type = ?");
-                params.push(Box::new(tx_type.to_string()));
-            }
+        if let Some(tx_type) = filter.tx_type
+            && !tx_type.eq_ignore_ascii_case("ALL")
+        {
+            query.push_str(" AND tx_type = ?");
+            params.push(Box::new(tx_type.to_string()));
         }
 
-        if let Some(direction) = filter.direction {
-            if !direction.eq_ignore_ascii_case("ALL") {
-                query.push_str(" AND direction = ?");
-                params.push(Box::new(direction.to_string()));
-            }
+        if let Some(direction) = filter.direction
+            && !direction.eq_ignore_ascii_case("ALL")
+        {
+            query.push_str(" AND direction = ?");
+            params.push(Box::new(direction.to_string()));
         }
 
         if let Some(search) = filter.search {
@@ -1015,18 +1014,18 @@ impl TransactionsRepository {
             params.push(Box::new(end_ms));
         }
 
-        if let Some(tx_type) = filter.tx_type {
-            if !tx_type.eq_ignore_ascii_case("ALL") {
-                query.push_str(" AND tx_type = ?");
-                params.push(Box::new(tx_type.to_string()));
-            }
+        if let Some(tx_type) = filter.tx_type
+            && !tx_type.eq_ignore_ascii_case("ALL")
+        {
+            query.push_str(" AND tx_type = ?");
+            params.push(Box::new(tx_type.to_string()));
         }
 
-        if let Some(direction) = filter.direction {
-            if !direction.eq_ignore_ascii_case("ALL") {
-                query.push_str(" AND direction = ?");
-                params.push(Box::new(direction.to_string()));
-            }
+        if let Some(direction) = filter.direction
+            && !direction.eq_ignore_ascii_case("ALL")
+        {
+            query.push_str(" AND direction = ?");
+            params.push(Box::new(direction.to_string()));
         }
 
         if let Some(search) = filter.search {
@@ -1113,18 +1112,18 @@ impl TransactionsRepository {
             params.push(Box::new(end_ms));
         }
 
-        if let Some(tx_type) = filter.tx_type {
-            if !tx_type.eq_ignore_ascii_case("ALL") {
-                query.push_str(" AND tx_type = ?");
-                params.push(Box::new(tx_type.to_string()));
-            }
+        if let Some(tx_type) = filter.tx_type
+            && !tx_type.eq_ignore_ascii_case("ALL")
+        {
+            query.push_str(" AND tx_type = ?");
+            params.push(Box::new(tx_type.to_string()));
         }
 
-        if let Some(direction) = filter.direction {
-            if !direction.eq_ignore_ascii_case("ALL") {
-                query.push_str(" AND direction = ?");
-                params.push(Box::new(direction.to_string()));
-            }
+        if let Some(direction) = filter.direction
+            && !direction.eq_ignore_ascii_case("ALL")
+        {
+            query.push_str(" AND direction = ?");
+            params.push(Box::new(direction.to_string()));
         }
 
         if let Some(search) = filter.search {
