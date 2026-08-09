@@ -197,11 +197,11 @@ impl KgwTraceSessionR69F2 {
     }
 
     fn write_line(&self, line: &str) {
-        if let Ok(mut file_guard) = self.file.lock() {
-            if let Some(file) = file_guard.as_mut() {
-                let _ = writeln!(file, "{line}");
-                let _ = file.flush();
-            }
+        if let Ok(mut file_guard) = self.file.lock()
+            && let Some(file) = file_guard.as_mut()
+        {
+            let _ = writeln!(file, "{line}");
+            let _ = file.flush();
         }
     }
 
@@ -220,18 +220,18 @@ impl KgwTraceSessionR69F2 {
         let ended_ms = kgw_trace_unix_ms_r69f2();
         let elapsed_ms = ended_ms.saturating_sub(self.started_unix_ms);
 
-        if let Ok(mut file_guard) = self.file.lock() {
-            if let Some(mut file) = file_guard.take() {
-                let _ = writeln!(
-                    file,
-                    "{{\"event\":\"session-end\",\"owner\":\"KGW_TRACE_BACKEND_GATE_OWNER\",\"pid\":{},\"unix_ms\":{},\"elapsed_ms\":{}}}",
-                    std::process::id(),
-                    ended_ms,
-                    elapsed_ms
-                );
-                let _ = file.flush();
-                let _ = file.sync_all();
-            }
+        if let Ok(mut file_guard) = self.file.lock()
+            && let Some(mut file) = file_guard.take()
+        {
+            let _ = writeln!(
+                file,
+                "{{\"event\":\"session-end\",\"owner\":\"KGW_TRACE_BACKEND_GATE_OWNER\",\"pid\":{},\"unix_ms\":{},\"elapsed_ms\":{}}}",
+                std::process::id(),
+                ended_ms,
+                elapsed_ms
+            );
+            let _ = file.flush();
+            let _ = file.sync_all();
         }
 
         match kgw_zip_trace_log_r69f2(&self.log_path, &self.zip_path) {
@@ -1275,25 +1275,22 @@ fn kgw_bridge_config_instance_listens_r122(config_path: &str) -> Result<Vec<Stri
                     .trim()
                     .to_string(),
             )
-        } else if let Some(index) = lower.find("port:") {
-            Some(
+        } else {
+            lower.find("port:").map(|index| {
                 line[index + "port:".len()..]
                     .split(',')
                     .next()
                     .unwrap_or("")
                     .trim()
-                    .to_string(),
-            )
-        } else {
-            None
+                    .to_string()
+            })
         };
 
-        if let Some(value) = maybe_value {
-            if let Some(listen) = kgw_bridge_normalize_listen_from_config_r122(&value) {
-                if !listens.iter().any(|existing| existing == &listen) {
-                    listens.push(listen);
-                }
-            }
+        if let Some(value) = maybe_value
+            && let Some(listen) = kgw_bridge_normalize_listen_from_config_r122(&value)
+            && !listens.iter().any(|existing| existing == &listen)
+        {
+            listens.push(listen);
         }
     }
 

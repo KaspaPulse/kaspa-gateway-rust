@@ -654,12 +654,11 @@ fn find_value<'a>(value: &'a Value, dotted_path: &str) -> Option<&'a Value> {
 
 fn find_string(value: &Value, paths: &[&str]) -> Option<String> {
     for path in paths {
-        if let Some(found) = find_value(value, path) {
-            if let Some(text) = found.as_str() {
-                if !text.trim().is_empty() {
-                    return Some(text.trim().to_string());
-                }
-            }
+        if let Some(found) = find_value(value, path)
+            && let Some(text) = found.as_str()
+            && !text.trim().is_empty()
+        {
+            return Some(text.trim().to_string());
         }
     }
 
@@ -693,16 +692,16 @@ fn find_u64(value: &Value, paths: &[&str]) -> Option<u64> {
                 return Some(value);
             }
 
-            if let Some(value) = found.as_i64() {
-                if value >= 0 {
-                    return u64::try_from(value).ok();
-                }
+            if let Some(value) = found.as_i64()
+                && value >= 0
+            {
+                return u64::try_from(value).ok();
             }
 
-            if let Some(text) = found.as_str() {
-                if let Ok(parsed) = text.parse::<u64>() {
-                    return Some(parsed);
-                }
+            if let Some(text) = found.as_str()
+                && let Ok(parsed) = text.parse::<u64>()
+            {
+                return Some(parsed);
             }
         }
     }
@@ -717,10 +716,10 @@ fn find_f64(value: &Value, paths: &[&str]) -> Option<f64> {
                 return Some(value);
             }
 
-            if let Some(text) = found.as_str() {
-                if let Ok(parsed) = text.parse::<f64>() {
-                    return Some(parsed);
-                }
+            if let Some(text) = found.as_str()
+                && let Ok(parsed) = text.parse::<f64>()
+            {
+                return Some(parsed);
             }
         }
     }
@@ -730,19 +729,19 @@ fn find_f64(value: &Value, paths: &[&str]) -> Option<f64> {
 
 fn find_string_array(value: &Value, paths: &[&str]) -> Option<Vec<String>> {
     for path in paths {
-        if let Some(found) = find_value(value, path) {
-            if let Some(array) = found.as_array() {
-                let values = array
-                    .iter()
-                    .filter_map(Value::as_str)
-                    .map(str::trim)
-                    .filter(|value| !value.is_empty())
-                    .map(ToString::to_string)
-                    .collect::<Vec<_>>();
+        if let Some(found) = find_value(value, path)
+            && let Some(array) = found.as_array()
+        {
+            let values = array
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(ToString::to_string)
+                .collect::<Vec<_>>();
 
-                if !values.is_empty() {
-                    return Some(values);
-                }
+            if !values.is_empty() {
+                return Some(values);
             }
         }
     }
