@@ -492,13 +492,13 @@ impl ControllerState {
         }
         self.logs.push_front(line.clone());
 
-        if let Some(network) = network {
-            if let Some(slot) = self.slots.get_mut(&network) {
-                if slot.logs.len() >= 128 {
-                    slot.logs.remove(0);
-                }
-                slot.logs.push(line);
+        if let Some(network) = network
+            && let Some(slot) = self.slots.get_mut(&network)
+        {
+            if slot.logs.len() >= 128 {
+                slot.logs.remove(0);
             }
+            slot.logs.push(line);
         }
     }
 
