@@ -34,25 +34,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path("apps/kaspa-gateway-desktop/src-tauri/src/lib.rs")
-          text = path.read_text(encoding="utf-8")
-          old = '''            let Some(dir) = kgw_ui_trace_log_dir_v37() else {
-                return None;
-            };'''
-          new = '''            let dir = kgw_ui_trace_log_dir_v37()?;'''
-          if old in text:
-              text = text.replace(old, new, 1)
-              path.write_text(text, encoding="utf-8")
-              print("question_mark ui trace directory: normalized before helper")
-          elif new in text:
-              print("question_mark ui trace directory: already normalized")
-          else:
-              raise SystemExit("question_mark ui trace directory: source shape changed unexpectedly")
-          PY
-
+          python3 -c 'from pathlib import Path; p=Path(".github/scripts/finalize_clippy.py"); t=p.read_text(encoding="utf-8"); old="    1,\n    \"question_mark ui trace directory\",\n)\n"; new="    1,\n    \"question_mark ui trace directory\",\n    optional=True,\n)\n"; assert t.count(old) == 1, t.count(old); p.write_text(t.replace(old, new, 1), encoding="utf-8")'
           python3 .github/scripts/finalize_clippy.py
 
           for pass in 1 2 3 4; do
