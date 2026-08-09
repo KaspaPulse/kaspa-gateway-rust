@@ -34,9 +34,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -c 'from pathlib import Path; import re; p=Path("apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs"); t=p.read_text(encoding="utf-8"); pattern=r"\n#\[cfg\(test\)\]\npub\(crate\) fn kgw_worker_node_command_args_for_test_v1\(.*?\n\}\n\nfn kgw_worker_role_from_request"; t2,n=re.subn(pattern,"\nfn kgw_worker_role_from_request",t,count=1,flags=re.S); assert n == 1, n; p.write_text(t2,encoding="utf-8")'
-          python3 -c 'from pathlib import Path; p=Path("apps/kaspa-gateway-desktop/src-tauri/src/lib.rs"); t=p.read_text(encoding="utf-8"); old="            let Some(dir) = kgw_ui_trace_log_dir_v37() else {\n                return None;\n            };"; new="            let dir = kgw_ui_trace_log_dir_v37()?;"; assert t.count(old) == 1, t.count(old); p.write_text(t.replace(old,new,1),encoding="utf-8")'
-          python3 -c 'from pathlib import Path; p=Path(".github/scripts/finalize_clippy.py"); t=p.read_text(encoding="utf-8"); old="    1,\n    \"question_mark ui trace directory\",\n)\n"; new="    1,\n    \"question_mark ui trace directory\",\n    optional=True,\n)\n"; assert t.count(old) == 1, t.count(old); p.write_text(t.replace(old, new, 1), encoding="utf-8")'
           python3 .github/scripts/finalize_clippy.py
 
           for pass in 1 2 3 4; do
@@ -56,6 +53,21 @@ jobs:
               break
             fi
           done
+
+      - name: "Persist safe Rust repairs"
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add crates apps
+          git diff --cached --check
+          if ! git diff --cached --quiet; then
+            git commit -m 'fix: persist safe Rust 1.97 clippy repairs'
+            git push origin HEAD:chore/security-baseline-2026-08-08
+          else
+            echo 'No safe Rust repair changes to persist'
+          fi
 
       - name: "Validate strict Clippy across workspace"
         id: strict-clippy
@@ -80,6 +92,7 @@ jobs:
       - name: "Commit validated repair"
         shell: bash
         run: |
+          set -euo pipefail
           rm .github/workflows/clippy-finalize.yml .github/scripts/finalize_clippy.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
