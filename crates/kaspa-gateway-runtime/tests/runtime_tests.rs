@@ -43,9 +43,11 @@ fn runtime_health_report_is_healthy() {
     assert!(report.database_initialized);
     assert!(report.api_client_ready);
     assert!(report.is_healthy());
-    assert!(report
-        .api_network_url
-        .contains("https://api.kaspa.org/info/network"));
+    assert!(
+        report
+            .api_network_url
+            .contains("https://api.kaspa.org/info/network")
+    );
     assert!(report.node_capabilities.contains("integrated-bridge"));
 }
 

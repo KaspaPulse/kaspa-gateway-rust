@@ -3,11 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "check": "node --check wdio.conf.mjs && node --check specs/zero-touch-live-matrix.e2e.js && node --check helpers/assertions.mjs && node --check helpers/paths.mjs && node --check helpers/tauri-app.mjs && node --check helpers/windows.mjs",
+    "lint": "eslint .",
     "e2e": "wdio run ./wdio.conf.mjs"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@wdio/cli": "9.30.0",
     "@wdio/json-reporter": "9.30.0",
     "@wdio/junit-reporter": "9.29.1",
@@ -16,9 +21,12 @@
     "@wdio/spec-reporter": "9.29.1",
     "@wdio/tauri-plugin": "1.2.0",
     "@wdio/tauri-service": "1.2.0",
+    "eslint": "10.8.0",
+    "globals": "17.7.0",
     "webdriverio": "9.30.0"
   },
   "overrides": {
-    "@wdio/native-utils": "2.5.0"
+    "@wdio/native-utils": "2.5.0",
+    "serialize-javascript": "7.0.7"
   }
 }

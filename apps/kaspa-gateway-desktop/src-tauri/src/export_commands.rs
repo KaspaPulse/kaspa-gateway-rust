@@ -924,19 +924,11 @@ fn kgw_pdf_compact_table_v6(table: &ReportTable) -> ReportTable {
 }
 
 fn kgw_pdf_compact_font_size_v6(headers: &[String]) -> f32 {
-    if headers.len() <= 8 {
-        5.05
-    } else {
-        4.75
-    }
+    if headers.len() <= 8 { 5.05 } else { 4.75 }
 }
 
 fn kgw_pdf_compact_header_font_size_v6(headers: &[String]) -> f32 {
-    if headers.len() <= 8 {
-        5.65
-    } else {
-        5.25
-    }
+    if headers.len() <= 8 { 5.65 } else { 5.25 }
 }
 
 fn write_html(path: &Path, table: &ReportTable, locale: Option<&str>) -> Result<(), String> {

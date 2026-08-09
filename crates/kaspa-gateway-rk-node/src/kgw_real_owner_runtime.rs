@@ -121,9 +121,7 @@ pub enum KgwRealOwnerError {
     #[error("failed to start owner thread: {0}")]
     OwnerThreadStartFailed(String),
 
-    #[error(
-        "official in-process Rusty Kaspa core is already claimed in this desktop process: {0}"
-    )]
+    #[error("official in-process Rusty Kaspa core is already claimed in this desktop process: {0}")]
     OfficialCoreAlreadyClaimed(String),
 }
 
@@ -350,11 +348,13 @@ fn kgw_claim_single_inproc_official_core(network: KgwNetwork) -> Result<(), KgwR
     let mut guard = claim.lock().map_err(|_| KgwRealOwnerError::LockFailed)?;
 
     match *guard {
-        Some(existing) if existing != network => Err(KgwRealOwnerError::OfficialCoreAlreadyClaimed(format!(
-            "already_started_network={};requested_network={};reason=Rusty Kaspa initializes a process-global logger; starting a second in-process network causes SetLoggerError and can terminate the desktop process; use one in-process network per desktop process or run other networks through an isolated process owner",
-            existing.as_str(),
-            network.as_str()
-        ))),
+        Some(existing) if existing != network => {
+            Err(KgwRealOwnerError::OfficialCoreAlreadyClaimed(format!(
+                "already_started_network={};requested_network={};reason=Rusty Kaspa initializes a process-global logger; starting a second in-process network causes SetLoggerError and can terminate the desktop process; use one in-process network per desktop process or run other networks through an isolated process owner",
+                existing.as_str(),
+                network.as_str()
+            )))
+        }
         Some(_) => Ok(()),
         None => {
             *guard = Some(network);

@@ -1,6 +1,6 @@
 use kaspa_gateway_config::{
-    default_api_profile, default_user_data_dir, SUPPORTED_CURRENCIES, SUPPORTED_LANGUAGES,
-    SUPPORTED_TABS,
+    SUPPORTED_CURRENCIES, SUPPORTED_LANGUAGES, SUPPORTED_TABS, default_api_profile,
+    default_user_data_dir,
 };
 use kaspa_gateway_db::{DatabaseManager, DatabasePaths};
 use serde::{Deserialize, Serialize};

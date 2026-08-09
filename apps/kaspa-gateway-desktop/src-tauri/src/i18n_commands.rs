@@ -422,9 +422,11 @@ mod tests {
 
         assert!(candidates.iter().any(|path| path.ends_with("zh-CN.json")));
         assert!(candidates.iter().any(|path| path.ends_with("zh_CN.json")));
-        assert!(candidates
-            .iter()
-            .any(|path| path.ends_with("lang_zh-CN.json")));
+        assert!(
+            candidates
+                .iter()
+                .any(|path| path.ends_with("lang_zh-CN.json"))
+        );
     }
 
     #[test]

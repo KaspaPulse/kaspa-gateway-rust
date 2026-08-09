@@ -28,7 +28,6 @@ kaspa-gateway-db = { path = "../../crates/kaspa-gateway-db" }
 kaspa-gateway-node = { path = "../../crates/kaspa-gateway-node" }
 kaspa-gateway-runtime = { path = "../../crates/kaspa-gateway-runtime" }
 kaspa-gateway-security = { path = "../../crates/kaspa-gateway-security" }
-kaspa-gateway-observability = { path = "../../crates/kaspa-gateway-observability" }
 
 kaspa-grpc-client-live = { package = "kaspa-grpc-client", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3", optional = true }
 kaspa-rpc-core-live = { package = "kaspa-rpc-core", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3", optional = true }

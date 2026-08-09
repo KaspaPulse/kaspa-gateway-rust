@@ -1,6 +1,6 @@
 use kaspa_gateway_api::{ApiClientConfig, KaspaApiClient};
 use kaspa_gateway_config::{
-    default_config_path, default_user_data_dir, load_or_create_config, GatewayConfig,
+    GatewayConfig, default_config_path, default_user_data_dir, load_or_create_config,
 };
 use kaspa_gateway_core::AppInfo;
 use kaspa_gateway_db::{DatabaseManager, DatabasePaths};

@@ -800,7 +800,7 @@ mod kgw_clipboard_tests {
 
     #[test]
     fn clipboard_trace_excludes_raw_content_and_records_hash() {
-        std::env::set_var("KGW_START_TRACE", "1");
+        let _trace_guard = integrated_runtime_commands::kgw_start_trace_test_enable_v1();
         let _ = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
 
         let text = "mainnet secret raw content should not appear".to_string();
@@ -827,8 +827,6 @@ mod kgw_clipboard_tests {
         assert!(trace.contains("\\\"bridgeInstanceId\\\":\\\"bridge-a\\\""));
         assert!(!trace.contains("secret raw content"));
         assert!(!trace.contains(&text));
-
-        std::env::remove_var("KGW_START_TRACE");
     }
 }
 
@@ -1474,8 +1472,16 @@ fn kgw_run_bridge_self_worker(
 
     eprintln!(
         "KGW_BRIDGE_DUAL_CLI_CONFIG_REAL_RUNNER_R122 launch_source={} node_mode={} network={} instance_count={} listens={}",
-        if bridge_config_path.is_some() { "config" } else { "cli_instances" },
-        if is_inprocess { "inprocess" } else { "external" },
+        if bridge_config_path.is_some() {
+            "config"
+        } else {
+            "cli_instances"
+        },
+        if is_inprocess {
+            "inprocess"
+        } else {
+            "external"
+        },
         network,
         instance_listens.len(),
         instance_listens.join("|")

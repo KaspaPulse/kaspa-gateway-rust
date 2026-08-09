@@ -46,9 +46,9 @@
 use crate::{app_logger, db_state};
 use kaspa_gateway_core::KaspaAddress;
 use kaspa_gateway_runtime::transaction_sync::{
+    TransactionDayGroup, TransactionListRequest, TransactionSyncRequest, TransactionSyncSummary,
     list_transactions_grouped_by_day, request_transaction_sync_cancel,
-    set_transaction_sync_progress_callback, sync_transactions, TransactionDayGroup,
-    TransactionListRequest, TransactionSyncRequest, TransactionSyncSummary,
+    set_transaction_sync_progress_callback, sync_transactions,
 };
 use serde::Serialize;
 use std::sync::Arc;
