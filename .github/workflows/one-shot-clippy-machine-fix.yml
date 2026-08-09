@@ -1,0 +1,67 @@
+name: One-shot Clippy machine-applicable cleanup
+
+on:
+  push:
+    branches: ["chore/security-baseline-2026-08-09-clean"]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout clean modernization branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: chore/security-baseline-2026-08-09-clean
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Install Linux prerequisites
+        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev protobuf-compiler
+
+      - name: Install Rust 1.97.1
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: 1.97.1
+          components: clippy, rustfmt
+
+      - name: Apply compiler-provided machine fixes only
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo clippy --fix --locked --workspace --all-targets --allow-dirty --allow-staged
+          cargo fmt --all
+
+      - name: Persist machine-applicable fixes and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/one-shot-clippy-machine-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add crates apps .github/workflows/one-shot-clippy-machine-fix.yml
+          git diff --cached --check
+          git diff --cached --quiet && { echo 'Clippy produced no machine-applicable source fixes'; exit 1; }
+          git commit -m 'fix: apply Rust 1.97 machine-applicable clippy fixes'
+          git push origin HEAD:chore/security-baseline-2026-08-09-clean
+
+      - name: Strict Clippy after machine fixes
+        id: strict
+        shell: bash
+        run: |
+          set +e
+          cargo clippy --locked --workspace --all-targets -- -D warnings 2>&1 | tee clippy-post-fix.log
+          status=${PIPESTATUS[0]}
+          exit "${status}"
+
+      - name: Upload remaining strict Clippy diagnostics
+        if: failure() && steps.strict.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: clippy-post-machine-fix
+          path: clippy-post-fix.log
+          retention-days: 3
