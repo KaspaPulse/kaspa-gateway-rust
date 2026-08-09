@@ -63,13 +63,11 @@ fn find_number_by_key_name(value: &Value, names: &[&str]) -> Option<f64> {
                 if names
                     .iter()
                     .any(|name| lower.contains(&name.to_ascii_lowercase()))
-                {
-                    if let Some(number) = child
+                    && let Some(number) = child
                         .as_f64()
                         .or_else(|| child.as_str()?.replace(',', "").parse::<f64>().ok())
-                    {
-                        return Some(number);
-                    }
+                {
+                    return Some(number);
                 }
 
                 if let Some(number) = find_number_by_key_name(child, names) {
@@ -195,10 +193,10 @@ pub async fn get_kaspa_prices() -> Result<KaspaPriceSnapshot, String> {
             .lock()
             .map_err(|_| "price cache lock poisoned".to_string())?;
 
-        if let Some(cached) = guard.as_ref() {
-            if cached.inserted_at.elapsed() < Duration::from_secs(60) {
-                return Ok(cached.snapshot.clone());
-            }
+        if let Some(cached) = guard.as_ref()
+            && cached.inserted_at.elapsed() < Duration::from_secs(60)
+        {
+            return Ok(cached.snapshot.clone());
         }
     }
 

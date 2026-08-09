@@ -740,14 +740,14 @@ fn parse_single_api_profile(value: &Value, fallback_name: &str) -> Result<ApiPro
             }
         } else if let Some(array) = endpoint_value.as_array() {
             for item in array {
-                if let Some(name) = find_string(item, &["name"]) {
-                    if let Some(path) = find_string(item, &["path", "endpoint"]) {
-                        endpoints.push(ApiEndpoint {
-                            name: sanitize_key(&name),
-                            path,
-                            enabled: find_bool(item, &["enabled"]).unwrap_or(true),
-                        });
-                    }
+                if let Some(name) = find_string(item, &["name"])
+                    && let Some(path) = find_string(item, &["path", "endpoint"])
+                {
+                    endpoints.push(ApiEndpoint {
+                        name: sanitize_key(&name),
+                        path,
+                        enabled: find_bool(item, &["enabled"]).unwrap_or(true),
+                    });
                 }
             }
         }
@@ -803,12 +803,11 @@ fn migrate_paths(json: &Value, paths: &mut BTreeMap<String, String>, warnings: &
 
 fn find_string(value: &Value, paths: &[&str]) -> Option<String> {
     for path in paths {
-        if let Some(found) = find_value(value, path) {
-            if let Some(text) = found.as_str() {
-                if !text.trim().is_empty() {
-                    return Some(text.trim().to_string());
-                }
-            }
+        if let Some(found) = find_value(value, path)
+            && let Some(text) = found.as_str()
+            && !text.trim().is_empty()
+        {
+            return Some(text.trim().to_string());
         }
     }
 
@@ -842,16 +841,16 @@ fn find_u64(value: &Value, paths: &[&str]) -> Option<u64> {
                 return Some(value);
             }
 
-            if let Some(value) = found.as_i64() {
-                if value >= 0 {
-                    return u64::try_from(value).ok();
-                }
+            if let Some(value) = found.as_i64()
+                && value >= 0
+            {
+                return u64::try_from(value).ok();
             }
 
-            if let Some(text) = found.as_str() {
-                if let Ok(parsed) = text.parse::<u64>() {
-                    return Some(parsed);
-                }
+            if let Some(text) = found.as_str()
+                && let Ok(parsed) = text.parse::<u64>()
+            {
+                return Some(parsed);
             }
         }
     }
@@ -866,10 +865,10 @@ fn find_f64(value: &Value, paths: &[&str]) -> Option<f64> {
                 return Some(value);
             }
 
-            if let Some(text) = found.as_str() {
-                if let Ok(parsed) = text.parse::<f64>() {
-                    return Some(parsed);
-                }
+            if let Some(text) = found.as_str()
+                && let Ok(parsed) = text.parse::<f64>()
+            {
+                return Some(parsed);
             }
         }
     }
@@ -879,19 +878,19 @@ fn find_f64(value: &Value, paths: &[&str]) -> Option<f64> {
 
 fn find_string_array(value: &Value, paths: &[&str]) -> Option<Vec<String>> {
     for path in paths {
-        if let Some(found) = find_value(value, path) {
-            if let Some(array) = found.as_array() {
-                let items = array
-                    .iter()
-                    .filter_map(Value::as_str)
-                    .map(str::trim)
-                    .filter(|value| !value.is_empty())
-                    .map(ToString::to_string)
-                    .collect::<Vec<_>>();
+        if let Some(found) = find_value(value, path)
+            && let Some(array) = found.as_array()
+        {
+            let items = array
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(ToString::to_string)
+                .collect::<Vec<_>>();
 
-                if !items.is_empty() {
-                    return Some(items);
-                }
+            if !items.is_empty() {
+                return Some(items);
             }
         }
     }

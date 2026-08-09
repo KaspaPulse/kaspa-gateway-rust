@@ -57,10 +57,10 @@ fn json_preview(value: &Value) -> String {
 fn extract_python_top_address_items(value: Value) -> Vec<Value> {
     match value {
         Value::Array(items) => {
-            if let Some(Value::Object(first)) = items.first() {
-                if let Some(Value::Array(ranking)) = first.get("ranking") {
-                    return ranking.clone();
-                }
+            if let Some(Value::Object(first)) = items.first()
+                && let Some(Value::Array(ranking)) = first.get("ranking")
+            {
+                return ranking.clone();
             }
 
             items

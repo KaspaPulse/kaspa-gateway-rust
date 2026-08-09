@@ -210,10 +210,10 @@ fn find_number_string(value: &Value, keys: &[&str]) -> Option<String> {
     match value {
         Value::Object(map) => {
             for key in keys {
-                if let Some(found) = map.get(*key) {
-                    if let Some(text) = value_to_string(found) {
-                        return Some(text);
-                    }
+                if let Some(found) = map.get(*key)
+                    && let Some(text) = value_to_string(found)
+                {
+                    return Some(text);
                 }
             }
 
