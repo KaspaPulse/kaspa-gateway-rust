@@ -34,15 +34,15 @@
 //   only after parity tests pass.
 // ============================================================================
 use kaspa_gateway_api::transactions::{
-    block_time_seconds, fetch_transactions_page_accepted, transaction_id, TransactionFetchConfig,
-    TransactionPage,
+    TransactionFetchConfig, TransactionPage, block_time_seconds, fetch_transactions_page_accepted,
+    transaction_id,
 };
 use kaspa_gateway_core::KaspaAddress;
 use kaspa_gateway_db::{TransactionFilter, TransactionRecord, TransactionsRepository};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, HashSet};
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -162,8 +162,7 @@ impl TransactionSyncGuard {
         {
             eprintln!(
                 "[KGW][transactions][FetchWorker][WARN] Fetch rejected because another fetch is already running address={} mode={}",
-                address,
-                mode
+                address, mode
             );
 
             return Err(
@@ -787,11 +786,7 @@ pub async fn sync_transactions(
 
                 eprintln!(
                     "[KGW][transactions][FetchWorker][WARN] Accepted-only endpoint returned unaccepted tx address={} page={} item={}/{} txid={}",
-                    address,
-                    page_number,
-                    item_no,
-                    raw_count,
-                    txid_for_log
+                    address, page_number, item_no, raw_count, txid_for_log
                 );
 
                 continue;
@@ -1009,10 +1004,7 @@ pub async fn sync_transactions(
 
                 eprintln!(
                     "[KGW][transactions][FetchWorker] Fetch stop by start date address={} page={} oldest_ts={} start_ts={:?}",
-                    address,
-                    page_number,
-                    oldest_ts_on_page,
-                    request.start_ts
+                    address, page_number, oldest_ts_on_page, request.start_ts
                 );
 
                 break 'sync_page_loop;
@@ -1049,12 +1041,7 @@ pub async fn sync_transactions(
 
             eprintln!(
                 "[KGW][transactions][FetchWorker] Normal fetch stop: all transactions on page already exist address={} page={} raw_count={} existing_skipped={} fetched_total={} stored_total={}",
-                address,
-                page_number,
-                raw_count,
-                page_existing_skipped,
-                fetched_from_api,
-                stored
+                address, page_number, raw_count, page_existing_skipped, fetched_from_api, stored
             );
 
             if let Some(handle) = next_prefetch.take() {

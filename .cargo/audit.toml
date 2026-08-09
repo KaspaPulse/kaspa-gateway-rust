@@ -1,0 +1,8 @@
+[advisories]
+ignore = [
+    "RUSTSEC-2026-0194", # quick-xml 0.39.x via rusty-kaspa v2.0.1; fixed line requires upstream-compatible update. See SECURITY_ADVISORIES.md.
+    "RUSTSEC-2026-0195", # quick-xml 0.39.x via rusty-kaspa v2.0.1; fixed line requires upstream-compatible update. See SECURITY_ADVISORIES.md.
+    "RUSTSEC-2026-0235"  # rkyv 0.7.x via workflow-core/rusty-kaspa; 0.8 is a breaking line. See SECURITY_ADVISORIES.md.
+]
+
+informational_warnings = ["unmaintained"]

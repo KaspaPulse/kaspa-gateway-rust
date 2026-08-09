@@ -13,12 +13,33 @@ fn runtime_test_lock() -> &'static Mutex<()> {
     LOCK.get_or_init(|| Mutex::new(()))
 }
 
+fn set_runtime_worker_test_env<K, V>(key: K, value: V)
+where
+    K: AsRef<std::ffi::OsStr>,
+    V: AsRef<std::ffi::OsStr>,
+{
+    // SAFETY: Every environment-mutating test in this integration-test binary holds
+    // runtime_test_lock() for the full mutation/use/cleanup sequence. The KGW_* values
+    // are read synchronously while planning/spawning child self-workers; parent log-reader
+    // threads do not read process environment variables, and cleanup stops workers before
+    // removing their test configuration. This preserves the Rust 2024 environment contract.
+    unsafe { std::env::set_var(key, value) };
+}
+
+fn remove_runtime_worker_test_env<K>(key: K)
+where
+    K: AsRef<std::ffi::OsStr>,
+{
+    // SAFETY: Same serialized integration-test invariant as set_runtime_worker_test_env.
+    unsafe { std::env::remove_var(key) };
+}
+
 struct RuntimeWorkerTestGuard;
 
 impl RuntimeWorkerTestGuard {
     fn new() -> Self {
-        clear_runtime_worker_test_env();
         let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
+        clear_runtime_worker_test_env();
         Self
     }
 }
@@ -39,7 +60,7 @@ fn clear_runtime_worker_test_env() {
         "KGW_TEST_SELF_WORKER_STDERR",
         "KGW_START_TRACE",
     ] {
-        std::env::remove_var(key);
+        remove_runtime_worker_test_env(key);
     }
 }
 
@@ -171,9 +192,9 @@ fn start_command_is_registered_and_payload_matches_frontend() {
 #[test]
 fn production_self_worker_arguments_match_child_parser() {
     let _guard = runtime_test_lock().lock().unwrap();
-    std::env::remove_var("KGW_TEST_SELF_WORKER_COMMAND");
-    std::env::remove_var("KGW_TEST_SELF_WORKER_FAIL_COMMAND");
-    std::env::remove_var("KGW_TEST_SELF_WORKER_MISSING_COMMAND");
+    remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND");
+    remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_FAIL_COMMAND");
+    remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_MISSING_COMMAND");
 
     let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
         "mainnet".to_string(),
@@ -260,7 +281,9 @@ fn start_trace_marker_format_is_registered_and_safe() {
         "mainnet",
         "start",
         "entered",
-        Some("{\"secret\":\"abc\",\"wallet\":\"kaspa:abc\",\"completeCommand\":\"--rpc 127.0.0.1:16110\"}"),
+        Some(
+            "{\"secret\":\"abc\",\"wallet\":\"kaspa:abc\",\"completeCommand\":\"--rpc 127.0.0.1:16110\"}",
+        ),
     );
 
     assert!(marker.starts_with("[KGW_START_TRACE] "));
@@ -391,9 +414,9 @@ fn child_stdout_and_stderr_fixtures_survive_unchanged() {
         "stderr fixture;equals=value;json={{\"line\":\"stderr\"}};unicode={};path=C:\\Kaspa\\stderr.log",
         '\u{03a9}'
     );
-    std::env::set_var("KGW_TEST_SELF_WORKER_COMMAND", "1");
-    std::env::set_var("KGW_TEST_SELF_WORKER_STDOUT", &stdout_line);
-    std::env::set_var("KGW_TEST_SELF_WORKER_STDERR", &stderr_line);
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_STDOUT", &stdout_line);
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_STDERR", &stderr_line);
 
     kgw_kgw_apply_node_settings_v1(
         "mainnet".to_string(),
@@ -441,10 +464,10 @@ fn child_stdout_and_stderr_fixtures_survive_unchanged() {
 fn raw_log_buffers_are_isolated_by_network_role_and_bridge_instance() {
     let _guard = runtime_test_lock().lock().unwrap();
     let _runtime_guard = RuntimeWorkerTestGuard::new();
-    std::env::set_var("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
 
-    std::env::set_var("KGW_TEST_SELF_WORKER_STDOUT", "mainnet node stdout only");
-    std::env::set_var("KGW_TEST_SELF_WORKER_STDERR", "mainnet node stderr only");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_STDOUT", "mainnet node stdout only");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_STDERR", "mainnet node stderr only");
     kgw_kgw_apply_node_settings_v1(
         "mainnet".to_string(),
         "integrated-as-daemon".to_string(),
@@ -460,8 +483,8 @@ fn raw_log_buffers_are_isolated_by_network_role_and_bridge_instance() {
     )
     .expect("mainnet node fixture should start");
 
-    std::env::set_var("KGW_TEST_SELF_WORKER_STDOUT", "testnet10 node stdout only");
-    std::env::set_var("KGW_TEST_SELF_WORKER_STDERR", "testnet10 node stderr only");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_STDOUT", "testnet10 node stdout only");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_STDERR", "testnet10 node stderr only");
     kgw_kgw_apply_node_settings_v1(
         "testnet10".to_string(),
         "integrated-as-daemon".to_string(),
@@ -477,8 +500,8 @@ fn raw_log_buffers_are_isolated_by_network_role_and_bridge_instance() {
     )
     .expect("testnet10 node fixture should start");
 
-    std::env::set_var("KGW_TEST_SELF_WORKER_STDOUT", "mainnet bridge stdout only");
-    std::env::set_var("KGW_TEST_SELF_WORKER_STDERR", "mainnet bridge stderr only");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_STDOUT", "mainnet bridge stdout only");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_STDERR", "mainnet bridge stderr only");
     kgw_kgw_apply_node_settings_v1(
         "mainnet".to_string(),
         "remote".to_string(),
@@ -494,11 +517,11 @@ fn raw_log_buffers_are_isolated_by_network_role_and_bridge_instance() {
     )
     .expect("mainnet bridge fixture should start");
 
-    std::env::set_var(
+    set_runtime_worker_test_env(
         "KGW_TEST_SELF_WORKER_STDOUT",
         "testnet10 bridge stdout only",
     );
-    std::env::set_var(
+    set_runtime_worker_test_env(
         "KGW_TEST_SELF_WORKER_STDERR",
         "testnet10 bridge stderr only",
     );
@@ -714,7 +737,7 @@ fn mainnet_and_testnet10_normalize_to_supported_networks() {
 #[test]
 fn mainnet_and_testnet10_test_workers_stay_alive_through_startup_verification() {
     let _guard = runtime_test_lock().lock().unwrap();
-    std::env::set_var("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
     let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
 
     for network in ["mainnet", "testnet10"] {
@@ -768,7 +791,7 @@ fn mainnet_and_testnet10_test_workers_stay_alive_through_startup_verification() 
         );
     }
 
-    std::env::remove_var("KGW_TEST_SELF_WORKER_COMMAND");
+    remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND");
 }
 
 fn kgw_runtime_owner_summary_for_test(network: &str) -> String {
@@ -782,7 +805,7 @@ fn kgw_runtime_owner_summary_for_test(network: &str) -> String {
 #[test]
 fn duplicate_owner_for_one_network_is_rejected() {
     let _guard = runtime_test_lock().lock().unwrap();
-    std::env::set_var("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
     let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
 
     let first = kgw_kgw_apply_node_settings_v1(
@@ -871,14 +894,14 @@ fn duplicate_owner_for_one_network_is_rejected() {
     );
 
     let _ = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()));
-    std::env::remove_var("KGW_TEST_SELF_WORKER_COMMAND");
+    remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND");
 }
 
 #[test]
 fn node_start_trace_uses_same_exe_mode_not_external() {
     let _guard = runtime_test_lock().lock().unwrap();
-    std::env::set_var("KGW_START_TRACE", "1");
-    std::env::set_var("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_START_TRACE", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
     let _ = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
     let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
 
@@ -921,14 +944,14 @@ fn node_start_trace_uses_same_exe_mode_not_external() {
     );
 
     let _ = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()));
-    std::env::remove_var("KGW_TEST_SELF_WORKER_COMMAND");
-    std::env::remove_var("KGW_START_TRACE");
+    remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND");
+    remove_runtime_worker_test_env("KGW_START_TRACE");
 }
 
 #[test]
 fn success_response_contains_process_start_evidence_and_stream_logs() {
     let _guard = runtime_test_lock().lock().unwrap();
-    std::env::set_var("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
     let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
 
     let started = kgw_kgw_apply_node_settings_v1(
@@ -991,7 +1014,7 @@ fn success_response_contains_process_start_evidence_and_stream_logs() {
     );
 
     let _ = kgw_kgw_disable_network_v1("testnet10".to_string(), Some("node".to_string()));
-    std::env::remove_var("KGW_TEST_SELF_WORKER_COMMAND");
+    remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND");
 }
 
 #[test]
@@ -1001,8 +1024,8 @@ fn early_self_worker_exit_preserves_complete_safe_stderr_and_returns_error() {
     let child_stderr = format!(
         "forced startup failure token=abc123 wallet=kaspa:qprv000000000000000000000000000000000000000000000000000000000000 diagnostic_tail={complete_tail}"
     );
-    std::env::set_var("KGW_START_TRACE", "1");
-    std::env::set_var("KGW_TEST_SELF_WORKER_FAIL_COMMAND", &child_stderr);
+    set_runtime_worker_test_env("KGW_START_TRACE", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_FAIL_COMMAND", &child_stderr);
     let _ = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
     let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
 
@@ -1058,16 +1081,16 @@ fn early_self_worker_exit_preserves_complete_safe_stderr_and_returns_error() {
         "trace output must redact sensitive child fields: {trace_text}"
     );
 
-    std::env::remove_var("KGW_TEST_SELF_WORKER_FAIL_COMMAND");
-    std::env::remove_var("KGW_START_TRACE");
+    remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_FAIL_COMMAND");
+    remove_runtime_worker_test_env("KGW_START_TRACE");
 }
 
 #[test]
 fn spawn_failure_remains_an_error() {
     let _guard = runtime_test_lock().lock().unwrap();
     let missing = std::env::temp_dir().join("kgw-missing-self-worker-command.exe");
-    std::env::set_var("KGW_START_TRACE", "1");
-    std::env::set_var("KGW_TEST_SELF_WORKER_MISSING_COMMAND", &missing);
+    set_runtime_worker_test_env("KGW_START_TRACE", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_MISSING_COMMAND", &missing);
     let _ = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
     let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
 
@@ -1105,6 +1128,6 @@ fn spawn_failure_remains_an_error() {
         ],
     );
 
-    std::env::remove_var("KGW_TEST_SELF_WORKER_MISSING_COMMAND");
-    std::env::remove_var("KGW_START_TRACE");
+    remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_MISSING_COMMAND");
+    remove_runtime_worker_test_env("KGW_START_TRACE");
 }

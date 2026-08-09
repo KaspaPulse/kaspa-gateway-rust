@@ -52,7 +52,7 @@
 // ============================================================================
 use crate::app_logger;
 use kaspa_gateway_runtime::transaction_sync::{
-    list_transactions_grouped_by_day, TransactionDayGroup, TransactionListRequest,
+    TransactionDayGroup, TransactionListRequest, list_transactions_grouped_by_day,
 };
 use serde::Serialize;
 use std::time::Instant;
