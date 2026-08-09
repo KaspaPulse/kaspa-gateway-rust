@@ -44,7 +44,7 @@ kaspa-gateway-runtime = { path = "../../../crates/kaspa-gateway-runtime" }
 ureq = "3.3.0"
 sha2 = "0.11.0"
 printpdf = { version = "0.12.5", default-features = false }
-zip = "6.0.0"
+zip = "8.6.0"
 
 [features]
 default = ["official-kaspa-runtime-mainline"]
