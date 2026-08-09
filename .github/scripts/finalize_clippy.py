@@ -128,6 +128,64 @@ text = replace_or_done(
 )
 cfg.write_text(text, encoding="utf-8")
 
+rk_owner = Path("crates/kaspa-gateway-rk-node/src/kgw_real_owner_runtime.rs")
+text = rk_owner.read_text(encoding="utf-8")
+text = replace_or_done(
+    text,
+    '''#[allow(dead_code)]
+
+fn ''',
+    '''#[allow(dead_code)]
+fn ''',
+    5,
+    "empty_line_after_outer_attr",
+)
+text = replace_or_done(
+    text,
+    '''    let mut args = kaspad_lib_mainline::args::Args::default();
+
+    args.appdir = Some(kgw_owner_safe_runtime_appdir(settings.network));
+    args.utxoindex = settings.enable_utxo_index;
+    args.archival = settings.archival;
+    args.yes = true;
+    args.disable_upnp = true;
+    args.log_level = "INFO".to_string();''',
+    '''    let mut args = kaspad_lib_mainline::args::Args {
+        appdir: Some(kgw_owner_safe_runtime_appdir(settings.network)),
+        utxoindex: settings.enable_utxo_index,
+        archival: settings.archival,
+        yes: true,
+        disable_upnp: true,
+        log_level: "INFO".to_string(),
+        ..Default::default()
+    };''',
+    1,
+    "mainline field_reassign_with_default",
+)
+text = replace_or_done(
+    text,
+    '''    let mut args = kaspad_lib_tn12::args::Args::default();
+
+    args.appdir = Some(kgw_owner_safe_runtime_appdir(settings.network));
+    args.utxoindex = settings.enable_utxo_index;
+    args.archival = settings.archival;
+    args.yes = true;
+    args.disable_upnp = true;
+    args.log_level = "INFO".to_string();''',
+    '''    let mut args = kaspad_lib_tn12::args::Args {
+        appdir: Some(kgw_owner_safe_runtime_appdir(settings.network)),
+        utxoindex: settings.enable_utxo_index,
+        archival: settings.archival,
+        yes: true,
+        disable_upnp: true,
+        log_level: "INFO".to_string(),
+        ..Default::default()
+    };''',
+    1,
+    "tn12 field_reassign_with_default",
+)
+rk_owner.write_text(text, encoding="utf-8")
+
 node_old = '''        if !accumulated.contains_key(&key) {
             if let Some(tx) = transactions.remove(&tx_id) {
                 accumulated.insert(key, tx);
