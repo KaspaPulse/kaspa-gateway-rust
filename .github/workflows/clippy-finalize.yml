@@ -30,15 +30,46 @@ jobs:
           toolchain: 1.97.1
           components: clippy, rustfmt
 
-      - name: "Apply exact and machine-applicable Clippy repairs"
+      - name: "Apply exact and convergent Clippy repairs"
         shell: bash
         run: |
+          set -euo pipefail
           python3 .github/scripts/finalize_clippy.py
-          cargo clippy --fix --locked --workspace --all-targets --allow-dirty --allow-staged -- -D warnings
-          cargo fmt --all
+
+          for pass in 1 2 3 4; do
+            echo "Clippy auto-fix pass ${pass}"
+            before="$(git diff --no-ext-diff | sha256sum | cut -d' ' -f1)"
+
+            set +e
+            cargo clippy --fix --locked --workspace --all-targets --allow-dirty --allow-staged -- -D warnings
+            fix_status=$?
+            set -e
+
+            cargo fmt --all
+            after="$(git diff --no-ext-diff | sha256sum | cut -d' ' -f1)"
+
+            if [[ "${before}" == "${after}" ]]; then
+              echo "No further source changes after pass ${pass}; strict validation will decide the result (auto-fix exit=${fix_status})."
+              break
+            fi
+          done
 
       - name: "Validate strict Clippy across workspace"
-        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+        id: strict-clippy
+        shell: bash
+        run: |
+          set +e
+          cargo clippy --locked --workspace --all-targets -- -D warnings 2>&1 | tee clippy-final.log
+          status=${PIPESTATUS[0]}
+          exit "${status}"
+
+      - name: "Upload finalizer Clippy diagnostics"
+        if: failure() && steps.strict-clippy.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: finalizer-clippy-diagnostics
+          path: clippy-final.log
+          retention-days: 3
 
       - name: "Refresh Graphify code snapshot"
         run: python3 -m pip install --user --disable-pip-version-check graphify-cli==1.2.1 && export PATH="$HOME/.local/bin:$PATH" && graphify . --update --code-only --no-viz && python3 -c "import json,pathlib; p=pathlib.Path('graphify-out/graph.json'); d=json.loads(p.read_text()); assert p.stat().st_size > 0 and d.get('nodes') is not None and d.get('edges') is not None"
