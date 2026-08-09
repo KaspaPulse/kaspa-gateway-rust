@@ -16,7 +16,6 @@ updates:
         update-types:
           - minor
           - patch
-        group-by: dependency-name
 
   - package-ecosystem: npm
     directory: "/apps/kaspa-gateway-desktop"
