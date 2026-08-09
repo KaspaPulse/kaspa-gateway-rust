@@ -30,8 +30,12 @@ jobs:
           toolchain: 1.97.1
           components: clippy, rustfmt
 
-      - name: "Apply exact Clippy recommendations"
-        run: python3 .github/scripts/finalize_clippy.py && cargo fmt --all
+      - name: "Apply exact and machine-applicable Clippy repairs"
+        shell: bash
+        run: |
+          python3 .github/scripts/finalize_clippy.py
+          cargo clippy --fix --locked --workspace --all-targets --allow-dirty --allow-staged -- -D warnings
+          cargo fmt --all
 
       - name: "Validate strict Clippy across workspace"
         run: cargo clippy --locked --workspace --all-targets -- -D warnings
