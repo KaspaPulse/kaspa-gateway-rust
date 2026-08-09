@@ -364,7 +364,6 @@ fn kgw_claim_single_inproc_official_core(network: KgwNetwork) -> Result<(), KgwR
 }
 
 #[allow(dead_code)]
-
 fn kgw_runtime_appdir_root_string() -> String {
     kgw_owner_safe_runtime_appdir_root()
         .to_string_lossy()
@@ -379,14 +378,15 @@ fn spawn_official_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, 
 
 #[cfg(feature = "official-kaspa-runtime-mainline")]
 fn spawn_mainline_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwRealOwnerError> {
-    let mut args = kaspad_lib_mainline::args::Args::default();
-
-    args.appdir = Some(kgw_owner_safe_runtime_appdir(settings.network));
-    args.utxoindex = settings.enable_utxo_index;
-    args.archival = settings.archival;
-    args.yes = true;
-    args.disable_upnp = true;
-    args.log_level = "INFO".to_string();
+    let mut args = kaspad_lib_mainline::args::Args {
+        appdir: Some(kgw_owner_safe_runtime_appdir(settings.network)),
+        utxoindex: settings.enable_utxo_index,
+        archival: settings.archival,
+        yes: true,
+        disable_upnp: true,
+        log_level: "INFO".to_string(),
+        ..Default::default()
+    };
 
     if settings.network == KgwNetwork::Testnet10 {
         args.testnet = true;
@@ -434,14 +434,15 @@ fn spawn_mainline_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, 
 
 #[cfg(feature = "official-kaspa-runtime-tn12")]
 fn spawn_tn12_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwRealOwnerError> {
-    let mut args = kaspad_lib_tn12::args::Args::default();
-
-    args.appdir = Some(kgw_owner_safe_runtime_appdir(settings.network));
-    args.utxoindex = settings.enable_utxo_index;
-    args.archival = settings.archival;
-    args.yes = true;
-    args.disable_upnp = true;
-    args.log_level = "INFO".to_string();
+    let mut args = kaspad_lib_tn12::args::Args {
+        appdir: Some(kgw_owner_safe_runtime_appdir(settings.network)),
+        utxoindex: settings.enable_utxo_index,
+        archival: settings.archival,
+        yes: true,
+        disable_upnp: true,
+        log_level: "INFO".to_string(),
+        ..Default::default()
+    };
     args.testnet = true;
     args.testnet_suffix = match settings.network {
         KgwNetwork::Testnet10 => 10,
@@ -489,7 +490,6 @@ fn spawn_tn12_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwR
 }
 
 #[allow(dead_code)]
-
 fn kgw_embedded_core_fd_budget(
     fd_limit: i32,
     rpc_max_clients: i32,
@@ -523,7 +523,6 @@ fn kgw_apply_embedded_fd_limits_tn12(args: &mut kaspad_lib_tn12::args::Args) {
 }
 
 #[allow(dead_code)]
-
 fn kgw_run_official_core_with_panic_boundary<F>(network: KgwNetwork, run_core: F)
 where
     F: FnOnce(),
@@ -580,7 +579,6 @@ fn start_bridge_owner_if_requested(
 }
 
 #[allow(dead_code)]
-
 fn kgw_owner_safe_runtime_appdir_root() -> std::path::PathBuf {
     if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
         std::path::PathBuf::from(local_app_data)
@@ -592,7 +590,6 @@ fn kgw_owner_safe_runtime_appdir_root() -> std::path::PathBuf {
 }
 
 #[allow(dead_code)]
-
 fn kgw_owner_safe_runtime_appdir(network: KgwNetwork) -> String {
     kgw_owner_safe_runtime_appdir_root()
         .join(network.as_str())

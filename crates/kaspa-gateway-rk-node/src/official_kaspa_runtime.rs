@@ -545,31 +545,6 @@ pub fn official_kaspa_runtime_summary_v1() -> &'static str {
     "KGW mechanism applied to all node networks and bridges in parallel: settings -> runtime decision -> service events -> owner plan/status. mainnet/testnet10 use official stable v2.0.1; testnet12 is an explicit experimental tn12 runtime. No local clone, no downloaded exe, no frontend-owned runtime start."
 }
 
-#[cfg(test)]
-mod runtime_binding_tests {
-    use super::{KaspaRuntimeFamily, KaspaRuntimeNetwork};
-
-    const STABLE_REV: &str = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3";
-    const TN12_REV: &str = "eeb351ee911e2df906d21203dec8db3a195c6b33";
-
-    #[test]
-    fn mainnet_and_testnet10_share_the_official_stable_runtime() {
-        for network in [KaspaRuntimeNetwork::Mainnet, KaspaRuntimeNetwork::Testnet10] {
-            assert_eq!(network.family(), KaspaRuntimeFamily::Mainline);
-            assert_eq!(network.branch(), "stable");
-            assert_eq!(network.revision(), STABLE_REV);
-        }
-    }
-
-    #[test]
-    fn testnet12_remains_on_the_separate_experimental_runtime() {
-        let network = KaspaRuntimeNetwork::Testnet12;
-        assert_eq!(network.family(), KaspaRuntimeFamily::Tn12);
-        assert_eq!(network.branch(), "RKStratumTN12");
-        assert_eq!(network.revision(), TN12_REV);
-    }
-}
-
 #[cfg(feature = "official-kaspa-runtime-mainline")]
 pub fn official_node_mainline_dependency_marker_v1() -> &'static str {
     std::any::type_name::<kaspad_lib_mainline::args::Args>()
@@ -593,5 +568,30 @@ pub fn official_node_tn12_dependency_marker_v1() -> &'static str {
 impl fmt::Display for KaspaNodeRuntimeMode {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(self.as_str())
+    }
+}
+
+#[cfg(test)]
+mod runtime_binding_tests {
+    use super::{KaspaRuntimeFamily, KaspaRuntimeNetwork};
+
+    const STABLE_REV: &str = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3";
+    const TN12_REV: &str = "eeb351ee911e2df906d21203dec8db3a195c6b33";
+
+    #[test]
+    fn mainnet_and_testnet10_share_the_official_stable_runtime() {
+        for network in [KaspaRuntimeNetwork::Mainnet, KaspaRuntimeNetwork::Testnet10] {
+            assert_eq!(network.family(), KaspaRuntimeFamily::Mainline);
+            assert_eq!(network.branch(), "stable");
+            assert_eq!(network.revision(), STABLE_REV);
+        }
+    }
+
+    #[test]
+    fn testnet12_remains_on_the_separate_experimental_runtime() {
+        let network = KaspaRuntimeNetwork::Testnet12;
+        assert_eq!(network.family(), KaspaRuntimeFamily::Tn12);
+        assert_eq!(network.branch(), "RKStratumTN12");
+        assert_eq!(network.revision(), TN12_REV);
     }
 }
