@@ -1,16 +1,38 @@
 from pathlib import Path
 
 
-def replace_exact(text: str, old: str, new: str, expected: int, label: str) -> str:
-    count = text.count(old)
-    if count != expected:
-        raise RuntimeError(f"{label}: expected {expected} matches, found {count}")
-    return text.replace(old, new)
+def replace_or_done(
+    text: str,
+    old: str,
+    new: str,
+    expected: int,
+    label: str,
+    *,
+    optional: bool = False,
+) -> str:
+    old_count = text.count(old)
+    new_count = text.count(new)
+
+    if old_count == expected and new_count == 0:
+        print(f"{label}: applying {old_count} repair(s)")
+        return text.replace(old, new)
+
+    if old_count == 0 and new_count == expected:
+        print(f"{label}: already repaired")
+        return text
+
+    if optional and old_count == 0:
+        print(f"{label}: source pattern not present; strict Clippy remains authoritative")
+        return text
+
+    raise RuntimeError(
+        f"{label}: unexpected state: old={old_count}, new={new_count}, expected={expected}"
+    )
 
 
 db = Path("crates/kaspa-gateway-db/src/lib.rs")
 text = db.read_text(encoding="utf-8")
-text = replace_exact(
+text = replace_or_done(
     text,
     '''            let placeholders = std::iter::repeat("?")
                 .take(chunk.len())
@@ -22,7 +44,7 @@ text = replace_exact(
     1,
     "manual_repeat_n",
 )
-text = replace_exact(
+text = replace_or_done(
     text,
     '''        if let Some(tx_type) = filter.tx_type {
             if !tx_type.eq_ignore_ascii_case("ALL") {
@@ -39,7 +61,7 @@ text = replace_exact(
     3,
     "tx_type collapsible_if",
 )
-text = replace_exact(
+text = replace_or_done(
     text,
     '''        if let Some(direction) = filter.direction {
             if !direction.eq_ignore_ascii_case("ALL") {
@@ -56,7 +78,7 @@ text = replace_exact(
     3,
     "direction collapsible_if",
 )
-text = replace_exact(
+text = replace_or_done(
     text,
     '''        if row_matches {
             if !seen.insert(tx.id.clone()) {
@@ -68,12 +90,13 @@ text = replace_exact(
         }''',
     1,
     "row_matches collapsible_if",
+    optional=True,
 )
 db.write_text(text, encoding="utf-8")
 
 cfg = Path("crates/kaspa-gateway-config/src/lib.rs")
 text = cfg.read_text(encoding="utf-8")
-text = replace_exact(
+text = replace_or_done(
     text,
     '''    if let Ok(exe) = env::current_exe() {
         if let Some(parent) = exe.parent() {
@@ -88,7 +111,7 @@ text = replace_exact(
     1,
     "current_exe collapsible_if",
 )
-text = replace_exact(
+text = replace_or_done(
     text,
     '''                    if let Value::String(text) = child {
                         if text.starts_with("keyring_managed:") {
@@ -115,29 +138,37 @@ node_new = '''        if !accumulated.contains_key(&key)
         {
             accumulated.insert(key, tx);
         }'''
-node_matches: list[Path] = []
+
+old_matches: list[Path] = []
+new_matches: list[Path] = []
 for root in (Path("crates"), Path("apps")):
     if not root.exists():
         continue
     for path in root.rglob("*.rs"):
         source = path.read_text(encoding="utf-8")
         if node_old in source:
-            node_matches.append(path)
+            old_matches.append(path)
+        if node_new in source:
+            new_matches.append(path)
 
-if len(node_matches) != 1:
-    raise RuntimeError(
-        "node_rpc collapsible_if: expected exactly one source match, "
-        f"found {len(node_matches)}: {node_matches}"
+if len(old_matches) == 1 and not new_matches:
+    node_path = old_matches[0]
+    node_text = node_path.read_text(encoding="utf-8")
+    node_text = replace_or_done(
+        node_text,
+        node_old,
+        node_new,
+        1,
+        f"node_rpc collapsible_if in {node_path}",
     )
-
-node_path = node_matches[0]
-node_text = node_path.read_text(encoding="utf-8")
-node_text = replace_exact(
-    node_text,
-    node_old,
-    node_new,
-    1,
-    f"node_rpc collapsible_if in {node_path}",
-)
-node_path.write_text(node_text, encoding="utf-8")
-print(f"Patched remaining node_rpc Clippy finding in {node_path}")
+    node_path.write_text(node_text, encoding="utf-8")
+    print(f"node_rpc collapsible_if: repaired {node_path}")
+elif not old_matches and len(new_matches) == 1:
+    print(f"node_rpc collapsible_if: already repaired in {new_matches[0]}")
+elif not old_matches and not new_matches:
+    print("node_rpc collapsible_if: pattern not present in tracked Rust sources; strict Clippy will validate")
+else:
+    raise RuntimeError(
+        "node_rpc collapsible_if: ambiguous source state: "
+        f"old={old_matches}, new={new_matches}"
+    )
