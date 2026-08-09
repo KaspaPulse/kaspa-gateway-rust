@@ -45,7 +45,8 @@ jobs:
           rm .github/workflows/clippy-finalize.yml .github/scripts/finalize_clippy.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add crates/kaspa-gateway-db/src/lib.rs crates/kaspa-gateway-config/src/lib.rs graphify-out .github/workflows/clippy-finalize.yml .github/scripts/finalize_clippy.py
+          git add -u
+          git add graphify-out
           git diff --cached --check
           if git diff --cached --quiet; then
             echo 'No changes to commit'
