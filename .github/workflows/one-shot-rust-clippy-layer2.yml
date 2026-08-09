@@ -1,0 +1,127 @@
+name: One-shot verified Rust Clippy layer 2
+
+on:
+  push:
+    branches: ["chore/security-baseline-2026-08-09-clean"]
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout clean modernization branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: chore/security-baseline-2026-08-09-clean
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Apply only verified layer-2 Clippy repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(text, old, new, expected, label):
+              count = text.count(old)
+              if count != expected:
+                  raise RuntimeError(f"{label}: expected {expected}, found {count}")
+              print(f"{label}: applying {count}")
+              return text.replace(old, new)
+
+          sync = Path("crates/kaspa-gateway-runtime/src/transaction_sync.rs")
+          text = sync.read_text(encoding="utf-8")
+          text = replace_exact(
+              text,
+              '''    if let (Some(start), Some(end)) = (request.start_ts, request.end_ts) {\n        if start > end {\n            return Err("start date cannot be after end date".to_string());\n        }\n    }''',
+              '''    if let (Some(start), Some(end)) = (request.start_ts, request.end_ts)\n        && start > end\n    {\n        return Err("start date cannot be after end date".to_string());\n    }''',
+              2,
+              "transaction date-range collapsible_if",
+          )
+          text = replace_exact(
+              text,
+              '''        if let Some(next_before_for_prefetch) = page.next_before {\n            if next_before_for_prefetch > 0\n                && next_before_for_prefetch != before\n                && page_num + 1 < max_pages\n            {\n                let client_for_prefetch = client.clone();\n                let config_for_prefetch = config.clone();\n                let address_for_prefetch = address.clone();\n                let next_page_num = page_num + 1;\n                let next_page_number = next_page_num + 1;\n                let next_after_for_prefetch = 0_i64;\n\n                eprintln!(\n                    "[KGW][transactions][FetchWorker] Prefetch accepted page start address={} mode={} next_page={} before={} after={} limit={}",\n                    address,\n                    if request.force { "force" } else { "normal" },\n                    next_page_number,\n                    next_before_for_prefetch,\n                    next_after_for_prefetch,\n                    page_limit\n                );\n\n                next_prefetch = Some(tokio::spawn(async move {\n                    fetch_transactions_page_accepted(\n                        &client_for_prefetch,\n                        &config_for_prefetch,\n                        &address_for_prefetch,\n                        page_limit,\n                        next_before_for_prefetch,\n                        next_after_for_prefetch,\n                        next_page_num,\n                    )\n                    .await\n                }));\n            }\n        }''',
+              '''        if let Some(next_before_for_prefetch) = page.next_before\n            && next_before_for_prefetch > 0\n            && next_before_for_prefetch != before\n            && page_num + 1 < max_pages\n        {\n            let client_for_prefetch = client.clone();\n            let config_for_prefetch = config.clone();\n            let address_for_prefetch = address.clone();\n            let next_page_num = page_num + 1;\n            let next_page_number = next_page_num + 1;\n            let next_after_for_prefetch = 0_i64;\n\n            eprintln!(\n                "[KGW][transactions][FetchWorker] Prefetch accepted page start address={} mode={} next_page={} before={} after={} limit={}",\n                address,\n                if request.force { "force" } else { "normal" },\n                next_page_number,\n                next_before_for_prefetch,\n                next_after_for_prefetch,\n                page_limit\n            );\n\n            next_prefetch = Some(tokio::spawn(async move {\n                fetch_transactions_page_accepted(\n                    &client_for_prefetch,\n                    &config_for_prefetch,\n                    &address_for_prefetch,\n                    page_limit,\n                    next_before_for_prefetch,\n                    next_after_for_prefetch,\n                    next_page_num,\n                )\n                .await\n            }));\n        }''',
+              1,
+              "transaction prefetch collapsible_if",
+          )
+          text = replace_exact(
+              text,
+              '''            if let Some(txid) = transaction_id(raw) {\n                if existing_txids.contains(&txid) {\n                    page_existing_skipped += 1;\n                    continue;\n                }\n            }''',
+              '''            if let Some(txid) = transaction_id(raw)\n                && existing_txids.contains(&txid)\n            {\n                page_existing_skipped += 1;\n                continue;\n            }''',
+              1,
+              "transaction existing-txid collapsible_if",
+          )
+          text = replace_exact(
+              text,
+              '''        if let Some(oldest_ts_on_page) = accepted_timestamps.iter().copied().min() {\n            if request\n                .start_ts\n                .map(|start| oldest_ts_on_page < start)\n                .unwrap_or(false)\n            {\n                stopped_by_start_date = true;\n                stop_reason = format!(\n                    "before_start_date:page={}:oldest_ts={}",\n                    page_number, oldest_ts_on_page\n                );\n\n                eprintln!(\n                    "[KGW][transactions][FetchWorker] Fetch stop by start date address={} page={} oldest_ts={} start_ts={:?}",\n                    address, page_number, oldest_ts_on_page, request.start_ts\n                );\n\n                break 'sync_page_loop;\n            }\n        }''',
+              '''        if let Some(oldest_ts_on_page) = accepted_timestamps.iter().copied().min()\n            && request\n                .start_ts\n                .map(|start| oldest_ts_on_page < start)\n                .unwrap_or(false)\n        {\n            stopped_by_start_date = true;\n            stop_reason = format!(\n                "before_start_date:page={}:oldest_ts={}",\n                page_number, oldest_ts_on_page\n            );\n\n            eprintln!(\n                "[KGW][transactions][FetchWorker] Fetch stop by start date address={} page={} oldest_ts={} start_ts={:?}",\n                address, page_number, oldest_ts_on_page, request.start_ts\n            );\n\n            break 'sync_page_loop;\n        }''',
+              1,
+              "transaction oldest-ts collapsible_if",
+          )
+          sync.write_text(text, encoding="utf-8")
+
+          owner = Path("crates/kaspa-gateway-rk-node/src/kgw_real_owner_runtime.rs")
+          text = owner.read_text(encoding="utf-8")
+          text = replace_exact(
+              text,
+              '''#[allow(dead_code)]\n\nfn ''',
+              '''#[allow(dead_code)]\nfn ''',
+              5,
+              "empty_line_after_outer_attr",
+          )
+          text = replace_exact(
+              text,
+              '''    let mut args = kaspad_lib_mainline::args::Args::default();\n\n    args.appdir = Some(kgw_owner_safe_runtime_appdir(settings.network));\n    args.utxoindex = settings.enable_utxo_index;\n    args.archival = settings.archival;\n    args.yes = true;\n    args.disable_upnp = true;\n    args.log_level = "INFO".to_string();''',
+              '''    let mut args = kaspad_lib_mainline::args::Args {\n        appdir: Some(kgw_owner_safe_runtime_appdir(settings.network)),\n        utxoindex: settings.enable_utxo_index,\n        archival: settings.archival,\n        yes: true,\n        disable_upnp: true,\n        log_level: "INFO".to_string(),\n        ..Default::default()\n    };''',
+              1,
+              "mainline field_reassign_with_default",
+          )
+          text = replace_exact(
+              text,
+              '''    let mut args = kaspad_lib_tn12::args::Args::default();\n\n    args.appdir = Some(kgw_owner_safe_runtime_appdir(settings.network));\n    args.utxoindex = settings.enable_utxo_index;\n    args.archival = settings.archival;\n    args.yes = true;\n    args.disable_upnp = true;\n    args.log_level = "INFO".to_string();''',
+              '''    let mut args = kaspad_lib_tn12::args::Args {\n        appdir: Some(kgw_owner_safe_runtime_appdir(settings.network)),\n        utxoindex: settings.enable_utxo_index,\n        archival: settings.archival,\n        yes: true,\n        disable_upnp: true,\n        log_level: "INFO".to_string(),\n        ..Default::default()\n    };''',
+              1,
+              "tn12 field_reassign_with_default",
+          )
+          owner.write_text(text, encoding="utf-8")
+
+          service = Path("crates/kaspa-gateway-rk-node/src/kgw_service_controller.rs")
+          text = service.read_text(encoding="utf-8")
+          text = replace_exact(
+              text,
+              '''        if let Some(network) = network {\n            if let Some(slot) = self.slots.get_mut(&network) {\n                if slot.logs.len() >= 128 {\n                    slot.logs.remove(0);\n                }\n                slot.logs.push(line);\n            }\n        }''',
+              '''        if let Some(network) = network\n            && let Some(slot) = self.slots.get_mut(&network)\n        {\n            if slot.logs.len() >= 128 {\n                slot.logs.remove(0);\n            }\n            slot.logs.push(line);\n        }''',
+              1,
+              "service-controller collapsible_if",
+          )
+          service.write_text(text, encoding="utf-8")
+
+          official = Path("crates/kaspa-gateway-rk-node/src/official_kaspa_runtime.rs")
+          text = official.read_text(encoding="utf-8")
+          test_block = '''#[cfg(test)]\nmod runtime_binding_tests {\n    use super::{KaspaRuntimeFamily, KaspaRuntimeNetwork};\n\n    const STABLE_REV: &str = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3";\n    const TN12_REV: &str = "eeb351ee911e2df906d21203dec8db3a195c6b33";\n\n    #[test]\n    fn mainnet_and_testnet10_share_the_official_stable_runtime() {\n        for network in [KaspaRuntimeNetwork::Mainnet, KaspaRuntimeNetwork::Testnet10] {\n            assert_eq!(network.family(), KaspaRuntimeFamily::Mainline);\n            assert_eq!(network.branch(), "stable");\n            assert_eq!(network.revision(), STABLE_REV);\n        }\n    }\n\n    #[test]\n    fn testnet12_remains_on_the_separate_experimental_runtime() {\n        let network = KaspaRuntimeNetwork::Testnet12;\n        assert_eq!(network.family(), KaspaRuntimeFamily::Tn12);\n        assert_eq!(network.branch(), "RKStratumTN12");\n        assert_eq!(network.revision(), TN12_REV);\n    }\n}\n\n'''
+          if text.count(test_block) != 1:
+              raise RuntimeError(f"runtime_binding_tests: expected 1 block, found {text.count(test_block)}")
+          text = text.replace(test_block, "", 1)
+          text = text.rstrip() + "\n\n" + test_block.rstrip() + "\n"
+          official.write_text(text, encoding="utf-8")
+          print("items_after_test_module: moved runtime_binding_tests to file end")
+          PY
+
+      - name: Commit verified repairs and remove one-shot workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/one-shot-rust-clippy-layer2.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add crates .github/workflows/one-shot-rust-clippy-layer2.yml
+          git diff --cached --check
+          git diff --cached --quiet && { echo 'Expected verified repairs were not produced'; exit 1; }
+          git commit -m 'fix: satisfy second Rust 1.97 clippy diagnostics layer'
+          git push origin HEAD:chore/security-baseline-2026-08-09-clean
