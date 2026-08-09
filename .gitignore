@@ -130,6 +130,8 @@ apps/kaspa-gateway-desktop/.vite/
 kaspa-gateway-rust.xml
 kaspa-gateway-rust.zip
 .codex/hooks.json
+graphify-out/graph.json
+graphify-out/manifest.json
 graphify-out/.graphify_python
 graphify-out/cost.json
 graphify-out/cache/
