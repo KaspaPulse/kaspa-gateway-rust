@@ -100,7 +100,41 @@ fn kgw_worker_next_raw_log_sequence_v1() -> u64 {
     KGW_RAW_PROCESS_LOG_SEQUENCE_V1.fetch_add(1, Ordering::SeqCst)
 }
 
+#[cfg(test)]
+thread_local! {
+    static KGW_START_TRACE_TEST_ENABLED_V1: std::cell::Cell<bool> =
+        const { std::cell::Cell::new(false) };
+}
+
+#[cfg(test)]
+pub(crate) struct KgwStartTraceTestGuardV1 {
+    previous: bool,
+}
+
+#[cfg(test)]
+impl Drop for KgwStartTraceTestGuardV1 {
+    fn drop(&mut self) {
+        KGW_START_TRACE_TEST_ENABLED_V1.with(|enabled| enabled.set(self.previous));
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn kgw_start_trace_test_enable_v1() -> KgwStartTraceTestGuardV1 {
+    let previous = KGW_START_TRACE_TEST_ENABLED_V1.with(|enabled| {
+        let previous = enabled.get();
+        enabled.set(true);
+        previous
+    });
+
+    KgwStartTraceTestGuardV1 { previous }
+}
+
 pub(crate) fn kgw_start_trace_enabled_v1() -> bool {
+    #[cfg(test)]
+    if KGW_START_TRACE_TEST_ENABLED_V1.with(|enabled| enabled.get()) {
+        return true;
+    }
+
     match std::env::var("KGW_START_TRACE") {
         Ok(value) => matches!(
             value.trim().to_ascii_lowercase().as_str(),
@@ -1472,7 +1506,9 @@ fn kgw_inprocess_diagnostic_logs_report_v1(
             diagnostic_event: "kgw_diagnostic_transport_record_v1".to_string(),
             network: network.clone().unwrap_or_else(|| "unknown".to_string()),
             source: "in-process-controller".to_string(),
-            runtime_role: runtime_role.clone().unwrap_or_else(|| "unknown".to_string()),
+            runtime_role: runtime_role
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string()),
             bridge_instance_id: bridge_instance_id.clone(),
             received_ms: kgw_worker_now_ms_u64(),
             message: format!(

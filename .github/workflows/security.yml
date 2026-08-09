@@ -1,0 +1,99 @@
+name: Dependency & Supply Chain Security
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**/Cargo.toml"
+      - "Cargo.lock"
+      - "deny.toml"
+      - ".cargo/audit.toml"
+      - "SECURITY_ADVISORIES.md"
+      - "scripts/check-security-advisories.py"
+      - ".github/workflows/security.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "**/Cargo.toml"
+      - "Cargo.lock"
+      - "deny.toml"
+      - ".cargo/audit.toml"
+      - "SECURITY_ADVISORIES.md"
+      - "scripts/check-security-advisories.py"
+      - ".github/workflows/security.yml"
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * 0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  supply-chain:
+    name: policy + audit + deny + machete
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate advisory exception policy
+        run: python3 scripts/check-security-advisories.py --max-age-days 45
+
+      - name: Install Rust 1.97.1
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: 1.97.1
+
+      - name: Install supply-chain tools
+        uses: taiki-e/install-action@6c6fd71fe4fb72c3697d269963d0e15df8adedad # v2.85.10
+        with:
+          tool: cargo-audit,cargo-deny,cargo-machete
+          fallback: none
+
+      - name: Cargo audit
+        run: cargo audit
+
+      - name: Cargo deny
+        id: cargo-deny
+        shell: bash
+        run: |
+          set +e
+          cargo deny check 2>&1 | tee cargo-deny.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+
+      - name: Upload cargo-deny diagnostics
+        if: failure() && steps.cargo-deny.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cargo-deny-diagnostics
+          path: cargo-deny.log
+          retention-days: 3
+
+      - name: Unused dependency scan
+        id: cargo-machete
+        shell: bash
+        run: |
+          set +e
+          cargo machete --with-metadata 2>&1 | tee cargo-machete.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+
+      - name: Upload cargo-machete diagnostics
+        if: failure() && steps.cargo-machete.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cargo-machete-diagnostics
+          path: cargo-machete.log
+          retention-days: 3
+
+      - name: Duplicate dependency report
+        run: cargo tree --locked -d

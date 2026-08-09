@@ -412,10 +412,10 @@ pub fn default_config_path() -> Result<PathBuf> {
 }
 
 pub fn get_project_root() -> Result<PathBuf> {
-    if let Ok(exe) = env::current_exe() {
-        if let Some(parent) = exe.parent() {
-            return Ok(parent.to_path_buf());
-        }
+    if let Ok(exe) = env::current_exe()
+        && let Some(parent) = exe.parent()
+    {
+        return Ok(parent.to_path_buf());
     }
 
     env::current_dir().map_err(ConfigError::Io)
@@ -673,10 +673,10 @@ fn decrypt_legacy_api_keys(value: &mut Value) {
         Value::Object(map) => {
             for (key, child) in map {
                 if key == "api_key" {
-                    if let Value::String(text) = child {
-                        if text.starts_with("keyring_managed:") {
-                            *text = String::new();
-                        }
+                    if let Value::String(text) = child
+                        && text.starts_with("keyring_managed:")
+                    {
+                        *text = String::new();
                     }
                 } else {
                     decrypt_legacy_api_keys(child);

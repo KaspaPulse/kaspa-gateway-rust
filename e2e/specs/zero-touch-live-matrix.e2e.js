@@ -118,7 +118,7 @@ function parseTauriBackendRecord(line) {
 
 async function readWdioRunnerLogLines() {
   const directory = path.join(artifactRoot, "wdio-runner");
-  let files = [];
+  let files;
   try {
     files = await fs.readdir(directory, { withFileTypes: true });
   } catch (_) {
