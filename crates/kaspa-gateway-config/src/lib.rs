@@ -373,12 +373,58 @@ impl ApiProfile {
     }
 }
 
-pub fn default_user_data_dir() -> Result<PathBuf> {
-    let base = env::var_os("LOCALAPPDATA")
-        .or_else(|| env::var_os("APPDATA"))
-        .ok_or(ConfigError::UserDataDirectoryUnavailable)?;
+fn absolute_env_path(name: &str) -> Option<PathBuf> {
+    env::var_os(name)
+        .filter(|value| !value.as_os_str().is_empty())
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+}
 
-    Ok(PathBuf::from(base).join(APP_NAME))
+fn platform_data_base_dir() -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        absolute_env_path("LOCALAPPDATA").or_else(|| absolute_env_path("APPDATA"))
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        absolute_env_path("HOME").map(|home| home.join("Library").join("Application Support"))
+    }
+
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        absolute_env_path("XDG_DATA_HOME")
+            .or_else(|| absolute_env_path("HOME").map(|home| home.join(".local").join("share")))
+    }
+
+    #[cfg(not(any(windows, unix)))]
+    {
+        None
+    }
+}
+
+pub fn default_user_data_dir() -> Result<PathBuf> {
+    if let Some(explicit_root) =
+        env::var_os("KASPA_GATEWAY_DATA_DIR").filter(|value| !value.as_os_str().is_empty())
+    {
+        let explicit_root = PathBuf::from(explicit_root);
+
+        if !explicit_root.is_absolute() {
+            return Err(ConfigError::UnsafePath(
+                "KASPA_GATEWAY_DATA_DIR must be an absolute path".to_string(),
+            ));
+        }
+
+        validate_user_path(&explicit_root)?;
+        return Ok(explicit_root);
+    }
+
+    let root = platform_data_base_dir()
+        .ok_or(ConfigError::UserDataDirectoryUnavailable)?
+        .join(APP_NAME);
+
+    validate_user_path(&root)?;
+    Ok(root)
 }
 
 pub fn get_user_data_root(custom_path: Option<impl AsRef<Path>>) -> Result<PathBuf> {
@@ -412,10 +458,10 @@ pub fn default_config_path() -> Result<PathBuf> {
 }
 
 pub fn get_project_root() -> Result<PathBuf> {
-    if let Ok(exe) = env::current_exe() {
-        if let Some(parent) = exe.parent() {
-            return Ok(parent.to_path_buf());
-        }
+    if let Ok(exe) = env::current_exe()
+        && let Some(parent) = exe.parent()
+    {
+        return Ok(parent.to_path_buf());
     }
 
     env::current_dir().map_err(ConfigError::Io)
@@ -673,10 +719,10 @@ fn decrypt_legacy_api_keys(value: &mut Value) {
         Value::Object(map) => {
             for (key, child) in map {
                 if key == "api_key" {
-                    if let Value::String(text) = child {
-                        if text.starts_with("keyring_managed:") {
-                            *text = String::new();
-                        }
+                    if let Value::String(text) = child
+                        && text.starts_with("keyring_managed:")
+                    {
+                        *text = String::new();
                     }
                 } else {
                     decrypt_legacy_api_keys(child);

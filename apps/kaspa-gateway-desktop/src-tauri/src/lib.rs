@@ -197,11 +197,11 @@ impl KgwTraceSessionR69F2 {
     }
 
     fn write_line(&self, line: &str) {
-        if let Ok(mut file_guard) = self.file.lock() {
-            if let Some(file) = file_guard.as_mut() {
-                let _ = writeln!(file, "{line}");
-                let _ = file.flush();
-            }
+        if let Ok(mut file_guard) = self.file.lock()
+            && let Some(file) = file_guard.as_mut()
+        {
+            let _ = writeln!(file, "{line}");
+            let _ = file.flush();
         }
     }
 
@@ -220,18 +220,18 @@ impl KgwTraceSessionR69F2 {
         let ended_ms = kgw_trace_unix_ms_r69f2();
         let elapsed_ms = ended_ms.saturating_sub(self.started_unix_ms);
 
-        if let Ok(mut file_guard) = self.file.lock() {
-            if let Some(mut file) = file_guard.take() {
-                let _ = writeln!(
-                    file,
-                    "{{\"event\":\"session-end\",\"owner\":\"KGW_TRACE_BACKEND_GATE_OWNER\",\"pid\":{},\"unix_ms\":{},\"elapsed_ms\":{}}}",
-                    std::process::id(),
-                    ended_ms,
-                    elapsed_ms
-                );
-                let _ = file.flush();
-                let _ = file.sync_all();
-            }
+        if let Ok(mut file_guard) = self.file.lock()
+            && let Some(mut file) = file_guard.take()
+        {
+            let _ = writeln!(
+                file,
+                "{{\"event\":\"session-end\",\"owner\":\"KGW_TRACE_BACKEND_GATE_OWNER\",\"pid\":{},\"unix_ms\":{},\"elapsed_ms\":{}}}",
+                std::process::id(),
+                ended_ms,
+                elapsed_ms
+            );
+            let _ = file.flush();
+            let _ = file.sync_all();
         }
 
         match kgw_zip_trace_log_r69f2(&self.log_path, &self.zip_path) {
@@ -285,9 +285,7 @@ fn kgw_trace_session_r69f2() -> Option<std::sync::Arc<KgwTraceSessionR69F2>> {
                 return None;
             }
 
-            let Some(dir) = kgw_ui_trace_log_dir_v37() else {
-                return None;
-            };
+            let dir = kgw_ui_trace_log_dir_v37()?;
 
             match KgwTraceSessionR69F2::new(dir) {
                 Ok(session) => Some(std::sync::Arc::new(session)),
@@ -561,6 +559,7 @@ fn kgw_clipboard_trace_details_v1(
     .to_string()
 }
 
+#[allow(clippy::too_many_arguments)] // Mirrors the validated clipboard IPC metadata contract.
 fn kgw_copy_text_to_clipboard_inner_v1<F>(
     network: String,
     runtime_role: Option<String>,
@@ -694,6 +693,7 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)] // Stable Tauri IPC contract consumed by the desktop frontend.
 #[tauri::command]
 fn kgw_copy_text_to_clipboard_v1(
     app: tauri::AppHandle,
@@ -800,7 +800,7 @@ mod kgw_clipboard_tests {
 
     #[test]
     fn clipboard_trace_excludes_raw_content_and_records_hash() {
-        std::env::set_var("KGW_START_TRACE", "1");
+        let _trace_guard = integrated_runtime_commands::kgw_start_trace_test_enable_v1();
         let _ = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
 
         let text = "mainnet secret raw content should not appear".to_string();
@@ -827,8 +827,6 @@ mod kgw_clipboard_tests {
         assert!(trace.contains("\\\"bridgeInstanceId\\\":\\\"bridge-a\\\""));
         assert!(!trace.contains("secret raw content"));
         assert!(!trace.contains(&text));
-
-        std::env::remove_var("KGW_START_TRACE");
     }
 }
 
@@ -1277,25 +1275,22 @@ fn kgw_bridge_config_instance_listens_r122(config_path: &str) -> Result<Vec<Stri
                     .trim()
                     .to_string(),
             )
-        } else if let Some(index) = lower.find("port:") {
-            Some(
+        } else {
+            lower.find("port:").map(|index| {
                 line[index + "port:".len()..]
                     .split(',')
                     .next()
                     .unwrap_or("")
                     .trim()
-                    .to_string(),
-            )
-        } else {
-            None
+                    .to_string()
+            })
         };
 
-        if let Some(value) = maybe_value {
-            if let Some(listen) = kgw_bridge_normalize_listen_from_config_r122(&value) {
-                if !listens.iter().any(|existing| existing == &listen) {
-                    listens.push(listen);
-                }
-            }
+        if let Some(value) = maybe_value
+            && let Some(listen) = kgw_bridge_normalize_listen_from_config_r122(&value)
+            && !listens.iter().any(|existing| existing == &listen)
+        {
+            listens.push(listen);
         }
     }
 
@@ -1474,8 +1469,16 @@ fn kgw_run_bridge_self_worker(
 
     eprintln!(
         "KGW_BRIDGE_DUAL_CLI_CONFIG_REAL_RUNNER_R122 launch_source={} node_mode={} network={} instance_count={} listens={}",
-        if bridge_config_path.is_some() { "config" } else { "cli_instances" },
-        if is_inprocess { "inprocess" } else { "external" },
+        if bridge_config_path.is_some() {
+            "config"
+        } else {
+            "cli_instances"
+        },
+        if is_inprocess {
+            "inprocess"
+        } else {
+            "external"
+        },
         network,
         instance_listens.len(),
         instance_listens.join("|")

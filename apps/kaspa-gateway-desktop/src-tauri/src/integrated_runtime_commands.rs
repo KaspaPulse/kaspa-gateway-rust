@@ -100,7 +100,41 @@ fn kgw_worker_next_raw_log_sequence_v1() -> u64 {
     KGW_RAW_PROCESS_LOG_SEQUENCE_V1.fetch_add(1, Ordering::SeqCst)
 }
 
+#[cfg(test)]
+thread_local! {
+    static KGW_START_TRACE_TEST_ENABLED_V1: std::cell::Cell<bool> =
+        const { std::cell::Cell::new(false) };
+}
+
+#[cfg(test)]
+pub(crate) struct KgwStartTraceTestGuardV1 {
+    previous: bool,
+}
+
+#[cfg(test)]
+impl Drop for KgwStartTraceTestGuardV1 {
+    fn drop(&mut self) {
+        KGW_START_TRACE_TEST_ENABLED_V1.with(|enabled| enabled.set(self.previous));
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn kgw_start_trace_test_enable_v1() -> KgwStartTraceTestGuardV1 {
+    let previous = KGW_START_TRACE_TEST_ENABLED_V1.with(|enabled| {
+        let previous = enabled.get();
+        enabled.set(true);
+        previous
+    });
+
+    KgwStartTraceTestGuardV1 { previous }
+}
+
 pub(crate) fn kgw_start_trace_enabled_v1() -> bool {
+    #[cfg(test)]
+    if KGW_START_TRACE_TEST_ENABLED_V1.with(|enabled| enabled.get()) {
+        return true;
+    }
+
     match std::env::var("KGW_START_TRACE") {
         Ok(value) => matches!(
             value.trim().to_ascii_lowercase().as_str(),
@@ -303,6 +337,7 @@ fn kgw_worker_raw_log_entry_v1(
 }
 
 #[cfg(test)]
+#[allow(dead_code)] // Used by path-included integration tests; unused in the library test target.
 pub(crate) fn kgw_raw_log_entry_for_test_v1(
     sequence: u64,
     network: &str,
@@ -324,6 +359,7 @@ pub(crate) fn kgw_raw_log_entry_for_test_v1(
 }
 
 #[cfg(test)]
+#[allow(dead_code)] // Used by path-included integration tests; unused in the library test target.
 pub(crate) fn kgw_raw_log_text_from_entries_for_test_v1(
     mut entries: Vec<KgwRuntimeRawLogEntryV1>,
 ) -> String {
@@ -679,6 +715,7 @@ fn kgw_worker_command(
 }
 
 #[cfg(test)]
+#[allow(dead_code)] // Used by path-included integration tests; unused in the library test target.
 pub(crate) fn kgw_worker_node_command_args_for_test_v1(
     role: &str,
     settings: &kaspa_gateway_rk_node::NodeSettings,
@@ -1281,38 +1318,38 @@ fn kgw_worker_status(
     let mut lines = Vec::new();
 
     for worker in workers.values_mut() {
-        if let Some(ref value) = wanted_network {
-            if &worker.network != value {
-                continue;
-            }
+        if let Some(ref value) = wanted_network
+            && &worker.network != value
+        {
+            continue;
         }
 
-        if let Some(ref value) = wanted_role {
-            if &worker.role != value {
-                continue;
-            }
+        if let Some(ref value) = wanted_role
+            && &worker.role != value
+        {
+            continue;
         }
 
         let exit_status = worker.child.try_wait().map_err(|error| error.to_string())?;
         let running = exit_status.is_none();
 
-        if let Some(status) = exit_status {
-            if !worker.exit_logged {
-                kgw_start_trace_emit_v1(
-                    "native",
-                    "native.diagnostic_transport_process_exit",
-                    &worker.network,
-                    "status",
-                    "observed",
-                    Some(&format!(
-                        "{{\"eventKind\":\"diagnostic_transport_record\",\"runtimeRole\":\"{}\",\"pid\":{},\"status\":\"{}\"}}",
-                        kgw_start_trace_json_escape_v1(&worker.role),
-                        worker.child.id(),
-                        kgw_start_trace_json_escape_v1(&status.to_string())
-                    )),
-                );
-                worker.exit_logged = true;
-            }
+        if let Some(status) = exit_status
+            && !worker.exit_logged
+        {
+            kgw_start_trace_emit_v1(
+                "native",
+                "native.diagnostic_transport_process_exit",
+                &worker.network,
+                "status",
+                "observed",
+                Some(&format!(
+                    "{{\"eventKind\":\"diagnostic_transport_record\",\"runtimeRole\":\"{}\",\"pid\":{},\"status\":\"{}\"}}",
+                    kgw_start_trace_json_escape_v1(&worker.role),
+                    worker.child.id(),
+                    kgw_start_trace_json_escape_v1(&status.to_string())
+                )),
+            );
+            worker.exit_logged = true;
         }
 
         lines.push(format!(
@@ -1352,22 +1389,22 @@ fn kgw_worker_logs(
     let mut lines = Vec::new();
 
     for worker in workers.values() {
-        if let Some(ref value) = wanted_network {
-            if &worker.network != value {
-                continue;
-            }
+        if let Some(ref value) = wanted_network
+            && &worker.network != value
+        {
+            continue;
         }
 
-        if let Some(ref value) = wanted_role {
-            if &worker.role != value {
-                continue;
-            }
+        if let Some(ref value) = wanted_role
+            && &worker.role != value
+        {
+            continue;
         }
 
-        if let Some(ref value) = wanted_bridge_instance_id {
-            if worker.bridge_instance_id.as_ref() != Some(value) {
-                continue;
-            }
+        if let Some(ref value) = wanted_bridge_instance_id
+            && worker.bridge_instance_id.as_ref() != Some(value)
+        {
+            continue;
         }
 
         matched_worker = true;
@@ -1411,22 +1448,22 @@ fn kgw_worker_clear_logs(
     let mut matched_worker = false;
 
     for worker in workers.values() {
-        if let Some(ref value) = wanted_network {
-            if &worker.network != value {
-                continue;
-            }
+        if let Some(ref value) = wanted_network
+            && &worker.network != value
+        {
+            continue;
         }
 
-        if let Some(ref value) = wanted_role {
-            if &worker.role != value {
-                continue;
-            }
+        if let Some(ref value) = wanted_role
+            && &worker.role != value
+        {
+            continue;
         }
 
-        if let Some(ref value) = wanted_bridge_instance_id {
-            if worker.bridge_instance_id.as_ref() != Some(value) {
-                continue;
-            }
+        if let Some(ref value) = wanted_bridge_instance_id
+            && worker.bridge_instance_id.as_ref() != Some(value)
+        {
+            continue;
         }
 
         matched_worker = true;
@@ -1472,7 +1509,9 @@ fn kgw_inprocess_diagnostic_logs_report_v1(
             diagnostic_event: "kgw_diagnostic_transport_record_v1".to_string(),
             network: network.clone().unwrap_or_else(|| "unknown".to_string()),
             source: "in-process-controller".to_string(),
-            runtime_role: runtime_role.clone().unwrap_or_else(|| "unknown".to_string()),
+            runtime_role: runtime_role
+                .clone()
+                .unwrap_or_else(|| "unknown".to_string()),
             bridge_instance_id: bridge_instance_id.clone(),
             received_ms: kgw_worker_now_ms_u64(),
             message: format!(
@@ -1634,10 +1673,7 @@ fn kgw_safe_runtime_appdir(value: String) -> String {
         return input.to_string_lossy().to_string();
     }
 
-    let safe_name = trimmed
-        .replace('\\', "_")
-        .replace('/', "_")
-        .replace(':', "_");
+    let safe_name = trimmed.replace(['\\', '/', ':'], "_");
 
     kgw_safe_runtime_appdir_root()
         .join(safe_name)
@@ -1655,12 +1691,12 @@ fn kgw_command_preview_find_cli_value(command_preview: &str, flag: &str) -> Opti
             }
         }
 
-        if part == flag {
-            if let Some(value) = parts.peek() {
-                let value = value.trim().trim_matches('"').trim_matches('\'');
-                if !value.is_empty() {
-                    return Some(value.to_string());
-                }
+        if part == flag
+            && let Some(value) = parts.peek()
+        {
+            let value = value.trim().trim_matches('"').trim_matches('\'');
+            if !value.is_empty() {
+                return Some(value.to_string());
             }
         }
     }
@@ -1764,12 +1800,11 @@ fn kgw_bridge_command_preview_instance_listens_r123(command_preview: Option<&str
             None
         };
 
-        if let Some(instance_clause) = value {
-            if let Some(listen) = kgw_bridge_preview_instance_clause_listen_r123(instance_clause) {
-                if !listens.iter().any(|existing| existing == &listen) {
-                    listens.push(listen);
-                }
-            }
+        if let Some(instance_clause) = value
+            && let Some(listen) = kgw_bridge_preview_instance_clause_listen_r123(instance_clause)
+            && !listens.iter().any(|existing| existing == &listen)
+        {
+            listens.push(listen);
         }
 
         index += 1;
@@ -1824,10 +1859,10 @@ fn kgw_apply_command_preview_overrides(
             settings.stratum_listen = kgw_command_preview_normalize_listen(value);
         }
 
-        if let Some(value) = kgw_command_preview_find_cli_value(&bridge_preview, "--appdir") {
-            if !value.trim().is_empty() {
-                settings.app_dir_name = kgw_safe_runtime_appdir(value);
-            }
+        if let Some(value) = kgw_command_preview_find_cli_value(&bridge_preview, "--appdir")
+            && !value.trim().is_empty()
+        {
+            settings.app_dir_name = kgw_safe_runtime_appdir(value);
         }
 
         // KGW_BRIDGE_INPROCESS_SAME_DB_OWNER_V7_INTEGRATED
@@ -1951,15 +1986,11 @@ fn kgw_bridge_instance_value_r120(serialized: &str, wanted_key: &str) -> Option<
     let wanted = wanted_key.trim().replace('-', "_").to_ascii_lowercase();
 
     let normalized = serialized
-        .replace('{', "")
-        .replace('}', "")
-        .replace('[', "")
-        .replace(']', "")
-        .replace('"', "")
+        .replace(['{', '}', '[', ']', '"'], "")
         .replace("\\r", ",")
         .replace("\\n", ",");
 
-    for raw_part in normalized.split(|ch| ch == ',' || ch == ';') {
+    for raw_part in normalized.split([',', ';']) {
         let part = raw_part.trim();
         let Some((raw_key, raw_value)) = part.split_once('=').or_else(|| part.split_once(':'))
         else {
@@ -2014,20 +2045,18 @@ fn kgw_bridge_structured_instance_listens_r120(serialized: Option<&str>) -> Vec<
         if let Some(listen) = kgw_bridge_instance_value_r120(chunk, "port")
             .as_deref()
             .and_then(kgw_bridge_normalize_instance_listen_r120)
-        {
-            if !listens.iter().any(|existing| existing == &listen) {
-                listens.push(listen);
-            }
-        }
-    }
-
-    if listens.is_empty() {
-        if let Some(listen) = kgw_bridge_instance_value_r120(raw, "port")
-            .as_deref()
-            .and_then(kgw_bridge_normalize_instance_listen_r120)
+            && !listens.iter().any(|existing| existing == &listen)
         {
             listens.push(listen);
         }
+    }
+
+    if listens.is_empty()
+        && let Some(listen) = kgw_bridge_instance_value_r120(raw, "port")
+            .as_deref()
+            .and_then(kgw_bridge_normalize_instance_listen_r120)
+    {
+        listens.push(listen);
     }
 
     listens
@@ -2064,6 +2093,7 @@ fn kgw_apply_bridge_active_instance_runtime_overrides_r110f(
     }
 }
 
+#[allow(clippy::too_many_arguments)] // Stable Tauri IPC contract; grouping would break frontend argument names.
 #[tauri::command]
 pub fn kgw_kgw_apply_node_settings_v1(
     network: String,

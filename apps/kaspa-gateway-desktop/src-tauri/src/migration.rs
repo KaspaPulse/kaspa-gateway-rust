@@ -1,4 +1,4 @@
-use duckdb::{params, Connection};
+use duckdb::{Connection, params};
 use kaspa_gateway_config::default_user_data_dir;
 use kaspa_gateway_core::KaspaAddress;
 use kaspa_gateway_db::{AddressRecord, DatabaseManager, DatabasePaths, TransactionRecord};

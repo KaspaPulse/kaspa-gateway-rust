@@ -527,11 +527,7 @@ fn metric_row(metric: &str, value: String, unit: &str) -> Vec<String> {
 }
 
 fn kgw_export_csv_metadata_comment_v13(value: &str) -> String {
-    let normalized = value
-        .replace('\r', " ")
-        .replace('\n', " ")
-        .trim()
-        .to_string();
+    let normalized = value.replace(['\r', '\n'], " ").trim().to_string();
 
     if normalized.is_empty() {
         String::new()
@@ -654,9 +650,7 @@ fn is_export_url_v1b(value: &str) -> bool {
 // KGW_EXPORT_HTML_PDF_READABLE_LONG_CELLS_V5
 fn kgw_middle_ellipsis_v5(value: &str, head: usize, tail: usize) -> String {
     let clean = value
-        .replace('\r', " ")
-        .replace('\n', " ")
-        .replace('\t', " ")
+        .replace(['\r', '\n', '\t'], " ")
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(" ");
@@ -694,22 +688,22 @@ fn kgw_compact_url_v5(value: &str) -> String {
 
     let lower = clean.to_ascii_lowercase();
 
-    if lower.contains("/txs/") {
-        if let Some(txid) = clean.rsplit('/').next() {
-            return format!(
-                "explorer.kaspa.org/txs/{}",
-                kgw_middle_ellipsis_v5(txid, 10, 8)
-            );
-        }
+    if lower.contains("/txs/")
+        && let Some(txid) = clean.rsplit('/').next()
+    {
+        return format!(
+            "explorer.kaspa.org/txs/{}",
+            kgw_middle_ellipsis_v5(txid, 10, 8)
+        );
     }
 
-    if lower.contains("/addresses/") {
-        if let Some(address) = clean.rsplit('/').next() {
-            return format!(
-                "explorer.kaspa.org/addresses/{}",
-                kgw_middle_ellipsis_v5(address, 14, 8)
-            );
-        }
+    if lower.contains("/addresses/")
+        && let Some(address) = clean.rsplit('/').next()
+    {
+        return format!(
+            "explorer.kaspa.org/addresses/{}",
+            kgw_middle_ellipsis_v5(address, 14, 8)
+        );
     }
 
     kgw_middle_ellipsis_v5(clean, 26, 14)
@@ -924,19 +918,11 @@ fn kgw_pdf_compact_table_v6(table: &ReportTable) -> ReportTable {
 }
 
 fn kgw_pdf_compact_font_size_v6(headers: &[String]) -> f32 {
-    if headers.len() <= 8 {
-        5.05
-    } else {
-        4.75
-    }
+    if headers.len() <= 8 { 5.05 } else { 4.75 }
 }
 
 fn kgw_pdf_compact_header_font_size_v6(headers: &[String]) -> f32 {
-    if headers.len() <= 8 {
-        5.65
-    } else {
-        5.25
-    }
+    if headers.len() <= 8 { 5.65 } else { 5.25 }
 }
 
 fn write_html(path: &Path, table: &ReportTable, locale: Option<&str>) -> Result<(), String> {
@@ -1289,12 +1275,8 @@ fn kgw_pdf_text_v29(
 
 fn kgw_pdf_clean_text_v29(value: &str) -> String {
     value
-        .replace('\r', " ")
-        .replace('\n', " ")
-        .replace('\t', " ")
-        .replace('—', "-")
-        .replace('–', "-")
-        .replace('•', "-")
+        .replace(['\r', '\n', '\t'], " ")
+        .replace(['—', '–', '•'], "-")
         .replace('…', "...")
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -1516,6 +1498,7 @@ fn kgw_pdf_draw_table_header_v29(
     }
 }
 
+#[allow(clippy::too_many_arguments)] // Explicit PDF layout inputs keep row rendering call sites auditable.
 fn kgw_pdf_draw_table_row_v29(
     ops: &mut Vec<printpdf::Op>,
     font: &printpdf::PdfFontHandle,

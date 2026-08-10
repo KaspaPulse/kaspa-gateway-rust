@@ -34,15 +34,15 @@
 //   only after parity tests pass.
 // ============================================================================
 use kaspa_gateway_api::transactions::{
-    block_time_seconds, fetch_transactions_page_accepted, transaction_id, TransactionFetchConfig,
-    TransactionPage,
+    TransactionFetchConfig, TransactionPage, block_time_seconds, fetch_transactions_page_accepted,
+    transaction_id,
 };
 use kaspa_gateway_core::KaspaAddress;
 use kaspa_gateway_db::{TransactionFilter, TransactionRecord, TransactionsRepository};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{BTreeMap, HashSet};
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
@@ -162,8 +162,7 @@ impl TransactionSyncGuard {
         {
             eprintln!(
                 "[KGW][transactions][FetchWorker][WARN] Fetch rejected because another fetch is already running address={} mode={}",
-                address,
-                mode
+                address, mode
             );
 
             return Err(
@@ -398,10 +397,10 @@ pub async fn sync_transactions(
 
     let _sync_guard = TransactionSyncGuard::enter(&address, request.force)?;
 
-    if let (Some(start), Some(end)) = (request.start_ts, request.end_ts) {
-        if start > end {
-            return Err("start date cannot be after end date".to_string());
-        }
+    if let (Some(start), Some(end)) = (request.start_ts, request.end_ts)
+        && start > end
+    {
+        return Err("start date cannot be after end date".to_string());
     }
 
     let page_limit = request.page_limit.unwrap_or(PAGE_LIMIT).clamp(1, 500);
@@ -668,41 +667,40 @@ pub async fn sync_transactions(
         let mut next_prefetch: Option<tokio::task::JoinHandle<Result<TransactionPage, String>>> =
             None;
 
-        if let Some(next_before_for_prefetch) = page.next_before {
-            if next_before_for_prefetch > 0
-                && next_before_for_prefetch != before
-                && page_num + 1 < max_pages
-            {
-                let client_for_prefetch = client.clone();
-                let config_for_prefetch = config.clone();
-                let address_for_prefetch = address.clone();
-                let next_page_num = page_num + 1;
-                let next_page_number = next_page_num + 1;
-                let next_after_for_prefetch = 0_i64;
+        if let Some(next_before_for_prefetch) = page.next_before
+            && next_before_for_prefetch > 0
+            && next_before_for_prefetch != before
+            && page_num + 1 < max_pages
+        {
+            let client_for_prefetch = client.clone();
+            let config_for_prefetch = config.clone();
+            let address_for_prefetch = address.clone();
+            let next_page_num = page_num + 1;
+            let next_page_number = next_page_num + 1;
+            let next_after_for_prefetch = 0_i64;
 
-                eprintln!(
-                    "[KGW][transactions][FetchWorker] Prefetch accepted page start address={} mode={} next_page={} before={} after={} limit={}",
-                    address,
-                    if request.force { "force" } else { "normal" },
-                    next_page_number,
+            eprintln!(
+                "[KGW][transactions][FetchWorker] Prefetch accepted page start address={} mode={} next_page={} before={} after={} limit={}",
+                address,
+                if request.force { "force" } else { "normal" },
+                next_page_number,
+                next_before_for_prefetch,
+                next_after_for_prefetch,
+                page_limit
+            );
+
+            next_prefetch = Some(tokio::spawn(async move {
+                fetch_transactions_page_accepted(
+                    &client_for_prefetch,
+                    &config_for_prefetch,
+                    &address_for_prefetch,
+                    page_limit,
                     next_before_for_prefetch,
                     next_after_for_prefetch,
-                    page_limit
-                );
-
-                next_prefetch = Some(tokio::spawn(async move {
-                    fetch_transactions_page_accepted(
-                        &client_for_prefetch,
-                        &config_for_prefetch,
-                        &address_for_prefetch,
-                        page_limit,
-                        next_before_for_prefetch,
-                        next_after_for_prefetch,
-                        next_page_num,
-                    )
-                    .await
-                }));
-            }
+                    next_page_num,
+                )
+                .await
+            }));
         }
 
         if !request.force {
@@ -787,11 +785,7 @@ pub async fn sync_transactions(
 
                 eprintln!(
                     "[KGW][transactions][FetchWorker][WARN] Accepted-only endpoint returned unaccepted tx address={} page={} item={}/{} txid={}",
-                    address,
-                    page_number,
-                    item_no,
-                    raw_count,
-                    txid_for_log
+                    address, page_number, item_no, raw_count, txid_for_log
                 );
 
                 continue;
@@ -807,11 +801,11 @@ pub async fn sync_transactions(
                 continue;
             }
 
-            if let Some(txid) = transaction_id(raw) {
-                if existing_txids.contains(&txid) {
-                    page_existing_skipped += 1;
-                    continue;
-                }
+            if let Some(txid) = transaction_id(raw)
+                && existing_txids.contains(&txid)
+            {
+                page_existing_skipped += 1;
+                continue;
             }
 
             let transform_started = Instant::now();
@@ -995,28 +989,24 @@ pub async fn sync_transactions(
             return Err(error);
         }
 
-        if let Some(oldest_ts_on_page) = accepted_timestamps.iter().copied().min() {
-            if request
+        if let Some(oldest_ts_on_page) = accepted_timestamps.iter().copied().min()
+            && request
                 .start_ts
                 .map(|start| oldest_ts_on_page < start)
                 .unwrap_or(false)
-            {
-                stopped_by_start_date = true;
-                stop_reason = format!(
-                    "before_start_date:page={}:oldest_ts={}",
-                    page_number, oldest_ts_on_page
-                );
+        {
+            stopped_by_start_date = true;
+            stop_reason = format!(
+                "before_start_date:page={}:oldest_ts={}",
+                page_number, oldest_ts_on_page
+            );
 
-                eprintln!(
-                    "[KGW][transactions][FetchWorker] Fetch stop by start date address={} page={} oldest_ts={} start_ts={:?}",
-                    address,
-                    page_number,
-                    oldest_ts_on_page,
-                    request.start_ts
-                );
+            eprintln!(
+                "[KGW][transactions][FetchWorker] Fetch stop by start date address={} page={} oldest_ts={} start_ts={:?}",
+                address, page_number, oldest_ts_on_page, request.start_ts
+            );
 
-                break 'sync_page_loop;
-            }
+            break 'sync_page_loop;
         }
 
         eprintln!(
@@ -1049,12 +1039,7 @@ pub async fn sync_transactions(
 
             eprintln!(
                 "[KGW][transactions][FetchWorker] Normal fetch stop: all transactions on page already exist address={} page={} raw_count={} existing_skipped={} fetched_total={} stored_total={}",
-                address,
-                page_number,
-                raw_count,
-                page_existing_skipped,
-                fetched_from_api,
-                stored
+                address, page_number, raw_count, page_existing_skipped, fetched_from_api, stored
             );
 
             if let Some(handle) = next_prefetch.take() {
@@ -1141,10 +1126,10 @@ pub fn list_transactions_grouped_by_day(
     let parsed = KaspaAddress::parse(&request.address).map_err(|error| error.to_string())?;
     let address = parsed.as_str().to_ascii_lowercase();
 
-    if let (Some(start), Some(end)) = (request.start_ts, request.end_ts) {
-        if start > end {
-            return Err("start date cannot be after end date".to_string());
-        }
+    if let (Some(start), Some(end)) = (request.start_ts, request.end_ts)
+        && start > end
+    {
+        return Err("start date cannot be after end date".to_string());
     }
 
     let records = repo

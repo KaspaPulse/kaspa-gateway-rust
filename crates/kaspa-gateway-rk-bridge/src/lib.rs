@@ -735,6 +735,26 @@ pub fn official_kaspa_bridge_summary_v1() -> &'static str {
     "Kaspa bridge follows the KGW service-event mechanism. mainnet/testnet10 use official rusty-kaspa v2.0.1; testnet12 remains an explicit experimental tn12 build. Bridge start uses KaspaApi and listen_and_serve_with_shutdown inside owner."
 }
 
+#[cfg(feature = "official-kaspa-runtime-mainline")]
+pub fn official_bridge_mainline_dependency_marker_v1() -> &'static str {
+    "official-kaspa-runtime-mainline dependency selected"
+}
+
+#[cfg(not(feature = "official-kaspa-runtime-mainline"))]
+pub fn official_bridge_mainline_dependency_marker_v1() -> &'static str {
+    "official-kaspa-runtime-mainline feature disabled"
+}
+
+#[cfg(feature = "official-kaspa-runtime-tn12")]
+pub fn official_bridge_tn12_dependency_marker_v1() -> &'static str {
+    "official-kaspa-runtime-tn12 dependency selected"
+}
+
+#[cfg(not(feature = "official-kaspa-runtime-tn12"))]
+pub fn official_bridge_tn12_dependency_marker_v1() -> &'static str {
+    "official-kaspa-runtime-tn12 feature disabled"
+}
+
 #[cfg(test)]
 mod runtime_binding_tests {
     use super::{BridgeRuntimeFamily, BridgeRuntimeNetwork};
@@ -761,24 +781,4 @@ mod runtime_binding_tests {
         assert_eq!(network.branch(), "RKStratumTN12");
         assert_eq!(network.revision(), TN12_REV);
     }
-}
-
-#[cfg(feature = "official-kaspa-runtime-mainline")]
-pub fn official_bridge_mainline_dependency_marker_v1() -> &'static str {
-    "official-kaspa-runtime-mainline dependency selected"
-}
-
-#[cfg(not(feature = "official-kaspa-runtime-mainline"))]
-pub fn official_bridge_mainline_dependency_marker_v1() -> &'static str {
-    "official-kaspa-runtime-mainline feature disabled"
-}
-
-#[cfg(feature = "official-kaspa-runtime-tn12")]
-pub fn official_bridge_tn12_dependency_marker_v1() -> &'static str {
-    "official-kaspa-runtime-tn12 dependency selected"
-}
-
-#[cfg(not(feature = "official-kaspa-runtime-tn12"))]
-pub fn official_bridge_tn12_dependency_marker_v1() -> &'static str {
-    "official-kaspa-runtime-tn12 feature disabled"
 }

@@ -1,6 +1,6 @@
 use kaspa_gateway_rk_node::{
-    build_kgw_inproc_plan, kgw_inproc_summary_v1, KgwInProcNodeOnly, KgwInprocRuntimeState,
-    KgwInprocStartRequest, KgwInprocStep,
+    KgwInProcNodeOnly, KgwInprocRuntimeState, KgwInprocStartRequest, KgwInprocStep,
+    build_kgw_inproc_plan, kgw_inproc_summary_v1,
 };
 
 #[test]

@@ -438,10 +438,10 @@ pub fn analysis_graph_report(request: AnalysisDeepRequest) -> Result<AnalysisGra
     }
 
     for edge in &edges {
-        if let Some(cluster_id) = cluster_ids.get(&edge.source) {
-            if let Some(cluster) = cluster_map.get_mut(cluster_id) {
-                cluster.edges += 1;
-            }
+        if let Some(cluster_id) = cluster_ids.get(&edge.source)
+            && let Some(cluster) = cluster_map.get_mut(cluster_id)
+        {
+            cluster.edges += 1;
         }
     }
 

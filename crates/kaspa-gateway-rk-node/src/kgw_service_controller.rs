@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::sync::{
-    mpsc::{self, Receiver, Sender},
     Arc, Mutex,
+    mpsc::{self, Receiver, Sender},
 };
 use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -429,7 +429,9 @@ impl RuntimeSlotStatus {
             self.bridge_running,
             self.rpc_attached,
             self.last_event,
-            self.last_error.clone().unwrap_or_else(|| "none".to_string())
+            self.last_error
+                .clone()
+                .unwrap_or_else(|| "none".to_string())
         )
     }
 }
@@ -490,13 +492,13 @@ impl ControllerState {
         }
         self.logs.push_front(line.clone());
 
-        if let Some(network) = network {
-            if let Some(slot) = self.slots.get_mut(&network) {
-                if slot.logs.len() >= 128 {
-                    slot.logs.remove(0);
-                }
-                slot.logs.push(line);
+        if let Some(network) = network
+            && let Some(slot) = self.slots.get_mut(&network)
+        {
+            if slot.logs.len() >= 128 {
+                slot.logs.remove(0);
             }
+            slot.logs.push(line);
         }
     }
 

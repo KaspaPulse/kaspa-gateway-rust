@@ -1,4 +1,4 @@
-use crate::kgw_inproc_owner::{build_kgw_inproc_plan, KgwInprocPlan, KgwInprocStartRequest};
+use crate::kgw_inproc_owner::{KgwInprocPlan, KgwInprocStartRequest, build_kgw_inproc_plan};
 
 /// Stable status for the main app/runtime layer.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
