@@ -194,6 +194,7 @@ fn production_self_worker_arguments_match_child_parser() {
     let _guard = runtime_test_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
     remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND");
     remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_FAIL_COMMAND");
     remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_MISSING_COMMAND");
@@ -745,6 +746,7 @@ fn mainnet_and_testnet10_test_workers_stay_alive_through_startup_verification() 
     let _guard = runtime_test_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
     set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
     let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
 
@@ -815,6 +817,7 @@ fn duplicate_owner_for_one_network_is_rejected() {
     let _guard = runtime_test_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
     set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
     let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
 
@@ -912,6 +915,7 @@ fn node_start_trace_uses_same_exe_mode_not_external() {
     let _guard = runtime_test_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
     set_runtime_worker_test_env("KGW_START_TRACE", "1");
     set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
     let _ = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();
@@ -965,6 +969,7 @@ fn success_response_contains_process_start_evidence_and_stream_logs() {
     let _guard = runtime_test_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
     set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
     let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
 
@@ -1036,6 +1041,7 @@ fn early_self_worker_exit_preserves_complete_safe_stderr_and_returns_error() {
     let _guard = runtime_test_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
     let complete_tail = "COMPLETE-SELF-WORKER-STDERR-END";
     let child_stderr = format!(
         "forced startup failure token=abc123 wallet=kaspa:qprv000000000000000000000000000000000000000000000000000000000000 diagnostic_tail={complete_tail}"
@@ -1066,7 +1072,7 @@ fn early_self_worker_exit_preserves_complete_safe_stderr_and_returns_error() {
             "self-worker exited during startup",
             "role=node",
             "network=mainnet",
-            "status=exit code: 1",
+            "exit_code=1",
             complete_tail,
         ],
     );
@@ -1106,6 +1112,7 @@ fn spawn_failure_remains_an_error() {
     let _guard = runtime_test_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
     let missing = std::env::temp_dir().join("kgw-missing-self-worker-command.exe");
     set_runtime_worker_test_env("KGW_START_TRACE", "1");
     set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_MISSING_COMMAND", &missing);

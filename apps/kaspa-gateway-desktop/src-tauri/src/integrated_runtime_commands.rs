@@ -1186,9 +1186,15 @@ fn kgw_worker_start(
             })
             .unwrap_or_else(|_| "worker log lock failed".to_string());
 
+        // `ExitStatus` display text differs by platform. Keep it for diagnostics,
+        // but expose a stable numeric field for callers and cross-platform tests.
+        let exit_code = exit_status
+            .code()
+            .map_or_else(|| "unknown".to_string(), |code| code.to_string());
+
         return Err(format!(
-            "self-worker exited during startup;role={};network={};pid={};status={};logs={}",
-            role, network, pid, exit_status, captured
+            "self-worker exited during startup;role={};network={};pid={};status={};exit_code={};logs={}",
+            role, network, pid, exit_status, exit_code, captured
         ));
     }
 
