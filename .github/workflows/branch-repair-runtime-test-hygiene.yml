@@ -1,6 +1,9 @@
 name: Branch-only runtime test hygiene repair
 
 on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
   push:
     branches:
       - chore/rebootstrap-2026-08-10
@@ -14,7 +17,10 @@ permissions:
 
 jobs:
   repair:
-    if: github.actor == 'KaspaPulse'
+    if: >-
+      github.actor == 'KaspaPulse' &&
+      (github.event_name == 'push' ||
+       github.event.pull_request.head.ref == 'chore/rebootstrap-2026-08-10')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
 
