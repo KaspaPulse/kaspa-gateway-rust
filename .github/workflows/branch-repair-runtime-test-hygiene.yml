@@ -104,20 +104,24 @@ jobs:
           )
           source = source_path.read_text(encoding="utf-8")
 
-          old_error = '''        return Err(format!(
-              "self-worker exited during startup;role={};network={};pid={};status={};logs={}",
-              role, network, pid, exit_status, captured
-          ));'''
-          new_error = '''        // `ExitStatus` display text differs by platform. Keep it for diagnostics,
-          // but expose a stable numeric field for callers and cross-platform tests.
-          let exit_code = exit_status
-              .code()
-              .map_or_else(|| "unknown".to_string(), |code| code.to_string());
-
-          return Err(format!(
-              "self-worker exited during startup;role={};network={};pid={};status={};exit_code={};logs={}",
-              role, network, pid, exit_status, exit_code, captured
-          ));'''
+          old_error = "\n".join([
+              "        return Err(format!(",
+              '            "self-worker exited during startup;role={};network={};pid={};status={};logs={}",',
+              "            role, network, pid, exit_status, captured",
+              "        ));",
+          ])
+          new_error = "\n".join([
+              "        // `ExitStatus` display text differs by platform. Keep it for diagnostics,",
+              "        // but expose a stable numeric field for callers and cross-platform tests.",
+              "        let exit_code = exit_status",
+              "            .code()",
+              '            .map_or_else(|| "unknown".to_string(), |code| code.to_string());',
+              "",
+              "        return Err(format!(",
+              '            "self-worker exited during startup;role={};network={};pid={};status={};exit_code={};logs={}",',
+              "            role, network, pid, exit_status, exit_code, captured",
+              "        ));",
+          ])
 
           old_count = source.count(old_error)
           new_count = source.count(";exit_code={};logs={}")
@@ -142,12 +146,13 @@ jobs:
           cargo fmt --all
           git diff --check
 
-      - name: Remove branch-only repair workflows
+      - name: Remove branch-only repair files
         shell: bash
         run: |
           rm -f -- \
             .github/workflows/branch-repair-runtime-test-hygiene.yml \
-            .github/workflows/branch-repair-runtime-test-hygiene-v2.yml
+            .github/workflows/branch-repair-runtime-test-hygiene-v2.yml \
+            .github/runtime-repair-trigger.txt
 
       - name: Commit repaired runtime test contract
         shell: bash
@@ -158,7 +163,8 @@ jobs:
             apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs \
             apps/kaspa-gateway-desktop/src-tauri/tests/integrated_runtime_ipc_smoke_tests.rs \
             .github/workflows/branch-repair-runtime-test-hygiene.yml \
-            .github/workflows/branch-repair-runtime-test-hygiene-v2.yml
+            .github/workflows/branch-repair-runtime-test-hygiene-v2.yml \
+            .github/runtime-repair-trigger.txt
           git diff --cached --check
           git diff --cached --quiet && {
             echo "repair produced no changes" >&2
