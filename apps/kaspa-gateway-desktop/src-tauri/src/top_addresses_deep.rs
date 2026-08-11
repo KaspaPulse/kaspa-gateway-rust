@@ -75,26 +75,24 @@ pub async fn top_addresses_fetch_api_impl(
         .app_settings_repository()
         .map_err(|error| error.to_string())?;
 
-    if !request.force {
-        if let Some(cached) = settings_repo
+    if !request.force
+        && let Some(cached) = settings_repo
             .get(TOP_ADDRESSES_CACHE_KEY)
             .map_err(|error| error.to_string())?
-        {
-            if let Ok(mut report) = serde_json::from_str::<TopAddressesReport>(&cached) {
-                apply_currency(&mut report.rows, &request.currency, request.kas_price);
-                apply_known_names(&mut report.rows, &load_known_names_map()?);
-                sort_rows(&mut report.rows, "balance", true);
-                report.rows.truncate(limit);
-                rerank(&mut report.rows);
+        && let Ok(mut report) = serde_json::from_str::<TopAddressesReport>(&cached)
+    {
+        apply_currency(&mut report.rows, &request.currency, request.kas_price);
+        apply_known_names(&mut report.rows, &load_known_names_map()?);
+        sort_rows(&mut report.rows, "balance", true);
+        report.rows.truncate(limit);
+        rerank(&mut report.rows);
 
-                report.currency = normalize_currency(&request.currency);
-                report.kas_price = request.kas_price;
-                report.source = "cache".to_string();
-                report.total = report.rows.len();
+        report.currency = normalize_currency(&request.currency);
+        report.kas_price = request.kas_price;
+        report.source = "cache".to_string();
+        report.total = report.rows.len();
 
-                return Ok(report);
-            }
-        }
+        return Ok(report);
     }
 
     let api_config = ApiClientConfig::default();
@@ -547,10 +545,10 @@ fn replace_or_append_limit(endpoint: &str, limit: usize) -> String {
 fn first_string(value: &Value, keys: &[&str]) -> Option<String> {
     for key in keys {
         if let Some(item) = value.get(*key) {
-            if let Some(text) = item.as_str() {
-                if !text.trim().is_empty() {
-                    return Some(text.trim().to_string());
-                }
+            if let Some(text) = item.as_str()
+                && !text.trim().is_empty()
+            {
+                return Some(text.trim().to_string());
             }
 
             if let Some(number) = item.as_i64() {
@@ -577,10 +575,11 @@ fn first_i64(value: &Value, keys: &[&str]) -> Option<i64> {
                 return i64::try_from(number).ok();
             }
 
-            if let Some(number) = item.as_f64() {
-                if number.is_finite() && number >= 0.0 {
-                    return Some(number.round() as i64);
-                }
+            if let Some(number) = item.as_f64()
+                && number.is_finite()
+                && number >= 0.0
+            {
+                return Some(number.round() as i64);
             }
 
             if let Some(text) = item.as_str() {
@@ -588,10 +587,11 @@ fn first_i64(value: &Value, keys: &[&str]) -> Option<i64> {
                     return Some(parsed);
                 }
 
-                if let Ok(parsed) = text.parse::<f64>() {
-                    if parsed.is_finite() && parsed >= 0.0 {
-                        return Some(parsed.round() as i64);
-                    }
+                if let Ok(parsed) = text.parse::<f64>()
+                    && parsed.is_finite()
+                    && parsed >= 0.0
+                {
+                    return Some(parsed.round() as i64);
                 }
             }
         }

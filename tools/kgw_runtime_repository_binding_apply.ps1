@@ -125,10 +125,8 @@ $OfficialRuntime = "crates\kaspa-gateway-rk-node\src\official_kaspa_runtime.rs"
 $BridgeRuntime = "crates\kaspa-gateway-rk-bridge\src\lib.rs"
 
 Replace-Cargo-Line $NodeCargo "kaspad-lib-mainline" (Cargo-Line "kaspad-lib-mainline" "kaspad" $mainline)
-Replace-Cargo-Line $NodeCargo "kaspa-core-mainline" (Cargo-Line "kaspa-core-mainline" "kaspa-core" $mainline)
 Replace-Cargo-Line $NodeCargo "kaspa-utils-mainline" (Cargo-Line "kaspa-utils-mainline" "kaspa-utils" $mainline)
 Replace-Cargo-Line $NodeCargo "kaspad-lib-tn12" (Cargo-Line "kaspad-lib-tn12" "kaspad" $tn12)
-Replace-Cargo-Line $NodeCargo "kaspa-core-tn12" (Cargo-Line "kaspa-core-tn12" "kaspa-core" $tn12)
 Replace-Cargo-Line $NodeCargo "kaspa-utils-tn12" (Cargo-Line "kaspa-utils-tn12" "kaspa-utils" $tn12)
 
 Replace-Cargo-Line $BridgeCargo "kaspa-stratum-bridge-mainline" (Cargo-Line "kaspa-stratum-bridge-mainline" "kaspa-stratum-bridge" $mainline)
@@ -145,6 +143,3 @@ Replace-Rust-Function $BridgeRuntime "pub fn family(self) -> BridgeRuntimeFamily
 
 Write-Host "KGW runtime repository binding apply"
 Write-Host "status=PASS"
-
-
-

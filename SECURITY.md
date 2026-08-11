@@ -30,19 +30,32 @@ Do not open public issues for active vulnerabilities until a fix or mitigation i
 
 ## Current Security Baseline
 
-The project currently claims only a local security baseline, not formal hardening certification.
+The project currently claims a repository and release security baseline, not formal hardening certification.
 
-Required baseline checks:
+Required repository quality and security checks include:
 
-- kgw_i18n_contract_gate.cjs
-- kgw_i18n_locale_coverage_gate.cjs
-- kgw_parallel_self_worker_runtime_gate.cjs
-- cargo fmt --all -- --check
-- cargo check -p kaspa-gateway-desktop --no-default-features --features "official-kaspa-runtime-all rkstratum_cpu_miner"
-- npm audit --audit-level=moderate
-- tracked source secret-pattern scan
-- release executable metadata review
-- Windows GUI subsystem verification for the portable executable
+- Rust 1.97.1 formatting with `cargo fmt --all -- --check`
+- Locked workspace compilation with `cargo check --locked --workspace --all-targets`
+- Clippy across the workspace with warnings denied
+- Rust workspace tests
+- Node.js 24 dependency installation from lockfiles
+- Non-blocking Node.js 26 compatibility checks while it remains the Current release line
+- ESLint 10 checks for the desktop frontend and E2E packages
+- JavaScript syntax checks used by the project
+- `npm audit` at the configured severity threshold for both npm packages
+- CodeQL analysis for Rust
+- Full-history TruffleHog secret scanning
+- Pull-request dependency vulnerability and license review
+- RustSec auditing with `cargo audit`
+- Dependency policy enforcement with `cargo deny`
+- Unused Rust dependency analysis with `cargo machete`
+- GitHub Actions workflow validation with `actionlint`
+- Dependabot update monitoring for Cargo, npm, GitHub Actions, and the Rust toolchain
+- Third-party GitHub Actions pinned to immutable commit SHAs
+- Project-specific KGW contract, locale, runtime, and release checks where applicable
+- Release executable metadata review and Windows GUI subsystem verification for portable release artifacts
+
+These automated checks reduce preventable regressions and dependency risk. They do not replace focused security review, threat modeling, penetration testing, or release-specific validation.
 
 ## Runtime Security Rules
 
@@ -68,6 +81,8 @@ A dependency warning does not automatically prove that KGW is exploitable, but i
 - Dependency is removed
 - A documented exception is accepted with justification
 
+Dependency and license exceptions must remain narrow, documented, and limited to reviewed cases. Permissive-license allow-list entries do not waive vulnerability checks.
+
 ## Release Asset Expectations
 
 Release assets must include:
@@ -92,7 +107,7 @@ This project does not yet claim:
 
 Acceptable public wording:
 
-- The release passed KGW local security baseline checks.
+- The release passed the KGW repository and release security baseline checks applicable to that build.
 
 Do not claim:
 

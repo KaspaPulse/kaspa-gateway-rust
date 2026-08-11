@@ -1,0 +1,58 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-review-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    name: dependency vulnerability and license review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Review dependency changes
+        id: review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+          fail-on-scopes: runtime, development, unknown
+          allow-licenses: MIT, MIT-0, Apache-2.0, Apache-2.0 WITH LLVM-exception, Unlicense, BSD-3-Clause, BSD-2-Clause, BSD-2-Clause-Views, 0BSD, BSL-1.0, ISC, CC0-1.0, Unicode-DFS-2016, Unicode-3.0, Zlib, MPL-2.0, LGPL-3.0-only, CDLA-Permissive-2.0, bzip2-1.0.6, BlueOak-1.0.0
+          allow-dependencies-licenses: pkg:cargo/brotli-decompressor@5.0.3, pkg:cargo/dbus@0.9.12
+          show-openssf-scorecard: true
+          show-patched-versions: true
+
+      - name: Preserve dependency-review diagnostics
+        if: failure() && steps.review.outcome == 'failure'
+        shell: bash
+        env:
+          INVALID_LICENSE_CHANGES: ${{ steps.review.outputs.invalid-license-changes }}
+          VULNERABLE_CHANGES: ${{ steps.review.outputs.vulnerable-changes }}
+          DENIED_CHANGES: ${{ steps.review.outputs.denied-changes }}
+        run: |
+          printf '%s\n' "$INVALID_LICENSE_CHANGES" > invalid-license-changes.json
+          printf '%s\n' "$VULNERABLE_CHANGES" > vulnerable-changes.json
+          printf '%s\n' "$DENIED_CHANGES" > denied-changes.json
+
+      - name: Upload dependency-review diagnostics
+        if: failure() && steps.review.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dependency-review-diagnostics
+          path: |
+            invalid-license-changes.json
+            vulnerable-changes.json
+            denied-changes.json
+          retention-days: 3

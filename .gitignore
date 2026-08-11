@@ -126,34 +126,15 @@ apps/kaspa-gateway-desktop/src-tauri/target/
 apps/kaspa-gateway-desktop/node_modules/
 apps/kaspa-gateway-desktop/dist/
 apps/kaspa-gateway-desktop/.vite/
-# KGW generated snapshots
 kaspa-gateway-rust.xml
 kaspa-gateway-rust.zip
+apps-crates-candidates.txt
 .codex/hooks.json
-graphify-out/.graphify_python
-graphify-out/cost.json
-graphify-out/cache/
+graphify-out/
 
-# Local test artifacts and Graphify working backups
+# Local test artifacts
 artifacts/
 artifacts/desktop-diagnostics/
 artifacts/live-raw-log-matrix/
 artifacts/cargo-targets/
 .kgw-cargo-targets/
-graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
-graphify-out/.graphify_root
-graphify-out/.vocab.txt
-graphify-out/.graphify_detect.json
-graphify-out/.graphify_incremental.json
-graphify-out/.graphify_extract.json
-graphify-out/.graphify_ast.json
-graphify-out/.graphify_semantic.json
-graphify-out/.graphify_cached.json
-graphify-out/.graphify_semantic_new.json
-graphify-out/.graphify_uncached.txt
-graphify-out/.graphify_old.json
-graphify-out/.graphify_learning.json
-graphify-out/.graphify_chunk_*.json
-graphify-out/.needs_update
-graphify-out/memory/
-graphify-out/reflections/

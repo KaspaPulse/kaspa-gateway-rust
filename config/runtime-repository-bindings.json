@@ -19,7 +19,6 @@
       "feature": "official-kaspa-runtime-mainline",
       "nodeAliases": [
         "kaspad-lib-mainline",
-        "kaspa-core-mainline",
         "kaspa-utils-mainline"
       ],
       "bridgeAliases": [
@@ -28,7 +27,6 @@
       "packages": {
         "node": [
           "kaspad",
-          "kaspa-core",
           "kaspa-utils"
         ],
         "bridge": [
@@ -44,7 +42,6 @@
       "feature": "official-kaspa-runtime-mainline",
       "nodeAliases": [
         "kaspad-lib-mainline",
-        "kaspa-core-mainline",
         "kaspa-utils-mainline"
       ],
       "bridgeAliases": [
@@ -53,7 +50,6 @@
       "packages": {
         "node": [
           "kaspad",
-          "kaspa-core",
           "kaspa-utils"
         ],
         "bridge": [
@@ -71,7 +67,6 @@
       "enabledByDefault": false,
       "nodeAliases": [
         "kaspad-lib-tn12",
-        "kaspa-core-tn12",
         "kaspa-utils-tn12"
       ],
       "bridgeAliases": [
@@ -80,7 +75,6 @@
       "packages": {
         "node": [
           "kaspad",
-          "kaspa-core",
           "kaspa-utils"
         ],
         "bridge": [

@@ -1,4 +1,3 @@
-use kaspa_gateway_db;
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
