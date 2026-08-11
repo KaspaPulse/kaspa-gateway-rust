@@ -39,6 +39,7 @@ Required repository quality and security checks include:
 - Clippy across the workspace with warnings denied
 - Rust workspace tests
 - Node.js 24 dependency installation from lockfiles
+- Non-blocking Node.js 26 compatibility checks while it remains the Current release line
 - ESLint 10 checks for the desktop frontend and E2E packages
 - JavaScript syntax checks used by the project
 - `npm audit` at the configured severity threshold for both npm packages

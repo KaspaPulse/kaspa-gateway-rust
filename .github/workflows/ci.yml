@@ -57,12 +57,17 @@ jobs:
       - name: Setup Node.js 24
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24
+          node-version: 24.19.0
           cache: npm
           cache-dependency-path: |
             apps/kaspa-gateway-desktop/package-lock.json
             e2e/package-lock.json
           package-manager-cache: true
+
+      - name: Verify bundled npm
+        run: |
+          npm --version
+          test "$(npm --version)" = "11.17.0"
 
       - name: Configure isolated application data root
         shell: bash
@@ -199,3 +204,45 @@ jobs:
           name: e2e-npm-audit-diagnostics
           path: e2e/npm-audit.log
           retention-days: 3
+
+  node-current-compatibility:
+    name: Node.js 26 compatibility (non-blocking)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    continue-on-error: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js 26
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26.7.0
+          cache: npm
+          cache-dependency-path: |
+            apps/kaspa-gateway-desktop/package-lock.json
+            e2e/package-lock.json
+          package-manager-cache: true
+
+      - name: Verify bundled npm
+        run: |
+          npm --version
+          test "$(npm --version)" = "11.19.0"
+
+      - name: Install desktop npm dependencies
+        working-directory: apps/kaspa-gateway-desktop
+        run: npm ci --ignore-scripts
+
+      - name: Install E2E npm dependencies
+        working-directory: e2e
+        run: npm ci --ignore-scripts
+
+      - name: Validate JavaScript workspaces
+        shell: bash
+        run: |
+          npm --prefix apps/kaspa-gateway-desktop run lint
+          npm --prefix e2e run lint
+          npm --prefix e2e run check

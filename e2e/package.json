@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=24 <27"
   },
   "scripts": {
     "check": "node --check wdio.conf.mjs && node --check specs/zero-touch-live-matrix.e2e.js && node --check helpers/assertions.mjs && node --check helpers/paths.mjs && node --check helpers/tauri-app.mjs && node --check helpers/windows.mjs",

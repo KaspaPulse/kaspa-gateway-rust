@@ -220,10 +220,8 @@ if (!findings.some((x) => x.level === "error")) {
 
   const aliases = [
     ["node", "kaspad-lib-mainline", "kaspad", "mainnet", nodeCargo],
-    ["node", "kaspa-core-mainline", "kaspa-core", "mainnet", nodeCargo],
     ["node", "kaspa-utils-mainline", "kaspa-utils", "mainnet", nodeCargo],
     ["node", "kaspad-lib-tn12", "kaspad", "testnet12", nodeCargo],
-    ["node", "kaspa-core-tn12", "kaspa-core", "testnet12", nodeCargo],
     ["node", "kaspa-utils-tn12", "kaspa-utils", "testnet12", nodeCargo],
     ["bridge", "kaspa-stratum-bridge-mainline", "kaspa-stratum-bridge", "mainnet", bridgeCargo],
     ["bridge", "kaspa-stratum-bridge-tn12", "kaspa-stratum-bridge", "testnet12", bridgeCargo]

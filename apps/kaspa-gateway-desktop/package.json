@@ -5,7 +5,7 @@
   "description": "Kaspa Gateway Desktop Shell",
   "type": "module",
   "engines": {
-    "node": ">=24 <25"
+    "node": ">=24 <27"
   },
   "scripts": {
     "dev": "tauri dev",

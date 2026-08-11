@@ -641,7 +641,7 @@ Any user-visible string in HTML or JS should be bound through the i18n system un
 
 ```text
 .
-├── .github/                             # CODEOWNERS and Dependabot config; GitHub Actions workflows are currently disabled
+├── .github/                             # CODEOWNERS, Dependabot, and CI/security workflows
 ├── apps/
 │   ├── kaspa-gateway-cli/              # CLI application
 │   └── kaspa-gateway-desktop/          # Tauri desktop application
@@ -674,8 +674,8 @@ Recommended development environment:
 
 - Windows 10/11 for desktop packaging and NSIS installer builds.
 - PowerShell 7+.
-- Rust 1.91 or newer (required by the pinned Rusty Kaspa v2.0.1 runtime).
-- Node.js and npm.
+- Rust 1.97.1 from `rust-toolchain.toml`.
+- Node.js 24 LTS and its bundled npm 11.17.0. Node.js 26 Current is checked as a non-blocking compatibility target.
 - Tauri CLI dependency installed through project npm dependencies.
 - Git.
 - Network access to the configured Rusty Kaspa git repositories.
@@ -684,7 +684,7 @@ Install frontend/Tauri dependencies:
 
 ```powershell
 cd "D:\kaspa-gateway-rust\apps\kaspa-gateway-desktop"
-npm install
+npm ci
 ```
 
 ---
@@ -702,7 +702,7 @@ Install desktop dependencies:
 
 ```powershell
 cd apps\kaspa-gateway-desktop
-npm install
+npm ci
 ```
 
 Run the desktop application in development mode:
@@ -768,16 +768,9 @@ node --check ".\apps\kaspa-gateway-desktop\frontend\src\tabs\kaspa-bridge\kaspa-
 
 ## GitHub Actions status
 
-GitHub Actions workflows are currently disabled in this public repository.
+The repository tracks least-privilege GitHub Actions workflows for CI, workflow linting, CodeQL, secret scanning, dependency review, Rust supply-chain policy, and OpenSSF Scorecard reporting. Third-party actions are pinned to immutable commit SHAs.
 
-The repository intentionally does not track `.github/workflows` at this stage. Local validation is the source of truth until CI is reintroduced safely.
-
-Current tracked `.github` files are limited to repository ownership and dependency monitoring configuration:
-
-- `.github/CODEOWNERS`
-- `.github/dependabot.yml`
-
-Do not reintroduce workflow files without first validating runner scope, billing behavior, required tools, and local parity with the durable gate scripts.
+Node.js 24 LTS is the blocking JavaScript baseline. Node.js 26 Current runs as a non-blocking compatibility check until it becomes the supported LTS baseline. Dependency installation uses committed lockfiles through `npm ci`.
 
 ## Quality gates
 
@@ -793,6 +786,12 @@ git status --short
 node ".\tools\kgw_i18n_contract_gate.cjs"
 node ".\tools\kgw_i18n_locale_coverage_gate.cjs"
 
+npm --prefix ".\apps\kaspa-gateway-desktop" ci --ignore-scripts
+npm --prefix ".\apps\kaspa-gateway-desktop" run lint
+npm --prefix ".\e2e" ci --ignore-scripts
+npm --prefix ".\e2e" run lint
+npm --prefix ".\e2e" run check
+
 node --check ".\apps\kaspa-gateway-desktop\frontend\src\core\header-live-metrics.js"
 node --check ".\apps\kaspa-gateway-desktop\frontend\src\tabs\analysis\analysis.js"
 node --check ".\apps\kaspa-gateway-desktop\frontend\src\tabs\explorer\explorer.js"
@@ -801,7 +800,8 @@ node --check ".\apps\kaspa-gateway-desktop\frontend\src\tabs\kaspa-bridge\kaspa-
 
 cargo fmt --all -- --check
 
-cargo check -p kaspa-gateway-desktop --no-default-features --features "official-kaspa-runtime-all rkstratum_cpu_miner"
+cargo check --locked --workspace --all-targets
+cargo test --locked --workspace --all-targets
 
 git status --short
 ```
@@ -810,9 +810,10 @@ A clean pre-push state means:
 
 ```text
 - i18n gates pass
+- npm lockfile installs, ESLint, syntax checks, and audits pass
 - JavaScript syntax checks pass
 - Rust fmt check passes
-- Rust check passes
+- locked Rust check and tests pass
 - git status is clean
 ```
 
@@ -1045,7 +1046,7 @@ Before changing behavior:
 
 ## Git hygiene
 
-Generated folders should stay ignored. GitHub Actions workflow files are currently not tracked:
+Generated folders should stay ignored:
 
 ```text
 .kgw-release-artifacts/

@@ -13,14 +13,6 @@ on:
       - ".github/workflows/security.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "**/Cargo.toml"
-      - "Cargo.lock"
-      - "deny.toml"
-      - ".cargo/audit.toml"
-      - "SECURITY_ADVISORIES.md"
-      - "scripts/check-security-advisories.py"
-      - ".github/workflows/security.yml"
   workflow_dispatch:
   schedule:
     - cron: "17 3 * * 0"
@@ -53,7 +45,7 @@ jobs:
           toolchain: 1.97.1
 
       - name: Install supply-chain tools
-        uses: taiki-e/install-action@6c6fd71fe4fb72c3697d269963d0e15df8adedad # v2.85.10
+        uses: taiki-e/install-action@7f4eb899022d8fe70b20c4f3de697aa85c309026 # v2.85.11
         with:
           tool: cargo-audit,cargo-deny,cargo-machete
           fallback: none
