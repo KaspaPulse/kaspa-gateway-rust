@@ -113,7 +113,7 @@ assert.strictEqual(start.disabled, true, "Start must remain disabled while attes
 assert.strictEqual(stop.disabled, false, "the existing transition state keeps Stop available during startup");
 
 assert.ok(
-  source.includes("const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 110000"),
+  source.includes("const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 120000"),
   "Bridge Start must wait through the backend readiness window",
 );
 

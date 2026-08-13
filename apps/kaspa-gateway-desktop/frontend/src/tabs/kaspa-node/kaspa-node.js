@@ -2060,8 +2060,8 @@ function installDelegatedTabs(root) {
 }
 
 // KGW_NODE_INTEGRATED_RUNTIME_LINKAGE_V1: crash-safe Node action owner calls registered Tauri integrated runtime commands.
-// Backend role readiness is bounded at 100 seconds. Keep the UI request alive long
-// enough to receive the typed READY or FAILED attestation from the existing owner.
+// The Node child contract is 90 seconds and the same-EXE parent is bounded at
+// 100 seconds. Keep the UI request strictly above both terminal-result boundaries.
 const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 110000;
 const KGW_NODE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_node_runtime_flags_v1";
 

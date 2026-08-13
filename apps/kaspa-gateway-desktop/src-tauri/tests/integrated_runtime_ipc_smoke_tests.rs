@@ -1202,6 +1202,89 @@ fn delayed_failed_after_old_liveness_window_leaves_no_false_owner() {
     );
 }
 
+fn javascript_timeout_constant(source: &str, name: &str) -> u64 {
+    let marker = format!("const {name} = ");
+    source
+        .split_once(&marker)
+        .unwrap_or_else(|| panic!("missing JavaScript timeout constant {name}"))
+        .1
+        .split_once(';')
+        .unwrap_or_else(|| panic!("unterminated JavaScript timeout constant {name}"))
+        .0
+        .trim()
+        .parse()
+        .unwrap_or_else(|error| panic!("invalid JavaScript timeout constant {name}: {error}"))
+}
+
+#[test]
+fn startup_timeout_hierarchy_is_strict_for_node_and_bridge() {
+    let bridge_child = kaspa_gateway_rk_bridge::KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS;
+    let bridge_parent =
+        integrated_runtime_commands::KGW_BRIDGE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1;
+    let bridge_ui = javascript_timeout_constant(
+        include_str!("../../frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"),
+        "KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS",
+    );
+    assert!(bridge_parent > bridge_child);
+    assert!(bridge_ui > bridge_parent);
+
+    let node_child = integrated_runtime_commands::KGW_NODE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS_V1;
+    let node_parent =
+        integrated_runtime_commands::KGW_NODE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1;
+    let node_ui = javascript_timeout_constant(
+        include_str!("../../frontend/src/tabs/kaspa-node/kaspa-node.js"),
+        "KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS",
+    );
+    assert!(node_parent > node_child);
+    assert!(node_ui > node_parent);
+}
+
+#[test]
+fn bridge_failed_attestation_leaves_no_false_owner_registered() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env(
+        "KGW_TEST_SELF_WORKER_DELAYED_FAIL_COMMAND",
+        "foreign accepting listener cannot attest KGW ownership",
+    );
+
+    let error = kgw_kgw_apply_node_settings_v1(
+        "mainnet".to_string(),
+        "remote".to_string(),
+        "official-external-node".to_string(),
+        None,
+        None,
+        Some("bridge".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect_err("typed Bridge FAILED must reject Start");
+
+    assert_contains_all(
+        &error,
+        &[
+            "role startup failed",
+            "role=bridge",
+            "network=mainnet",
+            "foreign accepting listener cannot attest KGW ownership",
+        ],
+    );
+    let status = integrated_runtime_commands::kgw_runtime_owner_status_v1(
+        Some("mainnet".to_string()),
+        Some("bridge".to_string()),
+    )
+    .expect("Bridge owner status must remain queryable after startup failure");
+    assert!(
+        !status.contains("running=true") && !status.contains("readiness=READY"),
+        "failed Bridge startup must leave no false owner status: {status}"
+    );
+}
+
 #[test]
 fn ready_attestation_requires_nonempty_evidence() {
     let error = kgw_worker_validate_startup_attestation_v1(

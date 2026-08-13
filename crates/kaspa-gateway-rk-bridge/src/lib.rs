@@ -356,6 +356,15 @@ enum BridgeOwnerStartupOutcome {
     Failed(String),
 }
 
+pub const KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT_MS: u64 = 90_000;
+pub const KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT_MS: u64 = 5_000;
+pub const KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT_MS: u64 = 5_000;
+pub const KGW_BRIDGE_PARENT_ATTESTATION_GRACE_MS: u64 = 1_000;
+pub const KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS: u64 = KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT_MS
+    + KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT_MS
+    + KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT_MS
+    + KGW_BRIDGE_PARENT_ATTESTATION_GRACE_MS;
+
 #[cfg(all(
     not(test),
     any(
@@ -363,7 +372,8 @@ enum BridgeOwnerStartupOutcome {
         feature = "official-kaspa-runtime-tn12"
     )
 ))]
-const KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT: Duration = Duration::from_secs(90);
+const KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT: Duration =
+    Duration::from_millis(KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT_MS);
 #[cfg(all(
     test,
     any(
@@ -376,18 +386,21 @@ const KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT: Duration = Duration::from_millis(750);
     feature = "official-kaspa-runtime-mainline",
     feature = "official-kaspa-runtime-tn12"
 ))]
-const KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT: Duration = Duration::from_secs(5);
+const KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT: Duration =
+    Duration::from_millis(KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT_MS);
 #[cfg(any(
     test,
     feature = "official-kaspa-runtime-mainline",
     feature = "official-kaspa-runtime-tn12"
 ))]
-const KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT: Duration = Duration::from_secs(5);
+const KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT: Duration =
+    Duration::from_millis(KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT_MS);
 #[cfg(any(
     feature = "official-kaspa-runtime-mainline",
     feature = "official-kaspa-runtime-tn12"
 ))]
-const KGW_BRIDGE_PARENT_ATTESTATION_GRACE: Duration = Duration::from_secs(1);
+const KGW_BRIDGE_PARENT_ATTESTATION_GRACE: Duration =
+    Duration::from_millis(KGW_BRIDGE_PARENT_ATTESTATION_GRACE_MS);
 
 pub struct BridgeOwnerRuntimeHandle {
     shutdown_tx: tokio::sync::watch::Sender<bool>,
@@ -509,6 +522,28 @@ async fn attest_listener_and_serve<F, E>(
     F: std::future::Future<Output = Result<(), E>>,
     E: std::fmt::Display,
 {
+    attest_listener_and_serve_with_probe(listen, startup_tx, readiness, |address| {
+        tokio::net::TcpStream::connect(address)
+    })
+    .await;
+}
+
+#[cfg(any(
+    test,
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+async fn attest_listener_and_serve_with_probe<F, E, C, P>(
+    listen: F,
+    startup_tx: std::sync::mpsc::SyncSender<BridgeOwnerStartupOutcome>,
+    readiness: BridgeStartupReadiness,
+    mut connect: C,
+) where
+    F: std::future::Future<Output = Result<(), E>>,
+    E: std::fmt::Display,
+    C: FnMut(String) -> P,
+    P: std::future::Future<Output = Result<tokio::net::TcpStream, std::io::Error>>,
+{
     let listener = readiness.listener.clone();
     let probe_address = match listener_probe_address(&listener) {
         Ok(address) => address,
@@ -523,6 +558,11 @@ async fn attest_listener_and_serve<F, E>(
 
     loop {
         tokio::select! {
+            // Both exact upstream pins reach their numeric TcpListener::bind on
+            // the official future's first poll. Poll its terminal result first
+            // so a simultaneous foreign TCP connection can never outrank the
+            // KGW-owned official listener's bind failure.
+            biased;
             result = &mut listen => {
                 let message = match result {
                     Ok(()) => "Stratum listener stopped before readiness".to_string(),
@@ -533,7 +573,7 @@ async fn attest_listener_and_serve<F, E>(
             }
             probe = tokio::time::timeout(
                 Duration::from_millis(250),
-                tokio::net::TcpStream::connect(&probe_address),
+                connect(probe_address.clone()),
             ) => {
                 match probe {
                     Ok(Ok(stream)) => {
@@ -1373,6 +1413,104 @@ mod runtime_binding_tests {
             BridgeOwnerStartupOutcome::Ready(_) => {
                 panic!("terminal listener failure cannot attest READY")
             }
+        }
+    }
+
+    #[tokio::test]
+    async fn foreign_accepting_listener_never_attests_ready() {
+        const ATTEMPTS: usize = 128;
+
+        let foreign_listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = foreign_listener.local_addr().unwrap();
+        let accepted = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let accepted_for_task = std::sync::Arc::clone(&accepted);
+        let (foreign_shutdown_tx, mut foreign_shutdown_rx) = tokio::sync::watch::channel(false);
+        let foreign_task = tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = foreign_shutdown_rx.changed() => break,
+                    result = foreign_listener.accept() => {
+                        let (stream, _) = result.unwrap();
+                        accepted_for_task.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                        drop(stream);
+                    }
+                }
+            }
+        });
+
+        for _ in 0..ATTEMPTS {
+            let foreign_stream = tokio::net::TcpStream::connect(address).await.unwrap();
+            let mut foreign_stream = Some(foreign_stream);
+            let (startup_tx, startup_rx) = std::sync::mpsc::sync_channel(1);
+            let readiness = BridgeStartupReadiness {
+                network: BridgeRuntimeNetwork::Mainnet,
+                rpc_endpoint: "127.0.0.1:16110".to_string(),
+                listener: address.to_string(),
+                rpc_network: "mainnet".to_string(),
+            };
+            let owned_listen = async move {
+                let _owned_listener = tokio::net::TcpListener::bind(address).await?;
+                std::future::pending::<()>().await;
+                Ok::<(), std::io::Error>(())
+            };
+
+            attest_listener_and_serve_with_probe(owned_listen, startup_tx, readiness, move |_| {
+                std::future::ready(Ok(foreign_stream
+                    .take()
+                    .expect("each attestation performs one probe")))
+            })
+            .await;
+
+            match startup_rx.recv().unwrap() {
+                BridgeOwnerStartupOutcome::Failed(error) => {
+                    assert!(
+                        error
+                            .to_ascii_lowercase()
+                            .contains("address already in use"),
+                        "unexpected official bind diagnostic: {error}"
+                    );
+                }
+                BridgeOwnerStartupOutcome::Ready(_) => {
+                    panic!("a foreign accepting listener cannot attest KGW READY")
+                }
+            }
+        }
+
+        tokio::time::timeout(Duration::from_secs(2), async {
+            while accepted.load(std::sync::atomic::Ordering::SeqCst) < ATTEMPTS {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .expect("the foreign server must accept every pre-established probe");
+        assert_eq!(
+            accepted.load(std::sync::atomic::Ordering::SeqCst),
+            ATTEMPTS,
+            "the accepting foreign server was exercised without satisfying readiness"
+        );
+
+        foreign_shutdown_tx.send(true).unwrap();
+        foreign_task.await.unwrap();
+        let verification = tokio::net::TcpListener::bind(address).await.unwrap();
+        drop(verification);
+    }
+
+    #[test]
+    fn production_bridge_startup_contract_is_the_sum_of_bounded_stages() {
+        assert_eq!(
+            KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS,
+            KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT_MS
+                + KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT_MS
+                + KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT_MS
+                + KGW_BRIDGE_PARENT_ATTESTATION_GRACE_MS
+        );
+        for stage in [
+            KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT_MS,
+            KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT_MS,
+            KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT_MS,
+            KGW_BRIDGE_PARENT_ATTESTATION_GRACE_MS,
+        ] {
+            assert!(KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS > stage);
         }
     }
 

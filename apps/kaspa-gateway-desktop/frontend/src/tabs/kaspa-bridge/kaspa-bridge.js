@@ -4611,9 +4611,9 @@ function installDelegatedTabs(root) {
 }
 
 // KGW_BRIDGE_INTEGRATED_RUNTIME_LINKAGE_V1: readable Bridge runtime response + duplicate-click guard.
-// Backend role readiness is bounded at 100 seconds. Keep the UI request alive long
-// enough to receive the typed READY or FAILED attestation from the existing owner.
-const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 110000;
+// The Bridge child contract is 101 seconds and the same-EXE parent is bounded at
+// 110 seconds. Keep the UI request strictly above both terminal-result boundaries.
+const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 120000;
 const KGW_BRIDGE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_bridge_runtime_flags_v1";
 const KGW_BRIDGE_START_TRACE_COMMAND_V1 = "kgw_start_trace_frontend_v1";
 const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();
