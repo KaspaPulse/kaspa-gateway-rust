@@ -1,5 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::thread::JoinHandle;
+#[cfg(any(
+    test,
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+use std::time::Duration;
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -309,7 +315,79 @@ pub enum BridgeRuntimeError {
 
     #[error("bridge owner thread start failed: {0}")]
     OwnerThreadStartFailed(String),
+
+    #[error("bridge startup readiness failed: {0}")]
+    StartupReadinessFailed(String),
+
+    #[error(
+        "bridge RPC network mismatch: endpoint={endpoint};expected_network={expected};actual_network={actual}"
+    )]
+    RpcNetworkMismatch {
+        expected: String,
+        actual: String,
+        endpoint: String,
+    },
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BridgeStartupReadiness {
+    pub network: BridgeRuntimeNetwork,
+    pub rpc_endpoint: String,
+    pub listener: String,
+    pub rpc_network: String,
+}
+
+impl BridgeStartupReadiness {
+    pub fn to_attestation(&self) -> String {
+        format!(
+            "rpc_method=get_server_info;rpc_network={};rpc_endpoint={};listener={};listeners_ready=1",
+            self.rpc_network, self.rpc_endpoint, self.listener
+        )
+    }
+}
+
+#[cfg(any(
+    test,
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+enum BridgeOwnerStartupOutcome {
+    Ready(BridgeStartupReadiness),
+    Failed(String),
+}
+
+#[cfg(all(
+    not(test),
+    any(
+        feature = "official-kaspa-runtime-mainline",
+        feature = "official-kaspa-runtime-tn12"
+    )
+))]
+const KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT: Duration = Duration::from_secs(90);
+#[cfg(all(
+    test,
+    any(
+        feature = "official-kaspa-runtime-mainline",
+        feature = "official-kaspa-runtime-tn12"
+    )
+))]
+const KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT: Duration = Duration::from_millis(750);
+#[cfg(any(
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+const KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT: Duration = Duration::from_secs(5);
+#[cfg(any(
+    test,
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+const KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT: Duration = Duration::from_secs(5);
+#[cfg(any(
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+const KGW_BRIDGE_PARENT_ATTESTATION_GRACE: Duration = Duration::from_secs(1);
 
 pub struct BridgeOwnerRuntimeHandle {
     shutdown_tx: tokio::sync::watch::Sender<bool>,
@@ -332,6 +410,160 @@ impl BridgeOwnerRuntimeHandle {
 
     pub fn is_finished(&self) -> bool {
         self.owner_thread.is_finished()
+    }
+
+    pub fn join(self) -> std::thread::Result<()> {
+        self.request_stop();
+        self.owner_thread.join()
+    }
+}
+
+#[cfg(any(
+    test,
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+fn expected_rpc_network_id(network: BridgeRuntimeNetwork) -> &'static str {
+    match network {
+        BridgeRuntimeNetwork::Mainnet => "mainnet",
+        BridgeRuntimeNetwork::Testnet10 => "testnet-10",
+        BridgeRuntimeNetwork::Testnet12 => "testnet-12",
+    }
+}
+
+#[cfg(any(
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+fn grpc_endpoint(endpoint: &str) -> String {
+    if endpoint.starts_with("grpc://") {
+        endpoint.to_string()
+    } else {
+        format!("grpc://{endpoint}")
+    }
+}
+
+#[cfg(any(
+    test,
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+fn validate_rpc_network_identity(
+    network: BridgeRuntimeNetwork,
+    endpoint: &str,
+    actual_network: &str,
+) -> Result<(), BridgeRuntimeError> {
+    let expected = expected_rpc_network_id(network);
+    if actual_network == expected {
+        Ok(())
+    } else {
+        Err(BridgeRuntimeError::RpcNetworkMismatch {
+            expected: expected.to_string(),
+            actual: actual_network.to_string(),
+            endpoint: endpoint.to_string(),
+        })
+    }
+}
+
+#[cfg(any(
+    test,
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+fn listener_probe_address(listener: &str) -> Result<String, String> {
+    let listener = listener.trim();
+    if listener.chars().all(|character| character.is_ascii_digit()) {
+        return Ok(format!("127.0.0.1:{listener}"));
+    }
+    if let Some(port) = listener.strip_prefix(':') {
+        return Ok(format!("127.0.0.1:{port}"));
+    }
+
+    if let Ok(address) = listener.parse::<std::net::SocketAddr>()
+        && address.ip().is_unspecified()
+    {
+        let loopback = match address {
+            std::net::SocketAddr::V4(_) => std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            std::net::SocketAddr::V6(_) => std::net::IpAddr::V6(std::net::Ipv6Addr::LOCALHOST),
+        };
+        return Ok(std::net::SocketAddr::new(loopback, address.port()).to_string());
+    }
+
+    if listener.is_empty() {
+        Err("Stratum listener address is empty".to_string())
+    } else {
+        Ok(listener.to_string())
+    }
+}
+
+#[cfg(any(
+    test,
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+async fn attest_listener_and_serve<F, E>(
+    listen: F,
+    startup_tx: std::sync::mpsc::SyncSender<BridgeOwnerStartupOutcome>,
+    readiness: BridgeStartupReadiness,
+) where
+    F: std::future::Future<Output = Result<(), E>>,
+    E: std::fmt::Display,
+{
+    let listener = readiness.listener.clone();
+    let probe_address = match listener_probe_address(&listener) {
+        Ok(address) => address,
+        Err(error) => {
+            let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(error));
+            return;
+        }
+    };
+    let deadline = tokio::time::Instant::now() + KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT;
+    let mut probe_errors = Vec::new();
+    tokio::pin!(listen);
+
+    loop {
+        tokio::select! {
+            result = &mut listen => {
+                let message = match result {
+                    Ok(()) => "Stratum listener stopped before readiness".to_string(),
+                    Err(error) => format!("Stratum listener setup failed: {error}"),
+                };
+                let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(message));
+                return;
+            }
+            probe = tokio::time::timeout(
+                Duration::from_millis(250),
+                tokio::net::TcpStream::connect(&probe_address),
+            ) => {
+                match probe {
+                    Ok(Ok(stream)) => {
+                        drop(stream);
+                        if startup_tx.send(BridgeOwnerStartupOutcome::Ready(readiness)).is_err() {
+                            return;
+                        }
+                        let _ = listen.await;
+                        return;
+                    }
+                    Ok(Err(error)) => {
+                        probe_errors.push(error.to_string());
+                    }
+                    Err(_) => {
+                        probe_errors.push("TCP listener probe timed out".to_string());
+                    }
+                }
+            }
+        }
+
+        if tokio::time::Instant::now() >= deadline {
+            let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(format!(
+                "Stratum listener did not accept TCP connections;listener={listener};probe_address={probe_address};timeout_ms={};last_error={}",
+                KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT.as_millis(),
+                probe_errors.last().map(String::as_str).unwrap_or("listener probe was not completed")
+            )));
+            return;
+        }
+
+        tokio::time::sleep(Duration::from_millis(25)).await;
     }
 }
 
@@ -483,48 +715,192 @@ pub fn start_official_bridge_owner_thread_v1(
     }
 }
 
+pub fn start_official_bridge_owner_thread_ready_v1(
+    event: BridgeServiceEvent,
+) -> Result<(BridgeOwnerRuntimeHandle, BridgeStartupReadiness), BridgeRuntimeError> {
+    match event.kind {
+        BridgeServiceEventKind::Stop
+        | BridgeServiceEventKind::Stdout
+        | BridgeServiceEventKind::Status => {
+            return Err(BridgeRuntimeError::UnsupportedBridgeMode(
+                event.kind.as_str().to_string(),
+            ));
+        }
+        BridgeServiceEventKind::StartOfficialExternalNode
+        | BridgeServiceEventKind::StartOfficialInProcessNode => {}
+    }
+
+    match event.family {
+        BridgeRuntimeFamily::Mainline => start_mainline_bridge_owner_thread_ready(event),
+        BridgeRuntimeFamily::Tn12 => start_tn12_bridge_owner_thread_ready(event),
+    }
+}
+
+pub fn start_official_bridge_owners_ready_v1(
+    events: Vec<BridgeServiceEvent>,
+) -> Result<(Vec<BridgeOwnerRuntimeHandle>, Vec<BridgeStartupReadiness>), BridgeRuntimeError> {
+    start_bridge_owners_ready_with(events, start_official_bridge_owner_thread_ready_v1)
+}
+
+fn start_bridge_owners_ready_with<F>(
+    events: Vec<BridgeServiceEvent>,
+    mut start: F,
+) -> Result<(Vec<BridgeOwnerRuntimeHandle>, Vec<BridgeStartupReadiness>), BridgeRuntimeError>
+where
+    F: FnMut(
+        BridgeServiceEvent,
+    ) -> Result<(BridgeOwnerRuntimeHandle, BridgeStartupReadiness), BridgeRuntimeError>,
+{
+    let mut handles = Vec::with_capacity(events.len());
+    let mut readiness = Vec::with_capacity(events.len());
+
+    for event in events {
+        match start(event) {
+            Ok((handle, attestation)) => {
+                handles.push(handle);
+                readiness.push(attestation);
+            }
+            Err(error) => {
+                for handle in handles {
+                    let _ = handle.join();
+                }
+                return Err(error);
+            }
+        }
+    }
+
+    Ok((handles, readiness))
+}
+
 #[cfg(feature = "official-kaspa-runtime-mainline")]
 fn start_mainline_bridge_owner_thread(
     event: BridgeServiceEvent,
 ) -> Result<BridgeOwnerRuntimeHandle, BridgeRuntimeError> {
+    start_mainline_bridge_owner_thread_ready(event).map(|(handle, _readiness)| handle)
+}
+
+#[cfg(feature = "official-kaspa-runtime-mainline")]
+fn start_mainline_bridge_owner_thread_ready(
+    event: BridgeServiceEvent,
+) -> Result<(BridgeOwnerRuntimeHandle, BridgeStartupReadiness), BridgeRuntimeError> {
+    use kaspa_rpc_core_mainline::api::rpc::RpcApi;
+
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let thread_shutdown = shutdown_rx.clone();
+    let cleanup_shutdown_tx = shutdown_tx.clone();
+    let (startup_tx, startup_rx) = std::sync::mpsc::sync_channel(1);
+    let event_for_thread = event.clone();
 
     let owner_thread = std::thread::Builder::new()
         .name(format!("kgw-bridge-{}", event.network.as_str()))
         .spawn(move || {
             let runtime = tokio::runtime::Builder::new_multi_thread()
-                .thread_name(format!("kgw-bridge-rt-{}", event.network.as_str()))
+                .thread_name(format!(
+                    "kgw-bridge-rt-{}",
+                    event_for_thread.network.as_str()
+                ))
                 .enable_all()
                 .build();
 
-            let Ok(runtime) = runtime else {
-                return;
+            let runtime = match runtime {
+                Ok(runtime) => runtime,
+                Err(error) => {
+                    let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(format!(
+                        "Tokio runtime creation failed: {error}"
+                    )));
+                    return;
+                }
             };
 
             runtime.block_on(async move {
-                let kaspa_api = kaspa_stratum_bridge_mainline::KaspaApi::new(
-                    event.kaspa_rpc_endpoint.clone(),
-                    None,
-                    thread_shutdown.clone(),
+                let endpoint = event_for_thread.kaspa_rpc_endpoint.clone();
+                let kaspa_api = match tokio::time::timeout(
+                    KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT,
+                    kaspa_stratum_bridge_mainline::KaspaApi::new(
+                        endpoint.clone(),
+                        None,
+                        thread_shutdown.clone(),
+                    ),
                 )
-                .await;
-
-                let kaspa_api = match kaspa_api {
-                    Ok(kaspa_api) => kaspa_api,
-                    Err(_error) => {
+                .await
+                {
+                    Ok(Ok(kaspa_api)) => kaspa_api,
+                    Ok(Err(error)) => {
+                        let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(format!(
+                            "KaspaApi attachment failed: {error}"
+                        )));
+                        return;
+                    }
+                    Err(_) => {
+                        let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(
+                            format!(
+                                "KaspaApi attachment timed out;endpoint={};timeout_ms={}",
+                                endpoint,
+                                KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT.as_millis()
+                            ),
+                        ));
                         return;
                     }
                 };
+
+                let rpc_info = match tokio::time::timeout(KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT, async {
+                    let client =
+                        kaspa_grpc_client_mainline::GrpcClient::connect(grpc_endpoint(&endpoint))
+                            .await
+                            .map_err(|error| error.to_string())?;
+                    client
+                        .get_server_info()
+                        .await
+                        .map_err(|error| error.to_string())
+                })
+                .await
+                {
+                    Ok(Ok(info)) => info,
+                    Ok(Err(error)) => {
+                        let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(format!(
+                            "get_server_info failed after KaspaApi attachment: {error}"
+                        )));
+                        return;
+                    }
+                    Err(_) => {
+                        let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(
+                            format!(
+                                "get_server_info timed out after KaspaApi attachment;endpoint={};timeout_ms={}",
+                                endpoint,
+                                KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT.as_millis()
+                            ),
+                        ));
+                        return;
+                    }
+                };
+
+                let actual_network = rpc_info.network_id.to_string();
+                if let Err(error) = validate_rpc_network_identity(
+                    event_for_thread.network,
+                    &endpoint,
+                    &actual_network,
+                ) {
+                    let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(
+                        error.to_string(),
+                    ));
+                    return;
+                }
+
+                let readiness = BridgeStartupReadiness {
+                    network: event_for_thread.network,
+                    rpc_endpoint: event_for_thread.kaspa_rpc_endpoint.clone(),
+                    listener: event_for_thread.stratum_listen.clone(),
+                    rpc_network: rpc_info.network_id.to_string(),
+                };
                 let bridge_config = kaspa_stratum_bridge_mainline::StratumServerBridgeConfig {
-                    instance_id: format!("{}-bridge-1", event.network.as_str()),
-                    stratum_port: event.stratum_listen.clone(),
-                    kaspad_address: event.kaspa_rpc_endpoint.clone(),
-                    prom_port: event.prometheus_listen.clone(),
+                    instance_id: format!("{}-bridge-1", event_for_thread.network.as_str()),
+                    stratum_port: event_for_thread.stratum_listen.clone(),
+                    kaspad_address: event_for_thread.kaspa_rpc_endpoint.clone(),
+                    prom_port: event_for_thread.prometheus_listen.clone(),
                     print_stats: true,
                     log_to_file: false,
                     health_check_port: String::new(),
-                    block_wait_time: std::time::Duration::from_millis(1000),
+                    block_wait_time: Duration::from_millis(1000),
                     min_share_diff: 8192,
                     var_diff: true,
                     shares_per_min: 20,
@@ -533,25 +909,61 @@ fn start_mainline_bridge_owner_thread(
                     pow2_clamp: false,
                     coinbase_tag_suffix: None,
                 };
-                match kaspa_stratum_bridge_mainline::listen_and_serve_with_shutdown(
+                let listen = kaspa_stratum_bridge_mainline::listen_and_serve_with_shutdown(
                     bridge_config,
                     std::sync::Arc::clone(&kaspa_api),
                     Some(std::sync::Arc::clone(&kaspa_api)),
                     thread_shutdown,
-                )
-                .await
-                {
-                    Ok(()) => {}
-                    Err(_error) => {}
-                }
+                );
+                attest_listener_and_serve(listen, startup_tx, readiness).await;
             });
         })
         .map_err(|error| BridgeRuntimeError::OwnerThreadStartFailed(error.to_string()))?;
 
-    Ok(BridgeOwnerRuntimeHandle {
+    let mut handle = Some(BridgeOwnerRuntimeHandle {
         shutdown_tx,
         owner_thread,
-    })
+    });
+
+    match startup_rx.recv_timeout(
+        KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT
+            + KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT
+            + KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT
+            + KGW_BRIDGE_PARENT_ATTESTATION_GRACE,
+    ) {
+        Ok(BridgeOwnerStartupOutcome::Ready(readiness)) => Ok((
+            handle.take().expect("bridge owner handle must exist"),
+            readiness,
+        )),
+        Ok(BridgeOwnerStartupOutcome::Failed(error)) => {
+            let _ = cleanup_shutdown_tx.send(true);
+            let _ = handle
+                .take()
+                .expect("bridge owner handle must exist")
+                .join();
+            Err(BridgeRuntimeError::StartupReadinessFailed(error))
+        }
+        Err(error) => {
+            let _ = cleanup_shutdown_tx.send(true);
+            let _ = handle
+                .take()
+                .expect("bridge owner handle must exist")
+                .join();
+            Err(BridgeRuntimeError::StartupReadinessFailed(format!(
+                "startup attestation channel failed: {error}"
+            )))
+        }
+    }
+}
+
+#[cfg(not(feature = "official-kaspa-runtime-mainline"))]
+fn start_mainline_bridge_owner_thread_ready(
+    event: BridgeServiceEvent,
+) -> Result<(BridgeOwnerRuntimeHandle, BridgeStartupReadiness), BridgeRuntimeError> {
+    Err(BridgeRuntimeError::FeatureRequired(format!(
+        "{} requires official-kaspa-runtime-mainline",
+        event.network.as_str()
+    )))
 }
 
 #[cfg(not(feature = "official-kaspa-runtime-mainline"))]
@@ -568,113 +980,172 @@ fn start_mainline_bridge_owner_thread(
 fn start_tn12_bridge_owner_thread(
     event: BridgeServiceEvent,
 ) -> Result<BridgeOwnerRuntimeHandle, BridgeRuntimeError> {
+    start_tn12_bridge_owner_thread_ready(event).map(|(handle, _readiness)| handle)
+}
+
+#[cfg(feature = "official-kaspa-runtime-tn12")]
+fn start_tn12_bridge_owner_thread_ready(
+    event: BridgeServiceEvent,
+) -> Result<(BridgeOwnerRuntimeHandle, BridgeStartupReadiness), BridgeRuntimeError> {
+    use kaspa_rpc_core_tn12::api::rpc::RpcApi;
+
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let thread_shutdown = shutdown_rx.clone();
+    let cleanup_shutdown_tx = shutdown_tx.clone();
+    let (startup_tx, startup_rx) = std::sync::mpsc::sync_channel(1);
+    let event_for_thread = event.clone();
 
     let owner_thread = std::thread::Builder::new()
         .name(format!("kgw-bridge-{}", event.network.as_str()))
         .spawn(move || {
             let runtime = tokio::runtime::Builder::new_multi_thread()
-                .thread_name(format!("kgw-bridge-rt-{}", event.network.as_str()))
+                .thread_name(format!(
+                    "kgw-bridge-rt-{}",
+                    event_for_thread.network.as_str()
+                ))
                 .enable_all()
                 .build();
 
-            let Ok(runtime) = runtime else {
-                return;
+            let runtime = match runtime {
+                Ok(runtime) => runtime,
+                Err(error) => {
+                    let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(format!(
+                        "Tokio runtime creation failed: {error}"
+                    )));
+                    return;
+                }
             };
 
             runtime.block_on(async move {
-                let kaspa_api = kaspa_stratum_bridge_tn12::KaspaApi::new(
-                    event.kaspa_rpc_endpoint.clone(),
-                    None,
-                    thread_shutdown.clone(),
+                let endpoint = event_for_thread.kaspa_rpc_endpoint.clone();
+                let kaspa_api = match tokio::time::timeout(
+                    KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT,
+                    kaspa_stratum_bridge_tn12::KaspaApi::new(
+                        endpoint.clone(),
+                        None,
+                        thread_shutdown.clone(),
+                    ),
                 )
-                .await;
-
-                let kaspa_api = match kaspa_api {
-                    Ok(kaspa_api) => kaspa_api,
-                    Err(_error) => {
+                .await
+                {
+                    Ok(Ok(kaspa_api)) => kaspa_api,
+                    Ok(Err(error)) => {
+                        let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(format!(
+                            "KaspaApi attachment failed: {error}"
+                        )));
+                        return;
+                    }
+                    Err(_) => {
+                        let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(
+                            format!(
+                                "KaspaApi attachment timed out;endpoint={};timeout_ms={}",
+                                endpoint,
+                                KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT.as_millis()
+                            ),
+                        ));
                         return;
                     }
                 };
 
-                // KGW_BRIDGE_OWNER_INTERNAL_CPU_MINER_REAL_RKSTRATUMTN12_V4
-                // Existing owner edit only.
-                // Real RKStratumTN12 API verified from bridge/src/rkstratum_cpu_miner.rs:
-                // - InternalCpuMinerConfig
-                // - spawn_internal_cpu_miner(Arc<KaspaApi>, InternalCpuMinerConfig, watch::Receiver<bool>)
-                // CPU miner is feature-gated and must never block Stratum server startup when disabled.
-                #[cfg(feature = "rkstratum_cpu_miner")]
+                let rpc_info = match tokio::time::timeout(KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT, async {
+                    let client =
+                        kaspa_grpc_client_tn12::GrpcClient::connect(grpc_endpoint(&endpoint))
+                            .await
+                            .map_err(|error| error.to_string())?;
+                    client
+                        .get_server_info()
+                        .await
+                        .map_err(|error| error.to_string())
+                })
+                .await
                 {
-                    if event.internal_cpu_miner.enabled {
-                        let maybe_mining_address = event
-                            .internal_cpu_miner
-                            .address
-                            .clone()
-                            .map(|value| value.trim().to_string())
-                            .filter(|value| !value.is_empty());
+                    Ok(Ok(info)) => info,
+                    Ok(Err(error)) => {
+                        let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(format!(
+                            "get_server_info failed after KaspaApi attachment: {error}"
+                        )));
+                        return;
+                    }
+                    Err(_) => {
+                        let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(
+                            format!(
+                                "get_server_info timed out after KaspaApi attachment;endpoint={};timeout_ms={}",
+                                endpoint,
+                                KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT.as_millis()
+                            ),
+                        ));
+                        return;
+                    }
+                };
 
-                        let Some(mining_address) = maybe_mining_address else {
-                            // Missing mining address disables the optional internal CPU miner only.
-                            // It must not prevent the official Stratum listener from starting.
-                            return;
-                        };
+                let actual_network = rpc_info.network_id.to_string();
+                if let Err(error) = validate_rpc_network_identity(
+                    event_for_thread.network,
+                    &endpoint,
+                    &actual_network,
+                ) {
+                    let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(
+                        error.to_string(),
+                    ));
+                    return;
+                }
 
-                        let threads: usize =
-                            usize::from(event.internal_cpu_miner.threads.unwrap_or(1).max(1));
-                        let throttle = event
+                let readiness = BridgeStartupReadiness {
+                    network: event_for_thread.network,
+                    rpc_endpoint: event_for_thread.kaspa_rpc_endpoint.clone(),
+                    listener: event_for_thread.stratum_listen.clone(),
+                    rpc_network: rpc_info.network_id.to_string(),
+                };
+
+                #[cfg(feature = "rkstratum_cpu_miner")]
+                if event_for_thread.internal_cpu_miner.enabled
+                    && let Some(mining_address) = event_for_thread
+                        .internal_cpu_miner
+                        .address
+                        .clone()
+                        .map(|value| value.trim().to_string())
+                        .filter(|value| !value.is_empty())
+                {
+                    let miner_config = kaspa_stratum_bridge_tn12::InternalCpuMinerConfig {
+                        enabled: true,
+                        mining_address,
+                        threads: usize::from(
+                            event_for_thread.internal_cpu_miner.threads.unwrap_or(1).max(1),
+                        ),
+                        throttle: event_for_thread
                             .internal_cpu_miner
                             .throttle_ms
-                            .map(std::time::Duration::from_millis);
-                        let template_poll_interval = std::time::Duration::from_millis(
-                            event
+                            .map(Duration::from_millis),
+                        template_poll_interval: Duration::from_millis(
+                            event_for_thread
                                 .internal_cpu_miner
                                 .template_poll_ms
                                 .unwrap_or(50)
                                 .max(1),
-                        );
+                        ),
+                    };
+                    kaspa_stratum_bridge_tn12::prom::set_internal_cpu_mining_address(
+                        miner_config.mining_address.clone(),
+                    );
 
-                        let miner_config = kaspa_stratum_bridge_tn12::InternalCpuMinerConfig {
-                            enabled: true,
-                            mining_address,
-                            threads,
-                            throttle,
-                            template_poll_interval,
-                        };
-                        kaspa_stratum_bridge_tn12::prom::set_internal_cpu_mining_address(
-                            miner_config.mining_address.clone(),
-                        );
-
-                        match kaspa_stratum_bridge_tn12::spawn_internal_cpu_miner(
-                            std::sync::Arc::clone(&kaspa_api),
-                            miner_config,
-                            thread_shutdown.clone(),
-                        ) {
-                            Ok(metrics) => {
-                                kaspa_stratum_bridge_tn12::set_rkstratum_cpu_miner_metrics(metrics);
-                            }
-                            Err(_error) => {}
-                        }
-                    } else {
-                    }
-                }
-
-                #[cfg(not(feature = "rkstratum_cpu_miner"))]
-                {
-                    if event.internal_cpu_miner.enabled {
-                    } else {
+                    if let Ok(metrics) = kaspa_stratum_bridge_tn12::spawn_internal_cpu_miner(
+                        std::sync::Arc::clone(&kaspa_api),
+                        miner_config,
+                        thread_shutdown.clone(),
+                    ) {
+                        kaspa_stratum_bridge_tn12::set_rkstratum_cpu_miner_metrics(metrics);
                     }
                 }
 
                 let bridge_config = kaspa_stratum_bridge_tn12::StratumServerBridgeConfig {
-                    instance_id: format!("{}-bridge-1", event.network.as_str()),
-                    stratum_port: event.stratum_listen.clone(),
-                    kaspad_address: event.kaspa_rpc_endpoint.clone(),
-                    prom_port: event.prometheus_listen.clone(),
+                    instance_id: format!("{}-bridge-1", event_for_thread.network.as_str()),
+                    stratum_port: event_for_thread.stratum_listen.clone(),
+                    kaspad_address: event_for_thread.kaspa_rpc_endpoint.clone(),
+                    prom_port: event_for_thread.prometheus_listen.clone(),
                     print_stats: true,
                     log_to_file: false,
                     health_check_port: String::new(),
-                    block_wait_time: std::time::Duration::from_millis(1000),
+                    block_wait_time: Duration::from_millis(1000),
                     min_share_diff: 8192,
                     var_diff: true,
                     shares_per_min: 20,
@@ -683,25 +1154,61 @@ fn start_tn12_bridge_owner_thread(
                     pow2_clamp: false,
                     coinbase_tag_suffix: None,
                 };
-                match kaspa_stratum_bridge_tn12::listen_and_serve_with_shutdown(
+                let listen = kaspa_stratum_bridge_tn12::listen_and_serve_with_shutdown(
                     bridge_config,
                     std::sync::Arc::clone(&kaspa_api),
                     Some(std::sync::Arc::clone(&kaspa_api)),
                     thread_shutdown,
-                )
-                .await
-                {
-                    Ok(()) => {}
-                    Err(_error) => {}
-                }
+                );
+                attest_listener_and_serve(listen, startup_tx, readiness).await;
             });
         })
         .map_err(|error| BridgeRuntimeError::OwnerThreadStartFailed(error.to_string()))?;
 
-    Ok(BridgeOwnerRuntimeHandle {
+    let mut handle = Some(BridgeOwnerRuntimeHandle {
         shutdown_tx,
         owner_thread,
-    })
+    });
+
+    match startup_rx.recv_timeout(
+        KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT
+            + KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT
+            + KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT
+            + KGW_BRIDGE_PARENT_ATTESTATION_GRACE,
+    ) {
+        Ok(BridgeOwnerStartupOutcome::Ready(readiness)) => Ok((
+            handle.take().expect("bridge owner handle must exist"),
+            readiness,
+        )),
+        Ok(BridgeOwnerStartupOutcome::Failed(error)) => {
+            let _ = cleanup_shutdown_tx.send(true);
+            let _ = handle
+                .take()
+                .expect("bridge owner handle must exist")
+                .join();
+            Err(BridgeRuntimeError::StartupReadinessFailed(error))
+        }
+        Err(error) => {
+            let _ = cleanup_shutdown_tx.send(true);
+            let _ = handle
+                .take()
+                .expect("bridge owner handle must exist")
+                .join();
+            Err(BridgeRuntimeError::StartupReadinessFailed(format!(
+                "startup attestation channel failed: {error}"
+            )))
+        }
+    }
+}
+
+#[cfg(not(feature = "official-kaspa-runtime-tn12"))]
+fn start_tn12_bridge_owner_thread_ready(
+    event: BridgeServiceEvent,
+) -> Result<(BridgeOwnerRuntimeHandle, BridgeStartupReadiness), BridgeRuntimeError> {
+    Err(BridgeRuntimeError::FeatureRequired(format!(
+        "{} requires official-kaspa-runtime-tn12",
+        event.network.as_str()
+    )))
 }
 
 #[cfg(not(feature = "official-kaspa-runtime-tn12"))]
@@ -757,7 +1264,7 @@ pub fn official_bridge_tn12_dependency_marker_v1() -> &'static str {
 
 #[cfg(test)]
 mod runtime_binding_tests {
-    use super::{BridgeRuntimeFamily, BridgeRuntimeNetwork};
+    use super::*;
 
     const STABLE_REV: &str = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3";
     const TN12_REV: &str = "eeb351ee911e2df906d21203dec8db3a195c6b33";
@@ -780,5 +1287,216 @@ mod runtime_binding_tests {
         assert_eq!(network.family(), BridgeRuntimeFamily::Tn12);
         assert_eq!(network.branch(), "RKStratumTN12");
         assert_eq!(network.revision(), TN12_REV);
+    }
+
+    #[test]
+    fn listener_probe_normalizes_wildcard_and_bare_port() {
+        assert_eq!(listener_probe_address("5555").unwrap(), "127.0.0.1:5555");
+        assert_eq!(listener_probe_address(":5555").unwrap(), "127.0.0.1:5555");
+        assert_eq!(
+            listener_probe_address("0.0.0.0:5555").unwrap(),
+            "127.0.0.1:5555"
+        );
+        assert_eq!(
+            listener_probe_address("127.0.0.1:5555").unwrap(),
+            "127.0.0.1:5555"
+        );
+    }
+
+    #[test]
+    fn readiness_attestation_includes_rpc_and_listener_evidence() {
+        let readiness = BridgeStartupReadiness {
+            network: BridgeRuntimeNetwork::Testnet10,
+            rpc_endpoint: "127.0.0.1:16210".to_string(),
+            listener: "127.0.0.1:15555".to_string(),
+            rpc_network: "testnet-10".to_string(),
+        };
+
+        let attestation = readiness.to_attestation();
+        assert!(attestation.contains("rpc_method=get_server_info"));
+        assert!(attestation.contains("rpc_network=testnet-10"));
+        assert!(attestation.contains("listener=127.0.0.1:15555"));
+        assert!(attestation.contains("listeners_ready=1"));
+    }
+
+    #[test]
+    fn stable_and_experimental_network_ids_remain_distinct() {
+        assert_eq!(
+            expected_rpc_network_id(BridgeRuntimeNetwork::Mainnet),
+            "mainnet"
+        );
+        assert_eq!(
+            expected_rpc_network_id(BridgeRuntimeNetwork::Testnet10),
+            "testnet-10"
+        );
+        assert_eq!(
+            expected_rpc_network_id(BridgeRuntimeNetwork::Testnet12),
+            "testnet-12"
+        );
+    }
+
+    #[test]
+    fn wrong_rpc_network_produces_failed_bridge_attachment() {
+        let error = validate_rpc_network_identity(
+            BridgeRuntimeNetwork::Testnet10,
+            "127.0.0.1:16210",
+            expected_rpc_network_id(BridgeRuntimeNetwork::Mainnet),
+        )
+        .unwrap_err();
+        let text = error.to_string();
+        assert!(text.contains("bridge RPC network mismatch"));
+        assert!(text.contains("expected_network=testnet-10"));
+        assert!(text.contains("actual_network=mainnet"));
+    }
+
+    #[tokio::test]
+    async fn listener_attestation_reports_terminal_bind_failure() {
+        let (startup_tx, startup_rx) = std::sync::mpsc::sync_channel(1);
+        let readiness = BridgeStartupReadiness {
+            network: BridgeRuntimeNetwork::Mainnet,
+            rpc_endpoint: "127.0.0.1:16110".to_string(),
+            listener: "127.0.0.1:65530".to_string(),
+            rpc_network: "mainnet".to_string(),
+        };
+
+        attest_listener_and_serve(
+            async { Err::<(), _>("failed listening to socket: address already in use") },
+            startup_tx,
+            readiness,
+        )
+        .await;
+
+        match startup_rx.recv().unwrap() {
+            BridgeOwnerStartupOutcome::Failed(error) => {
+                assert!(error.contains("address already in use"));
+            }
+            BridgeOwnerStartupOutcome::Ready(_) => {
+                panic!("terminal listener failure cannot attest READY")
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn listener_attestation_waits_until_tcp_accepts() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let (shutdown_tx, mut shutdown_rx) = tokio::sync::watch::channel(false);
+        let listen = async move {
+            loop {
+                tokio::select! {
+                    _ = shutdown_rx.changed() => return Ok::<(), std::io::Error>(()),
+                    accepted = listener.accept() => { accepted?; }
+                }
+            }
+        };
+        let (startup_tx, startup_rx) = std::sync::mpsc::sync_channel(1);
+        let readiness = BridgeStartupReadiness {
+            network: BridgeRuntimeNetwork::Mainnet,
+            rpc_endpoint: "127.0.0.1:16110".to_string(),
+            listener: address.to_string(),
+            rpc_network: "mainnet".to_string(),
+        };
+
+        let task = tokio::spawn(attest_listener_and_serve(listen, startup_tx, readiness));
+        let outcome = tokio::task::spawn_blocking(move || startup_rx.recv().unwrap())
+            .await
+            .unwrap();
+        match outcome {
+            BridgeOwnerStartupOutcome::Ready(readiness) => {
+                assert_eq!(readiness.listener, address.to_string());
+            }
+            BridgeOwnerStartupOutcome::Failed(error) => panic!("unexpected failure: {error}"),
+        }
+        shutdown_tx.send(true).unwrap();
+        task.await.unwrap();
+    }
+
+    #[test]
+    fn second_listener_failure_stops_prior_owner_and_releases_port() {
+        let probe = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = probe.local_addr().unwrap();
+        drop(probe);
+        let first_event = BridgeServiceEvent {
+            kind: BridgeServiceEventKind::StartOfficialExternalNode,
+            network: BridgeRuntimeNetwork::Mainnet,
+            family: BridgeRuntimeFamily::Mainline,
+            branch: "stable",
+            mode: BridgeRuntimeMode::OfficialExternalNode,
+            stratum_listen: address.to_string(),
+            prometheus_listen: "127.0.0.1:0".to_string(),
+            kaspa_rpc_endpoint: "127.0.0.1:16110".to_string(),
+            internal_cpu_miner: BridgeInternalCpuMinerSettings::default(),
+        };
+        let mut second_event = first_event.clone();
+        second_event.stratum_listen = "127.0.0.1:65530".to_string();
+        let mut invocation = 0usize;
+
+        let error = start_bridge_owners_ready_with(vec![first_event, second_event], |event| {
+            invocation += 1;
+            if invocation == 2 {
+                return Err(BridgeRuntimeError::StartupReadinessFailed(
+                    "second listener bind failed: address already in use".to_string(),
+                ));
+            }
+
+            let listener = std::net::TcpListener::bind(&event.stratum_listen).unwrap();
+            listener.set_nonblocking(true).unwrap();
+            let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+            let owner_thread = std::thread::spawn(move || {
+                while !*shutdown_rx.borrow() {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                drop(listener);
+            });
+            let readiness = BridgeStartupReadiness {
+                network: event.network,
+                rpc_endpoint: event.kaspa_rpc_endpoint,
+                listener: event.stratum_listen,
+                rpc_network: "mainnet".to_string(),
+            };
+            Ok((
+                BridgeOwnerRuntimeHandle {
+                    shutdown_tx,
+                    owner_thread,
+                },
+                readiness,
+            ))
+        })
+        .unwrap_err();
+
+        assert!(error.to_string().contains("second listener bind failed"));
+        let rebound = std::net::TcpListener::bind(address)
+            .expect("failed multi-listener startup must release prior listener ports");
+        drop(rebound);
+    }
+
+    #[cfg(feature = "official-kaspa-runtime-mainline")]
+    #[test]
+    fn unreachable_node_attachment_produces_failed_readiness_without_an_owner() {
+        let unavailable = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = unavailable.local_addr().unwrap().to_string();
+        drop(unavailable);
+
+        let event = BridgeServiceEvent {
+            kind: BridgeServiceEventKind::StartOfficialExternalNode,
+            network: BridgeRuntimeNetwork::Mainnet,
+            family: BridgeRuntimeFamily::Mainline,
+            branch: "stable",
+            mode: BridgeRuntimeMode::OfficialExternalNode,
+            stratum_listen: "127.0.0.1:0".to_string(),
+            prometheus_listen: String::new(),
+            kaspa_rpc_endpoint: endpoint.clone(),
+            internal_cpu_miner: BridgeInternalCpuMinerSettings::default(),
+        };
+
+        let started_at = std::time::Instant::now();
+        let error = start_official_bridge_owner_thread_ready_v1(event).unwrap_err();
+        let text = error.to_string();
+
+        assert!(text.contains("bridge startup readiness failed"));
+        assert!(text.contains("KaspaApi attachment timed out"));
+        assert!(text.contains(&endpoint));
+        assert!(text.contains("timeout_ms=750"));
+        assert!(started_at.elapsed() < Duration::from_secs(5));
     }
 }

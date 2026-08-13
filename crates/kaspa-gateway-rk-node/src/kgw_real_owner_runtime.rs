@@ -2,6 +2,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::JoinHandle;
+#[cfg(any(
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 
@@ -118,8 +123,26 @@ pub enum KgwRealOwnerError {
     #[error("invalid RPC listen endpoint: {0}")]
     InvalidRpcEndpoint(String),
 
+    #[error("invalid P2P listen endpoint: {0}")]
+    InvalidP2pListen(String),
+
     #[error("failed to start owner thread: {0}")]
     OwnerThreadStartFailed(String),
+
+    #[error("node RPC readiness failed: {0}")]
+    NodeRpcReadinessFailed(String),
+
+    #[error("bridge startup readiness failed: {0}")]
+    BridgeStartupReadinessFailed(String),
+
+    #[error(
+        "node RPC network mismatch: endpoint={endpoint};expected_network={expected};actual_network={actual}"
+    )]
+    NodeRpcNetworkMismatch {
+        expected: String,
+        actual: String,
+        endpoint: String,
+    },
 
     #[error("official in-process Rusty Kaspa core is already claimed in this desktop process: {0}")]
     OfficialCoreAlreadyClaimed(String),
@@ -129,6 +152,8 @@ pub enum KgwRealOwnerError {
 struct RuntimeSession {
     status: KgwRuntimeSessionStatus,
     owner_thread: Option<JoinHandle<()>>,
+    core_terminal_outcome: Option<std::sync::mpsc::Receiver<String>>,
+    core_terminal_error: Option<String>,
     bridge_handle: Option<kaspa_gateway_rk_bridge::BridgeOwnerRuntimeHandle>,
 }
 
@@ -152,6 +177,8 @@ impl RuntimeSession {
                 logs: Vec::new(),
             },
             owner_thread: None,
+            core_terminal_outcome: None,
+            core_terminal_error: None,
             bridge_handle: None,
         }
     }
@@ -171,6 +198,28 @@ impl RuntimeSession {
 pub struct KgwRealOwnerRuntime {
     inner: Arc<Mutex<HashMap<KgwNetwork, RuntimeSession>>>,
 }
+
+#[cfg(all(
+    not(test),
+    any(
+        feature = "official-kaspa-runtime-mainline",
+        feature = "official-kaspa-runtime-tn12"
+    )
+))]
+const KGW_NODE_READINESS_TIMEOUT: Duration = Duration::from_secs(90);
+#[cfg(all(
+    test,
+    any(
+        feature = "official-kaspa-runtime-mainline",
+        feature = "official-kaspa-runtime-tn12"
+    )
+))]
+const KGW_NODE_READINESS_TIMEOUT: Duration = Duration::from_millis(750);
+#[cfg(any(
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+const KGW_NODE_READINESS_RETRY_INTERVAL: Duration = Duration::from_millis(250);
 
 impl Default for KgwRealOwnerRuntime {
     fn default() -> Self {
@@ -230,6 +279,90 @@ impl KgwRealOwnerRuntime {
         Ok(status.logs.join("\n"))
     }
 
+    pub fn attest_node_rpc_readiness(
+        &self,
+        settings: &NodeSettings,
+    ) -> Result<String, KgwRealOwnerError> {
+        let mut core_terminal_outcome = {
+            let mut sessions = self
+                .inner
+                .lock()
+                .map_err(|_| KgwRealOwnerError::LockFailed)?;
+            let session = sessions.get(&settings.network).ok_or_else(|| {
+                KgwRealOwnerError::NodeRpcReadinessFailed(format!(
+                    "network={};endpoint={};owner session is missing",
+                    settings.network.as_str(),
+                    settings.rpc_endpoint
+                ))
+            })?;
+            if let Some(error) = session.core_terminal_error.clone() {
+                return Err(KgwRealOwnerError::NodeRpcReadinessFailed(format!(
+                    "network={};endpoint={};terminal_error={error}",
+                    settings.network.as_str(),
+                    settings.rpc_endpoint
+                )));
+            }
+            sessions
+                .get_mut(&settings.network)
+                .and_then(|session| session.core_terminal_outcome.take())
+                .ok_or_else(|| {
+                    KgwRealOwnerError::NodeRpcReadinessFailed(format!(
+                        "network={};endpoint={};owner core thread is not active",
+                        settings.network.as_str(),
+                        settings.rpc_endpoint
+                    ))
+                })?
+        };
+
+        let readiness = match settings.network {
+            KgwNetwork::Mainnet | KgwNetwork::Testnet10 => {
+                attest_mainline_node_rpc_readiness(settings, &mut core_terminal_outcome)
+            }
+            KgwNetwork::Testnet12 => {
+                attest_tn12_node_rpc_readiness(settings, &mut core_terminal_outcome)
+            }
+        };
+
+        let mut sessions = self
+            .inner
+            .lock()
+            .map_err(|_| KgwRealOwnerError::LockFailed)?;
+        let session = sessions
+            .entry(settings.network)
+            .or_insert_with(|| RuntimeSession::new(settings.network));
+        session.core_terminal_error = readiness.as_ref().err().map(ToString::to_string);
+        session.core_terminal_outcome = Some(core_terminal_outcome);
+
+        match &readiness {
+            Ok(evidence) => {
+                session.status.start_policy = KgwRuntimeStartPolicy::OfficialCoreRunning;
+                session.status.owner_thread_alive = session
+                    .owner_thread
+                    .as_ref()
+                    .is_some_and(|thread| !thread.is_finished());
+                session.status.official_core_running = session.status.owner_thread_alive;
+                session.status.last_message = format!(
+                    "official Rusty Kaspa core passed RPC readiness;network={};{}",
+                    settings.network.as_str(),
+                    evidence
+                );
+            }
+            Err(error) => {
+                session.status.start_policy = KgwRuntimeStartPolicy::OwnerThreadStarted;
+                session.status.owner_thread_alive = session
+                    .owner_thread
+                    .as_ref()
+                    .is_some_and(|thread| !thread.is_finished());
+                session.status.official_core_running = false;
+                session.status.last_message = error.to_string();
+            }
+        }
+
+        let message = session.status.last_message.clone();
+        session.push_log(message);
+        readiness
+    }
+
     pub fn start_node_owner_session(
         &self,
         settings: &NodeSettings,
@@ -244,42 +377,71 @@ impl KgwRealOwnerRuntime {
             return Err(KgwRealOwnerError::UnsupportedCombination);
         }
 
+        {
+            let mut sessions = self
+                .inner
+                .lock()
+                .map_err(|_| KgwRealOwnerError::LockFailed)?;
+
+            let session = sessions
+                .entry(settings.network)
+                .or_insert_with(|| RuntimeSession::new(settings.network));
+
+            session.status.feature_status = KgwRuntimeFeatureStatus::for_network(settings.network);
+            session.status.runtime_requested = true;
+            session.status.node_kind = settings.node_kind;
+            session.status.bridge_kind = settings.bridge_kind;
+
+            if !session.status.feature_status.can_start_in_owner {
+                session.status.start_policy = KgwRuntimeStartPolicy::FeatureRequired;
+                session.status.owner_thread_alive = false;
+                session.status.official_core_running = false;
+                session.status.bridge_owner_active = false;
+                session.status.last_message = format!(
+                    "owner runtime is ready; enable feature {} for {}; no fallback layer is allowed",
+                    session.status.feature_status.required_runtime_feature,
+                    settings.network.as_str()
+                );
+                let msg = session.status.last_message.clone();
+                session.push_log(msg);
+                return Ok(session.status.clone());
+            }
+
+            kgw_claim_single_inproc_official_core(settings.network)?;
+
+            if session.owner_thread.is_none() {
+                let (owner_thread, core_terminal_outcome) =
+                    spawn_official_core_thread(settings.clone())?;
+                session.owner_thread = Some(owner_thread);
+                session.core_terminal_outcome = Some(core_terminal_outcome);
+                session.core_terminal_error = None;
+            }
+
+            session.status.start_policy = KgwRuntimeStartPolicy::OwnerThreadStarted;
+            session.status.owner_thread_alive = true;
+            session.status.official_core_running = false;
+            session.status.bridge_owner_active = false;
+            session.status.last_message = format!(
+                "official Rusty Kaspa core owner thread started; RPC readiness pending;network={};endpoint={}",
+                settings.network.as_str(),
+                settings.rpc_endpoint
+            );
+            let message = session.status.last_message.clone();
+            session.push_log(message);
+        }
+
+        let node_readiness = self.attest_node_rpc_readiness(settings)?;
+
+        let bridge_start = start_bridge_owner_if_requested(settings);
         let mut sessions = self
             .inner
             .lock()
             .map_err(|_| KgwRealOwnerError::LockFailed)?;
-
         let session = sessions
             .entry(settings.network)
             .or_insert_with(|| RuntimeSession::new(settings.network));
 
-        session.status.feature_status = KgwRuntimeFeatureStatus::for_network(settings.network);
-        session.status.runtime_requested = true;
-        session.status.node_kind = settings.node_kind;
-        session.status.bridge_kind = settings.bridge_kind;
-
-        if !session.status.feature_status.can_start_in_owner {
-            session.status.start_policy = KgwRuntimeStartPolicy::FeatureRequired;
-            session.status.owner_thread_alive = false;
-            session.status.official_core_running = false;
-            session.status.bridge_owner_active = false;
-            session.status.last_message = format!(
-                "owner runtime is ready; enable feature {} for {}; no fallback layer is allowed",
-                session.status.feature_status.required_runtime_feature,
-                settings.network.as_str()
-            );
-            let msg = session.status.last_message.clone();
-            session.push_log(msg);
-            return Ok(session.status.clone());
-        }
-
-        kgw_claim_single_inproc_official_core(settings.network)?;
-
-        if session.owner_thread.is_none() {
-            session.owner_thread = Some(spawn_official_core_thread(settings.clone())?);
-        }
-
-        match start_bridge_owner_if_requested(settings) {
+        match bridge_start {
             Ok(bridge_handle) => {
                 session.bridge_handle = bridge_handle;
                 session.status.bridge_owner_active = session.bridge_handle.is_some();
@@ -288,18 +450,31 @@ impl KgwRealOwnerRuntime {
                 session.bridge_handle = None;
                 session.status.bridge_owner_active = false;
                 session.push_log(format!("bridge-owner-start-error {}", error));
+                session.status.start_policy = KgwRuntimeStartPolicy::OwnerThreadStarted;
+                session.status.official_core_running = false;
+                session.status.last_message = format!(
+                    "bridge readiness failed after node RPC readiness;network={};node_readiness={};error={}",
+                    settings.network.as_str(),
+                    node_readiness,
+                    error
+                );
+                return Err(KgwRealOwnerError::BridgeStartupReadinessFailed(error));
             }
         }
 
         session.status.start_policy = KgwRuntimeStartPolicy::OfficialCoreRunning;
-        session.status.owner_thread_alive = true;
-        session.status.official_core_running = true;
+        session.status.owner_thread_alive = session
+            .owner_thread
+            .as_ref()
+            .is_some_and(|thread| !thread.is_finished());
+        session.status.official_core_running = session.status.owner_thread_alive;
         session.status.last_message = format!(
-            "official Rusty Kaspa core and bridge owner accepted inside KGW owner; network={};branch={};node_kind={};bridge_kind={};same_db_path=true;exclusive_node_owner_per_network=true;no_binary_path_fallback=true;no_bridge_binary_fallback=true;no_process_owner_fallback=true",
+            "official Rusty Kaspa core and bridge owner accepted inside KGW owner; network={};branch={};node_kind={};bridge_kind={};node_readiness={};same_db_path=true;exclusive_node_owner_per_network=true;no_binary_path_fallback=true;no_bridge_binary_fallback=true;no_process_owner_fallback=true",
             settings.network.as_str(),
             settings.network.branch(),
             settings.node_kind.as_str(),
-            settings.bridge_kind.as_str()
+            settings.bridge_kind.as_str(),
+            node_readiness
         );
         let msg = session.status.last_message.clone();
         session.push_log(msg);
@@ -325,6 +500,8 @@ impl KgwRealOwnerRuntime {
         }
 
         session.owner_thread = None;
+        session.core_terminal_outcome = None;
+        session.core_terminal_error = None;
         session.status.node_kind = KaspadNodeKind::Disable;
         session.status.bridge_kind = BridgeNodeKind::Disable;
         session.status.owner_thread_alive = false;
@@ -338,6 +515,221 @@ impl KgwRealOwnerRuntime {
         session.push_log(msg);
 
         Ok(session.status.clone())
+    }
+}
+
+#[cfg(any(
+    test,
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+fn expected_rpc_network_id(network: KgwNetwork) -> &'static str {
+    match network {
+        KgwNetwork::Mainnet => "mainnet",
+        KgwNetwork::Testnet10 => "testnet-10",
+        KgwNetwork::Testnet12 => "testnet-12",
+    }
+}
+
+#[cfg(any(
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+fn grpc_endpoint(endpoint: &str) -> String {
+    if endpoint.starts_with("grpc://") {
+        endpoint.to_string()
+    } else {
+        format!("grpc://{endpoint}")
+    }
+}
+
+#[cfg(any(
+    test,
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+fn validate_rpc_network_identity(
+    network: KgwNetwork,
+    endpoint: &str,
+    actual_network: &str,
+) -> Result<(), KgwRealOwnerError> {
+    let expected = expected_rpc_network_id(network);
+    if actual_network == expected {
+        Ok(())
+    } else {
+        Err(KgwRealOwnerError::NodeRpcNetworkMismatch {
+            expected: expected.to_string(),
+            actual: actual_network.to_string(),
+            endpoint: endpoint.to_string(),
+        })
+    }
+}
+
+#[cfg(feature = "official-kaspa-runtime-mainline")]
+fn attest_mainline_node_rpc_readiness(
+    settings: &NodeSettings,
+    core_terminal_outcome: &mut std::sync::mpsc::Receiver<String>,
+) -> Result<String, KgwRealOwnerError> {
+    use kaspa_rpc_core_mainline::api::rpc::RpcApi;
+
+    let endpoint = settings.rpc_endpoint.clone();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|error| KgwRealOwnerError::OwnerThreadStartFailed(error.to_string()))?;
+
+    runtime.block_on(async move {
+        let deadline = tokio::time::Instant::now() + KGW_NODE_READINESS_TIMEOUT;
+        let mut last_error = "RPC endpoint has not responded yet".to_string();
+
+        loop {
+            fail_if_core_terminated(core_terminal_outcome, settings)?;
+
+            if tokio::time::Instant::now() >= deadline {
+                return Err(KgwRealOwnerError::NodeRpcReadinessFailed(format!(
+                    "network={};endpoint={};timeout_ms={};last_error={}",
+                    settings.network.as_str(),
+                    endpoint,
+                    KGW_NODE_READINESS_TIMEOUT.as_millis(),
+                    last_error
+                )));
+            }
+
+            let attempt = tokio::time::timeout(Duration::from_secs(3), async {
+                let client = kaspa_grpc_client_mainline::GrpcClient::connect(grpc_endpoint(&endpoint))
+                    .await
+                    .map_err(|error| error.to_string())?;
+                client
+                    .get_server_info()
+                    .await
+                    .map_err(|error| error.to_string())
+            })
+            .await;
+
+            match attempt {
+                Ok(Ok(info)) => {
+                    let actual_network = info.network_id.to_string();
+                    validate_rpc_network_identity(settings.network, &endpoint, &actual_network)?;
+
+                    return Ok(format!(
+                        "rpc_method=get_server_info;rpc_network={};rpc_endpoint={};server_version={}",
+                        actual_network, endpoint, info.server_version
+                    ));
+                }
+                Ok(Err(error)) => last_error = error,
+                Err(_) => last_error = "RPC connection attempt timed out".to_string(),
+            }
+
+            tokio::time::sleep(KGW_NODE_READINESS_RETRY_INTERVAL).await;
+        }
+    })
+}
+
+#[cfg(not(feature = "official-kaspa-runtime-mainline"))]
+fn attest_mainline_node_rpc_readiness(
+    settings: &NodeSettings,
+    _core_terminal_outcome: &mut std::sync::mpsc::Receiver<String>,
+) -> Result<String, KgwRealOwnerError> {
+    Err(KgwRealOwnerError::FeatureRequired(format!(
+        "{} requires official-kaspa-runtime-mainline",
+        settings.network.as_str()
+    )))
+}
+
+#[cfg(feature = "official-kaspa-runtime-tn12")]
+fn attest_tn12_node_rpc_readiness(
+    settings: &NodeSettings,
+    core_terminal_outcome: &mut std::sync::mpsc::Receiver<String>,
+) -> Result<String, KgwRealOwnerError> {
+    use kaspa_rpc_core_tn12::api::rpc::RpcApi;
+
+    let endpoint = settings.rpc_endpoint.clone();
+    let runtime = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_err(|error| KgwRealOwnerError::OwnerThreadStartFailed(error.to_string()))?;
+
+    runtime.block_on(async move {
+        let deadline = tokio::time::Instant::now() + KGW_NODE_READINESS_TIMEOUT;
+        let mut last_error = "RPC endpoint has not responded yet".to_string();
+
+        loop {
+            fail_if_core_terminated(core_terminal_outcome, settings)?;
+
+            if tokio::time::Instant::now() >= deadline {
+                return Err(KgwRealOwnerError::NodeRpcReadinessFailed(format!(
+                    "network={};endpoint={};timeout_ms={};last_error={}",
+                    settings.network.as_str(),
+                    endpoint,
+                    KGW_NODE_READINESS_TIMEOUT.as_millis(),
+                    last_error
+                )));
+            }
+
+            let attempt = tokio::time::timeout(Duration::from_secs(3), async {
+                let client = kaspa_grpc_client_tn12::GrpcClient::connect(grpc_endpoint(&endpoint))
+                    .await
+                    .map_err(|error| error.to_string())?;
+                client
+                    .get_server_info()
+                    .await
+                    .map_err(|error| error.to_string())
+            })
+            .await;
+
+            match attempt {
+                Ok(Ok(info)) => {
+                    let actual_network = info.network_id.to_string();
+                    validate_rpc_network_identity(settings.network, &endpoint, &actual_network)?;
+
+                    return Ok(format!(
+                        "rpc_method=get_server_info;rpc_network={};rpc_endpoint={};server_version={}",
+                        actual_network, endpoint, info.server_version
+                    ));
+                }
+                Ok(Err(error)) => last_error = error,
+                Err(_) => last_error = "RPC connection attempt timed out".to_string(),
+            }
+
+            tokio::time::sleep(KGW_NODE_READINESS_RETRY_INTERVAL).await;
+        }
+    })
+}
+
+#[cfg(not(feature = "official-kaspa-runtime-tn12"))]
+fn attest_tn12_node_rpc_readiness(
+    settings: &NodeSettings,
+    _core_terminal_outcome: &mut std::sync::mpsc::Receiver<String>,
+) -> Result<String, KgwRealOwnerError> {
+    Err(KgwRealOwnerError::FeatureRequired(format!(
+        "{} requires official-kaspa-runtime-tn12",
+        settings.network.as_str()
+    )))
+}
+
+#[cfg(any(
+    test,
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+fn fail_if_core_terminated(
+    core_terminal_outcome: &mut std::sync::mpsc::Receiver<String>,
+    settings: &NodeSettings,
+) -> Result<(), KgwRealOwnerError> {
+    match core_terminal_outcome.try_recv() {
+        Ok(error) => Err(KgwRealOwnerError::NodeRpcReadinessFailed(format!(
+            "network={};endpoint={};terminal_error={error}",
+            settings.network.as_str(),
+            settings.rpc_endpoint
+        ))),
+        Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+            Err(KgwRealOwnerError::NodeRpcReadinessFailed(format!(
+                "network={};endpoint={};terminal_error=official core outcome channel disconnected",
+                settings.network.as_str(),
+                settings.rpc_endpoint
+            )))
+        }
+        Err(std::sync::mpsc::TryRecvError::Empty) => Ok(()),
     }
 }
 
@@ -369,7 +761,9 @@ fn kgw_runtime_appdir_root_string() -> String {
         .to_string_lossy()
         .to_string()
 }
-fn spawn_official_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwRealOwnerError> {
+fn spawn_official_core_thread(
+    settings: NodeSettings,
+) -> Result<(JoinHandle<()>, std::sync::mpsc::Receiver<String>), KgwRealOwnerError> {
     match settings.network {
         KgwNetwork::Mainnet | KgwNetwork::Testnet10 => spawn_mainline_core_thread(settings),
         KgwNetwork::Testnet12 => spawn_tn12_core_thread(settings),
@@ -377,9 +771,11 @@ fn spawn_official_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, 
 }
 
 #[cfg(feature = "official-kaspa-runtime-mainline")]
-fn spawn_mainline_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwRealOwnerError> {
+fn spawn_mainline_core_thread(
+    settings: NodeSettings,
+) -> Result<(JoinHandle<()>, std::sync::mpsc::Receiver<String>), KgwRealOwnerError> {
     let mut args = kaspad_lib_mainline::args::Args {
-        appdir: Some(kgw_owner_safe_runtime_appdir(settings.network)),
+        appdir: Some(settings.app_dir_name.clone()),
         utxoindex: settings.enable_utxo_index,
         archival: settings.archival,
         yes: true,
@@ -392,6 +788,16 @@ fn spawn_mainline_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, 
         args.testnet = true;
         args.testnet_suffix = 10;
     }
+
+    args.listen = settings
+        .p2p_listen
+        .as_deref()
+        .map(|listen| {
+            listen
+                .parse::<kaspa_utils_mainline::networking::ContextualNetAddress>()
+                .map_err(|error| KgwRealOwnerError::InvalidP2pListen(error.to_string()))
+        })
+        .transpose()?;
 
     args.rpclisten = Some(
         settings
@@ -409,23 +815,29 @@ fn spawn_mainline_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, 
     );
 
     let network = settings.network;
+    let (terminal_tx, terminal_rx) = std::sync::mpsc::sync_channel(1);
 
-    std::thread::Builder::new()
+    let owner_thread = std::thread::Builder::new()
         .name(format!("kaspad-{}", network.as_str()))
         .spawn(move || {
-            kgw_run_official_core_with_panic_boundary(network, move || {
+            let outcome = kgw_run_official_core_with_panic_boundary(network, move || {
                 let (core, rpc_core_service) =
                     kaspad_lib_mainline::daemon::create_core(args, fd_total_budget);
 
                 let _keep_rpc_core_service_alive = rpc_core_service;
                 core.run();
             });
+            let _ = terminal_tx.send(outcome);
         })
-        .map_err(|error| KgwRealOwnerError::OwnerThreadStartFailed(error.to_string()))
+        .map_err(|error| KgwRealOwnerError::OwnerThreadStartFailed(error.to_string()))?;
+
+    Ok((owner_thread, terminal_rx))
 }
 
 #[cfg(not(feature = "official-kaspa-runtime-mainline"))]
-fn spawn_mainline_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwRealOwnerError> {
+fn spawn_mainline_core_thread(
+    settings: NodeSettings,
+) -> Result<(JoinHandle<()>, std::sync::mpsc::Receiver<String>), KgwRealOwnerError> {
     Err(KgwRealOwnerError::FeatureRequired(format!(
         "{} requires official-kaspa-runtime-mainline",
         settings.network.as_str()
@@ -433,9 +845,11 @@ fn spawn_mainline_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, 
 }
 
 #[cfg(feature = "official-kaspa-runtime-tn12")]
-fn spawn_tn12_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwRealOwnerError> {
+fn spawn_tn12_core_thread(
+    settings: NodeSettings,
+) -> Result<(JoinHandle<()>, std::sync::mpsc::Receiver<String>), KgwRealOwnerError> {
     let mut args = kaspad_lib_tn12::args::Args {
-        appdir: Some(kgw_owner_safe_runtime_appdir(settings.network)),
+        appdir: Some(settings.app_dir_name.clone()),
         utxoindex: settings.enable_utxo_index,
         archival: settings.archival,
         yes: true,
@@ -449,6 +863,16 @@ fn spawn_tn12_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwR
         KgwNetwork::Testnet12 => 12,
         KgwNetwork::Mainnet => args.testnet_suffix,
     };
+
+    args.listen = settings
+        .p2p_listen
+        .as_deref()
+        .map(|listen| {
+            listen
+                .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
+                .map_err(|error| KgwRealOwnerError::InvalidP2pListen(error.to_string()))
+        })
+        .transpose()?;
 
     args.rpclisten = Some(
         settings
@@ -466,23 +890,29 @@ fn spawn_tn12_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwR
     );
 
     let network = settings.network;
+    let (terminal_tx, terminal_rx) = std::sync::mpsc::sync_channel(1);
 
-    std::thread::Builder::new()
+    let owner_thread = std::thread::Builder::new()
         .name(format!("kaspad-{}", network.as_str()))
         .spawn(move || {
-            kgw_run_official_core_with_panic_boundary(network, move || {
+            let outcome = kgw_run_official_core_with_panic_boundary(network, move || {
                 let (core, rpc_core_service) =
                     kaspad_lib_tn12::daemon::create_core(args, fd_total_budget);
 
                 let _keep_rpc_core_service_alive = rpc_core_service;
                 core.run();
             });
+            let _ = terminal_tx.send(outcome);
         })
-        .map_err(|error| KgwRealOwnerError::OwnerThreadStartFailed(error.to_string()))
+        .map_err(|error| KgwRealOwnerError::OwnerThreadStartFailed(error.to_string()))?;
+
+    Ok((owner_thread, terminal_rx))
 }
 
 #[cfg(not(feature = "official-kaspa-runtime-tn12"))]
-fn spawn_tn12_core_thread(settings: NodeSettings) -> Result<JoinHandle<()>, KgwRealOwnerError> {
+fn spawn_tn12_core_thread(
+    settings: NodeSettings,
+) -> Result<(JoinHandle<()>, std::sync::mpsc::Receiver<String>), KgwRealOwnerError> {
     Err(KgwRealOwnerError::FeatureRequired(format!(
         "{} requires official-kaspa-runtime-tn12",
         settings.network.as_str()
@@ -523,17 +953,30 @@ fn kgw_apply_embedded_fd_limits_tn12(args: &mut kaspad_lib_tn12::args::Args) {
 }
 
 #[allow(dead_code)]
-fn kgw_run_official_core_with_panic_boundary<F>(network: KgwNetwork, run_core: F)
+fn kgw_run_official_core_with_panic_boundary<F>(network: KgwNetwork, run_core: F) -> String
 where
     F: FnOnce(),
 {
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(run_core));
-
-    if result.is_err() {
-        eprintln!(
-            "[KGW][rk-node][{}] official Rusty Kaspa core panicked inside owner thread; panic captured so the desktop shell can remain alive",
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(run_core)) {
+        Ok(()) => format!(
+            "official Rusty Kaspa core returned;network={}",
             network.as_str()
-        );
+        ),
+        Err(payload) => format!(
+            "official Rusty Kaspa core panicked;network={};panic={}",
+            network.as_str(),
+            panic_payload_message(payload.as_ref())
+        ),
+    }
+}
+
+fn panic_payload_message(payload: &(dyn std::any::Any + Send)) -> String {
+    if let Some(message) = payload.downcast_ref::<String>() {
+        message.clone()
+    } else if let Some(message) = payload.downcast_ref::<&str>() {
+        (*message).to_string()
+    } else {
+        "non-string panic payload".to_string()
     }
 }
 fn start_bridge_owner_if_requested(
@@ -573,8 +1016,8 @@ fn start_bridge_owner_if_requested(
         kaspa_gateway_rk_bridge::bridge_service_event_from_settings_v1(bridge_settings)
             .map_err(|error| error.to_string())?;
 
-    kaspa_gateway_rk_bridge::start_official_bridge_owner_thread_v1(bridge_event)
-        .map(Some)
+    kaspa_gateway_rk_bridge::start_official_bridge_owner_thread_ready_v1(bridge_event)
+        .map(|(handle, _readiness)| Some(handle))
         .map_err(|error| error.to_string())
 }
 
@@ -634,5 +1077,101 @@ mod kgw_runtime_fd_budget_tests {
 
         assert!(fd_budget < 512);
         assert_ne!(fd_budget, 1024);
+    }
+
+    #[test]
+    fn rpc_readiness_requires_exact_network_identity() {
+        assert_eq!(expected_rpc_network_id(KgwNetwork::Mainnet), "mainnet");
+        assert_eq!(expected_rpc_network_id(KgwNetwork::Testnet10), "testnet-10");
+        assert_eq!(expected_rpc_network_id(KgwNetwork::Testnet12), "testnet-12");
+    }
+
+    #[cfg(feature = "official-kaspa-runtime-mainline")]
+    #[test]
+    fn mainline_owner_args_honor_isolated_p2p_listener() {
+        let listen = "127.0.0.1:26111";
+        let parsed = listen
+            .parse::<kaspa_utils_mainline::networking::ContextualNetAddress>()
+            .unwrap();
+        assert_eq!(parsed.to_string(), listen);
+    }
+
+    #[cfg(feature = "official-kaspa-runtime-tn12")]
+    #[test]
+    fn tn12_owner_args_honor_isolated_p2p_listener() {
+        let listen = "127.0.0.1:26311";
+        let parsed = listen
+            .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
+            .unwrap();
+        assert_eq!(parsed.to_string(), listen);
+    }
+
+    #[test]
+    fn core_terminal_outcome_preserves_panic_root_cause_without_stderr_wrapper() {
+        let previous_hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {}));
+        let outcome = kgw_run_official_core_with_panic_boundary(KgwNetwork::Mainnet, || {
+            panic!("delayed core initialization failure")
+        });
+        std::panic::set_hook(previous_hook);
+
+        assert!(outcome.contains("official Rusty Kaspa core panicked"));
+        assert!(outcome.contains("delayed core initialization failure"));
+    }
+
+    #[test]
+    fn readiness_fails_immediately_after_core_terminal_outcome() {
+        let (terminal_tx, mut terminal_rx) = std::sync::mpsc::sync_channel(1);
+        terminal_tx
+            .send("official core returned during initialization".to_string())
+            .unwrap();
+        let settings = NodeSettings::from_strings(
+            "mainnet".to_string(),
+            "integrated-inproc".to_string(),
+            "disable".to_string(),
+        )
+        .unwrap();
+
+        let error = fail_if_core_terminated(&mut terminal_rx, &settings).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("official core returned during initialization")
+        );
+    }
+
+    #[cfg(feature = "official-kaspa-runtime-mainline")]
+    #[test]
+    fn unreachable_rpc_endpoint_produces_failed_readiness() {
+        let unavailable = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = unavailable.local_addr().unwrap().to_string();
+        drop(unavailable);
+        let (_terminal_tx, mut terminal_rx) = std::sync::mpsc::sync_channel(1);
+        let mut settings = NodeSettings::from_strings(
+            "mainnet".to_string(),
+            "integrated-inproc".to_string(),
+            "disable".to_string(),
+        )
+        .unwrap();
+        settings.rpc_endpoint = endpoint.clone();
+
+        let error = attest_mainline_node_rpc_readiness(&settings, &mut terminal_rx).unwrap_err();
+        let error = error.to_string();
+        assert!(error.contains("node RPC readiness failed"));
+        assert!(error.contains(&endpoint));
+        assert!(error.contains("timeout_ms=750"));
+    }
+
+    #[test]
+    fn wrong_rpc_network_produces_typed_mismatch() {
+        let error = validate_rpc_network_identity(
+            KgwNetwork::Testnet10,
+            "127.0.0.1:16210",
+            expected_rpc_network_id(KgwNetwork::Mainnet),
+        )
+        .unwrap_err();
+        let text = error.to_string();
+        assert!(text.contains("expected_network=testnet-10"));
+        assert!(text.contains("actual_network=mainnet"));
     }
 }

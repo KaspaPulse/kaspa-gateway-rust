@@ -73,14 +73,22 @@ function staticPlacementTests() {
   const stopMatches = source.match(/<button[^>]+data-node-action="stop"/g) || [];
   assert.strictEqual(startMatches.length, 1, "Start control markup must not be duplicated");
   assert.strictEqual(stopMatches.length, 1, "Stop control markup must not be duplicated");
-  assert.ok(!/<button[^>]+id=[^>]+data-node-action="start"/.test(source), "Start control must not use duplicate generated IDs");
-  assert.ok(!/<button[^>]+data-node-action="start"[^>]+id=/.test(source), "Start control must not use duplicate generated IDs");
-  assert.ok(!/<button[^>]+id=[^>]+data-node-action="stop"/.test(source), "Stop control must not use duplicate generated IDs");
-  assert.ok(!/<button[^>]+data-node-action="stop"[^>]+id=/.test(source), "Stop control must not use duplicate generated IDs");
+  assert.ok(!/<button[^>]+\s+id\s*=[^>]+data-node-action="start"/.test(source), "Start control must not use duplicate generated IDs");
+  assert.ok(!/<button[^>]+data-node-action="start"[^>]+\s+id\s*=/.test(source), "Start control must not use duplicate generated IDs");
+  assert.ok(!/<button[^>]+\s+id\s*=[^>]+data-node-action="stop"/.test(source), "Stop control must not use duplicate generated IDs");
+  assert.ok(!/<button[^>]+data-node-action="stop"[^>]+\s+id\s*=/.test(source), "Stop control must not use duplicate generated IDs");
 
   assert.ok(!/appendLog\([^)]*initialized/i.test(source), "Synthetic initialized text must not be inserted into raw logs");
   assert.ok(!/appendLog\([^)]*node settings saved/i.test(source), "Settings success text must not be inserted into raw logs");
   assert.ok(!/appendLog\([^)]*node .* response/i.test(source), "Synthetic start response text must not be inserted into raw logs");
+  assert.ok(
+    source.includes("const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 110000"),
+    "Node Start must wait through the backend readiness window",
+  );
+  assert.ok(
+    /function kgwNodeR51IsRunning[\s\S]*readiness=READY/.test(source),
+    "Node status polling must require READY before displaying Running",
+  );
 }
 
 class ClassList {
@@ -559,7 +567,7 @@ async function dynamicClickTests() {
       invoke: async (command, payload) => {
         calls.push({ command, payload });
         if (command !== "kgw_kgw_apply_node_settings_v1") return "ignored";
-        return "parallel-owned-self-worker started;role=node;network=" + payload.network + ";pid=4242;owner=self-worker;runtime_state=running";
+        return "parallel-owned-self-worker started;role=node;network=" + payload.network + ";pid=4242;owner=self-worker;runtime_state=running;readiness=READY";
       },
     },
   };
@@ -663,7 +671,7 @@ async function tracePayloadSafetyTests() {
         invoke: async (command, payload) => {
           calls.push({ command, payload });
           if (command === "kgw_kgw_apply_node_settings_v1") {
-            return "parallel-owned-self-worker started;role=node;network=" + payload.network + ";pid=4242;owner=self-worker;runtime_state=running";
+            return "parallel-owned-self-worker started;role=node;network=" + payload.network + ";pid=4242;owner=self-worker;runtime_state=running;readiness=READY";
           }
           return true;
         },

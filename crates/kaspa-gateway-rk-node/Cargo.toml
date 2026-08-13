@@ -12,6 +12,8 @@ kgw-inproc-owner = []
 official-kaspa-runtime-mainline = [
     "kgw-inproc-owner",
     "dep:kaspad-lib-mainline",
+    "dep:kaspa-grpc-client-mainline",
+    "dep:kaspa-rpc-core-mainline",
     "dep:kaspa-utils-mainline",
     "kaspa-gateway-rk-bridge/official-kaspa-runtime-mainline"
 ]
@@ -19,6 +21,8 @@ official-kaspa-runtime-mainline = [
 official-kaspa-runtime-tn12 = [
     "kgw-inproc-owner",
     "dep:kaspad-lib-tn12",
+    "dep:kaspa-grpc-client-tn12",
+    "dep:kaspa-rpc-core-tn12",
     "dep:kaspa-utils-tn12",
     "kaspa-gateway-rk-bridge/official-kaspa-runtime-tn12"
 ]
@@ -31,10 +35,15 @@ official-kaspa-runtime-all = [
 [dependencies]
 serde.workspace = true
 thiserror.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "time"] }
 kaspa-gateway-rk-bridge = { path = "../kaspa-gateway-rk-bridge" }
 
 kaspad-lib-mainline = { package = "kaspad", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3", optional = true }
+kaspa-grpc-client-mainline = { package = "kaspa-grpc-client", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3", optional = true }
+kaspa-rpc-core-mainline = { package = "kaspa-rpc-core", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3", optional = true }
 kaspa-utils-mainline = { package = "kaspa-utils", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3", optional = true }
 
 kaspad-lib-tn12 = { package = "kaspad", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", rev = "eeb351ee911e2df906d21203dec8db3a195c6b33", optional = true }
+kaspa-grpc-client-tn12 = { package = "kaspa-grpc-client", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", rev = "eeb351ee911e2df906d21203dec8db3a195c6b33", optional = true }
+kaspa-rpc-core-tn12 = { package = "kaspa-rpc-core", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", rev = "eeb351ee911e2df906d21203dec8db3a195c6b33", optional = true }
 kaspa-utils-tn12 = { package = "kaspa-utils", git = "https://github.com/LiveLaughLove13/rusty-kaspa.git", rev = "eeb351ee911e2df906d21203dec8db3a195c6b33", optional = true }

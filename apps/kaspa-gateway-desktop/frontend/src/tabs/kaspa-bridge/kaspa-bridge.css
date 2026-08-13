@@ -170,6 +170,22 @@
   overflow: hidden;
 }
 
+#kaspa-bridge .bridge-v7-runtime-error {
+  grid-column: 1 / -1;
+  color: #ffb7b7;
+  background: rgba(135, 25, 25, 0.22);
+  border: 1px solid rgba(255, 112, 112, 0.45);
+  border-radius: 6px;
+  padding: 8px 10px;
+  overflow-wrap: anywhere;
+}
+
+#kaspa-bridge .bridge-v7-runtime-status {
+  grid-column: 1 / -1;
+  color: var(--text-muted, #b7c0ca);
+  overflow-wrap: anywhere;
+}
+
 #kaspa-bridge button {
   height: 23px !important;
   min-height: 23px !important;
