@@ -2117,9 +2117,7 @@ function bridgeAssertNoPortConflictsBeforeStartR33(net) {
       reason: "pre-start",
       action: "start"
     });
-    if (typeof appendLog === "function") {
-      appendLog(net, "KGW bridge start blocked: port conflict. " + result.message);
-    }
+    kgwBridgeSetRuntimeErrorV1(net, "Bridge start blocked: port conflict. " + result.message);
     return false;
   }
   return true;
@@ -2699,6 +2697,8 @@ function renderNetworkPanel(net, index) {
             <label><input id="${id(net.key, "launch")}" type="checkbox"> Auto-start</label>
             <label><input id="${id(net.key, "restart")}" type="checkbox" checked> Restart</label>
           </div>
+          <div id="${id(net.key, "runtimeStatus")}" class="bridge-v7-runtime-status" role="status" aria-live="polite"></div>
+          <div id="${id(net.key, "runtimeError")}" class="bridge-v7-runtime-error" role="status" aria-live="polite" hidden></div>
         </section>
 
         ${renderSections(net)}
@@ -3571,13 +3571,11 @@ function bridgeApplyPortAutofixR37(activeNet) {
     changes: allChanged.slice(0, 80)
   });
 
-  if (typeof appendLog === "function") {
-    appendLog(
-      net,
-      kgwBridgeAutoFixTextR54D3("changedPrefix") + " " + String(allChanged.length) + " conflicting instance port(s)." +
-        (finalValidation && finalValidation.ok ? " Conflicts cleared." : " Some conflicts remain.")
-    );
-  }
+  kgwBridgeSetRuntimeActivityV1(
+    net,
+    kgwBridgeAutoFixTextR54D3("changedPrefix") + " " + String(allChanged.length) + " conflicting instance port(s)." +
+      (finalValidation && finalValidation.ok ? " Conflicts cleared." : " Some conflicts remain.")
+  );
 
   return { changed: allChanged.length, changes: allChanged, finalOk: Boolean(finalValidation && finalValidation.ok) };
 }
@@ -4613,7 +4611,9 @@ function installDelegatedTabs(root) {
 }
 
 // KGW_BRIDGE_INTEGRATED_RUNTIME_LINKAGE_V1: readable Bridge runtime response + duplicate-click guard.
-const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 7000;
+// The Bridge child contract is 101 seconds and the same-EXE parent is bounded at
+// 110 seconds. Keep the UI request strictly above both terminal-result boundaries.
+const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 120000;
 const KGW_BRIDGE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_bridge_runtime_flags_v1";
 const KGW_BRIDGE_START_TRACE_COMMAND_V1 = "kgw_start_trace_frontend_v1";
 const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();
@@ -4840,14 +4840,30 @@ async function invokeBridgeIntegratedRuntime(command, net) {
 function kgwBridgeV7RuntimeRunningFromText(text) {
   const parsed = parseRuntimeKeyValueResponse(text);
   const fields = parsed.fields || {};
+  const ready = String(fields.readiness || "").toUpperCase() === "READY";
   return (
-    fields.running === "true" ||
-    fields.node_running === "true" ||
-    fields.official_core_running === "true" ||
-    fields.bridge_running === "true" ||
-    fields.bridge_owner_active === "true" ||
-    /running=true/i.test(String(text || ""))
+    ready &&
+    (fields.running === "true" ||
+      fields.node_running === "true" ||
+      fields.official_core_running === "true" ||
+      fields.bridge_running === "true" ||
+      fields.bridge_owner_active === "true" ||
+      /running=true/i.test(String(text || "")))
   );
+}
+
+function kgwBridgeSetRuntimeErrorV1(net, errorText = "") {
+  const errorNode = byId(id(net, "runtimeError"));
+  if (!errorNode) return;
+  const text = String(errorText || "").trim();
+  errorNode.textContent = text;
+  errorNode.hidden = !text;
+}
+
+function kgwBridgeSetRuntimeActivityV1(net, message = "") {
+  const statusNode = byId(id(net, "runtimeStatus"));
+  if (!statusNode) return;
+  statusNode.textContent = String(message || "").trim();
 }
 
 async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {
@@ -5008,9 +5024,10 @@ async function runBridgeIntegratedAction(action, net) {
   }
 
   if (action === "start" && !kgwBridgeNetworkEnabled(net)) {
-    if (typeof appendLog === "function") {
-      appendLog(net, "KGW bridge start blocked: this network is disabled. Enable it in the network policy bar first.");
-    }
+    kgwBridgeSetRuntimeErrorV1(
+      net,
+      "Bridge start blocked: this network is disabled. Enable it in the network policy bar first."
+    );
     kgwBridgeR51SetRuntimeButtons(net, false);
     return true;
   }
@@ -5036,6 +5053,7 @@ async function runBridgeIntegratedAction(action, net) {
     });
 
     if (scopedConflictResultR111F && typeof scopedConflictResultR111F === "object" && scopedConflictResultR111F.ok === false) {
+      kgwBridgeSetRuntimeErrorV1(net, String(scopedConflictResultR111F.message || "Bridge listener port conflict."));
       kgwBridgeRuntimeOwnerTraceR64D("r111f-scoped-conflict-start-blocked-return", {
         reason: "scoped-port-conflict",
         conflictCount: Number(scopedConflictResultR111F.conflictCount || 0),
@@ -5051,9 +5069,10 @@ async function runBridgeIntegratedAction(action, net) {
     });
 
     if (blockedBySameNetworkNode) {
-      if (typeof appendLog === "function") {
-        appendLog(net, "KGW bridge start blocked: same-network node is already running in in-process mode.");
-      }
+      kgwBridgeSetRuntimeErrorV1(
+        net,
+        "Bridge start blocked: same-network node is already running in in-process mode."
+      );
 
       kgwBridgeRuntimeOwnerTraceR64D("r64d-preflight-blocked-return", {
         reason: "same-network-node-running-inprocess"
@@ -5071,9 +5090,7 @@ async function runBridgeIntegratedAction(action, net) {
   });
 
   if (KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(inFlightKey)) {
-    if (typeof appendLog === "function") {
-      appendLog(net, "KGW bridge " + action + " already in progress. Duplicate click ignored.");
-    }
+    kgwBridgeSetRuntimeActivityV1(net, "Bridge " + action + " already in progress.");
 
     kgwBridgeRuntimeOwnerTraceR64D("r64d-inflight-duplicate-return", {
       inFlightKey
@@ -5083,6 +5100,10 @@ async function runBridgeIntegratedAction(action, net) {
   }
 
   KGW_BRIDGE_RUNTIME_IN_FLIGHT.add(inFlightKey);
+  kgwBridgeSetRuntimeErrorV1(net, "");
+  if (action === "start") {
+    kgwBridgeR51SetRuntimeButtons(net, false, "starting");
+  }
 
   kgwBridgeRuntimeOwnerTraceR64D("r64d-inflight-added", {
     inFlightKey
@@ -5100,10 +5121,7 @@ async function runBridgeIntegratedAction(action, net) {
       previewLength: String(preview || "").length
     });
 
-    if (typeof appendLog === "function") {
-      appendLog(net, "KGW bridge " + action + " requested via existing button.");
-      if (preview) appendLog(net, "KGW bridge flags: " + preview);
-    }
+    kgwBridgeSetRuntimeActivityV1(net, "Bridge " + action + " requested.");
 
     kgwBridgeRuntimeOwnerTraceR64D("r64d-invoke-begin", {
       command,
@@ -5126,18 +5144,15 @@ async function runBridgeIntegratedAction(action, net) {
       fieldKeys: Object.keys(fields)
     });
 
-    if (typeof appendLog === "function") {
-      appendLog(net, "KGW bridge " + action + " response: " + raw);
-    }
-
     if (action === "start") {
       const confirmedStarted =
-        /parallel-owned-self-worker\s+started/i.test(raw) ||
-        /parallel-owned-self-worker\s+already\s+running/i.test(raw) ||
-        (/role=bridge/i.test(raw) && /started|running=true|already running/i.test(raw)) ||
-        fields.running === "true" ||
-        fields.bridge_running === "true" ||
-        fields.bridge_owner_active === "true";
+        String(fields.readiness || "").toUpperCase() === "READY" &&
+        (/parallel-owned-self-worker\s+started/i.test(raw) ||
+          /parallel-owned-self-worker\s+already\s+running/i.test(raw) ||
+          (/role=bridge/i.test(raw) && /started|running=true|already running/i.test(raw)) ||
+          fields.running === "true" ||
+          fields.bridge_running === "true" ||
+          fields.bridge_owner_active === "true");
 
       const blocked =
         fields.start_blocked === "true" ||
@@ -5150,6 +5165,8 @@ async function runBridgeIntegratedAction(action, net) {
       });
 
       if (confirmedStarted && !blocked) {
+        kgwBridgeSetRuntimeErrorV1(net, "");
+        kgwBridgeR51SetRuntimeButtons(net, true);
         const bridgeNodeMode = String(fields.node_mode || fields.nodeMode || "").toLowerCase();
         const bridgeStartWasInprocess = kgwBridgeStartWasInprocessR65F(net, fields, preview);
         if (bridgeStartWasInprocess) {
@@ -5169,12 +5186,16 @@ async function runBridgeIntegratedAction(action, net) {
           previewDeclaredInprocess: kgwBridgePreviewDeclaresInprocessR65F(preview),
           bridgeStartWasInprocess
         });
-        if (typeof appendLog === "function") appendLog(net, "KGW bridge start confirmed.");
+        kgwBridgeSetRuntimeActivityV1(net, "Bridge READY attestation confirmed.");
         kgwBridgeR51KickRawLogLiveR134E(net, "bridge-start-confirmed");
       } else if (blocked) {
-        if (typeof appendLog === "function") appendLog(net, "KGW bridge start blocked or failed: " + raw);
+        kgwBridgeR51SetRuntimeButtons(net, false);
+        kgwBridgeSetRuntimeErrorV1(net, raw);
+        kgwBridgeSetRuntimeActivityV1(net, "Bridge start failed.");
       } else {
-        if (typeof appendLog === "function") appendLog(net, "KGW bridge start was not confirmed by runtime response: " + raw);
+        kgwBridgeR51SetRuntimeButtons(net, false);
+        kgwBridgeSetRuntimeErrorV1(net, "Backend Start did not provide READY attestation: " + raw);
+        kgwBridgeSetRuntimeActivityV1(net, "Bridge start was not confirmed by READY attestation.");
       }
     }
 
@@ -5189,13 +5210,15 @@ async function runBridgeIntegratedAction(action, net) {
       });
 
       if (confirmedStopped) {
+        kgwBridgeR51SetRuntimeButtons(net, false);
+        kgwBridgeSetRuntimeErrorV1(net, "");
         kgwSetBridgeOwnedNodeLockR65E(net, false, {
           source: "bridge-stop-confirmed",
           action: "stop"
         });
-        if (typeof appendLog === "function") appendLog(net, "KGW bridge stop confirmed.");
+        kgwBridgeSetRuntimeActivityV1(net, "Bridge stop confirmed.");
       } else {
-        if (typeof appendLog === "function") appendLog(net, "KGW bridge stop was not confirmed by runtime response: " + raw);
+        kgwBridgeSetRuntimeActivityV1(net, "Bridge stop was not confirmed by runtime response.");
       }
     }
 
@@ -5211,9 +5234,9 @@ async function runBridgeIntegratedAction(action, net) {
       message
     });
 
-    if (typeof appendLog === "function") {
-      appendLog(net, "KGW bridge " + action + " failed: " + message);
-    }
+    kgwBridgeR51SetRuntimeButtons(net, action === "stop");
+    kgwBridgeSetRuntimeErrorV1(net, message);
+    kgwBridgeSetRuntimeActivityV1(net, "Bridge " + action + " failed.");
 
     return true;
   } finally {
@@ -5777,10 +5800,10 @@ function kgwBridgeR51RestoreDefaults(net) {
 
 function kgwBridgeR51IsRunning(text) {
   const value = String(text || "");
-  return /running=true/.test(value) || /bridge_running=true/.test(value) || /bridge_owner_active=true/.test(value);
+  return /readiness=READY/i.test(value) && (/running=true/.test(value) || /bridge_running=true/.test(value) || /bridge_owner_active=true/.test(value));
 }
 
-function kgwBridgeR51SetRuntimeButtons(net, running) {
+function kgwBridgeR51SetRuntimeButtons(net, running, transition = "") {
   const panel = kgwBridgeR51Panel(net);
   if (!panel) return;
 
@@ -5790,12 +5813,13 @@ function kgwBridgeR51SetRuntimeButtons(net, running) {
   const policyStatus = byId(id(net, "policyStatus"));
 
   if (policyStatus) {
-    policyStatus.textContent = networkEnabled ? (running ? "Running" : "Stopped") : "Disabled";
-    policyStatus.dataset.state = networkEnabled ? (running ? "running" : "stopped") : "disabled";
+    const state = !networkEnabled ? "Disabled" : transition === "starting" ? "Starting" : running ? "Running" : "Stopped";
+    policyStatus.textContent = state;
+    policyStatus.dataset.state = state.toLowerCase();
   }
 
   if (start) {
-    const startBlocked = Boolean(running || !networkEnabled);
+    const startBlocked = Boolean(running || transition === "starting" || !networkEnabled);
     start.disabled = startBlocked;
     start.style.opacity = startBlocked ? "0.45" : "";
     start.style.cursor = startBlocked ? "not-allowed" : "";
@@ -5807,10 +5831,11 @@ function kgwBridgeR51SetRuntimeButtons(net, running) {
   }
 
   if (stop) {
-    stop.disabled = !running;
-    stop.style.opacity = running ? "" : "0.45";
-    stop.style.cursor = running ? "" : "not-allowed";
-    stop.title = running ? "Stop bridge" : "Bridge is not running";
+    const stopEnabled = Boolean(running || transition === "starting");
+    stop.disabled = !stopEnabled;
+    stop.style.opacity = stopEnabled ? "" : "0.45";
+    stop.style.cursor = stopEnabled ? "" : "not-allowed";
+    stop.title = stopEnabled ? "Stop bridge" : "Bridge is not running";
   }
 }
 
@@ -5839,7 +5864,9 @@ function kgwBridgeR51MaybeActivityNotice(net, statusText) {
 async function kgwBridgeR51RefreshOne(net, reason = "live") {
   try {
     const status = stringifyRuntimeResult(await invokeBridgeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
-    kgwBridgeR51SetRuntimeButtons(net, kgwBridgeR51IsRunning(status));
+    const running = kgwBridgeR51IsRunning(status);
+    const starting = KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(net + ":start");
+    kgwBridgeR51SetRuntimeButtons(net, running, starting && !running ? "starting" : "");
 
     if (KGW_BRIDGE_R51_LAST_STATUS[net] !== status) {
       KGW_BRIDGE_R51_LAST_STATUS[net] = status;
@@ -6742,7 +6769,9 @@ function installActions(root) {
     if (action === "start" || action === "stop") {
       if (typeof runBridgeIntegratedAction === "function") {
         runBridgeIntegratedAction(action, net).catch(function (error) {
-          if (typeof appendLog === "function") appendLog(net, "Bridge " + action + " failed: " + (error && error.message ? error.message : String(error)));
+          kgwBridgeR51SetRuntimeButtons(net, false);
+          kgwBridgeSetRuntimeErrorV1(net, error && error.message ? error.message : String(error));
+          kgwBridgeSetRuntimeActivityV1(net, "Bridge " + action + " failed.");
         });
       }
     }

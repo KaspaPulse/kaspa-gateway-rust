@@ -1114,6 +1114,85 @@ fn kgw_init_bridge_self_worker_raw_tracing_r23() {
     });
 }
 
+const KGW_STARTUP_CONTROL_VERSION_V1: u8 = 1;
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct KgwStartupControlMessageV1<'a> {
+    version: u8,
+    outcome: &'a str,
+    runtime_role: &'a str,
+    network: &'a str,
+    evidence: Option<&'a str>,
+    error: Option<&'a str>,
+}
+
+fn kgw_startup_control_path_from_args_v1(args: &[String]) -> Option<std::path::PathBuf> {
+    let path = kgw_self_worker_arg_value(args, "--startup-control-path")?;
+    let path = std::path::PathBuf::from(path);
+    let expected_parent = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("startup-control");
+    if !path.is_absolute()
+        || path.parent() != Some(expected_parent.as_path())
+        || path.extension().and_then(std::ffi::OsStr::to_str) != Some("json")
+    {
+        return None;
+    }
+    Some(path)
+}
+
+fn kgw_write_startup_control_v1(
+    path: Option<&std::path::Path>,
+    role: &str,
+    network: &str,
+    outcome: &str,
+    evidence: Option<&str>,
+    error: Option<&str>,
+) -> Result<(), String> {
+    let Some(path) = path else {
+        return Err("startup control path is missing or invalid".to_string());
+    };
+
+    if outcome != "READY" && outcome != "FAILED" {
+        return Err(format!("invalid startup control outcome: {outcome}"));
+    }
+
+    let message = KgwStartupControlMessageV1 {
+        version: KGW_STARTUP_CONTROL_VERSION_V1,
+        outcome,
+        runtime_role: role,
+        network,
+        evidence,
+        error,
+    };
+    let payload = serde_json::to_vec(&message).map_err(|serialize_error| {
+        format!("serialize startup control failed: {serialize_error}")
+    })?;
+    let temporary = path.with_extension("tmp");
+    let _ = std::fs::remove_file(&temporary);
+
+    {
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&temporary)
+            .map_err(|write_error| format!("create startup control failed: {write_error}"))?;
+        file.write_all(&payload)
+            .map_err(|write_error| format!("write startup control failed: {write_error}"))?;
+        file.sync_all()
+            .map_err(|write_error| format!("sync startup control failed: {write_error}"))?;
+    }
+
+    if let Err(rename_error) = std::fs::rename(&temporary, path) {
+        let _ = std::fs::remove_file(&temporary);
+        return Err(format!("publish startup control failed: {rename_error}"));
+    }
+
+    Ok(())
+}
+
 pub fn try_run_kgw_self_worker_from_args() -> bool {
     let args: Vec<String> = std::env::args().collect();
 
@@ -1130,10 +1209,12 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
         .unwrap_or_else(|| kgw_self_worker_default_appdir(&network));
     let rpc = kgw_self_worker_arg_value(&args, "--rpc")
         .unwrap_or_else(|| kgw_self_worker_default_rpc(&network).to_string());
+    let p2p_listen = kgw_self_worker_arg_value(&args, "--listen");
     let stratum = kgw_self_worker_arg_value(&args, "--stratum")
         .unwrap_or_else(|| kgw_self_worker_default_stratum(&network).to_string());
     let utxoindex = args.iter().any(|arg| arg == "--utxoindex");
     let archival = args.iter().any(|arg| arg == "--archival");
+    let startup_control_path = kgw_startup_control_path_from_args_v1(&args);
 
     let bridge_node_mode = if role_key == "bridge" {
         kgw_self_worker_arg_value(&args, "--node-mode")
@@ -1150,30 +1231,44 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
     );
 
     let result = match role_key.as_str() {
-        "node" => kgw_run_node_self_worker(&network, &appdir, &rpc, utxoindex, archival),
+        "node" => kgw_run_node_self_worker(
+            &network,
+            &appdir,
+            &rpc,
+            p2p_listen.as_deref(),
+            utxoindex,
+            archival,
+            startup_control_path.as_deref(),
+        ),
         "bridge" => {
             // KGW_BRIDGE_INPROCESS_SETLOGGERERROR_V14
             // External bridge keeps the bridge tracing subscriber so raw bridge logs remain visible.
             // In-process bridge must not initialize a second process-global tracing/log subscriber
             // before embedded kaspad starts, otherwise rusty-kaspa can panic with SetLoggerError.
-            if bridge_owns_inprocess_node {
-                eprintln!(
-                    "[KGW][bridge-self-worker][{}] inprocess mode detected; skipping bridge tracing subscriber before embedded kaspad logger initialization",
-                    network
-                );
-            } else {
+            if !bridge_owns_inprocess_node {
                 kgw_init_bridge_self_worker_raw_tracing_r23();
             }
 
-            kgw_run_bridge_self_worker(&network, &appdir, &rpc, &stratum, &args)
+            kgw_run_bridge_self_worker(
+                &network,
+                &appdir,
+                &rpc,
+                &stratum,
+                &args,
+                startup_control_path.as_deref(),
+            )
         }
         other => Err(format!("unsupported self-worker role: {other}")),
     };
 
     if let Err(error) = result {
-        eprintln!(
-            "[KGW][self-worker][{}][{}] failed: {}",
-            role_key, network, error
+        let _ = kgw_write_startup_control_v1(
+            startup_control_path.as_deref(),
+            &role_key,
+            &network,
+            "FAILED",
+            None,
+            Some(&error),
         );
         std::process::exit(1);
     }
@@ -1348,8 +1443,10 @@ fn kgw_run_node_self_worker(
     network: &str,
     appdir: &str,
     rpc: &str,
+    p2p_listen: Option<&str>,
     utxoindex: bool,
     archival: bool,
+    startup_control_path: Option<&std::path::Path>,
 ) -> Result<(), String> {
     let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
         network.to_string(),
@@ -1360,6 +1457,7 @@ fn kgw_run_node_self_worker(
 
     settings.app_dir_name = appdir.to_string();
     settings.rpc_endpoint = rpc.to_string();
+    settings.p2p_listen = p2p_listen.map(str::to_string);
     settings.enable_utxo_index = utxoindex;
     settings.archival = archival;
 
@@ -1377,6 +1475,16 @@ fn kgw_run_node_self_worker(
         ));
     }
 
+    let readiness = status.last_message;
+    kgw_write_startup_control_v1(
+        startup_control_path,
+        "node",
+        settings.network.as_str(),
+        "READY",
+        Some(&readiness),
+        None,
+    )?;
+
     loop {
         std::thread::sleep(std::time::Duration::from_secs(10));
 
@@ -1393,6 +1501,7 @@ fn kgw_run_bridge_self_worker(
     rpc: &str,
     stratum: &str,
     args: &[String],
+    startup_control_path: Option<&std::path::Path>,
 ) -> Result<(), String> {
     let bridge_node_mode = kgw_self_worker_arg_value(args, "--node-mode")
         .unwrap_or_else(|| "external".to_string())
@@ -1435,9 +1544,18 @@ fn kgw_run_bridge_self_worker(
         settings.archival = args.iter().any(|arg| arg == "--archival");
 
         let runtime = kaspa_gateway_rk_node::KgwRealOwnerRuntime::new();
-        let _status = runtime
+        let status = runtime
             .start_node_owner_session(&settings)
             .map_err(|error| error.to_string())?;
+
+        if !status.official_core_running {
+            return Err(format!(
+                "official core did not start for bridge;network={};policy={};message={}",
+                settings.network.as_str(),
+                status.start_policy.as_str(),
+                status.last_message
+            ));
+        }
 
         bridge_rpc = settings.rpc_endpoint.clone();
         inprocess_node_runtime = Some(runtime);
@@ -1467,24 +1585,7 @@ fn kgw_run_bridge_self_worker(
     instance_listens.sort();
     instance_listens.dedup();
 
-    eprintln!(
-        "KGW_BRIDGE_DUAL_CLI_CONFIG_REAL_RUNNER_R122 launch_source={} node_mode={} network={} instance_count={} listens={}",
-        if bridge_config_path.is_some() {
-            "config"
-        } else {
-            "cli_instances"
-        },
-        if is_inprocess {
-            "inprocess"
-        } else {
-            "external"
-        },
-        network,
-        instance_listens.len(),
-        instance_listens.join("|")
-    );
-
-    let mut handles = Vec::new();
+    let mut events = Vec::new();
 
     for instance_listen in instance_listens {
         let settings = kaspa_gateway_rk_bridge::BridgeRuntimeSettings {
@@ -1509,12 +1610,31 @@ fn kgw_run_bridge_self_worker(
 
         let event = kaspa_gateway_rk_bridge::bridge_service_event_from_settings_v1(settings)
             .map_err(|error| error.to_string())?;
-
-        let handle = kaspa_gateway_rk_bridge::start_official_bridge_owner_thread_v1(event)
-            .map_err(|error| error.to_string())?;
-
-        handles.push(handle);
+        events.push(event);
     }
+
+    let (handles, readiness) =
+        kaspa_gateway_rk_bridge::start_official_bridge_owners_ready_v1(events)
+            .map_err(|error| error.to_string())?;
+    let readiness_evidence = readiness
+        .iter()
+        .map(kaspa_gateway_rk_bridge::BridgeStartupReadiness::to_attestation)
+        .collect::<Vec<_>>();
+
+    let readiness = format!(
+        "node_attachment=ready;listener_count={};listeners_ready={};{}",
+        handles.len(),
+        handles.len(),
+        readiness_evidence.join("|")
+    );
+    kgw_write_startup_control_v1(
+        startup_control_path,
+        "bridge",
+        network,
+        "READY",
+        Some(&readiness),
+        None,
+    )?;
 
     loop {
         std::thread::sleep(std::time::Duration::from_secs(10));

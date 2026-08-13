@@ -2060,7 +2060,9 @@ function installDelegatedTabs(root) {
 }
 
 // KGW_NODE_INTEGRATED_RUNTIME_LINKAGE_V1: crash-safe Node action owner calls registered Tauri integrated runtime commands.
-const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 30000;
+// The Node child contract is 90 seconds and the same-EXE parent is bounded at
+// 100 seconds. Keep the UI request strictly above both terminal-result boundaries.
+const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 110000;
 const KGW_NODE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_node_runtime_flags_v1";
 
 function getTauriInvoke() {
@@ -2159,6 +2161,10 @@ function kgwNodeAssertStartEvidence(net, result) {
 
   if (!/^[0-9]+$/.test(evidence.pid)) {
     throw new Error("Backend start response did not include process ID evidence: " + evidence.text);
+  }
+
+  if (String(evidence.fields.readiness || "").toUpperCase() !== "READY") {
+    throw new Error("Backend Start did not provide role readiness evidence: " + evidence.text);
   }
 
   return evidence;
@@ -2363,7 +2369,7 @@ async function runNodeIntegratedAction(action, net) {
       kgwNodeSetRuntimeNotice(
         net,
         "Running",
-        "pid=" + evidence.pid + ";owner=" + evidence.owner + ";role=" + evidence.role,
+        "pid=" + evidence.pid + ";owner=" + evidence.owner + ";role=" + evidence.role + ";readiness=READY",
         ""
       );
       KGW_NODE_R51_TRANSITIONS[net] = "";
@@ -2677,7 +2683,8 @@ function kgwNodeR51RestoreDefaults(net) {
 
 function kgwNodeR51IsRunning(text) {
   const value = String(text || "");
-  return /running=true/.test(value) || /node_running=true/.test(value) || /official_core_running=true/.test(value);
+  return /readiness=READY/i.test(value) &&
+    (/running=true/.test(value) || /node_running=true/.test(value) || /official_core_running=true/.test(value));
 }
 
 function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false) {
@@ -2908,12 +2915,13 @@ async function kgwNodeR51BridgeInprocessLockedV7(net) {
     const pid = String(fields.pid || "").trim();
 
     const bridgeLooksAlive =
-      fields.running === "true" ||
-      fields.bridge_running === "true" ||
-      fields.bridge_owner_active === "true" ||
-      /^[0-9]+$/.test(pid) ||
-      /running=true/i.test(result) ||
-      /pid=[0-9]+/i.test(result);
+      String(fields.readiness || "").toUpperCase() === "READY" &&
+      (fields.running === "true" ||
+        fields.bridge_running === "true" ||
+        fields.bridge_owner_active === "true" ||
+        /^[0-9]+$/.test(pid) ||
+        /running=true/i.test(result) ||
+        /pid=[0-9]+/i.test(result));
 
     const sameNetwork = !statusNetwork || statusNetwork === String(net || "");
     const locked = sameNetwork && role === "bridge" && nodeMode === "inprocess" && bridgeLooksAlive;
@@ -3607,7 +3615,8 @@ function installActions(root) {
     if (action === "start" || action === "stop") {
       if (typeof runNodeIntegratedAction === "function") {
         runNodeIntegratedAction(action, net).catch(function (error) {
-          if (typeof appendLog === "function") appendLog(net, "Node " + action + " failed: " + (error && error.message ? error.message : String(error)));
+          const message = error && error.message ? error.message : String(error);
+          kgwNodeSetRuntimeNotice(net, action === "stop" ? "Running" : "Stopped", action === "stop" ? "Stop failed" : "No process owner", message);
         });
       }
     }

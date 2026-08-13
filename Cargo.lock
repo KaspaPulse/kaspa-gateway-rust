@@ -4411,6 +4411,10 @@ dependencies = [
 name = "kaspa-gateway-rk-bridge"
 version = "0.1.0"
 dependencies = [
+ "kaspa-grpc-client 1.2.0-toc.2",
+ "kaspa-grpc-client 2.0.1",
+ "kaspa-rpc-core 1.2.0-toc.2",
+ "kaspa-rpc-core 2.0.1",
  "kaspa-stratum-bridge 1.2.0-toc.2",
  "kaspa-stratum-bridge 2.0.1",
  "serde",
@@ -4423,12 +4427,17 @@ name = "kaspa-gateway-rk-node"
 version = "0.1.0"
 dependencies = [
  "kaspa-gateway-rk-bridge",
+ "kaspa-grpc-client 1.2.0-toc.2",
+ "kaspa-grpc-client 2.0.1",
+ "kaspa-rpc-core 1.2.0-toc.2",
+ "kaspa-rpc-core 2.0.1",
  "kaspa-utils 1.2.0-toc.2",
  "kaspa-utils 2.0.1",
  "kaspad 1.2.0-toc.2",
  "kaspad 2.0.1",
  "serde",
  "thiserror 2.0.20",
+ "tokio",
 ]
 
 [[package]]

@@ -2,9 +2,9 @@
 mod integrated_runtime_commands;
 
 use integrated_runtime_commands::{
-    kgw_kgw_apply_node_settings_v1, kgw_kgw_disable_network_v1,
+    KgwStartupControlMessageV1, kgw_kgw_apply_node_settings_v1, kgw_kgw_disable_network_v1,
     kgw_kgw_node_bridge_service_plan_v1, kgw_kgw_runtime_clear_logs_v1, kgw_kgw_runtime_logs_v1,
-    kgw_runtime_owner_summary_v1,
+    kgw_runtime_owner_summary_v1, kgw_worker_validate_startup_attestation_v1,
 };
 use std::sync::{Mutex, OnceLock};
 
@@ -55,7 +55,10 @@ fn clear_runtime_worker_test_env() {
     for key in [
         "KGW_TEST_SELF_WORKER_COMMAND",
         "KGW_TEST_SELF_WORKER_FAIL_COMMAND",
+        "KGW_TEST_SELF_WORKER_DELAYED_FAIL_COMMAND",
         "KGW_TEST_SELF_WORKER_MISSING_COMMAND",
+        "KGW_TEST_SELF_WORKER_READY_DELAY_MS",
+        "KGW_TEST_STARTUP_ATTESTATION_TIMEOUT_MS",
         "KGW_TEST_SELF_WORKER_STDOUT",
         "KGW_TEST_SELF_WORKER_STDERR",
         "KGW_START_TRACE",
@@ -206,6 +209,7 @@ fn production_self_worker_arguments_match_child_parser() {
     )
     .expect("mainnet settings should parse");
     settings.app_dir_name = "D:\\kgw-test\\nodes\\mainnet".to_string();
+    settings.p2p_listen = Some("127.0.0.1:26111".to_string());
     settings.rpc_endpoint = "127.0.0.1:16110".to_string();
     settings.enable_utxo_index = true;
     settings.archival = false;
@@ -225,6 +229,14 @@ fn production_self_worker_arguments_match_child_parser() {
             "D:\\kgw-test\\nodes\\mainnet",
             "--rpc",
             "127.0.0.1:16110",
+            "--listen",
+            "127.0.0.1:26111",
+            "--startup-control-path",
+            &std::env::temp_dir()
+                .join("KaspaGateway")
+                .join("startup-control")
+                .join("kgw-startup-control-args-test.json")
+                .to_string_lossy(),
             "--utxoindex",
         ]
     );
@@ -235,6 +247,8 @@ fn production_self_worker_arguments_match_child_parser() {
         "--network",
         "--appdir",
         "--rpc",
+        "--listen",
+        "--startup-control-path",
         "--utxoindex",
     ] {
         assert!(
@@ -1069,7 +1083,7 @@ fn early_self_worker_exit_preserves_complete_safe_stderr_and_returns_error() {
     assert_contains_all(
         &error,
         &[
-            "self-worker exited during startup",
+            "self-worker exited before role readiness",
             "role=node",
             "network=mainnet",
             "exit_code=1",
@@ -1105,6 +1119,192 @@ fn early_self_worker_exit_preserves_complete_safe_stderr_and_returns_error() {
 
     remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_FAIL_COMMAND");
     remove_runtime_worker_test_env("KGW_START_TRACE");
+}
+
+#[test]
+fn delayed_ready_keeps_start_non_running_until_attestation() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_READY_DELAY_MS", "1100");
+
+    let started_at = std::time::Instant::now();
+    let started = kgw_kgw_apply_node_settings_v1(
+        "mainnet".to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+        None,
+        None,
+        Some("node".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect("delayed READY should eventually start");
+
+    assert!(
+        started_at.elapsed() >= std::time::Duration::from_millis(1000),
+        "Start must not return Running before READY"
+    );
+    assert_contains_all(
+        &started,
+        &[
+            "runtime_state=running",
+            "readiness=READY",
+            "readiness_evidence=test-role-ready",
+        ],
+    );
+}
+
+#[test]
+fn delayed_failed_after_old_liveness_window_leaves_no_false_owner() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env(
+        "KGW_TEST_SELF_WORKER_DELAYED_FAIL_COMMAND",
+        "delayed RPC readiness failure after 750ms",
+    );
+
+    let error = kgw_kgw_apply_node_settings_v1(
+        "mainnet".to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+        None,
+        None,
+        Some("node".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect_err("delayed FAILED must reject Start");
+
+    assert_contains_all(
+        &error,
+        &[
+            "role startup failed",
+            "role=node",
+            "network=mainnet",
+            "delayed RPC readiness failure after 750ms",
+        ],
+    );
+    let status = kgw_runtime_owner_summary_for_test("mainnet");
+    assert!(
+        !status.contains("running=true") && !status.contains("readiness=READY"),
+        "failed startup must leave no false owner status: {status}"
+    );
+}
+
+fn javascript_timeout_constant(source: &str, name: &str) -> u64 {
+    let marker = format!("const {name} = ");
+    source
+        .split_once(&marker)
+        .unwrap_or_else(|| panic!("missing JavaScript timeout constant {name}"))
+        .1
+        .split_once(';')
+        .unwrap_or_else(|| panic!("unterminated JavaScript timeout constant {name}"))
+        .0
+        .trim()
+        .parse()
+        .unwrap_or_else(|error| panic!("invalid JavaScript timeout constant {name}: {error}"))
+}
+
+#[test]
+fn startup_timeout_hierarchy_is_strict_for_node_and_bridge() {
+    let bridge_child = kaspa_gateway_rk_bridge::KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS;
+    let bridge_parent =
+        integrated_runtime_commands::KGW_BRIDGE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1;
+    let bridge_ui = javascript_timeout_constant(
+        include_str!("../../frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"),
+        "KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS",
+    );
+    assert!(bridge_parent > bridge_child);
+    assert!(bridge_ui > bridge_parent);
+
+    let node_child = integrated_runtime_commands::KGW_NODE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS_V1;
+    let node_parent =
+        integrated_runtime_commands::KGW_NODE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1;
+    let node_ui = javascript_timeout_constant(
+        include_str!("../../frontend/src/tabs/kaspa-node/kaspa-node.js"),
+        "KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS",
+    );
+    assert!(node_parent > node_child);
+    assert!(node_ui > node_parent);
+}
+
+#[test]
+fn bridge_failed_attestation_leaves_no_false_owner_registered() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env(
+        "KGW_TEST_SELF_WORKER_DELAYED_FAIL_COMMAND",
+        "foreign accepting listener cannot attest KGW ownership",
+    );
+
+    let error = kgw_kgw_apply_node_settings_v1(
+        "mainnet".to_string(),
+        "remote".to_string(),
+        "official-external-node".to_string(),
+        None,
+        None,
+        Some("bridge".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect_err("typed Bridge FAILED must reject Start");
+
+    assert_contains_all(
+        &error,
+        &[
+            "role startup failed",
+            "role=bridge",
+            "network=mainnet",
+            "foreign accepting listener cannot attest KGW ownership",
+        ],
+    );
+    let status = integrated_runtime_commands::kgw_runtime_owner_status_v1(
+        Some("mainnet".to_string()),
+        Some("bridge".to_string()),
+    )
+    .expect("Bridge owner status must remain queryable after startup failure");
+    assert!(
+        !status.contains("running=true") && !status.contains("readiness=READY"),
+        "failed Bridge startup must leave no false owner status: {status}"
+    );
+}
+
+#[test]
+fn ready_attestation_requires_nonempty_evidence() {
+    let error = kgw_worker_validate_startup_attestation_v1(
+        KgwStartupControlMessageV1 {
+            version: 1,
+            outcome: "READY".to_string(),
+            runtime_role: "node".to_string(),
+            network: "mainnet".to_string(),
+            evidence: None,
+            error: None,
+        },
+        "node",
+        "mainnet",
+    )
+    .expect_err("READY without role evidence must be rejected");
+
+    assert_contains_all(
+        &error,
+        &["READY is missing evidence", "role=node", "network=mainnet"],
+    );
 }
 
 #[test]

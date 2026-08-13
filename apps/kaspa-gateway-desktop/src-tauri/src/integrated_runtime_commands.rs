@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};
@@ -9,6 +9,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 static KGW_CONTROLLER: OnceLock<Arc<kaspa_gateway_rk_node::KgwServiceController>> = OnceLock::new();
 static KGW_RAW_PROCESS_LOG_SEQUENCE_V1: AtomicU64 = AtomicU64::new(1);
 const KGW_RAW_PROCESS_LOG_BUFFER_LIMIT_V1: usize = 4096;
+pub(crate) const KGW_NODE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS_V1: u64 = 90_000;
+pub(crate) const KGW_NODE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1: u64 = 100_000;
+pub(crate) const KGW_BRIDGE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1: u64 =
+    kaspa_gateway_rk_bridge::KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS + 9_000;
+const _: () = assert!(
+    KGW_NODE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1
+        > KGW_NODE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS_V1
+);
 
 fn controller() -> &'static Arc<kaspa_gateway_rk_node::KgwServiceController> {
     KGW_CONTROLLER.get_or_init(kaspa_gateway_rk_node::KgwServiceController::spawn)
@@ -26,6 +34,18 @@ struct KgwParallelSelfWorker {
     logs: Arc<Mutex<VecDeque<KgwRuntimeRawLogEntryV1>>>,
     started_ms: u128,
     exit_logged: bool,
+    readiness_evidence: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct KgwStartupControlMessageV1 {
+    pub(crate) version: u8,
+    pub(crate) outcome: String,
+    pub(crate) runtime_role: String,
+    pub(crate) network: String,
+    pub(crate) evidence: Option<String>,
+    pub(crate) error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -77,6 +97,7 @@ fn kgw_parallel_self_workers() -> &'static Mutex<HashMap<String, KgwParallelSelf
 fn kgw_worker_uses_test_command() -> bool {
     std::env::var_os("KGW_TEST_SELF_WORKER_COMMAND").is_some()
         || std::env::var_os("KGW_TEST_SELF_WORKER_FAIL_COMMAND").is_some()
+        || std::env::var_os("KGW_TEST_SELF_WORKER_DELAYED_FAIL_COMMAND").is_some()
         || std::env::var_os("KGW_TEST_SELF_WORKER_MISSING_COMMAND").is_some()
 }
 
@@ -507,6 +528,7 @@ fn kgw_worker_argument_names_for_trace_v1(command: &Command) -> Vec<String> {
             Some("--network") => "<network>",
             Some("--appdir") => "<database-directory>",
             Some("--rpc") => "<rpc-endpoint>",
+            Some("--listen") => "<p2p-listen>",
             Some("--stratum") => "<stratum-endpoint>",
             Some("--node-mode") => "<node-mode>",
             Some("--bridge-config") => "<bridge-config-path>",
@@ -586,6 +608,137 @@ fn kgw_worker_apply_current_dir_v1(command: &mut Command) {
     }
 }
 
+fn kgw_worker_startup_control_path_v1(role: &str, network: &str) -> std::path::PathBuf {
+    static STARTUP_CONTROL_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+    let nonce = kgw_worker_now_ms();
+    let sequence = STARTUP_CONTROL_SEQUENCE.fetch_add(1, Ordering::SeqCst);
+    std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("startup-control")
+        .join(format!(
+            "{}-{}-{}-{nonce}-{sequence}.json",
+            role,
+            network,
+            std::process::id()
+        ))
+}
+
+fn kgw_worker_read_startup_control_v1(
+    path: &std::path::Path,
+) -> Result<KgwStartupControlMessageV1, String> {
+    let payload = std::fs::read(path)
+        .map_err(|error| format!("read startup control failed {}: {error}", path.display()))?;
+    serde_json::from_slice(&payload)
+        .map_err(|error| format!("parse startup control failed {}: {error}", path.display()))
+}
+
+pub(crate) fn kgw_worker_validate_startup_attestation_v1(
+    message: KgwStartupControlMessageV1,
+    role: &str,
+    network: &str,
+) -> Result<String, String> {
+    if message.version != 1 {
+        return Err(format!(
+            "startup attestation protocol version mismatch;expected=1;actual={}",
+            message.version
+        ));
+    }
+
+    if message.runtime_role != role || message.network != network {
+        return Err(format!(
+            "startup attestation identity mismatch;expected_role={};actual_role={};expected_network={};actual_network={}",
+            role, message.runtime_role, network, message.network
+        ));
+    }
+
+    match message.outcome.as_str() {
+        "READY" => message
+            .evidence
+            .filter(|evidence| !evidence.trim().is_empty())
+            .ok_or_else(|| {
+                format!(
+                    "startup attestation READY is missing evidence;role={};network={}",
+                    role, network
+                )
+            }),
+        "FAILED" => Err(format!(
+            "role startup failed;role={};network={};error={}",
+            role,
+            network,
+            message
+                .error
+                .unwrap_or_else(|| "self-worker reported FAILED without an error".to_string())
+        )),
+        other => Err(format!(
+            "startup attestation outcome is invalid;role={};network={};outcome={other}",
+            role, network
+        )),
+    }
+}
+
+fn kgw_worker_remove_startup_control_v1(path: &std::path::Path) {
+    let _ = std::fs::remove_file(path);
+    let _ = std::fs::remove_file(path.with_extension("tmp"));
+}
+
+fn kgw_worker_wait_for_startup_attestation_v1(
+    child: &mut Child,
+    path: &std::path::Path,
+    role: &str,
+    network: &str,
+    logs: &Arc<Mutex<VecDeque<KgwRuntimeRawLogEntryV1>>>,
+) -> Result<String, String> {
+    let timeout_ms = std::env::var("KGW_TEST_STARTUP_ATTESTATION_TIMEOUT_MS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or(match role {
+            "bridge" => KGW_BRIDGE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1,
+            _ => KGW_NODE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1,
+        });
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
+
+    loop {
+        if path.is_file() {
+            let message = kgw_worker_read_startup_control_v1(path);
+            kgw_worker_remove_startup_control_v1(path);
+            return kgw_worker_validate_startup_attestation_v1(message?, role, network);
+        }
+
+        if let Some(exit_status) = child.try_wait().map_err(|error| error.to_string())? {
+            kgw_worker_remove_startup_control_v1(path);
+            let captured = logs
+                .lock()
+                .map(|guard| {
+                    guard
+                        .iter()
+                        .map(|entry| kgw_worker_safe_child_line_v1(&entry.raw_text))
+                        .collect::<Vec<_>>()
+                        .join(" | ")
+                })
+                .unwrap_or_else(|_| "worker log lock failed".to_string());
+            let exit_code = exit_status
+                .code()
+                .map_or_else(|| "unknown".to_string(), |code| code.to_string());
+            return Err(format!(
+                "self-worker exited before role readiness;role={};network={};status={};exit_code={};logs={}",
+                role, network, exit_status, exit_code, captured
+            ));
+        }
+
+        if std::time::Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            kgw_worker_remove_startup_control_v1(path);
+            return Err(format!(
+                "role startup attestation timed out;role={};network={};timeout_ms={timeout_ms}",
+                role, network
+            ));
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(25));
+    }
+}
+
 fn kgw_worker_spawn_reader<R>(
     role: String,
     network: String,
@@ -651,6 +804,7 @@ fn kgw_worker_command(
     role: &str,
     network: &str,
     settings: &kaspa_gateway_rk_node::NodeSettings,
+    startup_control_path: &std::path::Path,
 ) -> Result<Command, String> {
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let mut command = Command::new(exe);
@@ -677,6 +831,24 @@ fn kgw_worker_command(
             .env("KGW_TEST_SELF_WORKER_FAIL_STDERR", fail_line)
             .env("KGW_TEST_SELF_WORKER_ROLE", role)
             .env("KGW_TEST_SELF_WORKER_NETWORK", network)
+            .env("KGW_TEST_SELF_WORKER_CONTROL_PATH", startup_control_path)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .stdin(Stdio::null());
+        return Ok(command);
+    }
+
+    #[cfg(test)]
+    if let Some(fail_line) = std::env::var_os("KGW_TEST_SELF_WORKER_DELAYED_FAIL_COMMAND") {
+        command
+            .arg("--exact")
+            .arg("integrated_runtime_commands::kgw_test_self_worker_delayed_fail")
+            .arg("--nocapture")
+            .env("KGW_TEST_SELF_WORKER_DELAYED_FAIL_CHILD", "1")
+            .env("KGW_TEST_SELF_WORKER_DELAYED_FAIL_STDERR", fail_line)
+            .env("KGW_TEST_SELF_WORKER_ROLE", role)
+            .env("KGW_TEST_SELF_WORKER_NETWORK", network)
+            .env("KGW_TEST_SELF_WORKER_CONTROL_PATH", startup_control_path)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::null());
@@ -692,6 +864,7 @@ fn kgw_worker_command(
             .env("KGW_TEST_SELF_WORKER_CHILD", "1")
             .env("KGW_TEST_SELF_WORKER_ROLE", role)
             .env("KGW_TEST_SELF_WORKER_NETWORK", network)
+            .env("KGW_TEST_SELF_WORKER_CONTROL_PATH", startup_control_path)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::null());
@@ -707,6 +880,16 @@ fn kgw_worker_command(
         .arg(&settings.app_dir_name)
         .arg("--rpc")
         .arg(&settings.rpc_endpoint)
+        .args(
+            settings
+                .p2p_listen
+                .as_deref()
+                .filter(|_| role == "node")
+                .into_iter()
+                .flat_map(|listen| ["--listen", listen]),
+        )
+        .arg("--startup-control-path")
+        .arg(startup_control_path)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::null());
@@ -722,7 +905,11 @@ pub(crate) fn kgw_worker_node_command_args_for_test_v1(
 ) -> Result<Vec<String>, String> {
     let normalized_role = role.trim().to_ascii_lowercase();
     let network = settings.network.as_str().to_string();
-    let mut command = kgw_worker_command(&normalized_role, &network, settings)?;
+    let control_path = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("startup-control")
+        .join("kgw-startup-control-args-test.json");
+    let mut command = kgw_worker_command(&normalized_role, &network, settings, &control_path)?;
 
     if normalized_role == "node" {
         if settings.enable_utxo_index && !kgw_worker_uses_test_command() {
@@ -851,6 +1038,7 @@ fn kgw_worker_start(
                 ));
             }
 
+            let _ = existing.child.wait();
             remove_stale_node = true;
         }
 
@@ -891,6 +1079,7 @@ fn kgw_worker_start(
             }
 
             if !running {
+                let _ = existing.child.wait();
                 remove_stale_bridge = true;
             }
         }
@@ -921,15 +1110,17 @@ fn kgw_worker_start(
                 )),
             );
             return Err(format!(
-                "start_blocked=true;start_allowed=false;block_reason=duplicate-owner;runtime_role={};network={};pid={};appdir={};node_mode={};message=Process owner already exists for this network and role.",
+                "start_blocked=true;start_allowed=false;block_reason=duplicate-owner;runtime_role={};network={};pid={};appdir={};node_mode={};readiness=READY;readiness_evidence={};message=Process owner already exists for this network and role.",
                 existing.role,
                 existing.network,
                 existing.child.id(),
                 existing.appdir,
-                existing.node_mode
+                existing.node_mode,
+                existing.readiness_evidence
             ));
         }
 
+        let _ = existing.child.wait();
         workers.remove(&key);
     }
 
@@ -946,7 +1137,17 @@ fn kgw_worker_start(
     );
 
     let logs = Arc::new(Mutex::new(VecDeque::new()));
-    let mut command = kgw_worker_command(&role, &network, settings)?;
+    let startup_control_path = kgw_worker_startup_control_path_v1(&role, &network);
+    if let Some(parent) = startup_control_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "create startup control directory failed {}: {error}",
+                parent.display()
+            )
+        })?;
+    }
+    kgw_worker_remove_startup_control_v1(&startup_control_path);
+    let mut command = kgw_worker_command(&role, &network, settings, &startup_control_path)?;
 
     if role == "bridge" {
         // KGW_BRIDGE_NORMAL_LOG_DEFAULT_R130
@@ -1161,7 +1362,37 @@ fn kgw_worker_start(
         );
     }
 
-    std::thread::sleep(std::time::Duration::from_millis(750));
+    let readiness_evidence = match kgw_worker_wait_for_startup_attestation_v1(
+        &mut child,
+        &startup_control_path,
+        &role,
+        &network,
+        &logs,
+    ) {
+        Ok(evidence) => evidence,
+        Err(error) => {
+            if child.try_wait().ok().flatten().is_none() {
+                let _ = child.kill();
+                let _ = child.wait();
+            }
+            kgw_worker_remove_startup_control_v1(&startup_control_path);
+            kgw_start_trace_emit_v1(
+                "native",
+                "native.startup_response_returned",
+                &network,
+                "start",
+                "error",
+                Some(&format!(
+                    "{{\"runtimeRole\":\"{}\",\"nodeMode\":\"{}\",\"pid\":{},\"reason\":\"role-startup-attestation-failed\",\"error\":\"{}\"}}",
+                    role,
+                    trace_node_mode,
+                    pid,
+                    kgw_start_trace_json_escape_v1(&error)
+                )),
+            );
+            return Err(error);
+        }
+    };
 
     if let Some(exit_status) = child.try_wait().map_err(|error| error.to_string())? {
         kgw_start_trace_emit_v1(
@@ -1216,14 +1447,16 @@ fn kgw_worker_start(
             logs,
             started_ms: kgw_worker_now_ms(),
             exit_logged: false,
+            readiness_evidence: readiness_evidence.clone(),
         },
     );
 
     Ok(format!(
-        "parallel-owned-self-worker started;role={};network={};pid={};owner=self-worker;runtime_state=running;same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};stratum={};node_mode={};same_db_path=true;exclusive_node_owner_per_network=true",
+        "parallel-owned-self-worker started;role={};network={};pid={};owner=self-worker;runtime_state=running;readiness=READY;readiness_evidence={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};stratum={};node_mode={};same_db_path=true;exclusive_node_owner_per_network=true",
         role,
         network,
         pid,
+        readiness_evidence,
         settings.app_dir_name,
         settings.rpc_endpoint,
         settings.stratum_listen,
@@ -1359,11 +1592,13 @@ fn kgw_worker_status(
         }
 
         lines.push(format!(
-            "parallel-owned-self-worker status;role={};network={};pid={};running={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};started_ms={};node_mode={}",
+            "parallel-owned-self-worker status;role={};network={};pid={};running={};readiness={};readiness_evidence={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};started_ms={};node_mode={}",
             worker.role,
             worker.network,
             worker.child.id(),
             running,
+            if running { "READY" } else { "FAILED" },
+            worker.readiness_evidence,
             worker.appdir,
             worker.started_ms,
             worker.node_mode
@@ -1839,6 +2074,10 @@ fn kgw_apply_command_preview_overrides(
     bridge_command_preview: Option<String>,
 ) {
     if let Some(node_preview) = node_command_preview {
+        if let Some(value) = kgw_command_preview_find_cli_value(&node_preview, "--listen") {
+            settings.p2p_listen = Some(kgw_command_preview_normalize_listen(value));
+        }
+
         if let Some(value) = kgw_command_preview_find_cli_value(&node_preview, "--rpclisten") {
             settings.rpc_endpoint = kgw_command_preview_normalize_listen(value);
         }
@@ -2434,6 +2673,19 @@ fn kgw_test_self_worker_hold() {
     println!("{stdout}");
     eprintln!("{stderr}");
 
+    let control_path = std::env::var("KGW_TEST_SELF_WORKER_CONTROL_PATH")
+        .expect("test self-worker control path must be set");
+    let delay_ms = std::env::var("KGW_TEST_SELF_WORKER_READY_DELAY_MS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or_default();
+    std::thread::sleep(std::time::Duration::from_millis(delay_ms));
+    let evidence = format!(
+        "{{\"version\":1,\"outcome\":\"READY\",\"runtimeRole\":\"{}\",\"network\":\"{}\",\"evidence\":\"test-role-ready\",\"error\":null}}",
+        role, network
+    );
+    std::fs::write(control_path, evidence).expect("test self-worker must publish READY");
+
     loop {
         std::thread::sleep(std::time::Duration::from_secs(10));
     }
@@ -2456,4 +2708,36 @@ fn kgw_test_self_worker_fail() {
     println!("test-self-worker failing stdout role={role} network={network}");
     eprintln!("{line}");
     std::process::exit(1);
+}
+
+#[cfg(test)]
+#[test]
+fn kgw_test_self_worker_delayed_fail() {
+    if std::env::var_os("KGW_TEST_SELF_WORKER_DELAYED_FAIL_CHILD").is_none() {
+        return;
+    }
+
+    let role = std::env::var("KGW_TEST_SELF_WORKER_ROLE").unwrap_or_else(|_| "node".to_string());
+    let network =
+        std::env::var("KGW_TEST_SELF_WORKER_NETWORK").unwrap_or_else(|_| "mainnet".to_string());
+    let line = std::env::var("KGW_TEST_SELF_WORKER_DELAYED_FAIL_STDERR")
+        .unwrap_or_else(|_| "delayed startup failure".to_string());
+    let control_path = std::env::var("KGW_TEST_SELF_WORKER_CONTROL_PATH")
+        .expect("test self-worker control path must be set");
+
+    std::thread::sleep(std::time::Duration::from_millis(1_100));
+    let message = serde_json::json!({
+        "version": 1,
+        "outcome": "FAILED",
+        "runtimeRole": role,
+        "network": network,
+        "evidence": null,
+        "error": line,
+    });
+    std::fs::write(control_path, message.to_string())
+        .expect("test self-worker must publish FAILED");
+
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(10));
+    }
 }

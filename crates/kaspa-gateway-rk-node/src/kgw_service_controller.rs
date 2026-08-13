@@ -132,6 +132,7 @@ pub struct NodeSettings {
     pub network: KgwNetwork,
     pub node_kind: KaspadNodeKind,
     pub bridge_kind: BridgeNodeKind,
+    pub p2p_listen: Option<String>,
     pub rpc_endpoint: String,
     pub stratum_listen: String,
     pub app_dir_name: String,
@@ -182,6 +183,7 @@ impl NodeSettings {
             network,
             node_kind,
             bridge_kind,
+            p2p_listen: None,
             rpc_endpoint: network.rpc_endpoint().to_string(),
             stratum_listen: network.stratum_listen().to_string(),
             app_dir_name: kgw_service_runtime_appdir_string(network),
@@ -217,6 +219,10 @@ impl NodeSettings {
 
         if self.archival {
             parts.push("--archival".to_string());
+        }
+
+        if let Some(listen) = self.p2p_listen.as_deref() {
+            parts.push(format!("--listen={listen}"));
         }
 
         parts.push(format!("--rpclisten={}", self.rpc_endpoint));
