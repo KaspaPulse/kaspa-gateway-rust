@@ -113,6 +113,8 @@ check("raw constructor accepts no Bridge listener attribution", !functionBody(in
 check("stdout and stderr are OS pipes", count(integrated, ".stdout(Stdio::piped())") >= 1 && count(integrated, ".stderr(Stdio::piped())") >= 1);
 check("raw buffer is registered immediately before spawn", /kgw_worker_replace_raw_log_buffer_v1\(&role, &network\)\?;\s*let mut child = match command\.spawn\(\)/.test(integrated));
 check("test raw capture helper is cfg(test) scoped", /#\[cfg\(test\)\]\s*#\[allow\(dead_code\)\][^]*?fn kgw_capture_raw_pipe_for_test_v1/.test(integrated));
+check("official sentinel test is wired into the true raw log gate", /official_sentinel_stdout_and_stderr_use_the_production_pipe_reader_unchanged/.test(read("tools/kgw_true_raw_log_gate.ps1")));
+check("official sentinel test is wired into the full local gate", /official_sentinel_stdout_and_stderr_use_the_production_pipe_reader_unchanged/.test(read("tools/kgw_full_local_gate.ps1")));
 
 const emitterPattern = /(?:println|eprintln|print|eprint)!|(?:tracing|log)::(?:trace|debug|info|warn|error)!|\b(?:trace|debug|info|warn|error)!/;
 for (const name of [

@@ -839,6 +839,7 @@ where
     kgw_worker_spawn_reader(
         role.to_string(),
         network.to_string(),
+        None,
         stream.to_string(),
         1,
         reader,
