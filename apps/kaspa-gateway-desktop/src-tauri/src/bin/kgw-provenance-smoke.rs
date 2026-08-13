@@ -17,6 +17,7 @@ use std::path::PathBuf;
 struct SmokeResult {
     network: String,
     runtime_role: String,
+    bridge_node_mode: Option<String>,
     prerequisite_node_start: Option<String>,
     start_result: Option<String>,
     start_error: Option<String>,
@@ -24,6 +25,8 @@ struct SmokeResult {
     status: Option<String>,
     raw_report: KgwRuntimeLogsReportV1,
     stop_result: Option<String>,
+    independent_node_status_after_bridge_stop: Option<String>,
+    prerequisite_node_stop: Option<String>,
 }
 
 fn argument_value(args: &[String], key: &str) -> Result<String, String> {
@@ -31,6 +34,19 @@ fn argument_value(args: &[String], key: &str) -> Result<String, String> {
         .find(|window| window[0] == key)
         .map(|window| window[1].clone())
         .ok_or_else(|| format!("missing required argument {key}"))
+}
+
+fn argument_values(args: &[String], key: &str) -> Vec<String> {
+    args.windows(2)
+        .filter(|window| window[0] == key)
+        .map(|window| window[1].clone())
+        .collect()
+}
+
+fn optional_argument_value(args: &[String], key: &str) -> Option<String> {
+    args.windows(2)
+        .find(|window| window[0] == key)
+        .map(|window| window[1].clone())
 }
 
 fn main() -> Result<(), String> {
@@ -41,9 +57,27 @@ fn main() -> Result<(), String> {
     let args = std::env::args().collect::<Vec<_>>();
     let network = argument_value(&args, "--network")?;
     let runtime_role = argument_value(&args, "--runtime-role")?;
+    let bridge_node_mode = if runtime_role == "bridge" {
+        let mode = optional_argument_value(&args, "--bridge-node-mode")
+            .unwrap_or_else(|| "external".to_string())
+            .trim()
+            .to_ascii_lowercase();
+        if mode != "external" && mode != "inprocess" {
+            return Err(format!(
+                "unsupported --bridge-node-mode {mode}; expected external or inprocess"
+            ));
+        }
+        Some(mode)
+    } else {
+        None
+    };
     let rpc = argument_value(&args, "--rpc")?;
     let p2p = argument_value(&args, "--p2p")?;
-    let stratum = argument_value(&args, "--stratum")?;
+    let stratum_listens = argument_values(&args, "--stratum");
+    let stratum = stratum_listens
+        .first()
+        .cloned()
+        .ok_or_else(|| "missing required argument --stratum".to_string())?;
     let appdir = PathBuf::from(argument_value(&args, "--appdir")?);
     if !appdir.is_absolute() {
         return Err("--appdir must be absolute".to_string());
@@ -51,7 +85,8 @@ fn main() -> Result<(), String> {
 
     let _ = kgw_shutdown_all_runtime_workers_v1();
 
-    let prerequisite_node_start = if runtime_role == "bridge" {
+    let external_bridge = bridge_node_mode.as_deref() == Some("external");
+    let prerequisite_node_start = if external_bridge {
         Some(kgw_kgw_apply_node_settings_v1(
             network.clone(),
             "integrated-inproc".to_string(),
@@ -72,13 +107,23 @@ fn main() -> Result<(), String> {
         None
     };
 
-    let (node_kind, bridge_kind, node_preview, bridge_preview) = if runtime_role == "bridge" {
+    let (node_kind, bridge_kind, node_preview, bridge_preview) = if external_bridge {
         (
             "remote",
             "official-external-node",
             None,
             Some(format!(
                 "stratum-bridge --kaspa-rpc {rpc} --stratum-listen {stratum} --appdir {} --node-mode external",
+                appdir.display()
+            )),
+        )
+    } else if bridge_node_mode.as_deref() == Some("inprocess") {
+        (
+            "integrated-inproc",
+            "official-inprocess-node",
+            None,
+            Some(format!(
+                "stratum-bridge --kaspa-rpc {rpc} --stratum-listen {stratum} --appdir {} --node-mode inprocess --listen {p2p}",
                 appdir.display()
             )),
         )
@@ -117,7 +162,19 @@ fn main() -> Result<(), String> {
         },
         None,
         None,
-        None,
+        if runtime_role == "bridge" {
+            Some(
+                serde_json::json!({
+                    "instances": stratum_listens
+                        .iter()
+                        .map(|listen| serde_json::json!({ "port": listen }))
+                        .collect::<Vec<_>>()
+                })
+                .to_string(),
+            )
+        } else {
+            None
+        },
         Some(false),
     );
 
@@ -148,17 +205,21 @@ fn main() -> Result<(), String> {
     std::thread::sleep(std::time::Duration::from_secs(2));
     let status =
         kgw_runtime_owner_status_v1(Some(network.clone()), Some(runtime_role.clone())).ok();
+    let stop_result = kgw_kgw_disable_network_v1(network.clone(), Some(runtime_role.clone())).ok();
     let raw_report =
         kgw_kgw_runtime_logs_v1(Some(network.clone()), Some(runtime_role.clone()), None)?;
-    let stop_result = kgw_kgw_disable_network_v1(network.clone(), Some(runtime_role.clone())).ok();
     drop(occupied_listener);
-    if runtime_role == "bridge" {
-        let _ = kgw_kgw_disable_network_v1(network.clone(), Some("node".to_string()));
-    }
+    let independent_node_status_after_bridge_stop = external_bridge
+        .then(|| kgw_runtime_owner_status_v1(Some(network.clone()), Some("node".to_string())).ok())
+        .flatten();
+    let prerequisite_node_stop = external_bridge
+        .then(|| kgw_kgw_disable_network_v1(network.clone(), Some("node".to_string())).ok())
+        .flatten();
 
     let result = SmokeResult {
         network,
         runtime_role,
+        bridge_node_mode,
         prerequisite_node_start,
         start_result,
         start_error,
@@ -166,6 +227,8 @@ fn main() -> Result<(), String> {
         status,
         raw_report,
         stop_result,
+        independent_node_status_after_bridge_stop,
+        prerequisite_node_stop,
     };
     let output = serde_json::to_string_pretty(&result).map_err(|error| error.to_string())?;
     println!("{output}");

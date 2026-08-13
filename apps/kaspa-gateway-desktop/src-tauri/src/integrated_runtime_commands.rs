@@ -13,10 +13,14 @@ pub(crate) const KGW_NODE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS_V1: u64 = 90_000;
 pub(crate) const KGW_NODE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1: u64 = 100_000;
 pub(crate) const KGW_BRIDGE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1: u64 =
     kaspa_gateway_rk_bridge::KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS + 9_000;
+pub(crate) const KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1: u64 = 45_000;
+pub(crate) const KGW_PARENT_GRACEFUL_STOP_TIMEOUT_MS_V1: u64 = 55_000;
 const _: () = assert!(
     KGW_NODE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1
         > KGW_NODE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS_V1
 );
+const _: () =
+    assert!(KGW_PARENT_GRACEFUL_STOP_TIMEOUT_MS_V1 > KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1);
 
 fn controller() -> &'static Arc<kaspa_gateway_rk_node::KgwServiceController> {
     KGW_CONTROLLER.get_or_init(kaspa_gateway_rk_node::KgwServiceController::spawn)
@@ -30,6 +34,9 @@ struct KgwParallelSelfWorker {
 
     node_mode: String,
     child: Child,
+    spawned_pid: u32,
+    stop_request_path: std::path::PathBuf,
+    stop_outcome_path: std::path::PathBuf,
     reader_handles: Vec<std::thread::JoinHandle<()>>,
     // Keeps the registry-owned buffer alive with the runtime owner; insertion
     // remains exclusive to `kgw_worker_spawn_reader`.
@@ -48,6 +55,36 @@ pub(crate) struct KgwStartupControlMessageV1 {
     pub(crate) network: String,
     pub(crate) evidence: Option<String>,
     pub(crate) error: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct KgwStopRequestMessageV1<'a> {
+    version: u8,
+    command: &'a str,
+    runtime_role: &'a str,
+    network: &'a str,
+    worker_pid: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct KgwStopOutcomeMessageV1 {
+    pub(crate) version: u8,
+    pub(crate) outcome: String,
+    pub(crate) runtime_role: String,
+    pub(crate) network: String,
+    pub(crate) worker_pid: u32,
+    pub(crate) evidence: Option<String>,
+    pub(crate) error: Option<String>,
+}
+
+#[derive(Debug)]
+struct KgwWorkerStopResultV1 {
+    line: String,
+    graceful: bool,
+    forced: bool,
+    stop_failed: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -646,6 +683,128 @@ fn kgw_worker_startup_control_path_v1(role: &str, network: &str) -> std::path::P
         ))
 }
 
+fn kgw_worker_stop_control_paths_v1(
+    role: &str,
+    network: &str,
+) -> (std::path::PathBuf, std::path::PathBuf) {
+    static STOP_CONTROL_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+    let nonce = kgw_worker_now_ms();
+    let sequence = STOP_CONTROL_SEQUENCE.fetch_add(1, Ordering::SeqCst);
+    let stem = format!(
+        "{}-{}-{}-{nonce}-{sequence}",
+        role,
+        network,
+        std::process::id()
+    );
+    let parent = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("stop-control");
+    (
+        parent.join(format!("{stem}-request.json")),
+        parent.join(format!("{stem}-outcome.json")),
+    )
+}
+
+fn kgw_worker_atomic_write_json_v1<T: Serialize>(
+    path: &std::path::Path,
+    value: &T,
+) -> Result<(), String> {
+    let payload = serde_json::to_vec(value)
+        .map_err(|error| format!("serialize control message failed: {error}"))?;
+    let temporary = path.with_extension("tmp");
+    let _ = std::fs::remove_file(&temporary);
+
+    {
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&temporary)
+            .map_err(|error| {
+                format!(
+                    "create control message failed {}: {error}",
+                    temporary.display()
+                )
+            })?;
+        file.write_all(&payload).map_err(|error| {
+            format!(
+                "write control message failed {}: {error}",
+                temporary.display()
+            )
+        })?;
+        file.sync_all().map_err(|error| {
+            format!(
+                "sync control message failed {}: {error}",
+                temporary.display()
+            )
+        })?;
+    }
+
+    std::fs::rename(&temporary, path).map_err(|error| {
+        let _ = std::fs::remove_file(&temporary);
+        format!("publish control message failed {}: {error}", path.display())
+    })
+}
+
+fn kgw_worker_remove_stop_control_v1(worker: &KgwParallelSelfWorker) {
+    for path in [&worker.stop_request_path, &worker.stop_outcome_path] {
+        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_file(path.with_extension("tmp"));
+    }
+}
+
+fn kgw_worker_read_stop_outcome_v1(
+    path: &std::path::Path,
+) -> Result<KgwStopOutcomeMessageV1, String> {
+    let payload = std::fs::read(path)
+        .map_err(|error| format!("read stop outcome failed {}: {error}", path.display()))?;
+    serde_json::from_slice(&payload)
+        .map_err(|error| format!("parse stop outcome failed {}: {error}", path.display()))
+}
+
+pub(crate) fn kgw_worker_validate_stop_outcome_v1(
+    message: KgwStopOutcomeMessageV1,
+    role: &str,
+    network: &str,
+    worker_pid: u32,
+) -> Result<String, String> {
+    if message.version != 1 {
+        return Err(format!(
+            "stop attestation protocol version mismatch;expected=1;actual={}",
+            message.version
+        ));
+    }
+    if message.runtime_role != role
+        || message.network != network
+        || message.worker_pid != worker_pid
+    {
+        return Err(format!(
+            "stop attestation identity mismatch;expected_role={role};actual_role={};expected_network={network};actual_network={};expected_pid={worker_pid};actual_pid={}",
+            message.runtime_role, message.network, message.worker_pid
+        ));
+    }
+
+    match message.outcome.as_str() {
+        "STOPPED" => message
+            .evidence
+            .filter(|evidence| !evidence.trim().is_empty())
+            .ok_or_else(|| {
+                format!(
+                    "stop attestation STOPPED is missing evidence;role={role};network={network};pid={worker_pid}"
+                )
+            }),
+        "FAILED" => Err(format!(
+            "official graceful shutdown failed;role={role};network={network};pid={worker_pid};error={}",
+            message
+                .error
+                .unwrap_or_else(|| "self-worker reported FAILED without an error".to_string())
+        )),
+        other => Err(format!(
+            "stop attestation outcome is invalid;role={role};network={network};pid={worker_pid};outcome={other}"
+        )),
+    }
+}
+
 fn kgw_worker_read_startup_control_v1(
     path: &std::path::Path,
 ) -> Result<KgwStartupControlMessageV1, String> {
@@ -876,6 +1035,8 @@ fn kgw_worker_command(
     network: &str,
     settings: &kaspa_gateway_rk_node::NodeSettings,
     startup_control_path: &std::path::Path,
+    stop_request_path: &std::path::Path,
+    stop_outcome_path: &std::path::Path,
 ) -> Result<Command, String> {
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let mut command = Command::new(exe);
@@ -903,6 +1064,8 @@ fn kgw_worker_command(
             .env("KGW_TEST_SELF_WORKER_ROLE", role)
             .env("KGW_TEST_SELF_WORKER_NETWORK", network)
             .env("KGW_TEST_SELF_WORKER_CONTROL_PATH", startup_control_path)
+            .env("KGW_TEST_SELF_WORKER_STOP_REQUEST_PATH", stop_request_path)
+            .env("KGW_TEST_SELF_WORKER_STOP_OUTCOME_PATH", stop_outcome_path)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::null());
@@ -920,6 +1083,8 @@ fn kgw_worker_command(
             .env("KGW_TEST_SELF_WORKER_ROLE", role)
             .env("KGW_TEST_SELF_WORKER_NETWORK", network)
             .env("KGW_TEST_SELF_WORKER_CONTROL_PATH", startup_control_path)
+            .env("KGW_TEST_SELF_WORKER_STOP_REQUEST_PATH", stop_request_path)
+            .env("KGW_TEST_SELF_WORKER_STOP_OUTCOME_PATH", stop_outcome_path)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::null());
@@ -936,6 +1101,8 @@ fn kgw_worker_command(
             .env("KGW_TEST_SELF_WORKER_ROLE", role)
             .env("KGW_TEST_SELF_WORKER_NETWORK", network)
             .env("KGW_TEST_SELF_WORKER_CONTROL_PATH", startup_control_path)
+            .env("KGW_TEST_SELF_WORKER_STOP_REQUEST_PATH", stop_request_path)
+            .env("KGW_TEST_SELF_WORKER_STOP_OUTCOME_PATH", stop_outcome_path)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::null());
@@ -955,12 +1122,15 @@ fn kgw_worker_command(
             settings
                 .p2p_listen
                 .as_deref()
-                .filter(|_| role == "node")
                 .into_iter()
                 .flat_map(|listen| ["--listen", listen]),
         )
         .arg("--startup-control-path")
         .arg(startup_control_path)
+        .arg("--stop-request-path")
+        .arg(stop_request_path)
+        .arg("--stop-outcome-path")
+        .arg(stop_outcome_path)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::null());
@@ -980,7 +1150,22 @@ pub(crate) fn kgw_worker_node_command_args_for_test_v1(
         .join("KaspaGateway")
         .join("startup-control")
         .join("kgw-startup-control-args-test.json");
-    let mut command = kgw_worker_command(&normalized_role, &network, settings, &control_path)?;
+    let stop_request_path = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("stop-control")
+        .join("kgw-stop-request-args-test.json");
+    let stop_outcome_path = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("stop-control")
+        .join("kgw-stop-outcome-args-test.json");
+    let mut command = kgw_worker_command(
+        &normalized_role,
+        &network,
+        settings,
+        &control_path,
+        &stop_request_path,
+        &stop_outcome_path,
+    )?;
 
     if normalized_role == "node" {
         if settings.enable_utxo_index && !kgw_worker_uses_test_command() {
@@ -1206,6 +1391,7 @@ fn kgw_worker_start(
     );
 
     let startup_control_path = kgw_worker_startup_control_path_v1(&role, &network);
+    let (stop_request_path, stop_outcome_path) = kgw_worker_stop_control_paths_v1(&role, &network);
     if let Some(parent) = startup_control_path.parent() {
         std::fs::create_dir_all(parent).map_err(|error| {
             format!(
@@ -1215,7 +1401,26 @@ fn kgw_worker_start(
         })?;
     }
     kgw_worker_remove_startup_control_v1(&startup_control_path);
-    let mut command = kgw_worker_command(&role, &network, settings, &startup_control_path)?;
+    if let Some(parent) = stop_request_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "create stop control directory failed {}: {error}",
+                parent.display()
+            )
+        })?;
+    }
+    for path in [&stop_request_path, &stop_outcome_path] {
+        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_file(path.with_extension("tmp"));
+    }
+    let mut command = kgw_worker_command(
+        &role,
+        &network,
+        settings,
+        &startup_control_path,
+        &stop_request_path,
+        &stop_outcome_path,
+    )?;
 
     if role == "bridge" {
         // KGW_BRIDGE_NORMAL_LOG_DEFAULT_R130
@@ -1518,6 +1723,9 @@ fn kgw_worker_start(
             appdir: settings.app_dir_name.clone(),
             node_mode: stored_node_mode.clone(),
             child,
+            spawned_pid: pid,
+            stop_request_path,
+            stop_outcome_path,
             reader_handles,
             _raw_logs: logs,
             started_ms: kgw_worker_now_ms(),
@@ -1556,7 +1764,7 @@ fn kgw_worker_stop(network: &str, runtime_role: Option<&str>) -> Result<Option<S
     let wanted_role = runtime_role.map(|role| role.trim().to_ascii_lowercase());
     let wanted_network = network.trim().to_ascii_lowercase();
 
-    let keys = workers
+    let mut keys = workers
         .iter()
         .filter_map(|(key, worker)| {
             let role_match = wanted_role
@@ -1571,6 +1779,12 @@ fn kgw_worker_stop(network: &str, runtime_role: Option<&str>) -> Result<Option<S
             }
         })
         .collect::<Vec<_>>();
+    keys.sort_by_key(|key| {
+        workers
+            .get(key)
+            .map(|worker| if worker.role == "bridge" { 0 } else { 1 })
+            .unwrap_or(2)
+    });
 
     if keys.is_empty() {
         return Ok(None);
@@ -1579,16 +1793,37 @@ fn kgw_worker_stop(network: &str, runtime_role: Option<&str>) -> Result<Option<S
     let mut lines = Vec::new();
 
     for key in keys {
-        if let Some(mut worker) = workers.remove(&key) {
-            let pid = worker.child.id();
-            let _ = worker.child.kill();
-            let _ = worker.child.wait();
-            kgw_worker_join_readers_v1(worker.reader_handles);
+        let worker = workers
+            .get_mut(&key)
+            .ok_or_else(|| format!("parallel self-worker disappeared during Stop;key={key}"))?;
+        let result = kgw_worker_stop_one_v1(worker);
+        let terminal = worker
+            .child
+            .try_wait()
+            .map_err(|error| format!("verify stopped child failed;key={key};error={error}"))?
+            .is_some();
 
-            lines.push(format!(
-                "parallel-owned-self-worker stopped;role={};network={};pid={};appdir={};node_mode={}",
-                worker.role, worker.network, pid, worker.appdir, worker.node_mode
-            ));
+        match result {
+            Ok(result) if terminal => {
+                let reader_handles = std::mem::take(&mut worker.reader_handles);
+                kgw_worker_join_readers_v1(reader_handles);
+                let worker = workers
+                    .remove(&key)
+                    .ok_or_else(|| format!("remove terminal self-worker failed;key={key}"))?;
+                kgw_worker_remove_stop_control_v1(&worker);
+                let stop_failed = result.stop_failed;
+                lines.push(result.line);
+                if stop_failed {
+                    break;
+                }
+            }
+            Ok(result) => {
+                return Err(format!(
+                    "stop failed;role={};network={};pid={};graceful={};forced={};reason=worker remained alive after terminal Stop path",
+                    worker.role, worker.network, worker.spawned_pid, result.graceful, result.forced
+                ));
+            }
+            Err(error) => return Err(error),
         }
     }
 
@@ -1601,7 +1836,13 @@ pub fn kgw_shutdown_all_runtime_workers_v1() -> Result<String, String> {
         .lock()
         .map_err(|_| "parallel self-worker lock failed".to_string())?;
 
-    let keys = workers.keys().cloned().collect::<Vec<_>>();
+    let mut keys = workers.keys().cloned().collect::<Vec<_>>();
+    keys.sort_by_key(|key| {
+        workers
+            .get(key)
+            .map(|worker| if worker.role == "bridge" { 0 } else { 1 })
+            .unwrap_or(2)
+    });
 
     if keys.is_empty() {
         return Ok("parallel-owned-self-worker shutdown-all;stopped=0".to_string());
@@ -1610,23 +1851,278 @@ pub fn kgw_shutdown_all_runtime_workers_v1() -> Result<String, String> {
     let mut stopped = Vec::new();
 
     for key in keys {
-        if let Some(mut worker) = workers.remove(&key) {
-            let pid = worker.child.id();
-            let role = worker.role.clone();
-            let network = worker.network.clone();
+        let result = {
+            let worker = workers.get_mut(&key).ok_or_else(|| {
+                format!("parallel self-worker disappeared during shutdown-all;key={key}")
+            })?;
+            match kgw_worker_stop_one_v1(worker) {
+                Ok(result) => result,
+                Err(error) => {
+                    stopped.push(format!(
+                        "parallel-owned-self-worker shutdown-all FAILED;role={};network={};pid={};error={}",
+                        worker.role,
+                        worker.network,
+                        worker.spawned_pid,
+                        kgw_worker_stop_field_v1(&error)
+                    ));
+                    let terminal = worker
+                        .child
+                        .try_wait()
+                        .map_err(|wait_error| {
+                            format!(
+                                "verify failed shutdown-all child failed;key={key};error={wait_error}"
+                            )
+                        })?
+                        .is_some();
+                    if terminal {
+                        let reader_handles = std::mem::take(&mut worker.reader_handles);
+                        kgw_worker_join_readers_v1(reader_handles);
+                        let terminal_worker = workers.remove(&key).ok_or_else(|| {
+                            format!("remove failed terminal shutdown-all worker failed;key={key}")
+                        })?;
+                        kgw_worker_remove_stop_control_v1(&terminal_worker);
+                    } else {
+                        return Err(stopped.join("\n"));
+                    }
+                    continue;
+                }
+            }
+        };
 
-            let _ = worker.child.kill();
-            let _ = worker.child.wait();
-            kgw_worker_join_readers_v1(worker.reader_handles);
-
+        let terminal = workers
+            .get_mut(&key)
+            .ok_or_else(|| {
+                format!("parallel self-worker disappeared during shutdown-all;key={key}")
+            })?
+            .child
+            .try_wait()
+            .map_err(|error| format!("verify shutdown-all child failed;key={key};error={error}"))?
+            .is_some();
+        if !terminal {
+            let worker = workers.get(&key).ok_or_else(|| {
+                format!("parallel self-worker disappeared during shutdown-all;key={key}")
+            })?;
             stopped.push(format!(
-                "parallel-owned-self-worker shutdown-all;role={};network={};pid={}",
-                role, network, pid
+                "parallel-owned-self-worker shutdown-all FAILED;role={};network={};pid={};error=worker remained alive",
+                worker.role, worker.network, worker.spawned_pid
             ));
+            continue;
         }
+
+        let reader_handles = {
+            let worker = workers.get_mut(&key).ok_or_else(|| {
+                format!("parallel self-worker disappeared during shutdown-all;key={key}")
+            })?;
+            std::mem::take(&mut worker.reader_handles)
+        };
+        kgw_worker_join_readers_v1(reader_handles);
+        let worker = workers
+            .remove(&key)
+            .ok_or_else(|| format!("remove terminal shutdown-all worker failed;key={key}"))?;
+        kgw_worker_remove_stop_control_v1(&worker);
+        stopped.push(if result.stop_failed {
+            format!(
+                "parallel-owned-self-worker shutdown-all FAILED;{}",
+                result.line
+            )
+        } else {
+            format!("parallel-owned-self-worker shutdown-all;{}", result.line)
+        });
     }
 
-    Ok(stopped.join("\n"))
+    let output = stopped.join("\n");
+    if output.contains("shutdown-all FAILED") {
+        Err(output)
+    } else {
+        Ok(output)
+    }
+}
+
+fn kgw_worker_stop_one_v1(
+    worker: &mut KgwParallelSelfWorker,
+) -> Result<KgwWorkerStopResultV1, String> {
+    let pid = worker.child.id();
+    if pid != worker.spawned_pid {
+        return Err(format!(
+            "force termination blocked by worker identity mismatch;role={};network={};spawned_pid={};child_pid={pid}",
+            worker.role, worker.network, worker.spawned_pid
+        ));
+    }
+
+    if let Some(exit_status) = worker
+        .child
+        .try_wait()
+        .map_err(|error| format!("inspect worker before Stop failed: {error}"))?
+    {
+        return Ok(KgwWorkerStopResultV1 {
+            line: format!(
+                "parallel-owned-self-worker already stopped;role={};network={};pid={pid};running=false;graceful=false;forced=false;already_stopped=true;exit_status={exit_status};appdir={};node_mode={}",
+                worker.role, worker.network, worker.appdir, worker.node_mode
+            ),
+            graceful: false,
+            forced: false,
+            stop_failed: false,
+        });
+    }
+
+    let _ = std::fs::remove_file(&worker.stop_request_path);
+    let _ = std::fs::remove_file(worker.stop_request_path.with_extension("tmp"));
+    let _ = std::fs::remove_file(&worker.stop_outcome_path);
+    let _ = std::fs::remove_file(worker.stop_outcome_path.with_extension("tmp"));
+    let request = KgwStopRequestMessageV1 {
+        version: 1,
+        command: "STOP",
+        runtime_role: &worker.role,
+        network: &worker.network,
+        worker_pid: pid,
+    };
+    let mut graceful_failure =
+        kgw_worker_atomic_write_json_v1(&worker.stop_request_path, &request).err();
+    let timeout_ms = std::env::var("KGW_TEST_PARENT_GRACEFUL_STOP_TIMEOUT_MS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or(KGW_PARENT_GRACEFUL_STOP_TIMEOUT_MS_V1);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
+    let mut evidence = None;
+    let mut attested = false;
+
+    while graceful_failure.is_none() && std::time::Instant::now() < deadline {
+        if worker.stop_outcome_path.is_file() {
+            let outcome =
+                kgw_worker_read_stop_outcome_v1(&worker.stop_outcome_path).and_then(|message| {
+                    kgw_worker_validate_stop_outcome_v1(message, &worker.role, &worker.network, pid)
+                });
+            let _ = std::fs::remove_file(&worker.stop_outcome_path);
+            match outcome {
+                Ok(outcome_evidence) => {
+                    evidence = Some(outcome_evidence);
+                    attested = true;
+                }
+                Err(error) => graceful_failure = Some(error),
+            }
+        }
+
+        if let Some(exit_status) = worker
+            .child
+            .try_wait()
+            .map_err(|error| format!("wait for graceful worker exit failed: {error}"))?
+        {
+            if !attested && graceful_failure.is_none() && worker.stop_outcome_path.is_file() {
+                match kgw_worker_read_stop_outcome_v1(&worker.stop_outcome_path).and_then(
+                    |message| {
+                        kgw_worker_validate_stop_outcome_v1(
+                            message,
+                            &worker.role,
+                            &worker.network,
+                            pid,
+                        )
+                    },
+                ) {
+                    Ok(outcome_evidence) => {
+                        evidence = Some(outcome_evidence);
+                        attested = true;
+                    }
+                    Err(error) => graceful_failure = Some(error),
+                }
+                let _ = std::fs::remove_file(&worker.stop_outcome_path);
+            }
+            if attested && exit_status.success() {
+                return Ok(KgwWorkerStopResultV1 {
+                    line: format!(
+                        "parallel-owned-self-worker stopped;role={};network={};pid={pid};running=false;graceful=true;forced=false;stop_outcome=STOPPED;exit_status={exit_status};evidence={};appdir={};node_mode={}",
+                        worker.role,
+                        worker.network,
+                        evidence.as_deref().unwrap_or("official-shutdown-joined"),
+                        worker.appdir,
+                        worker.node_mode
+                    ),
+                    graceful: true,
+                    forced: false,
+                    stop_failed: false,
+                });
+            }
+
+            if graceful_failure.is_none() {
+                graceful_failure = Some(format!(
+                    "worker exited without valid STOPPED attestation;status={exit_status};attested={attested}"
+                ));
+            }
+            break;
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(25));
+    }
+
+    if graceful_failure.is_none() {
+        graceful_failure = Some(format!(
+            "graceful stop timed out;timeout_ms={timeout_ms};attested={attested}"
+        ));
+    }
+    let reason = graceful_failure.unwrap_or_else(|| "unknown graceful Stop failure".to_string());
+
+    if let Some(exit_status) = worker
+        .child
+        .try_wait()
+        .map_err(|error| format!("inspect worker before force fallback failed: {error}"))?
+    {
+        return Ok(KgwWorkerStopResultV1 {
+            line: format!(
+                "parallel-owned-self-worker stopped with graceful failure;role={};network={};pid={pid};running=false;graceful=false;forced=false;stop_failed=true;stop_outcome=FAILED;exit_status={exit_status};reason={};appdir={};node_mode={}",
+                worker.role,
+                worker.network,
+                kgw_worker_stop_field_v1(&reason),
+                worker.appdir,
+                worker.node_mode
+            ),
+            graceful: false,
+            forced: false,
+            stop_failed: true,
+        });
+    }
+
+    // Force fallback is restricted to the exact Child handle and exact PID that
+    // were recorded at spawn. This never performs PID discovery or broad kill.
+    if worker.child.id() != worker.spawned_pid {
+        return Err(format!(
+            "force termination blocked by worker identity mismatch;role={};network={};spawned_pid={};child_pid={};reason={reason}",
+            worker.role,
+            worker.network,
+            worker.spawned_pid,
+            worker.child.id()
+        ));
+    }
+    worker.child.kill().map_err(|error| {
+        format!(
+            "forced termination failed;role={};network={};pid={pid};graceful=false;forced=false;reason={reason};error={error}",
+            worker.role, worker.network
+        )
+    })?;
+    let exit_status = worker.child.wait().map_err(|error| {
+        format!(
+            "wait after forced termination failed;role={};network={};pid={pid};graceful=false;forced=true;reason={reason};error={error}",
+            worker.role, worker.network
+        )
+    })?;
+
+    Ok(KgwWorkerStopResultV1 {
+        line: format!(
+            "parallel-owned-self-worker stopped;role={};network={};pid={pid};running=false;graceful=false;forced=true;stop_outcome=FORCED;exit_status={exit_status};reason={};appdir={};node_mode={}",
+            worker.role,
+            worker.network,
+            kgw_worker_stop_field_v1(&reason),
+            worker.appdir,
+            worker.node_mode
+        ),
+        graceful: false,
+        forced: true,
+        stop_failed: false,
+    })
+}
+
+fn kgw_worker_stop_field_v1(value: &str) -> String {
+    kgw_worker_safe_child_line_v1(value)
+        .replace(';', ",")
+        .replace('=', ":")
 }
 
 fn kgw_worker_status(
@@ -2173,6 +2669,10 @@ fn kgw_apply_command_preview_overrides(
             settings.app_dir_name = kgw_safe_runtime_appdir(value);
         }
 
+        if let Some(value) = kgw_command_preview_find_cli_value(&bridge_preview, "--listen") {
+            settings.p2p_listen = Some(kgw_command_preview_normalize_listen(value));
+        }
+
         // KGW_BRIDGE_INPROCESS_SAME_DB_OWNER_V7_INTEGRATED
         if let Some(value) = kgw_command_preview_find_cli_value(&bridge_preview, "--node-mode") {
             match value.trim().to_ascii_lowercase().as_str() {
@@ -2210,6 +2710,21 @@ fn kgw_apply_command_preview_overrides(
                 "--internal-cpu-miner-template-poll-ms",
             ));
     }
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Used by path-included integration tests.
+pub(crate) fn kgw_bridge_inprocess_preview_settings_for_test_v1(
+    bridge_preview: String,
+) -> Result<kaspa_gateway_rk_node::NodeSettings, String> {
+    let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
+        "mainnet".to_string(),
+        "integrated-inproc".to_string(),
+        "official-inprocess-node".to_string(),
+    )
+    .map_err(|error| error.to_string())?;
+    kgw_apply_command_preview_overrides(&mut settings, None, Some(bridge_preview));
+    Ok(settings)
 }
 
 // KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F
@@ -2593,10 +3108,16 @@ pub fn kgw_kgw_disable_network_v1(
 
     let network =
         kaspa_gateway_rk_node::KgwNetwork::parse(&network).map_err(|error| error.to_string())?;
-
-    controller()
-        .disable_network(network)
-        .map_err(|error| error.to_string())
+    let role = runtime_role
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or("all")
+        .to_ascii_lowercase();
+    Ok(format!(
+        "parallel-owned-self-worker already stopped;role={role};network={};running=false;graceful=false;forced=false;already_stopped=true;evidence=no-live-same-exe-worker",
+        network.as_str()
+    ))
 }
 
 #[tauri::command]
@@ -2699,9 +3220,13 @@ pub fn kgw_kgw_smoke_stop_network_v1(network: String) -> Result<String, String> 
     let parsed_network =
         kaspa_gateway_rk_node::KgwNetwork::parse(&network).map_err(|error| error.to_string())?;
 
-    let accepted = controller()
-        .disable_network(parsed_network)
-        .map_err(|error| error.to_string())?;
+    let accepted = if let Some(stopped) = kgw_worker_stop(&network, None)? {
+        stopped
+    } else {
+        controller()
+            .disable_network(parsed_network)
+            .map_err(|error| error.to_string())?
+    };
 
     let status = controller()
         .status(Some(parsed_network))
@@ -2738,6 +3263,10 @@ fn kgw_test_self_worker_hold() {
 
     let control_path = std::env::var("KGW_TEST_SELF_WORKER_CONTROL_PATH")
         .expect("test self-worker control path must be set");
+    let stop_request_path = std::env::var("KGW_TEST_SELF_WORKER_STOP_REQUEST_PATH")
+        .expect("test self-worker stop request path must be set");
+    let stop_outcome_path = std::env::var("KGW_TEST_SELF_WORKER_STOP_OUTCOME_PATH")
+        .expect("test self-worker stop outcome path must be set");
     let delay_ms = std::env::var("KGW_TEST_SELF_WORKER_READY_DELAY_MS")
         .ok()
         .and_then(|value| value.parse::<u64>().ok())
@@ -2750,7 +3279,39 @@ fn kgw_test_self_worker_hold() {
     std::fs::write(control_path, evidence).expect("test self-worker must publish READY");
 
     loop {
-        std::thread::sleep(std::time::Duration::from_secs(10));
+        if std::path::Path::new(&stop_request_path).is_file() {
+            let request = std::fs::read_to_string(&stop_request_path)
+                .expect("test self-worker must read Stop request");
+            let request: serde_json::Value =
+                serde_json::from_str(&request).expect("test Stop request must be typed JSON");
+            assert_eq!(request["version"], 1);
+            assert_eq!(request["command"], "STOP");
+            assert_eq!(request["runtimeRole"], role);
+            assert_eq!(request["network"], network);
+            assert_eq!(
+                request["workerPid"].as_u64(),
+                Some(u64::from(std::process::id()))
+            );
+            let _ = std::fs::remove_file(&stop_request_path);
+            if std::env::var_os("KGW_TEST_SELF_WORKER_HANG_ON_STOP").is_none() {
+                println!("test-self-worker final official stdout");
+                eprintln!("test-self-worker final official stderr");
+                let fail_on_stop = std::env::var_os("KGW_TEST_SELF_WORKER_FAIL_ON_STOP").is_some();
+                let outcome = serde_json::json!({
+                    "version": 1,
+                    "outcome": if fail_on_stop { "FAILED" } else { "STOPPED" },
+                    "runtimeRole": role,
+                    "network": network,
+                    "workerPid": std::process::id(),
+                    "evidence": if fail_on_stop { None } else { Some("test-official-shutdown-joined") },
+                    "error": if fail_on_stop { Some("test official shutdown failure") } else { None },
+                });
+                std::fs::write(stop_outcome_path, outcome.to_string())
+                    .expect("test self-worker must publish STOPPED");
+                return;
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
     }
 }
 

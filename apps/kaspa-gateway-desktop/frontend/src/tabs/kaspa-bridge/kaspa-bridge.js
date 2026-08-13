@@ -4594,6 +4594,7 @@ function installDelegatedTabs(root) {
 // The Bridge child contract is 101 seconds and the same-EXE parent is bounded at
 // 110 seconds. Keep the UI request strictly above both terminal-result boundaries.
 const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 120000;
+const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS = 70000;
 const KGW_BRIDGE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_bridge_runtime_flags_v1";
 const KGW_BRIDGE_START_TRACE_COMMAND_V1 = "kgw_start_trace_frontend_v1";
 const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();
@@ -4812,7 +4813,10 @@ async function invokeBridgeIntegratedRuntime(command, net) {
     throw new Error("Tauri invoke is unavailable in this window.");
   }
 
-  return await invokeWithTimeout(invoke, command, buildApplyPayload(net, command), KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS);
+  const timeoutMs = command === "kgw_kgw_disable_network_v1"
+    ? KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS
+    : KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS;
+  return await invokeWithTimeout(invoke, command, buildApplyPayload(net, command), timeoutMs);
 }
 
 
@@ -5081,9 +5085,7 @@ async function runBridgeIntegratedAction(action, net) {
 
   KGW_BRIDGE_RUNTIME_IN_FLIGHT.add(inFlightKey);
   kgwBridgeSetRuntimeErrorV1(net, "");
-  if (action === "start") {
-    kgwBridgeR51SetRuntimeButtons(net, false, "starting");
-  }
+  kgwBridgeR51SetRuntimeButtons(net, action === "stop", action === "start" ? "starting" : "stopping");
 
   kgwBridgeRuntimeOwnerTraceR64D("r64d-inflight-added", {
     inFlightKey
@@ -5181,24 +5183,36 @@ async function runBridgeIntegratedAction(action, net) {
 
     if (action === "stop") {
       const confirmedStopped =
-        /parallel-owned-self-worker\s+stopped/i.test(raw) ||
-        fields.running === "false" ||
-        fields.bridge_running === "false";
+        fields.running === "false" &&
+        (fields.graceful === "true" || fields.forced === "true" || fields.stop_failed === "true" || fields.already_stopped === "true");
 
       kgwBridgeRuntimeOwnerTraceR64D("r64d-stop-confirmation-evaluated", {
         confirmedStopped: Boolean(confirmedStopped)
       });
 
       if (confirmedStopped) {
+        const forced = fields.forced === "true";
+        const stopFailed = fields.stop_failed === "true";
+        KGW_BRIDGE_RUNTIME_IN_FLIGHT.delete(inFlightKey);
         kgwBridgeR51SetRuntimeButtons(net, false);
-        kgwBridgeSetRuntimeErrorV1(net, "");
+        kgwBridgeSetRuntimeErrorV1(
+          net,
+          forced
+            ? "Stop required FORCED termination. " + String(fields.reason || raw)
+            : stopFailed
+              ? "Official graceful shutdown failed, but the worker process exited. " + String(fields.reason || raw)
+              : ""
+        );
         kgwSetBridgeOwnedNodeLockR65E(net, false, {
           source: "bridge-stop-confirmed",
           action: "stop"
         });
-        kgwBridgeSetRuntimeActivityV1(net, "Bridge stop confirmed.");
+        kgwBridgeSetRuntimeActivityV1(
+          net,
+          forced ? "Bridge FORCED termination confirmed." : stopFailed ? "Bridge worker exited after graceful shutdown failure." : fields.graceful === "true" ? "Bridge graceful official shutdown confirmed." : "Bridge already stopped."
+        );
       } else {
-        kgwBridgeSetRuntimeActivityV1(net, "Bridge stop was not confirmed by runtime response.");
+        throw new Error("Backend Stop did not confirm terminal process exit: " + raw);
       }
     }
 
@@ -5793,13 +5807,13 @@ function kgwBridgeR51SetRuntimeButtons(net, running, transition = "") {
   const policyStatus = byId(id(net, "policyStatus"));
 
   if (policyStatus) {
-    const state = !networkEnabled ? "Disabled" : transition === "starting" ? "Starting" : running ? "Running" : "Stopped";
+    const state = !networkEnabled ? "Disabled" : transition === "starting" ? "Starting" : transition === "stopping" ? "Stopping" : running ? "Running" : "Stopped";
     policyStatus.textContent = state;
     policyStatus.dataset.state = state.toLowerCase();
   }
 
   if (start) {
-    const startBlocked = Boolean(running || transition === "starting" || !networkEnabled);
+    const startBlocked = Boolean(running || transition === "starting" || transition === "stopping" || !networkEnabled);
     start.disabled = startBlocked;
     start.style.opacity = startBlocked ? "0.45" : "";
     start.style.cursor = startBlocked ? "not-allowed" : "";
@@ -5811,7 +5825,7 @@ function kgwBridgeR51SetRuntimeButtons(net, running, transition = "") {
   }
 
   if (stop) {
-    const stopEnabled = Boolean(running || transition === "starting");
+    const stopEnabled = Boolean((running || transition === "starting") && transition !== "stopping");
     stop.disabled = !stopEnabled;
     stop.style.opacity = stopEnabled ? "" : "0.45";
     stop.style.cursor = stopEnabled ? "" : "not-allowed";

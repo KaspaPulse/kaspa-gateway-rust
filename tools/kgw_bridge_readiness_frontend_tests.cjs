@@ -112,6 +112,11 @@ assert.strictEqual(elements.get("bridge-mainnet-policyStatus").textContent, "Sta
 assert.strictEqual(start.disabled, true, "Start must remain disabled while attestation is pending");
 assert.strictEqual(stop.disabled, false, "the existing transition state keeps Stop available during startup");
 
+api.kgwBridgeR51SetRuntimeButtons("mainnet", true, "stopping");
+assert.strictEqual(elements.get("bridge-mainnet-policyStatus").textContent, "Stopping");
+assert.strictEqual(start.disabled, true, "Start must remain disabled while Stop is pending");
+assert.strictEqual(stop.disabled, true, "duplicate Stop must remain disabled while Stop is pending");
+
 assert.ok(
   source.includes("const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 120000"),
   "Bridge Start must wait through the backend readiness window",
@@ -149,10 +154,37 @@ async function pendingInvokeLifecycleTest() {
   await api.runBridgeIntegratedAction("start", "mainnet");
   assert.strictEqual(elements.get("bridge-mainnet-policyStatus").textContent, "Stopped");
   assert.strictEqual(elements.get("bridge-mainnet-runtimeError").textContent, "occupied listener port");
+
+  let resolveStop;
+  invokeRuntime = async () => await new Promise((resolve) => {
+    resolveStop = resolve;
+  });
+  api.kgwBridgeR51SetRuntimeButtons("mainnet", true);
+  const stopPromise = api.runBridgeIntegratedAction("stop", "mainnet");
+  await Promise.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.strictEqual(elements.get("bridge-mainnet-policyStatus").textContent, "Stopping");
+  resolveStop("parallel-owned-self-worker stopped;role=bridge;network=mainnet;running=false;graceful=true;forced=false");
+  await stopPromise;
+  assert.strictEqual(elements.get("bridge-mainnet-policyStatus").textContent, "Stopped");
+  assert.strictEqual(elements.get("bridge-mainnet-runtimeStatus").textContent, "Bridge graceful official shutdown confirmed.");
+
+  invokeRuntime = async () => "parallel-owned-self-worker stopped;role=bridge;network=mainnet;running=false;graceful=false;forced=true;reason=graceful stop timed out";
+  api.kgwBridgeR51SetRuntimeButtons("mainnet", true);
+  await api.runBridgeIntegratedAction("stop", "mainnet");
+  assert.ok(elements.get("bridge-mainnet-runtimeError").textContent.includes("FORCED"));
+  assert.strictEqual(elements.get("bridge-mainnet-runtimeStatus").textContent, "Bridge FORCED termination confirmed.");
+
+  invokeRuntime = async () => "parallel-owned-self-worker stopped with graceful failure;role=bridge;network=mainnet;running=false;graceful=false;forced=false;stop_failed=true;stop_outcome=FAILED;reason=official shutdown failed";
+  api.kgwBridgeR51SetRuntimeButtons("mainnet", true);
+  await api.runBridgeIntegratedAction("stop", "mainnet");
+  assert.ok(elements.get("bridge-mainnet-runtimeError").textContent.includes("Official graceful shutdown failed"));
+  assert.strictEqual(elements.get("bridge-mainnet-runtimeStatus").textContent, "Bridge worker exited after graceful shutdown failure.");
 }
 
 const rawPaneWrites = source.match(/appendLog\([^\n]*(READY|readiness|start failed|start response|start confirmed)/gi) || [];
 assert.deepStrictEqual(rawPaneWrites, [], "typed readiness diagnostics must not enter the raw bridge log pane");
+assert.ok(!/appendLog\([^\n]*(FORCED|graceful|stop_outcome|Stopping)/i.test(source), "Stop control diagnostics must remain outside raw Bridge logs");
 assert.ok(source.includes('experimental: true'));
 assert.ok(source.includes('enabledByDefault: false'));
 assert.ok(source.includes("requires explicit opt-in"));

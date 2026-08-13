@@ -906,6 +906,8 @@ fn kgw_open_exported_file_v1(path: String) -> Result<(), String> {
 }
 
 pub fn run() {
+    use tauri::Manager;
+
     app_logger::init_tracing_bridge();
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -1083,11 +1085,32 @@ pub fn run() {
             kgw_set_runtime_main_window_icon(app)?;
             Ok(())
         })
-        .on_window_event(|_window, event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event {
-                let _ = crate::integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                static KGW_CLOSE_SHUTDOWN_STARTED: std::sync::atomic::AtomicBool =
+                    std::sync::atomic::AtomicBool::new(false);
+                api.prevent_close();
+                if KGW_CLOSE_SHUTDOWN_STARTED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                    return;
+                }
 
-                kgw_trace_finalize_session_r69f2();
+                let app = window.app_handle().clone();
+                std::thread::spawn(move || {
+                    match crate::integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1()
+                    {
+                        Ok(_) => {
+                            kgw_trace_finalize_session_r69f2();
+                            app.exit(0);
+                        }
+                        Err(error) => {
+                            eprintln!(
+                                "[KGW_GRACEFUL_SHUTDOWN_ALL_FAILED] application exit prevented: {error}"
+                            );
+                            KGW_CLOSE_SHUTDOWN_STARTED
+                                .store(false, std::sync::atomic::Ordering::SeqCst);
+                        }
+                    }
+                });
             }
         })
         .run(context)
@@ -1115,6 +1138,7 @@ fn kgw_init_bridge_self_worker_raw_tracing_r23() {
 }
 
 const KGW_STARTUP_CONTROL_VERSION_V1: u8 = 1;
+const KGW_STOP_CONTROL_VERSION_V1: u8 = 1;
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1123,6 +1147,28 @@ struct KgwStartupControlMessageV1<'a> {
     outcome: &'a str,
     runtime_role: &'a str,
     network: &'a str,
+    evidence: Option<&'a str>,
+    error: Option<&'a str>,
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct KgwStopRequestMessageV1 {
+    version: u8,
+    command: String,
+    runtime_role: String,
+    network: String,
+    worker_pid: u32,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct KgwStopOutcomeMessageV1<'a> {
+    version: u8,
+    outcome: &'a str,
+    runtime_role: &'a str,
+    network: &'a str,
+    worker_pid: u32,
     evidence: Option<&'a str>,
     error: Option<&'a str>,
 }
@@ -1140,6 +1186,207 @@ fn kgw_startup_control_path_from_args_v1(args: &[String]) -> Option<std::path::P
         return None;
     }
     Some(path)
+}
+
+fn kgw_stop_control_path_from_args_v1(
+    args: &[String],
+    argument: &str,
+    suffix: &str,
+) -> Option<std::path::PathBuf> {
+    let path = std::path::PathBuf::from(kgw_self_worker_arg_value(args, argument)?);
+    let expected_parent = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("stop-control");
+    let file_name = path.file_name().and_then(std::ffi::OsStr::to_str)?;
+    if !path.is_absolute()
+        || path.parent() != Some(expected_parent.as_path())
+        || path.extension().and_then(std::ffi::OsStr::to_str) != Some("json")
+        || !file_name.ends_with(suffix)
+    {
+        return None;
+    }
+    Some(path)
+}
+
+fn kgw_read_stop_request_v1(
+    path: &std::path::Path,
+    role: &str,
+    network: &str,
+) -> Result<KgwStopRequestMessageV1, String> {
+    let payload = std::fs::read(path)
+        .map_err(|error| format!("read stop request failed {}: {error}", path.display()))?;
+    let request: KgwStopRequestMessageV1 = serde_json::from_slice(&payload)
+        .map_err(|error| format!("parse stop request failed {}: {error}", path.display()))?;
+
+    if request.version != KGW_STOP_CONTROL_VERSION_V1
+        || request.command != "STOP"
+        || request.runtime_role != role
+        || request.network != network
+        || request.worker_pid != std::process::id()
+    {
+        return Err(format!(
+            "stop request identity mismatch;expected_version={};actual_version={};expected_role={role};actual_role={};expected_network={network};actual_network={};expected_pid={};actual_pid={};command={}",
+            KGW_STOP_CONTROL_VERSION_V1,
+            request.version,
+            request.runtime_role,
+            request.network,
+            std::process::id(),
+            request.worker_pid,
+            request.command
+        ));
+    }
+
+    Ok(request)
+}
+
+fn kgw_write_stop_outcome_v1(
+    path: &std::path::Path,
+    role: &str,
+    network: &str,
+    outcome: &str,
+    evidence: Option<&str>,
+    error: Option<&str>,
+) -> Result<(), String> {
+    if outcome != "STOPPED" && outcome != "FAILED" {
+        return Err(format!("invalid stop outcome: {outcome}"));
+    }
+    let message = KgwStopOutcomeMessageV1 {
+        version: KGW_STOP_CONTROL_VERSION_V1,
+        outcome,
+        runtime_role: role,
+        network,
+        worker_pid: std::process::id(),
+        evidence,
+        error,
+    };
+    let payload = serde_json::to_vec(&message)
+        .map_err(|serialize_error| format!("serialize stop outcome failed: {serialize_error}"))?;
+    let temporary = path.with_extension("tmp");
+    let _ = std::fs::remove_file(&temporary);
+    {
+        use std::io::Write;
+        let mut file = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&temporary)
+            .map_err(|error| format!("create stop outcome failed: {error}"))?;
+        file.write_all(&payload)
+            .map_err(|error| format!("write stop outcome failed: {error}"))?;
+        file.sync_all()
+            .map_err(|error| format!("sync stop outcome failed: {error}"))?;
+    }
+    std::fs::rename(&temporary, path).map_err(|error| {
+        let _ = std::fs::remove_file(&temporary);
+        format!("publish stop outcome failed: {error}")
+    })
+}
+
+fn kgw_wait_for_stop_request_v1(
+    request_path: &std::path::Path,
+    role: &str,
+    network: &str,
+) -> Result<(), String> {
+    loop {
+        if request_path.is_file() {
+            let result = kgw_read_stop_request_v1(request_path, role, network).map(|_| ());
+            let _ = std::fs::remove_file(request_path);
+            return result;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(25));
+    }
+}
+
+fn kgw_execute_stop_request_v1<F>(
+    stop_request_path: &std::path::Path,
+    stop_outcome_path: &std::path::Path,
+    role: &str,
+    network: &str,
+    shutdown: F,
+) -> Result<(), String>
+where
+    F: FnOnce() -> Result<String, String> + Send + 'static,
+{
+    if let Err(error) = kgw_wait_for_stop_request_v1(stop_request_path, role, network) {
+        let _ = kgw_write_stop_outcome_v1(
+            stop_outcome_path,
+            role,
+            network,
+            "FAILED",
+            None,
+            Some(&error),
+        );
+        return Err(error);
+    }
+    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::sync_channel(1);
+    let shutdown_thread = std::thread::Builder::new()
+        .name(format!("kgw-official-shutdown-{role}-{network}"))
+        .spawn(move || {
+            let _ = shutdown_tx.send(shutdown());
+        })
+        .map_err(|error| format!("start official shutdown worker failed: {error}"))?;
+    let budget = std::time::Duration::from_millis(
+        crate::integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1,
+    );
+
+    match shutdown_rx.recv_timeout(budget) {
+        Ok(Ok(evidence)) => {
+            shutdown_thread.join().map_err(|panic| {
+                format!(
+                    "official shutdown worker panicked: {}",
+                    kgw_panic_payload_message_v1(panic.as_ref())
+                )
+            })?;
+            kgw_write_stop_outcome_v1(
+                stop_outcome_path,
+                role,
+                network,
+                "STOPPED",
+                Some(&evidence),
+                None,
+            )?;
+            Ok(())
+        }
+        Ok(Err(error)) => {
+            let _ = shutdown_thread.join();
+            let _ = kgw_write_stop_outcome_v1(
+                stop_outcome_path,
+                role,
+                network,
+                "FAILED",
+                None,
+                Some(&error),
+            );
+            Err(error)
+        }
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+            let error = format!(
+                "official shutdown exceeded child budget;timeout_ms={}",
+                crate::integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1
+            );
+            let _ = kgw_write_stop_outcome_v1(
+                stop_outcome_path,
+                role,
+                network,
+                "FAILED",
+                None,
+                Some(&error),
+            );
+            Err(error)
+        }
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+            let error = "official shutdown worker disconnected without an outcome".to_string();
+            let _ = shutdown_thread.join();
+            let _ = kgw_write_stop_outcome_v1(
+                stop_outcome_path,
+                role,
+                network,
+                "FAILED",
+                None,
+                Some(&error),
+            );
+            Err(error)
+        }
+    }
 }
 
 fn kgw_write_startup_control_v1(
@@ -1215,6 +1462,10 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
     let utxoindex = args.iter().any(|arg| arg == "--utxoindex");
     let archival = args.iter().any(|arg| arg == "--archival");
     let startup_control_path = kgw_startup_control_path_from_args_v1(&args);
+    let stop_request_path =
+        kgw_stop_control_path_from_args_v1(&args, "--stop-request-path", "-request.json");
+    let stop_outcome_path =
+        kgw_stop_control_path_from_args_v1(&args, "--stop-outcome-path", "-outcome.json");
 
     let bridge_node_mode = if role_key == "bridge" {
         kgw_self_worker_arg_value(&args, "--node-mode")
@@ -1239,6 +1490,8 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
             utxoindex,
             archival,
             startup_control_path.as_deref(),
+            stop_request_path.as_deref(),
+            stop_outcome_path.as_deref(),
         ),
         "bridge" => {
             // KGW_BRIDGE_INPROCESS_SETLOGGERERROR_V14
@@ -1253,9 +1506,12 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
                 &network,
                 &appdir,
                 &rpc,
+                p2p_listen.as_deref(),
                 &stratum,
                 &args,
                 startup_control_path.as_deref(),
+                stop_request_path.as_deref(),
+                stop_outcome_path.as_deref(),
             )
         }
         other => Err(format!("unsupported self-worker role: {other}")),
@@ -1439,6 +1695,7 @@ fn kgw_self_worker_default_stratum(network: &str) -> &'static str {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn kgw_run_node_self_worker(
     network: &str,
     appdir: &str,
@@ -1447,6 +1704,8 @@ fn kgw_run_node_self_worker(
     utxoindex: bool,
     archival: bool,
     startup_control_path: Option<&std::path::Path>,
+    stop_request_path: Option<&std::path::Path>,
+    stop_outcome_path: Option<&std::path::Path>,
 ) -> Result<(), String> {
     let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
         network.to_string(),
@@ -1485,23 +1744,35 @@ fn kgw_run_node_self_worker(
         None,
     )?;
 
-    loop {
-        std::thread::sleep(std::time::Duration::from_secs(10));
-
-        match runtime.status(settings.network) {
-            Ok(_status) => {}
-            Err(_error) => {}
-        }
-    }
+    let stop_request_path =
+        stop_request_path.ok_or_else(|| "stop request path is missing or invalid".to_string())?;
+    let stop_outcome_path =
+        stop_outcome_path.ok_or_else(|| "stop outcome path is missing or invalid".to_string())?;
+    kgw_execute_stop_request_v1(
+        stop_request_path,
+        stop_outcome_path,
+        "node",
+        settings.network.as_str(),
+        move || {
+            runtime
+                .stop_network(settings.network)
+                .map(|status| status.last_message)
+                .map_err(|error| error.to_string())
+        },
+    )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn kgw_run_bridge_self_worker(
     network: &str,
     appdir: &str,
     rpc: &str,
+    p2p_listen: Option<&str>,
     stratum: &str,
     args: &[String],
     startup_control_path: Option<&std::path::Path>,
+    stop_request_path: Option<&std::path::Path>,
+    stop_outcome_path: Option<&std::path::Path>,
 ) -> Result<(), String> {
     let bridge_node_mode = kgw_self_worker_arg_value(args, "--node-mode")
         .unwrap_or_else(|| "external".to_string())
@@ -1540,6 +1811,7 @@ fn kgw_run_bridge_self_worker(
 
         settings.app_dir_name = appdir.to_string();
         settings.rpc_endpoint = rpc.to_string();
+        settings.p2p_listen = p2p_listen.map(ToString::to_string);
         settings.enable_utxo_index = args.iter().any(|arg| arg == "--utxoindex");
         settings.archival = args.iter().any(|arg| arg == "--archival");
 
@@ -1636,18 +1908,59 @@ fn kgw_run_bridge_self_worker(
         None,
     )?;
 
-    loop {
-        std::thread::sleep(std::time::Duration::from_secs(10));
+    let stop_request_path =
+        stop_request_path.ok_or_else(|| "stop request path is missing or invalid".to_string())?;
+    let stop_outcome_path =
+        stop_outcome_path.ok_or_else(|| "stop outcome path is missing or invalid".to_string())?;
+    let shutdown_network = network.to_string();
+    kgw_execute_stop_request_v1(
+        stop_request_path,
+        stop_outcome_path,
+        "bridge",
+        network,
+        move || {
+            let network = shutdown_network.as_str();
+            let mut join_failures = Vec::new();
+            for handle in handles {
+                if let Err(panic) = handle.join() {
+                    join_failures.push(format!(
+                        "bridge owner join panicked;network={network};panic={}",
+                        kgw_panic_payload_message_v1(panic.as_ref())
+                    ));
+                }
+            }
 
-        if let Some(runtime) = inprocess_node_runtime.as_ref() {
-            let _ = runtime.status(
-                kaspa_gateway_rk_node::KgwNetwork::parse(network)
-                    .map_err(|error| error.to_string())?,
+            if !join_failures.is_empty() {
+                return Err(join_failures.join(" | "));
+            }
+
+            let mut evidence = format!(
+                "bridge_listeners_joined={};listener_count={};node_mode={bridge_node_mode}",
+                readiness_evidence.len(),
+                readiness_evidence.len()
             );
-        }
+            if let Some(runtime) = inprocess_node_runtime {
+                let parsed_network = kaspa_gateway_rk_node::KgwNetwork::parse(network)
+                    .map_err(|error| error.to_string())?;
+                let node_status = runtime
+                    .stop_network(parsed_network)
+                    .map_err(|error| error.to_string())?;
+                evidence.push_str(";owned_node_stopped_after_bridge=true;");
+                evidence.push_str(&node_status.last_message);
+            } else {
+                evidence.push_str(";independent_node_untouched=true");
+            }
+            Ok(evidence)
+        },
+    )
+}
 
-        if handles.iter().all(|handle| handle.is_finished()) {
-            return Ok(());
-        }
+fn kgw_panic_payload_message_v1(payload: &(dyn std::any::Any + Send)) -> String {
+    if let Some(message) = payload.downcast_ref::<String>() {
+        message.clone()
+    } else if let Some(message) = payload.downcast_ref::<&str>() {
+        (*message).to_string()
+    } else {
+        "non-string panic payload".to_string()
     }
 }

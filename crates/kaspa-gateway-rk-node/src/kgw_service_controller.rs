@@ -461,6 +461,9 @@ pub enum KgwServiceError {
 
     #[error("service controller lock failed")]
     LockFailed,
+
+    #[error("runtime Stop failed: {0}")]
+    RuntimeStopFailed(String),
 }
 
 #[derive(Debug)]
@@ -559,12 +562,29 @@ impl KgwServiceController {
     }
 
     pub fn disable_network(&self, network: KgwNetwork) -> Result<String, KgwServiceError> {
-        self.send_event(KaspadServiceEvents::Disable { network })?;
+        let mut state = self.state.lock().map_err(|_| KgwServiceError::LockFailed)?;
+        state.push_log(
+            Some(network),
+            "received Disable through synchronous graceful Stop owner",
+        );
+        let runtime_status = state
+            .real_owner_runtime
+            .stop_network(network)
+            .map_err(|error| KgwServiceError::RuntimeStopFailed(error.to_string()))?;
+        let slot = state.slot_mut(network);
+        slot.node_kind = KaspadNodeKind::Disable;
+        slot.bridge_kind = BridgeNodeKind::Disable;
+        slot.node_running = false;
+        slot.bridge_running = false;
+        slot.rpc_attached = false;
+        slot.last_event = "Disable".to_string();
+        slot.last_error = None;
 
         Ok(format!(
-            "disable accepted;network={};branch={}",
+            "disable completed;network={};branch={};running=false;graceful=true;forced=false;{}",
             network.as_str(),
-            network.branch()
+            network.branch(),
+            runtime_status.last_message
         ))
     }
     pub fn status(&self, network: Option<KgwNetwork>) -> Result<String, KgwServiceError> {

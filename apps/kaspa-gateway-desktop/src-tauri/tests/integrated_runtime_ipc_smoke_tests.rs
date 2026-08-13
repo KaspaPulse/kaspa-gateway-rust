@@ -2,9 +2,10 @@
 mod integrated_runtime_commands;
 
 use integrated_runtime_commands::{
-    KgwStartupControlMessageV1, kgw_kgw_apply_node_settings_v1, kgw_kgw_disable_network_v1,
-    kgw_kgw_node_bridge_service_plan_v1, kgw_kgw_runtime_clear_logs_v1, kgw_kgw_runtime_logs_v1,
-    kgw_runtime_owner_summary_v1, kgw_worker_validate_startup_attestation_v1,
+    KgwStartupControlMessageV1, KgwStopOutcomeMessageV1, kgw_kgw_apply_node_settings_v1,
+    kgw_kgw_disable_network_v1, kgw_kgw_node_bridge_service_plan_v1, kgw_kgw_runtime_clear_logs_v1,
+    kgw_kgw_runtime_logs_v1, kgw_runtime_owner_summary_v1,
+    kgw_worker_validate_startup_attestation_v1, kgw_worker_validate_stop_outcome_v1,
 };
 use std::sync::{Mutex, OnceLock};
 
@@ -61,6 +62,9 @@ fn clear_runtime_worker_test_env() {
         "KGW_TEST_STARTUP_ATTESTATION_TIMEOUT_MS",
         "KGW_TEST_SELF_WORKER_STDOUT",
         "KGW_TEST_SELF_WORKER_STDERR",
+        "KGW_TEST_SELF_WORKER_HANG_ON_STOP",
+        "KGW_TEST_SELF_WORKER_FAIL_ON_STOP",
+        "KGW_TEST_PARENT_GRACEFUL_STOP_TIMEOUT_MS",
         "KGW_START_TRACE",
     ] {
         remove_runtime_worker_test_env(key);
@@ -72,6 +76,357 @@ fn assert_contains_all(text: &str, parts: &[&str]) {
     for part in parts {
         assert!(text.contains(part), "expected `{part}` in `{text}`");
     }
+}
+
+#[test]
+fn stop_outcome_requires_exact_protocol_role_network_and_pid() {
+    let accepted = kgw_worker_validate_stop_outcome_v1(
+        KgwStopOutcomeMessageV1 {
+            version: 1,
+            outcome: "STOPPED".to_string(),
+            runtime_role: "node".to_string(),
+            network: "mainnet".to_string(),
+            worker_pid: 42,
+            evidence: Some("official-core-shutdown-and-join".to_string()),
+            error: None,
+        },
+        "node",
+        "mainnet",
+        42,
+    )
+    .expect("matching STOPPED outcome must be accepted");
+    assert_eq!(accepted, "official-core-shutdown-and-join");
+
+    for message in [
+        KgwStopOutcomeMessageV1 {
+            version: 2,
+            outcome: "STOPPED".to_string(),
+            runtime_role: "node".to_string(),
+            network: "mainnet".to_string(),
+            worker_pid: 42,
+            evidence: Some("wrong version".to_string()),
+            error: None,
+        },
+        KgwStopOutcomeMessageV1 {
+            version: 1,
+            outcome: "STOPPED".to_string(),
+            runtime_role: "bridge".to_string(),
+            network: "mainnet".to_string(),
+            worker_pid: 42,
+            evidence: Some("wrong role".to_string()),
+            error: None,
+        },
+        KgwStopOutcomeMessageV1 {
+            version: 1,
+            outcome: "STOPPED".to_string(),
+            runtime_role: "node".to_string(),
+            network: "testnet10".to_string(),
+            worker_pid: 42,
+            evidence: Some("wrong network".to_string()),
+            error: None,
+        },
+        KgwStopOutcomeMessageV1 {
+            version: 1,
+            outcome: "STOPPED".to_string(),
+            runtime_role: "node".to_string(),
+            network: "mainnet".to_string(),
+            worker_pid: 43,
+            evidence: Some("wrong pid".to_string()),
+            error: None,
+        },
+    ] {
+        assert!(kgw_worker_validate_stop_outcome_v1(message, "node", "mainnet", 42).is_err());
+    }
+}
+
+#[test]
+fn graceful_stop_waits_for_exit_and_drains_final_official_output() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+
+    kgw_kgw_apply_node_settings_v1(
+        "mainnet".to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+        None,
+        None,
+        Some("node".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect("test worker must start");
+
+    let stopped = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()))
+        .expect("test worker must stop gracefully");
+    assert_contains_all(
+        &stopped,
+        &[
+            "running=false",
+            "graceful=true",
+            "forced=false",
+            "stop_outcome=STOPPED",
+        ],
+    );
+
+    let logs = kgw_kgw_runtime_logs_v1(Some("mainnet".to_string()), Some("node".to_string()), None)
+        .expect("retained raw logs must remain queryable");
+    let raw = logs
+        .entries
+        .iter()
+        .map(|entry| entry.raw_text.as_str())
+        .collect::<Vec<_>>();
+    assert!(raw.contains(&"test-self-worker final official stdout"));
+    assert!(raw.contains(&"test-self-worker final official stderr"));
+    assert!(raw.iter().all(|line| {
+        !line.contains("STOPPED")
+            && !line.contains("graceful=true")
+            && !line.contains("forced=true")
+    }));
+}
+
+#[test]
+fn hung_test_worker_uses_truthful_bounded_force_fallback() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_HANG_ON_STOP", "1");
+    set_runtime_worker_test_env("KGW_TEST_PARENT_GRACEFUL_STOP_TIMEOUT_MS", "150");
+
+    kgw_kgw_apply_node_settings_v1(
+        "testnet10".to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+        None,
+        None,
+        Some("node".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect("hung test worker must start");
+
+    let stopped = kgw_kgw_disable_network_v1("testnet10".to_string(), Some("node".to_string()))
+        .expect("force fallback must terminate exact test worker");
+    assert_contains_all(
+        &stopped,
+        &[
+            "running=false",
+            "graceful=false",
+            "forced=true",
+            "stop_outcome=FORCED",
+            "graceful stop timed out",
+        ],
+    );
+
+    let logs = kgw_kgw_runtime_logs_v1(
+        Some("testnet10".to_string()),
+        Some("node".to_string()),
+        None,
+    )
+    .expect("forced path raw logs must remain queryable");
+    assert!(logs.entries.iter().all(|entry| {
+        !entry.raw_text.contains("FORCED") && !entry.raw_text.contains("graceful stop timed out")
+    }));
+}
+
+#[test]
+fn failed_stop_attestation_with_terminal_exit_removes_owner_truthfully() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_FAIL_ON_STOP", "1");
+
+    kgw_kgw_apply_node_settings_v1(
+        "mainnet".to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+        None,
+        None,
+        Some("node".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect("failure-path test worker must start");
+
+    let stopped = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()))
+        .expect("terminal FAILED outcome must return typed stopped state");
+    assert_contains_all(
+        &stopped,
+        &[
+            "running=false",
+            "graceful=false",
+            "forced=false",
+            "stop_failed=true",
+            "stop_outcome=FAILED",
+            "test official shutdown failure",
+        ],
+    );
+
+    let status = integrated_runtime_commands::kgw_runtime_owner_status_v1(
+        Some("mainnet".to_string()),
+        Some("node".to_string()),
+    )
+    .expect("terminal failed worker must no longer be registered");
+    assert_contains_all(&status, &["node_running=false", "bridge_running=false"]);
+}
+
+#[test]
+fn completed_graceful_stop_can_reacquire_the_same_role_and_network() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+
+    for attempt in 1..=2 {
+        let started = kgw_kgw_apply_node_settings_v1(
+            "mainnet".to_string(),
+            "integrated-as-daemon".to_string(),
+            "disable".to_string(),
+            None,
+            None,
+            Some("node".to_string()),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap_or_else(|error| panic!("start attempt {attempt} must reacquire owner: {error}"));
+        assert_contains_all(&started, &["runtime_state=running", "readiness=READY"]);
+
+        let stopped = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()))
+            .unwrap_or_else(|error| panic!("Stop attempt {attempt} must complete: {error}"));
+        assert_contains_all(
+            &stopped,
+            &["running=false", "graceful=true", "forced=false"],
+        );
+    }
+}
+
+#[test]
+fn repeated_stop_is_typed_terminal_and_idempotent() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+
+    let stopped = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()))
+        .expect("Stop without a live worker must be idempotent");
+    assert_contains_all(
+        &stopped,
+        &[
+            "role=node",
+            "network=mainnet",
+            "running=false",
+            "graceful=false",
+            "forced=false",
+            "already_stopped=true",
+        ],
+    );
+}
+
+#[test]
+fn stopping_mainnet_does_not_affect_testnet10() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+
+    for network in ["mainnet", "testnet10"] {
+        kgw_kgw_apply_node_settings_v1(
+            network.to_string(),
+            "integrated-as-daemon".to_string(),
+            "disable".to_string(),
+            None,
+            None,
+            Some("node".to_string()),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap_or_else(|error| panic!("{network} worker must start: {error}"));
+    }
+
+    kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()))
+        .expect("mainnet Stop must complete");
+    let testnet10 = integrated_runtime_commands::kgw_runtime_owner_status_v1(
+        Some("testnet10".to_string()),
+        Some("node".to_string()),
+    )
+    .expect("testnet10 status must remain queryable");
+    assert_contains_all(&testnet10, &["network=testnet10", "running=true"]);
+}
+
+#[test]
+fn shutdown_all_uses_graceful_bridge_first_order() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+
+    for (network, role, node_kind, bridge_kind) in [
+        ("mainnet", "node", "integrated-as-daemon", "disable"),
+        ("testnet10", "bridge", "remote", "official-external-node"),
+    ] {
+        kgw_kgw_apply_node_settings_v1(
+            network.to_string(),
+            node_kind.to_string(),
+            bridge_kind.to_string(),
+            None,
+            None,
+            Some(role.to_string()),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap_or_else(|error| panic!("{role} worker must start: {error}"));
+    }
+
+    let stopped = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1()
+        .expect("shutdown-all must complete through graceful Stop");
+    assert_eq!(stopped.matches("graceful=true").count(), 2);
+    assert_eq!(stopped.matches("forced=false").count(), 2);
+    assert!(
+        stopped.find("role=bridge").unwrap() < stopped.find("role=node").unwrap(),
+        "Bridge owners must stop before Node owners: {stopped}"
+    );
+}
+
+#[test]
+fn timeout_hierarchy_is_strict_and_race_free() {
+    const {
+        assert!(
+            integrated_runtime_commands::KGW_PARENT_GRACEFUL_STOP_TIMEOUT_MS_V1
+                > integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1
+        );
+        assert!(70_000 > integrated_runtime_commands::KGW_PARENT_GRACEFUL_STOP_TIMEOUT_MS_V1);
+    }
+    let node_js = include_str!("../../frontend/src/tabs/kaspa-node/kaspa-node.js");
+    let bridge_js = include_str!("../../frontend/src/tabs/kaspa-bridge/kaspa-bridge.js");
+    assert!(node_js.contains("const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 70000"));
+    assert!(bridge_js.contains("const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS = 70000"));
 }
 
 #[test]
@@ -238,6 +593,18 @@ fn production_self_worker_arguments_match_child_parser() {
                 .join("startup-control")
                 .join("kgw-startup-control-args-test.json")
                 .to_string_lossy(),
+            "--stop-request-path",
+            &std::env::temp_dir()
+                .join("KaspaGateway")
+                .join("stop-control")
+                .join("kgw-stop-request-args-test.json")
+                .to_string_lossy(),
+            "--stop-outcome-path",
+            &std::env::temp_dir()
+                .join("KaspaGateway")
+                .join("stop-control")
+                .join("kgw-stop-outcome-args-test.json")
+                .to_string_lossy(),
             "--utxoindex",
         ]
     );
@@ -250,6 +617,8 @@ fn production_self_worker_arguments_match_child_parser() {
         "--rpc",
         "--listen",
         "--startup-control-path",
+        "--stop-request-path",
+        "--stop-outcome-path",
         "--utxoindex",
     ] {
         assert!(
@@ -257,6 +626,22 @@ fn production_self_worker_arguments_match_child_parser() {
             "child parser must recognize production argument `{key}`"
         );
     }
+}
+
+#[test]
+fn bridge_inprocess_preview_preserves_isolated_node_p2p_listener() {
+    let settings = integrated_runtime_commands::kgw_bridge_inprocess_preview_settings_for_test_v1(
+        "stratum-bridge --node-mode inprocess --kaspa-rpc 127.0.0.1:36110 --listen 127.0.0.1:36111"
+            .to_string(),
+    )
+    .expect("in-process Bridge preview should parse");
+
+    assert_eq!(settings.rpc_endpoint, "127.0.0.1:36110");
+    assert_eq!(settings.p2p_listen.as_deref(), Some("127.0.0.1:36111"));
+    assert_eq!(
+        settings.bridge_kind,
+        kaspa_gateway_rk_node::BridgeNodeKind::OfficialInProcessNode
+    );
 }
 
 #[test]

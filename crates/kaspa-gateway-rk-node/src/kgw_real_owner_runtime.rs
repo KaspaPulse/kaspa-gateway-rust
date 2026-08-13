@@ -146,16 +146,30 @@ pub enum KgwRealOwnerError {
 
     #[error("official in-process Rusty Kaspa core is already claimed in this desktop process: {0}")]
     OfficialCoreAlreadyClaimed(String),
+
+    #[error("official runtime shutdown failed: {0}")]
+    ShutdownFailed(String),
+
+    #[error("official runtime shutdown is already in progress for {0}")]
+    ShutdownInProgress(String),
 }
 
 #[derive(Debug)]
 struct RuntimeSession {
     status: KgwRuntimeSessionStatus,
     owner_thread: Option<JoinHandle<()>>,
-    core_terminal_outcome: Option<std::sync::mpsc::Receiver<String>>,
+    core_shutdown_tx: Option<std::sync::mpsc::SyncSender<()>>,
+    core_terminal_outcome: Option<std::sync::mpsc::Receiver<Result<String, String>>>,
     core_terminal_error: Option<String>,
     bridge_handle: Option<kaspa_gateway_rk_bridge::BridgeOwnerRuntimeHandle>,
+    shutdown_in_progress: bool,
 }
+
+type OfficialCoreOwnerThread = (
+    JoinHandle<()>,
+    std::sync::mpsc::SyncSender<()>,
+    std::sync::mpsc::Receiver<Result<String, String>>,
+);
 
 impl RuntimeSession {
     fn new(network: KgwNetwork) -> Self {
@@ -177,9 +191,11 @@ impl RuntimeSession {
                 logs: Vec::new(),
             },
             owner_thread: None,
+            core_shutdown_tx: None,
             core_terminal_outcome: None,
             core_terminal_error: None,
             bridge_handle: None,
+            shutdown_in_progress: false,
         }
     }
 
@@ -263,15 +279,16 @@ impl KgwRealOwnerRuntime {
         &self,
         network: KgwNetwork,
     ) -> Result<KgwRuntimeSessionStatus, KgwRealOwnerError> {
-        let sessions = self
+        let mut sessions = self
             .inner
             .lock()
             .map_err(|_| KgwRealOwnerError::LockFailed)?;
 
-        Ok(sessions
-            .get(&network)
-            .map(|session| session.status.clone())
-            .unwrap_or_else(|| RuntimeSession::new(network).status))
+        let session = sessions
+            .entry(network)
+            .or_insert_with(|| RuntimeSession::new(network));
+        refresh_core_terminal_status(session);
+        Ok(session.status.clone())
     }
 
     pub fn logs(&self, network: KgwNetwork) -> Result<String, KgwRealOwnerError> {
@@ -387,6 +404,12 @@ impl KgwRealOwnerRuntime {
                 .entry(settings.network)
                 .or_insert_with(|| RuntimeSession::new(settings.network));
 
+            if session.shutdown_in_progress {
+                return Err(KgwRealOwnerError::ShutdownInProgress(
+                    settings.network.as_str().to_string(),
+                ));
+            }
+
             session.status.feature_status = KgwRuntimeFeatureStatus::for_network(settings.network);
             session.status.runtime_requested = true;
             session.status.node_kind = settings.node_kind;
@@ -410,9 +433,10 @@ impl KgwRealOwnerRuntime {
             kgw_claim_single_inproc_official_core(settings.network)?;
 
             if session.owner_thread.is_none() {
-                let (owner_thread, core_terminal_outcome) =
+                let (owner_thread, core_shutdown_tx, core_terminal_outcome) =
                     spawn_official_core_thread(settings.clone())?;
                 session.owner_thread = Some(owner_thread);
+                session.core_shutdown_tx = Some(core_shutdown_tx);
                 session.core_terminal_outcome = Some(core_terminal_outcome);
                 session.core_terminal_error = None;
             }
@@ -486,19 +510,100 @@ impl KgwRealOwnerRuntime {
         &self,
         network: KgwNetwork,
     ) -> Result<KgwRuntimeSessionStatus, KgwRealOwnerError> {
+        let (bridge_handle, core_shutdown_tx, owner_thread, core_terminal_outcome) = {
+            let mut sessions = self
+                .inner
+                .lock()
+                .map_err(|_| KgwRealOwnerError::LockFailed)?;
+            let session = sessions
+                .entry(network)
+                .or_insert_with(|| RuntimeSession::new(network));
+
+            if session.shutdown_in_progress {
+                return Err(KgwRealOwnerError::ShutdownInProgress(
+                    network.as_str().to_string(),
+                ));
+            }
+            session.shutdown_in_progress = session.bridge_handle.is_some()
+                || session.owner_thread.is_some()
+                || session.core_shutdown_tx.is_some();
+
+            (
+                session.bridge_handle.take(),
+                session.core_shutdown_tx.take(),
+                session.owner_thread.take(),
+                session.core_terminal_outcome.take(),
+            )
+        };
+
+        let bridge_was_owned = bridge_handle.is_some();
+        let core_was_owned = owner_thread.is_some();
+        let graceful_core_stop_requested = core_was_owned && core_shutdown_tx.is_some();
+        let mut shutdown_failures = Vec::new();
+
+        // Bridge listeners depend on the Node RPC service. Stop and join them
+        // before requesting official Core shutdown.
+        if let Some(bridge_handle) = bridge_handle
+            && let Err(panic) = bridge_handle.join()
+        {
+            shutdown_failures.push(format!(
+                "network={};component=bridge-owner;panic={}",
+                network.as_str(),
+                panic_payload_message(panic.as_ref())
+            ));
+        }
+
+        if let Some(core_shutdown_tx) = core_shutdown_tx
+            && let Err(error) = core_shutdown_tx.send(())
+        {
+            shutdown_failures.push(format!(
+                "network={};component=official-core;request_error={error}",
+                network.as_str()
+            ));
+        }
+
+        if let Some(owner_thread) = owner_thread
+            && let Err(panic) = owner_thread.join()
+        {
+            shutdown_failures.push(format!(
+                "network={};component=official-core-owner;panic={}",
+                network.as_str(),
+                panic_payload_message(panic.as_ref())
+            ));
+        }
+
+        let terminal_outcome = match core_terminal_outcome {
+            Some(receiver) => match receiver.try_recv() {
+                Ok(Ok(evidence)) => evidence,
+                Ok(Err(error)) => {
+                    shutdown_failures.push(error.clone());
+                    error
+                }
+                Err(error) => {
+                    let failure = format!(
+                        "network={};component=official-core;terminal_outcome_error={error}",
+                        network.as_str()
+                    );
+                    shutdown_failures.push(failure.clone());
+                    failure
+                }
+            },
+            None => format!(
+                "official Rusty Kaspa core was already stopped;network={}",
+                network.as_str()
+            ),
+        };
+
         let mut sessions = self
             .inner
             .lock()
             .map_err(|_| KgwRealOwnerError::LockFailed)?;
-
         let session = sessions
             .entry(network)
             .or_insert_with(|| RuntimeSession::new(network));
 
-        if let Some(bridge_handle) = session.bridge_handle.take() {
-            bridge_handle.request_stop();
-        }
-
+        session.core_shutdown_tx = None;
+        session.shutdown_in_progress = false;
         session.owner_thread = None;
         session.core_terminal_outcome = None;
         session.core_terminal_error = None;
@@ -509,13 +614,51 @@ impl KgwRealOwnerRuntime {
         session.status.bridge_owner_active = false;
         session.status.runtime_requested = false;
         session.status.start_policy = KgwRuntimeStartPolicy::Disabled;
-        session.status.last_message =
-            "KGW owner runtime session disabled through owner state".to_string();
+        let already_stopped = !bridge_was_owned && !core_was_owned;
+        session.status.last_message = format!(
+            "official runtime shutdown joined;network={};already_stopped={already_stopped};bridge_joined={bridge_was_owned};rpc_core_service_released_before_core_shutdown={graceful_core_stop_requested};core_shutdown={graceful_core_stop_requested};core_join={core_was_owned};terminal_outcome={terminal_outcome}",
+            network.as_str(),
+        );
         let msg = session.status.last_message.clone();
         session.push_log(msg);
 
-        Ok(session.status.clone())
+        if shutdown_failures.is_empty() {
+            Ok(session.status.clone())
+        } else {
+            Err(KgwRealOwnerError::ShutdownFailed(
+                shutdown_failures.join(" | "),
+            ))
+        }
     }
+}
+
+fn refresh_core_terminal_status(session: &mut RuntimeSession) {
+    let terminal = session
+        .owner_thread
+        .as_ref()
+        .is_some_and(JoinHandle::is_finished);
+    if !terminal {
+        return;
+    }
+
+    session.status.owner_thread_alive = false;
+    session.status.official_core_running = false;
+    if session.core_terminal_error.is_none()
+        && let Some(receiver) = session.core_terminal_outcome.as_ref()
+    {
+        session.core_terminal_error = match receiver.try_recv() {
+            Ok(Ok(evidence)) => Some(format!("official core terminated unexpectedly: {evidence}")),
+            Ok(Err(error)) => Some(error),
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                Some("official core outcome channel disconnected".to_string())
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => None,
+        };
+    }
+    session.status.last_message = session
+        .core_terminal_error
+        .clone()
+        .unwrap_or_else(|| "official core owner thread terminated".to_string());
 }
 
 #[cfg(any(
@@ -568,7 +711,7 @@ fn validate_rpc_network_identity(
 #[cfg(feature = "official-kaspa-runtime-mainline")]
 fn attest_mainline_node_rpc_readiness(
     settings: &NodeSettings,
-    core_terminal_outcome: &mut std::sync::mpsc::Receiver<String>,
+    core_terminal_outcome: &mut std::sync::mpsc::Receiver<Result<String, String>>,
 ) -> Result<String, KgwRealOwnerError> {
     use kaspa_rpc_core_mainline::api::rpc::RpcApi;
 
@@ -628,7 +771,7 @@ fn attest_mainline_node_rpc_readiness(
 #[cfg(not(feature = "official-kaspa-runtime-mainline"))]
 fn attest_mainline_node_rpc_readiness(
     settings: &NodeSettings,
-    _core_terminal_outcome: &mut std::sync::mpsc::Receiver<String>,
+    _core_terminal_outcome: &mut std::sync::mpsc::Receiver<Result<String, String>>,
 ) -> Result<String, KgwRealOwnerError> {
     Err(KgwRealOwnerError::FeatureRequired(format!(
         "{} requires official-kaspa-runtime-mainline",
@@ -639,7 +782,7 @@ fn attest_mainline_node_rpc_readiness(
 #[cfg(feature = "official-kaspa-runtime-tn12")]
 fn attest_tn12_node_rpc_readiness(
     settings: &NodeSettings,
-    core_terminal_outcome: &mut std::sync::mpsc::Receiver<String>,
+    core_terminal_outcome: &mut std::sync::mpsc::Receiver<Result<String, String>>,
 ) -> Result<String, KgwRealOwnerError> {
     use kaspa_rpc_core_tn12::api::rpc::RpcApi;
 
@@ -699,7 +842,7 @@ fn attest_tn12_node_rpc_readiness(
 #[cfg(not(feature = "official-kaspa-runtime-tn12"))]
 fn attest_tn12_node_rpc_readiness(
     settings: &NodeSettings,
-    _core_terminal_outcome: &mut std::sync::mpsc::Receiver<String>,
+    _core_terminal_outcome: &mut std::sync::mpsc::Receiver<Result<String, String>>,
 ) -> Result<String, KgwRealOwnerError> {
     Err(KgwRealOwnerError::FeatureRequired(format!(
         "{} requires official-kaspa-runtime-tn12",
@@ -713,11 +856,16 @@ fn attest_tn12_node_rpc_readiness(
     feature = "official-kaspa-runtime-tn12"
 ))]
 fn fail_if_core_terminated(
-    core_terminal_outcome: &mut std::sync::mpsc::Receiver<String>,
+    core_terminal_outcome: &mut std::sync::mpsc::Receiver<Result<String, String>>,
     settings: &NodeSettings,
 ) -> Result<(), KgwRealOwnerError> {
     match core_terminal_outcome.try_recv() {
-        Ok(error) => Err(KgwRealOwnerError::NodeRpcReadinessFailed(format!(
+        Ok(Ok(evidence)) => Err(KgwRealOwnerError::NodeRpcReadinessFailed(format!(
+            "network={};endpoint={};terminal_error=official core terminated before readiness: {evidence}",
+            settings.network.as_str(),
+            settings.rpc_endpoint
+        ))),
+        Ok(Err(error)) => Err(KgwRealOwnerError::NodeRpcReadinessFailed(format!(
             "network={};endpoint={};terminal_error={error}",
             settings.network.as_str(),
             settings.rpc_endpoint
@@ -763,7 +911,7 @@ fn kgw_runtime_appdir_root_string() -> String {
 }
 fn spawn_official_core_thread(
     settings: NodeSettings,
-) -> Result<(JoinHandle<()>, std::sync::mpsc::Receiver<String>), KgwRealOwnerError> {
+) -> Result<OfficialCoreOwnerThread, KgwRealOwnerError> {
     match settings.network {
         KgwNetwork::Mainnet | KgwNetwork::Testnet10 => spawn_mainline_core_thread(settings),
         KgwNetwork::Testnet12 => spawn_tn12_core_thread(settings),
@@ -773,7 +921,7 @@ fn spawn_official_core_thread(
 #[cfg(feature = "official-kaspa-runtime-mainline")]
 fn spawn_mainline_core_thread(
     settings: NodeSettings,
-) -> Result<(JoinHandle<()>, std::sync::mpsc::Receiver<String>), KgwRealOwnerError> {
+) -> Result<OfficialCoreOwnerThread, KgwRealOwnerError> {
     let mut args = kaspad_lib_mainline::args::Args {
         appdir: Some(settings.app_dir_name.clone()),
         utxoindex: settings.enable_utxo_index,
@@ -816,6 +964,7 @@ fn spawn_mainline_core_thread(
 
     let network = settings.network;
     let (terminal_tx, terminal_rx) = std::sync::mpsc::sync_channel(1);
+    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::sync_channel(1);
 
     let owner_thread = std::thread::Builder::new()
         .name(format!("kaspad-{}", network.as_str()))
@@ -823,21 +972,45 @@ fn spawn_mainline_core_thread(
             let outcome = kgw_run_official_core_with_panic_boundary(network, move || {
                 let (core, rpc_core_service) =
                     kaspad_lib_mainline::daemon::create_core(args, fd_total_budget);
+                let workers = core.start();
 
-                let _keep_rpc_core_service_alive = rpc_core_service;
-                core.run();
+                // The exact pinned daemon contract requires this handle to be
+                // released before Core shutdown.
+                loop {
+                    match shutdown_rx.recv_timeout(Duration::from_millis(100)) {
+                        Ok(()) | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+                        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                            if workers.iter().all(JoinHandle::is_finished) {
+                                drop(rpc_core_service);
+                                core.join(workers);
+                                return Err(format!(
+                                    "official Rusty Kaspa core workers terminated before graceful Stop;network={}",
+                                    network.as_str()
+                                ));
+                            }
+                        }
+                    }
+                }
+                drop(rpc_core_service);
+                use kaspa_core_mainline::signals::Shutdown;
+                core.shutdown();
+                core.join(workers);
+                Ok(format!(
+                    "official Rusty Kaspa core shutdown and workers joined;network={}",
+                    network.as_str()
+                ))
             });
             let _ = terminal_tx.send(outcome);
         })
         .map_err(|error| KgwRealOwnerError::OwnerThreadStartFailed(error.to_string()))?;
 
-    Ok((owner_thread, terminal_rx))
+    Ok((owner_thread, shutdown_tx, terminal_rx))
 }
 
 #[cfg(not(feature = "official-kaspa-runtime-mainline"))]
 fn spawn_mainline_core_thread(
     settings: NodeSettings,
-) -> Result<(JoinHandle<()>, std::sync::mpsc::Receiver<String>), KgwRealOwnerError> {
+) -> Result<OfficialCoreOwnerThread, KgwRealOwnerError> {
     Err(KgwRealOwnerError::FeatureRequired(format!(
         "{} requires official-kaspa-runtime-mainline",
         settings.network.as_str()
@@ -847,7 +1020,7 @@ fn spawn_mainline_core_thread(
 #[cfg(feature = "official-kaspa-runtime-tn12")]
 fn spawn_tn12_core_thread(
     settings: NodeSettings,
-) -> Result<(JoinHandle<()>, std::sync::mpsc::Receiver<String>), KgwRealOwnerError> {
+) -> Result<OfficialCoreOwnerThread, KgwRealOwnerError> {
     let mut args = kaspad_lib_tn12::args::Args {
         appdir: Some(settings.app_dir_name.clone()),
         utxoindex: settings.enable_utxo_index,
@@ -891,6 +1064,7 @@ fn spawn_tn12_core_thread(
 
     let network = settings.network;
     let (terminal_tx, terminal_rx) = std::sync::mpsc::sync_channel(1);
+    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::sync_channel(1);
 
     let owner_thread = std::thread::Builder::new()
         .name(format!("kaspad-{}", network.as_str()))
@@ -898,21 +1072,43 @@ fn spawn_tn12_core_thread(
             let outcome = kgw_run_official_core_with_panic_boundary(network, move || {
                 let (core, rpc_core_service) =
                     kaspad_lib_tn12::daemon::create_core(args, fd_total_budget);
+                let workers = core.start();
 
-                let _keep_rpc_core_service_alive = rpc_core_service;
-                core.run();
+                loop {
+                    match shutdown_rx.recv_timeout(Duration::from_millis(100)) {
+                        Ok(()) | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+                        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                            if workers.iter().all(JoinHandle::is_finished) {
+                                drop(rpc_core_service);
+                                core.join(workers);
+                                return Err(format!(
+                                    "official Rusty Kaspa core workers terminated before graceful Stop;network={}",
+                                    network.as_str()
+                                ));
+                            }
+                        }
+                    }
+                }
+                drop(rpc_core_service);
+                use kaspa_core_tn12::signals::Shutdown;
+                core.shutdown();
+                core.join(workers);
+                Ok(format!(
+                    "official Rusty Kaspa core shutdown and workers joined;network={}",
+                    network.as_str()
+                ))
             });
             let _ = terminal_tx.send(outcome);
         })
         .map_err(|error| KgwRealOwnerError::OwnerThreadStartFailed(error.to_string()))?;
 
-    Ok((owner_thread, terminal_rx))
+    Ok((owner_thread, shutdown_tx, terminal_rx))
 }
 
 #[cfg(not(feature = "official-kaspa-runtime-tn12"))]
 fn spawn_tn12_core_thread(
     settings: NodeSettings,
-) -> Result<(JoinHandle<()>, std::sync::mpsc::Receiver<String>), KgwRealOwnerError> {
+) -> Result<OfficialCoreOwnerThread, KgwRealOwnerError> {
     Err(KgwRealOwnerError::FeatureRequired(format!(
         "{} requires official-kaspa-runtime-tn12",
         settings.network.as_str()
@@ -953,20 +1149,20 @@ fn kgw_apply_embedded_fd_limits_tn12(args: &mut kaspad_lib_tn12::args::Args) {
 }
 
 #[allow(dead_code)]
-fn kgw_run_official_core_with_panic_boundary<F>(network: KgwNetwork, run_core: F) -> String
+fn kgw_run_official_core_with_panic_boundary<F>(
+    network: KgwNetwork,
+    run_core: F,
+) -> Result<String, String>
 where
-    F: FnOnce(),
+    F: FnOnce() -> Result<String, String>,
 {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(run_core)) {
-        Ok(()) => format!(
-            "official Rusty Kaspa core returned;network={}",
-            network.as_str()
-        ),
-        Err(payload) => format!(
+        Ok(outcome) => outcome,
+        Err(payload) => Err(format!(
             "official Rusty Kaspa core panicked;network={};panic={}",
             network.as_str(),
             panic_payload_message(payload.as_ref())
-        ),
+        )),
     }
 }
 
@@ -1048,7 +1244,7 @@ fn default_prometheus_for_network(network: KgwNetwork) -> &'static str {
 }
 
 pub fn real_owner_runtime_summary_v1() -> &'static str {
-    "R18 real KGW owner runtime: requests enter NodeSettings -> KaspadServiceEvents::from_node_settings -> service_events.sender -> controller -> owner runtime session -> official Rusty Kaspa create_core -> core.run -> bridge KaspaApi -> listen_and_serve_with_shutdown."
+    "R18 real KGW owner runtime: requests enter NodeSettings -> KaspadServiceEvents::from_node_settings -> service_events.sender -> controller -> owner runtime session -> official Rusty Kaspa create_core -> Core::start -> drop RpcCoreService -> Shutdown::shutdown -> Core::join; bridge uses KaspaApi -> listen_and_serve_with_shutdown -> BridgeOwnerRuntimeHandle::join."
 }
 
 fn timestamp_ms() -> u128 {
@@ -1061,6 +1257,59 @@ fn timestamp_ms() -> u128 {
 #[cfg(test)]
 mod kgw_runtime_fd_budget_tests {
     use super::*;
+
+    #[test]
+    fn runtime_session_retains_graceful_core_stop_and_join_state() {
+        let session = RuntimeSession::new(KgwNetwork::Mainnet);
+        assert!(session.core_shutdown_tx.is_none());
+        assert!(session.owner_thread.is_none());
+        assert!(session.core_terminal_outcome.is_none());
+
+        let source = include_str!("kgw_real_owner_runtime.rs");
+        let graceful_mainline = source
+            .split("#[cfg(feature = \"official-kaspa-runtime-mainline\")]")
+            .nth(2)
+            .expect("mainline official core owner source must exist");
+        let drop_rpc = graceful_mainline
+            .find("drop(rpc_core_service);")
+            .expect("owner must release RpcCoreService");
+        let shutdown = graceful_mainline
+            .find("core.shutdown();")
+            .expect("owner must call official Shutdown");
+        let join = graceful_mainline[shutdown..]
+            .find("core.join(workers);")
+            .map(|offset| shutdown + offset)
+            .expect("owner must join official workers after Shutdown");
+        assert!(drop_rpc < shutdown && shutdown < join);
+    }
+
+    #[test]
+    fn completed_owner_join_is_reflected_as_not_running() {
+        let mut session = RuntimeSession::new(KgwNetwork::Mainnet);
+        session.status.owner_thread_alive = true;
+        session.status.official_core_running = true;
+        let (terminal_tx, terminal_rx) = std::sync::mpsc::sync_channel(1);
+        terminal_tx
+            .send(Ok("official core joined".to_string()))
+            .unwrap();
+        session.core_terminal_outcome = Some(terminal_rx);
+        session.owner_thread = Some(std::thread::spawn(|| {}));
+        session.owner_thread.as_ref().unwrap().thread().unpark();
+        while !session.owner_thread.as_ref().unwrap().is_finished() {
+            std::thread::yield_now();
+        }
+
+        refresh_core_terminal_status(&mut session);
+
+        assert!(!session.status.owner_thread_alive);
+        assert!(!session.status.official_core_running);
+        assert!(
+            session
+                .status
+                .last_message
+                .contains("terminated unexpectedly")
+        );
+    }
 
     #[test]
     fn embedded_fd_budget_fits_windows_default_limit() {
@@ -1115,6 +1364,7 @@ mod kgw_runtime_fd_budget_tests {
         });
         std::panic::set_hook(previous_hook);
 
+        let outcome = outcome.unwrap_err();
         assert!(outcome.contains("official Rusty Kaspa core panicked"));
         assert!(outcome.contains("delayed core initialization failure"));
     }
@@ -1123,7 +1373,9 @@ mod kgw_runtime_fd_budget_tests {
     fn readiness_fails_immediately_after_core_terminal_outcome() {
         let (terminal_tx, mut terminal_rx) = std::sync::mpsc::sync_channel(1);
         terminal_tx
-            .send("official core returned during initialization".to_string())
+            .send(Err(
+                "official core returned during initialization".to_string()
+            ))
             .unwrap();
         let settings = NodeSettings::from_strings(
             "mainnet".to_string(),
