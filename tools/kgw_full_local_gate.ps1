@@ -214,7 +214,7 @@ try {
     Invoke-GateCommand `
         -Label "Rust raw log isolation test" `
         -FilePath "cargo" `
-        -Arguments @("test", "-p", "kaspa-gateway-desktop", "raw_log_buffers_are_isolated_by_network_role_and_bridge_instance", "--test", "integrated_runtime_ipc_smoke_tests", "--", "--nocapture") `
+        -Arguments @("test", "-p", "kaspa-gateway-desktop", "raw_log_buffers_are_isolated_by_network_and_role_with_process_wide_bridge_output", "--test", "integrated_runtime_ipc_smoke_tests", "--", "--nocapture") `
         -WorkingDirectory $Repository
 
     Invoke-GateCommand `

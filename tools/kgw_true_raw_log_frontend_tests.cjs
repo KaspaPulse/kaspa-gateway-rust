@@ -345,22 +345,6 @@ function installRawLogDom(window, kind, net) {
   return { root, copy, clear, empty, output };
 }
 
-function assertNoTransportText(text, label) {
-  for (const forbidden of [
-    "kgw_raw_process_log_v1",
-    "source=self-worker",
-    "diagnostic_transport_record",
-    "runtime_role=",
-    "stream=stdout",
-    "stream=stderr",
-    "received_ms=",
-    "[KGW_CHILD_STDOUT]",
-    "[KGW_CHILD_STDERR]",
-  ]) {
-    assert.ok(!String(text).includes(forbidden), label + " must not contain " + forbidden + ": " + text);
-  }
-}
-
 function copyCalls(calls) {
   return calls.filter((call) => call.command === "kgw_copy_text_to_clipboard_v1");
 }
@@ -383,6 +367,8 @@ async function nodeRawLogFrontendTests() {
   const unicode = String.fromCodePoint(0x03a9);
   const stdoutLine = `2026-07-28 15:10:50.082+03:00 [INFO ] kaspad path=C:\\Kaspa\\node\\kaspad.exe;equals=value;json={"kind":"stdout"};unicode=${unicode}`;
   const stderrLine = `stderr raw line;equals=value;json={"kind":"stderr"};unicode=${unicode};path=C:\\Kaspa\\stderr.log`;
+  const transportLookingStdout = "kgw_raw_process_log_v1;network=mainnet;source=self-worker;runtime_role=node;received_ms=1;line=official-literal";
+  const transportLookingStderr = "[KGW_CHILD_STDERR] {\"eventKind\":\"diagnostic_transport_record\"}";
 
   api.kgwNodeApplyRuntimeLogReportV1("mainnet", "node", {
     entries: [
@@ -390,27 +376,26 @@ async function nodeRawLogFrontendTests() {
       { sequence: 10, network: "mainnet", runtimeRole: "node", source: "self-worker", stream: "stdout", receivedMs: 1, rawText: stdoutLine },
       { sequence: 30, network: "testnet10", runtimeRole: "node", source: "self-worker", stream: "stdout", receivedMs: 3, rawText: "testnet10 must not mix into mainnet" },
       { sequence: 40, network: "mainnet", runtimeRole: "bridge", source: "self-worker", stream: "stdout", receivedMs: 4, rawText: "bridge must not mix into node" },
-      { sequence: 45, network: "mainnet", runtimeRole: "node", source: "self-worker", stream: "stdout", receivedMs: 5, rawText: "kgw_raw_process_log_v1;network=mainnet;source=self-worker;runtime_role=node;received_ms=1;line=fake" },
-      { sequence: 46, network: "mainnet", runtimeRole: "node", source: "self-worker", stream: "stderr", receivedMs: 6, rawText: "[KGW_CHILD_STDERR] {\"eventKind\":\"diagnostic_transport_record\"}" },
+      { sequence: 45, network: "mainnet", runtimeRole: "node", source: "self-worker", stream: "stdout", receivedMs: 5, rawText: transportLookingStdout },
+      { sequence: 46, network: "mainnet", runtimeRole: "node", source: "self-worker", stream: "stderr", receivedMs: 6, rawText: transportLookingStderr },
     ],
   });
 
   const mainnet = window.document.getElementById("node-mainnet-logOutput");
   const mainnetEmpty = window.document.getElementById("node-mainnet-logEmpty");
-  assert.strictEqual(mainnet.textContent, stdoutLine + "\n" + stderrLine, "Sequence ordering is preserved even when node events arrive out of order");
+  const expectedNodeRaw = [stdoutLine, stderrLine, transportLookingStdout, transportLookingStderr].join("\n");
+  assert.strictEqual(mainnet.textContent, expectedNodeRaw, "Every typed Node child record is rendered verbatim, including transport-looking official literals");
   assert.strictEqual(mainnetEmpty.hidden, true, "Node empty state must be separate from raw log text");
-  assertNoTransportText(mainnet.textContent, "Displayed node raw log");
 
   api.appendLog("mainnet", "MAINNET initialized.");
-  assert.strictEqual(mainnet.textContent, stdoutLine + "\n" + stderrLine, "No fabricated raw lines are created by legacy appendLog");
+  assert.strictEqual(mainnet.textContent, expectedNodeRaw, "No fabricated raw lines are created by legacy appendLog");
 
   calls.length = 0;
   await api.kgwNodeHandleLogActionV29("copy-log", "mainnet", window.document.querySelector('[data-node-action="copy-log"][data-net="mainnet"]'));
   assert.strictEqual(copyCalls(calls).length, 1, "Node Copy Log must invoke native clipboard once");
-  assert.strictEqual(copyCalls(calls)[0].payload.text, (stdoutLine + "\n" + stderrLine).replace(/\n/g, "\r\n"), "Node Copy Log equals visible raw output byte-for-byte after newline normalization");
+  assert.strictEqual(copyCalls(calls)[0].payload.text, expectedNodeRaw.replace(/\n/g, "\r\n"), "Node Copy Log equals visible raw output byte-for-byte after newline normalization");
   assert.strictEqual(copyCalls(calls)[0].payload.runtimeRole, "node", "Node Copy Log must pass runtime role metadata");
   assert.strictEqual(copyCalls(calls)[0].payload.bridgeInstanceId, "", "Node Copy Log must not invent a bridge instance");
-  assertNoTransportText(copyCalls(calls)[0].payload.text, "Copied node raw log");
   assert.strictEqual(traceCalls(calls, "frontend.copy_log_succeeded").length, 1, "Node Copy Log must emit an event-time success trace");
 
   api.kgwNodeApplyRuntimeLogReportV1("testnet10", "node", {
@@ -436,6 +421,8 @@ async function bridgeRawLogFrontendTests() {
   const unicode = String.fromCodePoint(0x03a9);
   const stdoutLine = `bridge stdout;equals=value;json={"kind":"bridge-stdout"};unicode=${unicode};path=C:\\Kaspa\\bridge.exe`;
   const stderrLine = `bridge stderr;equals=value;json={"kind":"bridge-stderr"};unicode=${unicode};path=C:\\Kaspa\\bridge.err`;
+  const transportLookingStdout = "kgw_raw_process_log_v1;network=mainnet;source=self-worker;runtime_role=bridge;received_ms=1;line=official-literal";
+  const transportLookingStderr = "{\"source\":\"native\",\"stage\":\"diagnostic_transport.child.stderr\",\"network\":\"mainnet\",\"eventKind\":\"diagnostic_transport_record\"}";
 
   api.kgwBridgeApplyRuntimeLogReportV1("mainnet", "bridge", {
     entries: [
@@ -443,25 +430,24 @@ async function bridgeRawLogFrontendTests() {
       { sequence: 11, network: "mainnet", runtimeRole: "bridge", bridgeInstanceId: "1", source: "self-worker", stream: "stdout", receivedMs: 1, rawText: stdoutLine },
       { sequence: 13, network: "mainnet", runtimeRole: "node", source: "self-worker", stream: "stdout", receivedMs: 3, rawText: "node must not mix into bridge" },
       { sequence: 14, network: "testnet10", runtimeRole: "bridge", bridgeInstanceId: "1", source: "self-worker", stream: "stdout", receivedMs: 4, rawText: "testnet10 must not mix into mainnet bridge" },
-      { sequence: 15, network: "mainnet", runtimeRole: "bridge", bridgeInstanceId: "2", source: "self-worker", stream: "stdout", receivedMs: 5, rawText: "wrong bridge instance must not mix" },
-      { sequence: 16, network: "mainnet", runtimeRole: "bridge", bridgeInstanceId: "1", source: "self-worker", stream: "stdout", receivedMs: 6, rawText: "kgw_raw_process_log_v1;network=mainnet;source=self-worker;runtime_role=bridge;received_ms=1;line=fake" },
-      { sequence: 17, network: "mainnet", runtimeRole: "bridge", bridgeInstanceId: "1", source: "self-worker", stream: "stderr", receivedMs: 7, rawText: "{\"source\":\"native\",\"stage\":\"diagnostic_transport.child.stderr\",\"network\":\"mainnet\",\"eventKind\":\"diagnostic_transport_record\"}" },
+      { sequence: 15, network: "mainnet", runtimeRole: "bridge", bridgeInstanceId: "2", source: "self-worker", stream: "stdout", receivedMs: 5, rawText: "same Bridge process record" },
+      { sequence: 16, network: "mainnet", runtimeRole: "bridge", bridgeInstanceId: "1", source: "self-worker", stream: "stdout", receivedMs: 6, rawText: transportLookingStdout },
+      { sequence: 17, network: "mainnet", runtimeRole: "bridge", bridgeInstanceId: "1", source: "self-worker", stream: "stderr", receivedMs: 7, rawText: transportLookingStderr },
     ],
   }, "1");
 
   const mainnet = window.document.getElementById("bridge-mainnet-logOutput");
-  assert.strictEqual(mainnet.textContent, stdoutLine + "\n" + stderrLine, "Bridge sequence ordering is preserved for the selected instance");
-  assertNoTransportText(mainnet.textContent, "Displayed bridge raw log");
+  const expectedBridgeRaw = [stdoutLine, stderrLine, "same Bridge process record", transportLookingStdout, transportLookingStderr].join("\n");
+  assert.strictEqual(mainnet.textContent, expectedBridgeRaw, "Every typed Bridge process record is rendered verbatim without content or listener filtering");
   api.appendLog("mainnet", "KGW bridge start confirmed.");
-  assert.strictEqual(mainnet.textContent, stdoutLine + "\n" + stderrLine, "Bridge legacy appendLog must not fabricate raw lines");
+  assert.strictEqual(mainnet.textContent, expectedBridgeRaw, "Bridge legacy appendLog must not fabricate raw lines");
 
   calls.length = 0;
   await api.kgwBridgeHandleLogActionV29("copy-log", "mainnet", window.document.querySelector('[data-bridge-action="copy-log"][data-net="mainnet"]'));
   assert.strictEqual(copyCalls(calls).length, 1, "Bridge Copy Log must invoke native clipboard once");
-  assert.strictEqual(copyCalls(calls)[0].payload.text, (stdoutLine + "\n" + stderrLine).replace(/\n/g, "\r\n"), "Bridge Copy Log equals visible raw output byte-for-byte after newline normalization");
+  assert.strictEqual(copyCalls(calls)[0].payload.text, expectedBridgeRaw.replace(/\n/g, "\r\n"), "Bridge Copy Log equals visible raw output byte-for-byte after newline normalization");
   assert.strictEqual(copyCalls(calls)[0].payload.runtimeRole, "bridge", "Bridge Copy Log must pass runtime role metadata");
   assert.strictEqual(copyCalls(calls)[0].payload.bridgeInstanceId, "1", "Bridge Copy Log must pass active bridge instance metadata");
-  assertNoTransportText(copyCalls(calls)[0].payload.text, "Copied bridge raw log");
   assert.strictEqual(traceCalls(calls, "frontend.copy_log_succeeded").length, 1, "Bridge Copy Log must emit an event-time success trace");
 
   api.kgwBridgeApplyRuntimeLogReportV1("testnet10", "bridge", {

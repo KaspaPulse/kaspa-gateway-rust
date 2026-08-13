@@ -65,6 +65,7 @@ fn clear_runtime_worker_test_env() {
     ] {
         remove_runtime_worker_test_env(key);
     }
+    integrated_runtime_commands::kgw_clear_raw_process_log_buffers_for_test_v1();
 }
 
 fn assert_contains_all(text: &str, parts: &[&str]) {
@@ -420,6 +421,44 @@ fn typed_raw_log_text_is_sorted_by_sequence() {
 }
 
 #[test]
+fn official_sentinel_stdout_and_stderr_use_the_production_pipe_reader_unchanged() {
+    let stdout = "OFFICIAL-SENTINEL-STDOUT kgw_raw_process_log_v1 [KGW_CHILD_STDOUT] {\"eventKind\":\"diagnostic_transport_record\"}";
+    let stderr = "OFFICIAL-SENTINEL-STDERR source=self-worker;runtime_role=node;received_ms=7";
+    let logs = integrated_runtime_commands::kgw_empty_raw_log_buffer_for_test_v1();
+
+    let stdout_reader = integrated_runtime_commands::kgw_capture_raw_pipe_for_test_v1(
+        "node",
+        "mainnet",
+        "stdout",
+        std::io::Cursor::new(format!("{stdout}\n")),
+        std::sync::Arc::clone(&logs),
+    );
+    stdout_reader.join().expect("stdout reader must finish");
+    let stderr_reader = integrated_runtime_commands::kgw_capture_raw_pipe_for_test_v1(
+        "node",
+        "mainnet",
+        "stderr",
+        std::io::Cursor::new(format!("{stderr}\n")),
+        std::sync::Arc::clone(&logs),
+    );
+    stderr_reader.join().expect("stderr reader must finish");
+
+    let entries = integrated_runtime_commands::kgw_raw_log_buffer_entries_for_test_v1(&logs);
+    assert_eq!(entries.len(), 2);
+    assert_eq!(entries[0].raw_text, stdout);
+    assert_eq!(entries[0].stream, "stdout");
+    assert_eq!(entries[0].network, "mainnet");
+    assert_eq!(entries[0].runtime_role, "node");
+    assert_eq!(entries[1].raw_text, stderr);
+    assert_eq!(entries[1].stream, "stderr");
+    assert!(entries[0].sequence < entries[1].sequence);
+    assert_eq!(
+        integrated_runtime_commands::kgw_raw_log_text_from_entries_for_test_v1(entries),
+        format!("{stdout}\n{stderr}")
+    );
+}
+
+#[test]
 fn child_stdout_and_stderr_fixtures_survive_unchanged() {
     let _guard = runtime_test_lock()
         .lock()
@@ -480,7 +519,7 @@ fn child_stdout_and_stderr_fixtures_survive_unchanged() {
 }
 
 #[test]
-fn raw_log_buffers_are_isolated_by_network_role_and_bridge_instance() {
+fn raw_log_buffers_are_isolated_by_network_and_role_with_process_wide_bridge_output() {
     let _guard = runtime_test_lock()
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -613,9 +652,9 @@ fn raw_log_buffers_are_isolated_by_network_role_and_bridge_instance() {
         mainnet_bridge.entries.iter().all(|entry| {
             entry.network == "mainnet"
                 && entry.runtime_role == "bridge"
-                && entry.bridge_instance_id.as_deref() == Some("bridge-a")
+                && entry.bridge_instance_id.is_none()
         }),
-        "bridge entries must stay scoped to role and instance: {mainnet_bridge:?}"
+        "bridge entries must stay scoped to role/network without invented listener attribution: {mainnet_bridge:?}"
     );
     assert!(
         mainnet_node
@@ -650,9 +689,9 @@ fn raw_log_buffers_are_isolated_by_network_role_and_bridge_instance() {
         testnet10_bridge.entries.iter().all(|entry| {
             entry.network == "testnet10"
                 && entry.runtime_role == "bridge"
-                && entry.bridge_instance_id.as_deref() == Some("bridge-b")
+                && entry.bridge_instance_id.is_none()
         }),
-        "testnet10 bridge entries must stay scoped to network, role, and instance: {testnet10_bridge:?}"
+        "testnet10 bridge entries must stay scoped to network and role: {testnet10_bridge:?}"
     );
     assert!(
         testnet10_bridge
@@ -665,13 +704,31 @@ fn raw_log_buffers_are_isolated_by_network_role_and_bridge_instance() {
                 .any(|entry| entry.raw_text.contains("mainnet bridge")),
         "testnet10 bridge logs must not contain mainnet bridge records: {testnet10_bridge:?}"
     );
-    assert!(
-        wrong_bridge_instance.entries.is_empty(),
-        "bridge instance buffers must not mix: {wrong_bridge_instance:?}"
+    assert_eq!(
+        wrong_bridge_instance
+            .entries
+            .iter()
+            .map(|entry| &entry.raw_text)
+            .collect::<Vec<_>>(),
+        mainnet_bridge
+            .entries
+            .iter()
+            .map(|entry| &entry.raw_text)
+            .collect::<Vec<_>>(),
+        "Bridge logs are process-wide and must not be filtered by an unprovable listener ID"
     );
-    assert!(
-        wrong_testnet10_bridge_instance.entries.is_empty(),
-        "testnet10 bridge instance buffers must not mix: {wrong_testnet10_bridge_instance:?}"
+    assert_eq!(
+        wrong_testnet10_bridge_instance
+            .entries
+            .iter()
+            .map(|entry| &entry.raw_text)
+            .collect::<Vec<_>>(),
+        testnet10_bridge
+            .entries
+            .iter()
+            .map(|entry| &entry.raw_text)
+            .collect::<Vec<_>>(),
+        "Testnet10 Bridge logs are process-wide"
     );
 
     kgw_kgw_runtime_clear_logs_v1(
@@ -1099,6 +1156,21 @@ fn early_self_worker_exit_preserves_complete_safe_stderr_and_returns_error() {
         "startup error must expose only safe stderr: {error}"
     );
 
+    let raw = kgw_kgw_runtime_logs_v1(Some("mainnet".to_string()), Some("node".to_string()), None)
+        .expect("pre-failure official stream must remain queryable");
+    assert!(
+        raw.entries
+            .iter()
+            .any(|entry| entry.stream == "stderr" && entry.raw_text == child_stderr),
+        "genuine child stderr before startup failure must remain raw and unmodified: {raw:?}"
+    );
+    assert!(
+        raw.entries.iter().all(|entry| !entry
+            .raw_text
+            .contains("self-worker exited before role readiness")),
+        "typed terminal wrapper error must stay outside raw entries: {raw:?}"
+    );
+
     let trace_text = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1().join("\n");
     assert_contains_all(
         &trace_text,
@@ -1337,6 +1409,17 @@ fn spawn_failure_remains_an_error() {
     assert_contains_all(
         &error,
         &["spawn_failed=true", "runtime_role=node", "network=mainnet"],
+    );
+    assert_eq!(
+        integrated_runtime_commands::kgw_raw_process_log_buffer_count_for_test_v1(),
+        1,
+        "spawn failure may create only an empty retained pipe-owned buffer"
+    );
+    let raw = kgw_kgw_runtime_logs_v1(Some("mainnet".to_string()), Some("node".to_string()), None)
+        .expect("spawn-failure raw report must remain queryable");
+    assert!(
+        raw.entries.is_empty(),
+        "typed spawn failure must never be synthesized into raw entries: {raw:?}"
     );
 
     let trace_lines = integrated_runtime_commands::kgw_start_trace_test_take_lines_v1();

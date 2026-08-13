@@ -267,7 +267,7 @@ rawText\s*:\s*["'][^"']*kgw_raw_process_log_v1
 
     Invoke-CargoChecked "Rust typed raw log tests" @("test", "-p", "kaspa-gateway-desktop", "typed_raw_log", "--test", "integrated_runtime_ipc_smoke_tests", "--", "--nocapture")
     Invoke-CargoChecked "Rust child raw log fixture test" @("test", "-p", "kaspa-gateway-desktop", "child_stdout_and_stderr_fixtures_survive_unchanged", "--test", "integrated_runtime_ipc_smoke_tests", "--", "--nocapture")
-    Invoke-CargoChecked "Rust network role and bridge instance isolation test" @("test", "-p", "kaspa-gateway-desktop", "raw_log_buffers_are_isolated_by_network_role_and_bridge_instance", "--test", "integrated_runtime_ipc_smoke_tests", "--", "--nocapture")
+    Invoke-CargoChecked "Rust network and role isolation test" @("test", "-p", "kaspa-gateway-desktop", "raw_log_buffers_are_isolated_by_network_and_role_with_process_wide_bridge_output", "--test", "integrated_runtime_ipc_smoke_tests", "--", "--nocapture")
     Invoke-CargoChecked "Desktop debug build" @("build", "--locked", "--bin", "kaspa-gateway-desktop")
 
     if ($Failures.Count -gt 0) {

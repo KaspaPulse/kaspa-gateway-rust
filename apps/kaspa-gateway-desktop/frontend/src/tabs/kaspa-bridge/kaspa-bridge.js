@@ -4039,10 +4039,12 @@ function kgwBridgeActiveRawLogInstanceIdV1(net) {
 }
 
 function kgwBridgeRawLogBufferKeyV1(net, role = "bridge", instanceId = "") {
+  // Official Bridge output is process-wide for one role/network owner. The
+  // upstream logger does not attribute records to individual listeners.
+  void instanceId;
   return [
     String(net || "").trim().toLowerCase(),
-    String(role || "bridge").trim().toLowerCase(),
-    String(instanceId || "").trim()
+    String(role || "bridge").trim().toLowerCase()
   ].join(":");
 }
 
@@ -4054,35 +4056,12 @@ function kgwBridgeRawLogBufferV1(net, role = "bridge", instanceId = "") {
   return KGW_BRIDGE_RAW_LOG_BUFFERS_V1.get(key);
 }
 
-function kgwBridgeRawLogTextHasTransportWrapperV1(text) {
-  const value = String(text ?? "");
-  if (!value) return false;
-
-  const forbidden = [
-    "kgw_raw_process_log_v1",
-    "[KGW_CHILD_STDOUT]",
-    "[KGW_CHILD_STDERR]",
-    "diagnostic_transport_record",
-    ";source=self-worker;",
-    ";runtime_role=",
-    ";received_ms="
-  ];
-  if (forbidden.some((marker) => value.toLowerCase().includes(marker.toLowerCase()))) return true;
-
-  const trimmed = value.trimStart();
-  return trimmed.startsWith("{")
-    && /"stage"\s*:/.test(trimmed)
-    && /"network"\s*:/.test(trimmed)
-    && (/"source"\s*:/.test(trimmed) || /"eventKind"\s*:\s*"diagnostic_transport_record"/.test(trimmed));
-}
-
 function kgwBridgeNormalizeRawLogEntryV1(entry, expectedNet, expectedRole = "bridge", expectedInstanceId = "") {
+  void expectedInstanceId;
   if (!entry || typeof entry !== "object") return null;
 
   const rawTextValue = entry.rawText ?? entry.raw_text ?? entry.line;
   if (rawTextValue === undefined || rawTextValue === null) return null;
-  if (kgwBridgeRawLogTextHasTransportWrapperV1(rawTextValue)) return null;
-
   const sequence = Number(entry.sequence);
   if (!Number.isSafeInteger(sequence) || sequence < 0) return null;
 
@@ -4093,7 +4072,8 @@ function kgwBridgeNormalizeRawLogEntryV1(entry, expectedNet, expectedRole = "bri
 
   if (network !== String(expectedNet || "").trim().toLowerCase()) return null;
   if (runtimeRole !== String(expectedRole || "bridge").trim().toLowerCase()) return null;
-  if (String(expectedInstanceId || "").trim() && bridgeInstanceId !== String(expectedInstanceId || "").trim()) return null;
+  // Official Bridge logging is process-wide; upstream exposes no structural
+  // listener identifier for a record. Never filter official text by a UI instance.
   if (stream !== "stdout" && stream !== "stderr") return null;
 
   return Object.freeze({

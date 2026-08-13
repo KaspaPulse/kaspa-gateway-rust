@@ -16,6 +16,7 @@
  * - Run Bridge/Node mode routing audit with repo/report args.
  * - Run runtime trace owner audit with repo/report args.
  * - Run parallel self-worker runtime gate.
+ * - Run raw runtime log provenance gate.
  *
  * This wrapper calls existing gates; it does not duplicate their logic.
  * It does not mutate source.
@@ -179,6 +180,7 @@ const syntaxTargets = [
   "tools/kgw_bridge_node_mode_routing_audit_v1.cjs",
   "tools/kgw_runtime_trace_owner_audit_v20.cjs",
   "tools/kgw_parallel_self_worker_runtime_gate.cjs",
+  "tools/kgw_raw_log_provenance_gate.cjs",
   "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
   "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js"
 ];
@@ -230,6 +232,11 @@ if (!skipRuntime) {
     "parallel_self_worker_runtime_gate",
     nodeExe,
     ["tools/kgw_parallel_self_worker_runtime_gate.cjs"]
+  );
+  runStep(
+    "raw_log_provenance_gate",
+    nodeExe,
+    ["tools/kgw_raw_log_provenance_gate.cjs"]
   );
 }
 

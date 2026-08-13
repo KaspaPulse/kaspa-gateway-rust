@@ -285,9 +285,11 @@ const OWNER_REGISTRY = {
     ],
     referenceFiles: [
       "apps/kaspa-gateway-desktop/src-tauri/src/main.rs",
+      "apps/kaspa-gateway-desktop/src-tauri/src/bin/kgw-provenance-smoke.rs",
       "tools/kgw_bridge_node_mode_routing_audit_v1.cjs",
       "tools/kgw_runtime_trace_owner_audit_v20.cjs",
-      "tools/kgw_parallel_self_worker_runtime_gate.cjs"
+      "tools/kgw_parallel_self_worker_runtime_gate.cjs",
+      "tools/kgw_raw_log_provenance_gate.cjs"
     ],
     requiredMarkers: [
       "kgw_apply_command_preview_overrides",
@@ -1212,4 +1214,3 @@ module.exports = {
   OWNER_REGISTRY,
   runGate
 };
-

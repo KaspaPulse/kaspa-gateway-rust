@@ -27,11 +27,13 @@ struct KgwParallelSelfWorker {
     role: String,
     network: String,
     appdir: String,
-    bridge_instance_id: Option<String>,
 
     node_mode: String,
     child: Child,
-    logs: Arc<Mutex<VecDeque<KgwRuntimeRawLogEntryV1>>>,
+    reader_handles: Vec<std::thread::JoinHandle<()>>,
+    // Keeps the registry-owned buffer alive with the runtime owner; insertion
+    // remains exclusive to `kgw_worker_spawn_reader`.
+    _raw_logs: KgwRawProcessLogBufferV1,
     started_ms: u128,
     exit_logged: bool,
     readiness_evidence: String,
@@ -88,9 +90,16 @@ pub struct KgwRuntimeLogsReportV1 {
 
 static KGW_PARALLEL_SELF_WORKERS: OnceLock<Mutex<HashMap<String, KgwParallelSelfWorker>>> =
     OnceLock::new();
+type KgwRawProcessLogBufferV1 = Arc<Mutex<VecDeque<KgwRuntimeRawLogEntryV1>>>;
+static KGW_RAW_PROCESS_LOG_BUFFERS_V1: OnceLock<Mutex<HashMap<String, KgwRawProcessLogBufferV1>>> =
+    OnceLock::new();
 
 fn kgw_parallel_self_workers() -> &'static Mutex<HashMap<String, KgwParallelSelfWorker>> {
     KGW_PARALLEL_SELF_WORKERS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn kgw_raw_process_log_buffers_v1() -> &'static Mutex<HashMap<String, KgwRawProcessLogBufferV1>> {
+    KGW_RAW_PROCESS_LOG_BUFFERS_V1.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 #[cfg(test)]
@@ -310,6 +319,18 @@ fn kgw_worker_key(role: &str, network: &str) -> String {
     )
 }
 
+fn kgw_worker_replace_raw_log_buffer_v1(
+    role: &str,
+    network: &str,
+) -> Result<KgwRawProcessLogBufferV1, String> {
+    let buffer = Arc::new(Mutex::new(VecDeque::new()));
+    let mut buffers = kgw_raw_process_log_buffers_v1()
+        .lock()
+        .map_err(|_| "raw process log buffer registry lock failed".to_string())?;
+    buffers.insert(kgw_worker_key(role, network), Arc::clone(&buffer));
+    Ok(buffer)
+}
+
 fn kgw_worker_clean_optional_identifier_v1(value: Option<String>) -> Option<String> {
     let clean = value?
         .chars()
@@ -341,7 +362,6 @@ fn kgw_worker_push_raw_log(
 fn kgw_worker_raw_log_entry_v1(
     role: &str,
     network: &str,
-    bridge_instance_id: Option<&str>,
     stream: &str,
     line: String,
 ) -> KgwRuntimeRawLogEntryV1 {
@@ -350,7 +370,10 @@ fn kgw_worker_raw_log_entry_v1(
         network: network.to_string(),
         source: "self-worker".to_string(),
         runtime_role: role.to_string(),
-        bridge_instance_id: bridge_instance_id.map(str::to_string),
+        // The official Bridge library exposes process-wide output and no
+        // structural listener attribution. Keep this field unset rather than
+        // inventing per-instance provenance from the active UI selection.
+        bridge_instance_id: None,
         stream: stream.to_string(),
         received_ms: kgw_worker_now_ms_u64(),
         raw_text: line,
@@ -747,7 +770,8 @@ fn kgw_worker_spawn_reader<R>(
     child_pid: u32,
     reader: R,
     logs: Arc<Mutex<VecDeque<KgwRuntimeRawLogEntryV1>>>,
-) where
+) -> std::thread::JoinHandle<()>
+where
     R: std::io::Read + Send + 'static,
 {
     std::thread::spawn(move || {
@@ -769,13 +793,7 @@ fn kgw_worker_spawn_reader<R>(
                         kgw_start_trace_capture_test_line_v1(&mirror);
                     }
 
-                    let entry = kgw_worker_raw_log_entry_v1(
-                        &role,
-                        &network,
-                        bridge_instance_id.as_deref(),
-                        &stream,
-                        line,
-                    );
+                    let entry = kgw_worker_raw_log_entry_v1(&role, &network, &stream, line);
                     kgw_worker_push_raw_log(&logs, entry);
                 }
                 Err(_error) => {
@@ -797,7 +815,59 @@ fn kgw_worker_spawn_reader<R>(
                 }
             }
         }
-    });
+    })
+}
+
+fn kgw_worker_join_readers_v1(reader_handles: Vec<std::thread::JoinHandle<()>>) {
+    for reader_handle in reader_handles {
+        let _ = reader_handle.join();
+    }
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Used by path-included integration tests.
+pub(crate) fn kgw_capture_raw_pipe_for_test_v1<R>(
+    role: &str,
+    network: &str,
+    stream: &str,
+    reader: R,
+    logs: KgwRawProcessLogBufferV1,
+) -> std::thread::JoinHandle<()>
+where
+    R: std::io::Read + Send + 'static,
+{
+    kgw_worker_spawn_reader(
+        role.to_string(),
+        network.to_string(),
+        stream.to_string(),
+        1,
+        reader,
+        logs,
+    )
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Used by path-included integration tests.
+pub(crate) fn kgw_empty_raw_log_buffer_for_test_v1() -> KgwRawProcessLogBufferV1 {
+    Arc::new(Mutex::new(VecDeque::new()))
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Used by path-included integration tests.
+pub(crate) fn kgw_raw_log_buffer_entries_for_test_v1(
+    logs: &KgwRawProcessLogBufferV1,
+) -> Vec<KgwRuntimeRawLogEntryV1> {
+    logs.lock()
+        .map(|entries| entries.iter().cloned().collect())
+        .unwrap_or_default()
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Used by path-included integration tests.
+pub(crate) fn kgw_clear_raw_process_log_buffers_for_test_v1() {
+    if let Ok(mut buffers) = kgw_raw_process_log_buffers_v1().lock() {
+        buffers.clear();
+    }
 }
 
 fn kgw_worker_command(
@@ -981,11 +1051,9 @@ fn kgw_worker_start(
             "external"
         };
     let trace_node_mode = kgw_worker_node_mode_for_trace_v1(&role, bridge_node_mode);
-    let bridge_instance_id = if role == "bridge" {
-        kgw_worker_clean_optional_identifier_v1(bridge_instance_id)
-    } else {
-        None
-    };
+    // Listener selection is management metadata only. Upstream Bridge logging
+    // is process-wide and offers no structural record-to-listener attribution.
+    let _ = bridge_instance_id;
     let has_bridge_config_path = bridge_config_path
         .as_deref()
         .map(str::trim)
@@ -1136,7 +1204,6 @@ fn kgw_worker_start(
         )),
     );
 
-    let logs = Arc::new(Mutex::new(VecDeque::new()));
     let startup_control_path = kgw_worker_startup_control_path_v1(&role, &network);
     if let Some(parent) = startup_control_path.parent() {
         std::fs::create_dir_all(parent).map_err(|error| {
@@ -1257,6 +1324,10 @@ fn kgw_worker_start(
         )),
     );
 
+    // Raw buffers are registered immediately before spawn and retained
+    // independently of live child ownership. Genuine official output emitted
+    // before startup failure or process exit remains queryable through logs IPC.
+    let logs = kgw_worker_replace_raw_log_buffer_v1(&role, &network)?;
     let mut child = match command.spawn() {
         Ok(child) => child,
         Err(error) => {
@@ -1304,16 +1375,17 @@ fn kgw_worker_start(
         )),
     );
 
+    let mut reader_handles = Vec::with_capacity(2);
     if let Some(stdout) = child.stdout.take() {
-        kgw_worker_spawn_reader(
+        reader_handles.push(kgw_worker_spawn_reader(
             role.clone(),
             network.clone(),
-            bridge_instance_id.clone(),
+            None,
             "stdout".to_string(),
             pid,
             stdout,
             Arc::clone(&logs),
-        );
+        ));
         kgw_start_trace_emit_v1(
             "native",
             "native.stdout_reader_attached",
@@ -1334,15 +1406,15 @@ fn kgw_worker_start(
     }
 
     if let Some(stderr) = child.stderr.take() {
-        kgw_worker_spawn_reader(
+        reader_handles.push(kgw_worker_spawn_reader(
             role.clone(),
             network.clone(),
-            bridge_instance_id.clone(),
+            None,
             "stderr".to_string(),
             pid,
             stderr,
             Arc::clone(&logs),
-        );
+        ));
         kgw_start_trace_emit_v1(
             "native",
             "native.stderr_reader_attached",
@@ -1375,6 +1447,7 @@ fn kgw_worker_start(
                 let _ = child.kill();
                 let _ = child.wait();
             }
+            kgw_worker_join_readers_v1(reader_handles);
             kgw_worker_remove_startup_control_v1(&startup_control_path);
             kgw_start_trace_emit_v1(
                 "native",
@@ -1395,6 +1468,7 @@ fn kgw_worker_start(
     };
 
     if let Some(exit_status) = child.try_wait().map_err(|error| error.to_string())? {
+        kgw_worker_join_readers_v1(reader_handles);
         kgw_start_trace_emit_v1(
             "native",
             "native.startup_response_returned",
@@ -1441,10 +1515,10 @@ fn kgw_worker_start(
             role: role.clone(),
             network: network.clone(),
             appdir: settings.app_dir_name.clone(),
-            bridge_instance_id,
             node_mode: stored_node_mode.clone(),
             child,
-            logs,
+            reader_handles,
+            _raw_logs: logs,
             started_ms: kgw_worker_now_ms(),
             exit_logged: false,
             readiness_evidence: readiness_evidence.clone(),
@@ -1462,6 +1536,15 @@ fn kgw_worker_start(
         settings.stratum_listen,
         stored_node_mode
     ))
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Used by path-included integration tests.
+pub(crate) fn kgw_raw_process_log_buffer_count_for_test_v1() -> usize {
+    kgw_raw_process_log_buffers_v1()
+        .lock()
+        .map(|buffers| buffers.len())
+        .unwrap_or_default()
 }
 
 fn kgw_worker_stop(network: &str, runtime_role: Option<&str>) -> Result<Option<String>, String> {
@@ -1499,6 +1582,7 @@ fn kgw_worker_stop(network: &str, runtime_role: Option<&str>) -> Result<Option<S
             let pid = worker.child.id();
             let _ = worker.child.kill();
             let _ = worker.child.wait();
+            kgw_worker_join_readers_v1(worker.reader_handles);
 
             lines.push(format!(
                 "parallel-owned-self-worker stopped;role={};network={};pid={};appdir={};node_mode={}",
@@ -1532,6 +1616,7 @@ pub fn kgw_shutdown_all_runtime_workers_v1() -> Result<String, String> {
 
             let _ = worker.child.kill();
             let _ = worker.child.wait();
+            kgw_worker_join_readers_v1(worker.reader_handles);
 
             stopped.push(format!(
                 "parallel-owned-self-worker shutdown-all;role={};network={};pid={}",
@@ -1615,47 +1700,33 @@ fn kgw_worker_status(
 fn kgw_worker_logs(
     network: Option<&str>,
     runtime_role: Option<&str>,
-    bridge_instance_id: Option<&str>,
+    _bridge_instance_id: Option<&str>,
 ) -> Result<Option<KgwRuntimeLogsReportV1>, String> {
-    let workers = kgw_parallel_self_workers()
-        .lock()
-        .map_err(|_| "parallel self-worker lock failed".to_string())?;
-
     let wanted_network = network.map(|value| value.trim().to_ascii_lowercase());
     let wanted_role = runtime_role.map(|value| value.trim().to_ascii_lowercase());
-    let wanted_bridge_instance_id =
-        kgw_worker_clean_optional_identifier_v1(bridge_instance_id.map(str::to_string));
 
-    let mut matched_worker = false;
+    let buffers = kgw_raw_process_log_buffers_v1()
+        .lock()
+        .map_err(|_| "raw process log buffer registry lock failed".to_string())?;
+    let mut matched_buffer = false;
     let mut lines = Vec::new();
 
-    for worker in workers.values() {
-        if let Some(ref value) = wanted_network
-            && &worker.network != value
+    for (key, logs) in buffers.iter() {
+        let (role, network) = key.split_once(':').unwrap_or(("", ""));
+        if wanted_network
+            .as_deref()
+            .is_some_and(|value| network != value)
+            || wanted_role.as_deref().is_some_and(|value| role != value)
         {
             continue;
         }
-
-        if let Some(ref value) = wanted_role
-            && &worker.role != value
-        {
-            continue;
-        }
-
-        if let Some(ref value) = wanted_bridge_instance_id
-            && worker.bridge_instance_id.as_ref() != Some(value)
-        {
-            continue;
-        }
-
-        matched_worker = true;
-
-        if let Ok(logs) = worker.logs.lock() {
+        matched_buffer = true;
+        if let Ok(logs) = logs.lock() {
             lines.extend(logs.iter().cloned());
         }
     }
 
-    if !matched_worker {
+    if !matched_buffer {
         return Ok(None);
     }
 
@@ -1665,7 +1736,9 @@ fn kgw_worker_logs(
         version: "kgw_runtime_logs_v1".to_string(),
         network: wanted_network,
         runtime_role: wanted_role,
-        bridge_instance_id: wanted_bridge_instance_id,
+        // IPC compatibility field only. Official Bridge records are emitted by
+        // a process-wide logger and cannot be attributed to one listener.
+        bridge_instance_id: None,
         source: "self-worker".to_string(),
         buffer_limit: KGW_RAW_PROCESS_LOG_BUFFER_LIMIT_V1,
         entries: lines,
@@ -1676,45 +1749,34 @@ fn kgw_worker_logs(
 fn kgw_worker_clear_logs(
     network: Option<&str>,
     runtime_role: Option<&str>,
-    bridge_instance_id: Option<&str>,
+    _bridge_instance_id: Option<&str>,
 ) -> Result<bool, String> {
-    let workers = kgw_parallel_self_workers()
+    let buffers = kgw_raw_process_log_buffers_v1()
         .lock()
-        .map_err(|_| "parallel self-worker lock failed".to_string())?;
+        .map_err(|_| "raw process log buffer registry lock failed".to_string())?;
 
     let wanted_network = network.map(|value| value.trim().to_ascii_lowercase());
     let wanted_role = runtime_role.map(|value| value.trim().to_ascii_lowercase());
-    let wanted_bridge_instance_id =
-        kgw_worker_clean_optional_identifier_v1(bridge_instance_id.map(str::to_string));
-    let mut matched_worker = false;
+    let mut matched_buffer = false;
 
-    for worker in workers.values() {
-        if let Some(ref value) = wanted_network
-            && &worker.network != value
+    for (key, logs) in buffers.iter() {
+        let (role, network) = key.split_once(':').unwrap_or(("", ""));
+        if wanted_network
+            .as_deref()
+            .is_some_and(|value| network != value)
+            || wanted_role.as_deref().is_some_and(|value| role != value)
         {
             continue;
         }
 
-        if let Some(ref value) = wanted_role
-            && &worker.role != value
-        {
-            continue;
-        }
+        matched_buffer = true;
 
-        if let Some(ref value) = wanted_bridge_instance_id
-            && worker.bridge_instance_id.as_ref() != Some(value)
-        {
-            continue;
-        }
-
-        matched_worker = true;
-
-        if let Ok(mut logs) = worker.logs.lock() {
+        if let Ok(mut logs) = logs.lock() {
             logs.clear();
         }
     }
 
-    Ok(matched_worker)
+    Ok(matched_buffer)
 }
 
 fn kgw_empty_runtime_logs_report_v1(
