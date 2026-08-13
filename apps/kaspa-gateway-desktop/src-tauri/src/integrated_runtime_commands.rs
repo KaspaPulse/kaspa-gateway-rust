@@ -75,8 +75,18 @@ pub(crate) struct KgwStopOutcomeMessageV1 {
     pub(crate) runtime_role: String,
     pub(crate) network: String,
     pub(crate) worker_pid: u32,
+    pub(crate) all_owned_components_terminal: bool,
     pub(crate) evidence: Option<String>,
     pub(crate) error: Option<String>,
+}
+
+#[derive(Debug)]
+pub(crate) enum KgwValidatedStopOutcomeV1 {
+    Stopped(String),
+    Failed {
+        error: String,
+        all_owned_components_terminal: bool,
+    },
 }
 
 #[derive(Debug)]
@@ -767,7 +777,7 @@ pub(crate) fn kgw_worker_validate_stop_outcome_v1(
     role: &str,
     network: &str,
     worker_pid: u32,
-) -> Result<String, String> {
+) -> Result<KgwValidatedStopOutcomeV1, String> {
     if message.version != 1 {
         return Err(format!(
             "stop attestation protocol version mismatch;expected=1;actual={}",
@@ -785,20 +795,38 @@ pub(crate) fn kgw_worker_validate_stop_outcome_v1(
     }
 
     match message.outcome.as_str() {
-        "STOPPED" => message
-            .evidence
-            .filter(|evidence| !evidence.trim().is_empty())
-            .ok_or_else(|| {
-                format!(
-                    "stop attestation STOPPED is missing evidence;role={role};network={network};pid={worker_pid}"
-                )
-            }),
-        "FAILED" => Err(format!(
-            "official graceful shutdown failed;role={role};network={network};pid={worker_pid};error={}",
+        "STOPPED" => {
+            if !message.all_owned_components_terminal {
+                return Err(format!(
+                    "stop attestation STOPPED lacks terminal ownership proof;role={role};network={network};pid={worker_pid}"
+                ));
+            }
             message
+                .evidence
+                .filter(|evidence| !evidence.trim().is_empty())
+                .map(KgwValidatedStopOutcomeV1::Stopped)
+                .ok_or_else(|| {
+                    format!(
+                        "stop attestation STOPPED is missing evidence;role={role};network={network};pid={worker_pid}"
+                    )
+                })
+        }
+        "FAILED" => {
+            let error = message
                 .error
-                .unwrap_or_else(|| "self-worker reported FAILED without an error".to_string())
-        )),
+                .filter(|error| !error.trim().is_empty())
+                .ok_or_else(|| {
+                    format!(
+                        "stop attestation FAILED is missing an error;role={role};network={network};pid={worker_pid}"
+                    )
+                })?;
+            Ok(KgwValidatedStopOutcomeV1::Failed {
+                error: format!(
+                    "official graceful shutdown failed;role={role};network={network};pid={worker_pid};error={error}"
+                ),
+                all_owned_components_terminal: message.all_owned_components_terminal,
+            })
+        }
         other => Err(format!(
             "stop attestation outcome is invalid;role={role};network={network};pid={worker_pid};outcome={other}"
         )),
@@ -1106,6 +1134,20 @@ fn kgw_worker_command(
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::null());
+        for key in [
+            "KGW_TEST_SELF_WORKER_READY_DELAY_MS",
+            "KGW_TEST_SELF_WORKER_STDOUT",
+            "KGW_TEST_SELF_WORKER_STDERR",
+            "KGW_TEST_SELF_WORKER_HANG_ON_STOP",
+            "KGW_TEST_SELF_WORKER_TIMEOUT_ON_STOP",
+            "KGW_TEST_SELF_WORKER_FAIL_ON_STOP",
+            "KGW_TEST_SELF_WORKER_BRIDGE_LISTENER_FAIL_ON_STOP",
+            "KGW_TEST_SELF_WORKER_OWNED_NODE_STOP_MARKER_PATH",
+        ] {
+            if let Some(value) = std::env::var_os(key) {
+                command.env(key, value);
+            }
+        }
         return Ok(command);
     }
 
@@ -1985,8 +2027,12 @@ fn kgw_worker_stop_one_v1(
     let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
     let mut evidence = None;
     let mut attested = false;
+    let mut failed_terminal_proof = false;
+    let mut terminal_control_outcome_received = false;
 
-    while graceful_failure.is_none() && std::time::Instant::now() < deadline {
+    while (!terminal_control_outcome_received || attested || failed_terminal_proof)
+        && std::time::Instant::now() < deadline
+    {
         if worker.stop_outcome_path.is_file() {
             let outcome =
                 kgw_worker_read_stop_outcome_v1(&worker.stop_outcome_path).and_then(|message| {
@@ -1994,11 +2040,23 @@ fn kgw_worker_stop_one_v1(
                 });
             let _ = std::fs::remove_file(&worker.stop_outcome_path);
             match outcome {
-                Ok(outcome_evidence) => {
+                Ok(KgwValidatedStopOutcomeV1::Stopped(outcome_evidence)) => {
                     evidence = Some(outcome_evidence);
                     attested = true;
+                    terminal_control_outcome_received = true;
                 }
-                Err(error) => graceful_failure = Some(error),
+                Ok(KgwValidatedStopOutcomeV1::Failed {
+                    error,
+                    all_owned_components_terminal,
+                }) => {
+                    terminal_control_outcome_received = true;
+                    failed_terminal_proof = all_owned_components_terminal;
+                    graceful_failure = Some(error);
+                }
+                Err(error) => {
+                    terminal_control_outcome_received = true;
+                    graceful_failure = Some(error);
+                }
             }
         }
 
@@ -2007,7 +2065,7 @@ fn kgw_worker_stop_one_v1(
             .try_wait()
             .map_err(|error| format!("wait for graceful worker exit failed: {error}"))?
         {
-            if !attested && graceful_failure.is_none() && worker.stop_outcome_path.is_file() {
+            if !terminal_control_outcome_received && worker.stop_outcome_path.is_file() {
                 match kgw_worker_read_stop_outcome_v1(&worker.stop_outcome_path).and_then(
                     |message| {
                         kgw_worker_validate_stop_outcome_v1(
@@ -2018,11 +2076,20 @@ fn kgw_worker_stop_one_v1(
                         )
                     },
                 ) {
-                    Ok(outcome_evidence) => {
+                    Ok(KgwValidatedStopOutcomeV1::Stopped(outcome_evidence)) => {
                         evidence = Some(outcome_evidence);
                         attested = true;
                     }
-                    Err(error) => graceful_failure = Some(error),
+                    Ok(KgwValidatedStopOutcomeV1::Failed {
+                        error,
+                        all_owned_components_terminal,
+                    }) => {
+                        failed_terminal_proof = all_owned_components_terminal;
+                        graceful_failure = Some(error);
+                    }
+                    Err(error) => {
+                        graceful_failure = Some(error);
+                    }
                 }
                 let _ = std::fs::remove_file(&worker.stop_outcome_path);
             }
@@ -2060,10 +2127,11 @@ fn kgw_worker_stop_one_v1(
     }
     let reason = graceful_failure.unwrap_or_else(|| "unknown graceful Stop failure".to_string());
 
-    if let Some(exit_status) = worker
-        .child
-        .try_wait()
-        .map_err(|error| format!("inspect worker before force fallback failed: {error}"))?
+    if failed_terminal_proof
+        && let Some(exit_status) = worker
+            .child
+            .try_wait()
+            .map_err(|error| format!("inspect worker before force fallback failed: {error}"))?
     {
         return Ok(KgwWorkerStopResultV1 {
             line: format!(
@@ -3296,6 +3364,55 @@ fn kgw_test_self_worker_hold() {
             if std::env::var_os("KGW_TEST_SELF_WORKER_HANG_ON_STOP").is_none() {
                 println!("test-self-worker final official stdout");
                 eprintln!("test-self-worker final official stderr");
+                if std::env::var_os("KGW_TEST_SELF_WORKER_TIMEOUT_ON_STOP").is_some() {
+                    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::sync_channel(1);
+                    let _shutdown_thread = std::thread::spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_secs(60));
+                        let _ = shutdown_tx.send(());
+                    });
+                    assert!(matches!(
+                        shutdown_rx.recv_timeout(std::time::Duration::from_millis(5)),
+                        Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+                    ));
+                    let outcome = serde_json::json!({
+                        "version": 1,
+                        "outcome": "FAILED",
+                        "runtimeRole": role,
+                        "network": network,
+                        "workerPid": std::process::id(),
+                        "allOwnedComponentsTerminal": false,
+                        "evidence": null,
+                        "error": "official shutdown exceeded child budget;timeout_ms=5",
+                    });
+                    std::fs::write(&stop_outcome_path, outcome.to_string())
+                        .expect("test self-worker must publish timeout FAILED");
+                    loop {
+                        std::thread::park_timeout(std::time::Duration::from_secs(60));
+                    }
+                }
+                if std::env::var_os("KGW_TEST_SELF_WORKER_BRIDGE_LISTENER_FAIL_ON_STOP").is_some() {
+                    let marker_path = std::env::var_os(
+                        "KGW_TEST_SELF_WORKER_OWNED_NODE_STOP_MARKER_PATH",
+                    )
+                    .expect("in-process bridge fixture must provide owned Node Stop marker path");
+                    std::fs::write(marker_path, "owned Node graceful Stop attempted")
+                        .expect("in-process bridge fixture must mark owned Node Stop attempt");
+                    let outcome = serde_json::json!({
+                        "version": 1,
+                        "outcome": "FAILED",
+                        "runtimeRole": role,
+                        "network": network,
+                        "workerPid": std::process::id(),
+                        "allOwnedComponentsTerminal": false,
+                        "evidence": null,
+                        "error": "component=bridge-listener-0;listener terminality not proven after join failure",
+                    });
+                    std::fs::write(&stop_outcome_path, outcome.to_string())
+                        .expect("in-process bridge fixture must publish nonterminal FAILED");
+                    loop {
+                        std::thread::park_timeout(std::time::Duration::from_secs(60));
+                    }
+                }
                 let fail_on_stop = std::env::var_os("KGW_TEST_SELF_WORKER_FAIL_ON_STOP").is_some();
                 let outcome = serde_json::json!({
                     "version": 1,
@@ -3303,6 +3420,7 @@ fn kgw_test_self_worker_hold() {
                     "runtimeRole": role,
                     "network": network,
                     "workerPid": std::process::id(),
+                    "allOwnedComponentsTerminal": true,
                     "evidence": if fail_on_stop { None } else { Some("test-official-shutdown-joined") },
                     "error": if fail_on_stop { Some("test official shutdown failure") } else { None },
                 });

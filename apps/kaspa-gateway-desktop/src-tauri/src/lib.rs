@@ -1169,8 +1169,96 @@ struct KgwStopOutcomeMessageV1<'a> {
     runtime_role: &'a str,
     network: &'a str,
     worker_pid: u32,
+    all_owned_components_terminal: bool,
     evidence: Option<&'a str>,
     error: Option<&'a str>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum KgwOwnedRuntimeTerminalityV1 {
+    ProvenTerminal,
+    NotProven,
+}
+
+#[derive(Debug)]
+struct KgwOfficialShutdownFailureV1 {
+    error: String,
+    terminality: KgwOwnedRuntimeTerminalityV1,
+}
+
+impl KgwOfficialShutdownFailureV1 {
+    fn terminal(error: impl Into<String>) -> Self {
+        Self {
+            error: error.into(),
+            terminality: KgwOwnedRuntimeTerminalityV1::ProvenTerminal,
+        }
+    }
+
+    fn not_proven(error: impl Into<String>) -> Self {
+        Self {
+            error: error.into(),
+            terminality: KgwOwnedRuntimeTerminalityV1::NotProven,
+        }
+    }
+}
+
+#[derive(Debug)]
+enum KgwPostReadyStopOutcomeV1 {
+    Stopped,
+    Failed(KgwOfficialShutdownFailureV1),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum KgwPostReadyStopActionV1 {
+    Return,
+    ExitFailure,
+    HoldForParentForce,
+}
+
+fn kgw_post_ready_stop_action_v1(outcome: &KgwPostReadyStopOutcomeV1) -> KgwPostReadyStopActionV1 {
+    match outcome {
+        KgwPostReadyStopOutcomeV1::Stopped => KgwPostReadyStopActionV1::Return,
+        KgwPostReadyStopOutcomeV1::Failed(failure)
+            if failure.terminality == KgwOwnedRuntimeTerminalityV1::ProvenTerminal =>
+        {
+            KgwPostReadyStopActionV1::ExitFailure
+        }
+        KgwPostReadyStopOutcomeV1::Failed(_) => KgwPostReadyStopActionV1::HoldForParentForce,
+    }
+}
+
+struct KgwOwnedShutdownComponentV1 {
+    name: String,
+    shutdown: Box<dyn FnOnce() -> Result<String, KgwOfficialShutdownFailureV1> + Send + 'static>,
+}
+
+fn kgw_shutdown_all_owned_components_v1(
+    components: Vec<KgwOwnedShutdownComponentV1>,
+) -> Result<Vec<String>, KgwOfficialShutdownFailureV1> {
+    let mut evidence = Vec::with_capacity(components.len());
+    let mut failures = Vec::new();
+    let mut terminality = KgwOwnedRuntimeTerminalityV1::ProvenTerminal;
+
+    for component in components {
+        match (component.shutdown)() {
+            Ok(component_evidence) => evidence.push(component_evidence),
+            Err(failure) => {
+                if failure.terminality == KgwOwnedRuntimeTerminalityV1::NotProven {
+                    terminality = KgwOwnedRuntimeTerminalityV1::NotProven;
+                }
+                failures.push(format!("component={};{}", component.name, failure.error));
+            }
+        }
+    }
+
+    if failures.is_empty() {
+        Ok(evidence)
+    } else {
+        Err(KgwOfficialShutdownFailureV1 {
+            error: failures.join(" | "),
+            terminality,
+        })
+    }
 }
 
 fn kgw_startup_control_path_from_args_v1(args: &[String]) -> Option<std::path::PathBuf> {
@@ -1244,6 +1332,7 @@ fn kgw_write_stop_outcome_v1(
     role: &str,
     network: &str,
     outcome: &str,
+    all_owned_components_terminal: bool,
     evidence: Option<&str>,
     error: Option<&str>,
 ) -> Result<(), String> {
@@ -1256,6 +1345,7 @@ fn kgw_write_stop_outcome_v1(
         runtime_role: role,
         network,
         worker_pid: std::process::id(),
+        all_owned_components_terminal,
         evidence,
         error,
     };
@@ -1296,96 +1386,176 @@ fn kgw_wait_for_stop_request_v1(
     }
 }
 
+fn kgw_publish_stop_failure_v1(
+    stop_outcome_path: &std::path::Path,
+    role: &str,
+    network: &str,
+    mut failure: KgwOfficialShutdownFailureV1,
+) -> KgwPostReadyStopOutcomeV1 {
+    let all_owned_components_terminal =
+        failure.terminality == KgwOwnedRuntimeTerminalityV1::ProvenTerminal;
+    if let Err(publish_error) = kgw_write_stop_outcome_v1(
+        stop_outcome_path,
+        role,
+        network,
+        "FAILED",
+        all_owned_components_terminal,
+        None,
+        Some(&failure.error),
+    ) {
+        failure.error = format!(
+            "{};stop_outcome_publish_error={publish_error}",
+            failure.error
+        );
+        // Without a published typed outcome the parent cannot validate the
+        // child's terminality proof. Keep the child alive so the parent owns
+        // the deterministic exact-Child fallback even if shutdown itself had
+        // already reached a terminal error.
+        failure.terminality = KgwOwnedRuntimeTerminalityV1::NotProven;
+    }
+    KgwPostReadyStopOutcomeV1::Failed(failure)
+}
+
+fn kgw_execute_stop_request_with_budget_v1<F>(
+    stop_request_path: &std::path::Path,
+    stop_outcome_path: &std::path::Path,
+    role: &str,
+    network: &str,
+    budget: std::time::Duration,
+    shutdown: F,
+) -> KgwPostReadyStopOutcomeV1
+where
+    F: FnOnce() -> Result<String, KgwOfficialShutdownFailureV1> + Send + 'static,
+{
+    if let Err(error) = kgw_wait_for_stop_request_v1(stop_request_path, role, network) {
+        return kgw_publish_stop_failure_v1(
+            stop_outcome_path,
+            role,
+            network,
+            KgwOfficialShutdownFailureV1::not_proven(error),
+        );
+    }
+    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::sync_channel(1);
+    let shutdown_thread = match std::thread::Builder::new()
+        .name(format!("kgw-official-shutdown-{role}-{network}"))
+        .spawn(move || {
+            let _ = shutdown_tx.send(shutdown());
+        }) {
+        Ok(shutdown_thread) => shutdown_thread,
+        Err(error) => {
+            return kgw_publish_stop_failure_v1(
+                stop_outcome_path,
+                role,
+                network,
+                KgwOfficialShutdownFailureV1::not_proven(format!(
+                    "start official shutdown worker failed: {error}"
+                )),
+            );
+        }
+    };
+
+    match shutdown_rx.recv_timeout(budget) {
+        Ok(Ok(evidence)) => {
+            if let Err(panic) = shutdown_thread.join() {
+                return kgw_publish_stop_failure_v1(
+                    stop_outcome_path,
+                    role,
+                    network,
+                    KgwOfficialShutdownFailureV1::terminal(format!(
+                        "official shutdown worker panicked after reporting terminal shutdown: {}",
+                        kgw_panic_payload_message_v1(panic.as_ref())
+                    )),
+                );
+            }
+            if let Err(error) = kgw_write_stop_outcome_v1(
+                stop_outcome_path,
+                role,
+                network,
+                "STOPPED",
+                true,
+                Some(&evidence),
+                None,
+            ) {
+                return kgw_publish_stop_failure_v1(
+                    stop_outcome_path,
+                    role,
+                    network,
+                    KgwOfficialShutdownFailureV1::terminal(format!(
+                        "publish terminal STOPPED outcome failed: {error}"
+                    )),
+                );
+            }
+            KgwPostReadyStopOutcomeV1::Stopped
+        }
+        Ok(Err(failure)) => {
+            let failure = match shutdown_thread.join() {
+                Ok(()) => failure,
+                Err(panic) => KgwOfficialShutdownFailureV1::not_proven(format!(
+                    "{};official shutdown worker panicked before terminality could be proven: {}",
+                    failure.error,
+                    kgw_panic_payload_message_v1(panic.as_ref())
+                )),
+            };
+            kgw_publish_stop_failure_v1(stop_outcome_path, role, network, failure)
+        }
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+            let error = format!(
+                "official shutdown exceeded child budget;timeout_ms={}",
+                budget.as_millis()
+            );
+            // The shutdown worker and any official runtime it owns are deliberately
+            // retained by this process. The post-READY caller must hold until the
+            // parent force-terminates this exact Child handle.
+            kgw_publish_stop_failure_v1(
+                stop_outcome_path,
+                role,
+                network,
+                KgwOfficialShutdownFailureV1::not_proven(error),
+            )
+        }
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+            let error = match shutdown_thread.join() {
+                Ok(()) => "official shutdown worker disconnected without an outcome".to_string(),
+                Err(panic) => format!(
+                    "official shutdown worker panicked without an outcome: {}",
+                    kgw_panic_payload_message_v1(panic.as_ref())
+                ),
+            };
+            kgw_publish_stop_failure_v1(
+                stop_outcome_path,
+                role,
+                network,
+                KgwOfficialShutdownFailureV1::not_proven(error),
+            )
+        }
+    }
+}
+
 fn kgw_execute_stop_request_v1<F>(
     stop_request_path: &std::path::Path,
     stop_outcome_path: &std::path::Path,
     role: &str,
     network: &str,
     shutdown: F,
-) -> Result<(), String>
+) -> KgwPostReadyStopOutcomeV1
 where
-    F: FnOnce() -> Result<String, String> + Send + 'static,
+    F: FnOnce() -> Result<String, KgwOfficialShutdownFailureV1> + Send + 'static,
 {
-    if let Err(error) = kgw_wait_for_stop_request_v1(stop_request_path, role, network) {
-        let _ = kgw_write_stop_outcome_v1(
-            stop_outcome_path,
-            role,
-            network,
-            "FAILED",
-            None,
-            Some(&error),
-        );
-        return Err(error);
-    }
-    let (shutdown_tx, shutdown_rx) = std::sync::mpsc::sync_channel(1);
-    let shutdown_thread = std::thread::Builder::new()
-        .name(format!("kgw-official-shutdown-{role}-{network}"))
-        .spawn(move || {
-            let _ = shutdown_tx.send(shutdown());
-        })
-        .map_err(|error| format!("start official shutdown worker failed: {error}"))?;
-    let budget = std::time::Duration::from_millis(
-        crate::integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1,
-    );
+    kgw_execute_stop_request_with_budget_v1(
+        stop_request_path,
+        stop_outcome_path,
+        role,
+        network,
+        std::time::Duration::from_millis(
+            crate::integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1,
+        ),
+        shutdown,
+    )
+}
 
-    match shutdown_rx.recv_timeout(budget) {
-        Ok(Ok(evidence)) => {
-            shutdown_thread.join().map_err(|panic| {
-                format!(
-                    "official shutdown worker panicked: {}",
-                    kgw_panic_payload_message_v1(panic.as_ref())
-                )
-            })?;
-            kgw_write_stop_outcome_v1(
-                stop_outcome_path,
-                role,
-                network,
-                "STOPPED",
-                Some(&evidence),
-                None,
-            )?;
-            Ok(())
-        }
-        Ok(Err(error)) => {
-            let _ = shutdown_thread.join();
-            let _ = kgw_write_stop_outcome_v1(
-                stop_outcome_path,
-                role,
-                network,
-                "FAILED",
-                None,
-                Some(&error),
-            );
-            Err(error)
-        }
-        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-            let error = format!(
-                "official shutdown exceeded child budget;timeout_ms={}",
-                crate::integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1
-            );
-            let _ = kgw_write_stop_outcome_v1(
-                stop_outcome_path,
-                role,
-                network,
-                "FAILED",
-                None,
-                Some(&error),
-            );
-            Err(error)
-        }
-        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-            let error = "official shutdown worker disconnected without an outcome".to_string();
-            let _ = shutdown_thread.join();
-            let _ = kgw_write_stop_outcome_v1(
-                stop_outcome_path,
-                role,
-                network,
-                "FAILED",
-                None,
-                Some(&error),
-            );
-            Err(error)
-        }
+fn kgw_hold_for_parent_force_fallback_v1() -> ! {
+    loop {
+        std::thread::park_timeout(std::time::Duration::from_secs(60));
     }
 }
 
@@ -1481,7 +1651,7 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
         "inprocess" | "inproc" | "official-inprocess-node" | "inprocess-node"
     );
 
-    let result = match role_key.as_str() {
+    let startup_result = match role_key.as_str() {
         "node" => kgw_run_node_self_worker(
             &network,
             &appdir,
@@ -1517,19 +1687,27 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
         other => Err(format!("unsupported self-worker role: {other}")),
     };
 
-    if let Err(error) = result {
-        let _ = kgw_write_startup_control_v1(
-            startup_control_path.as_deref(),
-            &role_key,
-            &network,
-            "FAILED",
-            None,
-            Some(&error),
-        );
-        std::process::exit(1);
+    match startup_result {
+        Ok(stop_outcome) => match kgw_post_ready_stop_action_v1(&stop_outcome) {
+            KgwPostReadyStopActionV1::Return => true,
+            KgwPostReadyStopActionV1::ExitFailure => std::process::exit(1),
+            KgwPostReadyStopActionV1::HoldForParentForce => kgw_hold_for_parent_force_fallback_v1(),
+        },
+        Err(error) => {
+            // Only errors produced before READY are allowed to use startup FAILED.
+            // Post-READY Stop failures are typed separately above and can never
+            // overwrite the startup-control outcome.
+            let _ = kgw_write_startup_control_v1(
+                startup_control_path.as_deref(),
+                &role_key,
+                &network,
+                "FAILED",
+                None,
+                Some(&error),
+            );
+            std::process::exit(1);
+        }
     }
-
-    true
 }
 
 fn kgw_self_worker_arg_value(args: &[String], key: &str) -> Option<String> {
@@ -1706,7 +1884,7 @@ fn kgw_run_node_self_worker(
     startup_control_path: Option<&std::path::Path>,
     stop_request_path: Option<&std::path::Path>,
     stop_outcome_path: Option<&std::path::Path>,
-) -> Result<(), String> {
+) -> Result<KgwPostReadyStopOutcomeV1, String> {
     let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
         network.to_string(),
         "integrated-inproc".to_string(),
@@ -1748,18 +1926,19 @@ fn kgw_run_node_self_worker(
         stop_request_path.ok_or_else(|| "stop request path is missing or invalid".to_string())?;
     let stop_outcome_path =
         stop_outcome_path.ok_or_else(|| "stop outcome path is missing or invalid".to_string())?;
-    kgw_execute_stop_request_v1(
+    Ok(kgw_execute_stop_request_v1(
         stop_request_path,
         stop_outcome_path,
         "node",
         settings.network.as_str(),
-        move || {
-            runtime
-                .stop_network(settings.network)
-                .map(|status| status.last_message)
-                .map_err(|error| error.to_string())
+        move || match runtime.stop_network(settings.network) {
+            Ok(status) => Ok(status.last_message),
+            Err(error @ kaspa_gateway_rk_node::KgwRealOwnerError::ShutdownFailed(_)) => {
+                Err(KgwOfficialShutdownFailureV1::terminal(error.to_string()))
+            }
+            Err(error) => Err(KgwOfficialShutdownFailureV1::not_proven(error.to_string())),
         },
-    )
+    ))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1773,7 +1952,7 @@ fn kgw_run_bridge_self_worker(
     startup_control_path: Option<&std::path::Path>,
     stop_request_path: Option<&std::path::Path>,
     stop_outcome_path: Option<&std::path::Path>,
-) -> Result<(), String> {
+) -> Result<KgwPostReadyStopOutcomeV1, String> {
     let bridge_node_mode = kgw_self_worker_arg_value(args, "--node-mode")
         .unwrap_or_else(|| "external".to_string())
         .trim()
@@ -1913,46 +2092,71 @@ fn kgw_run_bridge_self_worker(
     let stop_outcome_path =
         stop_outcome_path.ok_or_else(|| "stop outcome path is missing or invalid".to_string())?;
     let shutdown_network = network.to_string();
-    kgw_execute_stop_request_v1(
+    Ok(kgw_execute_stop_request_v1(
         stop_request_path,
         stop_outcome_path,
         "bridge",
         network,
         move || {
-            let network = shutdown_network.as_str();
-            let mut join_failures = Vec::new();
-            for handle in handles {
-                if let Err(panic) = handle.join() {
-                    join_failures.push(format!(
-                        "bridge owner join panicked;network={network};panic={}",
-                        kgw_panic_payload_message_v1(panic.as_ref())
-                    ));
-                }
-            }
+            let listener_count = readiness_evidence.len();
+            let mut components = handles
+                .into_iter()
+                .enumerate()
+                .map(|(index, handle)| {
+                    let listener_network = shutdown_network.clone();
+                    KgwOwnedShutdownComponentV1 {
+                        name: format!("bridge-listener-{index}"),
+                        shutdown: Box::new(move || match handle.join() {
+                            Ok(()) => Ok(format!("bridge_listener_joined={index}")),
+                            Err(panic) => Err(KgwOfficialShutdownFailureV1::terminal(format!(
+                                "bridge owner join panicked;network={listener_network};panic={}",
+                                kgw_panic_payload_message_v1(panic.as_ref())
+                            ))),
+                        }),
+                    }
+                })
+                .collect::<Vec<_>>();
 
-            if !join_failures.is_empty() {
-                return Err(join_failures.join(" | "));
-            }
-
-            let mut evidence = format!(
-                "bridge_listeners_joined={};listener_count={};node_mode={bridge_node_mode}",
-                readiness_evidence.len(),
-                readiness_evidence.len()
-            );
             if let Some(runtime) = inprocess_node_runtime {
-                let parsed_network = kaspa_gateway_rk_node::KgwNetwork::parse(network)
-                    .map_err(|error| error.to_string())?;
-                let node_status = runtime
-                    .stop_network(parsed_network)
-                    .map_err(|error| error.to_string())?;
-                evidence.push_str(";owned_node_stopped_after_bridge=true;");
-                evidence.push_str(&node_status.last_message);
-            } else {
-                evidence.push_str(";independent_node_untouched=true");
+                let parsed_network = kaspa_gateway_rk_node::KgwNetwork::parse(&shutdown_network);
+                components.push(KgwOwnedShutdownComponentV1 {
+                    name: "owned-node".to_string(),
+                    shutdown: Box::new(move || match parsed_network {
+                        Ok(parsed_network) => match runtime.stop_network(parsed_network) {
+                            Ok(status) => Ok(format!(
+                                "owned_node_stopped_after_bridge=true;{}",
+                                status.last_message
+                            )),
+                            Err(
+                                error @ kaspa_gateway_rk_node::KgwRealOwnerError::ShutdownFailed(_),
+                            ) => Err(KgwOfficialShutdownFailureV1::terminal(error.to_string())),
+                            Err(error) => {
+                                Err(KgwOfficialShutdownFailureV1::not_proven(error.to_string()))
+                            }
+                        },
+                        Err(error) => {
+                            Err(KgwOfficialShutdownFailureV1::not_proven(error.to_string()))
+                        }
+                    }),
+                });
             }
-            Ok(evidence)
+
+            let evidence = kgw_shutdown_all_owned_components_v1(components)?;
+            let mut summary = format!(
+                "bridge_listeners_joined={listener_count};listener_count={listener_count};node_mode={bridge_node_mode}"
+            );
+            if is_inprocess {
+                summary.push_str(";owned_node_stopped_after_bridge=true");
+            } else {
+                summary.push_str(";independent_node_untouched=true");
+            }
+            if !evidence.is_empty() {
+                summary.push(';');
+                summary.push_str(&evidence.join(" | "));
+            }
+            Ok(summary)
         },
-    )
+    ))
 }
 
 fn kgw_panic_payload_message_v1(payload: &(dyn std::any::Any + Send)) -> String {
@@ -1962,5 +2166,172 @@ fn kgw_panic_payload_message_v1(payload: &(dyn std::any::Any + Send)) -> String 
         (*message).to_string()
     } else {
         "non-string panic payload".to_string()
+    }
+}
+
+#[cfg(test)]
+mod kgw_graceful_stop_failure_path_tests {
+    use super::*;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
+    fn stop_control_path(suffix: &str) -> std::path::PathBuf {
+        static SEQUENCE: AtomicUsize = AtomicUsize::new(1);
+        std::env::temp_dir()
+            .join("KaspaGateway")
+            .join("stop-control")
+            .join(format!(
+                "failure-path-unit-{}-{}-{suffix}.json",
+                std::process::id(),
+                SEQUENCE.fetch_add(1, Ordering::SeqCst)
+            ))
+    }
+
+    fn write_matching_stop_request(path: &std::path::Path, role: &str, network: &str) {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(
+            path,
+            serde_json::json!({
+                "version": 1,
+                "command": "STOP",
+                "runtimeRole": role,
+                "network": network,
+                "workerPid": std::process::id(),
+            })
+            .to_string(),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn child_shutdown_budget_timeout_publishes_nonterminal_failed_and_requires_parent_force() {
+        let request_path = stop_control_path("request");
+        let outcome_path = stop_control_path("outcome");
+        write_matching_stop_request(&request_path, "node", "mainnet");
+
+        let outcome = kgw_execute_stop_request_with_budget_v1(
+            &request_path,
+            &outcome_path,
+            "node",
+            "mainnet",
+            std::time::Duration::from_millis(5),
+            || {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+                Ok("late terminal result".to_string())
+            },
+        );
+
+        assert_eq!(
+            kgw_post_ready_stop_action_v1(&outcome),
+            KgwPostReadyStopActionV1::HoldForParentForce
+        );
+        let message: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&outcome_path).unwrap()).unwrap();
+        assert_eq!(message["outcome"], "FAILED");
+        assert_eq!(message["allOwnedComponentsTerminal"], false);
+        assert!(
+            message["error"]
+                .as_str()
+                .unwrap()
+                .contains("official shutdown exceeded child budget")
+        );
+
+        let _ = std::fs::remove_file(request_path);
+        let _ = std::fs::remove_file(outcome_path);
+    }
+
+    #[test]
+    fn terminal_failed_after_ready_can_exit_without_parent_force() {
+        let failure = KgwPostReadyStopOutcomeV1::Failed(KgwOfficialShutdownFailureV1::terminal(
+            "joined owner reported failure",
+        ));
+        assert_eq!(
+            kgw_post_ready_stop_action_v1(&failure),
+            KgwPostReadyStopActionV1::ExitFailure
+        );
+    }
+
+    #[test]
+    fn unpublished_terminal_failure_cannot_bypass_parent_force() {
+        let outcome_path = stop_control_path("missing-parent/outcome");
+        let outcome = kgw_publish_stop_failure_v1(
+            &outcome_path,
+            "node",
+            "mainnet",
+            KgwOfficialShutdownFailureV1::terminal("joined owner reported failure"),
+        );
+        assert_eq!(
+            kgw_post_ready_stop_action_v1(&outcome),
+            KgwPostReadyStopActionV1::HoldForParentForce
+        );
+    }
+
+    #[test]
+    fn bridge_cleanup_attempts_owned_node_after_listener_failure() {
+        let listener_attempted = Arc::new(AtomicBool::new(false));
+        let node_attempted = Arc::new(AtomicBool::new(false));
+        let listener_for_shutdown = Arc::clone(&listener_attempted);
+        let node_for_shutdown = Arc::clone(&node_attempted);
+
+        let result = kgw_shutdown_all_owned_components_v1(vec![
+            KgwOwnedShutdownComponentV1 {
+                name: "bridge-listener-0".to_string(),
+                shutdown: Box::new(move || {
+                    listener_for_shutdown.store(true, Ordering::SeqCst);
+                    Err(KgwOfficialShutdownFailureV1::terminal(
+                        "listener join panicked",
+                    ))
+                }),
+            },
+            KgwOwnedShutdownComponentV1 {
+                name: "owned-node".to_string(),
+                shutdown: Box::new(move || {
+                    node_for_shutdown.store(true, Ordering::SeqCst);
+                    Ok("owned node joined".to_string())
+                }),
+            },
+        ])
+        .unwrap_err();
+
+        assert!(listener_attempted.load(Ordering::SeqCst));
+        assert!(node_attempted.load(Ordering::SeqCst));
+        assert_eq!(
+            result.terminality,
+            KgwOwnedRuntimeTerminalityV1::ProvenTerminal
+        );
+        assert!(result.error.contains("listener join panicked"));
+    }
+
+    #[test]
+    fn bridge_cleanup_nonterminal_component_requires_parent_force_after_attempting_node() {
+        let node_attempted = Arc::new(AtomicBool::new(false));
+        let node_for_shutdown = Arc::clone(&node_attempted);
+        let result = kgw_shutdown_all_owned_components_v1(vec![
+            KgwOwnedShutdownComponentV1 {
+                name: "bridge-listener-0".to_string(),
+                shutdown: Box::new(|| {
+                    Err(KgwOfficialShutdownFailureV1::not_proven(
+                        "listener terminality unknown",
+                    ))
+                }),
+            },
+            KgwOwnedShutdownComponentV1 {
+                name: "owned-node".to_string(),
+                shutdown: Box::new(move || {
+                    node_for_shutdown.store(true, Ordering::SeqCst);
+                    Ok("owned node joined".to_string())
+                }),
+            },
+        ])
+        .unwrap_err();
+
+        assert!(node_attempted.load(Ordering::SeqCst));
+        let outcome = KgwPostReadyStopOutcomeV1::Failed(result);
+        assert_eq!(
+            kgw_post_ready_stop_action_v1(&outcome),
+            KgwPostReadyStopActionV1::HoldForParentForce
+        );
     }
 }
