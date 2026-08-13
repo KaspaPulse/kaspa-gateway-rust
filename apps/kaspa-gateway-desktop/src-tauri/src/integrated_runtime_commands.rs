@@ -9,11 +9,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 static KGW_CONTROLLER: OnceLock<Arc<kaspa_gateway_rk_node::KgwServiceController>> = OnceLock::new();
 static KGW_RAW_PROCESS_LOG_SEQUENCE_V1: AtomicU64 = AtomicU64::new(1);
 const KGW_RAW_PROCESS_LOG_BUFFER_LIMIT_V1: usize = 4096;
-#[cfg(test)]
 pub(crate) const KGW_NODE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS_V1: u64 = 90_000;
 pub(crate) const KGW_NODE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1: u64 = 100_000;
 pub(crate) const KGW_BRIDGE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1: u64 =
     kaspa_gateway_rk_bridge::KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS + 9_000;
+const _: () = assert!(
+    KGW_NODE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1
+        > KGW_NODE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS_V1
+);
 
 fn controller() -> &'static Arc<kaspa_gateway_rk_node::KgwServiceController> {
     KGW_CONTROLLER.get_or_init(kaspa_gateway_rk_node::KgwServiceController::spawn)
