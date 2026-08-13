@@ -971,24 +971,26 @@ fn start_mainline_bridge_owner_thread_ready(
             + KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT
             + KGW_BRIDGE_PARENT_ATTESTATION_GRACE,
     ) {
-        Ok(BridgeOwnerStartupOutcome::Ready(readiness)) => Ok((
-            handle.take().expect("bridge owner handle must exist"),
-            readiness,
-        )),
+        Ok(BridgeOwnerStartupOutcome::Ready(readiness)) => handle
+            .take()
+            .map(|handle| (handle, readiness))
+            .ok_or_else(|| {
+                BridgeRuntimeError::StartupReadinessFailed(
+                    "bridge owner handle missing after READY".to_string(),
+                )
+            }),
         Ok(BridgeOwnerStartupOutcome::Failed(error)) => {
             let _ = cleanup_shutdown_tx.send(true);
-            let _ = handle
-                .take()
-                .expect("bridge owner handle must exist")
-                .join();
+            if let Some(handle) = handle.take() {
+                let _ = handle.join();
+            }
             Err(BridgeRuntimeError::StartupReadinessFailed(error))
         }
         Err(error) => {
             let _ = cleanup_shutdown_tx.send(true);
-            let _ = handle
-                .take()
-                .expect("bridge owner handle must exist")
-                .join();
+            if let Some(handle) = handle.take() {
+                let _ = handle.join();
+            }
             Err(BridgeRuntimeError::StartupReadinessFailed(format!(
                 "startup attestation channel failed: {error}"
             )))
@@ -1216,24 +1218,26 @@ fn start_tn12_bridge_owner_thread_ready(
             + KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT
             + KGW_BRIDGE_PARENT_ATTESTATION_GRACE,
     ) {
-        Ok(BridgeOwnerStartupOutcome::Ready(readiness)) => Ok((
-            handle.take().expect("bridge owner handle must exist"),
-            readiness,
-        )),
+        Ok(BridgeOwnerStartupOutcome::Ready(readiness)) => handle
+            .take()
+            .map(|handle| (handle, readiness))
+            .ok_or_else(|| {
+                BridgeRuntimeError::StartupReadinessFailed(
+                    "bridge owner handle missing after READY".to_string(),
+                )
+            }),
         Ok(BridgeOwnerStartupOutcome::Failed(error)) => {
             let _ = cleanup_shutdown_tx.send(true);
-            let _ = handle
-                .take()
-                .expect("bridge owner handle must exist")
-                .join();
+            if let Some(handle) = handle.take() {
+                let _ = handle.join();
+            }
             Err(BridgeRuntimeError::StartupReadinessFailed(error))
         }
         Err(error) => {
             let _ = cleanup_shutdown_tx.send(true);
-            let _ = handle
-                .take()
-                .expect("bridge owner handle must exist")
-                .join();
+            if let Some(handle) = handle.take() {
+                let _ = handle.join();
+            }
             Err(BridgeRuntimeError::StartupReadinessFailed(format!(
                 "startup attestation channel failed: {error}"
             )))

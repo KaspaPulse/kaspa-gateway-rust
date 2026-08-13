@@ -1398,35 +1398,11 @@ function kgwNodeRawLogBufferV1(net, role = "node") {
   return KGW_NODE_RAW_LOG_BUFFERS_V1.get(key);
 }
 
-function kgwNodeRawLogTextHasTransportWrapperV1(text) {
-  const value = String(text ?? "");
-  if (!value) return false;
-
-  const forbidden = [
-    "kgw_raw_process_log_v1",
-    "[KGW_CHILD_STDOUT]",
-    "[KGW_CHILD_STDERR]",
-    "diagnostic_transport_record",
-    ";source=self-worker;",
-    ";runtime_role=",
-    ";received_ms="
-  ];
-  if (forbidden.some((marker) => value.toLowerCase().includes(marker.toLowerCase()))) return true;
-
-  const trimmed = value.trimStart();
-  return trimmed.startsWith("{")
-    && /"stage"\s*:/.test(trimmed)
-    && /"network"\s*:/.test(trimmed)
-    && (/"source"\s*:/.test(trimmed) || /"eventKind"\s*:\s*"diagnostic_transport_record"/.test(trimmed));
-}
-
 function kgwNodeNormalizeRawLogEntryV1(entry, expectedNet, expectedRole = "node") {
   if (!entry || typeof entry !== "object") return null;
 
   const rawTextValue = entry.rawText ?? entry.raw_text ?? entry.line;
   if (rawTextValue === undefined || rawTextValue === null) return null;
-  if (kgwNodeRawLogTextHasTransportWrapperV1(rawTextValue)) return null;
-
   const sequence = Number(entry.sequence);
   if (!Number.isSafeInteger(sequence) || sequence < 0) return null;
 
