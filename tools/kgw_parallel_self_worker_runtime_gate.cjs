@@ -28,6 +28,9 @@ const libRs = read(files.libRs);
 const checks = [
   ["parallel registry", integrated.includes("KGW_PARALLEL_SELF_WORKERS") && integrated.includes("OnceLock") && integrated.includes("HashMap")],
   ["same exe spawn", integrated.includes("std::env::current_exe") && integrated.includes("Command::new") && integrated.includes("--kgw-self-worker")],
+  ["exact parent identity", integrated.includes("--desktop-parent-pid") && integrated.includes("--desktop-parent-start-time") && integrated.includes("--desktop-parent-executable")],
+  ["parent loss shutdown", libRs.includes("kgw_wait_for_stop_or_parent_loss_v1") && libRs.includes("ParentLost")],
+  ["durable owner lease", integrated.includes("runtime-ownership") && integrated.includes("default_user_data_dir") && integrated.includes("create_new(true)") && integrated.includes("kgw_runtime_owner_worker_path_v1") && integrated.includes("kgw_runtime_owner_reconcile_stale_lease_v1")],
   ["network arg", integrated.includes("--network")],
   ["role network key", integrated.includes("role") && integrated.includes("network") && integrated.includes(":")],
   ["worker status string", integrated.includes("parallel-owned-self-worker")],

@@ -48,6 +48,9 @@ apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs
 Responsibilities:
 
 - Own the parallel self-worker registry.
+- Bind every self-worker to the exact parent PID, process start time, and canonical executable.
+- Make a worker attempt official graceful shutdown and exit when that exact parent is lost.
+- Publish an immutable restrictive per-role/network reservation before spawn, atomically publish the exact worker identity in a separate sidecar, and reconcile both before a relaunch.
 - Own start/stop/status/logs for role/network workers.
 - Spawn only the current executable as a self-worker.
 - Preserve `same_exe=true`.

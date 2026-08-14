@@ -68,6 +68,14 @@ fn clear_runtime_worker_test_env() {
         "KGW_TEST_SELF_WORKER_FAIL_ON_STOP",
         "KGW_TEST_SELF_WORKER_BRIDGE_LISTENER_FAIL_ON_STOP",
         "KGW_TEST_SELF_WORKER_OWNED_NODE_STOP_MARKER_PATH",
+        "KGW_TEST_SELF_WORKER_PARENT_PID",
+        "KGW_TEST_SELF_WORKER_PARENT_START_TIME",
+        "KGW_TEST_SELF_WORKER_PARENT_EXECUTABLE",
+        "KGW_TEST_PARENT_FIXTURE_ROLE",
+        "KGW_TEST_PARENT_FIXTURE_NETWORK",
+        "KGW_TEST_PARENT_FIXTURE_NODE_KIND",
+        "KGW_TEST_PARENT_FIXTURE_BRIDGE_KIND",
+        "KGW_TEST_PARENT_FIXTURE_READY_PATH",
         "KGW_TEST_PARENT_GRACEFUL_STOP_TIMEOUT_MS",
         "KGW_START_TRACE",
     ] {
@@ -100,6 +108,493 @@ fn startup_control_files_for_test_worker(role: &str, network: &str) -> Vec<std::
         .collect::<Vec<_>>();
     paths.sort();
     paths
+}
+
+fn runtime_owner_lease_path(role: &str, network: &str) -> std::path::PathBuf {
+    kaspa_gateway_config::default_user_data_dir()
+        .unwrap_or_else(|_| std::env::temp_dir().join("KaspaGateway").join("nodes"))
+        .join("runtime-ownership")
+        .join(format!("{role}-{network}.json"))
+}
+
+fn runtime_owner_worker_paths(role: &str, network: &str) -> Vec<std::path::PathBuf> {
+    let expected_prefix = format!("{role}-{network}.");
+    let directory = runtime_owner_lease_path(role, network)
+        .parent()
+        .expect("runtime ownership directory")
+        .to_path_buf();
+    let mut paths = std::fs::read_dir(directory)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .and_then(std::ffi::OsStr::to_str)
+                .is_some_and(|name| {
+                    name.starts_with(&expected_prefix) && name.ends_with(".worker.json")
+                })
+        })
+        .collect::<Vec<_>>();
+    paths.sort();
+    paths
+}
+
+#[test]
+fn runtime_owner_lease_requires_exact_process_identity() {
+    let identity =
+        integrated_runtime_commands::kgw_process_identity_for_worker_v1(std::process::id())
+            .expect("current process identity must be available");
+    let appdir = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("nodes")
+        .join("mainnet")
+        .to_string_lossy()
+        .to_string();
+    let (lease, worker) = integrated_runtime_commands::kgw_runtime_owner_lease_fixture_v1(
+        "node",
+        "mainnet",
+        &appdir,
+        "same-exe-self-worker",
+        &identity,
+        &identity,
+    );
+    assert!(
+        integrated_runtime_commands::kgw_runtime_owner_lease_identity_matches_for_test_v1(
+            &lease,
+            &worker,
+            "node",
+            "mainnet",
+            &appdir,
+            &identity.executable,
+            &identity,
+        )
+    );
+    let forged_pid = integrated_runtime_commands::KgwProcessIdentityV1 {
+        pid: identity.pid.saturating_add(1),
+        ..identity.clone()
+    };
+    assert!(
+        !integrated_runtime_commands::kgw_runtime_owner_lease_identity_matches_for_test_v1(
+            &lease,
+            &worker,
+            "node",
+            "mainnet",
+            &appdir,
+            &identity.executable,
+            &forged_pid,
+        ),
+        "a forged or PID-reused process identity must never authorize ownership"
+    );
+    let foreign_executable = integrated_runtime_commands::KgwProcessIdentityV1 {
+        executable: format!("{}.foreign", identity.executable),
+        ..identity.clone()
+    };
+    assert!(
+        !integrated_runtime_commands::kgw_runtime_owner_lease_identity_matches_for_test_v1(
+            &lease,
+            &worker,
+            "node",
+            "mainnet",
+            &appdir,
+            &identity.executable,
+            &foreign_executable,
+        ),
+        "a foreign executable must never authorize ownership"
+    );
+}
+
+#[test]
+fn live_smoke_parent_accepts_only_valid_stable_network_runtime_settings() {
+    let appdir = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("nodes")
+        .join("mainnet")
+        .to_string_lossy()
+        .to_string();
+    let accepted = integrated_runtime_commands::kgw_validate_live_smoke_parent_settings_v1(
+        "mainnet",
+        &appdir,
+        "127.0.0.1:16110",
+        Some("127.0.0.1:16111"),
+    )
+    .expect("valid isolated mainnet smoke settings must pass");
+    assert_eq!(accepted.network.as_str(), "mainnet");
+    assert!(
+        integrated_runtime_commands::kgw_validate_live_smoke_parent_settings_v1(
+            "testnet12",
+            &appdir,
+            "127.0.0.1:16310",
+            None,
+        )
+        .is_err(),
+        "the live smoke parent must never start experimental testnet12"
+    );
+    assert!(
+        integrated_runtime_commands::kgw_validate_live_smoke_parent_settings_v1(
+            "mainnet",
+            &appdir,
+            "0.0.0.0:16110",
+            None,
+        )
+        .is_err(),
+        "the live smoke parent must keep RPC on loopback"
+    );
+}
+
+#[test]
+fn ready_worker_publishes_and_normal_stop_removes_exact_owner_lease() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    let lease_path = runtime_owner_lease_path("node", "mainnet");
+    let _ = std::fs::remove_file(&lease_path);
+
+    let started = kgw_kgw_apply_node_settings_v1(
+        "mainnet".to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+        None,
+        None,
+        Some("node".to_string()),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect("test worker start should succeed");
+    assert_contains_all(&started, &["parent_bound=true", "reconciliation=none"]);
+    let lease: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(&lease_path).expect("READY worker must publish owner lease"),
+    )
+    .expect("owner lease must be typed JSON");
+    assert_eq!(lease["version"], 1);
+    assert_eq!(lease["runtimeRole"], "node");
+    assert_eq!(lease["network"], "mainnet");
+    assert_eq!(lease["parentPid"], std::process::id());
+    assert!(lease["publishedMs"].as_u64().is_some_and(|value| value > 0));
+    let worker_paths = runtime_owner_worker_paths("node", "mainnet");
+    assert_eq!(
+        worker_paths.len(),
+        1,
+        "READY worker must publish one identity sidecar"
+    );
+    let worker: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(&worker_paths[0]).expect("READY worker identity must be readable"),
+    )
+    .expect("worker identity must be typed JSON");
+    assert!(worker["workerPid"].as_u64().is_some_and(|pid| pid > 0));
+
+    let stopped = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()))
+        .expect("normal test worker Stop should succeed");
+    assert_contains_all(&stopped, &["graceful=true", "forced=false"]);
+    assert!(
+        !lease_path.exists(),
+        "terminal exact worker Stop must remove its durable lease"
+    );
+    assert!(
+        runtime_owner_worker_paths("node", "mainnet").is_empty(),
+        "terminal exact worker Stop must remove its identity sidecar"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn runtime_owner_reservation_rejects_symlink_and_uses_restrictive_permissions() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let identity =
+        integrated_runtime_commands::kgw_process_identity_for_worker_v1(std::process::id())
+            .expect("current process identity must be available");
+    let appdir = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("nodes")
+        .join("mainnet")
+        .to_string_lossy()
+        .to_string();
+    let (lease, _worker) = integrated_runtime_commands::kgw_runtime_owner_lease_fixture_v1(
+        "node",
+        "mainnet",
+        &appdir,
+        "same-exe-self-worker",
+        &identity,
+        &identity,
+    );
+
+    let base = std::env::temp_dir().join(format!(
+        "kgw-owner-permissions-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time")
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&base).expect("permission fixture directory");
+    let lease_path = base.join("node-mainnet.json");
+    integrated_runtime_commands::kgw_runtime_owner_reserve_for_test_v1(&lease_path, &lease)
+        .expect("regular owner reservation must succeed");
+    assert_eq!(
+        std::fs::metadata(&base)
+            .expect("directory metadata")
+            .permissions()
+            .mode()
+            & 0o777,
+        0o700
+    );
+    assert_eq!(
+        std::fs::metadata(&lease_path)
+            .expect("lease metadata")
+            .permissions()
+            .mode()
+            & 0o777,
+        0o600
+    );
+    let worker_path = integrated_runtime_commands::kgw_runtime_owner_publish_worker_for_test_v1(
+        &lease_path,
+        &identity,
+        &identity,
+    )
+    .expect("worker identity publication must succeed");
+    assert_eq!(
+        std::fs::metadata(&worker_path)
+            .expect("worker identity metadata")
+            .permissions()
+            .mode()
+            & 0o777,
+        0o600
+    );
+
+    let collision_lease_path = base.join("bridge-mainnet.json");
+    integrated_runtime_commands::kgw_runtime_owner_reserve_for_test_v1(
+        &collision_lease_path,
+        &lease,
+    )
+    .expect("collision reservation must succeed");
+    let collision_worker_path =
+        integrated_runtime_commands::kgw_runtime_owner_worker_path_for_test_v1(
+            &collision_lease_path,
+            &identity,
+        );
+    std::fs::write(&collision_worker_path, "foreign").expect("foreign worker identity target");
+    let collision_error =
+        integrated_runtime_commands::kgw_runtime_owner_publish_worker_for_test_v1(
+            &collision_lease_path,
+            &identity,
+            &identity,
+        )
+        .expect_err("worker identity publication must refuse an existing target");
+    assert!(collision_error.contains("publish runtime owner worker identity failed"));
+    assert_eq!(
+        std::fs::read_to_string(&collision_worker_path)
+            .expect("foreign worker identity remains readable"),
+        "foreign"
+    );
+    std::fs::remove_file(collision_worker_path).expect("remove collision target");
+    std::fs::remove_file(collision_lease_path).expect("remove collision reservation");
+
+    let foreign_path = base.join("foreign.json");
+    std::fs::write(&foreign_path, "foreign").expect("foreign target");
+    let symlink_path = base.join("symlink.json");
+    std::os::unix::fs::symlink(&foreign_path, &symlink_path).expect("hostile symlink fixture");
+    let error =
+        integrated_runtime_commands::kgw_runtime_owner_reserve_for_test_v1(&symlink_path, &lease)
+            .expect_err("create-new owner reservation must reject a symlink target");
+    assert!(error.contains("reserve runtime owner lease failed"));
+    assert_eq!(
+        std::fs::read_to_string(&foreign_path).expect("foreign target remains readable"),
+        "foreign"
+    );
+    std::fs::remove_file(symlink_path).expect("remove symlink fixture");
+    std::fs::remove_file(foreign_path).expect("remove foreign fixture");
+    std::fs::remove_file(worker_path).expect("remove worker identity fixture");
+    std::fs::remove_file(lease_path).expect("remove lease fixture");
+    std::fs::remove_dir(base).expect("remove permission fixture directory");
+}
+
+fn wait_for_file(path: &std::path::Path, timeout: std::time::Duration) {
+    let deadline = std::time::Instant::now() + timeout;
+    while !path.is_file() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "timed out waiting for {}",
+            path.display()
+        );
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+}
+
+#[test]
+fn nested_parent_fixture() {
+    if std::env::var_os("KGW_TEST_NESTED_PARENT_CHILD").is_none() {
+        return;
+    }
+    let role = std::env::var("KGW_TEST_PARENT_FIXTURE_ROLE").expect("fixture role");
+    let network = std::env::var("KGW_TEST_PARENT_FIXTURE_NETWORK").expect("fixture network");
+    let node_kind = std::env::var("KGW_TEST_PARENT_FIXTURE_NODE_KIND").expect("fixture node kind");
+    let bridge_kind =
+        std::env::var("KGW_TEST_PARENT_FIXTURE_BRIDGE_KIND").expect("fixture bridge kind");
+    let ready_path = std::path::PathBuf::from(
+        std::env::var_os("KGW_TEST_PARENT_FIXTURE_READY_PATH").expect("fixture ready path"),
+    );
+    let started = kgw_kgw_apply_node_settings_v1(
+        network,
+        node_kind,
+        bridge_kind,
+        None,
+        None,
+        Some(role),
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    .expect("nested parent fixture must start its exact child");
+    std::fs::write(ready_path, started).expect("nested parent fixture must report READY");
+    loop {
+        std::thread::park_timeout(std::time::Duration::from_secs(60));
+    }
+}
+
+fn prove_parent_loss_cleanup(role: &str, node_kind: &str, bridge_kind: &str) {
+    let lease_path = runtime_owner_lease_path(role, "mainnet");
+    let _ = std::fs::remove_file(&lease_path);
+    for path in runtime_owner_worker_paths(role, "mainnet") {
+        let _ = std::fs::remove_file(path);
+    }
+    let ready_path = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join(format!("parent-loss-{role}-{}.ready", std::process::id()));
+    let _ = std::fs::remove_file(&ready_path);
+    let mut parent = std::process::Command::new(
+        std::env::current_exe().expect("test executable path must be available"),
+    )
+    .arg("--exact")
+    .arg("nested_parent_fixture")
+    .arg("--nocapture")
+    .env("KGW_TEST_NESTED_PARENT_CHILD", "1")
+    .env("KGW_TEST_SELF_WORKER_COMMAND", "1")
+    .env("KGW_TEST_PARENT_FIXTURE_ROLE", role)
+    .env("KGW_TEST_PARENT_FIXTURE_NETWORK", "mainnet")
+    .env("KGW_TEST_PARENT_FIXTURE_NODE_KIND", node_kind)
+    .env("KGW_TEST_PARENT_FIXTURE_BRIDGE_KIND", bridge_kind)
+    .env("KGW_TEST_PARENT_FIXTURE_READY_PATH", &ready_path)
+    .stdin(std::process::Stdio::null())
+    .stdout(std::process::Stdio::null())
+    .stderr(std::process::Stdio::null())
+    .spawn()
+    .expect("nested parent fixture must spawn");
+
+    wait_for_file(&ready_path, std::time::Duration::from_secs(10));
+    wait_for_file(&lease_path, std::time::Duration::from_secs(10));
+    let lease_bytes = std::fs::read(&lease_path).expect("nested worker lease must be readable");
+    let lease: serde_json::Value =
+        serde_json::from_slice(&lease_bytes).expect("nested worker lease must be typed JSON");
+    assert_eq!(lease["parentPid"].as_u64(), Some(u64::from(parent.id())));
+    let worker_paths = runtime_owner_worker_paths(role, "mainnet");
+    assert_eq!(
+        worker_paths.len(),
+        1,
+        "nested worker must publish one identity sidecar"
+    );
+    let worker_bytes =
+        std::fs::read(&worker_paths[0]).expect("nested worker identity must be readable");
+    let worker: serde_json::Value =
+        serde_json::from_slice(&worker_bytes).expect("nested worker identity must be typed JSON");
+    let worker_pid = worker["workerPid"]
+        .as_u64()
+        .and_then(|value| u32::try_from(value).ok())
+        .expect("nested worker PID must be present");
+    let worker_identity =
+        integrated_runtime_commands::kgw_process_identity_for_worker_v1(worker_pid)
+            .expect("nested exact child must be alive after READY");
+    assert_ne!(
+        worker_pid,
+        parent.id(),
+        "nested fixture must prove a distinct exact worker"
+    );
+
+    parent
+        .kill()
+        .expect("task-owned nested parent must terminate");
+    parent
+        .wait()
+        .expect("task-owned nested parent must be reaped");
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        let same_worker_alive =
+            integrated_runtime_commands::kgw_process_identity_for_worker_v1(worker_pid)
+                .is_ok_and(|identity| identity == worker_identity);
+        if !same_worker_alive {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "READY {role} worker survived its exact desktop parent"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert!(
+        lease_path.exists(),
+        "parent-loss worker must leave durable metadata for relaunch reconciliation"
+    );
+    assert!(
+        worker_paths[0].exists(),
+        "parent-loss worker must not mutate its ownership metadata"
+    );
+    assert_eq!(
+        std::fs::read(&lease_path).expect("stale immutable reservation remains readable"),
+        lease_bytes,
+        "parent-loss worker must leave the immutable reservation byte-for-byte unchanged"
+    );
+    assert_eq!(
+        std::fs::read(&worker_paths[0]).expect("stale worker identity remains readable"),
+        worker_bytes,
+        "parent-loss worker must leave the identity sidecar byte-for-byte unchanged"
+    );
+    let appdir = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("nodes")
+        .join("mainnet")
+        .to_string_lossy()
+        .to_string();
+    let reconciliation = integrated_runtime_commands::kgw_runtime_owner_reconcile_for_test_v1(
+        role, "mainnet", &appdir,
+    )
+    .expect("relaunch reconciliation after parent loss must succeed");
+    assert!(
+        reconciliation.as_deref().is_none_or(|evidence| {
+            evidence.contains("removed-terminal-lease") || evidence.contains("orphan-terminated")
+        }),
+        "relaunch must durably reconcile the exact terminal orphan lease: {reconciliation:?}"
+    );
+    assert!(
+        !lease_path.exists(),
+        "relaunch reconciliation must clear the lease"
+    );
+    let _ = std::fs::remove_file(ready_path);
+}
+
+#[test]
+fn ready_node_external_bridge_and_inprocess_bridge_exit_after_exact_parent_loss() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    for (role, node_kind, bridge_kind) in [
+        ("node", "integrated-as-daemon", "disable"),
+        ("bridge", "remote", "official-external-node"),
+        ("bridge", "integrated-inproc", "official-inprocess-node"),
+    ] {
+        prove_parent_loss_cleanup(role, node_kind, bridge_kind);
+    }
 }
 
 #[test]
@@ -830,6 +1325,17 @@ fn production_self_worker_arguments_match_child_parser() {
                 .join("stop-control")
                 .join("kgw-stop-outcome-args-test.json")
                 .to_string_lossy(),
+            "--desktop-parent-pid",
+            &std::process::id().to_string(),
+            "--desktop-parent-start-time",
+            &integrated_runtime_commands::kgw_process_identity_for_worker_v1(std::process::id())
+                .expect("current parent identity")
+                .start_time
+                .to_string(),
+            "--desktop-parent-executable",
+            &integrated_runtime_commands::kgw_process_identity_for_worker_v1(std::process::id())
+                .expect("current parent identity")
+                .executable,
             "--utxoindex",
         ]
     );
@@ -844,6 +1350,9 @@ fn production_self_worker_arguments_match_child_parser() {
         "--startup-control-path",
         "--stop-request-path",
         "--stop-outcome-path",
+        "--desktop-parent-pid",
+        "--desktop-parent-start-time",
+        "--desktop-parent-executable",
         "--utxoindex",
     ] {
         assert!(
@@ -1578,13 +2087,11 @@ fn duplicate_owner_for_one_network_is_rejected() {
     )
     .expect_err("duplicate test worker start must be rejected");
 
-    assert_contains_all(
-        &duplicate,
-        &[
-            "start_blocked=true",
-            "block_reason=duplicate-owner",
-            "network=mainnet",
-        ],
+    assert_contains_all(&duplicate, &["start_blocked=true", "network=mainnet"]);
+    assert!(
+        duplicate.contains("block_reason=duplicate-owner")
+            || duplicate.contains("block_reason=runtime-owner-lease-active"),
+        "duplicate Start must be refused by in-memory or durable exact ownership: {duplicate}"
     );
 
     let _ = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()));
