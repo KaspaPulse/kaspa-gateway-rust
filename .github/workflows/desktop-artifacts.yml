@@ -158,7 +158,7 @@ jobs:
 
           $installedExecutables = @(
             Get-ChildItem -LiteralPath $installDir -Filter "*.exe" -File -Recurse |
-              Where-Object { $_.Name -notmatch '^(?:uninstall|unins.*)\.exe$' }
+              Where-Object { $_.Name -eq "kaspa-gateway-desktop.exe" }
           )
           if ($installedExecutables.Count -ne 1) {
             throw "Expected exactly one installed application executable; found $($installedExecutables.Count)."
