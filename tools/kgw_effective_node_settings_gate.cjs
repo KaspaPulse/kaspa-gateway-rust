@@ -46,6 +46,9 @@ assert.ok(node.includes("Restart required to apply changed effective settings"))
 assert.ok(bridge.includes("Restart required to apply changed effective settings"));
 assert.ok(node.includes("--configfile is not supported"));
 assert.ok(bridge.includes("--configfile is unsupported"));
+assert.ok(node.includes("--override-params-file is not supported"));
+assert.ok(bridge.includes("In-process --override-params-file is unsupported"));
+assert.ok(node.includes("--logdir and --nologfiles cannot be used together"));
 assert.ok(node.includes('net.key === "testnet10" ? "16211" : "16311"'));
 assert.ok(node.includes('cardCheck(net.key, "disableUpnp", "--disable-upnp", true)'));
 assert.ok(node.includes('cardCheck(net.key, "rpcBorshEnabled", "--rpclisten-borsh", false)'));

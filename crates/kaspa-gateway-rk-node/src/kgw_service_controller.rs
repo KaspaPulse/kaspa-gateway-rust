@@ -245,14 +245,45 @@ impl EffectiveNodeSettings {
                 "asyncThreads must be greater than zero".to_string(),
             ));
         }
-        if !self.ram_scale.is_finite() || self.ram_scale <= 0.0 {
+        if !self.ram_scale.is_finite() || !(0.1..=10.0).contains(&self.ram_scale) {
             return Err(KgwServiceError::InvalidEffectiveNodeSettings(
-                "ramScale must be a finite positive number".to_string(),
+                "ramScale must be a finite number between 0.1 and 10".to_string(),
             ));
         }
         if self.disable_grpc {
             return Err(KgwServiceError::InvalidEffectiveNodeSettings(
                 "noGrpc is unsupported because exact-network startup readiness requires the official gRPC endpoint"
+                    .to_string(),
+            ));
+        }
+        if !self.connect_peers.is_empty() && !self.add_peers.is_empty() {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "connectPeers and addPeers cannot both be configured".to_string(),
+            ));
+        }
+        if self.log_dir.is_some() && self.no_log_files {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "logDir and noLogFiles cannot both be configured".to_string(),
+            ));
+        }
+        if self.rocksdb_cache_size.is_some() && self.rocksdb_preset.as_deref() != Some("hdd") {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "rocksDbCacheSize requires the hdd RocksDB preset".to_string(),
+            ));
+        }
+        if self.rocksdb_preset.as_deref().is_some_and(|preset| {
+            !matches!(
+                preset.trim().to_ascii_lowercase().as_str(),
+                "default" | "hdd"
+            )
+        }) {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "rocksDbPreset must be default or hdd".to_string(),
+            ));
+        }
+        if self.override_params_file.is_some() {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "overrideParamsFile is unsupported because the desktop owns network identity"
                     .to_string(),
             ));
         }

@@ -1436,6 +1436,41 @@ fn typed_effective_node_settings_are_validated_and_keep_backend_owned_paths() {
     )
     .expect_err("every RPC transport must remain loopback without explicit unsafe RPC");
     assert!(error.contains("rpcListenBorsh must remain loopback"));
+
+    let mixed_peers = kaspa_gateway_rk_node::EffectiveNodeSettings {
+        connect_peers: vec!["127.0.0.1:26111".to_string()],
+        add_peers: vec!["127.0.0.1:26112".to_string()],
+        ..Default::default()
+    };
+    let error = integrated_runtime_commands::kgw_apply_effective_node_settings_for_test_v1(
+        "mainnet",
+        mixed_peers,
+    )
+    .expect_err("officially incompatible connect/add peer modes must be rejected at IPC");
+    assert!(error.contains("connectPeers and addPeers cannot both be configured"));
+
+    let unsafe_network_override = kaspa_gateway_rk_node::EffectiveNodeSettings {
+        override_params_file: Some("override.json".to_string()),
+        ..Default::default()
+    };
+    let error = integrated_runtime_commands::kgw_apply_effective_node_settings_for_test_v1(
+        "testnet10",
+        unsafe_network_override,
+    )
+    .expect_err("network identity override files must be rejected at IPC");
+    assert!(error.contains("overrideParamsFile is unsupported"));
+
+    let conflicting_logs = kaspa_gateway_rk_node::EffectiveNodeSettings {
+        log_dir: Some("logs".to_string()),
+        no_log_files: true,
+        ..Default::default()
+    };
+    let error = integrated_runtime_commands::kgw_apply_effective_node_settings_for_test_v1(
+        "mainnet",
+        conflicting_logs,
+    )
+    .expect_err("officially incompatible logging flags must be rejected at IPC");
+    assert!(error.contains("logDir and noLogFiles cannot both be configured"));
 }
 
 #[test]

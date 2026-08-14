@@ -1587,7 +1587,7 @@ function renderRocksDb(net) {
       ${cardSelect(net.key, "rocksDbPreset", "--rocksdb-preset", ["", "default", "hdd"], "")}
       ${cardInput(net.key, "rocksDbCacheSize", "--rocksdb-cache-size", "", "MB")}
       ${cardInput(net.key, "rocksDbWalDir", "--rocksdb-wal-dir", "", "path", true)}
-      ${cardInput(net.key, "overrideParamsFile", "--override-params-file", "", "json path", true)}
+      ${cardInput(net.key, "overrideParamsFile", "--override-params-file (unsupported: managed network)", "", "not supported", true)}
     </div>`;
 }
 
@@ -1859,6 +1859,12 @@ function kgwNodeEffectiveNodeSettings(net) {
   if (v(net, "configFile")) {
     throw new Error("--configfile is not supported by the managed desktop owner because network and database ownership must remain authoritative.");
   }
+  if (v(net, "overrideParamsFile")) {
+    throw new Error("--override-params-file is not supported because the desktop owns the selected network identity.");
+  }
+  if (c(net, "noLogFiles") && v(net, "logDir")) {
+    throw new Error("--logdir and --nologfiles cannot be used together.");
+  }
   const connect = kgwNodeEffectiveEndpoint(net, "connectEnabled", "connectHost", "connectPort");
   const addPeer = kgwNodeEffectiveEndpoint(net, "addPeerEnabled", "addPeerHost", "addPeerPort");
   const userAgentComment = kgwNodeCommandShouldIncludeR7(net, "uaComment") ? v(net, "uaComment") : "";
@@ -1900,7 +1906,7 @@ function kgwNodeEffectiveNodeSettings(net) {
       ? kgwNodeEffectiveNumber(net, "rocksDbCacheSize", null, true)
       : null,
     rocksDbWalDir: kgwNodeCommandShouldIncludeR7(net, "rocksDbWalDir") ? v(net, "rocksDbWalDir") || null : null,
-    overrideParamsFile: kgwNodeCommandShouldIncludeR7(net, "overrideParamsFile") ? v(net, "overrideParamsFile") || null : null,
+    overrideParamsFile: null,
     logDir: kgwNodeCommandShouldIncludeR7(net, "logDir") ? v(net, "logDir") || null : null,
   };
 }

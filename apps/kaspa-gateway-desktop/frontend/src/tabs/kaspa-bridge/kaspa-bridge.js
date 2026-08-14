@@ -4312,6 +4312,9 @@ function kgwBridgeEffectiveInprocessNodeSettings(net) {
   if (c(net, "inprocessDevnet") || c(net, "inprocessSimnet")) {
     throw new Error("Devnet and simnet cannot override the selected desktop network tab.");
   }
+  if (v(net, "inprocessOverrideParamsFile")) {
+    throw new Error("In-process --override-params-file is unsupported because the desktop owns the selected network identity.");
+  }
   const rpcListen = v(net, "inprocessRpcListen") || `127.0.0.1:${profile.kaspadPort}`;
   const addPeer = kgwBridgeCommandShouldIncludeR7(net, "inprocessAddPeer") ? v(net, "inprocessAddPeer") : "";
   const connectPeer = kgwBridgeCommandShouldIncludeR7(net, "inprocessConnect") ? v(net, "inprocessConnect") : "";
@@ -4349,7 +4352,7 @@ function kgwBridgeEffectiveInprocessNodeSettings(net) {
     rocksDbPreset: null,
     rocksDbCacheSize: null,
     rocksDbWalDir: null,
-    overrideParamsFile: kgwBridgeCommandShouldIncludeR7(net, "inprocessOverrideParamsFile") ? v(net, "inprocessOverrideParamsFile") || null : null,
+    overrideParamsFile: null,
     logDir: null,
   };
 }
