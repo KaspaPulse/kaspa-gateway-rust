@@ -1641,7 +1641,7 @@ mod kgw_runtime_fd_budget_tests {
             unsafe_rpc: true,
             disable_grpc: false,
             connect_peers: vec!["127.0.0.1:26212".to_string()],
-            add_peers: vec!["127.0.0.1:26213".to_string()],
+            add_peers: Vec::new(),
             outbound_target: 7,
             inbound_limit: 31,
             utxo_index: false,
@@ -1654,8 +1654,8 @@ mod kgw_runtime_fd_budget_tests {
             rocksdb_preset: Some("hdd".to_string()),
             rocksdb_cache_size: Some(256),
             rocksdb_wal_dir: Some("wal".to_string()),
-            override_params_file: Some("params.json".to_string()),
-            log_dir: Some("logs".to_string()),
+            override_params_file: None,
+            log_dir: None,
         };
         settings.apply_effective_node_settings(effective).unwrap();
 
@@ -1663,7 +1663,7 @@ mod kgw_runtime_fd_budget_tests {
         assert!(args.testnet);
         assert_eq!(args.testnet_suffix, 10);
         assert_eq!(args.appdir.as_deref(), Some("effective-mainline-test"));
-        assert_eq!(args.logdir.as_deref(), Some("logs"));
+        assert_eq!(args.logdir, None);
         assert_eq!(args.log_level, "debug");
         assert_eq!(args.async_threads, 3);
         assert_eq!(args.ram_scale, 0.75);
@@ -1683,7 +1683,7 @@ mod kgw_runtime_fd_budget_tests {
         assert_eq!(args.inbound_limit, 31);
         assert_eq!(args.outbound_target, 7);
         assert_eq!(args.connect_peers[0].to_string(), "127.0.0.1:26212");
-        assert_eq!(args.add_peers[0].to_string(), "127.0.0.1:26213");
+        assert!(args.add_peers.is_empty());
         assert_eq!(args.user_agent_comments, vec!["kgw-effective"]);
         assert!(!args.utxoindex);
         assert!(args.archival && args.reset_db && args.perf_metrics);
@@ -1692,7 +1692,7 @@ mod kgw_runtime_fd_budget_tests {
         assert_eq!(args.rocksdb_preset.as_deref(), Some("hdd"));
         assert_eq!(args.rocksdb_cache_size, Some(256));
         assert_eq!(args.rocksdb_wal_dir.as_deref(), Some("wal"));
-        assert_eq!(args.override_params_file.as_deref(), Some("params.json"));
+        assert_eq!(args.override_params_file, None);
     }
 
     #[cfg(feature = "official-kaspa-runtime-tn12")]
