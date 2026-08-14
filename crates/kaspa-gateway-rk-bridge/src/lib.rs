@@ -1636,6 +1636,20 @@ mod runtime_binding_tests {
     }
 
     #[test]
+    fn bridge_handle_reports_unexpected_owner_terminality() {
+        let (shutdown_tx, _shutdown_rx) = tokio::sync::watch::channel(false);
+        let handle = BridgeOwnerRuntimeHandle {
+            shutdown_tx,
+            owner_thread: std::thread::spawn(|| {}),
+        };
+        while !handle.is_finished() {
+            std::thread::yield_now();
+        }
+        assert!(handle.is_finished());
+        handle.join().unwrap();
+    }
+
+    #[test]
     fn every_owned_bridge_listener_is_joined_and_released() {
         let mut handles = Vec::new();
         let mut addresses = Vec::new();

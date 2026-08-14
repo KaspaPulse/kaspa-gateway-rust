@@ -2685,6 +2685,12 @@ function kgwNodeR51IsRunning(text) {
     (/running=true/.test(value) || /node_running=true/.test(value) || /official_core_running=true/.test(value));
 }
 
+function kgwNodeRuntimeErrorFromStatus(text) {
+  const fields = parseRuntimeFields(text);
+  const error = String(fields.runtime_error || fields.runtimeError || "").trim();
+  return error && error.toLowerCase() !== "none" ? error : "";
+}
+
 function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false) {
   const panel = kgwNodeR51Panel(net);
   if (!panel) return;
@@ -2944,7 +2950,17 @@ async function kgwNodeR51RefreshOne(net, reason = "live") {
   try {
     const status = stringifyRuntimeResult(await invokeNodeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
     const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
-    kgwNodeR51SetRuntimeButtons(net, kgwNodeR51IsRunning(status), bridgeInprocessLocked);
+    const running = kgwNodeR51IsRunning(status);
+    const runtimeError = kgwNodeRuntimeErrorFromStatus(status);
+    kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked);
+    if (!running && runtimeError) {
+      kgwNodeSetRuntimeNotice(
+        net,
+        kgwNodeTranslateRuntimeV29("runtime.failed", "Failed"),
+        "Official runtime terminated after READY",
+        runtimeError,
+      );
+    }
 
     if (KGW_NODE_R51_LAST_STATUS[net] !== status) {
       KGW_NODE_R51_LAST_STATUS[net] = status;

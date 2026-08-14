@@ -5797,6 +5797,12 @@ function kgwBridgeR51IsRunning(text) {
   return /readiness=READY/i.test(value) && (/running=true/.test(value) || /bridge_running=true/.test(value) || /bridge_owner_active=true/.test(value));
 }
 
+function kgwBridgeRuntimeErrorFromStatus(text) {
+  const fields = parseRuntimeKeyValueResponse(text).fields || {};
+  const error = String(fields.runtime_error || fields.runtimeError || "").trim();
+  return error && error.toLowerCase() !== "none" ? error : "";
+}
+
 function kgwBridgeR51SetRuntimeButtons(net, running, transition = "") {
   const panel = kgwBridgeR51Panel(net);
   if (!panel) return;
@@ -5859,8 +5865,18 @@ async function kgwBridgeR51RefreshOne(net, reason = "live") {
   try {
     const status = stringifyRuntimeResult(await invokeBridgeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
     const running = kgwBridgeR51IsRunning(status);
+    const runtimeError = kgwBridgeRuntimeErrorFromStatus(status);
     const starting = KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(net + ":start");
     kgwBridgeR51SetRuntimeButtons(net, running, starting && !running ? "starting" : "");
+    if (!running && runtimeError) {
+      kgwBridgeSetRuntimeErrorV1(net, runtimeError);
+      kgwBridgeSetRuntimeActivityV1(net, "Bridge runtime failed after readiness.");
+      const policyStatus = byId(id(net, "policyStatus"));
+      if (policyStatus) {
+        policyStatus.textContent = kgwBridgeTranslateRuntime("runtime.failed", "Failed");
+        policyStatus.dataset.state = "failed";
+      }
+    }
 
     if (KGW_BRIDGE_R51_LAST_STATUS[net] !== status) {
       KGW_BRIDGE_R51_LAST_STATUS[net] = status;

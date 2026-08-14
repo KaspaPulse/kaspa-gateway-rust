@@ -67,6 +67,7 @@ fn clear_runtime_worker_test_env() {
         "KGW_TEST_SELF_WORKER_TIMEOUT_ON_STOP",
         "KGW_TEST_SELF_WORKER_FAIL_ON_STOP",
         "KGW_TEST_SELF_WORKER_BRIDGE_LISTENER_FAIL_ON_STOP",
+        "KGW_TEST_SELF_WORKER_EXIT_AFTER_READY_MS",
         "KGW_TEST_SELF_WORKER_OWNED_NODE_STOP_MARKER_PATH",
         "KGW_TEST_SELF_WORKER_PARENT_PID",
         "KGW_TEST_SELF_WORKER_PARENT_START_TIME",
@@ -594,6 +595,100 @@ fn ready_node_external_bridge_and_inprocess_bridge_exit_after_exact_parent_loss(
         ("bridge", "integrated-inproc", "official-inprocess-node"),
     ] {
         prove_parent_loss_cleanup(role, node_kind, bridge_kind);
+    }
+}
+
+#[test]
+fn post_ready_worker_failure_is_non_running_durable_and_restartable_for_all_roles() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_EXIT_AFTER_READY_MS", "40");
+
+    for (role, node_kind, bridge_kind) in [
+        ("node", "integrated-as-daemon", "disable"),
+        ("bridge", "remote", "official-external-node"),
+        ("bridge", "integrated-inproc", "official-inprocess-node"),
+    ] {
+        let started = kgw_kgw_apply_node_settings_v1(
+            "mainnet".to_string(),
+            node_kind.to_string(),
+            bridge_kind.to_string(),
+            None,
+            None,
+            Some(role.to_string()),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap_or_else(|error| panic!("{role}/{bridge_kind} fixture must reach READY: {error}"));
+        assert_contains_all(&started, &["runtime_state=running", "readiness=READY"]);
+
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+        let status = loop {
+            let status = integrated_runtime_commands::kgw_runtime_owner_status_v1(
+                Some("mainnet".to_string()),
+                Some(role.to_string()),
+            )
+            .expect("post-READY terminal status must be readable");
+            if status.contains("running=false") {
+                break status;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "{role}/{bridge_kind} remained falsely Running: {status}"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        };
+        assert_contains_all(
+            &status,
+            &[
+                "running=false",
+                "readiness=FAILED",
+                "runtime_error=runtime terminated unexpectedly after READY",
+                "exit_status:exit status: 17",
+            ],
+        );
+
+        let logs =
+            kgw_kgw_runtime_logs_v1(Some("mainnet".to_string()), Some(role.to_string()), None)
+                .expect("post-READY failure logs must be readable");
+        assert!(logs.diagnostics.iter().any(|record| {
+            record.diagnostic_event == "kgw_runtime_terminal_failure_v1"
+                && record
+                    .message
+                    .contains("terminated unexpectedly after READY")
+        }));
+        assert!(logs.entries.iter().all(|entry| {
+            !entry.raw_text.contains("kgw_runtime_terminal_failure_v1")
+                && !entry.raw_text.contains("runtime_error=")
+        }));
+
+        remove_runtime_worker_test_env("KGW_TEST_SELF_WORKER_EXIT_AFTER_READY_MS");
+        let restarted = kgw_kgw_apply_node_settings_v1(
+            "mainnet".to_string(),
+            node_kind.to_string(),
+            bridge_kind.to_string(),
+            None,
+            None,
+            Some(role.to_string()),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap_or_else(|error| {
+            panic!("{role}/{bridge_kind} must restart after terminal failure: {error}")
+        });
+        assert_contains_all(&restarted, &["runtime_state=running", "readiness=READY"]);
+        kgw_kgw_disable_network_v1("mainnet".to_string(), Some(role.to_string()))
+            .expect("restarted fixture must Stop cleanly");
+        set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_EXIT_AFTER_READY_MS", "40");
     }
 }
 

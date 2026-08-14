@@ -97,6 +97,14 @@ function staticPlacementTests() {
     /function kgwNodeR51IsRunning[\s\S]*readiness=READY/.test(source),
     "Node status polling must require READY before displaying Running",
   );
+  assert.ok(
+    source.includes("kgwNodeRuntimeErrorFromStatus(status)"),
+    "Node status polling must surface typed post-READY runtime failures",
+  );
+  assert.ok(
+    source.includes('kgwNodeTranslateRuntimeV29("runtime.failed", "Failed")'),
+    "Node post-READY failure must remain visible outside raw logs",
+  );
 }
 
 class ClassList {
