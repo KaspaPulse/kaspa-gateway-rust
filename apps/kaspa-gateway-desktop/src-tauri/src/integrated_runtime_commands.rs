@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
+use sysinfo::{Pid, ProcessesToUpdate, System};
 
 static KGW_CONTROLLER: OnceLock<Arc<kaspa_gateway_rk_node::KgwServiceController>> = OnceLock::new();
 static KGW_RAW_PROCESS_LOG_SEQUENCE_V1: AtomicU64 = AtomicU64::new(1);
@@ -15,6 +16,9 @@ pub(crate) const KGW_BRIDGE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1: u64 =
     kaspa_gateway_rk_bridge::KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS + 9_000;
 pub(crate) const KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1: u64 = 45_000;
 pub(crate) const KGW_PARENT_GRACEFUL_STOP_TIMEOUT_MS_V1: u64 = 55_000;
+const KGW_RUNTIME_OWNER_LEASE_VERSION_V1: u8 = 1;
+const KGW_RUNTIME_OWNER_RECONCILIATION_TIMEOUT_MS_V1: u64 = 50_000;
+const KGW_RUNTIME_OWNER_STARTING_GRACE_MS_V1: u64 = 10_000;
 const _: () = assert!(
     KGW_NODE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1
         > KGW_NODE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS_V1
@@ -44,6 +48,50 @@ struct KgwParallelSelfWorker {
     started_ms: u128,
     exit_logged: bool,
     readiness_evidence: String,
+    lease_path: std::path::PathBuf,
+    lease_worker_path: std::path::PathBuf,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct KgwRuntimeOwnerLeaseV1 {
+    version: u8,
+    runtime_role: String,
+    network: String,
+    appdir: String,
+    node_mode: String,
+    parent_pid: u32,
+    parent_start_time: u64,
+    parent_executable: String,
+    published_ms: u128,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct KgwRuntimeOwnerWorkerV1 {
+    version: u8,
+    runtime_role: String,
+    network: String,
+    parent_pid: u32,
+    parent_start_time: u64,
+    parent_executable: String,
+    worker_pid: u32,
+    worker_start_time: u64,
+    worker_executable: String,
+    published_ms: u128,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct KgwProcessIdentityV1 {
+    pub(crate) pid: u32,
+    pub(crate) start_time: u64,
+    pub(crate) executable: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum KgwParentLifetimeEventV1 {
+    StopRequested,
+    ParentLost,
 }
 
 #[derive(Debug, Deserialize)]
@@ -171,6 +219,568 @@ fn kgw_worker_now_ms() -> u128 {
 
 fn kgw_worker_now_ms_u64() -> u64 {
     u64::try_from(kgw_worker_now_ms()).unwrap_or(u64::MAX)
+}
+
+fn kgw_runtime_owner_lease_directory_v1() -> std::path::PathBuf {
+    if let Ok(root) = kaspa_gateway_config::default_user_data_dir() {
+        root.join("runtime-ownership")
+    } else {
+        kgw_safe_runtime_appdir_root().join(".runtime-ownership")
+    }
+}
+
+fn kgw_runtime_owner_lease_path_v1(role: &str, network: &str) -> std::path::PathBuf {
+    kgw_runtime_owner_lease_directory_v1().join(format!("{role}-{network}.json"))
+}
+
+fn kgw_runtime_owner_worker_path_v1(
+    lease_path: &std::path::Path,
+    parent: &KgwProcessIdentityV1,
+) -> std::path::PathBuf {
+    let stem = lease_path
+        .file_stem()
+        .and_then(std::ffi::OsStr::to_str)
+        .unwrap_or("runtime-owner");
+    lease_path.with_file_name(format!(
+        "{stem}.{}-{}.worker.json",
+        parent.pid, parent.start_time
+    ))
+}
+
+pub(crate) fn kgw_process_identity_for_worker_v1(pid: u32) -> Result<KgwProcessIdentityV1, String> {
+    let pid = Pid::from_u32(pid);
+    let mut system = System::new();
+    system.refresh_processes(ProcessesToUpdate::Some(&[pid]));
+    let process = system
+        .process(pid)
+        .ok_or_else(|| format!("process identity unavailable;pid={}", pid.as_u32()))?;
+    let executable = process
+        .exe()
+        .filter(|path| !path.as_os_str().is_empty())
+        .ok_or_else(|| format!("process executable unavailable;pid={}", pid.as_u32()))?;
+    let canonical = executable.canonicalize().map_err(|error| {
+        format!(
+            "canonicalize process executable failed;pid={};path={};error={error}",
+            pid.as_u32(),
+            executable.display()
+        )
+    })?;
+
+    Ok(KgwProcessIdentityV1 {
+        pid: pid.as_u32(),
+        start_time: process.start_time(),
+        executable: canonical.to_string_lossy().to_string(),
+    })
+}
+
+fn kgw_runtime_owner_read_lease_v1(
+    path: &std::path::Path,
+) -> Result<KgwRuntimeOwnerLeaseV1, String> {
+    let payload = std::fs::read(path).map_err(|error| {
+        format!(
+            "read runtime owner lease failed {}: {error}",
+            path.display()
+        )
+    })?;
+    serde_json::from_slice(&payload).map_err(|error| {
+        format!(
+            "parse runtime owner lease failed {}: {error}",
+            path.display()
+        )
+    })
+}
+
+fn kgw_runtime_owner_read_worker_v1(
+    path: &std::path::Path,
+) -> Result<KgwRuntimeOwnerWorkerV1, String> {
+    let payload = std::fs::read(path).map_err(|error| {
+        format!(
+            "read runtime owner worker identity failed {}: {error}",
+            path.display()
+        )
+    })?;
+    serde_json::from_slice(&payload).map_err(|error| {
+        format!(
+            "parse runtime owner worker identity failed {}: {error}",
+            path.display()
+        )
+    })
+}
+
+fn kgw_runtime_owner_remove_lease_v1(path: &std::path::Path) {
+    let _ = std::fs::remove_file(path);
+}
+
+fn kgw_runtime_owner_remove_files_v1(lease_path: &std::path::Path, worker_path: &std::path::Path) {
+    let _ = std::fs::remove_file(worker_path);
+    kgw_runtime_owner_remove_lease_v1(lease_path);
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Exercised by the path-included integration-test target.
+fn kgw_runtime_owner_lease_matches_identity_v1(
+    lease: &KgwRuntimeOwnerLeaseV1,
+    worker: &KgwRuntimeOwnerWorkerV1,
+    role: &str,
+    network: &str,
+    appdir: &str,
+    current_executable: &str,
+    worker_identity: &KgwProcessIdentityV1,
+) -> bool {
+    lease.version == KGW_RUNTIME_OWNER_LEASE_VERSION_V1
+        && lease.runtime_role == role
+        && lease.network == network
+        && lease.appdir == appdir
+        && worker.version == KGW_RUNTIME_OWNER_LEASE_VERSION_V1
+        && worker.runtime_role == role
+        && worker.network == network
+        && worker.parent_pid == lease.parent_pid
+        && worker.parent_start_time == lease.parent_start_time
+        && worker.parent_executable == lease.parent_executable
+        && worker.worker_pid == worker_identity.pid
+        && worker.worker_start_time == worker_identity.start_time
+        && worker.worker_executable == worker_identity.executable
+        && worker.worker_executable == current_executable
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Exercised by the path-included integration-test target.
+pub(crate) fn kgw_runtime_owner_lease_identity_matches_for_test_v1(
+    lease: &KgwRuntimeOwnerLeaseV1,
+    worker: &KgwRuntimeOwnerWorkerV1,
+    role: &str,
+    network: &str,
+    appdir: &str,
+    current_executable: &str,
+    worker_identity: &KgwProcessIdentityV1,
+) -> bool {
+    kgw_runtime_owner_lease_matches_identity_v1(
+        lease,
+        worker,
+        role,
+        network,
+        appdir,
+        current_executable,
+        worker_identity,
+    )
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Exercised by the path-included integration-test target.
+pub(crate) fn kgw_runtime_owner_lease_fixture_v1(
+    role: &str,
+    network: &str,
+    appdir: &str,
+    node_mode: &str,
+    parent_identity: &KgwProcessIdentityV1,
+    worker_identity: &KgwProcessIdentityV1,
+) -> (KgwRuntimeOwnerLeaseV1, KgwRuntimeOwnerWorkerV1) {
+    let lease = KgwRuntimeOwnerLeaseV1 {
+        version: KGW_RUNTIME_OWNER_LEASE_VERSION_V1,
+        runtime_role: role.to_string(),
+        network: network.to_string(),
+        appdir: appdir.to_string(),
+        node_mode: node_mode.to_string(),
+        parent_pid: parent_identity.pid,
+        parent_start_time: parent_identity.start_time,
+        parent_executable: parent_identity.executable.clone(),
+        published_ms: kgw_worker_now_ms(),
+    };
+    let worker = KgwRuntimeOwnerWorkerV1 {
+        version: KGW_RUNTIME_OWNER_LEASE_VERSION_V1,
+        runtime_role: role.to_string(),
+        network: network.to_string(),
+        parent_pid: parent_identity.pid,
+        parent_start_time: parent_identity.start_time,
+        parent_executable: parent_identity.executable.clone(),
+        worker_pid: worker_identity.pid,
+        worker_start_time: worker_identity.start_time,
+        worker_executable: worker_identity.executable.clone(),
+        published_ms: kgw_worker_now_ms(),
+    };
+    (lease, worker)
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Exercised by the path-included integration-test target.
+pub(crate) fn kgw_runtime_owner_reconcile_for_test_v1(
+    role: &str,
+    network: &str,
+    appdir: &str,
+) -> Result<Option<String>, String> {
+    kgw_runtime_owner_reconcile_stale_lease_v1(role, network, appdir)
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Exercised by the path-included integration-test target.
+pub(crate) fn kgw_runtime_owner_reserve_for_test_v1(
+    path: &std::path::Path,
+    lease: &KgwRuntimeOwnerLeaseV1,
+) -> Result<(), String> {
+    kgw_runtime_owner_reserve_lease_v1(path, lease)
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Exercised by the path-included integration-test target.
+pub(crate) fn kgw_runtime_owner_publish_worker_for_test_v1(
+    lease_path: &std::path::Path,
+    parent: &KgwProcessIdentityV1,
+    worker: &KgwProcessIdentityV1,
+) -> Result<std::path::PathBuf, String> {
+    kgw_runtime_owner_update_spawned_lease_v1(lease_path, parent, worker)
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Exercised by the path-included integration-test target.
+pub(crate) fn kgw_runtime_owner_worker_path_for_test_v1(
+    lease_path: &std::path::Path,
+    parent: &KgwProcessIdentityV1,
+) -> std::path::PathBuf {
+    kgw_runtime_owner_worker_path_v1(lease_path, parent)
+}
+
+fn kgw_runtime_owner_reconcile_stale_lease_v1(
+    role: &str,
+    network: &str,
+    _appdir: &str,
+) -> Result<Option<String>, String> {
+    let path = kgw_runtime_owner_lease_path_v1(role, network);
+    kgw_runtime_owner_prepare_directory_v1(&path)?;
+    match std::fs::symlink_metadata(&path) {
+        Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => {
+            return Err(format!(
+                "start_blocked=true;start_allowed=false;block_reason=runtime-owner-lease-untrusted;runtime_role={role};network={network};message=Ownership metadata is not a trusted regular file. No process was signaled."
+            ));
+        }
+        Ok(_) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => {
+            return Err(format!(
+                "inspect runtime owner lease failed {}: {error}",
+                path.display()
+            ));
+        }
+    }
+    let lease = kgw_runtime_owner_read_lease_v1(&path)?;
+    let worker_path = kgw_runtime_owner_worker_path_v1(
+        &path,
+        &KgwProcessIdentityV1 {
+            pid: lease.parent_pid,
+            start_time: lease.parent_start_time,
+            executable: lease.parent_executable.clone(),
+        },
+    );
+    let current_executable = std::env::current_exe()
+        .and_then(|path| path.canonicalize())
+        .map_err(|error| format!("resolve current executable for lease failed: {error}"))?
+        .to_string_lossy()
+        .to_string();
+    if lease.version != KGW_RUNTIME_OWNER_LEASE_VERSION_V1
+        || lease.runtime_role != role
+        || lease.network != network
+        || lease.parent_executable != current_executable
+    {
+        return Err(format!(
+            "start_blocked=true;start_allowed=false;block_reason=runtime-owner-lease-identity-mismatch;runtime_role={role};network={network};message=Stale ownership metadata does not match the requested exact owner. No process was signaled."
+        ));
+    }
+
+    let parent_alive = kgw_process_identity_for_worker_v1(lease.parent_pid).is_ok_and(|identity| {
+        identity.start_time == lease.parent_start_time
+            && identity.executable == lease.parent_executable
+            && identity.executable == current_executable
+    });
+    if parent_alive {
+        return Err(format!(
+            "start_blocked=true;start_allowed=false;block_reason=runtime-owner-lease-active;runtime_role={role};network={network};parent_pid={};message=Another exact desktop owner is active.",
+            lease.parent_pid
+        ));
+    }
+
+    let deadline = std::time::Instant::now()
+        + std::time::Duration::from_millis(KGW_RUNTIME_OWNER_RECONCILIATION_TIMEOUT_MS_V1);
+    loop {
+        let observed = match kgw_runtime_owner_read_lease_v1(&path) {
+            Ok(observed) => observed,
+            Err(_error) if !path.exists() => {
+                return Ok(Some(format!(
+                    "reconciliation=orphan-terminated;role={role};network={network}"
+                )));
+            }
+            Err(error) => return Err(error),
+        };
+        if observed.parent_pid != lease.parent_pid
+            || observed.parent_start_time != lease.parent_start_time
+            || observed.parent_executable != lease.parent_executable
+        {
+            return Err(format!(
+                "start_blocked=true;start_allowed=false;block_reason=runtime-owner-lease-changed;runtime_role={role};network={network};message=Ownership metadata changed during reconciliation. No process was signaled."
+            ));
+        }
+
+        let worker_metadata = match std::fs::symlink_metadata(&worker_path) {
+            Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => {
+                return Err(format!(
+                    "start_blocked=true;start_allowed=false;block_reason=runtime-owner-worker-untrusted;runtime_role={role};network={network};message=Worker ownership metadata is not a trusted regular file. No process was signaled."
+                ));
+            }
+            Ok(metadata) => Some(metadata),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => {
+                return Err(format!(
+                    "inspect runtime owner worker identity failed {}: {error}",
+                    worker_path.display()
+                ));
+            }
+        };
+        if worker_metadata.is_none() {
+            let starting_deadline_ms = observed
+                .published_ms
+                .saturating_add(u128::from(KGW_RUNTIME_OWNER_STARTING_GRACE_MS_V1));
+            if kgw_worker_now_ms() >= starting_deadline_ms {
+                kgw_runtime_owner_remove_files_v1(&path, &worker_path);
+                return Ok(Some(format!(
+                    "reconciliation=removed-abandoned-start;role={role};network={network};parent_pid={}",
+                    observed.parent_pid
+                )));
+            }
+        } else {
+            let worker = kgw_runtime_owner_read_worker_v1(&worker_path)?;
+            if worker.version != KGW_RUNTIME_OWNER_LEASE_VERSION_V1
+                || worker.runtime_role != role
+                || worker.network != network
+                || worker.parent_pid != observed.parent_pid
+                || worker.parent_start_time != observed.parent_start_time
+                || worker.parent_executable != observed.parent_executable
+                || worker.worker_pid == 0
+                || worker.worker_executable != current_executable
+            {
+                return Err(format!(
+                    "start_blocked=true;start_allowed=false;block_reason=runtime-owner-worker-identity-mismatch;runtime_role={role};network={network};message=Worker ownership metadata does not match the immutable reservation. No process was signaled."
+                ));
+            }
+            let exact_worker_alive = kgw_process_identity_for_worker_v1(worker.worker_pid)
+                .is_ok_and(|identity| {
+                    identity.start_time == worker.worker_start_time
+                        && identity.executable == worker.worker_executable
+                        && identity.executable == current_executable
+                });
+            if !exact_worker_alive {
+                kgw_runtime_owner_remove_files_v1(&path, &worker_path);
+                return Ok(Some(format!(
+                    "reconciliation=removed-terminal-lease;role={role};network={network};worker_pid={}",
+                    worker.worker_pid
+                )));
+            }
+        }
+
+        if std::time::Instant::now() >= deadline {
+            return Err(format!(
+                "start_blocked=true;start_allowed=false;block_reason=orphan-terminality-unproven;runtime_role={role};network={network};message=Exact prior worker did not terminate within the reconciliation window. No unrelated process was targeted."
+            ));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(25));
+    }
+}
+
+fn kgw_runtime_owner_prepare_directory_v1(lease_path: &std::path::Path) -> Result<(), String> {
+    if let Some(parent) = lease_path.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| {
+            format!(
+                "create runtime owner lease directory failed {}: {error}",
+                parent.display()
+            )
+        })?;
+        let metadata = std::fs::symlink_metadata(parent).map_err(|error| {
+            format!(
+                "inspect runtime owner lease directory failed {}: {error}",
+                parent.display()
+            )
+        })?;
+        if metadata.file_type().is_symlink() || !metadata.is_dir() {
+            return Err(format!(
+                "runtime owner lease directory is not a trusted directory: {}",
+                parent.display()
+            ));
+        }
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700)).map_err(
+                |error| {
+                    format!(
+                        "restrict runtime owner lease directory failed {}: {error}",
+                        parent.display()
+                    )
+                },
+            )?;
+        }
+    }
+    Ok(())
+}
+
+struct KgwRuntimeOwnerReservationGuardV1 {
+    lease_path: std::path::PathBuf,
+    worker_path: Option<std::path::PathBuf>,
+    armed: bool,
+}
+
+impl KgwRuntimeOwnerReservationGuardV1 {
+    fn new(path: std::path::PathBuf) -> Self {
+        Self {
+            lease_path: path,
+            worker_path: None,
+            armed: true,
+        }
+    }
+
+    fn set_worker_path(&mut self, path: std::path::PathBuf) {
+        self.worker_path = Some(path);
+    }
+
+    fn disarm(&mut self) {
+        self.armed = false;
+    }
+}
+
+impl Drop for KgwRuntimeOwnerReservationGuardV1 {
+    fn drop(&mut self) {
+        if self.armed {
+            if let Some(worker_path) = &self.worker_path {
+                kgw_runtime_owner_remove_files_v1(&self.lease_path, worker_path);
+            } else {
+                kgw_runtime_owner_remove_lease_v1(&self.lease_path);
+            }
+        }
+    }
+}
+
+fn kgw_runtime_owner_reserve_lease_v1(
+    lease_path: &std::path::Path,
+    lease: &KgwRuntimeOwnerLeaseV1,
+) -> Result<(), String> {
+    kgw_runtime_owner_prepare_directory_v1(lease_path)?;
+    let payload = serde_json::to_vec(lease)
+        .map_err(|error| format!("serialize runtime owner lease failed: {error}"))?;
+    let mut options = std::fs::OpenOptions::new();
+    options.create_new(true).write(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = match options.open(lease_path) {
+        Ok(file) => file,
+        Err(error) => {
+            return Err(format!(
+                "reserve runtime owner lease failed {}: {error}",
+                lease_path.display()
+            ));
+        }
+    };
+    if let Err(error) = file.write_all(&payload).and_then(|()| file.sync_all()) {
+        let _ = std::fs::remove_file(lease_path);
+        return Err(format!(
+            "write runtime owner lease reservation failed {}: {error}",
+            lease_path.display()
+        ));
+    }
+    Ok(())
+}
+
+fn kgw_runtime_owner_update_spawned_lease_v1(
+    lease_path: &std::path::Path,
+    expected_parent: &KgwProcessIdentityV1,
+    worker: &KgwProcessIdentityV1,
+) -> Result<std::path::PathBuf, String> {
+    let file_metadata = std::fs::symlink_metadata(lease_path).map_err(|error| {
+        format!(
+            "inspect runtime owner reservation failed {}: {error}",
+            lease_path.display()
+        )
+    })?;
+    if file_metadata.file_type().is_symlink() || !file_metadata.is_file() {
+        return Err("runtime owner reservation is not a trusted regular file".to_string());
+    }
+    let payload = std::fs::read(lease_path)
+        .map_err(|error| format!("read spawned runtime owner lease failed: {error}"))?;
+    let lease: KgwRuntimeOwnerLeaseV1 = serde_json::from_slice(&payload)
+        .map_err(|error| format!("parse spawned runtime owner lease failed: {error}"))?;
+    if lease.parent_pid != expected_parent.pid
+        || lease.parent_start_time != expected_parent.start_time
+        || lease.parent_executable != expected_parent.executable
+    {
+        return Err(
+            "runtime owner reservation identity changed before spawn publication".to_string(),
+        );
+    }
+    let published = KgwRuntimeOwnerWorkerV1 {
+        version: KGW_RUNTIME_OWNER_LEASE_VERSION_V1,
+        runtime_role: lease.runtime_role,
+        network: lease.network,
+        parent_pid: lease.parent_pid,
+        parent_start_time: lease.parent_start_time,
+        parent_executable: lease.parent_executable,
+        worker_pid: worker.pid,
+        worker_start_time: worker.start_time,
+        worker_executable: worker.executable.clone(),
+        published_ms: kgw_worker_now_ms(),
+    };
+    let payload = serde_json::to_vec(&published)
+        .map_err(|error| format!("serialize spawned runtime owner identity failed: {error}"))?;
+    let worker_path = kgw_runtime_owner_worker_path_v1(lease_path, expected_parent);
+    static WORKER_IDENTITY_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+    let temporary = worker_path.with_extension(format!(
+        "{}-{}-{}.writing",
+        std::process::id(),
+        kgw_worker_now_ms(),
+        WORKER_IDENTITY_SEQUENCE.fetch_add(1, Ordering::SeqCst)
+    ));
+    {
+        let mut options = std::fs::OpenOptions::new();
+        options.create_new(true).write(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options.open(&temporary).map_err(|error| {
+            format!(
+                "create runtime owner worker identity failed {}: {error}",
+                temporary.display()
+            )
+        })?;
+        file.write_all(&payload).map_err(|error| {
+            format!(
+                "write runtime owner worker identity failed {}: {error}",
+                temporary.display()
+            )
+        })?;
+        file.sync_all().map_err(|error| {
+            format!(
+                "sync runtime owner worker identity failed {}: {error}",
+                temporary.display()
+            )
+        })?;
+    }
+    #[cfg(unix)]
+    let publish_result = std::fs::hard_link(&temporary, &worker_path);
+    #[cfg(windows)]
+    let publish_result = std::fs::rename(&temporary, &worker_path);
+    #[cfg(not(any(unix, windows)))]
+    let publish_result = Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "atomic worker identity publication is unsupported on this platform",
+    ));
+    if let Err(error) = publish_result {
+        let _ = std::fs::remove_file(&temporary);
+        return Err(format!(
+            "publish runtime owner worker identity failed {}: {error}",
+            worker_path.display()
+        ));
+    }
+    let _ = std::fs::remove_file(&temporary);
+    Ok(worker_path)
 }
 
 fn kgw_worker_next_raw_log_sequence_v1() -> u64 {
@@ -607,6 +1217,9 @@ fn kgw_worker_argument_names_for_trace_v1(command: &Command) -> Vec<String> {
             Some("--internal-cpu-miner-threads") => "<thread-count>",
             Some("--internal-cpu-miner-throttle-ms") => "<throttle-ms>",
             Some("--internal-cpu-miner-template-poll-ms") => "<template-poll-ms>",
+            Some("--desktop-parent-pid") => "<parent-pid>",
+            Some("--desktop-parent-start-time") => "<parent-start-time>",
+            Some("--desktop-parent-executable") => "<parent-executable>",
             Some("--exact") => "<test-name>",
             Some(flag) if flag.starts_with("--") => "<argument>",
             _ => "<argument>",
@@ -617,6 +1230,55 @@ fn kgw_worker_argument_names_for_trace_v1(command: &Command) -> Vec<String> {
     }
 
     names
+}
+
+pub(crate) fn kgw_validate_live_smoke_parent_settings_v1(
+    network: &str,
+    appdir: &str,
+    rpc: &str,
+    p2p_listen: Option<&str>,
+) -> Result<kaspa_gateway_rk_node::NodeSettings, String> {
+    let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
+        network.to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+    )
+    .map_err(|error| error.to_string())?;
+    if settings.network == kaspa_gateway_rk_node::KgwNetwork::Testnet12 {
+        return Err("live smoke parent does not start experimental testnet12".to_string());
+    }
+    settings.app_dir_name = appdir.to_string();
+    settings.rpc_endpoint = rpc.to_string();
+    settings.p2p_listen = p2p_listen.map(str::to_string);
+    let appdir_path = std::path::Path::new(appdir);
+    if !appdir_path.is_absolute()
+        || appdir.trim().is_empty()
+        || appdir.contains('\0')
+        || appdir.contains('\n')
+        || appdir.contains('\r')
+    {
+        return Err("live smoke app directory must be a safe absolute path".to_string());
+    }
+    let validate_loopback_endpoint = |label: &str, value: &str| -> Result<(), String> {
+        let (host, port) = value
+            .rsplit_once(':')
+            .ok_or_else(|| format!("{label} must contain host and port"))?;
+        if !matches!(host, "127.0.0.1" | "localhost" | "[::1]") {
+            return Err(format!("{label} must bind to loopback"));
+        }
+        let port = port
+            .parse::<u16>()
+            .map_err(|error| format!("{label} port is invalid: {error}"))?;
+        if port == 0 {
+            return Err(format!("{label} port cannot be zero"));
+        }
+        Ok(())
+    };
+    validate_loopback_endpoint("live smoke RPC", rpc)?;
+    if let Some(listen) = p2p_listen {
+        validate_loopback_endpoint("live smoke P2P", listen)?;
+    }
+    Ok(settings)
 }
 
 fn kgw_worker_endpoint_port_v1(endpoint: &str) -> Option<u16> {
@@ -721,21 +1383,28 @@ fn kgw_worker_atomic_write_json_v1<T: Serialize>(
 ) -> Result<(), String> {
     let payload = serde_json::to_vec(value)
         .map_err(|error| format!("serialize control message failed: {error}"))?;
-    let temporary = path.with_extension("tmp");
-    let _ = std::fs::remove_file(&temporary);
+    static CONTROL_WRITE_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+    let temporary = path.with_extension(format!(
+        "{}-{}-{}.writing",
+        std::process::id(),
+        kgw_worker_now_ms(),
+        CONTROL_WRITE_SEQUENCE.fetch_add(1, Ordering::SeqCst)
+    ));
 
     {
-        use std::io::Write;
-        let mut file = std::fs::OpenOptions::new()
-            .create_new(true)
-            .write(true)
-            .open(&temporary)
-            .map_err(|error| {
-                format!(
-                    "create control message failed {}: {error}",
-                    temporary.display()
-                )
-            })?;
+        let mut options = std::fs::OpenOptions::new();
+        options.create_new(true).write(true).append(false);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options.open(&temporary).map_err(|error| {
+            format!(
+                "create control message failed {}: {error}",
+                temporary.display()
+            )
+        })?;
         file.write_all(&payload).map_err(|error| {
             format!(
                 "write control message failed {}: {error}",
@@ -756,11 +1425,52 @@ fn kgw_worker_atomic_write_json_v1<T: Serialize>(
     })
 }
 
+fn kgw_worker_control_directory_v1(path: &std::path::Path) -> Result<(), String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| format!("control path has no parent: {}", path.display()))?;
+    std::fs::create_dir_all(parent).map_err(|error| {
+        format!(
+            "create runtime control directory failed {}: {error}",
+            parent.display()
+        )
+    })?;
+    let metadata = std::fs::symlink_metadata(parent).map_err(|error| {
+        format!(
+            "inspect runtime control directory failed {}: {error}",
+            parent.display()
+        )
+    })?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        return Err(format!(
+            "runtime control directory is not a trusted directory: {}",
+            parent.display()
+        ));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(parent, std::fs::Permissions::from_mode(0o700)).map_err(
+            |error| {
+                format!(
+                    "restrict runtime control directory failed {}: {error}",
+                    parent.display()
+                )
+            },
+        )?;
+    }
+    Ok(())
+}
+
 fn kgw_worker_remove_stop_control_v1(worker: &KgwParallelSelfWorker) {
     for path in [&worker.stop_request_path, &worker.stop_outcome_path] {
         let _ = std::fs::remove_file(path);
-        let _ = std::fs::remove_file(path.with_extension("tmp"));
     }
+}
+
+fn kgw_worker_finalize_ownership_v1(worker: &mut KgwParallelSelfWorker) {
+    kgw_runtime_owner_remove_files_v1(&worker.lease_path, &worker.lease_worker_path);
+    kgw_worker_remove_stop_control_v1(worker);
 }
 
 fn kgw_worker_read_stop_outcome_v1(
@@ -888,7 +1598,6 @@ pub(crate) fn kgw_worker_validate_startup_attestation_v1(
 
 fn kgw_worker_remove_startup_control_v1(path: &std::path::Path) {
     let _ = std::fs::remove_file(path);
-    let _ = std::fs::remove_file(path.with_extension("tmp"));
 }
 
 fn kgw_worker_wait_for_startup_attestation_v1(
@@ -1058,6 +1767,7 @@ pub(crate) fn kgw_clear_raw_process_log_buffers_for_test_v1() {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn kgw_worker_command(
     role: &str,
     network: &str,
@@ -1065,6 +1775,7 @@ fn kgw_worker_command(
     startup_control_path: &std::path::Path,
     stop_request_path: &std::path::Path,
     stop_outcome_path: &std::path::Path,
+    parent_identity: &KgwProcessIdentityV1,
 ) -> Result<Command, String> {
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let mut command = Command::new(exe);
@@ -1094,6 +1805,18 @@ fn kgw_worker_command(
             .env("KGW_TEST_SELF_WORKER_CONTROL_PATH", startup_control_path)
             .env("KGW_TEST_SELF_WORKER_STOP_REQUEST_PATH", stop_request_path)
             .env("KGW_TEST_SELF_WORKER_STOP_OUTCOME_PATH", stop_outcome_path)
+            .env(
+                "KGW_TEST_SELF_WORKER_PARENT_PID",
+                parent_identity.pid.to_string(),
+            )
+            .env(
+                "KGW_TEST_SELF_WORKER_PARENT_START_TIME",
+                parent_identity.start_time.to_string(),
+            )
+            .env(
+                "KGW_TEST_SELF_WORKER_PARENT_EXECUTABLE",
+                &parent_identity.executable,
+            )
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::null());
@@ -1113,6 +1836,18 @@ fn kgw_worker_command(
             .env("KGW_TEST_SELF_WORKER_CONTROL_PATH", startup_control_path)
             .env("KGW_TEST_SELF_WORKER_STOP_REQUEST_PATH", stop_request_path)
             .env("KGW_TEST_SELF_WORKER_STOP_OUTCOME_PATH", stop_outcome_path)
+            .env(
+                "KGW_TEST_SELF_WORKER_PARENT_PID",
+                parent_identity.pid.to_string(),
+            )
+            .env(
+                "KGW_TEST_SELF_WORKER_PARENT_START_TIME",
+                parent_identity.start_time.to_string(),
+            )
+            .env(
+                "KGW_TEST_SELF_WORKER_PARENT_EXECUTABLE",
+                &parent_identity.executable,
+            )
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::null());
@@ -1131,6 +1866,18 @@ fn kgw_worker_command(
             .env("KGW_TEST_SELF_WORKER_CONTROL_PATH", startup_control_path)
             .env("KGW_TEST_SELF_WORKER_STOP_REQUEST_PATH", stop_request_path)
             .env("KGW_TEST_SELF_WORKER_STOP_OUTCOME_PATH", stop_outcome_path)
+            .env(
+                "KGW_TEST_SELF_WORKER_PARENT_PID",
+                parent_identity.pid.to_string(),
+            )
+            .env(
+                "KGW_TEST_SELF_WORKER_PARENT_START_TIME",
+                parent_identity.start_time.to_string(),
+            )
+            .env(
+                "KGW_TEST_SELF_WORKER_PARENT_EXECUTABLE",
+                &parent_identity.executable,
+            )
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::null());
@@ -1173,6 +1920,12 @@ fn kgw_worker_command(
         .arg(stop_request_path)
         .arg("--stop-outcome-path")
         .arg(stop_outcome_path)
+        .arg("--desktop-parent-pid")
+        .arg(parent_identity.pid.to_string())
+        .arg("--desktop-parent-start-time")
+        .arg(parent_identity.start_time.to_string())
+        .arg("--desktop-parent-executable")
+        .arg(&parent_identity.executable)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::null());
@@ -1200,6 +1953,7 @@ pub(crate) fn kgw_worker_node_command_args_for_test_v1(
         .join("KaspaGateway")
         .join("stop-control")
         .join("kgw-stop-outcome-args-test.json");
+    let parent_identity = kgw_process_identity_for_worker_v1(std::process::id())?;
     let mut command = kgw_worker_command(
         &normalized_role,
         &network,
@@ -1207,6 +1961,7 @@ pub(crate) fn kgw_worker_node_command_args_for_test_v1(
         &control_path,
         &stop_request_path,
         &stop_outcome_path,
+        &parent_identity,
     )?;
 
     if normalized_role == "node" {
@@ -1286,6 +2041,32 @@ fn kgw_worker_start(
         .as_deref()
         .map(str::trim)
         .is_some_and(|value| !value.is_empty());
+    let mut reconciliation_evidence = Vec::new();
+    if let Some(evidence) =
+        kgw_runtime_owner_reconcile_stale_lease_v1(&role, &network, &settings.app_dir_name)?
+    {
+        reconciliation_evidence.push(evidence);
+    }
+    if role == "bridge" && bridge_node_mode == "inprocess" {
+        if let Some(evidence) =
+            kgw_runtime_owner_reconcile_stale_lease_v1("node", &network, &settings.app_dir_name)?
+        {
+            reconciliation_evidence.push(evidence);
+        }
+    } else if role == "node" {
+        let bridge_lease_path = kgw_runtime_owner_lease_path_v1("bridge", &network);
+        if bridge_lease_path.is_file()
+            && kgw_runtime_owner_read_lease_v1(&bridge_lease_path)
+                .is_ok_and(|lease| lease.node_mode == "inprocess")
+            && let Some(evidence) = kgw_runtime_owner_reconcile_stale_lease_v1(
+                "bridge",
+                &network,
+                &settings.app_dir_name,
+            )?
+        {
+            reconciliation_evidence.push(evidence);
+        }
+    }
 
     kgw_start_trace_emit_v1(
         "native",
@@ -1338,8 +2119,8 @@ fn kgw_worker_start(
             remove_stale_node = true;
         }
 
-        if remove_stale_node {
-            workers.remove(&node_key);
+        if remove_stale_node && let Some(mut stale) = workers.remove(&node_key) {
+            kgw_worker_finalize_ownership_v1(&mut stale);
         }
     }
 
@@ -1380,8 +2161,8 @@ fn kgw_worker_start(
             }
         }
 
-        if remove_stale_bridge {
-            workers.remove(&bridge_key);
+        if remove_stale_bridge && let Some(mut stale) = workers.remove(&bridge_key) {
+            kgw_worker_finalize_ownership_v1(&mut stale);
         }
     }
 
@@ -1417,7 +2198,9 @@ fn kgw_worker_start(
         }
 
         let _ = existing.child.wait();
-        workers.remove(&key);
+        if let Some(mut stale) = workers.remove(&key) {
+            kgw_worker_finalize_ownership_v1(&mut stale);
+        }
     }
 
     kgw_start_trace_emit_v1(
@@ -1434,26 +2217,30 @@ fn kgw_worker_start(
 
     let startup_control_path = kgw_worker_startup_control_path_v1(&role, &network);
     let (stop_request_path, stop_outcome_path) = kgw_worker_stop_control_paths_v1(&role, &network);
-    if let Some(parent) = startup_control_path.parent() {
-        std::fs::create_dir_all(parent).map_err(|error| {
-            format!(
-                "create startup control directory failed {}: {error}",
-                parent.display()
-            )
-        })?;
-    }
+    let lease_path = kgw_runtime_owner_lease_path_v1(&role, &network);
+    let parent_identity = kgw_process_identity_for_worker_v1(std::process::id())?;
+    let starting_lease = KgwRuntimeOwnerLeaseV1 {
+        version: KGW_RUNTIME_OWNER_LEASE_VERSION_V1,
+        runtime_role: role.clone(),
+        network: network.clone(),
+        appdir: settings.app_dir_name.clone(),
+        node_mode: if role == "bridge" {
+            bridge_node_mode.to_string()
+        } else {
+            trace_node_mode.clone()
+        },
+        parent_pid: parent_identity.pid,
+        parent_start_time: parent_identity.start_time,
+        parent_executable: parent_identity.executable.clone(),
+        published_ms: kgw_worker_now_ms(),
+    };
+    kgw_runtime_owner_reserve_lease_v1(&lease_path, &starting_lease)?;
+    let mut lease_guard = KgwRuntimeOwnerReservationGuardV1::new(lease_path.clone());
+    kgw_worker_control_directory_v1(&startup_control_path)?;
     kgw_worker_remove_startup_control_v1(&startup_control_path);
-    if let Some(parent) = stop_request_path.parent() {
-        std::fs::create_dir_all(parent).map_err(|error| {
-            format!(
-                "create stop control directory failed {}: {error}",
-                parent.display()
-            )
-        })?;
-    }
+    kgw_worker_control_directory_v1(&stop_request_path)?;
     for path in [&stop_request_path, &stop_outcome_path] {
         let _ = std::fs::remove_file(path);
-        let _ = std::fs::remove_file(path.with_extension("tmp"));
     }
     let mut command = kgw_worker_command(
         &role,
@@ -1462,6 +2249,7 @@ fn kgw_worker_start(
         &startup_control_path,
         &stop_request_path,
         &stop_outcome_path,
+        &parent_identity,
     )?;
 
     if role == "bridge" {
@@ -1598,7 +2386,24 @@ fn kgw_worker_start(
         }
     };
     let pid = child.id();
-
+    let worker_identity = match kgw_process_identity_for_worker_v1(pid) {
+        Ok(identity) => identity,
+        Err(error) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(format!(
+                "spawn_failed=true;runtime_role={role};network={network};source=self-worker;error=exact child identity unavailable after spawn: {error}"
+            ));
+        }
+    };
+    if worker_identity.executable != parent_identity.executable {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err(format!(
+            "spawn_failed=true;runtime_role={role};network={network};source=self-worker;error=same-executable identity mismatch;parent_executable={};worker_executable={}",
+            parent_identity.executable, worker_identity.executable
+        ));
+    }
     kgw_start_trace_emit_v1(
         "native",
         "native.spawn_succeeded",
@@ -1682,6 +2487,26 @@ fn kgw_worker_start(
         );
     }
 
+    // Publish exact durable ownership only after both native output readers are
+    // attached, but before waiting for READY. This covers the complete startup
+    // window without delaying collection of early child stderr/stdout.
+    let lease_worker_path = match kgw_runtime_owner_update_spawned_lease_v1(
+        &lease_path,
+        &parent_identity,
+        &worker_identity,
+    ) {
+        Ok(path) => path,
+        Err(error) => {
+            let _ = child.kill();
+            let _ = child.wait();
+            kgw_worker_join_readers_v1(reader_handles);
+            return Err(format!(
+                "runtime owner lease publish failed;role={role};network={network};pid={pid};error={error}"
+            ));
+        }
+    };
+    lease_guard.set_worker_path(lease_worker_path.clone());
+
     let readiness_evidence = match kgw_worker_wait_for_startup_attestation_v1(
         &mut child,
         &startup_control_path,
@@ -1757,6 +2582,8 @@ fn kgw_worker_start(
         trace_node_mode.clone()
     };
 
+    lease_guard.disarm();
+
     workers.insert(
         key,
         KgwParallelSelfWorker {
@@ -1773,11 +2600,13 @@ fn kgw_worker_start(
             started_ms: kgw_worker_now_ms(),
             exit_logged: false,
             readiness_evidence: readiness_evidence.clone(),
+            lease_path,
+            lease_worker_path,
         },
     );
 
     Ok(format!(
-        "parallel-owned-self-worker started;role={};network={};pid={};owner=self-worker;runtime_state=running;readiness=READY;readiness_evidence={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};stratum={};node_mode={};same_db_path=true;exclusive_node_owner_per_network=true",
+        "parallel-owned-self-worker started;role={};network={};pid={};owner=self-worker;runtime_state=running;readiness=READY;readiness_evidence={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};stratum={};node_mode={};same_db_path=true;exclusive_node_owner_per_network=true;parent_bound=true;reconciliation={}",
         role,
         network,
         pid,
@@ -1785,7 +2614,12 @@ fn kgw_worker_start(
         settings.app_dir_name,
         settings.rpc_endpoint,
         settings.stratum_listen,
-        stored_node_mode
+        stored_node_mode,
+        if reconciliation_evidence.is_empty() {
+            "none".to_string()
+        } else {
+            reconciliation_evidence.join("|")
+        }
     ))
 }
 
@@ -1849,10 +2683,10 @@ fn kgw_worker_stop(network: &str, runtime_role: Option<&str>) -> Result<Option<S
             Ok(result) if terminal => {
                 let reader_handles = std::mem::take(&mut worker.reader_handles);
                 kgw_worker_join_readers_v1(reader_handles);
-                let worker = workers
+                let mut worker = workers
                     .remove(&key)
                     .ok_or_else(|| format!("remove terminal self-worker failed;key={key}"))?;
-                kgw_worker_remove_stop_control_v1(&worker);
+                kgw_worker_finalize_ownership_v1(&mut worker);
                 let stop_failed = result.stop_failed;
                 lines.push(result.line);
                 if stop_failed {
@@ -1919,10 +2753,10 @@ pub fn kgw_shutdown_all_runtime_workers_v1() -> Result<String, String> {
                     if terminal {
                         let reader_handles = std::mem::take(&mut worker.reader_handles);
                         kgw_worker_join_readers_v1(reader_handles);
-                        let terminal_worker = workers.remove(&key).ok_or_else(|| {
+                        let mut terminal_worker = workers.remove(&key).ok_or_else(|| {
                             format!("remove failed terminal shutdown-all worker failed;key={key}")
                         })?;
-                        kgw_worker_remove_stop_control_v1(&terminal_worker);
+                        kgw_worker_finalize_ownership_v1(&mut terminal_worker);
                     } else {
                         return Err(stopped.join("\n"));
                     }
@@ -1958,10 +2792,10 @@ pub fn kgw_shutdown_all_runtime_workers_v1() -> Result<String, String> {
             std::mem::take(&mut worker.reader_handles)
         };
         kgw_worker_join_readers_v1(reader_handles);
-        let worker = workers
+        let mut worker = workers
             .remove(&key)
             .ok_or_else(|| format!("remove terminal shutdown-all worker failed;key={key}"))?;
-        kgw_worker_remove_stop_control_v1(&worker);
+        kgw_worker_finalize_ownership_v1(&mut worker);
         stopped.push(if result.stop_failed {
             format!(
                 "parallel-owned-self-worker shutdown-all FAILED;{}",
@@ -2008,9 +2842,7 @@ fn kgw_worker_stop_one_v1(
     }
 
     let _ = std::fs::remove_file(&worker.stop_request_path);
-    let _ = std::fs::remove_file(worker.stop_request_path.with_extension("tmp"));
     let _ = std::fs::remove_file(&worker.stop_outcome_path);
-    let _ = std::fs::remove_file(worker.stop_outcome_path.with_extension("tmp"));
     let request = KgwStopRequestMessageV1 {
         version: 1,
         command: "STOP",
@@ -3283,6 +4115,17 @@ pub fn kgw_kgw_smoke_start_network_v1(network: String, bridge: bool) -> Result<S
     ))
 }
 
+pub(crate) fn kgw_live_smoke_parent_start_v1(
+    network: String,
+    appdir: String,
+    rpc: String,
+    p2p_listen: Option<String>,
+) -> Result<String, String> {
+    let settings =
+        kgw_validate_live_smoke_parent_settings_v1(&network, &appdir, &rpc, p2p_listen.as_deref())?;
+    kgw_worker_start("node", &settings, None, None, None, None)
+}
+
 #[tauri::command]
 pub fn kgw_kgw_smoke_stop_network_v1(network: String) -> Result<String, String> {
     let parsed_network =
@@ -3335,6 +4178,18 @@ fn kgw_test_self_worker_hold() {
         .expect("test self-worker stop request path must be set");
     let stop_outcome_path = std::env::var("KGW_TEST_SELF_WORKER_STOP_OUTCOME_PATH")
         .expect("test self-worker stop outcome path must be set");
+    let parent_identity = KgwProcessIdentityV1 {
+        pid: std::env::var("KGW_TEST_SELF_WORKER_PARENT_PID")
+            .expect("test self-worker parent PID must be set")
+            .parse()
+            .expect("test self-worker parent PID must be valid"),
+        start_time: std::env::var("KGW_TEST_SELF_WORKER_PARENT_START_TIME")
+            .expect("test self-worker parent start time must be set")
+            .parse()
+            .expect("test self-worker parent start time must be valid"),
+        executable: std::env::var("KGW_TEST_SELF_WORKER_PARENT_EXECUTABLE")
+            .expect("test self-worker parent executable must be set"),
+    };
     let delay_ms = std::env::var("KGW_TEST_SELF_WORKER_READY_DELAY_MS")
         .ok()
         .and_then(|value| value.parse::<u64>().ok())
@@ -3344,9 +4199,22 @@ fn kgw_test_self_worker_hold() {
         "{{\"version\":1,\"outcome\":\"READY\",\"runtimeRole\":\"{}\",\"network\":\"{}\",\"evidence\":\"test-role-ready\",\"error\":null}}",
         role, network
     );
-    std::fs::write(control_path, evidence).expect("test self-worker must publish READY");
+    let evidence: serde_json::Value =
+        serde_json::from_str(&evidence).expect("test READY must be typed JSON");
+    kgw_worker_atomic_write_json_v1(std::path::Path::new(&control_path), &evidence)
+        .expect("test self-worker must publish READY");
 
     loop {
+        let parent_alive =
+            kgw_process_identity_for_worker_v1(parent_identity.pid).is_ok_and(|identity| {
+                identity.start_time == parent_identity.start_time
+                    && identity.executable == parent_identity.executable
+            });
+        if !parent_alive {
+            println!("test-self-worker parent lost; official shutdown joined");
+            eprintln!("test-self-worker parent lost stderr");
+            return;
+        }
         if std::path::Path::new(&stop_request_path).is_file() {
             let request = std::fs::read_to_string(&stop_request_path)
                 .expect("test self-worker must read Stop request");
@@ -3476,7 +4344,7 @@ fn kgw_test_self_worker_delayed_fail() {
         "evidence": null,
         "error": line,
     });
-    std::fs::write(control_path, message.to_string())
+    kgw_worker_atomic_write_json_v1(std::path::Path::new(&control_path), &message)
         .expect("test self-worker must publish FAILED");
 
     loop {

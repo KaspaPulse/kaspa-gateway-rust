@@ -1206,6 +1206,7 @@ impl KgwOfficialShutdownFailureV1 {
 enum KgwPostReadyStopOutcomeV1 {
     Stopped,
     Failed(KgwOfficialShutdownFailureV1),
+    ParentLostFailed(KgwOfficialShutdownFailureV1),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1224,6 +1225,10 @@ fn kgw_post_ready_stop_action_v1(outcome: &KgwPostReadyStopOutcomeV1) -> KgwPost
             KgwPostReadyStopActionV1::ExitFailure
         }
         KgwPostReadyStopOutcomeV1::Failed(_) => KgwPostReadyStopActionV1::HoldForParentForce,
+        KgwPostReadyStopOutcomeV1::ParentLostFailed(failure) => {
+            let _ = failure;
+            KgwPostReadyStopActionV1::ExitFailure
+        }
     }
 }
 
@@ -1351,13 +1356,27 @@ fn kgw_write_stop_outcome_v1(
     };
     let payload = serde_json::to_vec(&message)
         .map_err(|serialize_error| format!("serialize stop outcome failed: {serialize_error}"))?;
-    let temporary = path.with_extension("tmp");
-    let _ = std::fs::remove_file(&temporary);
+    static STOP_OUTCOME_SEQUENCE: std::sync::atomic::AtomicU64 =
+        std::sync::atomic::AtomicU64::new(1);
+    let temporary = path.with_extension(format!(
+        "{}-{}-{}.writing",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default(),
+        STOP_OUTCOME_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+    ));
     {
         use std::io::Write;
-        let mut file = std::fs::OpenOptions::new()
-            .create_new(true)
-            .write(true)
+        let mut options = std::fs::OpenOptions::new();
+        options.create_new(true).write(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options
             .open(&temporary)
             .map_err(|error| format!("create stop outcome failed: {error}"))?;
         file.write_all(&payload)
@@ -1371,18 +1390,105 @@ fn kgw_write_stop_outcome_v1(
     })
 }
 
-fn kgw_wait_for_stop_request_v1(
+fn kgw_parent_identity_from_args_v1(
+    args: &[String],
+) -> Result<crate::integrated_runtime_commands::KgwProcessIdentityV1, String> {
+    let parent_pid = kgw_self_worker_arg_value(args, "--desktop-parent-pid")
+        .ok_or_else(|| "desktop parent PID is missing".to_string())?
+        .parse::<u32>()
+        .map_err(|error| format!("desktop parent PID is invalid: {error}"))?;
+    let parent_start_time = kgw_self_worker_arg_value(args, "--desktop-parent-start-time")
+        .ok_or_else(|| "desktop parent start time is missing".to_string())?
+        .parse::<u64>()
+        .map_err(|error| format!("desktop parent start time is invalid: {error}"))?;
+    let parent_executable = kgw_self_worker_arg_value(args, "--desktop-parent-executable")
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| "desktop parent executable is missing".to_string())?;
+    let parent_executable = std::path::PathBuf::from(&parent_executable)
+        .canonicalize()
+        .map_err(|error| format!("desktop parent executable is invalid: {error}"))?
+        .to_string_lossy()
+        .to_string();
+    Ok(crate::integrated_runtime_commands::KgwProcessIdentityV1 {
+        pid: parent_pid,
+        start_time: parent_start_time,
+        executable: parent_executable,
+    })
+}
+
+fn kgw_wait_for_stop_or_parent_loss_v1(
     request_path: &std::path::Path,
     role: &str,
     network: &str,
-) -> Result<(), String> {
+    parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
+) -> Result<crate::integrated_runtime_commands::KgwParentLifetimeEventV1, String> {
     loop {
         if request_path.is_file() {
-            let result = kgw_read_stop_request_v1(request_path, role, network).map(|_| ());
+            let request = kgw_read_stop_request_v1(request_path, role, network);
             let _ = std::fs::remove_file(request_path);
-            return result;
+            if request.is_ok() {
+                return Ok(
+                    crate::integrated_runtime_commands::KgwParentLifetimeEventV1::StopRequested,
+                );
+            }
+            // An invalid or stale control file must not end parent monitoring.
+            // The exact parent will either publish a valid request or retain its
+            // exact-Child forced fallback; if it dies, parent-loss shutdown still
+            // has to run rather than leaving this worker parked indefinitely.
+        }
+        match crate::integrated_runtime_commands::kgw_process_identity_for_worker_v1(
+            parent_identity.pid,
+        ) {
+            Ok(actual)
+                if actual.start_time == parent_identity.start_time
+                    && actual.executable == parent_identity.executable => {}
+            _ => {
+                return Ok(
+                    crate::integrated_runtime_commands::KgwParentLifetimeEventV1::ParentLost,
+                );
+            }
         }
         std::thread::sleep(std::time::Duration::from_millis(25));
+    }
+}
+
+fn kgw_parent_identity_is_alive_v1(
+    parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
+) -> bool {
+    crate::integrated_runtime_commands::kgw_process_identity_for_worker_v1(parent_identity.pid)
+        .is_ok_and(|actual| {
+            actual.start_time == parent_identity.start_time
+                && actual.executable == parent_identity.executable
+        })
+}
+
+fn kgw_wait_for_shutdown_result_v1<T>(
+    shutdown_rx: &std::sync::mpsc::Receiver<T>,
+    parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
+    mut parent_lost: bool,
+    budget: std::time::Duration,
+) -> (Result<T, std::sync::mpsc::RecvTimeoutError>, bool) {
+    let deadline = std::time::Instant::now() + budget;
+    loop {
+        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+        if remaining.is_zero() {
+            return (Err(std::sync::mpsc::RecvTimeoutError::Timeout), parent_lost);
+        }
+        let poll = remaining.min(std::time::Duration::from_millis(25));
+        match shutdown_rx.recv_timeout(poll) {
+            Ok(result) => return (Ok(result), parent_lost),
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
+                return (
+                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected),
+                    parent_lost,
+                );
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                if !parent_lost && !kgw_parent_identity_is_alive_v1(parent_identity) {
+                    parent_lost = true;
+                }
+            }
+        }
     }
 }
 
@@ -1421,20 +1527,31 @@ fn kgw_execute_stop_request_with_budget_v1<F>(
     stop_outcome_path: &std::path::Path,
     role: &str,
     network: &str,
+    parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
     budget: std::time::Duration,
     shutdown: F,
 ) -> KgwPostReadyStopOutcomeV1
 where
     F: FnOnce() -> Result<String, KgwOfficialShutdownFailureV1> + Send + 'static,
 {
-    if let Err(error) = kgw_wait_for_stop_request_v1(stop_request_path, role, network) {
-        return kgw_publish_stop_failure_v1(
-            stop_outcome_path,
-            role,
-            network,
-            KgwOfficialShutdownFailureV1::not_proven(error),
-        );
-    }
+    let lifetime_event = match kgw_wait_for_stop_or_parent_loss_v1(
+        stop_request_path,
+        role,
+        network,
+        parent_identity,
+    ) {
+        Ok(event) => event,
+        Err(error) => {
+            return kgw_publish_stop_failure_v1(
+                stop_outcome_path,
+                role,
+                network,
+                KgwOfficialShutdownFailureV1::not_proven(error),
+            );
+        }
+    };
+    let parent_lost =
+        lifetime_event == crate::integrated_runtime_commands::KgwParentLifetimeEventV1::ParentLost;
     let (shutdown_tx, shutdown_rx) = std::sync::mpsc::sync_channel(1);
     let shutdown_thread = match std::thread::Builder::new()
         .name(format!("kgw-official-shutdown-{role}-{network}"))
@@ -1454,7 +1571,9 @@ where
         }
     };
 
-    match shutdown_rx.recv_timeout(budget) {
+    let (shutdown_result, parent_lost) =
+        kgw_wait_for_shutdown_result_v1(&shutdown_rx, parent_identity, parent_lost, budget);
+    match shutdown_result {
         Ok(Ok(evidence)) => {
             if let Err(panic) = shutdown_thread.join() {
                 return kgw_publish_stop_failure_v1(
@@ -1467,15 +1586,17 @@ where
                     )),
                 );
             }
-            if let Err(error) = kgw_write_stop_outcome_v1(
-                stop_outcome_path,
-                role,
-                network,
-                "STOPPED",
-                true,
-                Some(&evidence),
-                None,
-            ) {
+            if !parent_lost
+                && let Err(error) = kgw_write_stop_outcome_v1(
+                    stop_outcome_path,
+                    role,
+                    network,
+                    "STOPPED",
+                    true,
+                    Some(&evidence),
+                    None,
+                )
+            {
                 return kgw_publish_stop_failure_v1(
                     stop_outcome_path,
                     role,
@@ -1487,6 +1608,17 @@ where
             }
             KgwPostReadyStopOutcomeV1::Stopped
         }
+        Ok(Err(failure)) if parent_lost => {
+            let failure = match shutdown_thread.join() {
+                Ok(()) => failure,
+                Err(panic) => KgwOfficialShutdownFailureV1::not_proven(format!(
+                    "{};official shutdown worker panicked before terminality could be proven: {}",
+                    failure.error,
+                    kgw_panic_payload_message_v1(panic.as_ref())
+                )),
+            };
+            KgwPostReadyStopOutcomeV1::ParentLostFailed(failure)
+        }
         Ok(Err(failure)) => {
             let failure = match shutdown_thread.join() {
                 Ok(()) => failure,
@@ -1497,6 +1629,12 @@ where
                 )),
             };
             kgw_publish_stop_failure_v1(stop_outcome_path, role, network, failure)
+        }
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) if parent_lost => {
+            // No parent remains to perform the normal exact-Child forced fallback.
+            // Exiting this self-worker is the only bounded way to guarantee it
+            // cannot retain its owned runtime, ports, or database indefinitely.
+            std::process::exit(1);
         }
         Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
             let error = format!(
@@ -1512,6 +1650,21 @@ where
                 network,
                 KgwOfficialShutdownFailureV1::not_proven(error),
             )
+        }
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) if parent_lost => {
+            let error = match shutdown_thread.join() {
+                Ok(()) => {
+                    "official shutdown worker disconnected after parent loss without an outcome"
+                        .to_string()
+                }
+                Err(panic) => format!(
+                    "official shutdown worker panicked after parent loss without an outcome: {}",
+                    kgw_panic_payload_message_v1(panic.as_ref())
+                ),
+            };
+            KgwPostReadyStopOutcomeV1::ParentLostFailed(KgwOfficialShutdownFailureV1::not_proven(
+                error,
+            ))
         }
         Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
             let error = match shutdown_thread.join() {
@@ -1536,6 +1689,7 @@ fn kgw_execute_stop_request_v1<F>(
     stop_outcome_path: &std::path::Path,
     role: &str,
     network: &str,
+    parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
     shutdown: F,
 ) -> KgwPostReadyStopOutcomeV1
 where
@@ -1546,6 +1700,7 @@ where
         stop_outcome_path,
         role,
         network,
+        parent_identity,
         std::time::Duration::from_millis(
             crate::integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1,
         ),
@@ -1586,14 +1741,28 @@ fn kgw_write_startup_control_v1(
     let payload = serde_json::to_vec(&message).map_err(|serialize_error| {
         format!("serialize startup control failed: {serialize_error}")
     })?;
-    let temporary = path.with_extension("tmp");
-    let _ = std::fs::remove_file(&temporary);
+    static STARTUP_CONTROL_SEQUENCE: std::sync::atomic::AtomicU64 =
+        std::sync::atomic::AtomicU64::new(1);
+    let temporary = path.with_extension(format!(
+        "{}-{}-{}.writing",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default(),
+        STARTUP_CONTROL_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+    ));
 
     {
         use std::io::Write;
-        let mut file = std::fs::OpenOptions::new()
-            .create_new(true)
-            .write(true)
+        let mut options = std::fs::OpenOptions::new();
+        options.create_new(true).write(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        let mut file = options
             .open(&temporary)
             .map_err(|write_error| format!("create startup control failed: {write_error}"))?;
         file.write_all(&payload)
@@ -1608,6 +1777,39 @@ fn kgw_write_startup_control_v1(
     }
 
     Ok(())
+}
+
+pub fn try_run_kgw_live_smoke_parent_from_args() -> bool {
+    let args: Vec<String> = std::env::args().collect();
+    if !args.iter().any(|arg| arg == "--kgw-live-smoke-parent") {
+        return false;
+    }
+
+    let network =
+        kgw_self_worker_arg_value(&args, "--network").unwrap_or_else(|| "mainnet".to_string());
+    if !matches!(network.as_str(), "mainnet" | "testnet10") {
+        eprintln!("live smoke parent supports only mainnet and testnet10");
+        std::process::exit(2);
+    }
+    let appdir = kgw_self_worker_arg_value(&args, "--appdir")
+        .unwrap_or_else(|| kgw_self_worker_default_appdir(&network));
+    let rpc = kgw_self_worker_arg_value(&args, "--rpc")
+        .unwrap_or_else(|| kgw_self_worker_default_rpc(&network).to_string());
+    let p2p_listen = kgw_self_worker_arg_value(&args, "--listen");
+
+    match crate::integrated_runtime_commands::kgw_live_smoke_parent_start_v1(
+        network, appdir, rpc, p2p_listen,
+    ) {
+        Ok(evidence) => println!("{evidence}"),
+        Err(error) => {
+            eprintln!("live smoke parent start failed: {error}");
+            std::process::exit(1);
+        }
+    }
+
+    loop {
+        std::thread::park_timeout(std::time::Duration::from_secs(60));
+    }
 }
 
 pub fn try_run_kgw_self_worker_from_args() -> bool {
@@ -1636,6 +1838,37 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
         kgw_stop_control_path_from_args_v1(&args, "--stop-request-path", "-request.json");
     let stop_outcome_path =
         kgw_stop_control_path_from_args_v1(&args, "--stop-outcome-path", "-outcome.json");
+    let parent_identity = match kgw_parent_identity_from_args_v1(&args) {
+        Ok(identity) => identity,
+        Err(error) => {
+            let _ = kgw_write_startup_control_v1(
+                startup_control_path.as_deref(),
+                &role_key,
+                &network,
+                "FAILED",
+                None,
+                Some(&error),
+            );
+            std::process::exit(1);
+        }
+    };
+    let actual_parent_identity =
+        crate::integrated_runtime_commands::kgw_process_identity_for_worker_v1(parent_identity.pid);
+    if actual_parent_identity.as_ref() != Ok(&parent_identity) {
+        let error = format!(
+            "desktop parent identity is not exact or is already terminal;expected_pid={}",
+            parent_identity.pid
+        );
+        let _ = kgw_write_startup_control_v1(
+            startup_control_path.as_deref(),
+            &role_key,
+            &network,
+            "FAILED",
+            None,
+            Some(&error),
+        );
+        std::process::exit(1);
+    }
 
     let bridge_node_mode = if role_key == "bridge" {
         kgw_self_worker_arg_value(&args, "--node-mode")
@@ -1662,6 +1895,7 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
             startup_control_path.as_deref(),
             stop_request_path.as_deref(),
             stop_outcome_path.as_deref(),
+            &parent_identity,
         ),
         "bridge" => {
             // KGW_BRIDGE_INPROCESS_SETLOGGERERROR_V14
@@ -1682,6 +1916,7 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
                 startup_control_path.as_deref(),
                 stop_request_path.as_deref(),
                 stop_outcome_path.as_deref(),
+                &parent_identity,
             )
         }
         other => Err(format!("unsupported self-worker role: {other}")),
@@ -1884,6 +2119,7 @@ fn kgw_run_node_self_worker(
     startup_control_path: Option<&std::path::Path>,
     stop_request_path: Option<&std::path::Path>,
     stop_outcome_path: Option<&std::path::Path>,
+    parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
 ) -> Result<KgwPostReadyStopOutcomeV1, String> {
     let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
         network.to_string(),
@@ -1931,6 +2167,7 @@ fn kgw_run_node_self_worker(
         stop_outcome_path,
         "node",
         settings.network.as_str(),
+        parent_identity,
         move || match runtime.stop_network(settings.network) {
             Ok(status) => Ok(status.last_message),
             Err(error @ kaspa_gateway_rk_node::KgwRealOwnerError::ShutdownFailed(_)) => {
@@ -1952,6 +2189,7 @@ fn kgw_run_bridge_self_worker(
     startup_control_path: Option<&std::path::Path>,
     stop_request_path: Option<&std::path::Path>,
     stop_outcome_path: Option<&std::path::Path>,
+    parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
 ) -> Result<KgwPostReadyStopOutcomeV1, String> {
     let bridge_node_mode = kgw_self_worker_arg_value(args, "--node-mode")
         .unwrap_or_else(|| "external".to_string())
@@ -2097,6 +2335,7 @@ fn kgw_run_bridge_self_worker(
         stop_outcome_path,
         "bridge",
         network,
+        parent_identity,
         move || {
             let listener_count = readiness_evidence.len();
             let mut components = handles
@@ -2210,12 +2449,18 @@ mod kgw_graceful_stop_failure_path_tests {
         let request_path = stop_control_path("request");
         let outcome_path = stop_control_path("outcome");
         write_matching_stop_request(&request_path, "node", "mainnet");
+        let parent_identity =
+            crate::integrated_runtime_commands::kgw_process_identity_for_worker_v1(
+                std::process::id(),
+            )
+            .unwrap();
 
         let outcome = kgw_execute_stop_request_with_budget_v1(
             &request_path,
             &outcome_path,
             "node",
             "mainnet",
+            &parent_identity,
             std::time::Duration::from_millis(5),
             || {
                 std::thread::sleep(std::time::Duration::from_millis(100));

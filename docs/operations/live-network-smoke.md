@@ -32,8 +32,11 @@ The script:
 3. builds the stable embedded runtime and the read-only gRPC probe;
 4. starts mainnet and TN10 one at a time;
 5. verifies the reported network, RPC health, peer count, and DAA progression;
-6. force-stops each smoke worker in a `finally` block and confirms port release;
-7. writes logs and `report.json` below `artifacts/live-network-smoke/`.
+6. terminates the task-owned parent, verifies its same-executable worker exits and releases the port, then proves relaunch reconciliation;
+7. force-stops the relaunched task-owned parent in a `finally` block and confirms port release;
+8. writes logs and `report.json` below `artifacts/live-network-smoke/`.
+
+The smoke launcher uses the desktop's dedicated same-executable parent mode. After RPC readiness it terminates that task-owned parent, proves the worker releases the RPC listener, and relaunches the same network to verify durable ownership reconciliation. Direct `--kgw-self-worker` invocation is intentionally unsupported because production workers require an exact desktop parent identity.
 
 Testnet 12 is never started by this script. Its UI toggle requires an explicit
 warning confirmation and the backend independently rejects starts without the

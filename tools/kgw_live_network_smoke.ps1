@@ -246,7 +246,7 @@ foreach ($network in $Networks) {
         $process = Start-Process `
             -FilePath $desktopExe `
             -ArgumentList @(
-                "--kgw-self-worker", "node",
+                "--kgw-live-smoke-parent",
                 "--network", $network,
                 "--appdir", "`"$appDir`"",
                 "--rpc", "127.0.0.1:$rpcPort"
@@ -268,6 +268,41 @@ foreach ($network in $Networks) {
         }
 
         $second = Invoke-LiveProbe `
+            -Endpoint $endpoint `
+            -ExpectedNetwork $profile.ExpectedNetwork
+
+        $parentPid = $process.Id
+        $process.Kill()
+        $process.WaitForExit()
+        $process = $null
+
+        $orphanDeadline = (Get-Date).AddSeconds(60)
+        while ((Get-Date) -lt $orphanDeadline) {
+            if (-not (Get-NetTCPConnection -LocalPort $rpcPort -State Listen -ErrorAction SilentlyContinue)) {
+                break
+            }
+            Start-Sleep -Milliseconds 500
+        }
+        if (Get-NetTCPConnection -LocalPort $rpcPort -State Listen -ErrorAction SilentlyContinue) {
+            throw "Same-executable worker retained RPC port $rpcPort after exact parent $parentPid exited."
+        }
+
+        $relaunchStdoutPath = Join-Path $reportDir "$network.relaunch.stdout.log"
+        $relaunchStderrPath = Join-Path $reportDir "$network.relaunch.stderr.log"
+        $process = Start-Process `
+            -FilePath $desktopExe `
+            -ArgumentList @(
+                "--kgw-live-smoke-parent",
+                "--network", $network,
+                "--appdir", "`"$appDir`"",
+                "--rpc", "127.0.0.1:$rpcPort"
+            ) `
+            -RedirectStandardOutput $relaunchStdoutPath `
+            -RedirectStandardError $relaunchStderrPath `
+            -WindowStyle Hidden `
+            -PassThru
+        $relaunch = Wait-RpcReady `
+            -Process $process `
             -Endpoint $endpoint `
             -ExpectedNetwork $profile.ExpectedNetwork
 
@@ -302,6 +337,9 @@ foreach ($network in $Networks) {
             BlockProgressed = $blockProgressed
             HeaderProgressed = $headerProgressed
             ChainProgressObserved = $chainProgressObserved
+            ParentLossCleanup = $true
+            RelaunchAfterParentLoss = $true
+            RelaunchPeerCount = [int]$relaunch.peerCount
             ObservationWarning = $observationWarning
             FullSyncRequiredForProduction = -not [bool]$second.isSynced
             DurationSeconds = [math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1)

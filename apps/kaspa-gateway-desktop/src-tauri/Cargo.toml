@@ -43,6 +43,7 @@ kaspa-gateway-node = { path = "../../../crates/kaspa-gateway-node" }
 kaspa-gateway-runtime = { path = "../../../crates/kaspa-gateway-runtime" }
 ureq = "3.3.0"
 sha2 = "0.11.0"
+sysinfo = "0.31.4"
 printpdf = { version = "0.12.5", default-features = false }
 zip = "8.6.0"
 
