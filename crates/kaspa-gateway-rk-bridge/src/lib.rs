@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::thread::JoinHandle;
 #[cfg(any(
     test,
@@ -188,6 +189,312 @@ pub struct BridgeInternalCpuMinerSettings {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+pub struct EffectiveBridgeGlobalSettings {
+    pub kaspa_rpc_endpoint: String,
+    pub block_wait_time_ms: u64,
+    pub print_stats: bool,
+    pub log_to_file: bool,
+    pub health_check_listen: Option<String>,
+    pub web_dashboard_listen: Option<String>,
+    pub var_diff: bool,
+    pub shares_per_min: u32,
+    pub var_diff_stats: bool,
+    pub extranonce_size: u8,
+    pub pow2_clamp: bool,
+    pub coinbase_tag_suffix: Option<String>,
+    pub approximate_geo_lookup: bool,
+}
+
+impl Default for EffectiveBridgeGlobalSettings {
+    fn default() -> Self {
+        Self {
+            kaspa_rpc_endpoint: "127.0.0.1:16110".to_string(),
+            block_wait_time_ms: 1_000,
+            print_stats: true,
+            // The desktop preserves native process stderr as its authoritative log.
+            // Separate upstream file logging requires explicit support and is rejected.
+            log_to_file: false,
+            health_check_listen: None,
+            web_dashboard_listen: None,
+            var_diff: true,
+            shares_per_min: 20,
+            var_diff_stats: false,
+            extranonce_size: 0,
+            pow2_clamp: false,
+            coinbase_tag_suffix: None,
+            approximate_geo_lookup: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+pub struct EffectiveBridgeInstanceSettings {
+    pub instance_id: String,
+    pub stratum_listen: String,
+    pub min_share_diff: u32,
+    pub prometheus_listen: Option<String>,
+    pub log_to_file: Option<bool>,
+    pub block_wait_time_ms: Option<u64>,
+    pub extranonce_size: Option<u8>,
+    pub var_diff: Option<bool>,
+    pub shares_per_min: Option<u32>,
+    pub var_diff_stats: Option<bool>,
+    pub pow2_clamp: Option<bool>,
+}
+
+impl Default for EffectiveBridgeInstanceSettings {
+    fn default() -> Self {
+        Self {
+            instance_id: "bridge-1".to_string(),
+            stratum_listen: ":5555".to_string(),
+            min_share_diff: 8_192,
+            prometheus_listen: None,
+            log_to_file: None,
+            block_wait_time_ms: None,
+            extranonce_size: None,
+            var_diff: None,
+            shares_per_min: None,
+            var_diff_stats: None,
+            pow2_clamp: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+pub struct EffectiveBridgeSettings {
+    pub version: u8,
+    pub global: EffectiveBridgeGlobalSettings,
+    pub instances: Vec<EffectiveBridgeInstanceSettings>,
+}
+
+impl Default for EffectiveBridgeSettings {
+    fn default() -> Self {
+        Self {
+            version: 1,
+            global: EffectiveBridgeGlobalSettings::default(),
+            instances: vec![EffectiveBridgeInstanceSettings::default()],
+        }
+    }
+}
+
+impl EffectiveBridgeSettings {
+    pub fn for_network(network: BridgeRuntimeNetwork) -> Self {
+        Self {
+            global: EffectiveBridgeGlobalSettings {
+                kaspa_rpc_endpoint: network.default_rpc().to_string(),
+                log_to_file: false,
+                ..EffectiveBridgeGlobalSettings::default()
+            },
+            instances: vec![EffectiveBridgeInstanceSettings {
+                instance_id: format!("{}-bridge-1", network.as_str()),
+                stratum_listen: network.default_stratum().to_string(),
+                prometheus_listen: Some(network.default_prometheus().to_string()),
+                ..EffectiveBridgeInstanceSettings::default()
+            }],
+            ..Self::default()
+        }
+    }
+
+    pub fn validate_for_network(
+        &self,
+        network: BridgeRuntimeNetwork,
+    ) -> Result<(), BridgeRuntimeError> {
+        if self.version != 1 {
+            return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+                "effective Bridge settings version must be 1".to_string(),
+            ));
+        }
+        if self.instances.is_empty() {
+            return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+                "effective Bridge settings require at least one instance".to_string(),
+            ));
+        }
+        if self.global.block_wait_time_ms == 0 {
+            return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+                "blockWaitTimeMs must be greater than zero".to_string(),
+            ));
+        }
+        if self.global.shares_per_min == 0 {
+            return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+                "sharesPerMin must be greater than zero".to_string(),
+            ));
+        }
+        if self.global.extranonce_size > 8 {
+            return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+                "extranonceSize must not exceed 8 bytes".to_string(),
+            ));
+        }
+        validate_rpc_endpoint(&self.global.kaspa_rpc_endpoint)?;
+        validate_optional_socket_listener(self.global.health_check_listen.as_deref())?;
+        validate_optional_socket_listener(self.global.web_dashboard_listen.as_deref())?;
+
+        if network != BridgeRuntimeNetwork::Testnet12 && self.global.approximate_geo_lookup {
+            return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+                "approximateGeoLookup is supported only by the pinned testnet12 runtime"
+                    .to_string(),
+            ));
+        }
+        if self
+            .global
+            .coinbase_tag_suffix
+            .as_deref()
+            .is_some_and(|value| value.len() > 256 || value.contains(['\0', '\n', '\r']))
+        {
+            return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+                "coinbaseTagSuffix is too long or contains unsafe control characters".to_string(),
+            ));
+        }
+
+        let mut instance_ids = HashSet::new();
+        let mut stratum_listens = HashSet::new();
+        let mut all_listens = HashSet::new();
+        for (index, instance) in self.instances.iter().enumerate() {
+            if instance.instance_id.trim().is_empty()
+                || instance.instance_id.len() > 128
+                || instance.instance_id.contains(['\0', '\n', '\r'])
+            {
+                return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+                    "instances[{index}].instanceId is empty, too long, or unsafe"
+                )));
+            }
+            if !instance_ids.insert(instance.instance_id.clone()) {
+                return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+                    "duplicate Bridge instanceId: {}",
+                    instance.instance_id
+                )));
+            }
+            let stratum_listen = normalized_listener_identity(&instance.stratum_listen)?;
+            if !stratum_listens.insert(stratum_listen.clone()) {
+                return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+                    "duplicate stratum listener: {}",
+                    instance.stratum_listen
+                )));
+            }
+            if !all_listens.insert(stratum_listen) {
+                return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+                    "duplicate Bridge listener: {}",
+                    instance.stratum_listen
+                )));
+            }
+            if let Some(prometheus) = instance.prometheus_listen.as_deref() {
+                let prometheus_identity = normalized_listener_identity(prometheus)?;
+                if !all_listens.insert(prometheus_identity) {
+                    return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+                        "duplicate Bridge listener: {prometheus}"
+                    )));
+                }
+            }
+            if instance.block_wait_time_ms == Some(0) {
+                return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+                    "instances[{index}].blockWaitTimeMs must be greater than zero"
+                )));
+            }
+            if instance.shares_per_min == Some(0) {
+                return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+                    "instances[{index}].sharesPerMin must be greater than zero"
+                )));
+            }
+            if instance.extranonce_size.is_some_and(|value| value > 8) {
+                return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+                    "instances[{index}].extranonceSize must not exceed 8 bytes"
+                )));
+            }
+        }
+
+        for (label, listen) in [
+            (
+                "healthCheckListen",
+                self.global.health_check_listen.as_deref(),
+            ),
+            (
+                "webDashboardListen",
+                self.global.web_dashboard_listen.as_deref(),
+            ),
+        ] {
+            if let Some(listen) = listen
+                && !all_listens.insert(normalized_listener_identity(listen)?)
+            {
+                return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+                    "{label} conflicts with another Bridge listener: {listen}"
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    pub fn reject_unowned_services(&self) -> Result<(), BridgeRuntimeError> {
+        let mut unsupported = Vec::new();
+        if self.global.log_to_file
+            || self
+                .instances
+                .iter()
+                .any(|instance| instance.log_to_file == Some(true))
+        {
+            unsupported.push("logToFile");
+        }
+        if self.global.health_check_listen.is_some() {
+            unsupported.push("healthCheckListen");
+        }
+        if self.global.web_dashboard_listen.is_some() {
+            unsupported.push("webDashboardListen");
+        }
+        if self.global.approximate_geo_lookup {
+            unsupported.push("approximateGeoLookup");
+        }
+        if !unsupported.is_empty() {
+            return Err(BridgeRuntimeError::UnsupportedEffectiveBridgeSettings(
+                unsupported.join(","),
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn into_service_events(
+        mut self,
+        network: BridgeRuntimeNetwork,
+        mode: BridgeRuntimeMode,
+        internal_cpu_miner: BridgeInternalCpuMinerSettings,
+        owned_rpc_endpoint: Option<&str>,
+    ) -> Result<Vec<BridgeServiceEvent>, BridgeRuntimeError> {
+        if let Some(owned_rpc_endpoint) = owned_rpc_endpoint {
+            validate_rpc_endpoint(owned_rpc_endpoint)?;
+            self.global.kaspa_rpc_endpoint = owned_rpc_endpoint.to_string();
+        }
+        self.validate_for_network(network)?;
+        self.reject_unowned_services()?;
+        let global = self.global;
+        Ok(self
+            .instances
+            .drain(..)
+            .map(|instance| BridgeServiceEvent {
+                kind: match mode {
+                    BridgeRuntimeMode::Disabled => BridgeServiceEventKind::Stop,
+                    BridgeRuntimeMode::OfficialExternalNode => {
+                        BridgeServiceEventKind::StartOfficialExternalNode
+                    }
+                    BridgeRuntimeMode::OfficialInProcessNode => {
+                        BridgeServiceEventKind::StartOfficialInProcessNode
+                    }
+                },
+                network,
+                family: network.family(),
+                branch: network.branch(),
+                mode,
+                stratum_listen: instance.stratum_listen.clone(),
+                prometheus_listen: instance.prometheus_listen.clone().unwrap_or_default(),
+                kaspa_rpc_endpoint: global.kaspa_rpc_endpoint.clone(),
+                internal_cpu_miner: internal_cpu_miner.clone(),
+                effective_global: global.clone(),
+                effective_instance: instance,
+            })
+            .collect())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BridgeRuntimeSettings {
     pub network: String,
     pub mode: BridgeRuntimeMode,
@@ -223,6 +530,8 @@ pub struct BridgeServiceEvent {
     pub prometheus_listen: String,
     pub kaspa_rpc_endpoint: String,
     pub internal_cpu_miner: BridgeInternalCpuMinerSettings,
+    pub effective_global: EffectiveBridgeGlobalSettings,
+    pub effective_instance: EffectiveBridgeInstanceSettings,
 }
 
 impl BridgeServiceEvent {
@@ -307,6 +616,14 @@ pub enum BridgeRuntimeError {
     #[error("invalid listen address")]
     InvalidListenAddress,
 
+    #[error("invalid effective Bridge settings: {0}")]
+    InvalidEffectiveBridgeSettings(String),
+
+    #[error(
+        "unsupported effective Bridge settings in the desktop-owned runtime: {0}; use only settings with an ownership-safe in-process implementation"
+    )]
+    UnsupportedEffectiveBridgeSettings(String),
+
     #[error("bridge in-process mode requires same-owner in-process node")]
     InProcessBridgeRequiresInProcessNode,
 
@@ -334,14 +651,23 @@ pub struct BridgeStartupReadiness {
     pub network: BridgeRuntimeNetwork,
     pub rpc_endpoint: String,
     pub listener: String,
+    pub prometheus_listener: Option<String>,
     pub rpc_network: String,
 }
 
 impl BridgeStartupReadiness {
+    pub fn listener_count(&self) -> usize {
+        1 + usize::from(self.prometheus_listener.is_some())
+    }
+
     pub fn to_attestation(&self) -> String {
         format!(
-            "rpc_method=get_server_info;rpc_network={};rpc_endpoint={};listener={};listeners_ready=1",
-            self.rpc_network, self.rpc_endpoint, self.listener
+            "rpc_method=get_server_info;rpc_network={};rpc_endpoint={};listener={};prometheus_listener={};listeners_ready={}",
+            self.rpc_network,
+            self.rpc_endpoint,
+            self.listener,
+            self.prometheus_listener.as_deref().unwrap_or(""),
+            self.listener_count()
         )
     }
 }
@@ -509,11 +835,7 @@ fn listener_probe_address(listener: &str) -> Result<String, String> {
     }
 }
 
-#[cfg(any(
-    test,
-    feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
-))]
+#[cfg(test)]
 async fn attest_listener_and_serve<F, E>(
     listen: F,
     startup_tx: std::sync::mpsc::SyncSender<BridgeOwnerStartupOutcome>,
@@ -522,10 +844,30 @@ async fn attest_listener_and_serve<F, E>(
     F: std::future::Future<Output = Result<(), E>>,
     E: std::fmt::Display,
 {
-    attest_listener_and_serve_with_probe(listen, startup_tx, readiness, |address| {
-        tokio::net::TcpStream::connect(address)
-    })
+    attest_listener_and_serve_with_auxiliary_probe(
+        listen,
+        None,
+        startup_tx,
+        readiness,
+        tokio::net::TcpStream::connect,
+    )
     .await;
+}
+
+#[cfg(test)]
+async fn attest_listener_and_serve_with_probe<F, E, C, P>(
+    listen: F,
+    startup_tx: std::sync::mpsc::SyncSender<BridgeOwnerStartupOutcome>,
+    readiness: BridgeStartupReadiness,
+    connect: C,
+) where
+    F: std::future::Future<Output = Result<(), E>>,
+    E: std::fmt::Display,
+    C: FnMut(String) -> P,
+    P: std::future::Future<Output = Result<tokio::net::TcpStream, std::io::Error>>,
+{
+    attest_listener_and_serve_with_auxiliary_probe(listen, None, startup_tx, readiness, connect)
+        .await;
 }
 
 #[cfg(any(
@@ -533,8 +875,9 @@ async fn attest_listener_and_serve<F, E>(
     feature = "official-kaspa-runtime-mainline",
     feature = "official-kaspa-runtime-tn12"
 ))]
-async fn attest_listener_and_serve_with_probe<F, E, C, P>(
+async fn attest_listener_and_serve_with_auxiliary_probe<F, E, C, P>(
     listen: F,
+    mut auxiliary: Option<tokio::task::JoinHandle<Result<(), String>>>,
     startup_tx: std::sync::mpsc::SyncSender<BridgeOwnerStartupOutcome>,
     readiness: BridgeStartupReadiness,
     mut connect: C,
@@ -545,6 +888,7 @@ async fn attest_listener_and_serve_with_probe<F, E, C, P>(
     P: std::future::Future<Output = Result<tokio::net::TcpStream, std::io::Error>>,
 {
     let listener = readiness.listener.clone();
+    let auxiliary_listener = readiness.prometheus_listener.clone();
     let probe_address = match listener_probe_address(&listener) {
         Ok(address) => address,
         Err(error) => {
@@ -571,6 +915,21 @@ async fn attest_listener_and_serve_with_probe<F, E, C, P>(
                 let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(message));
                 return;
             }
+            auxiliary_result = async {
+                match auxiliary.as_mut() {
+                    Some(task) => Some(task.await),
+                    None => std::future::pending().await,
+                }
+            } => {
+                let message = match auxiliary_result {
+                    Some(Ok(Ok(()))) => "Prometheus listener stopped before readiness".to_string(),
+                    Some(Ok(Err(error))) => format!("Prometheus listener setup failed: {error}"),
+                    Some(Err(error)) => format!("Prometheus listener task failed: {error}"),
+                    None => unreachable!(),
+                };
+                let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(message));
+                return;
+            }
             probe = tokio::time::timeout(
                 Duration::from_millis(250),
                 connect(probe_address.clone()),
@@ -578,10 +937,64 @@ async fn attest_listener_and_serve_with_probe<F, E, C, P>(
                 match probe {
                     Ok(Ok(stream)) => {
                         drop(stream);
+                        if let Some(auxiliary_listener) = auxiliary_listener.as_deref()
+                            && let Some(auxiliary_task) = auxiliary.as_mut()
+                        {
+                            let auxiliary_probe = async {
+                                let probe_address = listener_probe_address(auxiliary_listener)?;
+                                let deadline = tokio::time::Instant::now()
+                                    + KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT;
+                                loop {
+                                    tokio::select! {
+                                        biased;
+                                        result = &mut listen => {
+                                            return Err(match result {
+                                                Ok(()) => "Stratum listener stopped before readiness".to_string(),
+                                                Err(error) => format!("Stratum listener failed before readiness: {error}"),
+                                            });
+                                        }
+                                        result = &mut *auxiliary_task => {
+                                            return Err(match result {
+                                                Ok(Ok(())) => "Prometheus listener stopped before readiness".to_string(),
+                                                Ok(Err(error)) => format!("Prometheus listener setup failed: {error}"),
+                                                Err(error) => format!("Prometheus listener task failed: {error}"),
+                                            });
+                                        }
+                                        probe = tokio::time::timeout(
+                                            Duration::from_millis(250),
+                                            tokio::net::TcpStream::connect(probe_address.clone()),
+                                        ) => {
+                                            if let Ok(Ok(stream)) = probe {
+                                                drop(stream);
+                                                return Ok(());
+                                            }
+                                        }
+                                    }
+                                    if tokio::time::Instant::now() >= deadline {
+                                        return Err(format!(
+                                            "Prometheus listener did not accept TCP connections;listener={auxiliary_listener};probe_address={probe_address};timeout_ms={}",
+                                            KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT.as_millis()
+                                        ));
+                                    }
+                                    tokio::time::sleep(Duration::from_millis(25)).await;
+                                }
+                            };
+                            if let Err(error) = auxiliary_probe.await {
+                                let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(error));
+                                return;
+                            }
+                        }
                         if startup_tx.send(BridgeOwnerStartupOutcome::Ready(readiness)).is_err() {
                             return;
                         }
-                        let _ = listen.await;
+                        if let Some(mut auxiliary) = auxiliary.take() {
+                            tokio::select! {
+                                _ = &mut listen => {}
+                                _ = &mut auxiliary => {}
+                            }
+                        } else {
+                            let _ = listen.await;
+                        }
                         return;
                     }
                     Ok(Err(error)) => {
@@ -608,15 +1021,389 @@ async fn attest_listener_and_serve_with_probe<F, E, C, P>(
 }
 
 fn validate_listen(value: &str) -> Result<(), BridgeRuntimeError> {
-    if value.trim().is_empty()
+    normalized_listener_identity(value).map(|_| ())
+}
+
+fn validate_rpc_endpoint(value: &str) -> Result<(), BridgeRuntimeError> {
+    let value = value.trim();
+    if value.is_empty()
         || value.contains("..")
         || value.contains('/')
         || value.contains('\\')
+        || value
+            .parse::<std::net::SocketAddr>()
+            .is_err_and(|_| !is_valid_hostname_endpoint(value))
     {
         return Err(BridgeRuntimeError::InvalidListenAddress);
     }
 
     Ok(())
+}
+
+fn is_valid_hostname_endpoint(value: &str) -> bool {
+    let Some((host, port)) = value.rsplit_once(':') else {
+        return false;
+    };
+    !host.trim().is_empty()
+        && host
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || matches!(character, '.' | '-'))
+        && port.parse::<u16>().is_ok_and(|port| port != 0)
+}
+
+fn normalized_listener_identity(value: &str) -> Result<String, BridgeRuntimeError> {
+    let value = value.trim();
+    if value.is_empty() || value.contains("..") || value.contains('/') || value.contains('\\') {
+        return Err(BridgeRuntimeError::InvalidListenAddress);
+    }
+    if let Some(port) = value.strip_prefix(':').or_else(|| {
+        value
+            .chars()
+            .all(|character| character.is_ascii_digit())
+            .then_some(value)
+    }) {
+        let port = port
+            .parse::<u16>()
+            .ok()
+            .filter(|port| *port != 0)
+            .ok_or(BridgeRuntimeError::InvalidListenAddress)?;
+        return Ok(format!("0.0.0.0:{port}"));
+    }
+    let address = value
+        .parse::<std::net::SocketAddr>()
+        .map_err(|_| BridgeRuntimeError::InvalidListenAddress)?;
+    if address.port() == 0 {
+        return Err(BridgeRuntimeError::InvalidListenAddress);
+    }
+
+    Ok(address.to_string())
+}
+
+fn validate_optional_socket_listener(value: Option<&str>) -> Result<(), BridgeRuntimeError> {
+    if let Some(value) = value {
+        validate_listen(value)?;
+    }
+    Ok(())
+}
+
+#[cfg(feature = "official-kaspa-runtime-mainline")]
+pub fn effective_bridge_settings_from_mainline_yaml_v1(
+    content: &str,
+) -> Result<EffectiveBridgeSettings, BridgeRuntimeError> {
+    let config =
+        kaspa_stratum_bridge_mainline::BridgeConfig::from_yaml(content).map_err(|error| {
+            BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+                "official stable Bridge config parse failed: {error}"
+            ))
+        })?;
+    let settings = EffectiveBridgeSettings {
+        version: 1,
+        global: EffectiveBridgeGlobalSettings {
+            kaspa_rpc_endpoint: config.global.kaspad_address,
+            block_wait_time_ms: u64::try_from(config.global.block_wait_time.as_millis())
+                .unwrap_or(u64::MAX),
+            print_stats: config.global.print_stats,
+            log_to_file: config.global.log_to_file,
+            health_check_listen: nonempty_option(config.global.health_check_port),
+            web_dashboard_listen: nonempty_option(config.global.web_dashboard_port),
+            var_diff: config.global.var_diff,
+            shares_per_min: config.global.shares_per_min,
+            var_diff_stats: config.global.var_diff_stats,
+            extranonce_size: config.global.extranonce_size,
+            pow2_clamp: config.global.pow2_clamp,
+            coinbase_tag_suffix: config.global.coinbase_tag_suffix,
+            approximate_geo_lookup: false,
+        },
+        instances: config
+            .instances
+            .into_iter()
+            .enumerate()
+            .map(|(index, instance)| EffectiveBridgeInstanceSettings {
+                instance_id: format!("bridge-{}", index + 1),
+                stratum_listen: instance.stratum_port,
+                min_share_diff: instance.min_share_diff,
+                prometheus_listen: instance.prom_port,
+                log_to_file: instance.log_to_file,
+                block_wait_time_ms: instance
+                    .block_wait_time
+                    .map(|value| u64::try_from(value.as_millis()).unwrap_or(u64::MAX)),
+                extranonce_size: instance.extranonce_size,
+                var_diff: instance.var_diff,
+                shares_per_min: instance.shares_per_min,
+                var_diff_stats: instance.var_diff_stats,
+                pow2_clamp: instance.pow2_clamp,
+            })
+            .collect(),
+    };
+    settings.validate_for_network(BridgeRuntimeNetwork::Mainnet)?;
+    Ok(settings)
+}
+
+#[cfg(feature = "official-kaspa-runtime-tn12")]
+pub fn effective_bridge_settings_from_tn12_yaml_v1(
+    content: &str,
+) -> Result<EffectiveBridgeSettings, BridgeRuntimeError> {
+    let config = kaspa_stratum_bridge_tn12::BridgeConfig::from_yaml(content).map_err(|error| {
+        BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+            "official testnet12 Bridge config parse failed: {error}"
+        ))
+    })?;
+    let settings = EffectiveBridgeSettings {
+        version: 1,
+        global: EffectiveBridgeGlobalSettings {
+            kaspa_rpc_endpoint: config.global.kaspad_address,
+            block_wait_time_ms: u64::try_from(config.global.block_wait_time.as_millis())
+                .unwrap_or(u64::MAX),
+            print_stats: config.global.print_stats,
+            log_to_file: config.global.log_to_file,
+            health_check_listen: nonempty_option(config.global.health_check_port),
+            web_dashboard_listen: nonempty_option(config.global.web_dashboard_port),
+            var_diff: config.global.var_diff,
+            shares_per_min: config.global.shares_per_min,
+            var_diff_stats: config.global.var_diff_stats,
+            extranonce_size: config.global.extranonce_size,
+            pow2_clamp: config.global.pow2_clamp,
+            coinbase_tag_suffix: config.global.coinbase_tag_suffix,
+            approximate_geo_lookup: config.global.approximate_geo_lookup,
+        },
+        instances: config
+            .instances
+            .into_iter()
+            .enumerate()
+            .map(|(index, instance)| EffectiveBridgeInstanceSettings {
+                instance_id: format!("bridge-{}", index + 1),
+                stratum_listen: instance.stratum_port,
+                min_share_diff: instance.min_share_diff,
+                prometheus_listen: instance.prom_port,
+                log_to_file: instance.log_to_file,
+                block_wait_time_ms: instance
+                    .block_wait_time
+                    .map(|value| u64::try_from(value.as_millis()).unwrap_or(u64::MAX)),
+                extranonce_size: instance.extranonce_size,
+                var_diff: instance.var_diff,
+                shares_per_min: instance.shares_per_min,
+                var_diff_stats: instance.var_diff_stats,
+                pow2_clamp: instance.pow2_clamp,
+            })
+            .collect(),
+    };
+    settings.validate_for_network(BridgeRuntimeNetwork::Testnet12)?;
+    Ok(settings)
+}
+
+pub fn effective_bridge_settings_from_yaml_v1(
+    network: BridgeRuntimeNetwork,
+    content: &str,
+) -> Result<EffectiveBridgeSettings, BridgeRuntimeError> {
+    match network {
+        BridgeRuntimeNetwork::Mainnet | BridgeRuntimeNetwork::Testnet10 => {
+            #[cfg(feature = "official-kaspa-runtime-mainline")]
+            {
+                let settings = effective_bridge_settings_from_mainline_yaml_v1(content)?;
+                settings.validate_for_network(network)?;
+                Ok(settings)
+            }
+            #[cfg(not(feature = "official-kaspa-runtime-mainline"))]
+            {
+                let _ = content;
+                Err(BridgeRuntimeError::FeatureRequired(
+                    "stable Bridge config parsing requires official-kaspa-runtime-mainline"
+                        .to_string(),
+                ))
+            }
+        }
+        BridgeRuntimeNetwork::Testnet12 => {
+            #[cfg(feature = "official-kaspa-runtime-tn12")]
+            {
+                effective_bridge_settings_from_tn12_yaml_v1(content)
+            }
+            #[cfg(not(feature = "official-kaspa-runtime-tn12"))]
+            {
+                let _ = content;
+                Err(BridgeRuntimeError::FeatureRequired(
+                    "testnet12 Bridge config parsing requires official-kaspa-runtime-tn12"
+                        .to_string(),
+                ))
+            }
+        }
+    }
+}
+
+#[cfg(any(
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+fn nonempty_option(value: String) -> Option<String> {
+    let value = value.trim().to_string();
+    (!value.is_empty()).then_some(value)
+}
+
+#[cfg(feature = "official-kaspa-runtime-mainline")]
+fn mainline_stratum_config_from_event(
+    event: &BridgeServiceEvent,
+) -> kaspa_stratum_bridge_mainline::StratumServerBridgeConfig {
+    kaspa_stratum_bridge_mainline::StratumServerBridgeConfig {
+        instance_id: event.effective_instance.instance_id.clone(),
+        stratum_port: event.effective_instance.stratum_listen.clone(),
+        kaspad_address: event.effective_global.kaspa_rpc_endpoint.clone(),
+        // The official main loop owns its optional Prometheus server separately;
+        // preserve the effective port in the event and keep the Stratum config empty.
+        prom_port: String::new(),
+        print_stats: event.effective_global.print_stats,
+        log_to_file: event
+            .effective_instance
+            .log_to_file
+            .unwrap_or(event.effective_global.log_to_file),
+        health_check_port: String::new(),
+        block_wait_time: Duration::from_millis(
+            event
+                .effective_instance
+                .block_wait_time_ms
+                .unwrap_or(event.effective_global.block_wait_time_ms),
+        ),
+        min_share_diff: event.effective_instance.min_share_diff,
+        var_diff: event
+            .effective_instance
+            .var_diff
+            .unwrap_or(event.effective_global.var_diff),
+        shares_per_min: event
+            .effective_instance
+            .shares_per_min
+            .unwrap_or(event.effective_global.shares_per_min),
+        var_diff_stats: event
+            .effective_instance
+            .var_diff_stats
+            .unwrap_or(event.effective_global.var_diff_stats),
+        extranonce_size: event
+            .effective_instance
+            .extranonce_size
+            .unwrap_or(event.effective_global.extranonce_size),
+        pow2_clamp: event
+            .effective_instance
+            .pow2_clamp
+            .unwrap_or(event.effective_global.pow2_clamp),
+        coinbase_tag_suffix: event.effective_global.coinbase_tag_suffix.clone(),
+    }
+}
+
+#[cfg(feature = "official-kaspa-runtime-tn12")]
+fn tn12_stratum_config_from_event(
+    event: &BridgeServiceEvent,
+) -> kaspa_stratum_bridge_tn12::StratumServerBridgeConfig {
+    kaspa_stratum_bridge_tn12::StratumServerBridgeConfig {
+        instance_id: event.effective_instance.instance_id.clone(),
+        stratum_port: event.effective_instance.stratum_listen.clone(),
+        kaspad_address: event.effective_global.kaspa_rpc_endpoint.clone(),
+        prom_port: String::new(),
+        print_stats: event.effective_global.print_stats,
+        log_to_file: event
+            .effective_instance
+            .log_to_file
+            .unwrap_or(event.effective_global.log_to_file),
+        health_check_port: String::new(),
+        block_wait_time: Duration::from_millis(
+            event
+                .effective_instance
+                .block_wait_time_ms
+                .unwrap_or(event.effective_global.block_wait_time_ms),
+        ),
+        min_share_diff: event.effective_instance.min_share_diff,
+        var_diff: event
+            .effective_instance
+            .var_diff
+            .unwrap_or(event.effective_global.var_diff),
+        shares_per_min: event
+            .effective_instance
+            .shares_per_min
+            .unwrap_or(event.effective_global.shares_per_min),
+        var_diff_stats: event
+            .effective_instance
+            .var_diff_stats
+            .unwrap_or(event.effective_global.var_diff_stats),
+        extranonce_size: event
+            .effective_instance
+            .extranonce_size
+            .unwrap_or(event.effective_global.extranonce_size),
+        pow2_clamp: event
+            .effective_instance
+            .pow2_clamp
+            .unwrap_or(event.effective_global.pow2_clamp),
+        coinbase_tag_suffix: event.effective_global.coinbase_tag_suffix.clone(),
+    }
+}
+
+#[cfg(feature = "official-kaspa-runtime-mainline")]
+pub fn effective_mainline_stratum_config_snapshot_v1(
+    event: &BridgeServiceEvent,
+) -> EffectiveStratumConfigSnapshot {
+    EffectiveStratumConfigSnapshot::from_mainline(mainline_stratum_config_from_event(event))
+}
+
+#[cfg(feature = "official-kaspa-runtime-tn12")]
+pub fn effective_tn12_stratum_config_snapshot_v1(
+    event: &BridgeServiceEvent,
+) -> EffectiveStratumConfigSnapshot {
+    EffectiveStratumConfigSnapshot::from_tn12(tn12_stratum_config_from_event(event))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EffectiveStratumConfigSnapshot {
+    pub instance_id: String,
+    pub stratum_listen: String,
+    pub kaspa_rpc_endpoint: String,
+    pub print_stats: bool,
+    pub log_to_file: bool,
+    pub block_wait_time_ms: u64,
+    pub min_share_diff: u32,
+    pub var_diff: bool,
+    pub shares_per_min: u32,
+    pub var_diff_stats: bool,
+    pub extranonce_size: u8,
+    pub pow2_clamp: bool,
+    pub coinbase_tag_suffix: Option<String>,
+}
+
+impl EffectiveStratumConfigSnapshot {
+    #[cfg(feature = "official-kaspa-runtime-mainline")]
+    fn from_mainline(value: kaspa_stratum_bridge_mainline::StratumServerBridgeConfig) -> Self {
+        Self {
+            instance_id: value.instance_id,
+            stratum_listen: value.stratum_port,
+            kaspa_rpc_endpoint: value.kaspad_address,
+            print_stats: value.print_stats,
+            log_to_file: value.log_to_file,
+            block_wait_time_ms: u64::try_from(value.block_wait_time.as_millis())
+                .unwrap_or(u64::MAX),
+            min_share_diff: value.min_share_diff,
+            var_diff: value.var_diff,
+            shares_per_min: value.shares_per_min,
+            var_diff_stats: value.var_diff_stats,
+            extranonce_size: value.extranonce_size,
+            pow2_clamp: value.pow2_clamp,
+            coinbase_tag_suffix: value.coinbase_tag_suffix,
+        }
+    }
+
+    #[cfg(feature = "official-kaspa-runtime-tn12")]
+    fn from_tn12(value: kaspa_stratum_bridge_tn12::StratumServerBridgeConfig) -> Self {
+        Self {
+            instance_id: value.instance_id,
+            stratum_listen: value.stratum_port,
+            kaspa_rpc_endpoint: value.kaspad_address,
+            print_stats: value.print_stats,
+            log_to_file: value.log_to_file,
+            block_wait_time_ms: u64::try_from(value.block_wait_time.as_millis())
+                .unwrap_or(u64::MAX),
+            min_share_diff: value.min_share_diff,
+            var_diff: value.var_diff,
+            shares_per_min: value.shares_per_min,
+            var_diff_stats: value.var_diff_stats,
+            extranonce_size: value.extranonce_size,
+            pow2_clamp: value.pow2_clamp,
+            coinbase_tag_suffix: value.coinbase_tag_suffix,
+        }
+    }
 }
 
 pub fn bridge_service_event_from_settings_v1(
@@ -656,10 +1443,21 @@ pub fn bridge_service_event_from_settings_v1(
         family: network.family(),
         branch: network.branch(),
         mode: settings.mode,
-        stratum_listen,
-        prometheus_listen,
-        kaspa_rpc_endpoint,
+        stratum_listen: stratum_listen.clone(),
+        prometheus_listen: prometheus_listen.clone(),
+        kaspa_rpc_endpoint: kaspa_rpc_endpoint.clone(),
         internal_cpu_miner: settings.internal_cpu_miner,
+        effective_global: EffectiveBridgeGlobalSettings {
+            kaspa_rpc_endpoint: kaspa_rpc_endpoint.clone(),
+            log_to_file: false,
+            ..EffectiveBridgeGlobalSettings::default()
+        },
+        effective_instance: EffectiveBridgeInstanceSettings {
+            instance_id: format!("{}-bridge-1", network.as_str()),
+            stratum_listen: stratum_listen.clone(),
+            prometheus_listen: Some(prometheus_listen.clone()),
+            ..EffectiveBridgeInstanceSettings::default()
+        },
     })
 }
 
@@ -858,7 +1656,7 @@ fn start_mainline_bridge_owner_thread_ready(
                     KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT,
                     kaspa_stratum_bridge_mainline::KaspaApi::new(
                         endpoint.clone(),
-                        None,
+                        event_for_thread.effective_global.coinbase_tag_suffix.clone(),
                         thread_shutdown.clone(),
                     ),
                 )
@@ -930,32 +1728,39 @@ fn start_mainline_bridge_owner_thread_ready(
                     network: event_for_thread.network,
                     rpc_endpoint: event_for_thread.kaspa_rpc_endpoint.clone(),
                     listener: event_for_thread.stratum_listen.clone(),
+                    prometheus_listener: event_for_thread
+                        .effective_instance
+                        .prometheus_listen
+                        .clone(),
                     rpc_network: rpc_info.network_id.to_string(),
                 };
-                let bridge_config = kaspa_stratum_bridge_mainline::StratumServerBridgeConfig {
-                    instance_id: format!("{}-bridge-1", event_for_thread.network.as_str()),
-                    stratum_port: event_for_thread.stratum_listen.clone(),
-                    kaspad_address: event_for_thread.kaspa_rpc_endpoint.clone(),
-                    prom_port: event_for_thread.prometheus_listen.clone(),
-                    print_stats: true,
-                    log_to_file: false,
-                    health_check_port: String::new(),
-                    block_wait_time: Duration::from_millis(1000),
-                    min_share_diff: 8192,
-                    var_diff: true,
-                    shares_per_min: 20,
-                    var_diff_stats: false,
-                    extranonce_size: 0,
-                    pow2_clamp: false,
-                    coinbase_tag_suffix: None,
-                };
+                let prometheus_task = readiness.prometheus_listener.as_ref().map(|listen| {
+                    let listen = listen.clone();
+                    let instance_id = event_for_thread.effective_instance.instance_id.clone();
+                    tokio::spawn(async move {
+                        kaspa_stratum_bridge_mainline::prom::start_prom_server(
+                            &listen,
+                            &instance_id,
+                        )
+                        .await
+                        .map_err(|error| error.to_string())
+                    })
+                });
+                let bridge_config = mainline_stratum_config_from_event(&event_for_thread);
                 let listen = kaspa_stratum_bridge_mainline::listen_and_serve_with_shutdown(
                     bridge_config,
                     std::sync::Arc::clone(&kaspa_api),
                     Some(std::sync::Arc::clone(&kaspa_api)),
                     thread_shutdown,
                 );
-                attest_listener_and_serve(listen, startup_tx, readiness).await;
+                attest_listener_and_serve_with_auxiliary_probe(
+                    listen,
+                    prometheus_task,
+                    startup_tx,
+                    readiness,
+                    tokio::net::TcpStream::connect,
+                )
+                .await;
             });
         })
         .map_err(|error| BridgeRuntimeError::OwnerThreadStartFailed(error.to_string()))?;
@@ -1064,7 +1869,7 @@ fn start_tn12_bridge_owner_thread_ready(
                     KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT,
                     kaspa_stratum_bridge_tn12::KaspaApi::new(
                         endpoint.clone(),
-                        None,
+                        event_for_thread.effective_global.coinbase_tag_suffix.clone(),
                         thread_shutdown.clone(),
                     ),
                 )
@@ -1136,6 +1941,10 @@ fn start_tn12_bridge_owner_thread_ready(
                     network: event_for_thread.network,
                     rpc_endpoint: event_for_thread.kaspa_rpc_endpoint.clone(),
                     listener: event_for_thread.stratum_listen.clone(),
+                    prometheus_listener: event_for_thread
+                        .effective_instance
+                        .prometheus_listen
+                        .clone(),
                     rpc_network: rpc_info.network_id.to_string(),
                 };
 
@@ -1179,30 +1988,30 @@ fn start_tn12_bridge_owner_thread_ready(
                     }
                 }
 
-                let bridge_config = kaspa_stratum_bridge_tn12::StratumServerBridgeConfig {
-                    instance_id: format!("{}-bridge-1", event_for_thread.network.as_str()),
-                    stratum_port: event_for_thread.stratum_listen.clone(),
-                    kaspad_address: event_for_thread.kaspa_rpc_endpoint.clone(),
-                    prom_port: event_for_thread.prometheus_listen.clone(),
-                    print_stats: true,
-                    log_to_file: false,
-                    health_check_port: String::new(),
-                    block_wait_time: Duration::from_millis(1000),
-                    min_share_diff: 8192,
-                    var_diff: true,
-                    shares_per_min: 20,
-                    var_diff_stats: false,
-                    extranonce_size: 0,
-                    pow2_clamp: false,
-                    coinbase_tag_suffix: None,
-                };
+                let prometheus_task = readiness.prometheus_listener.as_ref().map(|listen| {
+                    let listen = listen.clone();
+                    let instance_id = event_for_thread.effective_instance.instance_id.clone();
+                    tokio::spawn(async move {
+                        kaspa_stratum_bridge_tn12::prom::start_prom_server(&listen, &instance_id)
+                            .await
+                            .map_err(|error| error.to_string())
+                    })
+                });
+                let bridge_config = tn12_stratum_config_from_event(&event_for_thread);
                 let listen = kaspa_stratum_bridge_tn12::listen_and_serve_with_shutdown(
                     bridge_config,
                     std::sync::Arc::clone(&kaspa_api),
                     Some(std::sync::Arc::clone(&kaspa_api)),
                     thread_shutdown,
                 );
-                attest_listener_and_serve(listen, startup_tx, readiness).await;
+                attest_listener_and_serve_with_auxiliary_probe(
+                    listen,
+                    prometheus_task,
+                    startup_tx,
+                    readiness,
+                    tokio::net::TcpStream::connect,
+                )
+                .await;
             });
         })
         .map_err(|error| BridgeRuntimeError::OwnerThreadStartFailed(error.to_string()))?;
@@ -1313,6 +2122,236 @@ mod runtime_binding_tests {
     const STABLE_REV: &str = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3";
     const TN12_REV: &str = "eeb351ee911e2df906d21203dec8db3a195c6b33";
 
+    #[cfg(feature = "official-kaspa-runtime-mainline")]
+    fn event_from_instance(
+        network: BridgeRuntimeNetwork,
+        global: EffectiveBridgeGlobalSettings,
+        instance: EffectiveBridgeInstanceSettings,
+    ) -> BridgeServiceEvent {
+        BridgeServiceEvent {
+            kind: BridgeServiceEventKind::StartOfficialExternalNode,
+            network,
+            family: network.family(),
+            branch: network.branch(),
+            mode: BridgeRuntimeMode::OfficialExternalNode,
+            stratum_listen: instance.stratum_listen.clone(),
+            prometheus_listen: instance.prometheus_listen.clone().unwrap_or_default(),
+            kaspa_rpc_endpoint: global.kaspa_rpc_endpoint.clone(),
+            internal_cpu_miner: BridgeInternalCpuMinerSettings::default(),
+            effective_global: global,
+            effective_instance: instance,
+        }
+    }
+
+    #[cfg(feature = "official-kaspa-runtime-mainline")]
+    #[test]
+    fn official_mainline_yaml_maps_every_supported_field_and_inheritance() {
+        let yaml = r#"
+kaspad_address: "127.0.0.1:26110"
+block_wait_time: 1234
+print_stats: false
+log_to_file: false
+health_check_port: ""
+web_dashboard_port: ""
+var_diff: false
+shares_per_min: 31
+var_diff_stats: true
+extranonce_size: 4
+pow2_clamp: true
+coinbase_tag_suffix: "owner-test"
+instances:
+  - stratum_port: "127.0.0.1:25555"
+    min_share_diff: 777
+    prom_port: "127.0.0.1:22114"
+    log_to_file: false
+    block_wait_time: 4321
+    extranonce_size: 5
+    var_diff: true
+    shares_per_min: 44
+    var_diff_stats: false
+    pow2_clamp: false
+  - stratum_port: "127.0.0.1:25556"
+    min_share_diff: 888
+    prom_port: null
+    log_to_file: null
+    block_wait_time: null
+    extranonce_size: null
+    var_diff: null
+    shares_per_min: null
+    var_diff_stats: null
+    pow2_clamp: null
+"#;
+        let settings = effective_bridge_settings_from_mainline_yaml_v1(yaml).unwrap();
+        assert_eq!(settings.global.kaspa_rpc_endpoint, "127.0.0.1:26110");
+        assert_eq!(settings.global.block_wait_time_ms, 1234);
+        assert!(!settings.global.print_stats);
+        assert!(!settings.global.log_to_file);
+        assert_eq!(settings.global.shares_per_min, 31);
+        assert_eq!(settings.global.extranonce_size, 4);
+        assert_eq!(
+            settings.global.coinbase_tag_suffix.as_deref(),
+            Some("owner-test")
+        );
+        assert_eq!(settings.instances.len(), 2);
+        assert_eq!(
+            settings.instances[0].prometheus_listen.as_deref(),
+            Some("127.0.0.1:22114")
+        );
+
+        let first = effective_mainline_stratum_config_snapshot_v1(&event_from_instance(
+            BridgeRuntimeNetwork::Mainnet,
+            settings.global.clone(),
+            settings.instances[0].clone(),
+        ));
+        assert_eq!(first.block_wait_time_ms, 4321);
+        assert_eq!(first.min_share_diff, 777);
+        assert!(first.var_diff);
+        assert_eq!(first.shares_per_min, 44);
+        assert!(!first.var_diff_stats);
+        assert_eq!(first.extranonce_size, 5);
+        assert!(!first.pow2_clamp);
+        assert_eq!(first.coinbase_tag_suffix.as_deref(), Some("owner-test"));
+
+        let inherited = effective_mainline_stratum_config_snapshot_v1(&event_from_instance(
+            BridgeRuntimeNetwork::Testnet10,
+            settings.global.clone(),
+            settings.instances[1].clone(),
+        ));
+        assert_eq!(inherited.block_wait_time_ms, 1234);
+        assert!(!inherited.var_diff);
+        assert_eq!(inherited.shares_per_min, 31);
+        assert!(inherited.var_diff_stats);
+        assert_eq!(inherited.extranonce_size, 4);
+        assert!(inherited.pow2_clamp);
+    }
+
+    #[cfg(feature = "official-kaspa-runtime-tn12")]
+    #[test]
+    fn official_tn12_yaml_preserves_experimental_geo_field() {
+        let yaml = r#"
+kaspad_address: "127.0.0.1:16310"
+log_to_file: false
+approximate_geo_lookup: true
+instances:
+  - stratum_port: "127.0.0.1:5555"
+    min_share_diff: 19
+"#;
+        let settings = effective_bridge_settings_from_tn12_yaml_v1(yaml).unwrap();
+        assert!(settings.global.approximate_geo_lookup);
+        let error = settings.reject_unowned_services().unwrap_err().to_string();
+        assert!(error.contains("approximateGeoLookup"));
+    }
+
+    #[cfg(feature = "official-kaspa-runtime-mainline")]
+    #[test]
+    fn invalid_yaml_and_duplicate_ports_preserve_official_errors() {
+        let invalid = effective_bridge_settings_from_mainline_yaml_v1("instances: [")
+            .unwrap_err()
+            .to_string();
+        assert!(invalid.contains("official stable Bridge config parse failed"));
+
+        let duplicate = effective_bridge_settings_from_mainline_yaml_v1(
+            r#"
+log_to_file: false
+instances:
+  - stratum_port: ":5555"
+    min_share_diff: 1
+  - stratum_port: ":5555"
+    min_share_diff: 2
+"#,
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(duplicate.contains("Duplicate stratum_port: :5555"));
+    }
+
+    #[test]
+    fn typed_schema_rejects_unknown_fields_and_listener_collisions() {
+        let unknown = serde_json::from_str::<EffectiveBridgeSettings>(
+            r#"{"version":1,"global":{"unknownField":true},"instances":[]}"#,
+        )
+        .unwrap_err();
+        assert!(unknown.to_string().contains("unknown field"));
+
+        let mut settings = EffectiveBridgeSettings::for_network(BridgeRuntimeNetwork::Mainnet);
+        settings.global.log_to_file = false;
+        settings.global.health_check_listen = settings.instances[0].prometheus_listen.clone();
+        let error = settings
+            .validate_for_network(BridgeRuntimeNetwork::Mainnet)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("conflicts with another Bridge listener"));
+
+        let mut equivalent = EffectiveBridgeSettings::for_network(BridgeRuntimeNetwork::Mainnet);
+        equivalent.instances.push(EffectiveBridgeInstanceSettings {
+            instance_id: "bridge-2".to_string(),
+            stratum_listen: "0.0.0.0:5555".to_string(),
+            prometheus_listen: None,
+            ..EffectiveBridgeInstanceSettings::default()
+        });
+        let error = equivalent
+            .validate_for_network(BridgeRuntimeNetwork::Mainnet)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("duplicate stratum listener"));
+
+        let mut invalid = EffectiveBridgeSettings::for_network(BridgeRuntimeNetwork::Mainnet);
+        invalid.instances[0].stratum_listen = "localhost:not-a-port".to_string();
+        assert!(
+            invalid
+                .validate_for_network(BridgeRuntimeNetwork::Mainnet)
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn unsupported_services_are_rejected_instead_of_silently_discarded() {
+        for mutate in [
+            |settings: &mut EffectiveBridgeSettings| settings.global.log_to_file = true,
+            |settings: &mut EffectiveBridgeSettings| {
+                settings.global.health_check_listen = Some("127.0.0.1:4040".to_string());
+            },
+            |settings: &mut EffectiveBridgeSettings| {
+                settings.global.web_dashboard_listen = Some("127.0.0.1:3030".to_string());
+            },
+        ] {
+            let mut settings = EffectiveBridgeSettings::for_network(BridgeRuntimeNetwork::Mainnet);
+            mutate(&mut settings);
+            assert!(settings.reject_unowned_services().is_err());
+        }
+    }
+
+    #[test]
+    fn inprocess_rpc_is_authoritative_while_external_rpc_is_preserved() {
+        let mut settings = EffectiveBridgeSettings::for_network(BridgeRuntimeNetwork::Mainnet);
+        settings.global.log_to_file = false;
+        settings.global.kaspa_rpc_endpoint = "127.0.0.1:29999".to_string();
+        let external = settings
+            .clone()
+            .into_service_events(
+                BridgeRuntimeNetwork::Mainnet,
+                BridgeRuntimeMode::OfficialExternalNode,
+                BridgeInternalCpuMinerSettings::default(),
+                None,
+            )
+            .unwrap();
+        assert_eq!(external[0].kaspa_rpc_endpoint, "127.0.0.1:29999");
+
+        let embedded = settings
+            .into_service_events(
+                BridgeRuntimeNetwork::Mainnet,
+                BridgeRuntimeMode::OfficialInProcessNode,
+                BridgeInternalCpuMinerSettings::default(),
+                Some("127.0.0.1:28888"),
+            )
+            .unwrap();
+        assert_eq!(embedded[0].kaspa_rpc_endpoint, "127.0.0.1:28888");
+        assert_eq!(
+            embedded[0].effective_global.kaspa_rpc_endpoint,
+            "127.0.0.1:28888"
+        );
+    }
+
     #[test]
     fn mainnet_and_testnet10_share_the_official_stable_runtime() {
         for network in [
@@ -1353,6 +2392,7 @@ mod runtime_binding_tests {
             network: BridgeRuntimeNetwork::Testnet10,
             rpc_endpoint: "127.0.0.1:16210".to_string(),
             listener: "127.0.0.1:15555".to_string(),
+            prometheus_listener: None,
             rpc_network: "testnet-10".to_string(),
         };
 
@@ -1360,7 +2400,23 @@ mod runtime_binding_tests {
         assert!(attestation.contains("rpc_method=get_server_info"));
         assert!(attestation.contains("rpc_network=testnet-10"));
         assert!(attestation.contains("listener=127.0.0.1:15555"));
+        assert!(attestation.contains("prometheus_listener="));
         assert!(attestation.contains("listeners_ready=1"));
+    }
+
+    #[test]
+    fn readiness_attestation_counts_prometheus_listener() {
+        let readiness = BridgeStartupReadiness {
+            network: BridgeRuntimeNetwork::Mainnet,
+            rpc_endpoint: "127.0.0.1:16110".to_string(),
+            listener: "127.0.0.1:15555".to_string(),
+            prometheus_listener: Some("127.0.0.1:2114".to_string()),
+            rpc_network: "mainnet".to_string(),
+        };
+
+        let attestation = readiness.to_attestation();
+        assert!(attestation.contains("prometheus_listener=127.0.0.1:2114"));
+        assert!(attestation.contains("listeners_ready=2"));
     }
 
     #[test]
@@ -1400,6 +2456,7 @@ mod runtime_binding_tests {
             network: BridgeRuntimeNetwork::Mainnet,
             rpc_endpoint: "127.0.0.1:16110".to_string(),
             listener: "127.0.0.1:65530".to_string(),
+            prometheus_listener: None,
             rpc_network: "mainnet".to_string(),
         };
 
@@ -1416,6 +2473,49 @@ mod runtime_binding_tests {
             }
             BridgeOwnerStartupOutcome::Ready(_) => {
                 panic!("terminal listener failure cannot attest READY")
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn prometheus_listener_failure_blocks_readiness() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let listen = async move {
+            loop {
+                let (stream, _) = listener.accept().await?;
+                drop(stream);
+            }
+            #[allow(unreachable_code)]
+            Ok::<(), std::io::Error>(())
+        };
+        let prometheus_task =
+            tokio::spawn(async { Err::<(), String>("address already in use".to_string()) });
+        let (startup_tx, startup_rx) = std::sync::mpsc::sync_channel(1);
+        let readiness = BridgeStartupReadiness {
+            network: BridgeRuntimeNetwork::Mainnet,
+            rpc_endpoint: "127.0.0.1:16110".to_string(),
+            listener: address.to_string(),
+            prometheus_listener: Some("127.0.0.1:2114".to_string()),
+            rpc_network: "mainnet".to_string(),
+        };
+
+        attest_listener_and_serve_with_auxiliary_probe(
+            listen,
+            Some(prometheus_task),
+            startup_tx,
+            readiness,
+            tokio::net::TcpStream::connect,
+        )
+        .await;
+
+        match startup_rx.recv().unwrap() {
+            BridgeOwnerStartupOutcome::Failed(error) => {
+                assert!(error.contains("Prometheus listener setup failed"));
+                assert!(error.contains("address already in use"));
+            }
+            BridgeOwnerStartupOutcome::Ready(_) => {
+                panic!("Prometheus listener failure cannot attest READY")
             }
         }
     }
@@ -1450,6 +2550,7 @@ mod runtime_binding_tests {
                 network: BridgeRuntimeNetwork::Mainnet,
                 rpc_endpoint: "127.0.0.1:16110".to_string(),
                 listener: address.to_string(),
+                prometheus_listener: None,
                 rpc_network: "mainnet".to_string(),
             };
             let owned_listen = async move {
@@ -1536,6 +2637,7 @@ mod runtime_binding_tests {
             network: BridgeRuntimeNetwork::Mainnet,
             rpc_endpoint: "127.0.0.1:16110".to_string(),
             listener: address.to_string(),
+            prometheus_listener: None,
             rpc_network: "mainnet".to_string(),
         };
 
@@ -1568,6 +2670,16 @@ mod runtime_binding_tests {
             prometheus_listen: "127.0.0.1:0".to_string(),
             kaspa_rpc_endpoint: "127.0.0.1:16110".to_string(),
             internal_cpu_miner: BridgeInternalCpuMinerSettings::default(),
+            effective_global: EffectiveBridgeGlobalSettings {
+                kaspa_rpc_endpoint: "127.0.0.1:16110".to_string(),
+                log_to_file: false,
+                ..EffectiveBridgeGlobalSettings::default()
+            },
+            effective_instance: EffectiveBridgeInstanceSettings {
+                stratum_listen: address.to_string(),
+                prometheus_listen: Some("127.0.0.1:0".to_string()),
+                ..EffectiveBridgeInstanceSettings::default()
+            },
         };
         let mut second_event = first_event.clone();
         second_event.stratum_listen = "127.0.0.1:65530".to_string();
@@ -1594,6 +2706,7 @@ mod runtime_binding_tests {
                 network: event.network,
                 rpc_endpoint: event.kaspa_rpc_endpoint,
                 listener: event.stratum_listen,
+                prometheus_listener: event.effective_instance.prometheus_listen,
                 rpc_network: "mainnet".to_string(),
             };
             Ok((
@@ -1698,6 +2811,16 @@ mod runtime_binding_tests {
             prometheus_listen: String::new(),
             kaspa_rpc_endpoint: endpoint.clone(),
             internal_cpu_miner: BridgeInternalCpuMinerSettings::default(),
+            effective_global: EffectiveBridgeGlobalSettings {
+                kaspa_rpc_endpoint: endpoint.clone(),
+                log_to_file: false,
+                ..EffectiveBridgeGlobalSettings::default()
+            },
+            effective_instance: EffectiveBridgeInstanceSettings {
+                stratum_listen: "127.0.0.1:0".to_string(),
+                prometheus_listen: None,
+                ..EffectiveBridgeInstanceSettings::default()
+            },
         };
 
         let started_at = std::time::Instant::now();

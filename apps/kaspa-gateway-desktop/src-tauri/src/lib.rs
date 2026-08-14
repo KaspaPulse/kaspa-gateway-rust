@@ -2031,6 +2031,27 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
             }),
         None => Err("effective Node settings path is missing".to_string()),
     };
+    let effective_bridge_settings_path =
+        kgw_self_worker_arg_value(&args, "--effective-bridge-settings-path");
+    let effective_bridge_settings = match effective_bridge_settings_path.as_deref() {
+        Some(path) => std::fs::read(path)
+            .map_err(|error| format!("read effective Bridge settings failed {path}: {error}"))
+            .and_then(|payload| {
+                serde_json::from_slice::<kaspa_gateway_rk_bridge::EffectiveBridgeSettings>(&payload)
+                    .map_err(|error| {
+                        format!("parse effective Bridge settings failed {path}: {error}")
+                    })
+            })
+            .and_then(|settings| {
+                let network = kaspa_gateway_rk_bridge::BridgeRuntimeNetwork::parse(&network)
+                    .map_err(|error| error.to_string())?;
+                settings
+                    .validate_for_network(network)
+                    .map_err(|error| error.to_string())?;
+                Ok(settings)
+            }),
+        None => Err("effective Bridge settings path is missing".to_string()),
+    };
     let startup_control_path = kgw_startup_control_path_from_args_v1(&args);
     let stop_request_path =
         kgw_stop_control_path_from_args_v1(&args, "--stop-request-path", "-request.json");
@@ -2113,19 +2134,22 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
                 Ok(None)
             };
             effective_node_settings.and_then(|effective_node_settings| {
-                kgw_run_bridge_self_worker(
-                    &network,
-                    &appdir,
-                    &rpc,
-                    p2p_listen.as_deref(),
-                    &stratum,
-                    &args,
-                    startup_control_path.as_deref(),
-                    stop_request_path.as_deref(),
-                    stop_outcome_path.as_deref(),
-                    &parent_identity,
-                    effective_node_settings,
-                )
+                effective_bridge_settings.and_then(|effective_bridge_settings| {
+                    kgw_run_bridge_self_worker(
+                        &network,
+                        &appdir,
+                        &rpc,
+                        p2p_listen.as_deref(),
+                        &stratum,
+                        &args,
+                        startup_control_path.as_deref(),
+                        stop_request_path.as_deref(),
+                        stop_outcome_path.as_deref(),
+                        &parent_identity,
+                        effective_node_settings,
+                        effective_bridge_settings,
+                    )
+                })
             })
         }
         other => Err(format!("unsupported self-worker role: {other}")),
@@ -2158,123 +2182,6 @@ fn kgw_self_worker_arg_value(args: &[String], key: &str) -> Option<String> {
     args.windows(2)
         .find(|window| window[0] == key)
         .map(|window| window[1].clone())
-}
-
-fn kgw_self_worker_arg_values(args: &[String], key: &str) -> Vec<String> {
-    args.windows(2)
-        .filter(|window| window[0] == key)
-        .map(|window| window[1].clone())
-        .collect()
-}
-
-fn kgw_bridge_normalize_listen_from_config_r122(value: &str) -> Option<String> {
-    let clean = value
-        .trim()
-        .trim_matches('"')
-        .trim_matches('\'')
-        .trim()
-        .to_string();
-
-    if clean.is_empty() {
-        return None;
-    }
-
-    if clean.contains(':')
-        && clean
-            .rsplit(':')
-            .next()
-            .unwrap_or("")
-            .parse::<u16>()
-            .is_ok()
-    {
-        return Some(clean);
-    }
-
-    let port_text = clean.trim_start_matches(':').trim();
-
-    let Ok(port) = port_text.parse::<u16>() else {
-        return None;
-    };
-
-    if port == 0 {
-        return None;
-    }
-
-    Some(format!("0.0.0.0:{port}"))
-}
-
-fn kgw_bridge_config_instance_listens_r122(config_path: &str) -> Result<Vec<String>, String> {
-    let path = std::path::PathBuf::from(config_path.trim());
-
-    if !path.is_absolute() {
-        return Err(format!(
-            "bridge config path must be absolute: {config_path}"
-        ));
-    }
-
-    let text = std::fs::read_to_string(&path)
-        .map_err(|error| format!("read bridge config failed {}: {error}", path.display()))?;
-
-    let mut listens = Vec::<String>::new();
-
-    for raw_line in text.lines() {
-        let mut line = raw_line.trim();
-
-        if let Some((before_comment, _)) = line.split_once('#') {
-            line = before_comment.trim();
-        }
-
-        if line.is_empty() {
-            continue;
-        }
-
-        let lower = line.to_ascii_lowercase();
-
-        let maybe_value = if lower.starts_with("port")
-            || lower.starts_with("stratum_port")
-            || lower.starts_with("stratum-listen")
-            || lower.starts_with("stratum_listen")
-            || lower.starts_with("listen")
-        {
-            line.split_once('=')
-                .or_else(|| line.split_once(':'))
-                .map(|(_, value)| value.trim().trim_end_matches(',').trim().to_string())
-        } else if let Some(index) = lower.find("port=") {
-            Some(
-                line[index + "port=".len()..]
-                    .split(',')
-                    .next()
-                    .unwrap_or("")
-                    .trim()
-                    .to_string(),
-            )
-        } else {
-            lower.find("port:").map(|index| {
-                line[index + "port:".len()..]
-                    .split(',')
-                    .next()
-                    .unwrap_or("")
-                    .trim()
-                    .to_string()
-            })
-        };
-
-        if let Some(value) = maybe_value
-            && let Some(listen) = kgw_bridge_normalize_listen_from_config_r122(&value)
-            && !listens.iter().any(|existing| existing == &listen)
-        {
-            listens.push(listen);
-        }
-    }
-
-    if listens.is_empty() {
-        return Err(format!(
-            "bridge config did not contain any instance listen ports: {}",
-            path.display()
-        ));
-    }
-
-    Ok(listens)
 }
 
 fn kgw_self_worker_default_appdir(network: &str) -> String {
@@ -2416,6 +2323,7 @@ fn kgw_run_bridge_self_worker(
     stop_outcome_path: Option<&std::path::Path>,
     parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
     effective_node_settings: Option<kaspa_gateway_rk_node::EffectiveNodeSettings>,
+    effective_bridge_settings: kaspa_gateway_rk_bridge::EffectiveBridgeSettings,
 ) -> Result<KgwPostReadyStopOutcomeV1, String> {
     let bridge_node_mode = kgw_self_worker_arg_value(args, "--node-mode")
         .unwrap_or_else(|| "external".to_string())
@@ -2487,57 +2395,34 @@ fn kgw_run_bridge_self_worker(
         inprocess_node_runtime = Some(runtime);
     }
 
-    // KGW_BRIDGE_DUAL_CLI_CONFIG_REAL_RUNNER_R122
-    // Unified runtime truth:
-    // - config mode opens config-defined ports only
-    // - CLI/UI mode opens every repeated --bridge-instance-listen
-    // - inprocess starts the embedded node first, then starts bridge listeners against its RPC
-    let bridge_config_path = kgw_self_worker_arg_value(args, "--bridge-config");
-
-    let mut instance_listens = if let Some(config_path) = bridge_config_path
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-    {
-        kgw_bridge_config_instance_listens_r122(config_path)?
+    let _ = (stratum, args);
+    let bridge_network = kaspa_gateway_rk_bridge::BridgeRuntimeNetwork::parse(network)
+        .map_err(|error| error.to_string())?;
+    let bridge_mode = if is_inprocess {
+        kaspa_gateway_rk_bridge::BridgeRuntimeMode::OfficialInProcessNode
     } else {
-        kgw_self_worker_arg_values(args, "--bridge-instance-listen")
+        kaspa_gateway_rk_bridge::BridgeRuntimeMode::OfficialExternalNode
     };
-
-    if instance_listens.is_empty() {
-        instance_listens.push(stratum.to_string());
+    let configured_rpc = effective_bridge_settings.global.kaspa_rpc_endpoint.clone();
+    if !is_inprocess && configured_rpc != rpc {
+        return Err(format!(
+            "effective Bridge RPC does not match worker-owned compatibility argument;effective={configured_rpc};worker={rpc}"
+        ));
     }
-
-    instance_listens.sort();
-    instance_listens.dedup();
-
-    let mut events = Vec::new();
-
-    for instance_listen in instance_listens {
-        let settings = kaspa_gateway_rk_bridge::BridgeRuntimeSettings {
-            network: network.to_string(),
-            mode: if is_inprocess {
-                kaspa_gateway_rk_bridge::BridgeRuntimeMode::OfficialInProcessNode
-            } else {
-                kaspa_gateway_rk_bridge::BridgeRuntimeMode::OfficialExternalNode
-            },
-            stratum_listen: Some(instance_listen),
-            prometheus_listen: None,
-            kaspa_rpc_endpoint: Some(bridge_rpc.clone()),
-            internal_cpu_miner: kaspa_gateway_rk_bridge::BridgeInternalCpuMinerSettings {
+    let events = effective_bridge_settings
+        .into_service_events(
+            bridge_network,
+            bridge_mode,
+            kaspa_gateway_rk_bridge::BridgeInternalCpuMinerSettings {
                 enabled: bridge_cpu_miner_enabled,
-                address: bridge_cpu_miner_address.clone(),
+                address: bridge_cpu_miner_address,
                 threads: bridge_cpu_miner_threads,
                 throttle_ms: bridge_cpu_miner_throttle_ms,
                 template_poll_ms: bridge_cpu_miner_template_poll_ms,
             },
-            explicit_runtime_opt_in: true,
-        };
-
-        let event = kaspa_gateway_rk_bridge::bridge_service_event_from_settings_v1(settings)
-            .map_err(|error| error.to_string())?;
-        events.push(event);
-    }
+            is_inprocess.then_some(bridge_rpc.as_str()),
+        )
+        .map_err(|error| error.to_string())?;
 
     let (handles, readiness) =
         kaspa_gateway_rk_bridge::start_official_bridge_owners_ready_v1(events)

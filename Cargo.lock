@@ -4419,6 +4419,7 @@ dependencies = [
  "kaspa-stratum-bridge 1.2.0-toc.2",
  "kaspa-stratum-bridge 2.0.1",
  "serde",
+ "serde_json",
  "thiserror 2.0.20",
  "tokio",
 ]

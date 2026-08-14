@@ -23,6 +23,12 @@ fn kgw_kgw_apply_node_settings_v1(
     bridge_structured_instances: Option<String>,
     experimental_network_opt_in: Option<bool>,
 ) -> Result<String, String> {
+    let effective_bridge_settings = (runtime_role.as_deref() == Some("bridge")).then(|| {
+        let network = kaspa_gateway_rk_bridge::BridgeRuntimeNetwork::parse(&network).unwrap();
+        let mut effective = kaspa_gateway_rk_bridge::EffectiveBridgeSettings::for_network(network);
+        effective.global.kaspa_rpc_endpoint = network.default_rpc().to_string();
+        effective
+    });
     integrated_runtime_commands::kgw_kgw_apply_node_settings_v1(
         network,
         node_kind,
@@ -35,6 +41,7 @@ fn kgw_kgw_apply_node_settings_v1(
         bridge_active_instance_port,
         bridge_structured_instances,
         None,
+        effective_bridge_settings,
         experimental_network_opt_in,
     )
 }
@@ -1474,6 +1481,121 @@ fn typed_effective_node_settings_are_validated_and_keep_backend_owned_paths() {
 }
 
 #[test]
+fn typed_effective_bridge_settings_cross_the_ipc_boundary_without_preview_parsing() {
+    let effective = kaspa_gateway_rk_bridge::EffectiveBridgeSettings {
+        global: kaspa_gateway_rk_bridge::EffectiveBridgeGlobalSettings {
+            kaspa_rpc_endpoint: "127.0.0.1:26110".to_string(),
+            block_wait_time_ms: 1234,
+            print_stats: false,
+            log_to_file: false,
+            var_diff: false,
+            shares_per_min: 33,
+            var_diff_stats: true,
+            extranonce_size: 4,
+            pow2_clamp: true,
+            coinbase_tag_suffix: Some("ipc-test".to_string()),
+            ..Default::default()
+        },
+        instances: vec![
+            kaspa_gateway_rk_bridge::EffectiveBridgeInstanceSettings {
+                instance_id: "ipc-one".to_string(),
+                stratum_listen: "127.0.0.1:25555".to_string(),
+                min_share_diff: 777,
+                prometheus_listen: Some("127.0.0.1:22114".to_string()),
+                block_wait_time_ms: Some(4321),
+                extranonce_size: Some(5),
+                var_diff: Some(true),
+                shares_per_min: Some(44),
+                var_diff_stats: Some(false),
+                pow2_clamp: Some(false),
+                ..Default::default()
+            },
+            kaspa_gateway_rk_bridge::EffectiveBridgeInstanceSettings {
+                instance_id: "ipc-two".to_string(),
+                stratum_listen: "127.0.0.1:25556".to_string(),
+                min_share_diff: 888,
+                prometheus_listen: Some("127.0.0.1:22115".to_string()),
+                ..Default::default()
+            },
+        ],
+        ..Default::default()
+    };
+
+    let settings = integrated_runtime_commands::kgw_apply_effective_bridge_settings_for_test_v1(
+        "testnet10",
+        "official-external-node",
+        effective.clone(),
+    )
+    .expect("typed Bridge settings should apply at the Tauri boundary");
+    assert_eq!(settings.effective_bridge.as_ref(), Some(&effective));
+    assert_eq!(settings.rpc_endpoint, "127.0.0.1:26110");
+    assert_eq!(settings.stratum_listen, "127.0.0.1:25555");
+
+    let inprocess = integrated_runtime_commands::kgw_apply_effective_bridge_settings_for_test_v1(
+        "testnet10",
+        "official-inprocess-node",
+        effective,
+    )
+    .expect("typed Bridge settings should not replace the embedded Node RPC owner");
+    assert_eq!(inprocess.rpc_endpoint, "127.0.0.1:16210");
+}
+
+#[cfg(feature = "official-kaspa-runtime-mainline")]
+#[test]
+fn bridge_config_file_mode_uses_the_pinned_official_parser() {
+    let path = std::env::temp_dir().join(format!(
+        "kgw-bridge-config-parity-{}-{}.yaml",
+        std::process::id(),
+        std::thread::current().name().unwrap_or("test")
+    ));
+    std::fs::write(
+        &path,
+        r#"
+kaspad_address: "127.0.0.1:26110"
+block_wait_time: 2222
+print_stats: false
+log_to_file: false
+var_diff: false
+shares_per_min: 42
+var_diff_stats: true
+extranonce_size: 3
+pow2_clamp: true
+coinbase_tag_suffix: "config-test"
+instances:
+  - stratum_port: "127.0.0.1:25555"
+    min_share_diff: 12
+    prom_port: "127.0.0.1:22114"
+"#,
+    )
+    .unwrap();
+    let settings =
+        integrated_runtime_commands::kgw_effective_bridge_settings_from_config_for_test_v1(
+            "mainnet",
+            path.to_str().unwrap(),
+        )
+        .expect("official Bridge YAML should parse in the parent");
+    std::fs::remove_file(&path).unwrap();
+    assert_eq!(settings.global.block_wait_time_ms, 2222);
+    assert_eq!(
+        settings.global.coinbase_tag_suffix.as_deref(),
+        Some("config-test")
+    );
+    assert_eq!(settings.instances[0].min_share_diff, 12);
+    assert_eq!(
+        settings.instances[0].prometheus_listen.as_deref(),
+        Some("127.0.0.1:22114")
+    );
+
+    let relative =
+        integrated_runtime_commands::kgw_effective_bridge_settings_from_config_for_test_v1(
+            "mainnet",
+            "config.yaml",
+        )
+        .unwrap_err();
+    assert!(relative.contains("must be absolute"));
+}
+
+#[test]
 fn production_self_worker_arguments_match_child_parser() {
     let _guard = runtime_test_lock()
         .lock()
@@ -1536,6 +1658,12 @@ fn production_self_worker_arguments_match_child_parser() {
                 .join("effective-node-settings")
                 .join("kgw-effective-node-settings-args-test.json")
                 .to_string_lossy(),
+            "--effective-bridge-settings-path",
+            &std::env::temp_dir()
+                .join("KaspaGateway")
+                .join("effective-bridge-settings")
+                .join("kgw-effective-bridge-settings-args-test.json")
+                .to_string_lossy(),
             "--desktop-parent-pid",
             &std::process::id().to_string(),
             "--desktop-parent-start-time",
@@ -1562,6 +1690,7 @@ fn production_self_worker_arguments_match_child_parser() {
         "--stop-request-path",
         "--stop-outcome-path",
         "--effective-node-settings-path",
+        "--effective-bridge-settings-path",
         "--desktop-parent-pid",
         "--desktop-parent-start-time",
         "--desktop-parent-executable",
