@@ -101,6 +101,15 @@ fn main() -> Result<(), String> {
             None,
             None,
             None,
+            Some({
+                kaspa_gateway_rk_node::EffectiveNodeSettings {
+                    rpc_listen: rpc.clone(),
+                    p2p_listen: Some(p2p.clone()),
+                    rpc_max_clients: 16,
+                    inbound_limit: 32,
+                    ..Default::default()
+                }
+            }),
             Some(false),
         )?)
     } else {
@@ -175,6 +184,15 @@ fn main() -> Result<(), String> {
         } else {
             None
         },
+        Some({
+            kaspa_gateway_rk_node::EffectiveNodeSettings {
+                rpc_listen: rpc.clone(),
+                p2p_listen: Some(p2p.clone()),
+                rpc_max_clients: 16,
+                inbound_limit: 32,
+                ..Default::default()
+            }
+        }),
         Some(false),
     );
 
@@ -195,6 +213,19 @@ fn main() -> Result<(), String> {
             None,
             None,
             None,
+            if runtime_role == "node" || bridge_node_mode.as_deref() == Some("inprocess") {
+                Some({
+                    kaspa_gateway_rk_node::EffectiveNodeSettings {
+                        rpc_listen: rpc.clone(),
+                        p2p_listen: Some(p2p.clone()),
+                        rpc_max_clients: 16,
+                        inbound_limit: 32,
+                        ..Default::default()
+                    }
+                })
+            } else {
+                None
+            },
             Some(false),
         )
         .err()

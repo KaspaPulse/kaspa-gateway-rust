@@ -1419,6 +1419,21 @@ fn kgw_worker_stop_control_paths_v1(
     )
 }
 
+fn kgw_worker_effective_node_settings_path_v1(role: &str, network: &str) -> std::path::PathBuf {
+    static EFFECTIVE_SETTINGS_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+    let nonce = kgw_worker_now_ms();
+    let sequence = EFFECTIVE_SETTINGS_SEQUENCE.fetch_add(1, Ordering::SeqCst);
+    std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("effective-node-settings")
+        .join(format!(
+            "{}-{}-{}-{nonce}-{sequence}.json",
+            role,
+            network,
+            std::process::id()
+        ))
+}
+
 fn kgw_worker_atomic_write_json_v1<T: Serialize>(
     path: &std::path::Path,
     value: &T,
@@ -1821,6 +1836,7 @@ fn kgw_worker_command(
     startup_control_path: &std::path::Path,
     stop_request_path: &std::path::Path,
     stop_outcome_path: &std::path::Path,
+    effective_node_settings_path: &std::path::Path,
     parent_identity: &KgwProcessIdentityV1,
 ) -> Result<Command, String> {
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
@@ -1967,6 +1983,8 @@ fn kgw_worker_command(
         .arg(stop_request_path)
         .arg("--stop-outcome-path")
         .arg(stop_outcome_path)
+        .arg("--effective-node-settings-path")
+        .arg(effective_node_settings_path)
         .arg("--desktop-parent-pid")
         .arg(parent_identity.pid.to_string())
         .arg("--desktop-parent-start-time")
@@ -2000,6 +2018,10 @@ pub(crate) fn kgw_worker_node_command_args_for_test_v1(
         .join("KaspaGateway")
         .join("stop-control")
         .join("kgw-stop-outcome-args-test.json");
+    let effective_node_settings_path = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("effective-node-settings")
+        .join("kgw-effective-node-settings-args-test.json");
     let parent_identity = kgw_process_identity_for_worker_v1(std::process::id())?;
     let mut command = kgw_worker_command(
         &normalized_role,
@@ -2008,6 +2030,7 @@ pub(crate) fn kgw_worker_node_command_args_for_test_v1(
         &control_path,
         &stop_request_path,
         &stop_outcome_path,
+        &effective_node_settings_path,
         &parent_identity,
     )?;
 
@@ -2265,6 +2288,7 @@ fn kgw_worker_start(
 
     let startup_control_path = kgw_worker_startup_control_path_v1(&role, &network);
     let (stop_request_path, stop_outcome_path) = kgw_worker_stop_control_paths_v1(&role, &network);
+    let effective_node_settings_path = kgw_worker_effective_node_settings_path_v1(&role, &network);
     let lease_path = kgw_runtime_owner_lease_path_v1(&role, &network);
     let parent_identity = kgw_process_identity_for_worker_v1(std::process::id())?;
     let starting_lease = KgwRuntimeOwnerLeaseV1 {
@@ -2290,6 +2314,19 @@ fn kgw_worker_start(
     for path in [&stop_request_path, &stop_outcome_path] {
         let _ = std::fs::remove_file(path);
     }
+    kgw_worker_control_directory_v1(&effective_node_settings_path)?;
+    let _ = std::fs::remove_file(&effective_node_settings_path);
+    if role == "node" || bridge_node_mode == "inprocess" {
+        kgw_worker_atomic_write_json_v1(&effective_node_settings_path, &settings.effective_node)?;
+    }
+    struct EffectiveNodeSettingsFileGuard(std::path::PathBuf);
+    impl Drop for EffectiveNodeSettingsFileGuard {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+    let effective_settings_guard =
+        EffectiveNodeSettingsFileGuard(effective_node_settings_path.clone());
     let mut command = kgw_worker_command(
         &role,
         &network,
@@ -2297,6 +2334,7 @@ fn kgw_worker_start(
         &startup_control_path,
         &stop_request_path,
         &stop_outcome_path,
+        &effective_node_settings_path,
         &parent_identity,
     )?;
 
@@ -2631,6 +2669,7 @@ fn kgw_worker_start(
     };
 
     lease_guard.disarm();
+    drop(effective_settings_guard);
 
     workers.insert(
         key,
@@ -3930,9 +3969,8 @@ fn kgw_apply_bridge_active_instance_runtime_overrides_r110f(
     }
 }
 
-#[allow(clippy::too_many_arguments)] // Stable Tauri IPC contract; grouping would break frontend argument names.
-#[tauri::command]
-pub fn kgw_kgw_apply_node_settings_v1(
+#[allow(clippy::too_many_arguments)]
+fn kgw_apply_node_settings_impl_v1(
     network: String,
     node_kind: String,
     bridge_kind: String,
@@ -3943,6 +3981,7 @@ pub fn kgw_kgw_apply_node_settings_v1(
     bridge_active_instance: Option<String>,
     bridge_active_instance_port: Option<String>,
     bridge_structured_instances: Option<String>,
+    effective_node_settings: Option<kaspa_gateway_rk_node::EffectiveNodeSettings>,
     experimental_network_opt_in: Option<bool>,
 ) -> Result<String, String> {
     kgw_start_trace_emit_v1(
@@ -4070,11 +4109,25 @@ pub fn kgw_kgw_apply_node_settings_v1(
         Some(bridge_instance_listens_from_preview)
     };
 
-    kgw_apply_command_preview_overrides(
-        &mut settings,
-        node_command_preview,
-        bridge_command_preview,
-    );
+    let requires_effective_node_settings = node_command_preview
+        .as_deref()
+        .is_some_and(|preview| !preview.trim().is_empty())
+        || (settings.bridge_kind == kaspa_gateway_rk_node::BridgeNodeKind::OfficialInProcessNode
+            && bridge_command_preview
+                .as_deref()
+                .is_some_and(|preview| !preview.trim().is_empty()));
+    if effective_node_settings.is_none() && requires_effective_node_settings {
+        return Err(
+            "effectiveNodeSettings is required; command preview text is display-only and cannot configure the official runtime"
+                .to_string(),
+        );
+    }
+    kgw_apply_command_preview_overrides(&mut settings, None, bridge_command_preview);
+    if let Some(effective_node_settings) = effective_node_settings {
+        settings
+            .apply_effective_node_settings(effective_node_settings)
+            .map_err(|error| error.to_string())?;
+    }
     settings.app_dir_name = kgw_network_runtime_appdir(settings.network);
 
     let bridge_active_instance_id_for_worker = bridge_active_instance_id.clone();
@@ -4109,6 +4162,57 @@ pub fn kgw_kgw_apply_node_settings_v1(
     );
 
     result
+}
+
+#[allow(clippy::too_many_arguments)] // Stable Tauri IPC contract; grouping would break frontend argument names.
+#[tauri::command]
+pub fn kgw_kgw_apply_node_settings_v1(
+    network: String,
+    node_kind: String,
+    bridge_kind: String,
+    node_command_preview: Option<String>,
+    bridge_command_preview: Option<String>,
+    runtime_role: Option<String>,
+    bridge_active_instance_id: Option<String>,
+    bridge_active_instance: Option<String>,
+    bridge_active_instance_port: Option<String>,
+    bridge_structured_instances: Option<String>,
+    effective_node_settings: Option<kaspa_gateway_rk_node::EffectiveNodeSettings>,
+    experimental_network_opt_in: Option<bool>,
+) -> Result<String, String> {
+    kgw_apply_node_settings_impl_v1(
+        network,
+        node_kind,
+        bridge_kind,
+        node_command_preview,
+        bridge_command_preview,
+        runtime_role,
+        bridge_active_instance_id,
+        bridge_active_instance,
+        bridge_active_instance_port,
+        bridge_structured_instances,
+        effective_node_settings,
+        experimental_network_opt_in,
+    )
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Used by the path-included integration test target.
+pub(crate) fn kgw_apply_effective_node_settings_for_test_v1(
+    network: &str,
+    effective_node_settings: kaspa_gateway_rk_node::EffectiveNodeSettings,
+) -> Result<kaspa_gateway_rk_node::NodeSettings, String> {
+    let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
+        network.to_string(),
+        "integrated-as-daemon".to_string(),
+        "disable".to_string(),
+    )
+    .map_err(|error| error.to_string())?;
+    settings
+        .apply_effective_node_settings(effective_node_settings)
+        .map_err(|error| error.to_string())?;
+    settings.app_dir_name = kgw_network_runtime_appdir(settings.network);
+    Ok(settings)
 }
 
 #[tauri::command]

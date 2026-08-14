@@ -2468,7 +2468,7 @@ function renderInprocessNodeSettings(net) {
       <input id="${id(net.key, "inprocessConnect")}" type="text" value="">
           </div>
           <label class="bridge-v7-card check">
-            <input id="${id(net.key, "inprocessDisableUpnp")}" type="checkbox">
+            <input id="${id(net.key, "inprocessDisableUpnp")}" type="checkbox" checked>
             <span data-i18n="bridge.inprocessNodeSettings.disableUpnp">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.disableUpnp", "--disable-upnp"))}</span>
           </label>
           <div class="bridge-v7-card">
@@ -2476,14 +2476,14 @@ function renderInprocessNodeSettings(net) {
         ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessMaxInpeers")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.maxInpeers">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.maxInpeers", "--maxinpeers"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${id(net.key, "inprocessMaxInpeers")}" type="number" min="0" step="1" value="">
+      <input id="${id(net.key, "inprocessMaxInpeers")}" type="number" min="0" max="32" step="1" value="32">
           </div>
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
         ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessOutpeers")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.outpeers">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.outpeers", "--outpeers"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${id(net.key, "inprocessOutpeers")}" type="number" min="0" step="1" value="">
+      <input id="${id(net.key, "inprocessOutpeers")}" type="number" min="0" max="8" step="1" value="8">
           </div>
         </div>
       </section>
@@ -2491,7 +2491,7 @@ function renderInprocessNodeSettings(net) {
       <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="perf" hidden>
         <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
           <label class="bridge-v7-card check">
-            <input id="${id(net.key, "inprocessPerfMetrics")}" type="checkbox">
+            <input id="${id(net.key, "inprocessPerfMetrics")}" type="checkbox" checked>
             <span data-i18n="bridge.inprocessNodeSettings.perfMetrics">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.perfMetrics", "--perf-metrics"))}</span>
           </label>
           <div class="bridge-v7-card">
@@ -2499,21 +2499,21 @@ function renderInprocessNodeSettings(net) {
         ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessPerfMetricsIntervalSec")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.perfMetricsIntervalSec">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.perfMetricsIntervalSec", "--perf-metrics-interval-sec"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${id(net.key, "inprocessPerfMetricsIntervalSec")}" type="number" min="1" step="1" value="">
+      <input id="${id(net.key, "inprocessPerfMetricsIntervalSec")}" type="number" min="1" step="1" value="10">
           </div>
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
         ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessLogLevel")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.logLevel">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.logLevel", "--loglevel"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${id(net.key, "inprocessLogLevel")}" type="text" value="">
+      <input id="${id(net.key, "inprocessLogLevel")}" type="text" value="info">
           </div>
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
         ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessRamScale")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.ramScale">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.ramScale", "--ram-scale"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${id(net.key, "inprocessRamScale")}" type="number" min="0.1" step="0.1" value="">
+      <input id="${id(net.key, "inprocessRamScale")}" type="number" min="0.1" step="0.1" value="1">
           </div>
         </div>
       </section>
@@ -2525,10 +2525,10 @@ function renderInprocessNodeSettings(net) {
         ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessConfigfile")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.configfile">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.configfile", "--configfile"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${id(net.key, "inprocessConfigfile")}" type="text" value="">
+      <input id="${id(net.key, "inprocessConfigfile")}" type="text" value="" placeholder="unsupported: managed ownership">
           </div>
           <label class="bridge-v7-card check">
-            <input id="${id(net.key, "inprocessYes")}" type="checkbox">
+            <input id="${id(net.key, "inprocessYes")}" type="checkbox" checked>
             <span data-i18n="bridge.inprocessNodeSettings.yes">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.yes", "--yes"))}</span>
           </label>
         </div>
@@ -2696,6 +2696,7 @@ function renderNetworkPanel(net, index) {
           <div class="bridge-v7-status">
             <label><input id="${id(net.key, "launch")}" type="checkbox"> Auto-start</label>
             <label><input id="${id(net.key, "restart")}" type="checkbox" checked> Restart</label>
+            <span id="${id(net.key, "settingsAuthority")}" class="bridge-v7-runtime-status">Effective settings apply on next Start</span>
           </div>
           <div id="${id(net.key, "runtimeStatus")}" class="bridge-v7-runtime-status" role="status" aria-live="polite"></div>
           <div id="${id(net.key, "runtimeError")}" class="bridge-v7-runtime-error" role="status" aria-live="polite" hidden></div>
@@ -4284,6 +4285,75 @@ function buildCommandLines(net) {
   return lines;
 }
 
+function kgwBridgeEffectiveNodeInteger(net, name, fallback) {
+  if (!kgwBridgeCommandShouldIncludeR7(net, name)) return fallback;
+  const raw = v(net, name);
+  if (!raw) return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value)) throw new Error(`${name} must be an integer.`);
+  return value;
+}
+
+function kgwBridgeEffectiveNodeNumber(net, name, fallback) {
+  if (!kgwBridgeCommandShouldIncludeR7(net, name)) return fallback;
+  const raw = v(net, name);
+  if (!raw) return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value)) throw new Error(`${name} must be a finite number.`);
+  return value;
+}
+
+function kgwBridgeEffectiveInprocessNodeSettings(net) {
+  if (bridgeNodeMode(net) !== "inprocess") return null;
+  const profile = bridgeProfile(net);
+  if (v(net, "inprocessConfigfile")) {
+    throw new Error("In-process --configfile is unsupported because the desktop owns network and database isolation.");
+  }
+  if (c(net, "inprocessDevnet") || c(net, "inprocessSimnet")) {
+    throw new Error("Devnet and simnet cannot override the selected desktop network tab.");
+  }
+  const rpcListen = v(net, "inprocessRpcListen") || `127.0.0.1:${profile.kaspadPort}`;
+  const addPeer = kgwBridgeCommandShouldIncludeR7(net, "inprocessAddPeer") ? v(net, "inprocessAddPeer") : "";
+  const connectPeer = kgwBridgeCommandShouldIncludeR7(net, "inprocessConnect") ? v(net, "inprocessConnect") : "";
+
+  return {
+    logLevel: kgwBridgeCommandShouldIncludeR7(net, "inprocessLogLevel") ? v(net, "inprocessLogLevel") || "info" : "info",
+    asyncThreads: 16,
+    ramScale: kgwBridgeEffectiveNodeNumber(net, "inprocessRamScale", 1),
+    yes: c(net, "inprocessYes"),
+    noLogFiles: true,
+    sanity: false,
+    enableUnsyncedMining: c(net, "inprocessEnableUnsyncedMining") && Boolean(profile?.testnet),
+    p2pListen: kgwBridgeCommandShouldIncludeR7(net, "inprocessListen") ? v(net, "inprocessListen") || null : null,
+    externalIp: null,
+    disableUpnp: c(net, "inprocessDisableUpnp"),
+    disableDnsSeeding: false,
+    userAgentComments: [],
+    rpcListen,
+    rpcListenBorsh: kgwBridgeCommandShouldIncludeR7(net, "inprocessRpcListenBorsh") ? v(net, "inprocessRpcListenBorsh") || null : null,
+    rpcListenJson: kgwBridgeCommandShouldIncludeR7(net, "inprocessRpcListenJson") ? v(net, "inprocessRpcListenJson") || null : null,
+    rpcMaxClients: 16,
+    unsafeRpc: c(net, "inprocessUnsafeRpc"),
+    disableGrpc: false,
+    connectPeers: connectPeer ? [connectPeer] : [],
+    addPeers: addPeer ? [addPeer] : [],
+    outboundTarget: kgwBridgeEffectiveNodeInteger(net, "inprocessOutpeers", 8),
+    inboundLimit: kgwBridgeEffectiveNodeInteger(net, "inprocessMaxInpeers", 32),
+    utxoIndex: c(net, "inprocessUtxoIndex"),
+    archival: c(net, "inprocessArchival"),
+    resetDb: false,
+    perfMetrics: c(net, "inprocessPerfMetrics"),
+    maxTrackedAddresses: 0,
+    retentionPeriodDays: null,
+    perfMetricsIntervalSec: kgwBridgeEffectiveNodeInteger(net, "inprocessPerfMetricsIntervalSec", 10),
+    rocksDbPreset: null,
+    rocksDbCacheSize: null,
+    rocksDbWalDir: null,
+    overrideParamsFile: kgwBridgeCommandShouldIncludeR7(net, "inprocessOverrideParamsFile") ? v(net, "inprocessOverrideParamsFile") || null : null,
+    logDir: null,
+  };
+}
+
 
 function kgwExtractBridgeOwnerFlags(result) {
   const raw = stringifyRuntimeResult(result);
@@ -4775,6 +4845,7 @@ function buildApplyPayload(net, command) {
       bridgeActiveInstance,
       bridgeActiveInstancePort,
       bridgeStructuredInstances: JSON.stringify(structuredInstances || {}),
+      effectiveNodeSettings: kgwBridgeEffectiveInprocessNodeSettings(net),
       experimentalNetworkOptIn: net === "testnet12" && kgwBridgeNetworkEnabled(net),
     };
   }
@@ -4848,6 +4919,17 @@ function kgwBridgeSetRuntimeActivityV1(net, message = "") {
   const statusNode = byId(id(net, "runtimeStatus"));
   if (!statusNode) return;
   statusNode.textContent = String(message || "").trim();
+}
+
+function kgwBridgeMarkRestartRequiredV1(net) {
+  const authority = byId(id(net, "settingsAuthority"));
+  if (!authority) return;
+  const status = byId(id(net, "runtimeStatus"));
+  const running = /running/i.test(String(status?.textContent || ""));
+  authority.textContent = running
+    ? "Restart required to apply changed effective settings"
+    : "Effective settings apply on next Start";
+  authority.dataset.restartRequired = running ? "true" : "false";
 }
 
 async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {
@@ -5880,6 +5962,13 @@ async function kgwBridgeR51RefreshOne(net, reason = "live") {
 
     if (KGW_BRIDGE_R51_LAST_STATUS[net] !== status) {
       KGW_BRIDGE_R51_LAST_STATUS[net] = status;
+      const authority = byId(id(net, "settingsAuthority"));
+      if (authority) {
+        authority.textContent = running
+          ? "Effective settings are active for this runtime"
+          : "Effective settings apply on next Start";
+        authority.dataset.restartRequired = "false";
+      }
       
     }
 
@@ -6671,6 +6760,7 @@ function installActions(root) {
     if (target.readOnly || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
 
     const net = netFromEvent(event);
+    kgwBridgeMarkRestartRequiredV1(net);
     scopedUpdate(net, event.isTrusted ? "trusted-input" : "programmatic-input");
   }, true);
 
@@ -6680,6 +6770,7 @@ function installActions(root) {
     if (target.readOnly || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
 
     const net = netFromEvent(event);
+    kgwBridgeMarkRestartRequiredV1(net);
 
     if (target.matches("[data-bridge-network-enabled]")) {
       const profile = kgwBridgeNetworkProfile(net);

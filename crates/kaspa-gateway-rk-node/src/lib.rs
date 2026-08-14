@@ -74,8 +74,9 @@ pub fn all_parallel_runtime_plans_log_v1() -> Result<String, KaspaRuntimeError> 
 }
 
 pub use kgw_service_controller::{
-    BridgeNodeKind, KaspadNodeKind, KaspadServiceEvents, KgwNetwork, KgwServiceController,
-    KgwServiceError, NodeSettings, RuntimeSlotStatus, exact_kgw_service_controller_summary_v1,
+    BridgeNodeKind, EffectiveNodeSettings, KaspadNodeKind, KaspadServiceEvents, KgwNetwork,
+    KgwServiceController, KgwServiceError, NodeSettings, RuntimeSlotStatus,
+    exact_kgw_service_controller_summary_v1,
 };
 
 pub use kgw_real_owner_runtime::{

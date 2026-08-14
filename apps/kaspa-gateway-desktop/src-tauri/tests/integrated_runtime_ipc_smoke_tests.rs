@@ -3,12 +3,41 @@ mod integrated_runtime_commands;
 
 use integrated_runtime_commands::{
     KgwStartupControlMessageV1, KgwStopOutcomeMessageV1, KgwValidatedStopOutcomeV1,
-    kgw_kgw_apply_node_settings_v1, kgw_kgw_disable_network_v1,
-    kgw_kgw_node_bridge_service_plan_v1, kgw_kgw_runtime_clear_logs_v1, kgw_kgw_runtime_logs_v1,
-    kgw_runtime_owner_summary_v1, kgw_worker_validate_startup_attestation_v1,
-    kgw_worker_validate_stop_outcome_v1,
+    kgw_kgw_disable_network_v1, kgw_kgw_node_bridge_service_plan_v1, kgw_kgw_runtime_clear_logs_v1,
+    kgw_kgw_runtime_logs_v1, kgw_runtime_owner_summary_v1,
+    kgw_worker_validate_startup_attestation_v1, kgw_worker_validate_stop_outcome_v1,
 };
 use std::sync::{Mutex, OnceLock};
+
+#[allow(clippy::too_many_arguments)]
+fn kgw_kgw_apply_node_settings_v1(
+    network: String,
+    node_kind: String,
+    bridge_kind: String,
+    node_command_preview: Option<String>,
+    bridge_command_preview: Option<String>,
+    runtime_role: Option<String>,
+    bridge_active_instance_id: Option<String>,
+    bridge_active_instance: Option<String>,
+    bridge_active_instance_port: Option<String>,
+    bridge_structured_instances: Option<String>,
+    experimental_network_opt_in: Option<bool>,
+) -> Result<String, String> {
+    integrated_runtime_commands::kgw_kgw_apply_node_settings_v1(
+        network,
+        node_kind,
+        bridge_kind,
+        node_command_preview,
+        bridge_command_preview,
+        runtime_role,
+        bridge_active_instance_id,
+        bridge_active_instance,
+        bridge_active_instance_port,
+        bridge_structured_instances,
+        None,
+        experimental_network_opt_in,
+    )
+}
 
 fn runtime_test_lock() -> &'static Mutex<()> {
     static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -1354,6 +1383,7 @@ fn start_command_is_registered_and_payload_matches_frontend() {
         "nodeCommandPreview",
         "bridgeCommandPreview",
         "runtimeRole",
+        "effectiveNodeSettings",
         "experimentalNetworkOptIn",
     ] {
         assert!(
@@ -1361,6 +1391,51 @@ fn start_command_is_registered_and_payload_matches_frontend() {
             "frontend start payload must contain `{field}`"
         );
     }
+}
+
+#[test]
+fn typed_effective_node_settings_are_validated_and_keep_backend_owned_paths() {
+    let effective = kaspa_gateway_rk_node::EffectiveNodeSettings {
+        log_level: "trace".to_string(),
+        async_threads: 4,
+        ram_scale: 0.5,
+        rpc_listen: "127.0.0.1:26110".to_string(),
+        rpc_listen_borsh: Some("127.0.0.1:27110".to_string()),
+        rpc_listen_json: Some("127.0.0.1:28110".to_string()),
+        rpc_max_clients: 16,
+        p2p_listen: Some("127.0.0.1:26111".to_string()),
+        outbound_target: 8,
+        inbound_limit: 32,
+        ..kaspa_gateway_rk_node::EffectiveNodeSettings::default()
+    };
+    let settings = integrated_runtime_commands::kgw_apply_effective_node_settings_for_test_v1(
+        "mainnet",
+        effective.clone(),
+    )
+    .expect("typed payload must apply");
+    assert_eq!(settings.effective_node, effective);
+    assert_eq!(settings.rpc_endpoint, "127.0.0.1:26110");
+    assert_eq!(settings.p2p_listen.as_deref(), Some("127.0.0.1:26111"));
+    assert!(settings.app_dir_name.ends_with("mainnet"));
+
+    let mut invalid = effective;
+    invalid.rpc_max_clients = 17;
+    let error = integrated_runtime_commands::kgw_apply_effective_node_settings_for_test_v1(
+        "mainnet", invalid,
+    )
+    .expect_err("embedded owner limit must be enforced at the runtime boundary");
+    assert!(error.contains("rpcMaxClients must be between 1 and 16"));
+
+    let public_wrpc = kaspa_gateway_rk_node::EffectiveNodeSettings {
+        rpc_listen_borsh: Some("0.0.0.0:17110".to_string()),
+        ..Default::default()
+    };
+    let error = integrated_runtime_commands::kgw_apply_effective_node_settings_for_test_v1(
+        "mainnet",
+        public_wrpc,
+    )
+    .expect_err("every RPC transport must remain loopback without explicit unsafe RPC");
+    assert!(error.contains("rpcListenBorsh must remain loopback"));
 }
 
 #[test]
@@ -1420,6 +1495,12 @@ fn production_self_worker_arguments_match_child_parser() {
                 .join("stop-control")
                 .join("kgw-stop-outcome-args-test.json")
                 .to_string_lossy(),
+            "--effective-node-settings-path",
+            &std::env::temp_dir()
+                .join("KaspaGateway")
+                .join("effective-node-settings")
+                .join("kgw-effective-node-settings-args-test.json")
+                .to_string_lossy(),
             "--desktop-parent-pid",
             &std::process::id().to_string(),
             "--desktop-parent-start-time",
@@ -1445,6 +1526,7 @@ fn production_self_worker_arguments_match_child_parser() {
         "--startup-control-path",
         "--stop-request-path",
         "--stop-outcome-path",
+        "--effective-node-settings-path",
         "--desktop-parent-pid",
         "--desktop-parent-start-time",
         "--desktop-parent-executable",

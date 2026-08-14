@@ -4436,6 +4436,8 @@ dependencies = [
  "kaspa-rpc-core 2.0.1",
  "kaspa-utils 1.2.0-toc.2",
  "kaspa-utils 2.0.1",
+ "kaspa-wrpc-server 1.2.0-toc.2",
+ "kaspa-wrpc-server 2.0.1",
  "kaspad 1.2.0-toc.2",
  "kaspad 2.0.1",
  "serde",
