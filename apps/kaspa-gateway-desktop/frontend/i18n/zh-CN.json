@@ -1549,6 +1549,7 @@
   "node.serviceEventPlanningDescription": "KGW service-event planning for mainnet, testnet10, and testnet12. mainnet/testnet10 use official stable v2.0.1; testnet12 is experimental and opt-in.",
   "outgoing": "出账",
   "runtime.ready": "就绪",
+  "runtime.failed": "Failed",
   "runtime.shellErrorNavigationPreserved": "Shell/runtime error. Navigation was preserved.",
   "settings": {
     "language": "Language",

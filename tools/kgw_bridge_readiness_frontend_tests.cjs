@@ -64,6 +64,7 @@ sandbox.kgwSetBridgeOwnedNodeLockR65E = () => {};
 sandbox.kgwBridgeCurrentNodeModeFromUiR65F = () => "external";
 sandbox.kgwBridgePreviewDeclaresInprocessR65F = () => false;
 sandbox.kgwBridgeR51KickRawLogLiveR134E = () => {};
+sandbox.kgwBridgeTranslateRuntime = (_key, fallback) => fallback;
 
 const selected = [
   source.slice(source.indexOf("const BRIDGE_NETWORKS = ["), source.indexOf("function kgwBridgeSetNetworkEnabled")),
@@ -76,6 +77,15 @@ const selected = [
   source.slice(source.indexOf("async function runBridgeIntegratedAction("), source.indexOf("/* KGW_R51_DIRECT_BRIDGE_LOG_RUNTIME_SETTINGS_OWNER */")),
   source.slice(source.indexOf("function kgwBridgeR51IsRunning("), source.indexOf("function kgwBridgeR51Delta(")),
 ].join("\n");
+
+assert.ok(
+  source.includes("kgwBridgeRuntimeErrorFromStatus(status)"),
+  "Bridge status polling must surface typed post-READY runtime failures",
+);
+assert.ok(
+  source.includes('kgwBridgeSetRuntimeActivityV1(net, "Bridge runtime failed after readiness.")'),
+  "Bridge post-READY failure must remain visible outside raw logs",
+);
 
 vm.runInNewContext(
   `${selected}\nthis.api = { kgwBridgeV7RuntimeRunningFromText, kgwBridgeR51IsRunning, kgwBridgeR51SetRuntimeButtons, kgwBridgeSetRuntimeErrorV1, kgwBridgeSetRuntimeActivityV1, runBridgeIntegratedAction };`,

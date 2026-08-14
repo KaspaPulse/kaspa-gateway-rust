@@ -48,6 +48,7 @@ struct KgwParallelSelfWorker {
     started_ms: u128,
     exit_logged: bool,
     readiness_evidence: String,
+    terminal_error: Option<String>,
     lease_path: std::path::PathBuf,
     lease_worker_path: std::path::PathBuf,
 }
@@ -188,6 +189,8 @@ static KGW_PARALLEL_SELF_WORKERS: OnceLock<Mutex<HashMap<String, KgwParallelSelf
 type KgwRawProcessLogBufferV1 = Arc<Mutex<VecDeque<KgwRuntimeRawLogEntryV1>>>;
 static KGW_RAW_PROCESS_LOG_BUFFERS_V1: OnceLock<Mutex<HashMap<String, KgwRawProcessLogBufferV1>>> =
     OnceLock::new();
+static KGW_RUNTIME_DIAGNOSTICS_V1: OnceLock<Mutex<HashMap<String, KgwRuntimeDiagnosticRecordV1>>> =
+    OnceLock::new();
 
 fn kgw_parallel_self_workers() -> &'static Mutex<HashMap<String, KgwParallelSelfWorker>> {
     KGW_PARALLEL_SELF_WORKERS.get_or_init(|| Mutex::new(HashMap::new()))
@@ -195,6 +198,45 @@ fn kgw_parallel_self_workers() -> &'static Mutex<HashMap<String, KgwParallelSelf
 
 fn kgw_raw_process_log_buffers_v1() -> &'static Mutex<HashMap<String, KgwRawProcessLogBufferV1>> {
     KGW_RAW_PROCESS_LOG_BUFFERS_V1.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn kgw_runtime_diagnostics_v1() -> &'static Mutex<HashMap<String, KgwRuntimeDiagnosticRecordV1>> {
+    KGW_RUNTIME_DIAGNOSTICS_V1.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn kgw_runtime_terminal_diagnostic_v1(
+    role: &str,
+    network: &str,
+    message: impl Into<String>,
+) -> KgwRuntimeDiagnosticRecordV1 {
+    KgwRuntimeDiagnosticRecordV1 {
+        diagnostic_event: "kgw_runtime_terminal_failure_v1".to_string(),
+        network: network.to_string(),
+        source: "self-worker-supervision".to_string(),
+        runtime_role: role.to_string(),
+        bridge_instance_id: None,
+        received_ms: kgw_worker_now_ms_u64(),
+        message: message.into(),
+    }
+}
+
+fn kgw_runtime_record_terminal_diagnostic_v1(
+    role: &str,
+    network: &str,
+    message: impl Into<String>,
+) {
+    if let Ok(mut diagnostics) = kgw_runtime_diagnostics_v1().lock() {
+        diagnostics.insert(
+            kgw_worker_key(role, network),
+            kgw_runtime_terminal_diagnostic_v1(role, network, message),
+        );
+    }
+}
+
+fn kgw_runtime_clear_terminal_diagnostic_v1(role: &str, network: &str) {
+    if let Ok(mut diagnostics) = kgw_runtime_diagnostics_v1().lock() {
+        diagnostics.remove(&kgw_worker_key(role, network));
+    }
 }
 
 #[cfg(test)]
@@ -1468,6 +1510,10 @@ fn kgw_worker_remove_stop_control_v1(worker: &KgwParallelSelfWorker) {
     }
 }
 
+fn kgw_worker_remove_stop_request_v1(worker: &KgwParallelSelfWorker) {
+    let _ = std::fs::remove_file(&worker.stop_request_path);
+}
+
 fn kgw_worker_finalize_ownership_v1(worker: &mut KgwParallelSelfWorker) {
     kgw_runtime_owner_remove_files_v1(&worker.lease_path, &worker.lease_worker_path);
     kgw_worker_remove_stop_control_v1(worker);
@@ -1889,6 +1935,7 @@ fn kgw_worker_command(
             "KGW_TEST_SELF_WORKER_TIMEOUT_ON_STOP",
             "KGW_TEST_SELF_WORKER_FAIL_ON_STOP",
             "KGW_TEST_SELF_WORKER_BRIDGE_LISTENER_FAIL_ON_STOP",
+            "KGW_TEST_SELF_WORKER_EXIT_AFTER_READY_MS",
             "KGW_TEST_SELF_WORKER_OWNED_NODE_STOP_MARKER_PATH",
         ] {
             if let Some(value) = std::env::var_os(key) {
@@ -2214,6 +2261,7 @@ fn kgw_worker_start(
             role, trace_node_mode
         )),
     );
+    kgw_runtime_clear_terminal_diagnostic_v1(&role, &network);
 
     let startup_control_path = kgw_worker_startup_control_path_v1(&role, &network);
     let (stop_request_path, stop_outcome_path) = kgw_worker_stop_control_paths_v1(&role, &network);
@@ -2600,6 +2648,7 @@ fn kgw_worker_start(
             started_ms: kgw_worker_now_ms(),
             exit_logged: false,
             readiness_evidence: readiness_evidence.clone(),
+            terminal_error: None,
             lease_path,
             lease_worker_path,
         },
@@ -3055,6 +3104,43 @@ fn kgw_worker_status(
         let running = exit_status.is_none();
 
         if let Some(status) = exit_status
+            && worker.terminal_error.is_none()
+        {
+            let typed_error = if worker.stop_outcome_path.is_file() {
+                kgw_worker_read_stop_outcome_v1(&worker.stop_outcome_path)
+                    .and_then(|message| {
+                        kgw_worker_validate_stop_outcome_v1(
+                            message,
+                            &worker.role,
+                            &worker.network,
+                            worker.spawned_pid,
+                        )
+                    })
+                    .ok()
+                    .and_then(|outcome| match outcome {
+                        KgwValidatedStopOutcomeV1::Failed { error, .. } => Some(error),
+                        KgwValidatedStopOutcomeV1::Stopped(_) => None,
+                    })
+            } else {
+                None
+            };
+            worker.terminal_error = Some(typed_error.unwrap_or_else(|| {
+                format!(
+                    "runtime terminated unexpectedly after READY;role={};network={};pid={};exit_status={status}",
+                    worker.role, worker.network, worker.spawned_pid
+                )
+            }));
+        }
+
+        if let Some(error) = worker.terminal_error.as_deref() {
+            kgw_runtime_record_terminal_diagnostic_v1(&worker.role, &worker.network, error);
+        }
+        if !running {
+            kgw_runtime_owner_remove_files_v1(&worker.lease_path, &worker.lease_worker_path);
+            kgw_worker_remove_stop_request_v1(worker);
+        }
+
+        if let Some(status) = exit_status
             && !worker.exit_logged
         {
             kgw_start_trace_emit_v1(
@@ -3074,13 +3160,26 @@ fn kgw_worker_status(
         }
 
         lines.push(format!(
-            "parallel-owned-self-worker status;role={};network={};pid={};running={};readiness={};readiness_evidence={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};started_ms={};node_mode={}",
+            "parallel-owned-self-worker status;role={};network={};pid={};running={};readiness={};readiness_evidence={};runtime_error={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};started_ms={};node_mode={}",
             worker.role,
             worker.network,
             worker.child.id(),
             running,
-            if running { "READY" } else { "FAILED" },
-            worker.readiness_evidence,
+            if running {
+                "READY"
+            } else {
+                "FAILED"
+            },
+            if running {
+                worker.readiness_evidence.as_str()
+            } else {
+                "none"
+            },
+            worker
+                .terminal_error
+                .as_deref()
+                .map(kgw_worker_stop_field_v1)
+                .unwrap_or_else(|| "none".to_string()),
             worker.appdir,
             worker.started_ms,
             worker.node_mode
@@ -3129,6 +3228,21 @@ fn kgw_worker_logs(
 
     lines.sort_by_key(|entry| entry.sequence);
 
+    let diagnostics = kgw_runtime_diagnostics_v1()
+        .lock()
+        .map_err(|_| "runtime diagnostic registry lock failed".to_string())?
+        .values()
+        .filter(|record| {
+            wanted_network
+                .as_deref()
+                .is_none_or(|value| record.network == value)
+                && wanted_role
+                    .as_deref()
+                    .is_none_or(|value| record.runtime_role == value)
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+
     Ok(Some(KgwRuntimeLogsReportV1 {
         version: "kgw_runtime_logs_v1".to_string(),
         network: wanted_network,
@@ -3139,7 +3253,7 @@ fn kgw_worker_logs(
         source: "self-worker".to_string(),
         buffer_limit: KGW_RAW_PROCESS_LOG_BUFFER_LIMIT_V1,
         entries: lines,
-        diagnostics: Vec::new(),
+        diagnostics,
     }))
 }
 
@@ -4203,6 +4317,14 @@ fn kgw_test_self_worker_hold() {
         serde_json::from_str(&evidence).expect("test READY must be typed JSON");
     kgw_worker_atomic_write_json_v1(std::path::Path::new(&control_path), &evidence)
         .expect("test self-worker must publish READY");
+    if let Some(exit_after_ready_ms) = std::env::var("KGW_TEST_SELF_WORKER_EXIT_AFTER_READY_MS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+    {
+        std::thread::sleep(std::time::Duration::from_millis(exit_after_ready_ms));
+        eprintln!("test-self-worker official runtime terminated after READY");
+        std::process::exit(17);
+    }
 
     loop {
         let parent_alive =

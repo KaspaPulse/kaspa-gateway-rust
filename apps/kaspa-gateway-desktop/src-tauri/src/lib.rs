@@ -1207,6 +1207,7 @@ enum KgwPostReadyStopOutcomeV1 {
     Stopped,
     Failed(KgwOfficialShutdownFailureV1),
     ParentLostFailed(KgwOfficialShutdownFailureV1),
+    RuntimeFailed(KgwOfficialShutdownFailureV1),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -1226,6 +1227,15 @@ fn kgw_post_ready_stop_action_v1(outcome: &KgwPostReadyStopOutcomeV1) -> KgwPost
         }
         KgwPostReadyStopOutcomeV1::Failed(_) => KgwPostReadyStopActionV1::HoldForParentForce,
         KgwPostReadyStopOutcomeV1::ParentLostFailed(failure) => {
+            let _ = failure;
+            KgwPostReadyStopActionV1::ExitFailure
+        }
+        KgwPostReadyStopOutcomeV1::RuntimeFailed(failure) => {
+            // A spontaneous inner-owner failure is different from an ordinary
+            // Stop failure: exiting the outer self-worker is itself the bounded
+            // terminal fallback for every thread/component in this process.
+            // Holding here would preserve the false-Running condition this
+            // supervision path exists to eliminate.
             let _ = failure;
             KgwPostReadyStopActionV1::ExitFailure
         }
@@ -1446,6 +1456,51 @@ fn kgw_wait_for_stop_or_parent_loss_v1(
                 return Ok(
                     crate::integrated_runtime_commands::KgwParentLifetimeEventV1::ParentLost,
                 );
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(25));
+    }
+}
+
+enum KgwPostReadyLifetimeEventV1 {
+    StopRequested,
+    ParentLost,
+    RuntimeFailed(String),
+}
+
+fn kgw_wait_for_post_ready_event_v1<F>(
+    request_path: &std::path::Path,
+    role: &str,
+    network: &str,
+    parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
+    mut runtime_failure: F,
+) -> Result<KgwPostReadyLifetimeEventV1, String>
+where
+    F: FnMut() -> Result<Option<String>, String>,
+{
+    loop {
+        if request_path.is_file() {
+            let request = kgw_read_stop_request_v1(request_path, role, network);
+            if request.is_ok() {
+                return Ok(KgwPostReadyLifetimeEventV1::StopRequested);
+            }
+            let _ = std::fs::remove_file(request_path);
+        }
+        match crate::integrated_runtime_commands::kgw_process_identity_for_worker_v1(
+            parent_identity.pid,
+        ) {
+            Ok(actual)
+                if actual.start_time == parent_identity.start_time
+                    && actual.executable == parent_identity.executable => {}
+            _ => return Ok(KgwPostReadyLifetimeEventV1::ParentLost),
+        }
+        match runtime_failure() {
+            Ok(Some(error)) => return Ok(KgwPostReadyLifetimeEventV1::RuntimeFailed(error)),
+            Ok(None) => {}
+            Err(error) => {
+                return Ok(KgwPostReadyLifetimeEventV1::RuntimeFailed(format!(
+                    "runtime supervision failed after READY;error={error}"
+                )));
             }
         }
         std::thread::sleep(std::time::Duration::from_millis(25));
@@ -1706,6 +1761,132 @@ where
         ),
         shutdown,
     )
+}
+
+fn kgw_execute_supervised_stop_request_v1<F, S>(
+    stop_request_path: &std::path::Path,
+    stop_outcome_path: &std::path::Path,
+    role: &str,
+    network: &str,
+    parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
+    runtime_failure: F,
+    shutdown: S,
+) -> KgwPostReadyStopOutcomeV1
+where
+    F: FnMut() -> Result<Option<String>, String>,
+    S: FnOnce() -> Result<String, KgwOfficialShutdownFailureV1> + Send + 'static,
+{
+    let event = match kgw_wait_for_post_ready_event_v1(
+        stop_request_path,
+        role,
+        network,
+        parent_identity,
+        runtime_failure,
+    ) {
+        Ok(event) => event,
+        Err(error) => {
+            let failure = KgwOfficialShutdownFailureV1::not_proven(error);
+            return kgw_publish_stop_failure_v1(stop_outcome_path, role, network, failure);
+        }
+    };
+
+    match event {
+        KgwPostReadyLifetimeEventV1::StopRequested => kgw_execute_stop_request_v1(
+            stop_request_path,
+            stop_outcome_path,
+            role,
+            network,
+            parent_identity,
+            shutdown,
+        ),
+        KgwPostReadyLifetimeEventV1::ParentLost => kgw_execute_stop_request_v1(
+            stop_request_path,
+            stop_outcome_path,
+            role,
+            network,
+            parent_identity,
+            shutdown,
+        ),
+        KgwPostReadyLifetimeEventV1::RuntimeFailed(root_cause) => {
+            let (shutdown_tx, shutdown_rx) = std::sync::mpsc::sync_channel(1);
+            let shutdown_thread = match std::thread::Builder::new()
+                .name(format!("kgw-runtime-failure-cleanup-{role}-{network}"))
+                .spawn(move || {
+                    let _ = shutdown_tx.send(shutdown());
+                }) {
+                Ok(thread) => thread,
+                Err(error) => {
+                    let failure = KgwOfficialShutdownFailureV1::not_proven(format!(
+                        "runtime terminated unexpectedly after READY;root_cause={root_cause};cleanup_start_error={error}"
+                    ));
+                    let _ = kgw_write_stop_outcome_v1(
+                        stop_outcome_path,
+                        role,
+                        network,
+                        "FAILED",
+                        false,
+                        None,
+                        Some(&failure.error),
+                    );
+                    return KgwPostReadyStopOutcomeV1::RuntimeFailed(failure);
+                }
+            };
+            let (shutdown_result, parent_lost) = kgw_wait_for_shutdown_result_v1(
+                &shutdown_rx,
+                parent_identity,
+                false,
+                std::time::Duration::from_millis(
+                    crate::integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1,
+                ),
+            );
+            let mut failure = match shutdown_result {
+                Ok(Ok(evidence)) => match shutdown_thread.join() {
+                    Ok(()) => KgwOfficialShutdownFailureV1::terminal(format!(
+                        "runtime terminated unexpectedly after READY;root_cause={root_cause};cleanup={evidence}"
+                    )),
+                    Err(panic) => KgwOfficialShutdownFailureV1::not_proven(format!(
+                        "runtime terminated unexpectedly after READY;root_cause={root_cause};cleanup_panic={}",
+                        kgw_panic_payload_message_v1(panic.as_ref())
+                    )),
+                },
+                Ok(Err(cleanup_failure)) => KgwOfficialShutdownFailureV1 {
+                    error: format!(
+                        "runtime terminated unexpectedly after READY;root_cause={root_cause};cleanup_error={}",
+                        cleanup_failure.error
+                    ),
+                    terminality: cleanup_failure.terminality,
+                },
+                Err(error) => KgwOfficialShutdownFailureV1::not_proven(format!(
+                    "runtime terminated unexpectedly after READY;root_cause={root_cause};cleanup_wait_error={error}"
+                )),
+            };
+            if parent_lost {
+                // No exact parent remains to consume a typed outcome or force a
+                // nonterminal cleanup fallback. Exit this worker boundedly so
+                // it cannot retain any remaining owned component indefinitely.
+                return KgwPostReadyStopOutcomeV1::ParentLostFailed(failure);
+            }
+            if let Err(publish_error) = kgw_write_stop_outcome_v1(
+                stop_outcome_path,
+                role,
+                network,
+                "FAILED",
+                failure.terminality == KgwOwnedRuntimeTerminalityV1::ProvenTerminal,
+                None,
+                Some(&failure.error),
+            ) {
+                failure.error = format!(
+                    "{};runtime_failure_outcome_publish_error={publish_error}",
+                    failure.error
+                );
+                // The parent can trust a terminal cleanup result only after it
+                // validates the typed outcome. Retain the exact child for the
+                // deterministic parent fallback when publication fails.
+                failure.terminality = KgwOwnedRuntimeTerminalityV1::NotProven;
+            }
+            KgwPostReadyStopOutcomeV1::RuntimeFailed(failure)
+        }
+    }
 }
 
 fn kgw_hold_for_parent_force_fallback_v1() -> ! {
@@ -2162,12 +2343,19 @@ fn kgw_run_node_self_worker(
         stop_request_path.ok_or_else(|| "stop request path is missing or invalid".to_string())?;
     let stop_outcome_path =
         stop_outcome_path.ok_or_else(|| "stop outcome path is missing or invalid".to_string())?;
-    Ok(kgw_execute_stop_request_v1(
+    let monitor_runtime = runtime.clone();
+    let monitor_network = settings.network;
+    Ok(kgw_execute_supervised_stop_request_v1(
         stop_request_path,
         stop_outcome_path,
         "node",
         settings.network.as_str(),
         parent_identity,
+        move || {
+            monitor_runtime
+                .terminal_failure(monitor_network)
+                .map_err(|error| error.to_string())
+        },
         move || match runtime.stop_network(settings.network) {
             Ok(status) => Ok(status.last_message),
             Err(error @ kaspa_gateway_rk_node::KgwRealOwnerError::ShutdownFailed(_)) => {
@@ -2330,14 +2518,53 @@ fn kgw_run_bridge_self_worker(
     let stop_outcome_path =
         stop_outcome_path.ok_or_else(|| "stop outcome path is missing or invalid".to_string())?;
     let shutdown_network = network.to_string();
-    Ok(kgw_execute_stop_request_v1(
+    let monitor_network = shutdown_network.clone();
+    let monitor_node_runtime = inprocess_node_runtime.clone();
+    let shared_handles = std::sync::Arc::new(std::sync::Mutex::new(Some(handles)));
+    let monitor_handles = std::sync::Arc::clone(&shared_handles);
+    let shutdown_handles = std::sync::Arc::clone(&shared_handles);
+    Ok(kgw_execute_supervised_stop_request_v1(
         stop_request_path,
         stop_outcome_path,
         "bridge",
         network,
         parent_identity,
         move || {
+            if let Some(runtime) = monitor_node_runtime.as_ref() {
+                let parsed = kaspa_gateway_rk_node::KgwNetwork::parse(&monitor_network)
+                    .map_err(|error| error.to_string())?;
+                if let Some(error) = runtime
+                    .terminal_failure(parsed)
+                    .map_err(|error| error.to_string())?
+                {
+                    return Ok(Some(format!("component=owned-node;{error}")));
+                }
+            }
+            let handles = monitor_handles
+                .lock()
+                .map_err(|_| "bridge supervision handle lock failed".to_string())?;
+            for (index, handle) in handles.iter().flatten().enumerate() {
+                if handle.is_finished() {
+                    return Ok(Some(format!(
+                        "component=bridge-listener-{index};owner thread terminated"
+                    )));
+                }
+            }
+            Ok(None)
+        },
+        move || {
             let listener_count = readiness_evidence.len();
+            let handles = shutdown_handles
+                .lock()
+                .map_err(|_| {
+                    KgwOfficialShutdownFailureV1::not_proven("bridge shutdown handle lock failed")
+                })?
+                .take()
+                .ok_or_else(|| {
+                    KgwOfficialShutdownFailureV1::not_proven(
+                        "bridge shutdown handles were already consumed",
+                    )
+                })?;
             let mut components = handles
                 .into_iter()
                 .enumerate()
@@ -2511,6 +2738,90 @@ mod kgw_graceful_stop_failure_path_tests {
             kgw_post_ready_stop_action_v1(&outcome),
             KgwPostReadyStopActionV1::HoldForParentForce
         );
+    }
+
+    #[test]
+    fn nonterminal_runtime_failure_exits_outer_worker_to_end_false_running() {
+        let outcome =
+            KgwPostReadyStopOutcomeV1::RuntimeFailed(KgwOfficialShutdownFailureV1::not_proven(
+                "runtime owner failed and cleanup terminality is unknown",
+            ));
+        assert_eq!(
+            kgw_post_ready_stop_action_v1(&outcome),
+            KgwPostReadyStopActionV1::ExitFailure
+        );
+    }
+
+    #[test]
+    fn supervised_runtime_failure_publishes_typed_terminal_outcome() {
+        let request_path = stop_control_path("runtime-failure-request");
+        let outcome_path = stop_control_path("runtime-failure-outcome");
+        std::fs::create_dir_all(outcome_path.parent().unwrap()).unwrap();
+        let parent_identity =
+            crate::integrated_runtime_commands::kgw_process_identity_for_worker_v1(
+                std::process::id(),
+            )
+            .unwrap();
+
+        let outcome = kgw_execute_supervised_stop_request_v1(
+            &request_path,
+            &outcome_path,
+            "node",
+            "mainnet",
+            &parent_identity,
+            || Ok(Some("official core fixture exited".to_string())),
+            || Ok("remaining owned components joined".to_string()),
+        );
+
+        assert_eq!(
+            kgw_post_ready_stop_action_v1(&outcome),
+            KgwPostReadyStopActionV1::ExitFailure
+        );
+        let message: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&outcome_path).unwrap()).unwrap();
+        assert_eq!(message["outcome"], "FAILED");
+        assert_eq!(message["allOwnedComponentsTerminal"], true);
+        let error = message["error"].as_str().unwrap();
+        assert!(error.contains("official core fixture exited"));
+        assert!(error.contains("remaining owned components joined"));
+
+        let _ = std::fs::remove_file(request_path);
+        let _ = std::fs::remove_file(outcome_path);
+    }
+
+    #[test]
+    fn supervised_normal_stop_keeps_graceful_attestation_contract() {
+        let request_path = stop_control_path("supervised-stop-request");
+        let outcome_path = stop_control_path("supervised-stop-outcome");
+        write_matching_stop_request(&request_path, "node", "mainnet");
+        let parent_identity =
+            crate::integrated_runtime_commands::kgw_process_identity_for_worker_v1(
+                std::process::id(),
+            )
+            .unwrap();
+
+        let outcome = kgw_execute_supervised_stop_request_v1(
+            &request_path,
+            &outcome_path,
+            "node",
+            "mainnet",
+            &parent_identity,
+            || Ok(None),
+            || Ok("official node shutdown joined".to_string()),
+        );
+
+        assert_eq!(
+            kgw_post_ready_stop_action_v1(&outcome),
+            KgwPostReadyStopActionV1::Return
+        );
+        let message: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&outcome_path).unwrap()).unwrap();
+        assert_eq!(message["outcome"], "STOPPED");
+        assert_eq!(message["allOwnedComponentsTerminal"], true);
+        assert_eq!(message["evidence"], "official node shutdown joined");
+
+        let _ = std::fs::remove_file(request_path);
+        let _ = std::fs::remove_file(outcome_path);
     }
 
     #[test]

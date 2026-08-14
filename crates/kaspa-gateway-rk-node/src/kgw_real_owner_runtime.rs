@@ -291,6 +291,18 @@ impl KgwRealOwnerRuntime {
         Ok(session.status.clone())
     }
 
+    pub fn terminal_failure(
+        &self,
+        network: KgwNetwork,
+    ) -> Result<Option<String>, KgwRealOwnerError> {
+        let status = self.status(network)?;
+        if status.runtime_requested && !status.official_core_running {
+            Ok(Some(status.last_message))
+        } else {
+            Ok(None)
+        }
+    }
+
     pub fn logs(&self, network: KgwNetwork) -> Result<String, KgwRealOwnerError> {
         let status = self.status(network)?;
         Ok(status.logs.join("\n"))
@@ -1309,6 +1321,44 @@ mod kgw_runtime_fd_budget_tests {
                 .last_message
                 .contains("terminated unexpectedly")
         );
+    }
+
+    #[test]
+    fn terminal_failure_reports_post_ready_owner_exit() {
+        let runtime = KgwRealOwnerRuntime::new();
+        {
+            let mut sessions = runtime.inner.lock().unwrap();
+            let session = sessions.get_mut(&KgwNetwork::Mainnet).unwrap();
+            session.status.runtime_requested = true;
+            session.status.owner_thread_alive = true;
+            session.status.official_core_running = true;
+            let (terminal_tx, terminal_rx) = std::sync::mpsc::sync_channel(1);
+            terminal_tx
+                .send(Err("official core fixture panic".to_string()))
+                .unwrap();
+            session.core_terminal_outcome = Some(terminal_rx);
+            session.owner_thread = Some(std::thread::spawn(|| {}));
+        }
+
+        while !runtime
+            .inner
+            .lock()
+            .unwrap()
+            .get(&KgwNetwork::Mainnet)
+            .unwrap()
+            .owner_thread
+            .as_ref()
+            .unwrap()
+            .is_finished()
+        {
+            std::thread::yield_now();
+        }
+
+        let failure = runtime
+            .terminal_failure(KgwNetwork::Mainnet)
+            .unwrap()
+            .expect("terminal requested runtime must report a root cause");
+        assert!(failure.contains("official core fixture panic"));
     }
 
     #[test]
