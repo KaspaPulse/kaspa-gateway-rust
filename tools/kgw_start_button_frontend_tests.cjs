@@ -86,6 +86,14 @@ function staticPlacementTests() {
     "Node Start must wait through the backend readiness window",
   );
   assert.ok(
+    source.includes("const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 70000"),
+    "Node Stop UI timeout must remain above the parent graceful Stop bound",
+  );
+  assert.ok(source.includes('action === "start" ? "Starting" : "Stopping"'), "Stop click must enter Stopping before backend completion");
+  assert.ok(source.includes('evidence.fields.running === "false"'), "Stopped requires terminal backend liveness evidence");
+  assert.ok(source.includes("Stop required FORCED termination."), "forced Stop must be visible outside raw logs");
+  assert.ok(!/appendLog\([^\n]*(FORCED|graceful|stop_outcome|Stopping)/i.test(source), "Stop control diagnostics must remain outside raw Node logs");
+  assert.ok(
     /function kgwNodeR51IsRunning[\s\S]*readiness=READY/.test(source),
     "Node status polling must require READY before displaying Running",
   );
@@ -625,6 +633,62 @@ async function dynamicClickTests() {
   assert.ok(!/initialized|parallel-owned-self-worker started|KGW node start response/i.test(rawLog), "raw log must not contain synthetic startup success text");
 }
 
+async function stopTruthfulnessTests() {
+  const calls = [];
+  let resolveStop;
+  let stopResponse = null;
+  const { window, document, root } = createHarness({
+    tauri: {
+      core: {
+        invoke: async (command, payload) => {
+          calls.push({ command, payload });
+          if (command === "kgw_kgw_disable_network_v1") {
+            if (stopResponse !== null) return stopResponse;
+            return await new Promise((resolve) => { resolveStop = resolve; });
+          }
+          if (command === "kgw_runtime_owner_status_v1") {
+            return "parallel-owned-self-worker status;role=node;network=" + payload.network + ";running=false";
+          }
+          if (command === "kgw_kgw_runtime_logs_v1") return { entries: [] };
+          return true;
+        },
+      },
+    },
+  });
+  await window.__kgwStartButtonTest.initKaspaNodeTab(root);
+  await flush();
+
+  const start = root.querySelector('[data-node-action="start"][data-net="mainnet"]');
+  const stop = root.querySelector('[data-node-action="stop"][data-net="mainnet"]');
+  start.disabled = true;
+  stop.disabled = false;
+  stop.click();
+  await flush();
+  assert.strictEqual(document.getElementById("node-mainnet-runtimeStatus").textContent, "Stopping");
+  assert.strictEqual(stop.disabled, true, "duplicate Stop must remain disabled while backend Stop is pending");
+
+  resolveStop("parallel-owned-self-worker stopped;role=node;network=mainnet;running=false;graceful=true;forced=false");
+  await flush();
+  assert.strictEqual(document.getElementById("node-mainnet-runtimeStatus").textContent, "Stopped");
+  assert.strictEqual(document.getElementById("node-mainnet-runtimeEvidence").textContent, "Graceful official shutdown confirmed");
+
+  stopResponse = "parallel-owned-self-worker stopped;role=node;network=mainnet;running=false;graceful=false;forced=true;reason=graceful stop timed out";
+  start.disabled = true;
+  stop.disabled = false;
+  stop.click();
+  await flush();
+  assert.ok(document.getElementById("node-mainnet-runtimeError").textContent.includes("FORCED"));
+  assert.strictEqual(document.getElementById("node-mainnet-runtimeEvidence").textContent, "FORCED termination confirmed");
+
+  stopResponse = "parallel-owned-self-worker stopped with graceful failure;role=node;network=mainnet;running=false;graceful=false;forced=false;stop_failed=true;stop_outcome=FAILED;reason=official shutdown failed";
+  start.disabled = true;
+  stop.disabled = false;
+  stop.click();
+  await flush();
+  assert.ok(document.getElementById("node-mainnet-runtimeError").textContent.includes("Official graceful shutdown failed"));
+  assert.strictEqual(document.getElementById("node-mainnet-runtimeEvidence").textContent, "Worker exited after graceful shutdown failure");
+}
+
 function configuredTauriInvokeResolverTests() {
   const tauriConfig = JSON.parse(fs.readFileSync(tauriConfigPath, "utf8"));
   assert.strictEqual(tauriConfig.app.withGlobalTauri, true, "Tauri config must expose the supported global API");
@@ -825,6 +889,7 @@ async function copyLogFrontendTests() {
     staticPlacementTests();
     configuredTauriInvokeResolverTests();
     await dynamicClickTests();
+    await stopTruthfulnessTests();
     await missingInvokeApiVisibleErrorTest();
     await tracePayloadSafetyTests();
     await copyLogFrontendTests();

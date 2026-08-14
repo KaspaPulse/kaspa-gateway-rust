@@ -2039,6 +2039,7 @@ function installDelegatedTabs(root) {
 // The Node child contract is 90 seconds and the same-EXE parent is bounded at
 // 100 seconds. Keep the UI request strictly above both terminal-result boundaries.
 const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 110000;
+const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 70000;
 const KGW_NODE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_node_runtime_flags_v1";
 
 function getTauriInvoke() {
@@ -2219,12 +2220,15 @@ async function invokeNodeIntegratedRuntime(command, net) {
       nodePreviewPresent: Boolean(args.nodeCommandPreview),
       bridgePreviewPresent: Boolean(args.bridgeCommandPreview),
       runtimeRolePresent: Boolean(args.runtimeRole),
-      timeoutMs: KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS
+      timeoutMs: action === "stop" ? KGW_NODE_STOP_INVOKE_TIMEOUT_MS : KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS
     }
   });
 
   try {
-    const result = await invokeWithTimeout(resolved.invoke, command, args, KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS);
+    const invokeTimeoutMs = action === "stop"
+      ? KGW_NODE_STOP_INVOKE_TIMEOUT_MS
+      : KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS;
+    const result = await invokeWithTimeout(resolved.invoke, command, args, invokeTimeoutMs);
     const evidence = kgwNodeRuntimeEvidence(result);
     kgwStartTraceFrontendR1("frontend.invoke_resolved", {
       network: net,
@@ -2334,26 +2338,44 @@ async function runNodeIntegratedAction(action, net) {
 
   window.__kgwR29NodeInFlight.add(inFlightKey);
   KGW_NODE_R51_TRANSITIONS[net] = action === "start" ? "starting" : "stopping";
-  kgwNodeSetRuntimeNotice(net, action === "start" ? "Starting" : "Stopping", "Waiting for backend response", "");
   kgwNodeR51SetRuntimeButtons(net, action === "stop", kgwIsBridgeOwnedNodeLockedR65E(net));
+  kgwNodeSetRuntimeNotice(net, action === "start" ? "Starting" : "Stopping", "Waiting for backend response", "");
 
   try {
     const result = await invokeNodeIntegratedRuntime(command, net);
 
     if (action === "start") {
       const evidence = kgwNodeAssertStartEvidence(net, result);
+      KGW_NODE_R51_TRANSITIONS[net] = "";
+      kgwNodeR51SetRuntimeButtons(net, true, kgwIsBridgeOwnedNodeLockedR65E(net));
       kgwNodeSetRuntimeNotice(
         net,
         "Running",
         "pid=" + evidence.pid + ";owner=" + evidence.owner + ";role=" + evidence.role + ";readiness=READY",
         ""
       );
-      KGW_NODE_R51_TRANSITIONS[net] = "";
-      kgwNodeR51SetRuntimeButtons(net, true, kgwIsBridgeOwnedNodeLockedR65E(net));
     } else {
-      kgwNodeSetRuntimeNotice(net, "Stopped", "No process owner", "");
+      const evidence = kgwNodeRuntimeEvidence(result);
+      const graceful = String(evidence.fields.graceful || "").toLowerCase() === "true";
+      const forced = String(evidence.fields.forced || "").toLowerCase() === "true";
+      const stopFailed = evidence.fields.stop_failed === "true";
+      const stopped = evidence.fields.running === "false" && (graceful || forced || stopFailed || evidence.fields.already_stopped === "true");
+      if (!stopped) {
+        throw new Error("Backend Stop did not confirm terminal process exit: " + evidence.text);
+      }
+      const forcedWarning = forced
+        ? "Stop required FORCED termination. " + (evidence.fields.reason || evidence.text)
+        : stopFailed
+          ? "Official graceful shutdown failed, but the worker process exited. " + (evidence.fields.reason || evidence.text)
+        : "";
       KGW_NODE_R51_TRANSITIONS[net] = "";
       kgwNodeR51SetRuntimeButtons(net, false, kgwIsBridgeOwnedNodeLockedR65E(net));
+      kgwNodeSetRuntimeNotice(
+        net,
+        "Stopped",
+        forced ? "FORCED termination confirmed" : stopFailed ? "Worker exited after graceful shutdown failure" : graceful ? "Graceful official shutdown confirmed" : "Already stopped",
+        forcedWarning
+      );
     }
 
     return true;

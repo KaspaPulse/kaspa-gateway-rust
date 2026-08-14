@@ -1612,6 +1612,61 @@ mod runtime_binding_tests {
         drop(rebound);
     }
 
+    #[test]
+    fn bridge_handle_stop_requests_join_and_release_listener() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+        let owner_thread = std::thread::spawn(move || {
+            while !*shutdown_rx.borrow() {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            drop(listener);
+        });
+        let handle = BridgeOwnerRuntimeHandle {
+            shutdown_tx,
+            owner_thread,
+        };
+
+        handle.join().expect("Bridge owner must join after Stop");
+        let rebound = std::net::TcpListener::bind(address)
+            .expect("Bridge listener must be reusable only after owner join");
+        drop(rebound);
+    }
+
+    #[test]
+    fn every_owned_bridge_listener_is_joined_and_released() {
+        let mut handles = Vec::new();
+        let mut addresses = Vec::new();
+        for _ in 0..3 {
+            let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            let address = listener.local_addr().unwrap();
+            listener.set_nonblocking(true).unwrap();
+            let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+            let owner_thread = std::thread::spawn(move || {
+                while !*shutdown_rx.borrow() {
+                    std::thread::sleep(Duration::from_millis(10));
+                }
+                drop(listener);
+            });
+            handles.push(BridgeOwnerRuntimeHandle {
+                shutdown_tx,
+                owner_thread,
+            });
+            addresses.push(address);
+        }
+
+        for handle in handles {
+            handle.join().expect("every Bridge owner must join");
+        }
+        for address in addresses {
+            let rebound = std::net::TcpListener::bind(address)
+                .expect("every joined Bridge listener must be reusable");
+            drop(rebound);
+        }
+    }
+
     #[cfg(feature = "official-kaspa-runtime-mainline")]
     #[test]
     fn unreachable_node_attachment_produces_failed_readiness_without_an_owner() {
