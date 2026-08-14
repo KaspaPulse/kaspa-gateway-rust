@@ -1724,8 +1724,6 @@ function renderNetworkPanel(net, index) {
           </div>
 
           <div class="node-v6-status">
-            <label><input id="${id(net.key, "startOnLaunch")}" type="checkbox"> Auto-start</label>
-            <label><input id="${id(net.key, "autoRestart")}" type="checkbox" checked> Restart</label>
             <span id="${id(net.key, "runtimeStatus")}" class="node-v6-runtime-status-pill" data-state="stopped">Stopped</span>
             <span id="${id(net.key, "runtimeEvidence")}" class="node-v6-runtime-evidence">No process owner</span>
             <span id="${id(net.key, "settingsAuthority")}" class="node-v6-runtime-evidence">Effective settings apply on next Start</span>
