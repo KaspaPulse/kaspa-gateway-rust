@@ -4,12 +4,14 @@ const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 
 const workflowPath = ".github/workflows/desktop-artifacts.yml";
+const desktopManifestPath = "apps/kaspa-gateway-desktop/src-tauri/Cargo.toml";
 const windowsConfigPath =
   "apps/kaspa-gateway-desktop/src-tauri/tauri.windows.conf.json";
 const macosConfigPath =
   "apps/kaspa-gateway-desktop/src-tauri/tauri.macos.conf.json";
 
 const workflow = readFileSync(workflowPath, "utf8");
+const desktopManifest = readFileSync(desktopManifestPath, "utf8");
 const windowsConfig = JSON.parse(readFileSync(windowsConfigPath, "utf8"));
 const macosConfig = JSON.parse(readFileSync(macosConfigPath, "utf8"));
 
@@ -19,6 +21,17 @@ assert.deepEqual(macosConfig.bundle.targets, ["dmg"]);
 assert.deepEqual(macosConfig.bundle.icon, ["icons/icon.png"]);
 assert.equal(macosConfig.bundle.macOS.signingIdentity, "-");
 assert.equal(macosConfig.bundle.macOS.hardenedRuntime, false);
+
+assert.match(
+  desktopManifest,
+  /\[\[bin\]\]\s+name = "kgw-provenance-smoke"\s+path = "src\/bin\/kgw-provenance-smoke\.rs"\s+required-features = \["runtime-provenance-smoke"\]/u,
+  "the runtime-only provenance probe must be feature-gated out of desktop packages",
+);
+assert.match(
+  desktopManifest,
+  /^runtime-provenance-smoke = \[\]$/mu,
+  "the runtime provenance probe feature must remain explicit and disabled by default",
+);
 
 const requiredWorkflowFragments = [
   "workflow_dispatch:",
