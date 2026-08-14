@@ -87,8 +87,6 @@ pub struct DesktopNodeSettings {
     pub rpc_host: String,
     pub rpc_port: u16,
     pub utxo_index: bool,
-    pub auto_start: bool,
-    pub auto_restart: bool,
 }
 
 impl Default for DesktopNodeSettings {
@@ -98,8 +96,6 @@ impl Default for DesktopNodeSettings {
             rpc_host: "127.0.0.1".to_string(),
             rpc_port: 16110,
             utxo_index: true,
-            auto_start: false,
-            auto_restart: false,
         }
     }
 }

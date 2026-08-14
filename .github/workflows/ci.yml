@@ -92,6 +92,9 @@ jobs:
       - name: Verify effective Bridge settings contract
         run: node tools/kgw_effective_bridge_settings_gate.cjs
 
+      - name: Verify runtime automation claims
+        run: node tools/kgw_runtime_automation_claims_gate.cjs
+
       - name: Lint and syntax-check E2E JavaScript
         working-directory: e2e
         run: |

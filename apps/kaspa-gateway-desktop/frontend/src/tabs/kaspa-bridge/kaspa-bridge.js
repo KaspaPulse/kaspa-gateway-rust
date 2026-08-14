@@ -1087,9 +1087,6 @@ function renderLogging(net) {
       ${cardSelect(net.key, "printStats", "--print-stats", ["true", "false"], "true")}
       ${cardSelect(net.key, "logToFile", "--log-to-file", ["true", "false"], "false")}
       ${cardSelect(net.key, "approxGeoLookup", "--approximate-geo-lookup", ["not set", "true", "false"], "not set", "span2")}
-      ${cardInput(net.key, "startupDelay", "Startup delay sec", "0")}
-      ${cardCheck(net.key, "startOnLaunch", "Start on launch", false)}
-      ${cardCheck(net.key, "autoRestart", "Auto-reconnect", true)}
     </div>`;
 }
 
@@ -2811,8 +2808,6 @@ function renderNetworkPanel(net, index) {
           </div>
 
           <div class="bridge-v7-status">
-            <label><input id="${id(net.key, "launch")}" type="checkbox"> Auto-start</label>
-            <label><input id="${id(net.key, "restart")}" type="checkbox" checked> Restart</label>
             <span id="${id(net.key, "settingsAuthority")}" class="bridge-v7-runtime-status">Effective settings apply on next Start</span>
           </div>
           <div id="${id(net.key, "runtimeStatus")}" class="bridge-v7-runtime-status" role="status" aria-live="polite"></div>
