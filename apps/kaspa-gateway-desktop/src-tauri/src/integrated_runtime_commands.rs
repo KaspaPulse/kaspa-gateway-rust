@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -1254,6 +1254,7 @@ fn kgw_worker_argument_names_for_trace_v1(command: &Command) -> Vec<String> {
             Some("--stratum") => "<stratum-endpoint>",
             Some("--node-mode") => "<node-mode>",
             Some("--bridge-config") => "<bridge-config-path>",
+            Some("--effective-bridge-settings-path") => "<effective-bridge-settings-path>",
             Some("--bridge-instance-listen") => "<bridge-instance-listen>",
             Some("--internal-cpu-miner-address") => "<redacted-wallet-address>",
             Some("--internal-cpu-miner-threads") => "<thread-count>",
@@ -1426,6 +1427,21 @@ fn kgw_worker_effective_node_settings_path_v1(role: &str, network: &str) -> std:
     std::env::temp_dir()
         .join("KaspaGateway")
         .join("effective-node-settings")
+        .join(format!(
+            "{}-{}-{}-{nonce}-{sequence}.json",
+            role,
+            network,
+            std::process::id()
+        ))
+}
+
+fn kgw_worker_effective_bridge_settings_path_v1(role: &str, network: &str) -> std::path::PathBuf {
+    static EFFECTIVE_SETTINGS_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+    let nonce = kgw_worker_now_ms();
+    let sequence = EFFECTIVE_SETTINGS_SEQUENCE.fetch_add(1, Ordering::SeqCst);
+    std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("effective-bridge-settings")
         .join(format!(
             "{}-{}-{}-{nonce}-{sequence}.json",
             role,
@@ -1837,6 +1853,7 @@ fn kgw_worker_command(
     stop_request_path: &std::path::Path,
     stop_outcome_path: &std::path::Path,
     effective_node_settings_path: &std::path::Path,
+    effective_bridge_settings_path: &std::path::Path,
     parent_identity: &KgwProcessIdentityV1,
 ) -> Result<Command, String> {
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
@@ -1985,6 +2002,8 @@ fn kgw_worker_command(
         .arg(stop_outcome_path)
         .arg("--effective-node-settings-path")
         .arg(effective_node_settings_path)
+        .arg("--effective-bridge-settings-path")
+        .arg(effective_bridge_settings_path)
         .arg("--desktop-parent-pid")
         .arg(parent_identity.pid.to_string())
         .arg("--desktop-parent-start-time")
@@ -2022,6 +2041,10 @@ pub(crate) fn kgw_worker_node_command_args_for_test_v1(
         .join("KaspaGateway")
         .join("effective-node-settings")
         .join("kgw-effective-node-settings-args-test.json");
+    let effective_bridge_settings_path = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("effective-bridge-settings")
+        .join("kgw-effective-bridge-settings-args-test.json");
     let parent_identity = kgw_process_identity_for_worker_v1(std::process::id())?;
     let mut command = kgw_worker_command(
         &normalized_role,
@@ -2031,6 +2054,7 @@ pub(crate) fn kgw_worker_node_command_args_for_test_v1(
         &stop_request_path,
         &stop_outcome_path,
         &effective_node_settings_path,
+        &effective_bridge_settings_path,
         &parent_identity,
     )?;
 
@@ -2090,9 +2114,7 @@ fn kgw_worker_start(
     role: &str,
     settings: &kaspa_gateway_rk_node::NodeSettings,
     bridge_instance_id: Option<String>,
-    bridge_structured_instances: Option<String>,
     bridge_config_path: Option<String>,
-    bridge_instance_listens_override: Option<Vec<String>>,
 ) -> Result<String, String> {
     let network = settings.network.as_str().to_string();
     let role = role.trim().to_ascii_lowercase();
@@ -2289,6 +2311,8 @@ fn kgw_worker_start(
     let startup_control_path = kgw_worker_startup_control_path_v1(&role, &network);
     let (stop_request_path, stop_outcome_path) = kgw_worker_stop_control_paths_v1(&role, &network);
     let effective_node_settings_path = kgw_worker_effective_node_settings_path_v1(&role, &network);
+    let effective_bridge_settings_path =
+        kgw_worker_effective_bridge_settings_path_v1(&role, &network);
     let lease_path = kgw_runtime_owner_lease_path_v1(&role, &network);
     let parent_identity = kgw_process_identity_for_worker_v1(std::process::id())?;
     let starting_lease = KgwRuntimeOwnerLeaseV1 {
@@ -2319,6 +2343,14 @@ fn kgw_worker_start(
     if role == "node" || bridge_node_mode == "inprocess" {
         kgw_worker_atomic_write_json_v1(&effective_node_settings_path, &settings.effective_node)?;
     }
+    kgw_worker_control_directory_v1(&effective_bridge_settings_path)?;
+    let _ = std::fs::remove_file(&effective_bridge_settings_path);
+    if role == "bridge" {
+        let effective_bridge = settings.effective_bridge.as_ref().ok_or_else(|| {
+            "effective Bridge settings are required for the official Bridge runtime".to_string()
+        })?;
+        kgw_worker_atomic_write_json_v1(&effective_bridge_settings_path, effective_bridge)?;
+    }
     struct EffectiveNodeSettingsFileGuard(std::path::PathBuf);
     impl Drop for EffectiveNodeSettingsFileGuard {
         fn drop(&mut self) {
@@ -2327,6 +2359,8 @@ fn kgw_worker_start(
     }
     let effective_settings_guard =
         EffectiveNodeSettingsFileGuard(effective_node_settings_path.clone());
+    let effective_bridge_settings_guard =
+        EffectiveNodeSettingsFileGuard(effective_bridge_settings_path.clone());
     let mut command = kgw_worker_command(
         &role,
         &network,
@@ -2335,6 +2369,7 @@ fn kgw_worker_start(
         &stop_request_path,
         &stop_outcome_path,
         &effective_node_settings_path,
+        &effective_bridge_settings_path,
         &parent_identity,
     )?;
 
@@ -2359,24 +2394,6 @@ fn kgw_worker_start(
     } else if !test_command {
         command.arg("--stratum").arg(&settings.stratum_listen);
         command.arg("--node-mode").arg(bridge_node_mode);
-
-        // KGW_BRIDGE_DUAL_CLI_CONFIG_REAL_RUNNER_R122
-        // Config route wins over UI/CLI instances to avoid mixing two instance sources.
-        if let Some(config_path) = bridge_config_path
-            .as_deref()
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-        {
-            command.arg("--bridge-config").arg(config_path);
-        } else {
-            let bridge_instance_listens = bridge_instance_listens_override.unwrap_or_else(|| {
-                kgw_bridge_structured_instance_listens_r120(bridge_structured_instances.as_deref())
-            });
-
-            for listen in &bridge_instance_listens {
-                command.arg("--bridge-instance-listen").arg(listen);
-            }
-        }
 
         if bridge_node_mode == "inprocess" {
             if settings.enable_utxo_index {
@@ -2670,6 +2687,7 @@ fn kgw_worker_start(
 
     lease_guard.disarm();
     drop(effective_settings_guard);
+    drop(effective_bridge_settings_guard);
 
     workers.insert(
         key,
@@ -3584,88 +3602,6 @@ fn kgw_command_preview_normalize_listen(value: String) -> String {
     }
 }
 
-// KGW_BRIDGE_DUAL_CLI_CONFIG_REAL_RUNNER_R122
-// KGW_BRIDGE_PREVIEW_ALL_INSTANCES_R123
-fn kgw_bridge_preview_instance_clause_listen_r123(instance_clause: &str) -> Option<String> {
-    let clean = instance_clause.trim();
-
-    if clean.is_empty() {
-        return None;
-    }
-
-    for raw_part in clean.split(',') {
-        let part = raw_part.trim();
-        let Some((raw_key, raw_value)) = part.split_once('=').or_else(|| part.split_once(':'))
-        else {
-            continue;
-        };
-
-        let key = raw_key
-            .trim()
-            .trim_start_matches('-')
-            .replace('-', "_")
-            .to_ascii_lowercase();
-
-        if !matches!(
-            key.as_str(),
-            "port" | "stratum" | "stratum_port" | "stratum_listen" | "listen"
-        ) {
-            continue;
-        }
-
-        let value = raw_value.trim().trim_matches('"').trim_matches('\'');
-
-        if let Some(port) = kgw_bridge_normalize_instance_port_r110f(value) {
-            return Some(kgw_command_preview_normalize_listen(port));
-        }
-
-        let tail = value.rsplit(':').next().unwrap_or(value).trim();
-        if let Some(port) = kgw_bridge_normalize_instance_port_r110f(tail) {
-            return Some(kgw_command_preview_normalize_listen(port));
-        }
-    }
-
-    None
-}
-
-// KGW_BRIDGE_PREVIEW_ALL_INSTANCES_R123
-fn kgw_bridge_command_preview_instance_listens_r123(command_preview: Option<&str>) -> Vec<String> {
-    let Some(preview) = command_preview
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-    else {
-        return Vec::new();
-    };
-
-    let parts = preview.split_whitespace().collect::<Vec<_>>();
-    let mut listens = Vec::<String>::new();
-    let mut index = 0usize;
-
-    while index < parts.len() {
-        let part = parts[index];
-
-        let value = if let Some(value) = part.strip_prefix("--instance=") {
-            Some(value)
-        } else if part == "--instance" {
-            index += 1;
-            parts.get(index).copied()
-        } else {
-            None
-        };
-
-        if let Some(instance_clause) = value
-            && let Some(listen) = kgw_bridge_preview_instance_clause_listen_r123(instance_clause)
-            && !listens.iter().any(|existing| existing == &listen)
-        {
-            listens.push(listen);
-        }
-
-        index += 1;
-    }
-
-    listens
-}
-
 fn kgw_bridge_config_path_from_preview_r122(command_preview: Option<&str>) -> Option<String> {
     let preview = command_preview?.trim();
 
@@ -3678,6 +3614,69 @@ fn kgw_bridge_config_path_from_preview_r122(command_preview: Option<&str>) -> Op
         .or_else(|| kgw_command_preview_find_cli_value(preview, "--config-path"))
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty())
+}
+
+fn kgw_effective_bridge_settings_from_config_v1(
+    network: kaspa_gateway_rk_node::KgwNetwork,
+    config_path: &str,
+) -> Result<kaspa_gateway_rk_bridge::EffectiveBridgeSettings, String> {
+    let path = std::path::Path::new(config_path.trim());
+    if !path.is_absolute() {
+        return Err(format!(
+            "Bridge config path must be absolute: {}",
+            path.display()
+        ));
+    }
+    let metadata = std::fs::symlink_metadata(path).map_err(|error| {
+        format!(
+            "read Bridge config metadata failed {}: {error}",
+            path.display()
+        )
+    })?;
+    if !metadata.file_type().is_file() || metadata.file_type().is_symlink() {
+        return Err(format!(
+            "Bridge config path must identify a regular non-symlink file: {}",
+            path.display()
+        ));
+    }
+    const MAX_BRIDGE_CONFIG_BYTES: u64 = 1_048_576;
+    if metadata.len() > MAX_BRIDGE_CONFIG_BYTES {
+        return Err(format!(
+            "Bridge config exceeds {MAX_BRIDGE_CONFIG_BYTES} bytes: {}",
+            path.display()
+        ));
+    }
+    let mut file = std::fs::File::open(path)
+        .map_err(|error| format!("open Bridge config failed {}: {error}", path.display()))?;
+    let opened_metadata = file.metadata().map_err(|error| {
+        format!(
+            "read opened Bridge config metadata failed {}: {error}",
+            path.display()
+        )
+    })?;
+    if !opened_metadata.is_file() || opened_metadata.len() != metadata.len() {
+        return Err(format!(
+            "Bridge config changed while being opened: {}",
+            path.display()
+        ));
+    }
+    let mut bytes = Vec::with_capacity(opened_metadata.len() as usize);
+    Read::by_ref(&mut file)
+        .take(MAX_BRIDGE_CONFIG_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|error| format!("read Bridge config failed {}: {error}", path.display()))?;
+    if bytes.len() as u64 > MAX_BRIDGE_CONFIG_BYTES {
+        return Err(format!(
+            "Bridge config exceeds {MAX_BRIDGE_CONFIG_BYTES} bytes: {}",
+            path.display()
+        ));
+    }
+    let content = String::from_utf8(bytes)
+        .map_err(|error| format!("Bridge config is not UTF-8 {}: {error}", path.display()))?;
+    let network = kaspa_gateway_rk_bridge::BridgeRuntimeNetwork::parse(network.as_str())
+        .map_err(|error| error.to_string())?;
+    kaspa_gateway_rk_bridge::effective_bridge_settings_from_yaml_v1(network, &content)
+        .map_err(|error| error.to_string())
 }
 
 fn kgw_apply_command_preview_overrides(
@@ -3780,195 +3779,6 @@ pub(crate) fn kgw_bridge_inprocess_preview_settings_for_test_v1(
     Ok(settings)
 }
 
-// KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F
-fn kgw_bridge_instance_value_r110f(serialized: &str, wanted_key: &str) -> Option<String> {
-    let wanted = wanted_key.trim().to_ascii_lowercase();
-
-    for raw_part in serialized.split(',') {
-        let part = raw_part.trim();
-        let Some((raw_key, raw_value)) = part.split_once('=') else {
-            continue;
-        };
-
-        let key = raw_key
-            .trim()
-            .trim_start_matches('-')
-            .replace('-', "_")
-            .to_ascii_lowercase();
-        let value = raw_value.trim();
-
-        if value.is_empty() {
-            continue;
-        }
-
-        let matched = match wanted.as_str() {
-            "port" => matches!(
-                key.as_str(),
-                "port" | "stratum" | "stratum_port" | "stratum_listen" | "listen"
-            ),
-            _ => key == wanted,
-        };
-
-        if matched {
-            return Some(value.to_string());
-        }
-    }
-
-    None
-}
-
-// KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F
-fn kgw_bridge_normalize_instance_port_r110f(value: &str) -> Option<String> {
-    let clean = value.trim().trim_start_matches(':').trim();
-
-    if clean.is_empty() {
-        return None;
-    }
-
-    if !clean.chars().all(|ch| ch.is_ascii_digit()) {
-        return None;
-    }
-
-    let Ok(port) = clean.parse::<u16>() else {
-        return None;
-    };
-
-    if port == 0 {
-        return None;
-    }
-
-    Some(format!(":{port}"))
-}
-
-// KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F
-// KGW_BRIDGE_DUAL_CLI_REAL_RUNNER_R120
-fn kgw_bridge_normalize_instance_listen_r120(value: &str) -> Option<String> {
-    let clean = value.trim().trim_matches('"').trim_matches('\'');
-
-    if clean.is_empty() {
-        return None;
-    }
-
-    if let Some(port) = kgw_bridge_normalize_instance_port_r110f(clean) {
-        return Some(port);
-    }
-
-    let tail = clean.rsplit(':').next().unwrap_or(clean).trim();
-    kgw_bridge_normalize_instance_port_r110f(tail)
-}
-
-// KGW_BRIDGE_DUAL_CLI_REAL_RUNNER_R120
-fn kgw_bridge_instance_value_r120(serialized: &str, wanted_key: &str) -> Option<String> {
-    let wanted = wanted_key.trim().replace('-', "_").to_ascii_lowercase();
-
-    let normalized = serialized
-        .replace(['{', '}', '[', ']', '"'], "")
-        .replace("\\r", ",")
-        .replace("\\n", ",");
-
-    for raw_part in normalized.split([',', ';']) {
-        let part = raw_part.trim();
-        let Some((raw_key, raw_value)) = part.split_once('=').or_else(|| part.split_once(':'))
-        else {
-            continue;
-        };
-
-        let key = raw_key
-            .trim()
-            .trim_start_matches('-')
-            .replace('-', "_")
-            .to_ascii_lowercase();
-
-        let value = raw_value.trim().trim_matches('\'');
-
-        if value.is_empty() {
-            continue;
-        }
-
-        let matched = match wanted.as_str() {
-            "port" => matches!(
-                key.as_str(),
-                "port"
-                    | "stratum"
-                    | "stratum_port"
-                    | "stratumport"
-                    | "stratum_listen"
-                    | "stratumlisten"
-                    | "listen"
-            ),
-            _ => key == wanted,
-        };
-
-        if matched {
-            return Some(value.to_string());
-        }
-    }
-
-    None
-}
-
-// KGW_BRIDGE_DUAL_CLI_REAL_RUNNER_R120
-fn kgw_bridge_structured_instance_listens_r120(serialized: Option<&str>) -> Vec<String> {
-    let Some(raw) = serialized.map(str::trim).filter(|value| !value.is_empty()) else {
-        return Vec::new();
-    };
-
-    let mut listens = Vec::<String>::new();
-
-    for object_like in raw.split('{').skip(1) {
-        let chunk = object_like.split('}').next().unwrap_or(object_like);
-
-        if let Some(listen) = kgw_bridge_instance_value_r120(chunk, "port")
-            .as_deref()
-            .and_then(kgw_bridge_normalize_instance_listen_r120)
-            && !listens.iter().any(|existing| existing == &listen)
-        {
-            listens.push(listen);
-        }
-    }
-
-    if listens.is_empty()
-        && let Some(listen) = kgw_bridge_instance_value_r120(raw, "port")
-            .as_deref()
-            .and_then(kgw_bridge_normalize_instance_listen_r120)
-    {
-        listens.push(listen);
-    }
-
-    listens
-}
-
-fn kgw_apply_bridge_active_instance_runtime_overrides_r110f(
-    settings: &mut kaspa_gateway_rk_node::NodeSettings,
-    bridge_active_instance_id: Option<String>,
-    bridge_active_instance: Option<String>,
-    bridge_active_instance_port: Option<String>,
-    bridge_structured_instances: Option<String>,
-) {
-    let _ = bridge_active_instance_id;
-
-    let structured_ports =
-        kgw_bridge_structured_instance_listens_r120(bridge_structured_instances.as_deref());
-
-    let explicit_port = bridge_active_instance_port
-        .as_deref()
-        .and_then(kgw_bridge_normalize_instance_port_r110f);
-
-    let serialized_port = match bridge_active_instance.as_deref() {
-        Some(serialized) => kgw_bridge_instance_value_r110f(serialized, "port")
-            .as_deref()
-            .and_then(kgw_bridge_normalize_instance_port_r110f),
-        None => None,
-    };
-
-    if let Some(port) = explicit_port
-        .or(serialized_port)
-        .or_else(|| structured_ports.first().cloned())
-    {
-        settings.stratum_listen = kgw_command_preview_normalize_listen(port);
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 fn kgw_apply_node_settings_impl_v1(
     network: String,
@@ -3982,6 +3792,7 @@ fn kgw_apply_node_settings_impl_v1(
     bridge_active_instance_port: Option<String>,
     bridge_structured_instances: Option<String>,
     effective_node_settings: Option<kaspa_gateway_rk_node::EffectiveNodeSettings>,
+    effective_bridge_settings: Option<kaspa_gateway_rk_bridge::EffectiveBridgeSettings>,
     experimental_network_opt_in: Option<bool>,
 ) -> Result<String, String> {
     kgw_start_trace_emit_v1(
@@ -4100,15 +3911,6 @@ fn kgw_apply_node_settings_impl_v1(
     let bridge_config_path_for_worker =
         kgw_bridge_config_path_from_preview_r122(bridge_command_preview.as_deref());
 
-    let bridge_instance_listens_from_preview =
-        kgw_bridge_command_preview_instance_listens_r123(bridge_command_preview.as_deref());
-
-    let bridge_instance_listens_override = if bridge_instance_listens_from_preview.is_empty() {
-        None
-    } else {
-        Some(bridge_instance_listens_from_preview)
-    };
-
     let requires_effective_node_settings = node_command_preview
         .as_deref()
         .is_some_and(|preview| !preview.trim().is_empty())
@@ -4128,13 +3930,41 @@ fn kgw_apply_node_settings_impl_v1(
             .apply_effective_node_settings(effective_node_settings)
             .map_err(|error| error.to_string())?;
     }
+    let effective_bridge_settings = match (
+        bridge_config_path_for_worker.as_deref(),
+        effective_bridge_settings,
+    ) {
+        (Some(path), None) => {
+            let mut effective =
+                kgw_effective_bridge_settings_from_config_v1(settings.network, path)?;
+            if settings.bridge_kind == kaspa_gateway_rk_node::BridgeNodeKind::OfficialInProcessNode
+            {
+                effective.global.kaspa_rpc_endpoint = settings.rpc_endpoint.clone();
+            }
+            Some(effective)
+        }
+        (Some(_), Some(_)) => {
+            return Err(
+                "Bridge config-file mode and structured effectiveBridgeSettings are mutually exclusive"
+                    .to_string(),
+            );
+        }
+        (None, effective) => effective,
+    };
+    if let Some(effective_bridge_settings) = effective_bridge_settings {
+        settings
+            .apply_effective_bridge_settings(effective_bridge_settings)
+            .map_err(|error| error.to_string())?;
+    }
     settings.app_dir_name = kgw_network_runtime_appdir(settings.network);
 
-    let bridge_active_instance_id_for_worker = bridge_active_instance_id.clone();
-    let bridge_structured_instances_for_worker = bridge_structured_instances.clone();
-
-    kgw_apply_bridge_active_instance_runtime_overrides_r110f(
-        &mut settings,
+    if runtime_role.as_deref() == Some("bridge") && settings.effective_bridge.is_none() {
+        return Err(
+            "effectiveBridgeSettings is required; command preview and structured instance text are display-only"
+                .to_string(),
+        );
+    }
+    let _ = (
         bridge_active_instance_id,
         bridge_active_instance,
         bridge_active_instance_port,
@@ -4143,14 +3973,7 @@ fn kgw_apply_node_settings_impl_v1(
 
     let role = kgw_worker_role_from_request(runtime_role.as_deref(), &settings);
 
-    let result = kgw_worker_start(
-        &role,
-        &settings,
-        bridge_active_instance_id_for_worker,
-        bridge_structured_instances_for_worker,
-        bridge_config_path_for_worker,
-        bridge_instance_listens_override,
-    );
+    let result = kgw_worker_start(&role, &settings, None, bridge_config_path_for_worker);
 
     kgw_start_trace_emit_v1(
         "native",
@@ -4178,6 +4001,7 @@ pub fn kgw_kgw_apply_node_settings_v1(
     bridge_active_instance_port: Option<String>,
     bridge_structured_instances: Option<String>,
     effective_node_settings: Option<kaspa_gateway_rk_node::EffectiveNodeSettings>,
+    effective_bridge_settings: Option<kaspa_gateway_rk_bridge::EffectiveBridgeSettings>,
     experimental_network_opt_in: Option<bool>,
 ) -> Result<String, String> {
     kgw_apply_node_settings_impl_v1(
@@ -4192,6 +4016,7 @@ pub fn kgw_kgw_apply_node_settings_v1(
         bridge_active_instance_port,
         bridge_structured_instances,
         effective_node_settings,
+        effective_bridge_settings,
         experimental_network_opt_in,
     )
 }
@@ -4213,6 +4038,41 @@ pub(crate) fn kgw_apply_effective_node_settings_for_test_v1(
         .map_err(|error| error.to_string())?;
     settings.app_dir_name = kgw_network_runtime_appdir(settings.network);
     Ok(settings)
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Used by the path-included integration test target.
+pub(crate) fn kgw_apply_effective_bridge_settings_for_test_v1(
+    network: &str,
+    bridge_kind: &str,
+    effective_bridge_settings: kaspa_gateway_rk_bridge::EffectiveBridgeSettings,
+) -> Result<kaspa_gateway_rk_node::NodeSettings, String> {
+    let node_kind = if bridge_kind == "official-inprocess-node" {
+        "integrated-inproc"
+    } else {
+        "remote"
+    };
+    let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
+        network.to_string(),
+        node_kind.to_string(),
+        bridge_kind.to_string(),
+    )
+    .map_err(|error| error.to_string())?;
+    settings
+        .apply_effective_bridge_settings(effective_bridge_settings)
+        .map_err(|error| error.to_string())?;
+    Ok(settings)
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Used by the path-included integration test target.
+pub(crate) fn kgw_effective_bridge_settings_from_config_for_test_v1(
+    network: &str,
+    config_path: &str,
+) -> Result<kaspa_gateway_rk_bridge::EffectiveBridgeSettings, String> {
+    let network =
+        kaspa_gateway_rk_node::KgwNetwork::parse(network).map_err(|error| error.to_string())?;
+    kgw_effective_bridge_settings_from_config_v1(network, config_path)
 }
 
 #[tauri::command]
@@ -4341,7 +4201,7 @@ pub(crate) fn kgw_live_smoke_parent_start_v1(
 ) -> Result<String, String> {
     let settings =
         kgw_validate_live_smoke_parent_settings_v1(&network, &appdir, &rpc, p2p_listen.as_deref())?;
-    kgw_worker_start("node", &settings, None, None, None, None)
+    kgw_worker_start("node", &settings, None, None)
 }
 
 #[tauri::command]

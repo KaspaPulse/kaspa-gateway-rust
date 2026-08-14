@@ -1085,7 +1085,7 @@ function renderLogging(net) {
   return `
     <div class="bridge-v7-grid">
       ${cardSelect(net.key, "printStats", "--print-stats", ["true", "false"], "true")}
-      ${cardSelect(net.key, "logToFile", "--log-to-file", ["true", "false"], "true")}
+      ${cardSelect(net.key, "logToFile", "--log-to-file", ["true", "false"], "false")}
       ${cardSelect(net.key, "approxGeoLookup", "--approximate-geo-lookup", ["not set", "true", "false"], "not set", "span2")}
       ${cardInput(net.key, "startupDelay", "Startup delay sec", "0")}
       ${cardCheck(net.key, "startOnLaunch", "Start on launch", false)}
@@ -1234,6 +1234,8 @@ function bridgeBuildUpstreamInstanceArg(net, instance) {
   if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceProm")) parts = bridgeInstanceAppend(parts, "prom", bridgeInstancePortValue(bridgeInstanceReadSupplement(net, instanceId, "instanceProm", instance?.instanceProm)));
 
   if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceLogToFile")) parts = bridgeInstanceAppend(parts, "log", bridgeInstanceReadSupplement(net, instanceId, "instanceLogToFile", instance?.instanceLogToFile));
+  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceBlockWaitTime")) parts = bridgeInstanceAppend(parts, "wait", bridgeInstanceReadSupplement(net, instanceId, "instanceBlockWaitTime", instance?.instanceBlockWaitTime));
+  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceExtranonceSize")) parts = bridgeInstanceAppend(parts, "extranonce", bridgeInstanceReadSupplement(net, instanceId, "instanceExtranonceSize", instance?.instanceExtranonceSize));
   if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceVarDiff")) parts = bridgeInstanceAppend(parts, "var_diff", bridgeInstanceReadSupplement(net, instanceId, "instanceVarDiff", instance?.instanceVarDiff));
   if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceSharesPerMin")) parts = bridgeInstanceAppend(parts, "shares_per_min", bridgeInstanceReadSupplement(net, instanceId, "instanceSharesPerMin", instance?.instanceSharesPerMin));
   if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceVarDiffStats")) parts = bridgeInstanceAppend(parts, "var_diff_stats", bridgeInstanceReadSupplement(net, instanceId, "instanceVarDiffStats", instance?.instanceVarDiffStats));
@@ -1262,6 +1264,13 @@ function bridgeInstanceParseStructured(value) {
     if (key === "port") parsed.instancePort = rawValue.replace(/^:/, "");
     if (key === "diff") parsed.instanceDiff = rawValue;
     if (key === "prom") parsed.instanceProm = rawValue.replace(/^:/, "");
+    if (key === "log") parsed.instanceLogToFile = rawValue;
+    if (key === "wait" || key === "block_wait_time") parsed.instanceBlockWaitTime = rawValue;
+    if (key === "extranonce" || key === "extranonce_size") parsed.instanceExtranonceSize = rawValue;
+    if (key === "var_diff") parsed.instanceVarDiff = rawValue;
+    if (key === "shares_per_min") parsed.instanceSharesPerMin = rawValue;
+    if (key === "var_diff_stats") parsed.instanceVarDiffStats = rawValue;
+    if (key === "pow2_clamp") parsed.instancePow2Clamp = rawValue;
   }
 
   return parsed;
@@ -1276,9 +1285,93 @@ function bridgeInstancePlainValue(value) {
   return String(value || "").trim();
 }
 
+function kgwBridgeOptionalTextV1(value) {
+  const clean = String(value || "").trim();
+  return clean || null;
+}
+
+function kgwBridgePortListenV1(value, fallback = "") {
+  const clean = String(value || fallback || "").trim();
+  if (!clean) return null;
+  if (/^\d+$/.test(clean)) return ":" + clean;
+  return clean;
+}
+
+function kgwBridgeParseUnsignedV1(label, value, fallback, max = Number.MAX_SAFE_INTEGER) {
+  const clean = String(value ?? "").trim();
+  if (!clean) return fallback;
+  if (!/^\d+$/.test(clean)) throw new Error(label + " must be an unsigned integer");
+  const parsed = Number(clean);
+  if (!Number.isSafeInteger(parsed) || parsed > max) throw new Error(label + " is outside the supported range");
+  return parsed;
+}
+
+function kgwBridgeParseDurationMsV1(label, value, fallback) {
+  const clean = String(value ?? "").trim().toLowerCase();
+  if (!clean) return fallback;
+  const matched = clean.match(/^(\d+)(ms|s)?$/);
+  if (!matched) throw new Error(label + " must use milliseconds or an integer with ms/s suffix");
+  const amount = Number(matched[1]);
+  const milliseconds = matched[2] === "s" ? amount * 1000 : amount;
+  if (!Number.isSafeInteger(milliseconds) || milliseconds <= 0) throw new Error(label + " must be greater than zero");
+  return milliseconds;
+}
+
+function kgwBridgeBoolValueV1(value, fallback) {
+  const clean = String(value ?? "").trim().toLowerCase();
+  if (!clean || clean === "not set") return fallback;
+  if (clean === "true") return true;
+  if (clean === "false") return false;
+  throw new Error("Bridge boolean setting must be true or false");
+}
+
+function kgwBridgeEffectiveSettingsV1(net, structuredInstances) {
+  if (bridgeHasConfig(net)) return null;
+  const profile = bridgeProfile(net);
+  const records = Array.isArray(structuredInstances?.instances) ? structuredInstances.instances : [];
+  const instances = records.map((raw, index) => {
+    const instance = bridgeNormalizeInstanceRecord(raw, index + 1);
+    if (!kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, "instance")) return null;
+    const included = (fieldName) => kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, fieldName);
+    return {
+      instanceId: String(instance.id || (index + 1)),
+      stratumListen: kgwBridgePortListenV1(included("instancePort") ? instance.instancePort : "", index === 0 ? v(net, "stratumPort") || profile?.stratumPort : ""),
+      minShareDiff: kgwBridgeParseUnsignedV1("Instance minimum share difficulty", included("instanceDiff") ? instance.instanceDiff : "", kgwBridgeParseUnsignedV1("Minimum share difficulty", v(net, "minShareDiff"), 8192, 4294967295), 4294967295),
+      prometheusListen: kgwBridgePortListenV1(included("instanceProm") ? instance.instanceProm : "", index === 0 ? v(net, "promPort") || profile?.promPort : ""),
+      logToFile: included("instanceLogToFile") ? kgwBridgeBoolValueV1(instance.instanceLogToFile, null) : null,
+      blockWaitTimeMs: included("instanceBlockWaitTime") && instance.instanceBlockWaitTime ? kgwBridgeParseDurationMsV1("Instance block wait time", instance.instanceBlockWaitTime, null) : null,
+      extranonceSize: included("instanceExtranonceSize") && instance.instanceExtranonceSize ? kgwBridgeParseUnsignedV1("Instance extranonce size", instance.instanceExtranonceSize, null, 8) : null,
+      varDiff: included("instanceVarDiff") ? kgwBridgeBoolValueV1(instance.instanceVarDiff, null) : null,
+      sharesPerMin: included("instanceSharesPerMin") && instance.instanceSharesPerMin ? kgwBridgeParseUnsignedV1("Instance shares per minute", instance.instanceSharesPerMin, null, 4294967295) : null,
+      varDiffStats: included("instanceVarDiffStats") ? kgwBridgeBoolValueV1(instance.instanceVarDiffStats, null) : null,
+      pow2Clamp: included("instancePow2Clamp") ? kgwBridgeBoolValueV1(instance.instancePow2Clamp, null) : null
+    };
+  }).filter(Boolean);
+  if (!instances.length) throw new Error("At least one Bridge instance is required");
+  return {
+    version: 1,
+    global: {
+      kaspaRpcEndpoint: kgwBridgePortListenV1(v(net, "kaspadAddress"), `127.0.0.1:${profile?.kaspadPort || "16110"}`),
+      blockWaitTimeMs: kgwBridgeParseDurationMsV1("Block wait time", v(net, "blockWaitTime"), 1000),
+      printStats: kgwBridgeBoolValueV1(v(net, "printStats"), true),
+      logToFile: kgwBridgeBoolValueV1(v(net, "logToFile"), false),
+      healthCheckListen: kgwBridgePortListenV1(v(net, "healthCheckPort")),
+      webDashboardListen: kgwBridgePortListenV1(v(net, "webDashboardPort")),
+      varDiff: kgwBridgeBoolValueV1(v(net, "varDiff"), true),
+      sharesPerMin: kgwBridgeParseUnsignedV1("Shares per minute", v(net, "sharesPerMin"), 20, 4294967295),
+      varDiffStats: kgwBridgeBoolValueV1(v(net, "varDiffStats"), false),
+      extranonceSize: kgwBridgeParseUnsignedV1("Extranonce size", v(net, "extranonceSize"), 0, 8),
+      pow2Clamp: kgwBridgeBoolValueV1(v(net, "pow2Clamp"), false),
+      coinbaseTagSuffix: kgwBridgeOptionalTextV1(v(net, "coinbaseTagSuffix")),
+      approximateGeoLookup: net === "testnet12" && kgwBridgeBoolValueV1(v(net, "approxGeoLookup"), false)
+    },
+    instances
+  };
+}
+
 /* KGW_BRIDGE_INSTANCES_UI_PORT_VALIDATOR_R5
  * Existing Bridge owner enhancement:
- * - Instance optional booleans default to false.
+ * - Instance optional booleans default to "not set" so they inherit official globals.
  * - Instance tab has remove control next to the name.
  * - Strict port validation blocks duplicate ports before runtime.
  */
@@ -1289,11 +1382,13 @@ function bridgeDefaultInstanceRecord(idValue) {
     instancePort: null,
     instanceDiff: "2048",
     instanceProm: null,
-    instanceLogToFile: "false",
-    instanceVarDiff: "false",
+    instanceLogToFile: "not set",
+    instanceBlockWaitTime: "",
+    instanceExtranonceSize: "",
+    instanceVarDiff: "not set",
     instanceSharesPerMin: "",
-    instanceVarDiffStats: "false",
-    instancePow2Clamp: "false"
+    instanceVarDiffStats: "not set",
+    instancePow2Clamp: "not set"
   };
 }
 
@@ -1310,11 +1405,13 @@ function bridgeNormalizeInstanceRecord(raw, fallbackId) {
     instancePort: String(source.instancePort || parsed.instancePort || ""),
     instanceDiff: String(source.instanceDiff || parsed.instanceDiff || defaults.instanceDiff || "2048"),
     instanceProm: String(source.instanceProm || parsed.instanceProm || ""),
-    instanceLogToFile: String(source.instanceLogToFile || "false"),
-    instanceVarDiff: String(source.instanceVarDiff || "false"),
-    instanceSharesPerMin: String(source.instanceSharesPerMin || ""),
-    instanceVarDiffStats: String(source.instanceVarDiffStats || "false"),
-    instancePow2Clamp: String(source.instancePow2Clamp || "false")
+    instanceLogToFile: String(source.instanceLogToFile || parsed.instanceLogToFile || "not set"),
+    instanceBlockWaitTime: String(source.instanceBlockWaitTime || parsed.instanceBlockWaitTime || ""),
+    instanceExtranonceSize: String(source.instanceExtranonceSize || parsed.instanceExtranonceSize || ""),
+    instanceVarDiff: String(source.instanceVarDiff || parsed.instanceVarDiff || "not set"),
+    instanceSharesPerMin: String(source.instanceSharesPerMin || parsed.instanceSharesPerMin || ""),
+    instanceVarDiffStats: String(source.instanceVarDiffStats || parsed.instanceVarDiffStats || "not set"),
+    instancePow2Clamp: String(source.instancePow2Clamp || parsed.instancePow2Clamp || "not set")
   };
 }
 
@@ -2313,9 +2410,26 @@ function renderInstances(net) {
               <span class="kgw-command-option-title-text-r8e">log</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${id(net, `instanceLogToFile-${instance.id}`)}" data-bridge-instance-field="instanceLogToFile">
-              <option value="false" ${instance.instanceLogToFile !== "true" ? "selected" : ""}>false</option>
+              <option value="not set" ${instance.instanceLogToFile === "not set" ? "selected" : ""}>not set</option>
+              <option value="false" ${instance.instanceLogToFile === "false" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instanceLogToFile === "true" ? "selected" : ""}>true</option>
             </select>
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span class="kgw-command-option-title-row-r8e">
+              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceBlockWaitTime")}
+              <span class="kgw-command-option-title-text-r8e">wait</span>
+            </span>
+            <input id="${id(net, `instanceBlockWaitTime-${instance.id}`)}" data-bridge-instance-field="instanceBlockWaitTime" value="${instance.instanceBlockWaitTime || ""}" placeholder="optional ms" />
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span class="kgw-command-option-title-row-r8e">
+              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceExtranonceSize")}
+              <span class="kgw-command-option-title-text-r8e">extranonce</span>
+            </span>
+            <input id="${id(net, `instanceExtranonceSize-${instance.id}`)}" data-bridge-instance-field="instanceExtranonceSize" value="${instance.instanceExtranonceSize || ""}" placeholder="optional" />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -2324,7 +2438,8 @@ function renderInstances(net) {
               <span class="kgw-command-option-title-text-r8e">var_diff</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${id(net, `instanceVarDiff-${instance.id}`)}" data-bridge-instance-field="instanceVarDiff">
-              <option value="false" ${instance.instanceVarDiff !== "true" ? "selected" : ""}>false</option>
+              <option value="not set" ${instance.instanceVarDiff === "not set" ? "selected" : ""}>not set</option>
+              <option value="false" ${instance.instanceVarDiff === "false" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instanceVarDiff === "true" ? "selected" : ""}>true</option>
             </select>
           </label>
@@ -2335,7 +2450,8 @@ function renderInstances(net) {
               <span class="kgw-command-option-title-text-r8e">var_stats</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${id(net, `instanceVarDiffStats-${instance.id}`)}" data-bridge-instance-field="instanceVarDiffStats">
-              <option value="false" ${instance.instanceVarDiffStats !== "true" ? "selected" : ""}>false</option>
+              <option value="not set" ${instance.instanceVarDiffStats === "not set" ? "selected" : ""}>not set</option>
+              <option value="false" ${instance.instanceVarDiffStats === "false" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instanceVarDiffStats === "true" ? "selected" : ""}>true</option>
             </select>
           </label>
@@ -2354,7 +2470,8 @@ function renderInstances(net) {
               <span class="kgw-command-option-title-text-r8e">pow2</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${id(net, `instancePow2Clamp-${instance.id}`)}" data-bridge-instance-field="instancePow2Clamp">
-              <option value="false" ${instance.instancePow2Clamp !== "true" ? "selected" : ""}>false</option>
+              <option value="not set" ${instance.instancePow2Clamp === "not set" ? "selected" : ""}>not set</option>
+              <option value="false" ${instance.instancePow2Clamp === "false" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instancePow2Clamp === "true" ? "selected" : ""}>true</option>
             </select>
           </label>
@@ -2734,11 +2851,13 @@ function bridgeReadInstanceState(net, instanceId) {
     instancePort: bridgeReadInstanceField(net, instanceId, "instancePort") || next.instancePort || "",
     instanceDiff: bridgeReadInstanceField(net, instanceId, "instanceDiff") || next.instanceDiff || "2048",
     instanceProm: bridgeReadInstanceField(net, instanceId, "instanceProm") || next.instanceProm || "",
-    instanceLogToFile: bridgeReadInstanceField(net, instanceId, "instanceLogToFile") || next.instanceLogToFile || "false",
-    instanceVarDiff: bridgeReadInstanceField(net, instanceId, "instanceVarDiff") || next.instanceVarDiff || "false",
+    instanceLogToFile: bridgeReadInstanceField(net, instanceId, "instanceLogToFile") || next.instanceLogToFile || "not set",
+    instanceBlockWaitTime: bridgeReadInstanceField(net, instanceId, "instanceBlockWaitTime") || next.instanceBlockWaitTime || "",
+    instanceExtranonceSize: bridgeReadInstanceField(net, instanceId, "instanceExtranonceSize") || next.instanceExtranonceSize || "",
+    instanceVarDiff: bridgeReadInstanceField(net, instanceId, "instanceVarDiff") || next.instanceVarDiff || "not set",
     instanceSharesPerMin: bridgeReadInstanceField(net, instanceId, "instanceSharesPerMin") || next.instanceSharesPerMin || "",
-    instanceVarDiffStats: bridgeReadInstanceField(net, instanceId, "instanceVarDiffStats") || next.instanceVarDiffStats || "false",
-    instancePow2Clamp: bridgeReadInstanceField(net, instanceId, "instancePow2Clamp") || next.instancePow2Clamp || "false"
+    instanceVarDiffStats: bridgeReadInstanceField(net, instanceId, "instanceVarDiffStats") || next.instanceVarDiffStats || "not set",
+    instancePow2Clamp: bridgeReadInstanceField(net, instanceId, "instancePow2Clamp") || next.instancePow2Clamp || "not set"
   });
 }
 
@@ -4849,6 +4968,7 @@ function buildApplyPayload(net, command) {
       bridgeActiveInstancePort,
       bridgeStructuredInstances: JSON.stringify(structuredInstances || {}),
       effectiveNodeSettings: kgwBridgeEffectiveInprocessNodeSettings(net),
+      effectiveBridgeSettings: kgwBridgeEffectiveSettingsV1(net, structuredInstances),
       experimentalNetworkOptIn: net === "testnet12" && kgwBridgeNetworkEnabled(net),
     };
   }

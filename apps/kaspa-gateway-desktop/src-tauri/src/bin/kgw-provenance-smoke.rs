@@ -110,6 +110,7 @@ fn main() -> Result<(), String> {
                     ..Default::default()
                 }
             }),
+            None,
             Some(false),
         )?)
     } else {
@@ -193,6 +194,26 @@ fn main() -> Result<(), String> {
                 ..Default::default()
             }
         }),
+        (runtime_role == "bridge").then(|| kaspa_gateway_rk_bridge::EffectiveBridgeSettings {
+            global: kaspa_gateway_rk_bridge::EffectiveBridgeGlobalSettings {
+                kaspa_rpc_endpoint: rpc.clone(),
+                log_to_file: false,
+                ..Default::default()
+            },
+            instances: stratum_listens
+                .iter()
+                .enumerate()
+                .map(
+                    |(index, listen)| kaspa_gateway_rk_bridge::EffectiveBridgeInstanceSettings {
+                        instance_id: format!("provenance-smoke-{}", index + 1),
+                        stratum_listen: listen.clone(),
+                        prometheus_listen: None,
+                        ..Default::default()
+                    },
+                )
+                .collect(),
+            ..Default::default()
+        }),
         Some(false),
     );
 
@@ -226,6 +247,26 @@ fn main() -> Result<(), String> {
             } else {
                 None
             },
+            (runtime_role == "bridge").then(|| kaspa_gateway_rk_bridge::EffectiveBridgeSettings {
+                global: kaspa_gateway_rk_bridge::EffectiveBridgeGlobalSettings {
+                    kaspa_rpc_endpoint: rpc.clone(),
+                    log_to_file: false,
+                    ..Default::default()
+                },
+                instances: stratum_listens
+                    .iter()
+                    .enumerate()
+                    .map(|(index, listen)| {
+                        kaspa_gateway_rk_bridge::EffectiveBridgeInstanceSettings {
+                            instance_id: format!("provenance-smoke-{}", index + 1),
+                            stratum_listen: listen.clone(),
+                            prometheus_listen: None,
+                            ..Default::default()
+                        }
+                    })
+                    .collect(),
+                ..Default::default()
+            }),
             Some(false),
         )
         .err()

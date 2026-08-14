@@ -419,6 +419,8 @@ pub struct NodeSettings {
     pub archival: bool,
     pub effective_node: EffectiveNodeSettings,
 
+    pub effective_bridge: Option<kaspa_gateway_rk_bridge::EffectiveBridgeSettings>,
+
     pub bridge_internal_cpu_miner: bool,
     pub bridge_internal_cpu_miner_address: Option<String>,
     pub bridge_internal_cpu_miner_threads: Option<u16>,
@@ -471,6 +473,7 @@ impl NodeSettings {
             enable_utxo_index: true,
             archival: false,
             effective_node,
+            effective_bridge: None,
 
             bridge_internal_cpu_miner: false,
             bridge_internal_cpu_miner_address: None,
@@ -632,6 +635,27 @@ impl NodeSettings {
         self.enable_utxo_index = effective.utxo_index;
         self.archival = effective.archival;
         self.effective_node = effective;
+        Ok(())
+    }
+
+    pub fn apply_effective_bridge_settings(
+        &mut self,
+        effective: kaspa_gateway_rk_bridge::EffectiveBridgeSettings,
+    ) -> Result<(), KgwServiceError> {
+        let network = kaspa_gateway_rk_bridge::BridgeRuntimeNetwork::parse(self.network.as_str())
+            .map_err(|error| {
+            KgwServiceError::InvalidEffectiveBridgeSettings(error.to_string())
+        })?;
+        effective
+            .validate_for_network(network)
+            .map_err(|error| KgwServiceError::InvalidEffectiveBridgeSettings(error.to_string()))?;
+        if self.bridge_kind != BridgeNodeKind::OfficialInProcessNode {
+            self.rpc_endpoint = effective.global.kaspa_rpc_endpoint.clone();
+        }
+        if let Some(first) = effective.instances.first() {
+            self.stratum_listen = first.stratum_listen.clone();
+        }
+        self.effective_bridge = Some(effective);
         Ok(())
     }
 
@@ -872,6 +896,9 @@ pub enum KgwServiceError {
 
     #[error("invalid effective node settings: {0}")]
     InvalidEffectiveNodeSettings(String),
+
+    #[error("invalid effective Bridge settings: {0}")]
+    InvalidEffectiveBridgeSettings(String),
 }
 
 #[derive(Debug)]
