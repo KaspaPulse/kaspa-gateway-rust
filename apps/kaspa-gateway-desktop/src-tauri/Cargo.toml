@@ -18,6 +18,11 @@ crate-type = ["rlib"]
 name = "kaspa-gateway-desktop"
 path = "src/main.rs"
 
+[[bin]]
+name = "kgw-provenance-smoke"
+path = "src/bin/kgw-provenance-smoke.rs"
+required-features = ["runtime-provenance-smoke"]
+
 [build-dependencies]
 tauri-build.workspace = true
 
@@ -49,6 +54,7 @@ zip = "8.6.0"
 
 [features]
 default = ["official-kaspa-runtime-mainline"]
+runtime-provenance-smoke = []
 e2e-test = [
     "dep:tauri-plugin-wdio",
     "dep:tauri-plugin-wdio-webdriver",
