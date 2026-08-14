@@ -301,7 +301,7 @@ jobs:
           npm --version
           protoc --version
           xcodebuild -version
-          lipo -version
+          command -v lipo
 
       - name: Install desktop npm dependencies
         working-directory: apps/kaspa-gateway-desktop
