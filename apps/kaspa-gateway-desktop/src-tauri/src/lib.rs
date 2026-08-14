@@ -2014,6 +2014,23 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
         .unwrap_or_else(|| kgw_self_worker_default_stratum(&network).to_string());
     let utxoindex = args.iter().any(|arg| arg == "--utxoindex");
     let archival = args.iter().any(|arg| arg == "--archival");
+    let effective_node_settings_path =
+        kgw_self_worker_arg_value(&args, "--effective-node-settings-path");
+    let effective_node_settings = match effective_node_settings_path.as_deref() {
+        Some(path) => std::fs::read(path)
+            .map_err(|error| format!("read effective Node settings failed {path}: {error}"))
+            .and_then(|payload| {
+                serde_json::from_slice::<kaspa_gateway_rk_node::EffectiveNodeSettings>(&payload)
+                    .map_err(|error| {
+                        format!("parse effective Node settings failed {path}: {error}")
+                    })
+            })
+            .and_then(|settings| {
+                settings.validate().map_err(|error| error.to_string())?;
+                Ok(settings)
+            }),
+        None => Err("effective Node settings path is missing".to_string()),
+    };
     let startup_control_path = kgw_startup_control_path_from_args_v1(&args);
     let stop_request_path =
         kgw_stop_control_path_from_args_v1(&args, "--stop-request-path", "-request.json");
@@ -2066,18 +2083,21 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
     );
 
     let startup_result = match role_key.as_str() {
-        "node" => kgw_run_node_self_worker(
-            &network,
-            &appdir,
-            &rpc,
-            p2p_listen.as_deref(),
-            utxoindex,
-            archival,
-            startup_control_path.as_deref(),
-            stop_request_path.as_deref(),
-            stop_outcome_path.as_deref(),
-            &parent_identity,
-        ),
+        "node" => effective_node_settings.and_then(|effective_node_settings| {
+            kgw_run_node_self_worker(
+                &network,
+                &appdir,
+                &rpc,
+                p2p_listen.as_deref(),
+                utxoindex,
+                archival,
+                startup_control_path.as_deref(),
+                stop_request_path.as_deref(),
+                stop_outcome_path.as_deref(),
+                &parent_identity,
+                effective_node_settings,
+            )
+        }),
         "bridge" => {
             // KGW_BRIDGE_INPROCESS_SETLOGGERERROR_V14
             // External bridge keeps the bridge tracing subscriber so raw bridge logs remain visible.
@@ -2087,18 +2107,26 @@ pub fn try_run_kgw_self_worker_from_args() -> bool {
                 kgw_init_bridge_self_worker_raw_tracing_r23();
             }
 
-            kgw_run_bridge_self_worker(
-                &network,
-                &appdir,
-                &rpc,
-                p2p_listen.as_deref(),
-                &stratum,
-                &args,
-                startup_control_path.as_deref(),
-                stop_request_path.as_deref(),
-                stop_outcome_path.as_deref(),
-                &parent_identity,
-            )
+            let effective_node_settings = if bridge_owns_inprocess_node {
+                effective_node_settings.map(Some)
+            } else {
+                Ok(None)
+            };
+            effective_node_settings.and_then(|effective_node_settings| {
+                kgw_run_bridge_self_worker(
+                    &network,
+                    &appdir,
+                    &rpc,
+                    p2p_listen.as_deref(),
+                    &stratum,
+                    &args,
+                    startup_control_path.as_deref(),
+                    stop_request_path.as_deref(),
+                    stop_outcome_path.as_deref(),
+                    &parent_identity,
+                    effective_node_settings,
+                )
+            })
         }
         other => Err(format!("unsupported self-worker role: {other}")),
     };
@@ -2301,6 +2329,7 @@ fn kgw_run_node_self_worker(
     stop_request_path: Option<&std::path::Path>,
     stop_outcome_path: Option<&std::path::Path>,
     parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
+    effective_node_settings: kaspa_gateway_rk_node::EffectiveNodeSettings,
 ) -> Result<KgwPostReadyStopOutcomeV1, String> {
     let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
         network.to_string(),
@@ -2309,11 +2338,19 @@ fn kgw_run_node_self_worker(
     )
     .map_err(|error| error.to_string())?;
 
+    settings
+        .apply_effective_node_settings(effective_node_settings)
+        .map_err(|error| error.to_string())?;
     settings.app_dir_name = appdir.to_string();
-    settings.rpc_endpoint = rpc.to_string();
-    settings.p2p_listen = p2p_listen.map(str::to_string);
-    settings.enable_utxo_index = utxoindex;
-    settings.archival = archival;
+    if settings.rpc_endpoint != rpc
+        || settings.p2p_listen.as_deref() != p2p_listen
+        || settings.enable_utxo_index != utxoindex
+        || settings.archival != archival
+    {
+        return Err(
+            "effective Node settings do not match worker-owned compatibility arguments".to_string(),
+        );
+    }
 
     let runtime = kaspa_gateway_rk_node::KgwRealOwnerRuntime::new();
     let status = runtime
@@ -2378,6 +2415,7 @@ fn kgw_run_bridge_self_worker(
     stop_request_path: Option<&std::path::Path>,
     stop_outcome_path: Option<&std::path::Path>,
     parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
+    effective_node_settings: Option<kaspa_gateway_rk_node::EffectiveNodeSettings>,
 ) -> Result<KgwPostReadyStopOutcomeV1, String> {
     let bridge_node_mode = kgw_self_worker_arg_value(args, "--node-mode")
         .unwrap_or_else(|| "external".to_string())
@@ -2414,11 +2452,22 @@ fn kgw_run_bridge_self_worker(
         )
         .map_err(|error| error.to_string())?;
 
+        settings
+            .apply_effective_node_settings(effective_node_settings.ok_or_else(|| {
+                "effective Node settings are missing for Bridge in-process mode".to_string()
+            })?)
+            .map_err(|error| error.to_string())?;
         settings.app_dir_name = appdir.to_string();
-        settings.rpc_endpoint = rpc.to_string();
-        settings.p2p_listen = p2p_listen.map(ToString::to_string);
-        settings.enable_utxo_index = args.iter().any(|arg| arg == "--utxoindex");
-        settings.archival = args.iter().any(|arg| arg == "--archival");
+        if settings.rpc_endpoint != rpc
+            || settings.p2p_listen.as_deref() != p2p_listen
+            || settings.enable_utxo_index != args.iter().any(|arg| arg == "--utxoindex")
+            || settings.archival != args.iter().any(|arg| arg == "--archival")
+        {
+            return Err(
+                "Bridge effective Node settings do not match worker-owned compatibility arguments"
+                    .to_string(),
+            );
+        }
 
         let runtime = kaspa_gateway_rk_node::KgwRealOwnerRuntime::new();
         let status = runtime

@@ -560,6 +560,11 @@ button[data-kgw-settings-owner-v19-disabled="false"] {
   filter: none;
   cursor: pointer;
 }
+
+#kaspa-node [data-restart-required="true"] {
+  color: #ffbf66;
+  font-weight: 600;
+}
 /* END_KGW_SETTINGS_OWNER_V19_VISUAL */
 
 

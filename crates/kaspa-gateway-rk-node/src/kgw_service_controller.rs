@@ -127,7 +127,286 @@ impl BridgeNodeKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+pub struct EffectiveNodeSettings {
+    pub log_level: String,
+    pub async_threads: usize,
+    pub ram_scale: f64,
+    pub yes: bool,
+    pub no_log_files: bool,
+    pub sanity: bool,
+    pub enable_unsynced_mining: bool,
+    pub p2p_listen: Option<String>,
+    pub external_ip: Option<String>,
+    pub disable_upnp: bool,
+    pub disable_dns_seeding: bool,
+    pub user_agent_comments: Vec<String>,
+    pub rpc_listen: String,
+    pub rpc_listen_borsh: Option<String>,
+    pub rpc_listen_json: Option<String>,
+    pub rpc_max_clients: usize,
+    pub unsafe_rpc: bool,
+    pub disable_grpc: bool,
+    pub connect_peers: Vec<String>,
+    pub add_peers: Vec<String>,
+    pub outbound_target: usize,
+    pub inbound_limit: usize,
+    pub utxo_index: bool,
+    pub archival: bool,
+    pub reset_db: bool,
+    pub perf_metrics: bool,
+    pub max_tracked_addresses: usize,
+    pub retention_period_days: Option<f64>,
+    pub perf_metrics_interval_sec: u64,
+    pub rocksdb_preset: Option<String>,
+    pub rocksdb_cache_size: Option<usize>,
+    pub rocksdb_wal_dir: Option<String>,
+    pub override_params_file: Option<String>,
+    pub log_dir: Option<String>,
+}
+
+const KGW_EMBEDDED_RPC_MAX_CLIENTS: usize = 16;
+const KGW_EMBEDDED_INBOUND_PEER_LIMIT: usize = 32;
+const KGW_EMBEDDED_OUTBOUND_PEER_LIMIT: usize = 8;
+
+impl Default for EffectiveNodeSettings {
+    fn default() -> Self {
+        Self {
+            log_level: "info".to_string(),
+            async_threads: std::thread::available_parallelism()
+                .map(usize::from)
+                .unwrap_or(1),
+            ram_scale: 1.0,
+            yes: true,
+            no_log_files: true,
+            sanity: false,
+            enable_unsynced_mining: false,
+            p2p_listen: None,
+            external_ip: None,
+            // Embedded ownership has always forced UPnP off. Keep that safe
+            // default explicit in the effective schema.
+            disable_upnp: true,
+            disable_dns_seeding: false,
+            user_agent_comments: Vec::new(),
+            rpc_listen: "127.0.0.1:16110".to_string(),
+            rpc_listen_borsh: None,
+            rpc_listen_json: None,
+            rpc_max_clients: KGW_EMBEDDED_RPC_MAX_CLIENTS,
+            unsafe_rpc: false,
+            disable_grpc: false,
+            connect_peers: Vec::new(),
+            add_peers: Vec::new(),
+            outbound_target: 8,
+            inbound_limit: KGW_EMBEDDED_INBOUND_PEER_LIMIT,
+            utxo_index: true,
+            archival: false,
+            reset_db: false,
+            perf_metrics: true,
+            max_tracked_addresses: 0,
+            retention_period_days: None,
+            perf_metrics_interval_sec: 10,
+            rocksdb_preset: None,
+            rocksdb_cache_size: None,
+            rocksdb_wal_dir: None,
+            override_params_file: None,
+            log_dir: None,
+        }
+    }
+}
+
+impl EffectiveNodeSettings {
+    fn for_network(network: KgwNetwork) -> Self {
+        Self {
+            rpc_listen: network.rpc_endpoint().to_string(),
+            ..Self::default()
+        }
+    }
+
+    pub fn validate(&self) -> Result<(), KgwServiceError> {
+        let allowed_log_level = self.log_level.split(',').all(|component| {
+            let level = component
+                .rsplit_once('=')
+                .map_or(component, |(_, level)| level)
+                .trim()
+                .to_ascii_lowercase();
+            matches!(
+                level.as_str(),
+                "off" | "error" | "warn" | "info" | "debug" | "trace"
+            )
+        });
+        if !allowed_log_level {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "logLevel must use an official Rusty Kaspa log level".to_string(),
+            ));
+        }
+        if self.async_threads == 0 {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "asyncThreads must be greater than zero".to_string(),
+            ));
+        }
+        if !self.ram_scale.is_finite() || !(0.1..=10.0).contains(&self.ram_scale) {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "ramScale must be a finite number between 0.1 and 10".to_string(),
+            ));
+        }
+        if self.disable_grpc {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "noGrpc is unsupported because exact-network startup readiness requires the official gRPC endpoint"
+                    .to_string(),
+            ));
+        }
+        if !self.connect_peers.is_empty() && !self.add_peers.is_empty() {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "connectPeers and addPeers cannot both be configured".to_string(),
+            ));
+        }
+        if self.log_dir.is_some() && self.no_log_files {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "logDir and noLogFiles cannot both be configured".to_string(),
+            ));
+        }
+        if self.rocksdb_cache_size.is_some() && self.rocksdb_preset.as_deref() != Some("hdd") {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "rocksDbCacheSize requires the hdd RocksDB preset".to_string(),
+            ));
+        }
+        if self.rocksdb_preset.as_deref().is_some_and(|preset| {
+            !matches!(
+                preset.trim().to_ascii_lowercase().as_str(),
+                "default" | "hdd"
+            )
+        }) {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "rocksDbPreset must be default or hdd".to_string(),
+            ));
+        }
+        if self.override_params_file.is_some() {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "overrideParamsFile is unsupported because the desktop owns network identity"
+                    .to_string(),
+            ));
+        }
+        for (label, endpoint) in [
+            ("rpcListen", Some(self.rpc_listen.as_str())),
+            ("rpcListenBorsh", self.rpc_listen_borsh.as_deref()),
+            ("rpcListenJson", self.rpc_listen_json.as_deref()),
+        ] {
+            let Some(endpoint) = endpoint else {
+                continue;
+            };
+            let (host, port) = endpoint.rsplit_once(':').ok_or_else(|| {
+                KgwServiceError::InvalidEffectiveNodeSettings(format!(
+                    "{label} must contain a host and port"
+                ))
+            })?;
+            let host = host.trim_matches(['[', ']']);
+            if host.is_empty() || port.parse::<u16>().ok().filter(|port| *port > 0).is_none() {
+                return Err(KgwServiceError::InvalidEffectiveNodeSettings(format!(
+                    "{label} must contain a host and port between 1 and 65535"
+                )));
+            }
+            let loopback = host.eq_ignore_ascii_case("localhost")
+                || host
+                    .parse::<std::net::IpAddr>()
+                    .is_ok_and(|address| address.is_loopback());
+            if !loopback && !self.unsafe_rpc {
+                return Err(KgwServiceError::InvalidEffectiveNodeSettings(format!(
+                    "{label} must remain loopback unless unsafeRpc is explicitly enabled"
+                )));
+            }
+        }
+        if self.rpc_max_clients == 0 || self.rpc_max_clients > KGW_EMBEDDED_RPC_MAX_CLIENTS {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "rpcMaxClients must be between 1 and 16 for the embedded desktop owner".to_string(),
+            ));
+        }
+        if self.inbound_limit > KGW_EMBEDDED_INBOUND_PEER_LIMIT {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "maxInPeers must be between 0 and 32 for the embedded desktop owner".to_string(),
+            ));
+        }
+        if self.outbound_target > KGW_EMBEDDED_OUTBOUND_PEER_LIMIT {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "outPeers must be between 0 and 8 for the embedded desktop owner".to_string(),
+            ));
+        }
+        if self.perf_metrics_interval_sec == 0 {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "perfMetricsIntervalSec must be greater than zero".to_string(),
+            ));
+        }
+        if self.rpc_listen_borsh.as_deref() == Some(self.rpc_listen.as_str())
+            || self.rpc_listen_json.as_deref() == Some(self.rpc_listen.as_str())
+            || (self.rpc_listen_borsh.is_some() && self.rpc_listen_borsh == self.rpc_listen_json)
+        {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "gRPC, Borsh wRPC, and JSON wRPC listeners must use distinct endpoints".to_string(),
+            ));
+        }
+        if self
+            .retention_period_days
+            .is_some_and(|value| !value.is_finite() || value <= 0.0)
+        {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "retentionDays must be a finite positive number".to_string(),
+            ));
+        }
+        if self.connect_peers.len() > 64
+            || self.add_peers.len() > 64
+            || self.user_agent_comments.len() > 64
+        {
+            return Err(KgwServiceError::InvalidEffectiveNodeSettings(
+                "peer and user-agent lists are limited to 64 entries".to_string(),
+            ));
+        }
+        for (label, value) in [
+            ("logLevel", self.log_level.as_str()),
+            ("rpcListen", self.rpc_listen.as_str()),
+        ] {
+            if value.trim().is_empty() || value.len() > 4096 || value.contains(['\0', '\n', '\r']) {
+                return Err(KgwServiceError::InvalidEffectiveNodeSettings(format!(
+                    "{label} is empty, too long, or contains unsafe control characters"
+                )));
+            }
+        }
+        for (label, value) in [
+            ("rpcListenBorsh", self.rpc_listen_borsh.as_deref()),
+            ("rpcListenJson", self.rpc_listen_json.as_deref()),
+            ("externalIp", self.external_ip.as_deref()),
+            ("rocksDbPreset", self.rocksdb_preset.as_deref()),
+            ("rocksDbWalDir", self.rocksdb_wal_dir.as_deref()),
+            ("overrideParamsFile", self.override_params_file.as_deref()),
+            ("logDir", self.log_dir.as_deref()),
+        ] {
+            if let Some(value) = value
+                && (value.trim().is_empty()
+                    || value.len() > 4096
+                    || value.contains(['\0', '\n', '\r']))
+            {
+                return Err(KgwServiceError::InvalidEffectiveNodeSettings(format!(
+                    "{label} is empty, too long, or contains unsafe control characters"
+                )));
+            }
+        }
+        for (label, values) in [
+            ("connectPeers", self.connect_peers.as_slice()),
+            ("addPeers", self.add_peers.as_slice()),
+            ("userAgentComments", self.user_agent_comments.as_slice()),
+        ] {
+            if values.iter().any(|value| {
+                value.trim().is_empty() || value.len() > 4096 || value.contains(['\0', '\n', '\r'])
+            }) {
+                return Err(KgwServiceError::InvalidEffectiveNodeSettings(format!(
+                    "{label} contains an empty, overlong, or unsafe entry"
+                )));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NodeSettings {
     pub network: KgwNetwork,
     pub node_kind: KaspadNodeKind,
@@ -138,6 +417,7 @@ pub struct NodeSettings {
     pub app_dir_name: String,
     pub enable_utxo_index: bool,
     pub archival: bool,
+    pub effective_node: EffectiveNodeSettings,
 
     pub bridge_internal_cpu_miner: bool,
     pub bridge_internal_cpu_miner_address: Option<String>,
@@ -179,6 +459,7 @@ impl NodeSettings {
             return Err(KgwServiceError::InProcessBridgeRequiresInProcessNode);
         }
 
+        let effective_node = EffectiveNodeSettings::for_network(network);
         Ok(Self {
             network,
             node_kind,
@@ -189,6 +470,7 @@ impl NodeSettings {
             app_dir_name: kgw_service_runtime_appdir_string(network),
             enable_utxo_index: true,
             archival: false,
+            effective_node,
 
             bridge_internal_cpu_miner: false,
             bridge_internal_cpu_miner_address: None,
@@ -213,6 +495,29 @@ impl NodeSettings {
             }
         }
 
+        if self.effective_node.no_log_files {
+            parts.push("--nologfiles".to_string());
+        }
+
+        parts.push(format!("--loglevel={}", self.effective_node.log_level));
+        parts.push(format!(
+            "--async-threads={}",
+            self.effective_node.async_threads
+        ));
+        parts.push(format!("--ram-scale={}", self.effective_node.ram_scale));
+
+        if self.effective_node.yes {
+            parts.push("--yes".to_string());
+        }
+
+        if self.effective_node.sanity {
+            parts.push("--sanity".to_string());
+        }
+
+        if self.effective_node.enable_unsynced_mining {
+            parts.push("--enable-unsynced-mining".to_string());
+        }
+
         if self.enable_utxo_index {
             parts.push("--utxoindex".to_string());
         }
@@ -225,9 +530,109 @@ impl NodeSettings {
             parts.push(format!("--listen={listen}"));
         }
 
+        if let Some(external_ip) = self.effective_node.external_ip.as_deref() {
+            parts.push(format!("--externalip={external_ip}"));
+        }
+
+        if self.effective_node.disable_upnp {
+            parts.push("--disable-upnp".to_string());
+        }
+
+        if self.effective_node.disable_dns_seeding {
+            parts.push("--nodnsseed".to_string());
+        }
+
+        parts.extend(
+            self.effective_node
+                .user_agent_comments
+                .iter()
+                .map(|value| format!("--uacomment={value}")),
+        );
+
         parts.push(format!("--rpclisten={}", self.rpc_endpoint));
+        if let Some(value) = self.effective_node.rpc_listen_borsh.as_deref() {
+            parts.push(format!("--rpclisten-borsh={value}"));
+        }
+        if let Some(value) = self.effective_node.rpc_listen_json.as_deref() {
+            parts.push(format!("--rpclisten-json={value}"));
+        }
+        parts.push(format!(
+            "--rpcmaxclients={}",
+            self.effective_node.rpc_max_clients
+        ));
+        if self.effective_node.unsafe_rpc {
+            parts.push("--unsaferpc".to_string());
+        }
+        if self.effective_node.disable_grpc {
+            parts.push("--nogrpc".to_string());
+        }
+        parts.extend(
+            self.effective_node
+                .connect_peers
+                .iter()
+                .map(|value| format!("--connect={value}")),
+        );
+        parts.extend(
+            self.effective_node
+                .add_peers
+                .iter()
+                .map(|value| format!("--addpeer={value}")),
+        );
+        parts.push(format!(
+            "--outpeers={}",
+            self.effective_node.outbound_target
+        ));
+        parts.push(format!(
+            "--maxinpeers={}",
+            self.effective_node.inbound_limit
+        ));
+        if self.effective_node.reset_db {
+            parts.push("--reset-db".to_string());
+        }
+        if self.effective_node.perf_metrics {
+            parts.push("--perf-metrics".to_string());
+        }
+        parts.push(format!(
+            "--max-tracked-addresses={}",
+            self.effective_node.max_tracked_addresses
+        ));
+        if let Some(value) = self.effective_node.retention_period_days {
+            parts.push(format!("--retention-period-days={value}"));
+        }
+        parts.push(format!(
+            "--perf-metrics-interval-sec={}",
+            self.effective_node.perf_metrics_interval_sec
+        ));
+        if let Some(value) = self.effective_node.rocksdb_preset.as_deref() {
+            parts.push(format!("--rocksdb-preset={value}"));
+        }
+        if let Some(value) = self.effective_node.rocksdb_cache_size {
+            parts.push(format!("--rocksdb-cache-size={value}"));
+        }
+        if let Some(value) = self.effective_node.rocksdb_wal_dir.as_deref() {
+            parts.push(format!("--rocksdb-wal-dir={value}"));
+        }
+        if let Some(value) = self.effective_node.override_params_file.as_deref() {
+            parts.push(format!("--override-params-file={value}"));
+        }
+        if let Some(value) = self.effective_node.log_dir.as_deref() {
+            parts.push(format!("--logdir={value}"));
+        }
         parts.push(format!("--appdir={}", self.app_dir_name));
         parts.join(" ")
+    }
+
+    pub fn apply_effective_node_settings(
+        &mut self,
+        effective: EffectiveNodeSettings,
+    ) -> Result<(), KgwServiceError> {
+        effective.validate()?;
+        self.p2p_listen = effective.p2p_listen.clone();
+        self.rpc_endpoint = effective.rpc_listen.clone();
+        self.enable_utxo_index = effective.utxo_index;
+        self.archival = effective.archival;
+        self.effective_node = effective;
+        Ok(())
     }
 
     pub fn bridge_command_preview(&self) -> String {
@@ -266,7 +671,7 @@ impl NodeSettings {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum KaspadServiceEvents {
     Disable {
         network: KgwNetwork,
@@ -464,6 +869,9 @@ pub enum KgwServiceError {
 
     #[error("runtime Stop failed: {0}")]
     RuntimeStopFailed(String),
+
+    #[error("invalid effective node settings: {0}")]
+    InvalidEffectiveNodeSettings(String),
 }
 
 #[derive(Debug)]

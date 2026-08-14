@@ -1088,7 +1088,7 @@ async function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsR5(net, options = {}) {
 
   const values = {
     appDir: rustyRoot,
-    logDir: kgwNodeJoinPathR5(rustyRoot, "logs"),
+    logDir: "",
     configFile: "",
     rocksDbWalDir: "",
     overrideParamsFile: ""
@@ -1520,15 +1520,16 @@ function renderRuntime(net) {
 
 
 function renderNetwork(net) {
+  const p2pPort = net.key === "mainnet" ? "16111" : net.key === "testnet10" ? "16211" : "16311";
   return `
     <div class="node-v6-grid">
-      ${cardCheck(net.key, "listenEnabled", "--listen", true)}
+      ${cardCheck(net.key, "listenEnabled", "--listen", false)}
       ${cardInput(net.key, "listenHost", "listen host", "0.0.0.0")}
-      ${cardInput(net.key, "listenPort", "listen port", net.testnet ? "16211" : "16111")}
+      ${cardInput(net.key, "listenPort", "listen port", p2pPort)}
       ${cardCheck(net.key, "externalIpEnabled", "--externalip", false)}
       ${cardInput(net.key, "externalIpHost", "external host", "", "ip")}
       ${cardInput(net.key, "externalIpPort", "external port", "", "port")}
-      ${cardCheck(net.key, "disableUpnp", "--disable-upnp", false)}
+      ${cardCheck(net.key, "disableUpnp", "--disable-upnp", true)}
       ${cardCheck(net.key, "noDnsSeed", "--nodnsseed", false)}
       ${cardInput(net.key, "uaComment", "--uacomment", "", "comment", true)}
     </div>`;
@@ -1541,13 +1542,13 @@ function renderRpc(net) {
       ${cardCheck(net.key, "rpcListenEnabled", "--rpclisten", true)}
       ${cardInput(net.key, "rpcListenHost", "RPC host", "127.0.0.1")}
       ${cardInput(net.key, "rpcListenPort", "RPC port", String(base))}
-      ${cardCheck(net.key, "rpcBorshEnabled", "--rpclisten-borsh", true)}
+      ${cardCheck(net.key, "rpcBorshEnabled", "--rpclisten-borsh", false)}
       ${cardInput(net.key, "rpcBorshHost", "Borsh host", "127.0.0.1")}
       ${cardInput(net.key, "rpcBorshPort", "Borsh port", String(base + 1000))}
-      ${cardCheck(net.key, "rpcJsonEnabled", "--rpclisten-json", true)}
+      ${cardCheck(net.key, "rpcJsonEnabled", "--rpclisten-json", false)}
       ${cardInput(net.key, "rpcJsonHost", "JSON host", "127.0.0.1")}
       ${cardInput(net.key, "rpcJsonPort", "JSON port", String(base + 2000))}
-      ${cardInput(net.key, "rpcMaxClients", "--rpcmaxclients", "128")}
+      ${cardInput(net.key, "rpcMaxClients", "--rpcmaxclients (managed max 16)", "16")}
       ${cardCheck(net.key, "unsafeRpc", "--unsaferpc", false)}
       ${cardCheck(net.key, "noGrpc", "--nogrpc", false)}
     </div>`;
@@ -1563,7 +1564,7 @@ function renderPeers(net) {
       ${cardInput(net.key, "addPeerHost", "peer host", "", "host")}
       ${cardInput(net.key, "addPeerPort", "peer port", "", "port")}
       ${cardInput(net.key, "outPeers", "--outpeers", "8")}
-      ${cardInput(net.key, "maxInPeers", "--maxinpeers", "128")}
+      ${cardInput(net.key, "maxInPeers", "--maxinpeers (managed max 32)", "32")}
     </div>`;
 }
 
@@ -1586,15 +1587,15 @@ function renderRocksDb(net) {
       ${cardSelect(net.key, "rocksDbPreset", "--rocksdb-preset", ["", "default", "hdd"], "")}
       ${cardInput(net.key, "rocksDbCacheSize", "--rocksdb-cache-size", "", "MB")}
       ${cardInput(net.key, "rocksDbWalDir", "--rocksdb-wal-dir", "", "path", true)}
-      ${cardInput(net.key, "overrideParamsFile", "--override-params-file", "", "json path", true)}
+      ${cardInput(net.key, "overrideParamsFile", "--override-params-file (unsupported: managed network)", "", "not supported", true)}
     </div>`;
 }
 
 function renderPaths(net) {
   return `
     <div class="node-v6-grid">
-      ${cardInput(net.key, "configFile", "--configfile", "", "kaspa.conf")}
-      ${cardInput(net.key, "appDir", "--appdir", "", "app dir")}
+      ${cardInput(net.key, "configFile", "--configfile (unsupported: managed ownership)", "", "not supported")}
+      ${cardInput(net.key, "appDir", "--appdir (managed per network)", "", "managed by desktop")}
       ${cardInput(net.key, "logDir", "--logdir", "", "log dir")}
     </div>`;
 }
@@ -1727,6 +1728,7 @@ function renderNetworkPanel(net, index) {
             <label><input id="${id(net.key, "autoRestart")}" type="checkbox" checked> Restart</label>
             <span id="${id(net.key, "runtimeStatus")}" class="node-v6-runtime-status-pill" data-state="stopped">Stopped</span>
             <span id="${id(net.key, "runtimeEvidence")}" class="node-v6-runtime-evidence">No process owner</span>
+            <span id="${id(net.key, "settingsAuthority")}" class="node-v6-runtime-evidence">Effective settings apply on next Start</span>
           </div>
 
           <div id="${id(net.key, "runtimeError")}" class="node-v6-runtime-error" role="status" aria-live="polite" hidden></div>
@@ -1820,6 +1822,95 @@ function buildCommandLines(net) {
   return lines;
 }
 
+function kgwNodeEffectiveNumber(net, name, fallback, integer = false) {
+  if (!kgwNodeCommandShouldIncludeR7(net, name)) return fallback;
+  const raw = v(net, name);
+  if (!raw) return fallback;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || (integer && !Number.isInteger(value))) {
+    throw new Error(`${name} must be ${integer ? "an integer" : "a finite number"}.`);
+  }
+  return value;
+}
+
+function kgwNodeEffectiveEndpoint(net, enabledName, hostName, portName, fallback = null) {
+  if (!c(net, enabledName)) return null;
+  const host = v(net, hostName);
+  const port = v(net, portName);
+  if (!host && !port) return fallback;
+  if (!host || !/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
+    throw new Error(`${enabledName} requires a host and a port between 1 and 65535.`);
+  }
+  return `${host}:${port}`;
+}
+
+function kgwNodeEffectiveNodeSettings(net) {
+  const profile = kgwNodeNetworkProfile(net);
+  const rpcBase = net === "mainnet" ? 16110 : net === "testnet10" ? 16210 : 16310;
+  const grpc = kgwNodeEffectiveEndpoint(
+    net,
+    "rpcListenEnabled",
+    "rpcListenHost",
+    "rpcListenPort",
+    `127.0.0.1:${rpcBase}`
+  );
+  if (!grpc) throw new Error("The managed desktop owner requires gRPC RPC to remain enabled.");
+
+  if (v(net, "configFile")) {
+    throw new Error("--configfile is not supported by the managed desktop owner because network and database ownership must remain authoritative.");
+  }
+  if (v(net, "overrideParamsFile")) {
+    throw new Error("--override-params-file is not supported because the desktop owns the selected network identity.");
+  }
+  if (c(net, "noLogFiles") && v(net, "logDir")) {
+    throw new Error("--logdir and --nologfiles cannot be used together.");
+  }
+  const connect = kgwNodeEffectiveEndpoint(net, "connectEnabled", "connectHost", "connectPort");
+  const addPeer = kgwNodeEffectiveEndpoint(net, "addPeerEnabled", "addPeerHost", "addPeerPort");
+  const userAgentComment = kgwNodeCommandShouldIncludeR7(net, "uaComment") ? v(net, "uaComment") : "";
+
+  return {
+    logLevel: kgwNodeCommandShouldIncludeR7(net, "logLevel") ? v(net, "logLevel") || "info" : "info",
+    asyncThreads: kgwNodeEffectiveNumber(net, "asyncThreads", 16, true),
+    ramScale: kgwNodeEffectiveNumber(net, "ramScale", 1),
+    yes: c(net, "yes"),
+    noLogFiles: c(net, "noLogFiles"),
+    sanity: c(net, "sanity"),
+    enableUnsyncedMining: c(net, "enableUnsyncedMining") && Boolean(profile?.testnet),
+    p2pListen: kgwNodeEffectiveEndpoint(net, "listenEnabled", "listenHost", "listenPort"),
+    externalIp: kgwNodeEffectiveEndpoint(net, "externalIpEnabled", "externalIpHost", "externalIpPort"),
+    disableUpnp: c(net, "disableUpnp"),
+    disableDnsSeeding: c(net, "noDnsSeed"),
+    userAgentComments: userAgentComment ? [userAgentComment] : [],
+    rpcListen: grpc,
+    rpcListenBorsh: kgwNodeEffectiveEndpoint(net, "rpcBorshEnabled", "rpcBorshHost", "rpcBorshPort"),
+    rpcListenJson: kgwNodeEffectiveEndpoint(net, "rpcJsonEnabled", "rpcJsonHost", "rpcJsonPort"),
+    rpcMaxClients: kgwNodeEffectiveNumber(net, "rpcMaxClients", 16, true),
+    unsafeRpc: c(net, "unsafeRpc"),
+    disableGrpc: c(net, "noGrpc"),
+    connectPeers: connect ? [connect] : [],
+    addPeers: addPeer ? [addPeer] : [],
+    outboundTarget: kgwNodeEffectiveNumber(net, "outPeers", 8, true),
+    inboundLimit: kgwNodeEffectiveNumber(net, "maxInPeers", 32, true),
+    utxoIndex: c(net, "utxoIndex"),
+    archival: c(net, "archival"),
+    resetDb: c(net, "resetDb"),
+    perfMetrics: c(net, "perfMetrics"),
+    maxTrackedAddresses: kgwNodeEffectiveNumber(net, "maxTrackedAddresses", 0, true),
+    retentionPeriodDays: kgwNodeCommandShouldIncludeR7(net, "retentionDays") && v(net, "retentionDays")
+      ? kgwNodeEffectiveNumber(net, "retentionDays", null)
+      : null,
+    perfMetricsIntervalSec: kgwNodeEffectiveNumber(net, "perfMetricsInterval", 10, true),
+    rocksDbPreset: kgwNodeCommandShouldIncludeR7(net, "rocksDbPreset") ? v(net, "rocksDbPreset") || null : null,
+    rocksDbCacheSize: kgwNodeCommandShouldIncludeR7(net, "rocksDbCacheSize") && v(net, "rocksDbCacheSize")
+      ? kgwNodeEffectiveNumber(net, "rocksDbCacheSize", null, true)
+      : null,
+    rocksDbWalDir: kgwNodeCommandShouldIncludeR7(net, "rocksDbWalDir") ? v(net, "rocksDbWalDir") || null : null,
+    overrideParamsFile: null,
+    logDir: kgwNodeCommandShouldIncludeR7(net, "logDir") ? v(net, "logDir") || null : null,
+  };
+}
+
 
 function kgwExtractNodeOwnerFlags(result) {
   const raw = stringifyRuntimeResult(result);
@@ -1865,10 +1956,7 @@ function updateCommand(net) {
   const fallbackText = lines.length ? `${first} ${lines.join(" ")}` : first;
 
   preview.value = fallbackText;
-
-  kgwLoadNodeOwnerCommandPreview(net, fallbackText).then((ownerText) => {
-    if (ownerText) preview.value = ownerText;
-  });
+  preview.dataset.effectiveSettingsAuthority = "typed-ui-payload";
 }
 
 function updateAllCommands() {
@@ -2106,6 +2194,16 @@ function kgwNodeSetRuntimeNotice(net, state, evidence = "", errorText = null) {
   }
 }
 
+function kgwNodeMarkRestartRequired(net) {
+  const authority = byId(id(net, "settingsAuthority"));
+  if (!authority) return;
+  const running = byId(id(net, "runtimeStatus"))?.dataset?.state === "running";
+  authority.textContent = running
+    ? "Restart required to apply changed effective settings"
+    : "Effective settings apply on next Start";
+  authority.dataset.restartRequired = running ? "true" : "false";
+}
+
 function kgwNodeRuntimeEvidence(result) {
   const text = stringifyRuntimeResult(result);
   const fields = parseRuntimeFields(text);
@@ -2158,6 +2256,7 @@ function nodeRuntimeArgs(net, command) {
       bridgeKind: "disable",
       nodeCommandPreview: preview,
       bridgeCommandPreview: "",
+      effectiveNodeSettings: kgwNodeEffectiveNodeSettings(net),
       runtimeRole: "node",
       experimentalNetworkOptIn: net === "testnet12" && kgwNodeNetworkEnabled(net),
     };
@@ -2964,6 +3063,19 @@ async function kgwNodeR51RefreshOne(net, reason = "live") {
 
     if (KGW_NODE_R51_LAST_STATUS[net] !== status) {
       KGW_NODE_R51_LAST_STATUS[net] = status;
+      const authority = byId(id(net, "settingsAuthority"));
+      if (authority) {
+        authority.textContent = running
+          ? kgwI18nTextR41(
+              "runtime.effectiveSettingsActive",
+              "Effective settings are active for this runtime"
+            )
+          : kgwI18nTextR41(
+              "runtime.effectiveSettingsNextStart",
+              "Effective settings apply on next Start"
+            );
+        authority.dataset.restartRequired = "false";
+      }
       
     }
 
@@ -3509,6 +3621,7 @@ function installActions(root) {
     }
 
     const net = netFromEvent(event);
+    kgwNodeMarkRestartRequired(net);
     scopedUpdate(net, event.isTrusted ? "trusted-input" : "programmatic-input");
   }, true);
 
@@ -3530,6 +3643,7 @@ function installActions(root) {
     }
 
     const net = netFromEvent(event);
+    kgwNodeMarkRestartRequired(net);
 
     if (target.matches("[data-node-network-enabled]")) {
       const profile = kgwNodeNetworkProfile(net);

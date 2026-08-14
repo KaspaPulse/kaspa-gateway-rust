@@ -126,6 +126,9 @@ pub enum KgwRealOwnerError {
     #[error("invalid P2P listen endpoint: {0}")]
     InvalidP2pListen(String),
 
+    #[error("invalid effective node settings: {0}")]
+    InvalidEffectiveNodeSettings(String),
+
     #[error("failed to start owner thread: {0}")]
     OwnerThreadStartFailed(String),
 
@@ -930,17 +933,93 @@ fn spawn_official_core_thread(
     }
 }
 
+#[cfg(any(
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
+fn validate_effective_node_settings(settings: &NodeSettings) -> Result<(), KgwRealOwnerError> {
+    let effective = &settings.effective_node;
+    effective
+        .validate()
+        .map_err(|error| KgwRealOwnerError::InvalidEffectiveNodeSettings(error.to_string()))
+}
+
 #[cfg(feature = "official-kaspa-runtime-mainline")]
-fn spawn_mainline_core_thread(
-    settings: NodeSettings,
-) -> Result<OfficialCoreOwnerThread, KgwRealOwnerError> {
+fn build_mainline_args(
+    settings: &NodeSettings,
+) -> Result<kaspad_lib_mainline::args::Args, KgwRealOwnerError> {
+    validate_effective_node_settings(settings)?;
     let mut args = kaspad_lib_mainline::args::Args {
         appdir: Some(settings.app_dir_name.clone()),
         utxoindex: settings.enable_utxo_index,
         archival: settings.archival,
-        yes: true,
-        disable_upnp: true,
-        log_level: "INFO".to_string(),
+        logdir: settings.effective_node.log_dir.clone(),
+        no_log_files: settings.effective_node.no_log_files,
+        unsafe_rpc: settings.effective_node.unsafe_rpc,
+        log_level: settings.effective_node.log_level.clone(),
+        async_threads: settings.effective_node.async_threads,
+        connect_peers: settings
+            .effective_node
+            .connect_peers
+            .iter()
+            .map(|value| {
+                value
+                    .parse::<kaspa_utils_mainline::networking::ContextualNetAddress>()
+                    .map_err(|error| {
+                        KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
+                            "invalid connect peer {value}: {error}"
+                        ))
+                    })
+            })
+            .collect::<Result<Vec<_>, _>>()?,
+        add_peers: settings
+            .effective_node
+            .add_peers
+            .iter()
+            .map(|value| {
+                value
+                    .parse::<kaspa_utils_mainline::networking::ContextualNetAddress>()
+                    .map_err(|error| {
+                        KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
+                            "invalid add peer {value}: {error}"
+                        ))
+                    })
+            })
+            .collect::<Result<Vec<_>, _>>()?,
+        user_agent_comments: settings.effective_node.user_agent_comments.clone(),
+        reset_db: settings.effective_node.reset_db,
+        outbound_target: settings.effective_node.outbound_target,
+        inbound_limit: settings.effective_node.inbound_limit,
+        rpc_max_clients: settings.effective_node.rpc_max_clients,
+        max_tracked_addresses: settings.effective_node.max_tracked_addresses,
+        enable_unsynced_mining: settings.effective_node.enable_unsynced_mining,
+        sanity: settings.effective_node.sanity,
+        yes: settings.effective_node.yes,
+        externalip: settings
+            .effective_node
+            .external_ip
+            .as_deref()
+            .map(|value| {
+                value
+                    .parse::<kaspa_utils_mainline::networking::ContextualNetAddress>()
+                    .map_err(|error| {
+                        KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
+                            "invalid external IP {value}: {error}"
+                        ))
+                    })
+            })
+            .transpose()?,
+        perf_metrics: settings.effective_node.perf_metrics,
+        perf_metrics_interval_sec: settings.effective_node.perf_metrics_interval_sec,
+        disable_upnp: settings.effective_node.disable_upnp,
+        disable_dns_seeding: settings.effective_node.disable_dns_seeding,
+        disable_grpc: settings.effective_node.disable_grpc,
+        ram_scale: settings.effective_node.ram_scale,
+        retention_period_days: settings.effective_node.retention_period_days,
+        override_params_file: settings.effective_node.override_params_file.clone(),
+        rocksdb_preset: settings.effective_node.rocksdb_preset.clone(),
+        rocksdb_wal_dir: settings.effective_node.rocksdb_wal_dir.clone(),
+        rocksdb_cache_size: settings.effective_node.rocksdb_cache_size,
         ..Default::default()
     };
 
@@ -965,8 +1044,44 @@ fn spawn_mainline_core_thread(
             .parse::<kaspa_utils_mainline::networking::ContextualNetAddress>()
             .map_err(|error| KgwRealOwnerError::InvalidRpcEndpoint(error.to_string()))?,
     );
+    args.rpclisten_borsh = settings
+        .effective_node
+        .rpc_listen_borsh
+        .as_deref()
+        .map(|value| {
+            value
+                .parse::<kaspa_wrpc_server_mainline::address::WrpcNetAddress>()
+                .map_err(|error| {
+                    KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
+                        "invalid Borsh RPC listen {value}: {error}"
+                    ))
+                })
+        })
+        .transpose()?;
+    args.rpclisten_json = settings
+        .effective_node
+        .rpc_listen_json
+        .as_deref()
+        .map(|value| {
+            value
+                .parse::<kaspa_wrpc_server_mainline::address::WrpcNetAddress>()
+                .map_err(|error| {
+                    KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
+                        "invalid JSON RPC listen {value}: {error}"
+                    ))
+                })
+        })
+        .transpose()?;
 
     kgw_apply_embedded_fd_limits_mainline(&mut args);
+    Ok(args)
+}
+
+#[cfg(feature = "official-kaspa-runtime-mainline")]
+fn spawn_mainline_core_thread(
+    settings: NodeSettings,
+) -> Result<OfficialCoreOwnerThread, KgwRealOwnerError> {
+    let args = build_mainline_args(&settings)?;
     let fd_total_budget = kgw_embedded_core_fd_budget(
         kaspa_utils_mainline::fd_budget::limit(),
         args.rpc_max_clients as i32,
@@ -1030,16 +1145,81 @@ fn spawn_mainline_core_thread(
 }
 
 #[cfg(feature = "official-kaspa-runtime-tn12")]
-fn spawn_tn12_core_thread(
-    settings: NodeSettings,
-) -> Result<OfficialCoreOwnerThread, KgwRealOwnerError> {
+fn build_tn12_args(
+    settings: &NodeSettings,
+) -> Result<kaspad_lib_tn12::args::Args, KgwRealOwnerError> {
+    validate_effective_node_settings(settings)?;
     let mut args = kaspad_lib_tn12::args::Args {
         appdir: Some(settings.app_dir_name.clone()),
         utxoindex: settings.enable_utxo_index,
         archival: settings.archival,
-        yes: true,
-        disable_upnp: true,
-        log_level: "INFO".to_string(),
+        logdir: settings.effective_node.log_dir.clone(),
+        no_log_files: settings.effective_node.no_log_files,
+        unsafe_rpc: settings.effective_node.unsafe_rpc,
+        log_level: settings.effective_node.log_level.clone(),
+        async_threads: settings.effective_node.async_threads,
+        connect_peers: settings
+            .effective_node
+            .connect_peers
+            .iter()
+            .map(|value| {
+                value
+                    .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
+                    .map_err(|error| {
+                        KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
+                            "invalid connect peer {value}: {error}"
+                        ))
+                    })
+            })
+            .collect::<Result<Vec<_>, _>>()?,
+        add_peers: settings
+            .effective_node
+            .add_peers
+            .iter()
+            .map(|value| {
+                value
+                    .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
+                    .map_err(|error| {
+                        KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
+                            "invalid add peer {value}: {error}"
+                        ))
+                    })
+            })
+            .collect::<Result<Vec<_>, _>>()?,
+        user_agent_comments: settings.effective_node.user_agent_comments.clone(),
+        reset_db: settings.effective_node.reset_db,
+        outbound_target: settings.effective_node.outbound_target,
+        inbound_limit: settings.effective_node.inbound_limit,
+        rpc_max_clients: settings.effective_node.rpc_max_clients,
+        max_tracked_addresses: settings.effective_node.max_tracked_addresses,
+        enable_unsynced_mining: settings.effective_node.enable_unsynced_mining,
+        sanity: settings.effective_node.sanity,
+        yes: settings.effective_node.yes,
+        externalip: settings
+            .effective_node
+            .external_ip
+            .as_deref()
+            .map(|value| {
+                value
+                    .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
+                    .map_err(|error| {
+                        KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
+                            "invalid external IP {value}: {error}"
+                        ))
+                    })
+            })
+            .transpose()?,
+        perf_metrics: settings.effective_node.perf_metrics,
+        perf_metrics_interval_sec: settings.effective_node.perf_metrics_interval_sec,
+        disable_upnp: settings.effective_node.disable_upnp,
+        disable_dns_seeding: settings.effective_node.disable_dns_seeding,
+        disable_grpc: settings.effective_node.disable_grpc,
+        ram_scale: settings.effective_node.ram_scale,
+        retention_period_days: settings.effective_node.retention_period_days,
+        override_params_file: settings.effective_node.override_params_file.clone(),
+        rocksdb_preset: settings.effective_node.rocksdb_preset.clone(),
+        rocksdb_wal_dir: settings.effective_node.rocksdb_wal_dir.clone(),
+        rocksdb_cache_size: settings.effective_node.rocksdb_cache_size,
         ..Default::default()
     };
     args.testnet = true;
@@ -1065,8 +1245,44 @@ fn spawn_tn12_core_thread(
             .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
             .map_err(|error| KgwRealOwnerError::InvalidRpcEndpoint(error.to_string()))?,
     );
+    args.rpclisten_borsh = settings
+        .effective_node
+        .rpc_listen_borsh
+        .as_deref()
+        .map(|value| {
+            value
+                .parse::<kaspa_wrpc_server_tn12::address::WrpcNetAddress>()
+                .map_err(|error| {
+                    KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
+                        "invalid Borsh RPC listen {value}: {error}"
+                    ))
+                })
+        })
+        .transpose()?;
+    args.rpclisten_json = settings
+        .effective_node
+        .rpc_listen_json
+        .as_deref()
+        .map(|value| {
+            value
+                .parse::<kaspa_wrpc_server_tn12::address::WrpcNetAddress>()
+                .map_err(|error| {
+                    KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
+                        "invalid JSON RPC listen {value}: {error}"
+                    ))
+                })
+        })
+        .transpose()?;
 
     kgw_apply_embedded_fd_limits_tn12(&mut args);
+    Ok(args)
+}
+
+#[cfg(feature = "official-kaspa-runtime-tn12")]
+fn spawn_tn12_core_thread(
+    settings: NodeSettings,
+) -> Result<OfficialCoreOwnerThread, KgwRealOwnerError> {
+    let args = build_tn12_args(&settings)?;
     let fd_total_budget = kgw_embedded_core_fd_budget(
         kaspa_utils_tn12::fd_budget::limit(),
         args.rpc_max_clients as i32,
@@ -1279,8 +1495,8 @@ mod kgw_runtime_fd_budget_tests {
 
         let source = include_str!("kgw_real_owner_runtime.rs");
         let graceful_mainline = source
-            .split("#[cfg(feature = \"official-kaspa-runtime-mainline\")]")
-            .nth(2)
+            .split("fn spawn_mainline_core_thread(")
+            .nth(1)
             .expect("mainline official core owner source must exist");
         let drop_rpc = graceful_mainline
             .find("drop(rpc_core_service);")
@@ -1395,6 +1611,90 @@ mod kgw_runtime_fd_budget_tests {
         assert_eq!(parsed.to_string(), listen);
     }
 
+    #[cfg(feature = "official-kaspa-runtime-mainline")]
+    #[test]
+    fn mainline_owner_args_apply_the_complete_effective_settings_contract() {
+        let mut settings = NodeSettings::from_strings(
+            "testnet10".to_string(),
+            "integrated-inproc".to_string(),
+            "disable".to_string(),
+        )
+        .unwrap();
+        settings.app_dir_name = "effective-mainline-test".to_string();
+        let effective = crate::EffectiveNodeSettings {
+            log_level: "debug".to_string(),
+            async_threads: 3,
+            ram_scale: 0.75,
+            yes: true,
+            no_log_files: true,
+            sanity: true,
+            enable_unsynced_mining: true,
+            p2p_listen: Some("127.0.0.1:26211".to_string()),
+            external_ip: Some("127.0.0.1:26211".to_string()),
+            disable_upnp: true,
+            disable_dns_seeding: true,
+            user_agent_comments: vec!["kgw-effective".to_string()],
+            rpc_listen: "127.0.0.1:26210".to_string(),
+            rpc_listen_borsh: Some("127.0.0.1:27210".to_string()),
+            rpc_listen_json: Some("127.0.0.1:28210".to_string()),
+            rpc_max_clients: 12,
+            unsafe_rpc: true,
+            disable_grpc: false,
+            connect_peers: vec!["127.0.0.1:26212".to_string()],
+            add_peers: Vec::new(),
+            outbound_target: 7,
+            inbound_limit: 31,
+            utxo_index: false,
+            archival: true,
+            reset_db: true,
+            perf_metrics: true,
+            max_tracked_addresses: 123,
+            retention_period_days: Some(2.5),
+            perf_metrics_interval_sec: 9,
+            rocksdb_preset: Some("hdd".to_string()),
+            rocksdb_cache_size: Some(256),
+            rocksdb_wal_dir: Some("wal".to_string()),
+            override_params_file: None,
+            log_dir: None,
+        };
+        settings.apply_effective_node_settings(effective).unwrap();
+
+        let args = build_mainline_args(&settings).unwrap();
+        assert!(args.testnet);
+        assert_eq!(args.testnet_suffix, 10);
+        assert_eq!(args.appdir.as_deref(), Some("effective-mainline-test"));
+        assert_eq!(args.logdir, None);
+        assert_eq!(args.log_level, "debug");
+        assert_eq!(args.async_threads, 3);
+        assert_eq!(args.ram_scale, 0.75);
+        assert_eq!(args.rpclisten.unwrap().to_string(), "127.0.0.1:26210");
+        assert!(matches!(
+            args.rpclisten_borsh,
+            Some(kaspa_wrpc_server_mainline::address::WrpcNetAddress::Custom(address))
+                if address.to_string() == "127.0.0.1:27210"
+        ));
+        assert!(matches!(
+            args.rpclisten_json,
+            Some(kaspa_wrpc_server_mainline::address::WrpcNetAddress::Custom(address))
+                if address.to_string() == "127.0.0.1:28210"
+        ));
+        assert_eq!(args.listen.unwrap().to_string(), "127.0.0.1:26211");
+        assert_eq!(args.rpc_max_clients, 12);
+        assert_eq!(args.inbound_limit, 31);
+        assert_eq!(args.outbound_target, 7);
+        assert_eq!(args.connect_peers[0].to_string(), "127.0.0.1:26212");
+        assert!(args.add_peers.is_empty());
+        assert_eq!(args.user_agent_comments, vec!["kgw-effective"]);
+        assert!(!args.utxoindex);
+        assert!(args.archival && args.reset_db && args.perf_metrics);
+        assert_eq!(args.max_tracked_addresses, 123);
+        assert_eq!(args.retention_period_days, Some(2.5));
+        assert_eq!(args.rocksdb_preset.as_deref(), Some("hdd"));
+        assert_eq!(args.rocksdb_cache_size, Some(256));
+        assert_eq!(args.rocksdb_wal_dir.as_deref(), Some("wal"));
+        assert_eq!(args.override_params_file, None);
+    }
+
     #[cfg(feature = "official-kaspa-runtime-tn12")]
     #[test]
     fn tn12_owner_args_honor_isolated_p2p_listener() {
@@ -1403,6 +1703,29 @@ mod kgw_runtime_fd_budget_tests {
             .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
             .unwrap();
         assert_eq!(parsed.to_string(), listen);
+    }
+
+    #[cfg(feature = "official-kaspa-runtime-tn12")]
+    #[test]
+    fn tn12_effective_settings_cannot_override_experimental_network_identity() {
+        let mut settings = NodeSettings::from_strings(
+            "testnet12".to_string(),
+            "integrated-inproc".to_string(),
+            "disable".to_string(),
+        )
+        .unwrap();
+        let mut effective = crate::EffectiveNodeSettings {
+            rpc_listen: KgwNetwork::Testnet12.rpc_endpoint().to_string(),
+            ..Default::default()
+        };
+        effective.rpc_max_clients = 16;
+        effective.inbound_limit = 32;
+        settings.apply_effective_node_settings(effective).unwrap();
+        let args = build_tn12_args(&settings).unwrap();
+        assert!(args.testnet);
+        assert_eq!(args.testnet_suffix, 12);
+        assert!(!args.devnet);
+        assert!(!args.simnet);
     }
 
     #[test]
