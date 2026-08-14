@@ -933,6 +933,10 @@ fn spawn_official_core_thread(
     }
 }
 
+#[cfg(any(
+    feature = "official-kaspa-runtime-mainline",
+    feature = "official-kaspa-runtime-tn12"
+))]
 fn validate_effective_node_settings(settings: &NodeSettings) -> Result<(), KgwRealOwnerError> {
     let effective = &settings.effective_node;
     effective
