@@ -68,11 +68,24 @@ jobs:
           cache-dependency-path: apps/kaspa-gateway-desktop/package-lock.json
           package-manager-cache: true
 
-      - name: Setup protoc 35.1
-        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
-        with:
-          version: "35.1"
-          repo-token: ${{ github.token }}
+      - name: Install verified protoc 35.1
+        shell: pwsh
+        run: |
+          $archive = Join-Path $env:RUNNER_TEMP "protoc-35.1-win64.zip"
+          $installDir = Join-Path $env:RUNNER_TEMP "protoc-35.1-win64"
+          curl.exe --proto "=https" --tlsv1.2 --fail --location --silent --show-error `
+            --output $archive `
+            "https://github.com/protocolbuffers/protobuf/releases/download/v35.1/protoc-35.1-win64.zip"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Official protoc download failed."
+          }
+          $actualHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expectedHash = "5d3ff218d7d91eea95f7569bcb5a98f3030f8996d44151279d9772edcff76082"
+          if ($actualHash -cne $expectedHash) {
+            throw "Official protoc archive checksum mismatch: $actualHash."
+          }
+          Expand-Archive -LiteralPath $archive -DestinationPath $installDir
+          (Join-Path $installDir "bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Verify native toolchain
         shell: pwsh
@@ -264,11 +277,19 @@ jobs:
           cache-dependency-path: apps/kaspa-gateway-desktop/package-lock.json
           package-manager-cache: true
 
-      - name: Setup protoc 35.1
-        uses: arduino/setup-protoc@c65c819552d16ad3c9b72d9dfd5ba5237b9c906b # v3.0.0
-        with:
-          version: "35.1"
-          repo-token: ${{ github.token }}
+      - name: Install verified protoc 35.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/protoc-35.1-osx-universal_binary.zip"
+          install_dir="$RUNNER_TEMP/protoc-35.1-osx-universal_binary"
+          curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+            --output "$archive" \
+            "https://github.com/protocolbuffers/protobuf/releases/download/v35.1/protoc-35.1-osx-universal_binary.zip"
+          echo "9c27aebb44c537f5627cc13c9c1c6bc0e34ecfefc6e4d79b19764afb8302d95b  $archive" | shasum -a 256 --check
+          mkdir -m 700 "$install_dir"
+          ditto -x -k "$archive" "$install_dir"
+          echo "$install_dir/bin" >>"$GITHUB_PATH"
 
       - name: Verify native toolchain
         shell: bash

@@ -31,6 +31,10 @@ const requiredWorkflowFragments = [
   "npm run tauri:build -- --ci --target universal-apple-darwin",
   "x86_64-pc-windows-msvc",
   "aarch64-apple-darwin,x86_64-apple-darwin",
+  "protoc-35.1-win64.zip",
+  "5d3ff218d7d91eea95f7569bcb5a98f3030f8996d44151279d9772edcff76082",
+  "protoc-35.1-osx-universal_binary.zip",
+  "9c27aebb44c537f5627cc13c9c1c6bc0e34ecfefc6e4d79b19764afb8302d95b",
   "WINDOWS_CODE_SIGNING=UNSIGNED_NOT_CONFIGURED",
   "MACOS_CODE_SIGNING=AD_HOC",
   "MACOS_NOTARIZATION=NOT_CONFIGURED",
@@ -55,6 +59,10 @@ for (const fragment of requiredWorkflowFragments) {
 assert.ok(
   !workflow.includes("${{ secrets."),
   "unsigned internal artifact workflow must not consume signing secrets",
+);
+assert.ok(
+  !workflow.includes("arduino/setup-protoc"),
+  "workflow must use checksum-verified official protoc archives, not the incompatible GPL action",
 );
 assert.ok(
   !/\b(?:release|softprops)\/[^\s@]+@/u.test(workflow),
