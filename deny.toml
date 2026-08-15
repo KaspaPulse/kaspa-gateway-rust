@@ -30,6 +30,7 @@ allow = [
   "LGPL-3.0-only",
   "CDLA-Permissive-2.0",
   "bzip2-1.0.6",
+  "NCSA",
 ]
 confidence-threshold = 0.8
 
