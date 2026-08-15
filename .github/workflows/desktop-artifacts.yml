@@ -24,6 +24,11 @@ jobs:
     name: Windows x64 NSIS package and smoke
     runs-on: windows-2022
     timeout-minutes: 150
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     env:
       REQUESTED_COMMIT_SHA: ${{ inputs.commit_sha }}
 
@@ -217,6 +222,28 @@ jobs:
             "TESTNET12_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL"
           ) | Set-Content -LiteralPath (Join-Path $artifactDir "WINDOWS_INSTALLER_SMOKE.txt") -Encoding utf8NoBOM
 
+      - name: Attest qualified Windows executable artifacts
+        id: attest-qualified-windows
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: |
+            ${{ runner.temp }}/kaspa-gateway-windows-artifact/KaspaGateway-windows-x64-nsis.exe
+            ${{ runner.temp }}/kaspa-gateway-windows-artifact/kaspa-gateway-desktop-windows-x64.exe
+
+      - name: Preserve Windows build provenance bundle
+        shell: pwsh
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest-qualified-windows.outputs.bundle-path }}
+        run: |
+          if (-not (Test-Path -LiteralPath $env:ATTESTATION_BUNDLE -PathType Leaf)) {
+            throw "Windows attestation bundle was not produced."
+          }
+          $destination = Join-Path $env:RUNNER_TEMP "kaspa-gateway-windows-artifact\WINDOWS_BUILD_PROVENANCE.sigstore.json"
+          Copy-Item -LiteralPath $env:ATTESTATION_BUNDLE -Destination $destination
+          if ((Get-Item -LiteralPath $destination).Length -le 0) {
+            throw "Windows provenance bundle is empty."
+          }
+
       - name: Upload qualified Windows artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -229,6 +256,11 @@ jobs:
     name: macOS Universal DMG package and smoke
     runs-on: macos-15-intel
     timeout-minutes: 180
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
     env:
       REQUESTED_COMMIT_SHA: ${{ inputs.commit_sha }}
 
@@ -422,6 +454,25 @@ jobs:
           MACOS_INTERACTIVE_UI_VALIDATION=NOT_PERFORMED_HOSTED_RUNNER
           TESTNET12_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL
           EOF
+
+      - name: Attest qualified macOS release artifacts
+        id: attest-qualified-macos
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: |
+            ${{ runner.temp }}/kaspa-gateway-macos-artifact/KaspaGateway-macos-universal.dmg
+            ${{ runner.temp }}/kaspa-gateway-macos-artifact/KaspaGateway-macos-universal-app.zip
+
+      - name: Preserve macOS build provenance bundle
+        shell: bash
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest-qualified-macos.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          test -s "$ATTESTATION_BUNDLE"
+          destination="$RUNNER_TEMP/kaspa-gateway-macos-artifact/MACOS_BUILD_PROVENANCE.sigstore.json"
+          cp "$ATTESTATION_BUNDLE" "$destination"
+          test -s "$destination"
 
       - name: Upload qualified macOS artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
