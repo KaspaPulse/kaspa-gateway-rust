@@ -1,0 +1,22 @@
+[package]
+name = "kaspa-gateway-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+serde_json = "1"
+kaspa-gateway-config = { path = "../crates/kaspa-gateway-config" }
+
+[[bin]]
+name = "gateway_config_json"
+path = "fuzz_targets/gateway_config_json.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
