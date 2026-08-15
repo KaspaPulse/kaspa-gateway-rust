@@ -275,8 +275,8 @@ jobs:
             cat <<NOTES
           Build provenance for the Windows and macOS release artifacts is attached as Sigstore bundles.
 
-          Source commit: `$REQUESTED_COMMIT_SHA`
-          Qualified Desktop Artifacts run: `$ARTIFACT_RUN_ID`
+          Source commit: $REQUESTED_COMMIT_SHA
+          Qualified Desktop Artifacts run: $ARTIFACT_RUN_ID
 
           This workflow creates a draft only. Publication requires a separate immutable-release gate.
           NOTES
