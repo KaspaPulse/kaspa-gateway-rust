@@ -325,20 +325,15 @@ jobs:
 
           shopt -s nullglob
           dmgs=("$GITHUB_WORKSPACE/target/universal-apple-darwin/release/bundle/dmg/"*.dmg)
-          built_apps=("$GITHUB_WORKSPACE/target/universal-apple-darwin/release/bundle/macos/"*.app)
           if [[ ${#dmgs[@]} -ne 1 || ! -s "${dmgs[0]}" ]]; then
             echo "Expected exactly one non-empty Universal DMG; found ${#dmgs[@]}." >&2
-            exit 1
-          fi
-          if [[ ${#built_apps[@]} -ne 1 ]]; then
-            echo "Expected exactly one Universal app bundle; found ${#built_apps[@]}." >&2
             exit 1
           fi
 
           dmg="$artifact_dir/KaspaGateway-macos-universal.dmg"
           app_zip="$artifact_dir/KaspaGateway-macos-universal-app.zip"
+          exported_app="$artifact_dir/KaspaGateway-macos-universal.app"
           cp "${dmgs[0]}" "$dmg"
-          ditto -c -k --sequesterRsrc --keepParent "${built_apps[0]}" "$app_zip"
 
           mounted=0
           application_pid=""
@@ -368,6 +363,10 @@ jobs:
             exit 1
           fi
 
+          rm -rf "$exported_app"
+          cp -R "$mounted_app" "$exported_app"
+          ditto -c -k --sequesterRsrc --keepParent "$exported_app" "$app_zip"
+
           architectures="$(lipo -archs "$executable")"
           if [[ " $architectures " != *" arm64 "* || " $architectures " != *" x86_64 "* ]]; then
             echo "Universal architecture proof failed: $architectures" >&2
@@ -375,8 +374,13 @@ jobs:
           fi
           codesign --verify --deep --strict --verbose=2 "$mounted_app"
           codesign_details="$(codesign -dv --verbose=4 "$mounted_app" 2>&1)"
-          if ! grep -Eq 'Signature=adhoc|flags=.*adhoc' <<<"$codesign_details"; then
-            echo "Expected an ad-hoc application signature." >&2
+          macos_code_signing="UNKNOWN"
+          if grep -Eq 'Signature=adhoc|flags=.*adhoc' <<<"$codesign_details"; then
+            macos_code_signing="AD_HOC"
+          elif grep -q '^    Authority=' <<<"$codesign_details"; then
+            macos_code_signing="DEVELOPER_ID"
+          else
+            echo "Codesign verification passed but signing details are not supported for release policy." >&2
             printf '%s\n' "$codesign_details" >&2
             exit 1
           fi
@@ -408,7 +412,7 @@ jobs:
           REQUESTED_COMMIT_SHA=$REQUESTED_COMMIT_SHA
           MACOS_PRIMARY_FORMAT=DMG
           MACOS_ARCHITECTURE_MODE=UNIVERSAL
-          MACOS_CODE_SIGNING=AD_HOC
+          MACOS_CODE_SIGNING=$macos_code_signing
           MACOS_NOTARIZATION=NOT_CONFIGURED
           MACOS_ARCHITECTURE_PROOF=UNIVERSAL_ARM64_X86_64
           MACOS_EXECUTABLE_ARCHITECTURES=$architectures
