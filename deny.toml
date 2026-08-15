@@ -2,10 +2,12 @@
 db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/RustSec/advisory-db"]
 unmaintained = "workspace"
+unsound = "workspace"
 yanked = "deny"
+# Keep cargo-deny's default unused-ignore behavior (warn). cargo-deny evaluates
+# the active crate graph, while cargo-audit scans Cargo.lock; RUSTSEC-2026-0235
+# is currently lockfile-visible but not encountered in cargo-deny's active graph.
 ignore = [
-  "RUSTSEC-2026-0194",
-  "RUSTSEC-2026-0195",
   "RUSTSEC-2026-0235",
 ]
 
