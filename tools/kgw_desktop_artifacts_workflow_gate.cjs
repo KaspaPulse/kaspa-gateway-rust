@@ -49,7 +49,6 @@ const requiredWorkflowFragments = [
   "protoc-35.1-osx-universal_binary.zip",
   "9c27aebb44c537f5627cc13c9c1c6bc0e34ecfefc6e4d79b19764afb8302d95b",
   "WINDOWS_CODE_SIGNING=UNSIGNED_NOT_CONFIGURED",
-  "MACOS_CODE_SIGNING=AD_HOC",
   "MACOS_NOTARIZATION=NOT_CONFIGURED",
   "MACOS_ARCHITECTURE_PROOF=UNIVERSAL_ARM64_X86_64",
   "Get-AuthenticodeSignature",
@@ -68,6 +67,17 @@ for (const fragment of requiredWorkflowFragments) {
     `desktop artifact workflow must contain: ${fragment}`,
   );
 }
+
+assert.match(
+  workflow,
+  /^\s*MACOS_CODE_SIGNING=\$macos_code_signing$/m,
+  "desktop artifact workflow must record macos_code_signing value in the smoke report",
+);
+assert.match(
+  workflow,
+  /macos_code_signing="(?:AD_HOC|DEVELOPER_ID|DEVELOPER_ID_NOTARIZED|UNSIGNED)"/u,
+  "desktop artifact workflow must normalize supported macOS signing modes",
+);
 
 assert.ok(
   !workflow.includes("${{ secrets."),
