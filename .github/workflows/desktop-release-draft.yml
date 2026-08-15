@@ -1,0 +1,334 @@
+name: Desktop Release Draft
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable desktop version in X.Y.Z form
+        required: true
+        type: string
+      commit_sha:
+        description: Exact current main commit qualified by Desktop Artifacts
+        required: true
+        type: string
+      artifact_run_id:
+        description: Successful Desktop Artifacts workflow run for commit_sha
+        required: true
+        type: string
+      confirmation:
+        description: Type STAGE_DESKTOP_RELEASE_DRAFT
+        required: true
+        type: string
+
+permissions: read-all
+
+concurrency:
+  group: desktop-release-draft-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  stage-release-draft:
+    name: Validate and stage immutable-ready draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      actions: read
+      attestations: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REQUESTED_VERSION: ${{ inputs.version }}
+      REQUESTED_COMMIT_SHA: ${{ inputs.commit_sha }}
+      ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+      RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
+      SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/desktop-artifacts.yml
+
+    steps:
+      - name: Validate explicit release request
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test "$GITHUB_REF" = "refs/heads/main"
+
+          if [[ ! "$REQUESTED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "version must be a stable X.Y.Z version." >&2
+            exit 1
+          fi
+
+          if [[ ! "$REQUESTED_COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "commit_sha must be exactly 40 lowercase hexadecimal characters." >&2
+            exit 1
+          fi
+
+          if [[ ! "$ARTIFACT_RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo "artifact_run_id must be numeric." >&2
+            exit 1
+          fi
+
+          if [[ "$RELEASE_CONFIRMATION" != "STAGE_DESKTOP_RELEASE_DRAFT" ]]; then
+            echo "Explicit release-draft confirmation is required." >&2
+            exit 1
+          fi
+
+          if [[ "$GITHUB_SHA" != "$REQUESTED_COMMIT_SHA" ]]; then
+            echo "workflow_dispatch head $GITHUB_SHA does not match requested commit $REQUESTED_COMMIT_SHA." >&2
+            exit 1
+          fi
+
+          live_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          if [[ "$live_main" != "$REQUESTED_COMMIT_SHA" ]]; then
+            echo "Requested release commit is not the current main head." >&2
+            exit 1
+          fi
+
+          tag="desktop-v$REQUESTED_VERSION"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag already exists: $tag" >&2
+            exit 1
+          fi
+
+          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release already exists: $tag" >&2
+            exit 1
+          fi
+
+      - name: Checkout exact release commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.commit_sha }}
+          persist-credentials: false
+
+      - name: Validate application version and exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$REQUESTED_COMMIT_SHA"
+
+          package_version="$(jq -r .version apps/kaspa-gateway-desktop/package.json)"
+          tauri_version="$(jq -r .version apps/kaspa-gateway-desktop/src-tauri/tauri.conf.json)"
+          cargo_version="$(
+            python3 - <<'PY'
+          import tomllib
+          from pathlib import Path
+          data = tomllib.loads(
+              Path("apps/kaspa-gateway-desktop/src-tauri/Cargo.toml").read_text(
+                  encoding="utf-8"
+              )
+          )
+          print(data["package"]["version"])
+          PY
+          )"
+
+          printf 'package.json=%s\ntauri.conf.json=%s\nCargo.toml=%s\n'             "$package_version" "$tauri_version" "$cargo_version"
+
+          test "$package_version" = "$REQUESTED_VERSION"
+          test "$tauri_version" = "$REQUESTED_VERSION"
+          test "$cargo_version" = "$REQUESTED_VERSION"
+
+      - name: Validate qualified Desktop Artifacts run
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          run_json="$RUNNER_TEMP/desktop-artifacts-run.json"
+          artifacts_json="$RUNNER_TEMP/desktop-artifacts-list.json"
+
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ARTIFACT_RUN_ID" >"$run_json"
+
+          test "$(jq -r .name "$run_json")" = "Desktop Artifacts"
+          test "$(jq -r .path "$run_json")" = ".github/workflows/desktop-artifacts.yml"
+          test "$(jq -r .event "$run_json")" = "workflow_dispatch"
+          test "$(jq -r .status "$run_json")" = "completed"
+          test "$(jq -r .conclusion "$run_json")" = "success"
+          test "$(jq -r .head_sha "$run_json")" = "$REQUESTED_COMMIT_SHA"
+
+          gh api             "repos/$GITHUB_REPOSITORY/actions/runs/$ARTIFACT_RUN_ID/artifacts?per_page=100"             >"$artifacts_json"
+
+          win_name="kaspa-gateway-windows-x64-$REQUESTED_COMMIT_SHA"
+          mac_name="kaspa-gateway-macos-universal-$REQUESTED_COMMIT_SHA"
+
+          test "$(
+            jq -r --arg name "$win_name" '
+              [.artifacts[]
+                | select(.name == $name and .expired == false and .size_in_bytes > 0)]
+              | length
+            ' "$artifacts_json"
+          )" = "1"
+
+          test "$(
+            jq -r --arg name "$mac_name" '
+              [.artifacts[]
+                | select(.name == $name and .expired == false and .size_in_bytes > 0)]
+              | length
+            ' "$artifacts_json"
+          )" = "1"
+
+      - name: Download qualified Windows and macOS artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          root="$RUNNER_TEMP/qualified-artifacts"
+          mkdir -p "$root/windows" "$root/macos"
+
+          gh run download "$ARTIFACT_RUN_ID"             -R "$GITHUB_REPOSITORY"             -n "kaspa-gateway-windows-x64-$REQUESTED_COMMIT_SHA"             -D "$root/windows"
+
+          gh run download "$ARTIFACT_RUN_ID"             -R "$GITHUB_REPOSITORY"             -n "kaspa-gateway-macos-universal-$REQUESTED_COMMIT_SHA"             -D "$root/macos"
+
+      - name: Verify checksums, smoke evidence, and signed build provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          root="$RUNNER_TEMP/qualified-artifacts"
+          win="$root/windows"
+          mac="$root/macos"
+
+          win_installer="$win/KaspaGateway-windows-x64-nsis.exe"
+          win_raw="$win/kaspa-gateway-desktop-windows-x64.exe"
+          win_bundle="$win/WINDOWS_BUILD_PROVENANCE.sigstore.json"
+          win_smoke="$win/WINDOWS_INSTALLER_SMOKE.txt"
+
+          mac_dmg="$mac/KaspaGateway-macos-universal.dmg"
+          mac_zip="$mac/KaspaGateway-macos-universal-app.zip"
+          mac_bundle="$mac/MACOS_BUILD_PROVENANCE.sigstore.json"
+          mac_smoke="$mac/MACOS_DMG_SMOKE.txt"
+
+          for file in             "$win_installer" "$win_raw" "$win_bundle" "$win_smoke" "$win/SHA256SUMS"             "$mac_dmg" "$mac_zip" "$mac_bundle" "$mac_smoke" "$mac/SHA256SUMS"
+          do
+            test -s "$file"
+          done
+
+          (
+            cd "$win"
+            sha256sum --check --strict SHA256SUMS
+          )
+
+          (
+            cd "$mac"
+            sha256sum --check --strict SHA256SUMS
+          )
+
+          grep -F "REQUESTED_COMMIT_SHA=$REQUESTED_COMMIT_SHA" "$win_smoke" >/dev/null
+          grep -F "WINDOWS_INSTALLER_SMOKE=PASS" "$win_smoke" >/dev/null
+          grep -F "WINDOWS_UNINSTALL_SMOKE=PASS" "$win_smoke" >/dev/null
+          grep -F "TESTNET12_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL" "$win_smoke" >/dev/null
+
+          grep -F "REQUESTED_COMMIT_SHA=$REQUESTED_COMMIT_SHA" "$mac_smoke" >/dev/null
+          grep -F "MACOS_DMG_SMOKE=PASS" "$mac_smoke" >/dev/null
+          grep -F "MACOS_ARCHITECTURE_PROOF=UNIVERSAL_ARM64_X86_64" "$mac_smoke" >/dev/null
+          grep -F "TESTNET12_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL" "$mac_smoke" >/dev/null
+
+          verify_artifact() {
+            local subject="$1"
+            local bundle="$2"
+
+            gh attestation verify "$subject"               -R "$GITHUB_REPOSITORY"               --bundle "$bundle"               --signer-workflow "$SIGNER_WORKFLOW"               --source-digest "$REQUESTED_COMMIT_SHA"               --source-ref refs/heads/main               --predicate-type https://slsa.dev/provenance/v1               --deny-self-hosted-runners >/dev/null
+
+            gh attestation verify "$subject"               -R "$GITHUB_REPOSITORY"               --signer-workflow "$SIGNER_WORKFLOW"               --source-digest "$REQUESTED_COMMIT_SHA"               --source-ref refs/heads/main               --predicate-type https://slsa.dev/provenance/v1               --deny-self-hosted-runners >/dev/null
+          }
+
+          verify_artifact "$win_installer" "$win_bundle"
+          verify_artifact "$win_raw" "$win_bundle"
+          verify_artifact "$mac_dmg" "$mac_bundle"
+          verify_artifact "$mac_zip" "$mac_bundle"
+
+      - name: Assemble immutable-ready release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          root="$RUNNER_TEMP/qualified-artifacts"
+          stage="$RUNNER_TEMP/release-assets"
+          short="${REQUESTED_COMMIT_SHA:0:7}"
+
+          rm -rf "$stage"
+          mkdir -m 700 "$stage"
+
+          cp "$root/windows/KaspaGateway-windows-x64-nsis.exe"             "$stage/KASPA_GATEWAY_WINDOWS_X64_NSIS_${REQUESTED_VERSION}_${short}.exe"
+
+          cp "$root/macos/KaspaGateway-macos-universal.dmg"             "$stage/KASPA_GATEWAY_MACOS_UNIVERSAL_DMG_${REQUESTED_VERSION}_${short}.dmg"
+
+          cp "$root/macos/KaspaGateway-macos-universal-app.zip"             "$stage/KASPA_GATEWAY_MACOS_UNIVERSAL_APP_${REQUESTED_VERSION}_${short}.zip"
+
+          cp "$root/windows/WINDOWS_BUILD_PROVENANCE.sigstore.json"             "$stage/KASPA_GATEWAY_WINDOWS_BUILD_PROVENANCE_${REQUESTED_VERSION}_${short}.sigstore.json"
+
+          cp "$root/macos/MACOS_BUILD_PROVENANCE.sigstore.json"             "$stage/KASPA_GATEWAY_MACOS_BUILD_PROVENANCE_${REQUESTED_VERSION}_${short}.sigstore.json"
+
+          (
+            cd "$stage"
+            sha256sum               KASPA_GATEWAY_WINDOWS_X64_NSIS_*.exe               KASPA_GATEWAY_MACOS_UNIVERSAL_DMG_*.dmg               KASPA_GATEWAY_MACOS_UNIVERSAL_APP_*.zip               KASPA_GATEWAY_WINDOWS_BUILD_PROVENANCE_*.sigstore.json               KASPA_GATEWAY_MACOS_BUILD_PROVENANCE_*.sigstore.json               > SHA256SUMS.txt
+          )
+
+      - name: Create draft release with all qualified assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="desktop-v$REQUESTED_VERSION"
+          stage="$RUNNER_TEMP/release-assets"
+
+          notes="$(
+            cat <<NOTES
+          Build provenance for the Windows and macOS release artifacts is attached as Sigstore bundles.
+
+          Source commit: $REQUESTED_COMMIT_SHA
+          Qualified Desktop Artifacts run: $ARTIFACT_RUN_ID
+
+          This workflow creates a draft only. Publication requires a separate immutable-release gate.
+          NOTES
+          )"
+
+          gh release create "$tag" "$stage"/*             -R "$GITHUB_REPOSITORY"             --draft             --target "$REQUESTED_COMMIT_SHA"             --title "Kaspa Gateway Desktop $REQUESTED_VERSION"             --generate-notes             --notes "$notes"             --fail-on-no-commits
+
+      - name: Verify draft tag and release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag="desktop-v$REQUESTED_VERSION"
+          stage="$RUNNER_TEMP/release-assets"
+          draft_json="$RUNNER_TEMP/draft-release.json"
+
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" >"$draft_json"
+
+          test "$(jq -r .draft "$draft_json")" = "true"
+          test "$(jq -r .prerelease "$draft_json")" = "false"
+          test "$(jq -r .tag_name "$draft_json")" = "$tag"
+
+          ref_sha="$(
+            gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq .object.sha
+          )"
+          test "$ref_sha" = "$REQUESTED_COMMIT_SHA"
+
+          expected_names="$(
+            cd "$stage"
+            find . -maxdepth 1 -type f -printf '%f\n' | sort
+          )"
+
+          actual_names="$(
+            jq -r '.assets[] | select(.size > 0) | .name' "$draft_json" | sort
+          )"
+
+          test "$actual_names" = "$expected_names"
+
+          while IFS= read -r file; do
+            local_hash="$(sha256sum "$stage/$file" | awk '{print $1}')"
+            remote_digest="$(
+              jq -r --arg file "$file" '
+                .assets[]
+                | select(.name == $file)
+                | (.digest // "")
+              ' "$draft_json"
+            )"
+
+            test "$remote_digest" = "sha256:$local_hash"
+          done <<<"$expected_names"
+
+          echo "DRAFT_RELEASE=$tag"
+          echo "DRAFT_ONLY=YES"
+          echo "PUBLISHED=NO"
+          echo "NEXT_ACTION=ADMIN_IMMUTABILITY_GATE_THEN_PUBLISH"
