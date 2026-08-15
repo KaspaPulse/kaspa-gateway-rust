@@ -9,7 +9,7 @@ Kaspa Gateway manages **runtime configuration, process ownership, status, and ob
 **Current verified desktop build: `0.1.0`**  
 Source: [`91046d16fa20a0b9a2b2b59ec9cac4f1db2594f4`](https://github.com/KaspaPulse/kaspa-gateway-rust/commit/91046d16fa20a0b9a2b2b59ec9cac4f1db2594f4)
 
-[**Download the verified desktop release**](https://github.com/KaspaPulse/kaspa-gateway-rust/releases/tag/desktop-v0.1.0-91046d1)
+[**Download the verified desktop release**](https://github.com/KaspaPulse/kaspa-gateway-rust/releases/latest)
 
 | Platform | Package | Qualification |
 |---|---|---|
