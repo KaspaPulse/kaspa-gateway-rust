@@ -11,6 +11,46 @@ Kaspa Gateway is a Rust workspace with a Tauri desktop application and a JavaScr
 - `tools/` contains local gates, audits, repair scripts, and smoke tooling. Prefer existing gates before adding new ones.
 - `tests/`, crate-level `tests/`, `src-tauri/tests/`, JavaScript gates, `Cargo.toml`, `Cargo.lock`, and Tauri config files define the validation surface.
 - `graphify-out/` is generated repository graph data. Keep graph snapshots separate from application changes. Do not commit Graphify cache, cost, or local reflection data.
+- `PROJECT_STATE.md` is the canonical current-state handoff. It summarizes verified facts but never replaces Git, CI, release metadata, or runtime evidence.
+- `PLANS.md` is the living execution plan for active multi-stage work.
+- `docs/adr/` is the canonical location for new architecture/process decision records. Existing historical ADRs under `docs/architecture/` remain valid and are indexed from `docs/adr/README.md`.
+- `docs/runbooks/` contains operational procedures. Existing focused operational documents under `docs/operations/` remain authoritative for their stated scope.
+
+## Session Start and Continuity
+
+At the beginning of every new work session:
+
+1. Read `AGENTS.md`.
+2. Read `PROJECT_STATE.md`.
+3. Inspect the actual repository before making changes. At minimum run `git branch --show-current`, `git rev-parse HEAD`, `git status --short --branch`, and `git log -1 --oneline`; inspect remotes when relevant.
+4. If verified reality differs from `PROJECT_STATE.md`, reconcile the state document before relying on the stale claim.
+5. Read only the ADRs relevant to the task when it touches an established architectural or process decision.
+6. Read the relevant runbook before release publication, rollback/recovery, live-network smoke, or incident work.
+7. Read `PLANS.md` when multi-stage work is active.
+8. Treat conversation memory, handoff ZIPs, and old chat summaries as advisory context only. Verified repository, CI, release, and runtime state takes precedence.
+9. Do not repeat completed work unless fresh verification shows it is incomplete or regressed.
+10. Continue from `PROJECT_STATE.md` `NEXT ACTION` unless the user explicitly changes priority.
+
+After every meaningful state transition, reconcile `PROJECT_STATE.md` with verified reality. Record what changed, what was actually validated, any active blocker or drift, and the precise next action. Keep the handoff compact; do not duplicate Git logs, CI history, issue trackers, release bodies, or secrets.
+
+Create or update an ADR only for consequential decisions that are expensive to reverse or define a durable architecture/security/operational boundary. Use a runbook for repeatable operational procedures. Use `PLANS.md` for long-horizon, multi-stage, migration, or high-risk work. Do not create those artifacts for trivial edits.
+
+## Source-of-Truth Hierarchy
+
+Use the source that actually owns each fact:
+
+1. Verified live runtime or deployment/release state for operational facts.
+2. Git repository state for code, branches, commits, and worktree state.
+3. CI/CD results for builds, tests, security gates, and recorded automation.
+4. `PROJECT_STATE.md` as the current verified summary after reconciliation.
+5. `AGENTS.md` for durable working rules.
+6. Accepted ADRs for durable decisions.
+7. Relevant runbooks for operational procedures.
+8. `PLANS.md` for the current execution plan.
+9. Release notes and historical documentation for history.
+10. Conversation memory only as non-authoritative context.
+
+Never convert `NOT VERIFIED` into `PASS`. Push, merge, CI success, release publication, and healthy runtime are distinct states and require distinct evidence.
 
 ## Mandatory Graphify Lifecycle
 
@@ -64,6 +104,8 @@ Kaspa Gateway is a Rust workspace with a Tauri desktop application and a JavaScr
 - Restore unrelated generated schema changes only when doing so does not discard intentional user work.
 
 ## Definition Of Done
+
+No meaningful task is complete until the requested change is implemented, applicable validation has actually run, failures and skipped checks are disclosed, and `PROJECT_STATE.md` is reconciled when the project state materially changed. Record a durable decision in an ADR when applicable, update the relevant runbook when an operational procedure changed, and verify release/deployment/runtime state when that was part of the task.
 
 - Run formatting and static validation for files you changed.
 - Run relevant JavaScript checks and gates, including targeted `node --check` or existing `tools/*.cjs` gates when JavaScript or tooling changes.

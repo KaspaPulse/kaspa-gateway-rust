@@ -6,7 +6,7 @@ Kaspa Gateway manages **runtime configuration, process ownership, status, and ob
 
 ## Download
 
-**Current verified desktop build: `0.1.0`**  
+**Current published verified desktop build: `0.1.0`**  
 Source: [`91046d16fa20a0b9a2b2b59ec9cac4f1db2594f4`](https://github.com/KaspaPulse/kaspa-gateway-rust/commit/91046d16fa20a0b9a2b2b59ec9cac4f1db2594f4)
 
 [**Download the verified desktop release**](https://github.com/KaspaPulse/kaspa-gateway-rust/releases/latest)
@@ -89,25 +89,29 @@ apps/kaspa-gateway-desktop/   Tauri desktop application
 apps/kaspa-gateway-cli/       CLI application
 crates/                       Runtime, config, API, DB, security and domain crates
 config/                       Runtime repository bindings
-docs/                         Architecture, operations, security and AI workflow docs
+docs/                         Architecture, ADRs, runbooks, operations and security docs
 tools/                        Repository-native contract and quality gates
 .github/workflows/            CI, security and desktop artifact workflows
 ```
 
-## Documentation
+## Documentation and continuity
 
-- [`AGENTS.md`](AGENTS.md) — repository engineering and ownership rules
-- [`docs/architecture/`](docs/architecture/) — runtime architecture and contracts
-- [`docs/operations/`](docs/operations/) — operational documentation
-- [`docs/security/`](docs/security/) — security documentation
-- [`docs/AI_DEVELOPMENT_WORKFLOW.md`](docs/AI_DEVELOPMENT_WORKFLOW.md) — AI-assisted development workflow
-- [`SECURITY.md`](SECURITY.md) — security policy
+- [`AGENTS.md`](AGENTS.md) — durable repository engineering, safety, and agent rules.
+- [`PROJECT_STATE.md`](PROJECT_STATE.md) — current verified resume boundary; always reconcile it against live Git/CI/release/runtime state.
+- [`PLANS.md`](PLANS.md) — living plan for active multi-stage work.
+- [`docs/architecture/`](docs/architecture/) — runtime architecture and contracts.
+- [`docs/adr/`](docs/adr/) — canonical index/location for durable decisions; legacy ADR-0010 remains under `docs/architecture/` and is indexed there.
+- [`docs/runbooks/`](docs/runbooks/) — repeatable release/operational procedures.
+- [`docs/operations/`](docs/operations/) — focused operational documentation, including live-network smoke.
+- [`docs/security/`](docs/security/) — security documentation.
+- [`docs/AI_DEVELOPMENT_WORKFLOW.md`](docs/AI_DEVELOPMENT_WORKFLOW.md) — AI-assisted development and continuity workflow.
+- [`SECURITY.md`](SECURITY.md) — security policy.
 
 ## Desktop artifacts
 
-Native Windows and macOS packages are built by [`.github/workflows/desktop-artifacts.yml`](.github/workflows/desktop-artifacts.yml) against an explicit commit SHA. The workflow qualifies the installer/application before publishing workflow artifacts.
+Native Windows and macOS packages are built by [`.github/workflows/desktop-artifacts.yml`](.github/workflows/desktop-artifacts.yml) against an explicit commit SHA. The workflow qualifies the installer/application before release staging or publication.
 
-The current verified dual-platform artifact run is [`31873904088`](https://github.com/KaspaPulse/kaspa-gateway-rust/actions/runs/31873904088).
+The latest qualified Desktop Artifacts run for the `0.1.1` release candidate is [`31910163486`](https://github.com/KaspaPulse/kaspa-gateway-rust/actions/runs/31910163486), source `b911eb44619f8eab706bc2fe786d1c84ac958f1d`. Those bytes are staged in an existing GitHub draft release; **qualification or draft staging is not publication**. The latest published release remains the `0.1.0` release linked above until GitHub Releases reports otherwise.
 
 ## License
 

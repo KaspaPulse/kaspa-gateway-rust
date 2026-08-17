@@ -101,6 +101,9 @@ jobs:
       - name: Verify desktop artifact workflow contract
         run: node tools/kgw_desktop_artifacts_workflow_gate.cjs
 
+      - name: Verify project continuity contract
+        run: node tools/kgw_project_continuity_gate.cjs
+
       - name: Lint and syntax-check E2E JavaScript
         working-directory: e2e
         run: |
