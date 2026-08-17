@@ -2,7 +2,7 @@
 
 ## Metadata
 
-- Last state update: 2026-08-17 16:47 +03:00.
+- Last state update: 2026-08-17 16:49 +03:00.
 - State author/agent: maintenance-state reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
@@ -23,11 +23,11 @@
 - Working tree: **NOT VERIFIED** in the dedicated server checkout from this agent environment.
 - Dedicated server checkout probe during this reconciliation: `/home/kas/kaspa-gateway-dev/codex/kaspa-gateway-rust` was not mounted/present in this execution environment, so local branch/HEAD/status/remotes were not inferred.
 - Remote tracking state: **NOT VERIFIED** in a local checkout; inspect `git status --short --branch`, `git log -1 --oneline`, and remotes when resuming in the dedicated checkout.
-- Verified code baseline (historical continuity evidence): `363a3f7f959a4ead47a6297c4866218d08b9820c` (`docs: harden project continuity handoff (#61)`).
+- Verified code baseline (latest completed maintenance integration evidence): `f3bd629126b8572bda32dd1f8da253d3491430b7` (`chore(deps): bump sysinfo from 0.31.4 to 0.39.6 (#52)`).
 - Verified application/workflow implementation baseline: `197bdead257973164931b34cce20c4556820df44` (`fix: verify desktop release drafts by release ID (#59)`).
 - State-document commit: derive dynamically from Git when needed; do not copy a self-referential state SHA here.
 - Qualified Desktop `0.1.1` source and published tag target: `b911eb44619f8eab706bc2fe786d1c84ac958f1d` (`release: prepare desktop 0.1.1 (#50)`).
-- Reconciliation observation at 2026-08-17 16:47 +03:00: GitHub `main` resolved to `f3bd629126b8572bda32dd1f8da253d3491430b7` after PR #52; this is a timestamped observation, not a forever-current claim.
+- Reconciliation observation at 2026-08-17 16:49 +03:00: GitHub `main` resolved to `f3bd629126b8572bda32dd1f8da253d3491430b7`; this is a timestamped observation, not a forever-current claim.
 - Active ruleset snapshot re-verified during this reconciliation: ID `20627285`, `main-rebootstrap-baseline`, enforcement active, squash-only integration, unresolved review threads required, no bypass, and six required PR contexts.
 
 ## Uncommitted Work
@@ -60,13 +60,13 @@
   - PR #54 (`globals` E2E) squash-merged; post-merge `main` baseline was `1499dad88214190f9f6cf4728387e551286c541f` and push CI passed.
   - PR #55 (GitHub Actions group) squash-merged; post-merge `main` baseline was `bc56b8c53aff889421e36ad91154c61da87808a7` and push CI passed.
   - PR #52 (`sysinfo` 0.31.4 -> 0.39.6) initially failed `cargo check` because `System::refresh_processes` gained the `remove_dead_processes` argument. The same PR was repaired with the minimal compatibility adaptation `refresh_processes(..., true)`, requalified on exact final head `ef514ba28bd9cdacbd2ca5c2cfe638357a65a655`, and squash-merged as `f3bd629126b8572bda32dd1f8da253d3491430b7`.
-- Open PR audit during this reconciliation found exactly one open PR: Dependabot #51 (`duckdb` and `ureq` grouped update). PRs #52-#55 are no longer open.
+- Open PR audit during this reconciliation found exactly one open maintenance PR before the state PR: Dependabot #51 (`duckdb` and `ureq` grouped update). PRs #52-#55 are no longer open.
 
 ### CI
 
 - PR #52 final exact-head CI run `32035617943` completed **success** after the compatibility repair. Its blocking quality job passed formatting, `cargo check`, strict Clippy, Rust tests, desktop npm audit, E2E npm audit, and continuity/runtime/release-workflow contracts.
 - PR #52 final exact head also passed the other required ruleset contexts, including `actionlint`, secret scan, dependency review, supply-chain policy, and Rust security-extended analysis.
-- Post-merge push CI run `32036339504` on merge commit `f3bd629126b8572bda32dd1f8da253d3491430b7` is **IN PROGRESS** at this state update. At the last read, formatting and `cargo check` had passed and Rust tests were running. Do not promote this run to PASS until GitHub reports completion success.
+- Post-merge push CI run `32036339504` on merge commit `f3bd629126b8572bda32dd1f8da253d3491430b7` completed **success**. Blocking `quality (rust + npm)` job `95407482545` passed continuity/runtime/release-workflow contracts, formatting, `cargo check`, strict Clippy, Rust tests, desktop npm audit, and E2E npm audit. Node.js 26 compatibility job `95407482622` also passed.
 - The active ruleset requires these six PR contexts: `quality (rust + npm)`, `actionlint`, `TruffleHog verified and unknown secrets`, `dependency vulnerability and license review`, `policy + audit + deny + machete`, and `Rust security-extended analysis`.
 - Any new or rebased PR must qualify its **exact final head**; historical success does not transfer to a moved head.
 
@@ -101,8 +101,8 @@
 
 ## Drift
 
-- Repository handoff drift found and reconciled in progress: the prior state said Dependabot #51-#55 remained open, but live GitHub shows #52-#55 merged and only #51 open.
-- Current remote-main observation advanced beyond the historical continuity baseline; current values remain dynamically verified rather than embedded as permanent labels.
+- Repository handoff drift found and reconciled: the prior state said Dependabot #51-#55 remained open, but live GitHub shows #52-#55 merged and only #51 remains as the dependency maintenance proposal.
+- Current remote-main observation advanced beyond the former continuity baseline; current values remain dynamically verified rather than embedded as permanent current labels.
 - Qualified source ↔ immutable published Desktop `0.1.1` release: **NONE FOUND** in the latest release re-fetch.
 - Repository ruleset ↔ documented six-context/squash-only policy: **NONE FOUND** in the latest ruleset re-fetch.
 - Local dedicated checkout/worktree drift: **NOT VERIFIED** because the checkout is not accessible from this execution environment.
@@ -127,7 +127,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 - Repository-native continuity surfaces and Desktop `0.1.1` release/workflow engineering remain complete.
 - Dependabot PRs #53, #54, and #55 were independently rebased, exact-head qualified, squash-merged, and followed by successful push CI on their resulting `main` commits.
-- Dependabot PR #52 exposed a real upstream API migration, was repaired minimally on the same PR, exact-head qualified with `cargo check`, strict Clippy, Rust tests, npm audits, security/supply-chain gates, and then squash-merged.
+- Dependabot PR #52 exposed a real upstream API migration, was repaired minimally on the same PR, exact-head qualified with `cargo check`, strict Clippy, Rust tests, npm audits, security/supply-chain gates, squash-merged, and followed by successful post-merge push CI on `f3bd629126b8572bda32dd1f8da253d3491430b7`.
 - No Desktop `0.1.1` release asset, tag, source binding, or immutable release metadata was changed by this maintenance sequence.
 
 ## Last Verified Validation
@@ -135,26 +135,25 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 ### Project Continuity Contract
 
 - Command represented by CI: `node tools/kgw_project_continuity_gate.cjs`.
-- Result: **PASS** on PR #52 exact final head in CI run `32035617943`.
-- Post-merge run `32036339504` is still **IN PROGRESS** at this update.
+- Result: **PASS** in post-merge push CI run `32036339504`, job `95407482545`, on `f3bd629126b8572bda32dd1f8da253d3491430b7`.
 
 ### Formatting / Build Static Check
 
-- `cargo fmt --all -- --check`: **PASS** on PR #52 exact final head and already PASS in the in-progress post-merge run.
-- `cargo check --locked --workspace --all-targets`: **PASS** on PR #52 exact final head and already PASS in the in-progress post-merge run.
+- `cargo fmt --all -- --check`: **PASS** in job `95407482545`.
+- `cargo check --locked --workspace --all-targets`: **PASS** in job `95407482545`.
 
 ### Clippy
 
-- Strict repository Clippy lanes: **PASS** on PR #52 exact final head.
+- Strict repository Clippy lanes: **PASS** in job `95407482545`.
 
 ### Rust Tests
 
-- `cargo test --locked --workspace --all-targets`: **PASS** on PR #52 exact final head.
-- Post-merge run `32036339504`: **IN PROGRESS** at this update.
+- `cargo test --locked --workspace --all-targets`: **PASS** in job `95407482545`.
 
 ### JavaScript / npm Validation
 
-- Desktop JavaScript lint, E2E lint/syntax checks, desktop npm audit, E2E npm audit, and Node.js 26 compatibility: **PASS** on PR #52 exact final head.
+- Desktop JavaScript lint, E2E lint/syntax checks, desktop npm audit, E2E npm audit: **PASS** in job `95407482545`.
+- Node.js 26 compatibility job `95407482622`: **PASS**, non-blocking.
 
 ### Release / Distribution Verification
 
@@ -210,13 +209,12 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## NEXT ACTION
 
-1. Wait for post-merge push CI run `32036339504` on merge commit `f3bd629126b8572bda32dd1f8da253d3491430b7` to complete; classify the exact result without waiver.
-2. Finalize and merge this `PROJECT_STATE.md` reconciliation only after the current `main` CI result is known and the state reflects it accurately.
-3. Re-fetch live `main` and PR #51, rebase #51 onto the resulting current `main`, and treat every earlier #51 check as stale.
-4. Review #51 as a potentially breaking DuckDB migration, not a routine minor/patch update. Require exact-head formatting, Cargo check, strict Clippy, Rust tests, npm audits, and all six ruleset contexts; add only the smallest API adaptation if evidence proves one is needed.
-5. Squash-merge #51 only if its exact final head is fully qualified and has no unresolved review threads; then verify post-merge push CI.
-6. Reconcile `PROJECT_STATE.md` again after the final maintenance transition.
-7. Owner credential retirement remains owner-only/administration-only and stays `NOT VERIFIED` unless an authorized tool becomes available.
+1. Exact-head qualify and squash-merge the `PROJECT_STATE.md` reconciliation PR created from verified `main` after run `32036339504` passed.
+2. Re-fetch live `main` and PR #51, rebase #51 onto the resulting current `main`, and treat every earlier #51 check as stale.
+3. Review #51 as a potentially breaking DuckDB migration, not a routine minor/patch update. Require exact-head formatting, Cargo check, strict Clippy, Rust tests, npm audits, and all six ruleset contexts; add only the smallest API adaptation if evidence proves one is needed.
+4. Squash-merge #51 only if its exact final head is fully qualified and has no unresolved review threads; then verify post-merge push CI.
+5. Reconcile `PROJECT_STATE.md` again after the final maintenance transition.
+6. Owner credential retirement remains owner-only/administration-only and stays `NOT VERIFIED` unless an authorized tool becomes available.
 
 ## Resume Instructions
 
