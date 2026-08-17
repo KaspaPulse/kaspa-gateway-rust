@@ -1,0 +1,170 @@
+name: Desktop 0.1.1 Recovery Gate
+
+on:
+  push:
+    branches:
+      - ops/release-011-recovery-gate-20260817
+
+permissions: read-all
+
+jobs:
+  verify-release-recovery:
+    name: Verify existing Desktop 0.1.1 draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_ID: "371168378"
+      RELEASE_TAG: desktop-v0.1.1
+      RELEASE_SOURCE: b911eb44619f8eab706bc2fe786d1c84ac958f1d
+      EXPECTED_MAIN: f07b29be804ab39a3b372d27683900af55b52684
+      SIGNER_WORKFLOW: KaspaPulse/kaspa-gateway-rust/.github/workflows/desktop-artifacts.yml
+
+    steps:
+      - name: Validate live repository and draft identity
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          live_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          test "$live_main" = "$EXPECTED_MAIN"
+
+          draft_json="$RUNNER_TEMP/draft-release.json"
+          gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" >"$draft_json"
+
+          test "$(jq -r .id "$draft_json")" = "$RELEASE_ID"
+          test "$(jq -r .draft "$draft_json")" = "true"
+          test "$(jq -r '.published_at // "null"' "$draft_json")" = "null"
+          test "$(jq -r .prerelease "$draft_json")" = "false"
+          test "$(jq -r .tag_name "$draft_json")" = "$RELEASE_TAG"
+          test "$(jq -r .target_commitish "$draft_json")" = "$RELEASE_SOURCE"
+
+          expected_names="$(cat <<'EOF'
+          KASPA_GATEWAY_MACOS_BUILD_PROVENANCE_0.1.1_b911eb4.sigstore.json
+          KASPA_GATEWAY_MACOS_UNIVERSAL_APP_0.1.1_b911eb4.zip
+          KASPA_GATEWAY_MACOS_UNIVERSAL_DMG_0.1.1_b911eb4.dmg
+          KASPA_GATEWAY_WINDOWS_BUILD_PROVENANCE_0.1.1_b911eb4.sigstore.json
+          KASPA_GATEWAY_WINDOWS_X64_NSIS_0.1.1_b911eb4.exe
+          SHA256SUMS.txt
+          EOF
+          )"
+          actual_names="$(jq -r '.assets[] | .name' "$draft_json" | sort)"
+          test "$actual_names" = "$expected_names"
+          test "$(jq '.assets | length' "$draft_json")" = "6"
+          test "$(jq '[.assets[] | select(.size <= 0 or (.digest | startswith("sha256:") | not))] | length' "$draft_json")" = "0"
+
+          cp "$draft_json" "$RUNNER_TEMP/draft-release-before.json"
+
+      - name: Download all draft assets by release asset ID and verify digests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          draft_json="$RUNNER_TEMP/draft-release-before.json"
+          out="$RUNNER_TEMP/release-assets"
+          mkdir -m 700 "$out"
+
+          jq -r '.assets[] | [.id, .name, .size, .digest] | @tsv' "$draft_json" |
+          while IFS=$'\t' read -r asset_id name expected_size expected_digest; do
+            test "$asset_id" -gt 0
+            test -n "$name"
+            test "$expected_size" -gt 0
+            [[ "$expected_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+
+            gh api \
+              -H "Accept: application/octet-stream" \
+              "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" \
+              >"$out/$name"
+
+            test -s "$out/$name"
+            actual_size="$(stat -c %s "$out/$name")"
+            test "$actual_size" = "$expected_size"
+
+            actual_hash="$(sha256sum "$out/$name" | awk '{print $1}')"
+            test "sha256:$actual_hash" = "$expected_digest"
+            printf 'ASSET_OK=%s sha256:%s\n' "$name" "$actual_hash"
+          done
+
+          test "$(find "$out" -maxdepth 1 -type f | wc -l)" = "6"
+
+          (
+            cd "$out"
+            sha256sum --check --strict SHA256SUMS.txt
+          )
+
+      - name: Verify preserved bundles and online attestations
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          out="$RUNNER_TEMP/release-assets"
+          win="$out/KASPA_GATEWAY_WINDOWS_X64_NSIS_0.1.1_b911eb4.exe"
+          win_bundle="$out/KASPA_GATEWAY_WINDOWS_BUILD_PROVENANCE_0.1.1_b911eb4.sigstore.json"
+          mac_dmg="$out/KASPA_GATEWAY_MACOS_UNIVERSAL_DMG_0.1.1_b911eb4.dmg"
+          mac_zip="$out/KASPA_GATEWAY_MACOS_UNIVERSAL_APP_0.1.1_b911eb4.zip"
+          mac_bundle="$out/KASPA_GATEWAY_MACOS_BUILD_PROVENANCE_0.1.1_b911eb4.sigstore.json"
+
+          verify_subject() {
+            local subject="$1"
+            local bundle="$2"
+
+            gh attestation verify "$subject" \
+              -R "$GITHUB_REPOSITORY" \
+              --bundle "$bundle" \
+              --signer-workflow "$SIGNER_WORKFLOW" \
+              --source-digest "$RELEASE_SOURCE" \
+              --source-ref refs/heads/main \
+              --predicate-type https://slsa.dev/provenance/v1 \
+              --deny-self-hosted-runners >/dev/null
+
+            gh attestation verify "$subject" \
+              -R "$GITHUB_REPOSITORY" \
+              --signer-workflow "$SIGNER_WORKFLOW" \
+              --source-digest "$RELEASE_SOURCE" \
+              --source-ref refs/heads/main \
+              --predicate-type https://slsa.dev/provenance/v1 \
+              --deny-self-hosted-runners >/dev/null
+          }
+
+          verify_subject "$win" "$win_bundle"
+          verify_subject "$mac_dmg" "$mac_bundle"
+          verify_subject "$mac_zip" "$mac_bundle"
+
+          echo "PROVENANCE_GATE=PASS"
+
+      - name: Verify immutable-release administration gate
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          immutable_json="$RUNNER_TEMP/immutable-releases.json"
+          gh api "repos/$GITHUB_REPOSITORY/immutable-releases" >"$immutable_json"
+          test "$(jq -r .enabled "$immutable_json")" = "true"
+          echo "IMMUTABLE_RELEASES_ENABLED=true"
+
+      - name: Reassert no publication or release mutation
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          after="$RUNNER_TEMP/draft-release-after.json"
+          latest="$RUNNER_TEMP/latest-release.json"
+
+          gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" >"$after"
+          gh api "repos/$GITHUB_REPOSITORY/releases/latest" >"$latest"
+
+          test "$(jq -r .draft "$after")" = "true"
+          test "$(jq -r '.published_at // "null"' "$after")" = "null"
+          test "$(jq -r .tag_name "$after")" = "$RELEASE_TAG"
+          test "$(jq -r .target_commitish "$after")" = "$RELEASE_SOURCE"
+          test "$(jq -r .tag_name "$latest")" = "desktop-v0.1.0"
+          test "$(jq -r .immutable "$latest")" = "true"
+
+          echo "RECOVERY_GATE=PASS"
+          echo "DRAFT_ONLY=YES"
+          echo "PUBLISHED=NO"
+          echo "NEXT_ACTION=PUBLISH_EXISTING_RELEASE_ID_AFTER_AUTHORIZED_GATE"
