@@ -2,140 +2,128 @@
 
 ## Objective
 
-Safely complete Desktop `0.1.1` publication from the existing independently verified draft, then repair the draft-verification workflow without recreating artifacts or weakening release evidence.
+Close the Desktop `0.1.1` release cycle by preserving the now-published immutable release exactly as qualified, repairing the draft-verification workflow bug that caused the original staging run to fail after successful draft creation, and leaving repository-native continuity in a completed state.
 
 ## Success Criteria
 
-- Existing draft release ID `371168378` is independently verified from downloaded release assets and provenance.
-- Publication uses that exact draft and results in an immutable `desktop-v0.1.1` release targeting the qualified source commit.
-- Post-publication verification proves release/tag/source identity, immutable-release verification, asset binding, checksums, and build provenance.
-- The draft workflow bug is repaired in a small, reviewed PR after the release-critical path is safe.
-- `PROJECT_STATE.md` is reconciled at each meaningful state transition.
+- Desktop `0.1.1` remains immutable, latest, and tag-bound to qualified source `b911eb44619f8eab706bc2fe786d1c84ac958f1d` with the six verified release assets unchanged.
+- The known draft workflow bug is repaired without broad workflow redesign or release-state mutation.
+- Draft verification uses the created release ID or draft-inclusive release-list semantics and does not require a public git tag/ref before publication.
+- The repair PR is exact-head qualified by all required ruleset contexts and squash-merged with no unresolved review threads.
+- `PROJECT_STATE.md` is reconciled after the workflow repair and the release plan is closed.
 
 ## Non-Goals
 
+- No mutation of immutable `desktop-v0.1.0` or `desktop-v0.1.1`.
+- No artifact rebuild or replacement `0.1.1` release.
 - No reimplementation of Kaspa consensus, node, or Stratum bridge behavior.
 - No new runtime ownership subsystem.
 - No `testnet12` live smoke without separate explicit authorization.
-- No artifact rebuild or second `0.1.1` draft unless evidence proves the current bytes invalid.
-- No dependency-upgrade work from Dependabot PRs #51-#55 inside this plan.
+- No Dependabot #51-#55 integration inside this release-repair plan.
 
 ## Constraints
 
-- Release source remains `b911eb44619f8eab706bc2fe786d1c84ac958f1d` unless a reviewed release decision explicitly changes it and requalification is performed.
-- Public `desktop-v0.1.0` is immutable and must not be mutated.
-- Existing draft ID `371168378` is the only intended `0.1.1` draft.
-- Windows is unsigned; macOS is ad-hoc signed and not notarized. Build provenance must not be represented as OS publisher signing.
-- Use PR-based integration for repository changes and exact-head CI qualification before merge.
-- Do not weaken the immutable-releases administration gate because a credential lacks the required scope.
+- Published release source/tag binding remains `b911eb44619f8eab706bc2fe786d1c84ac958f1d`.
+- Windows `0.1.1` remains unsigned; macOS remains ad-hoc signed and not notarized. Build provenance must not be represented as OS publisher signing.
+- Repository changes use PR-based integration and exact-head CI qualification before squash merge.
+- Repair the existing draft workflow rather than adding a parallel release-control subsystem.
+- The temporary release-publication credential must not be persisted in repository files or logs and should be removed from repository settings after release operations.
 
 ## Current Baseline
 
-- Last verified live `main`: `f07b29be804ab39a3b372d27683900af55b52684`.
-- Qualified release source: `b911eb44619f8eab706bc2fe786d1c84ac958f1d`; current `main` is one continuity commit ahead and the draft must not be silently retargeted.
+- Last verified live `main`: `ba53796a5933cdf97b6b810c208050686a8555e6`.
+- Qualified/published release source: `b911eb44619f8eab706bc2fe786d1c84ac958f1d`.
 - Qualified Desktop Artifacts run: `31910163486` — success.
-- Existing draft: release ID `371168378`, `draft=true`, `published_at=null`, target `b911eb4...`, six assets.
-- Latest public release: `desktop-v0.1.0`, immutable.
-- Draft staging run `31911079027`: failed after draft creation due post-create lookup semantics.
-- Independent recovery verifier run `32019926018`: asset/checksum/provenance stages passed; only the immutable-releases administration read failed with HTTP 403 for the available GitHub Actions token.
+- Recovery verifier run: `32019926018` — byte/checksum/provenance recovery passed; administration-read limitation was later resolved with a dedicated credential.
+- Exact publication gate run: `32022865218`, job `95366007733` — **success**.
+- Latest public release: ID `371168378`, tag `desktop-v0.1.1`, `draft=false`, `immutable=true`, published `2026-08-17T11:01:16Z`.
+- Tag `refs/tags/desktop-v0.1.1` resolves directly to exact source `b911eb44619f8eab706bc2fe786d1c84ac958f1d`.
+- Original draft staging run `31911079027` remains the evidence for the post-create lookup semantics bug.
 
 ## Risks
 
-- Re-dispatching the draft workflow can create competing state or duplicated assets.
-- Publishing without a fresh immutable-releases administration read would waive an explicit release gate.
-- Main has moved after qualification; release-source appropriateness is explicitly classified and the verified draft remains pinned to `b911eb4...`.
-- Workflow repairs made before release publication can unnecessarily complicate exact-source release reasoning.
-- Publication credentials must be able to preserve the old qualified release target under GitHub's current release/workflow permission rules.
+- Any attempt to modify immutable `desktop-v0.1.1` would cross the completed release boundary.
+- Reintroducing a tag-ref precondition into the draft-only workflow would recreate the original failure mode.
+- A broad rewrite could obscure the small root cause and weaken auditability; prefer a minimal semantics repair.
+- A workflow-only fix without a focused regression guard may allow the same draft/tag assumption to return later.
+- Dependabot changes touching GitHub Actions should not be conflated with this repair until the release workflow is stable.
 
 ## Milestones
 
 ### Milestone 1 — Recover and verify the existing draft — COMPLETE
 
-- Goal: prove the six existing draft assets and provenance are intact without mutating the release.
-- Result:
-  - release ID/target/state checks passed;
-  - all six assets downloaded by release asset ID;
-  - asset names, sizes, and GitHub SHA-256 digests matched;
-  - strict `SHA256SUMS.txt` verification passed;
-  - Windows NSIS, macOS DMG, and macOS App ZIP passed preserved Sigstore bundle verification and online GitHub attestation verification;
-  - repository, signer workflow, source digest `b911eb4...`, source ref `refs/heads/main`, SLSA v1 predicate, and self-hosted-runner denial were enforced;
-  - post-verification release reads confirm the draft remains unpublished and latest public release remains `desktop-v0.1.0`.
-- Evidence: GitHub Actions run `32019926018`, job `95357274069`, plus fresh release API reads.
+- Six draft assets were downloaded by release asset ID and matched exact GitHub metadata digests/sizes.
+- Strict `SHA256SUMS.txt` verification passed.
+- Windows NSIS, macOS DMG, and macOS App ZIP passed preserved Sigstore bundle and online GitHub attestation verification with repository/workflow/source/SLSA/self-hosted constraints.
+- Evidence: run `32019926018`, job `95357274069`, plus fresh release API reads.
 
-### Milestone 2 — Publication gate — BLOCKED ON ADMINISTRATION READ
+### Milestone 2 — Publication gate — COMPLETE
 
-- Goal: establish whether publication is safe and explicitly authorized.
-- Completed:
-  - recovery evidence is PASS;
-  - publication authorization is explicitly granted by the repository owner;
-  - live `main`, draft identity, and release-source drift are classified.
-- Remaining gate:
-  - repository immutable-releases administration read must succeed and report `enabled=true` immediately before publication.
-- Current blocker:
-  - connected GitHub App and GitHub Actions `GITHUB_TOKEN` return HTTP 403 for the immutable-releases endpoint;
-  - a safe repository-secret presence probe found no suitable release-administration token/App credential under the standard names checked.
-- Exit criteria: a credential with repository Administration read performs the fresh check successfully while the exact draft/source/assets remain unchanged.
+- Owner publication authorization was present.
+- Live `main`, ruleset, open PRs, exact release ID/source/assets, and latest public release were rechecked.
+- A dedicated short-lived credential successfully read the repository immutable-releases administration setting immediately before publication and required `enabled=true`.
+- No release was recreated or retargeted.
 
-### Milestone 3 — Publish and verify `0.1.1` — PENDING
+### Milestone 3 — Publish and verify `0.1.1` — COMPLETE
 
-- Goal: publish the existing draft exactly once.
-- Changes: release state changes from draft to published; tag/ref becomes real/public.
-- Validation:
-  - `draft=false` and `published_at` populated;
-  - `immutable=true`;
-  - tag/ref resolves to `b911eb4...`;
-  - six assets intact and digests unchanged;
-  - `gh release verify` and `gh release verify-asset` pass where supported;
-  - `gh attestation verify` still passes for release artifacts.
-- Exit criteria: immutable public `desktop-v0.1.1` is verified and `PROJECT_STATE.md` is reconciled.
+- Existing release ID `371168378` was published in place exactly once.
+- Result is `draft=false`, `prerelease=false`, `immutable=true`, and latest public release.
+- Tag/ref resolves directly to `b911eb44619f8eab706bc2fe786d1c84ac958f1d`.
+- All six asset IDs/names/sizes/digests remained unchanged.
+- `gh release verify`, all `gh release verify-asset` checks, and post-publication build attestations passed.
+- Evidence: run `32022865218`, job `95366007733`.
 
-### Milestone 4 — Repair draft workflow verification — PENDING AFTER PUBLICATION
+### Milestone 4 — Repair draft workflow verification — ACTIVE
 
 - Goal: remove the known draft-semantics bug without broad workflow redesign.
-- Changes:
-  - capture/discover the draft release ID;
-  - verify draft via `/releases/{release_id}` or list selection;
-  - verify `draft`, `tag_name`, `target_commitish`, exact asset set, and digests;
-  - defer actual git tag/ref identity checks until publication.
-- Validation: `actionlint`, a focused release-workflow contract gate if added, and all required PR checks on the exact head.
-- Exit criteria: small PR merged by squash after exact-head checks pass.
+- Required repair:
+  - retain exact-input/source/artifact qualification checks already owned by the workflow;
+  - capture or discover the created draft release ID, or select it from a draft-inclusive releases list;
+  - verify the release object by ID for `draft`, `tag_name`, `target_commitish`, exact asset set, sizes, and digests;
+  - do not require `releases/tags/{tag}` or a real git tag/ref before publication;
+  - leave public tag/ref identity verification to the separate publication/post-publication path.
+- Regression guard: add or extend a focused repository-native contract check if the current test surface does not explicitly enforce these semantics.
+- Validation: `actionlint`, focused contract gate, and all six ruleset-required PR contexts on the exact final head.
+- Exit criteria: one small repair PR squash-merged, no unresolved review threads, and continuity docs reconciled to completion.
 
 ## Decisions Needed
 
-- Publication content/source decision: **resolved** — use existing draft ID `371168378` at qualified source `b911eb4...`.
-- Publication authorization: **granted**.
-- Operational dependency: provide/use a credential with repository Administration read and release publication permissions compatible with the existing qualified draft.
-- Independent review/merge decisions for Dependabot PRs #51-#55 remain outside this plan.
+- Desktop `0.1.1` release content/source/publication decisions are **resolved and complete**.
+- Workflow repair approach: reuse the existing workflow and fix its lookup/verification semantics; do not add a parallel subsystem.
+- Dependabot #51-#55 remain independent future decisions outside this plan.
 
 ## Progress
 
-- Source metadata `0.1.1` merged — verified.
-- Qualified Windows/macOS artifact build and provenance — verified.
-- Existing draft and six release assets — verified by live API metadata.
-- Independent draft-byte recovery verification — **PASS**.
-- Strict checksum-manifest verification — **PASS**.
-- Preserved-bundle and online GitHub attestation verification — **PASS**.
-- Publication authorization — **GRANTED**.
-- Immutable-releases administration freshness gate — **BLOCKED BY CREDENTIAL SCOPE**.
-- Publication — not performed.
-- Workflow repair — pending until the release-critical path is safe.
+- Source metadata `0.1.1` — **VERIFIED**.
+- Qualified Windows/macOS native artifacts — **VERIFIED**.
+- Draft byte/checksum recovery — **PASS**.
+- Preserved/online build provenance — **PASS**.
+- Immutable-releases freshness gate — **PASS**.
+- Publication of existing release ID `371168378` — **PASS**.
+- Immutable release/tag/assets verification — **PASS**.
+- Post-publication build attestation verification — **PASS**.
+- Publication-state continuity reconciliation — **IN PROGRESS VIA PR**.
+- Draft workflow repair — **NEXT**.
+- Release-plan closure — **PENDING WORKFLOW REPAIR MERGE**.
 
 ## Discoveries
 
-- GitHub draft releases cannot be safely verified by assuming `releases/tags/{tag}` and a real git tag ref are available before publication.
-- The existing draft was created successfully even though the workflow run concluded failure in its later verification step.
-- `contents: write` is sufficient for the recovery workflow to read/download the draft assets, but the immutable-releases status endpoint separately requires repository Administration read.
-- An older immutable public release is not sufficient evidence that repository immutable releases remain enabled; the setting must be read freshly at the publication gate.
+- GitHub draft releases cannot be safely verified by assuming `releases/tags/{tag}` or a real git tag ref is available before publication.
+- The original draft workflow created and uploaded the intended draft successfully before its later verification step failed.
+- Release asset recovery can bind directly to release asset IDs and GitHub SHA-256 metadata.
+- The immutable-releases administration setting is a distinct publication gate and requires appropriate repository administration scope.
+- Once immutable publication succeeds, GitHub release/asset attestations provide a separate release-distribution verification layer in addition to build provenance.
 
 ## Blockers
 
-- **Active blocker:** no credential currently exposed to this execution environment can read the repository immutable-releases administration state. This gate must not be downgraded or inferred.
-- No artifact-integrity, checksum, or provenance blocker is established.
+- No release-distribution blocker remains for Desktop `0.1.1`.
+- Active engineering item: `.github/workflows/desktop-release-draft.yml` post-create verification semantics.
+- No artifact-integrity, checksum, provenance, immutable-release, or tag-binding blocker remains.
 
 ## Final Validation
 
-After all milestones, re-check GitHub `main`, release identity, ruleset, required checks, public release immutability, asset digests, provenance, and `PROJECT_STATE.md` freshness.
+After the workflow-repair merge, re-check live `main`, open PRs, ruleset, required checks, immutable `desktop-v0.1.1` identity/tag/assets, relevant workflow contract, and `PROJECT_STATE.md` freshness. Remove the short-lived publication secret through repository settings after release operations.
 
 ## Completion Criteria
 
-This plan is finished only when the `0.1.1` release is safely published and verified, the workflow verification bug is repaired and exact-head qualified, and the current-state handoff no longer points to these milestones as active work.
+This plan is finished only when the draft-verification workflow repair is squash-merged after exact-head required checks, immutable `desktop-v0.1.1` remains unchanged and verified, the short-lived publication credential is removed from repository settings, and the current-state handoff no longer points to Desktop `0.1.1` release milestones as active work.
