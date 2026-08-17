@@ -297,7 +297,7 @@ jobs:
 
           draft_pages="$RUNNER_TEMP/created-draft-releases.json"
           match_count=0
-          for attempt in 1 2 3 4 5; do
+          for _ in 1 2 3 4 5; do
             gh api --paginate --slurp \
               "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
               >"$draft_pages"
