@@ -1,0 +1,4 @@
+Desktop 0.1.1 exact publication gate trigger after RELEASE_ADMIN_TOKEN provisioning.
+Release ID: 371168378
+Qualified source: b911eb44619f8eab706bc2fe786d1c84ac958f1d
+Expected main: ba53796a5933cdf97b6b810c208050686a8555e6
