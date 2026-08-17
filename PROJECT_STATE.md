@@ -2,16 +2,16 @@
 
 ## Metadata
 
-- Last state update: 2026-08-17 14:38 +03:00.
-- State author/agent: repository-continuity conformance audit and hardening session.
+- Last state update: 2026-08-17 15:06 +03:00.
+- State author/agent: repository-continuity post-merge reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable **summary**, not a substitute for Git, GitHub Actions, GitHub Releases, repository settings, or live runtime evidence.
 
 ## Executive Status
 
-- Overall status: **DESKTOP 0.1.1 RELEASE/WORKFLOW ENGINEERING CLOSED; REPOSITORY-NATIVE CONTINUITY SYSTEM ACTIVE; OWNER CREDENTIAL RETIREMENT PENDING**.
+- Overall status: **DESKTOP 0.1.1 RELEASE/WORKFLOW ENGINEERING CLOSED; REPOSITORY-NATIVE CONTINUITY SYSTEM ACTIVE AND CI-VERIFIED; OWNER CREDENTIAL RETIREMENT PENDING**.
 - Current objective: preserve the verified continuity/source-of-truth model and resume ordinary maintenance without reopening the completed Desktop `0.1.1` release plan.
-- Current engineering blocker: **NONE** for Desktop `0.1.1` release, artifact integrity, provenance, immutability, tag binding, or draft-workflow repair.
+- Current engineering blocker: **NONE** for Desktop `0.1.1` release, artifact integrity, provenance, immutability, tag binding, draft-workflow repair, or continuity-system hardening.
 - Owner-only security hygiene remains: remove repository Actions secret `RELEASE_ADMIN_TOKEN` and revoke/delete the short-lived fine-grained PAT that supplied it. Never expose the credential value in chat, repository files, logs, evidence bundles, or documentation.
 
 ## Repository State
@@ -22,11 +22,11 @@
 - Current remote main: **VERIFY DYNAMICALLY** from Git/GitHub before any decision that depends on it.
 - Working tree: **NOT VERIFIED** in the dedicated server checkout from this agent environment.
 - Remote tracking state: **NOT VERIFIED** in a local checkout; inspect `git status --short --branch` and remotes when resuming locally.
-- Verified code baseline (audit-start evidence): `5be1b59de4e9a6b60e295423a9c5a36399ad2fd9` (`docs: close desktop 0.1.1 release plan (#60)`). This is evidence of what was verified at the start of the continuity audit, not a claim that it remains the current HEAD forever.
+- Verified code baseline (continuity implementation evidence): `363a3f7f959a4ead47a6297c4866218d08b9820c` (`docs: harden project continuity handoff (#61)`). This is historical evidence that passed post-merge push CI, not a claim that it remains the current HEAD forever.
 - Verified application/workflow implementation baseline: `197bdead257973164931b34cce20c4556820df44` (`fix: verify desktop release drafts by release ID (#59)`).
 - State-document commit: derive dynamically from Git when needed; do not copy a self-referential state SHA here.
 - Qualified Desktop `0.1.1` source and published tag target: `b911eb44619f8eab706bc2fe786d1c84ac958f1d` (`release: prepare desktop 0.1.1 (#50)`).
-- Open-PR audit snapshot at 2026-08-17 14:38 +03:00: Dependabot #51, #52, #53, #54, and #55 only. Query dynamically before acting.
+- Open-PR audit snapshot before continuity hardening: Dependabot #51, #52, #53, #54, and #55 only. Query dynamically before acting.
 - Ruleset audit snapshot: ID `20627285`, `main-rebootstrap-baseline`, enforcement active, squash-only integration, unresolved review threads required, no bypass actors, and six required PR contexts. Re-query before merge-policy decisions.
 
 ## Uncommitted Work
@@ -55,12 +55,14 @@
 - Desktop Node engine is `>=24 <27`; blocking CI currently uses Node `24.19.0` and npm `11.17.0`.
 - `AGENTS.md`, `PROJECT_STATE.md`, `PLANS.md`, `docs/adr/README.md`, accepted ADR-0011, architecture documentation, release runbook, and repository-native continuity gate are present.
 - `PLANS.md` is intentionally in **NO ACTIVE MULTI-STAGE PLAN** state after closure of the Desktop `0.1.1` plan.
+- PR #61 hardened the continuity model against self-stale current-SHA claims and completed-plan drift, and was squash-merged as `363a3f7f959a4ead47a6297c4866218d08b9820c`.
 
 ### CI
 
-- GitHub Actions push CI run `32025676832` on verified audit-start baseline `5be1b59de4e9a6b60e295423a9c5a36399ad2fd9` completed **success**.
-- Its blocking `quality (rust + npm)` job `95374469518` completed **success** on `ubuntu-24.04` and included the project-continuity contract, formatting, Cargo check, strict Clippy, Rust tests, and both npm audits.
-- Node.js 26 compatibility job `95374469620` also completed **success** and remains non-blocking.
+- GitHub Actions push CI run `32027414455` on verified continuity baseline `363a3f7f959a4ead47a6297c4866218d08b9820c` completed **success**.
+- Its blocking `quality (rust + npm)` job `95379627623` completed **success** on `ubuntu-24.04` and passed the project-continuity contract, formatting, Cargo check, strict Clippy, Rust tests, desktop npm audit, and E2E npm audit.
+- Node.js 26 compatibility job `95379627879` also completed **success** and remains non-blocking.
+- PR #61 final head `92afb15f66170ee349a828531e00e0ddebbecad6` passed all six required ruleset contexts before squash merge.
 - The active ruleset requires these six PR contexts: `quality (rust + npm)`, `actionlint`, `TruffleHog verified and unknown secrets`, `dependency vulnerability and license review`, `policy + audit + deny + machete`, and `Rust security-extended analysis`.
 - Any new PR must qualify its **exact final head**; historical success does not transfer to a moved head.
 
@@ -101,14 +103,15 @@
 ### External Dependencies
 
 - Official runtime repository bindings remain defined by repository configuration; live external-runtime availability/version state is **NOT VERIFIED** in this audit.
-- Owner credential-retirement state is **NOT VERIFIED** because the available GitHub connector does not expose Actions-secret deletion or fine-grained PAT revocation.
+- Owner credential-retirement state is **NOT VERIFIED** because the available GitHub connector does not expose Actions-secret deletion or fine-grained PAT revocation; a direct repository-secret listing attempt was also denied by integration permissions.
 
 ## Drift
 
 - Qualified source ↔ published tag: **NONE FOUND** in the latest release/tag verification.
 - Qualified source ↔ published release asset digests/provenance: **NONE FOUND** in the release verification evidence.
 - Repository automation ↔ desired draft semantics: **NONE FOUND**; the repair and blocking contract are present.
-- Canonical handoff ↔ dynamic Git HEAD: designed to avoid duplicate truth; branch/HEAD/working tree are **VERIFY DYNAMICALLY / NOT VERIFIED** rather than static current-state claims.
+- Canonical handoff ↔ dynamic Git HEAD: **NONE FOUND BY CONTRACT**; current branch/HEAD/remote-main values are intentionally dynamic rather than static claims.
+- Completed plan ↔ active planning surface: **NONE**; `PLANS.md` is in `NO ACTIVE MULTI-STAGE PLAN` state.
 - Staging/runtime drift: **NOT VERIFIED**.
 - Owner credential-retirement drift: **NOT VERIFIED** until the secret and PAT are confirmed removed.
 
@@ -137,22 +140,22 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - Draft-workflow semantics were repaired and exact-head qualified in PR #59.
 - Release-plan state was closed through PR #60.
 - The temporary exact-publication workflow was retired from the evidence branch after use.
-- This continuity hardening removes static current-main/HEAD claims and retires completed-plan narrative from the active planning surface; its own PR/CI qualification must be verified before relying on it as merged `main` state.
+- Continuity hardening in PR #61 removed static current-main/HEAD claims, retired completed-plan narrative from the active planning surface, strengthened the blocking continuity contract, passed all six required contexts on exact PR head `92afb15f66170ee349a828531e00e0ddebbecad6`, and then passed post-merge push CI on `363a3f7f959a4ead47a6297c4866218d08b9820c`.
 
 ## Last Verified Validation
 
 ### Project Continuity Contract
 
 - Command: `node tools/kgw_project_continuity_gate.cjs`
-- Result: **PASS** in GitHub Actions push CI run `32025676832`, job `95374469518`, on `ubuntu-24.04`.
-- Evidence baseline: `5be1b59de4e9a6b60e295423a9c5a36399ad2fd9`.
+- Result: **PASS** in GitHub Actions push CI run `32027414455`, job `95379627623`, on `ubuntu-24.04`.
+- Evidence baseline: `363a3f7f959a4ead47a6297c4866218d08b9820c`.
 
 ### Formatting / Build Static Check
 
 - Command: `cargo fmt --all -- --check`
-- Result: **PASS** in job `95374469518`.
+- Result: **PASS** in job `95379627623`.
 - Command: `cargo check --locked --workspace --all-targets`
-- Result: **PASS** in job `95374469518`.
+- Result: **PASS** in job `95379627623`.
 
 ### Clippy
 
@@ -160,17 +163,17 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
   - `cargo clippy --locked --workspace --lib --bins --examples --benches -- -D warnings`
   - `cargo clippy --locked --workspace --tests --exclude kaspa-gateway-desktop -- -D warnings`
   - `cargo clippy --locked -p kaspa-gateway-desktop --tests -- -D warnings -A dead-code`
-- Result: **PASS** in job `95374469518`.
+- Result: **PASS** in job `95379627623`.
 
 ### Rust Tests
 
 - Command: `cargo test --locked --workspace --all-targets`
-- Result: **PASS** in job `95374469518`.
+- Result: **PASS** in job `95379627623`.
 
 ### JavaScript / npm Validation
 
-- Desktop JavaScript lint, E2E lint/syntax checks, desktop npm audit, and E2E npm audit: **PASS** in job `95374469518`.
-- Node.js 26 compatibility job `95374469620`: **PASS**, non-blocking.
+- Desktop JavaScript lint, E2E lint/syntax checks, desktop npm audit, and E2E npm audit: **PASS** in job `95379627623`.
+- Node.js 26 compatibility job `95379627879`: **PASS**, non-blocking.
 
 ### Release / Distribution Verification
 
@@ -189,7 +192,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## Known Issues / Blockers
 
-- No active Desktop `0.1.1` repository/release engineering blocker remains.
+- No active Desktop `0.1.1` repository/release or continuity-system engineering blocker remains.
 - Owner security hygiene: remove `RELEASE_ADMIN_TOKEN` from repository Actions secrets and revoke/delete the associated short-lived fine-grained PAT; status remains **NOT VERIFIED** until owner-side confirmation or an authorized administration tool can verify removal.
 - RustSec managed advisory set remains governed by the repository's current accepted policy; do not claim all advisories are eliminated.
 - Dependabot #51-#55 remain independent maintenance proposals, not release blockers.
@@ -225,14 +228,14 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## Pending Decisions
 
-- No Desktop `0.1.1` release-content/source/publication/recovery/workflow-repair decision remains.
+- No Desktop `0.1.1` release-content/source/publication/recovery/workflow-repair or continuity-hardening decision remains.
 - Dependabot #51-#55 require independent future review if selected for maintenance.
 
 ## NEXT ACTION
 
 1. Owner security cleanup: in repository Actions secrets, remove `RELEASE_ADMIN_TOKEN`; then revoke/delete the associated short-lived fine-grained PAT in GitHub account settings. Do not paste or record its value.
 2. Verify the cleanup from an authorized administration surface if available; otherwise keep it explicitly `NOT VERIFIED`.
-3. For the next engineering task, start from fresh verified Git/GitHub state and ordinary maintenance priorities rather than reopening Desktop `0.1.1` release work.
+3. For the next engineering task, start from fresh verified Git/GitHub state and ordinary maintenance priorities rather than reopening Desktop `0.1.1` release or continuity-hardening work.
 4. If a future task is multi-stage/high-risk, activate a new scoped `PLANS.md`; otherwise leave it at **NO ACTIVE MULTI-STAGE PLAN**.
 5. Review Dependabot #51-#55 independently when desired and exact-head qualify any selected PR before merge.
 
