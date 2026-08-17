@@ -88,7 +88,17 @@ jobs:
             exit 1
           fi
 
-          if gh release view "$tag" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          releases_json="$RUNNER_TEMP/preexisting-releases.json"
+          gh api --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+            >"$releases_json"
+
+          existing_release_count="$(
+            jq --arg tag "$tag" \
+              '[.[][] | select(.tag_name == $tag)] | length' \
+              "$releases_json"
+          )"
+          if [[ "$existing_release_count" != "0" ]]; then
             echo "Release already exists: $tag" >&2
             exit 1
           fi
@@ -264,6 +274,7 @@ jobs:
           )
 
       - name: Create draft release with all qualified assets
+        id: create-draft
         shell: bash
         run: |
           set -euo pipefail
@@ -284,8 +295,62 @@ jobs:
 
           gh release create "$tag" "$stage"/*             -R "$GITHUB_REPOSITORY"             --draft             --target "$REQUESTED_COMMIT_SHA"             --title "Kaspa Gateway Desktop $REQUESTED_VERSION"             --generate-notes             --notes "$notes"             --fail-on-no-commits
 
-      - name: Verify draft tag and release assets
+          draft_pages="$RUNNER_TEMP/created-draft-releases.json"
+          match_count=0
+          for attempt in 1 2 3 4 5; do
+            gh api --paginate --slurp \
+              "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
+              >"$draft_pages"
+
+            match_count="$(
+              jq \
+                --arg tag "$tag" \
+                --arg target "$REQUESTED_COMMIT_SHA" \
+                '[.[][] | select(
+                  .draft == true
+                  and .tag_name == $tag
+                  and .target_commitish == $target
+                )] | length' \
+                "$draft_pages"
+            )"
+
+            if [[ "$match_count" = "1" ]]; then
+              break
+            fi
+            if [[ "$match_count" -gt 1 ]]; then
+              echo "Multiple matching desktop release drafts were found for $tag." >&2
+              exit 1
+            fi
+            sleep 2
+          done
+
+          if [[ "$match_count" != "1" ]]; then
+            echo "Created draft release could not be resolved uniquely by tag and target." >&2
+            exit 1
+          fi
+
+          release_id="$(
+            jq -r \
+              --arg tag "$tag" \
+              --arg target "$REQUESTED_COMMIT_SHA" \
+              '[.[][] | select(
+                .draft == true
+                and .tag_name == $tag
+                and .target_commitish == $target
+              )][0].id' \
+              "$draft_pages"
+          )"
+          if [[ ! "$release_id" =~ ^[0-9]+$ ]]; then
+            echo "Created draft release ID is invalid." >&2
+            exit 1
+          fi
+
+          printf 'release_id=%s\n' "$release_id" >>"$GITHUB_OUTPUT"
+
+      - name: Verify draft release ID and release assets
         shell: bash
+        env:
+          DRAFT_RELEASE_ID: ${{ steps.create-draft.outputs.release_id }}
         run: |
           set -euo pipefail
 
@@ -293,24 +358,33 @@ jobs:
           stage="$RUNNER_TEMP/release-assets"
           draft_json="$RUNNER_TEMP/draft-release.json"
 
-          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" >"$draft_json"
+          if [[ ! "$DRAFT_RELEASE_ID" =~ ^[0-9]+$ ]]; then
+            echo "Created draft release ID output is invalid." >&2
+            exit 1
+          fi
 
+          gh api "repos/$GITHUB_REPOSITORY/releases/$DRAFT_RELEASE_ID" >"$draft_json"
+
+          test "$(jq -r .id "$draft_json")" = "$DRAFT_RELEASE_ID"
           test "$(jq -r .draft "$draft_json")" = "true"
+          test "$(jq -r '.published_at // "null"' "$draft_json")" = "null"
           test "$(jq -r .prerelease "$draft_json")" = "false"
           test "$(jq -r .tag_name "$draft_json")" = "$tag"
-
-          ref_sha="$(
-            gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq .object.sha
-          )"
-          test "$ref_sha" = "$REQUESTED_COMMIT_SHA"
+          test "$(jq -r .target_commitish "$draft_json")" = "$REQUESTED_COMMIT_SHA"
 
           expected_names="$(
             cd "$stage"
             find . -maxdepth 1 -type f -printf '%f\n' | sort
           )"
+          expected_count="$(
+            printf '%s\n' "$expected_names" | sed '/^$/d' | wc -l | tr -d ' '
+          )"
+
+          test "$(jq '.assets | length' "$draft_json")" = "$expected_count"
+          test "$(jq '[.assets[] | select(.size <= 0)] | length' "$draft_json")" = "0"
 
           actual_names="$(
-            jq -r '.assets[] | select(.size > 0) | .name' "$draft_json" | sort
+            jq -r '.assets[] | .name' "$draft_json" | sort
           )"
 
           test "$actual_names" = "$expected_names"
@@ -328,6 +402,7 @@ jobs:
             test "$remote_digest" = "sha256:$local_hash"
           done <<<"$expected_names"
 
+          echo "DRAFT_RELEASE_ID=$DRAFT_RELEASE_ID"
           echo "DRAFT_RELEASE=$tag"
           echo "DRAFT_ONLY=YES"
           echo "PUBLISHED=NO"
