@@ -1,0 +1,54 @@
+name: Agent sysinfo compatibility patch
+
+on:
+  push:
+    branches:
+      - dependabot/cargo/sysinfo-0.39.6
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    name: Apply exact sysinfo API compatibility patch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Apply one-line compatibility patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs")
+          old = "    system.refresh_processes(ProcessesToUpdate::Some(&[pid]));"
+          new = "    system.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);"
+          text = path.read_text(encoding="utf-8")
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f"expected exactly one old sysinfo call; found {count}")
+          if new in text:
+              raise SystemExit("new sysinfo call already present before patch")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+
+          target="apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs"
+          test "$(git diff --name-only | tr -d '\r')" = "$target"
+          git diff --check
+          git diff -- "$target"
+
+      - name: Commit source adaptation to this PR branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          target="apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "$target"
+          git diff --cached --check
+          git commit -m "fix: adapt runtime identity refresh to sysinfo 0.39"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
