@@ -22,7 +22,7 @@
 - Current remote main: **VERIFY DYNAMICALLY** from Git/GitHub before any decision that depends on it.
 - Working tree: **NOT VERIFIED** in the dedicated server checkout from this agent environment.
 - Remote tracking state: **NOT VERIFIED** in a local checkout; inspect `git status --short --branch` and remotes when resuming locally.
-- Verified continuity implementation baseline: `363a3f7f959a4ead47a6297c4866218d08b9820c` (`docs: harden project continuity handoff (#61)`). This is historical evidence that passed post-merge push CI, not a claim that it remains the current HEAD forever.
+- Verified code baseline (continuity implementation evidence): `363a3f7f959a4ead47a6297c4866218d08b9820c` (`docs: harden project continuity handoff (#61)`). This is historical evidence that passed post-merge push CI, not a claim that it remains the current HEAD forever.
 - Verified application/workflow implementation baseline: `197bdead257973164931b34cce20c4556820df44` (`fix: verify desktop release drafts by release ID (#59)`).
 - State-document commit: derive dynamically from Git when needed; do not copy a self-referential state SHA here.
 - Qualified Desktop `0.1.1` source and published tag target: `b911eb44619f8eab706bc2fe786d1c84ac958f1d` (`release: prepare desktop 0.1.1 (#50)`).
