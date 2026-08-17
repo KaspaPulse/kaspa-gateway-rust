@@ -292,7 +292,7 @@ fn kgw_runtime_owner_worker_path_v1(
 pub(crate) fn kgw_process_identity_for_worker_v1(pid: u32) -> Result<KgwProcessIdentityV1, String> {
     let pid = Pid::from_u32(pid);
     let mut system = System::new();
-    system.refresh_processes(ProcessesToUpdate::Some(&[pid]));
+    system.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
     let process = system
         .process(pid)
         .ok_or_else(|| format!("process identity unavailable;pid={}", pid.as_u32()))?;
