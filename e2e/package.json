@@ -7,7 +7,7 @@
     "node": ">=24 <27"
   },
   "scripts": {
-    "check": "node --check wdio.conf.mjs && node --check specs/zero-touch-live-matrix.e2e.js && node --check helpers/assertions.mjs && node --check helpers/paths.mjs && node --check helpers/tauri-app.mjs && node --check helpers/windows.mjs",
+    "check": "node --check wdio.conf.mjs && node --check specs/zero-touch-live-matrix.e2e.js && node --check helpers/assertions.mjs && node --check helpers/paths.mjs && node --check helpers/tauri-app.mjs && node --check helpers/windows.mjs && node --check helpers/deepmerge-security-smoke.mjs && node helpers/deepmerge-security-smoke.mjs",
     "lint": "eslint .",
     "e2e": "wdio run ./wdio.conf.mjs"
   },
@@ -28,6 +28,7 @@
   "overrides": {
     "@puppeteer/browsers": "3.2.0",
     "@wdio/native-utils": "2.5.0",
+    "deepmerge-ts": "8.0.0",
     "serialize-javascript": "7.0.7"
   }
 }
