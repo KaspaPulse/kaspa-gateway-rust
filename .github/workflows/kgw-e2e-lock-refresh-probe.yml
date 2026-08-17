@@ -6,7 +6,7 @@ on:
       - fix/e2e-deepmerge-ghsa-ggr8
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   refresh:
@@ -16,7 +16,7 @@ jobs:
       - name: Checkout branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Setup Node.js 24
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -48,10 +48,19 @@ jobs:
         working-directory: e2e
         run: npm run check
 
-      - name: Capture generated lockfile
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.2.0
-        with:
-          name: kgw-e2e-security-lockfile
-          path: e2e/package-lock.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: Guard generated diff
+        shell: bash
+        run: |
+          status="$(git status --porcelain)"
+          printf '%s\n' "$status"
+          test "$status" = " M e2e/package-lock.json"
+          git diff --check -- e2e/package-lock.json
+
+      - name: Commit generated lockfile only
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- e2e/package-lock.json
+          git commit -m "fix(e2e): refresh lock for deepmerge security override"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
