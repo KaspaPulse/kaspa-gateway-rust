@@ -15,7 +15,7 @@ jobs:
     permissions:
       actions: read
       attestations: read
-      contents: read
+      contents: write
     env:
       GH_TOKEN: ${{ github.token }}
       RELEASE_ID: "371168378"
