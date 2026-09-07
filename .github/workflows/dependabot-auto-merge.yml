@@ -1,0 +1,58 @@
+# Managed by KGW_DEPENDABOT_REPAIR_V1. No checkout and no execution of PR code.
+name: Dependabot auto-merge
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  enable-auto-merge:
+    if: >-
+      vars.KGW_DEPENDABOT_AUTOMERGE == 'enabled' &&
+      github.repository == 'KaspaPulse/kaspa-gateway-rust' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Read verified Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@d7267f607e9d3fb96fc2fbe83e0af444713e90b7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Enable protected squash auto-merge
+        if: >-
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+           steps.metadata.outputs.update-type == 'version-update:semver-minor') &&
+          !contains(steps.metadata.outputs.dependency-names, 'duckdb')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pr="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER")"
+          jq -e --arg repo "$GH_REPO" --arg sha "$EXPECTED_SHA" '
+            .state == "open" and .draft == false and
+            .user.login == "dependabot[bot]" and .user.type == "Bot" and
+            .head.repo.full_name == $repo and .base.ref == "main" and
+            .head.sha == $sha
+          ' <<< "$pr" >/dev/null
+          gh pr merge "$PR_NUMBER" --repo "$GH_REPO" \
+            --auto --squash --match-head-commit "$EXPECTED_SHA"
+# Major upgrades, DuckDB upgrades, and required reviews are not auto-approved.
+# Main is additionally protected by the no-bypass status-check ruleset installed
+# by the repair script. Its required checks must remain in force.
