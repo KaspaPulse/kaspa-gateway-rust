@@ -1,30 +1,32 @@
 # AI Development Workflow
 
-This repository uses a local-first workflow for AI-assisted development. The root `AGENTS.md` defines mandatory policy. `PROJECT_STATE.md` is the canonical current-state handoff. The Graphify skill at `.codex/skills/graphify/SKILL.md` defines the exact Graphify commands and must be read completely at the start of every programming task.
+This repository uses a local-first workflow for AI-assisted development. The root `AGENTS.md` defines mandatory policy. `PROJECT_STATE.md` is the canonical high-level current-state handoff; `ACTIVE_TASK.md`, `CURRENT_STATE.md`, `docs/handoff-ledger/`, and `docs/project-memory/` preserve the active execution boundary and durable engineering memory. The Graphify skill at `.codex/skills/graphify/SKILL.md` defines the exact Graphify commands and must be read completely at the start of every programming task.
 
 ## Session Start
 
 1. Read `AGENTS.md`.
-2. Read `PROJECT_STATE.md`.
-3. Capture the live Git baseline with `git branch --show-current`, `git rev-parse HEAD`, `git status --short --branch`, and `git log -1 --oneline`.
-4. If the verified repository, CI, release, or runtime reality differs from `PROJECT_STATE.md`, reconcile the state document before relying on the stale claim.
-5. Read only the ADRs relevant to the task.
-6. Read the relevant runbook before release publication, rollback/recovery, live-network smoke, or incident work.
-7. Read `PLANS.md` when multi-stage work is active.
-8. Treat conversation memory and historical handoffs as advisory context only.
+2. Read `PROJECT_STATE.md`, then `ACTIVE_TASK.md` and `CURRENT_STATE.md` when present.
+3. Read the latest relevant `docs/handoff-ledger/` checkpoint and recover `LAST CONFIRMED STATE`, `NEXT ACTION`, and `DO NOT REPEAT`.
+4. Capture the live Git baseline with `git branch --show-current`, `git rev-parse HEAD`, `git status --short --branch`, and `git log -1 --oneline`.
+5. If verified repository, CI, release, runtime, or filesystem reality differs from a durable state surface, reconcile it before relying on the stale claim.
+6. Read only the ADRs relevant to the task.
+7. Read the relevant runbook before release publication, rollback/recovery, live-network smoke, or incident work.
+8. Read `PLANS.md` when multi-stage work is active.
+9. Treat conversation memory and historical handoffs as advisory context only.
 
 ## Local-First Lifecycle
 
-1. Read `AGENTS.md`, `PROJECT_STATE.md`, and `.codex/skills/graphify/SKILL.md` as applicable.
-2. Query Graphify before broad raw source searches when `graphify-out/graph.json` exists.
-3. Inspect only the files needed for the scoped change.
-4. Make the smallest correct change.
+1. Read the durable state surfaces and `.codex/skills/graphify/SKILL.md` as applicable.
+2. Recover the last confirmed boundary; do not restart completed investigations without evidence.
+3. Query Graphify before broad raw source searches when `graphify-out/graph.json` exists.
+4. Inspect only the files needed for the scoped change and make the smallest correct change.
 5. Run targeted checks first, then broader checks only when the risk justifies them.
-6. Refresh Graphify locally after source changes.
-7. Query the affected flow again after the graph refresh.
+6. For significant bugs, establish reproduction/root cause and leave regression protection before closure.
+7. Refresh Graphify locally after source changes and query the affected flow again.
 8. Review all diffs before staging.
-9. Reconcile `PROJECT_STATE.md` after a meaningful state transition; record actual validation, blockers/drift, and a precise `NEXT ACTION`.
-10. Commit locally only after relevant checks pass, and never push unless explicitly requested.
+9. Reconcile `ACTIVE_TASK.md`, `CURRENT_STATE.md`, `PROJECT_STATE.md`, and the relevant checkpoint after meaningful state transitions; record actual validation, blockers/drift, `NEXT ACTION`, and `DO NOT REPEAT`.
+10. Persist material bugs/regressions/security findings/incidents/known failures under `docs/project-memory/` rather than leaving them only in conversation.
+11. Commit locally only after relevant checks pass, and never push unless explicitly requested.
 
 ## Graphify Query-Before-Source Workflow
 
@@ -59,6 +61,9 @@ Before editing workflow or continuity files, verify:
 
 - `AGENTS.md` exists and has a single Graphify policy section.
 - `PROJECT_STATE.md` exists and contains a dynamic resume boundary rather than a permanent current-HEAD claim.
+- `ACTIVE_TASK.md` and `CURRENT_STATE.md` preserve the current execution boundary.
+- `docs/handoff-ledger/` contains a durable checkpoint with last-confirmed/next/do-not-repeat fields.
+- `docs/project-memory/` provides stable-ID durable memory categories and lifecycle status.
 - `PLANS.md` is read when its active plan applies.
 - `docs/adr/README.md` indexes durable decisions.
 - `docs/runbooks/` contains the relevant repeatable operational procedure when one exists.
@@ -100,6 +105,9 @@ Do not update it for formatting-only changes or every small commit. Do not dupli
 - runtime/observability evidence for actual process health.
 - ADRs for durable decisions.
 - runbooks for procedures.
+- `ACTIVE_TASK.md` / `CURRENT_STATE.md` for the immediate execution boundary.
+- `docs/handoff-ledger/` for atomic resumable checkpoints.
+- `docs/project-memory/` for durable bugs, regressions, security findings, incidents, scoped decisions, and known failures.
 - `PLANS.md` for active multi-stage work.
 
 ## Generated Graph Snapshot Policy

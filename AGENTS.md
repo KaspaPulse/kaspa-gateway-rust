@@ -12,7 +12,12 @@ Kaspa Gateway is a Rust workspace with a Tauri desktop application and a JavaScr
 - `tests/`, crate-level `tests/`, `src-tauri/tests/`, JavaScript gates, `Cargo.toml`, `Cargo.lock`, and Tauri config files define the validation surface.
 - `graphify-out/` is generated repository graph data. Keep graph snapshots separate from application changes. Do not commit Graphify cache, cost, or local reflection data.
 - `PROJECT_STATE.md` is the canonical current-state handoff. It summarizes verified facts but never replaces Git, CI, release metadata, or runtime evidence.
+- `ACTIVE_TASK.md` owns the current task boundary, progress, blocker, verification contract, and precise next action.
+- `CURRENT_STATE.md` is the concise operational handoff for a newly starting session.
 - `PLANS.md` is the living execution plan for active multi-stage work.
+- `docs/handoff-ledger/` stores concise durable checkpoints with `LAST CONFIRMED STATE`, `NEXT ACTION`, and `DO NOT REPEAT`.
+- `docs/project-memory/` stores durable bugs, regressions, security findings, incidents, scoped decisions, and known failures using stable IDs and explicit lifecycle status.
+- `docs/continuity/PROJECT_CONTINUITY_POLICY.md` is the detailed continuity/security-engineering/knowledge-management lifecycle.
 - `docs/adr/` is the canonical location for new architecture/process decision records. Existing historical ADRs under `docs/architecture/` remain valid and are indexed from `docs/adr/README.md`.
 - `docs/runbooks/` contains operational procedures. Existing focused operational documents under `docs/operations/` remain authoritative for their stated scope.
 
@@ -21,15 +26,16 @@ Kaspa Gateway is a Rust workspace with a Tauri desktop application and a JavaScr
 At the beginning of every new work session:
 
 1. Read `AGENTS.md`.
-2. Read `PROJECT_STATE.md`.
+2. Read `PROJECT_STATE.md`, then `ACTIVE_TASK.md` and `CURRENT_STATE.md` when present.
 3. Inspect the actual repository before making changes. At minimum run `git branch --show-current`, `git rev-parse HEAD`, `git status --short --branch`, and `git log -1 --oneline`; inspect remotes when relevant.
-4. If verified reality differs from `PROJECT_STATE.md`, reconcile the state document before relying on the stale claim.
-5. Read only the ADRs relevant to the task when it touches an established architectural or process decision.
-6. Read the relevant runbook before release publication, rollback/recovery, live-network smoke, or incident work.
-7. Read `PLANS.md` when multi-stage work is active.
-8. Treat conversation memory, handoff ZIPs, and old chat summaries as advisory context only. Verified repository, CI, release, and runtime state takes precedence.
-9. Do not repeat completed work unless fresh verification shows it is incomplete or regressed.
-10. Continue from `PROJECT_STATE.md` `NEXT ACTION` unless the user explicitly changes priority.
+4. If verified reality differs from a state surface, reconcile the durable state before relying on the stale claim.
+5. Read the latest relevant `docs/handoff-ledger/` checkpoint and identify the last confirmed action, first uncertain boundary, `NEXT ACTION`, and `DO NOT REPEAT`.
+6. Read only the ADRs relevant to the task when it touches an established architectural or process decision.
+7. Read the relevant runbook before release publication, rollback/recovery, live-network smoke, or incident work.
+8. Read `PLANS.md` when multi-stage work is active.
+9. Treat conversation memory, handoff ZIPs, and old chat summaries as advisory context only. Verified repository, CI, release, and runtime state takes precedence.
+10. Do not repeat completed work unless fresh verification shows it is incomplete, untrustworthy, security-sensitive, or regressed.
+11. Continue from the active task/checkpoint `NEXT ACTION` unless the user explicitly changes priority.
 
 After every meaningful state transition, reconcile `PROJECT_STATE.md` with verified reality. Record what changed, what was actually validated, any active blocker or drift, and the precise next action. Keep the handoff compact; do not duplicate Git logs, CI history, issue trackers, release bodies, or secrets.
 
@@ -51,6 +57,17 @@ Use the source that actually owns each fact:
 10. Conversation memory only as non-authoritative context.
 
 Never convert `NOT VERIFIED` into `PASS`. Push, merge, CI success, release publication, and healthy runtime are distinct states and require distinct evidence.
+
+## Durable Failure Memory and Regression Protection
+
+- Significant bugs follow `Bug -> Reproduce -> Root Cause -> Fix -> Verification -> Regression Protection -> Documentation`.
+- A recurring issue must first locate its prior record, fix, and verification; determine why the old protection failed; then `Fix -> Strengthen -> Verify -> Protect`.
+- Record material bugs/regressions/security findings/incidents/known failures under `docs/project-memory/` with stable IDs, explicit status, evidence, root cause when known, verification, remaining risk, and a concrete next action.
+- Do not accept symptom disappearance as root-cause closure. Ask why the failure was possible and what permanently prevents the same class from returning unnoticed.
+- Every important fix that can reasonably be guarded must leave a test, assertion, static/CI rule, configuration validation, monitoring/health check, runtime guard, documentation rule, or architectural constraint.
+- Security is continuous engineering. For applicable web/application controls use OWASP ASVS 5.0.0 as a primary verification reference and follow secure-development principles consistent with the NIST Secure Software Development Framework. Checklist review alone is not verification.
+- Security findings must separate confirmed evidence from likely/potential hypotheses and false positives. Never store secret values in project-memory or checkpoint artifacts.
+- After meaningful state transitions, update the active task/current state and durable checkpoint before ending the session.
 
 ## Mandatory Graphify Lifecycle
 

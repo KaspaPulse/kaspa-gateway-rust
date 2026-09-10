@@ -4,41 +4,38 @@
 
 **NO ACTIVE MULTI-STAGE PLAN**
 
-`PLANS.md` is an active-work coordination surface, not a historical archive. The most recent Desktop `0.1.1` release/recovery/workflow-repair plan met its repository/release engineering completion criteria and is closed. Current facts belong in `PROJECT_STATE.md`; durable decisions belong in ADRs; operational procedures belong in runbooks; implementation and review history belongs in Git and pull requests; release history belongs in GitHub Releases.
+The 2026-09-10 repository-native continuity, security-engineering, and knowledge-management lifecycle task met its local implementation and verification criteria. `PLANS.md` is now inactive again; current facts belong in `PROJECT_STATE.md`/`CURRENT_STATE.md`, the completed task in `ACTIVE_TASK.md`, durable checkpoints in `docs/handoff-ledger/`, durable failures/decisions in `docs/project-memory/`, architectural decisions in ADRs, and implementation history in Git/PRs.
 
 ## Usage
 
-Create or replace the active-plan body only when work is genuinely long-horizon, multi-stage, migration-heavy, high-risk, or expected to span sessions. An active plan should define the objective, success criteria, non-goals, constraints, baseline, risks, milestones, decisions needed, progress, discoveries, blockers, final validation, and completion criteria.
+Create or replace the active-plan body only when work is genuinely long-horizon, multi-stage, migration-heavy, high-risk, or expected to span sessions. An active plan should define objective, success criteria, constraints, milestones, progress, risks/decisions, blockers, next phase, and completion criteria.
 
-When an active plan reaches its completion criteria:
+When an active plan reaches completion:
 
-1. Reconcile the resulting current state into `PROJECT_STATE.md`.
-2. Record any durable architectural/process decision in the appropriate ADR.
-3. Update the relevant runbook if the operational procedure changed.
-4. Leave release/version history in GitHub Releases and implementation history in Git/PRs.
-5. Return this file to **NO ACTIVE MULTI-STAGE PLAN** rather than preserving a completed execution narrative as active coordination state.
+1. Reconcile `PROJECT_STATE.md`, `CURRENT_STATE.md`, and `ACTIVE_TASK.md`.
+2. Update the durable `docs/handoff-ledger/` checkpoint.
+3. Persist material bugs/regressions/security findings/incidents/known failures in `docs/project-memory/`.
+4. Record consequential durable decisions in ADRs and repeatable procedures in runbooks.
+5. Leave implementation history in Git/PRs and release history in GitHub Releases.
+6. Return this file to **NO ACTIVE MULTI-STAGE PLAN**.
 
 Do not use this file as a duplicate issue tracker, Git log, CI history, release body, or credential store.
 
 ## Most Recent Completed Plan
 
-Desktop `0.1.1` release-cycle engineering is closed. The durable evidence and current handoff are intentionally distributed to the systems that own them:
+The repository-native continuity lifecycle is complete locally. Durable outcomes are owned by:
 
-- Current resumable project state: `PROJECT_STATE.md`.
-- Continuity/source-of-truth decision: `docs/adr/0011-repository-native-project-continuity.md`.
-- Release procedure: `docs/runbooks/desktop-release.md`.
-- Draft-release regression guard: `tools/kgw_desktop_release_draft_workflow_gate.cjs`.
-- Publication/recovery/workflow-repair implementation history: Git and PRs #58, #59, and #60.
-- Published release identity and assets: GitHub Release ID `371168378`, tag `desktop-v0.1.1`.
+- Current high-level state: `PROJECT_STATE.md`.
+- Immediate resumable state: `CURRENT_STATE.md`.
+- Completed task boundary: `ACTIVE_TASK.md`.
+- Detailed lifecycle policy: `docs/continuity/PROJECT_CONTINUITY_POLICY.md`.
+- Durable checkpoint: `docs/handoff-ledger/2026-09-10-project-continuity-lifecycle.md`.
+- Permanent problem memory: `docs/project-memory/`.
+- Durable source-of-truth decision: `docs/adr/0011-repository-native-project-continuity.md`.
+- Regression protection: `tools/kgw_project_continuity_gate.cjs` and `tools/kgw_project_continuity_gate_tests.cjs` in blocking CI.
 
-The previous plan is not reopened merely because later maintenance occurs. Start a new scoped plan if a future task independently meets the multi-stage criteria above.
+The earlier Desktop `0.1.1` release-cycle engineering remains closed and is not reopened by this completed plan.
 
 ## Starting a New Plan
 
-Before activating a new plan:
-
-1. Read `AGENTS.md` and `PROJECT_STATE.md`.
-2. Verify branch, HEAD, working tree, remotes as relevant, current GitHub `main`, open PRs, required checks/ruleset, and any runtime/release/deployment facts relevant to the task.
-3. Reconcile `PROJECT_STATE.md` first if verified reality differs.
-4. Reuse existing architecture, ADRs, runbooks, workflows, and components before creating parallel machinery.
-5. Define evidence-based exit criteria and keep `NOT VERIFIED` explicit where access or execution is unavailable.
+Before activating a new multi-stage plan, read the durable state/checkpoint surfaces, verify branch/HEAD/working tree/remotes and only task-relevant external facts, reconcile stale state, reuse existing mechanisms, define evidence-based exit criteria, and keep `NOT VERIFIED` explicit where proof is unavailable.

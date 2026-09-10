@@ -107,6 +107,9 @@ jobs:
       - name: Verify project continuity contract
         run: node tools/kgw_project_continuity_gate.cjs
 
+      - name: Verify project continuity gate regression tests
+        run: node tools/kgw_project_continuity_gate_tests.cjs
+
       - name: Lint and syntax-check E2E JavaScript
         working-directory: e2e
         run: |

@@ -2,7 +2,7 @@
 
 ## Metadata
 
-- Last state update: 2026-09-10 17:55 +03:00.
+- Last state update: 2026-09-10 18:45 +03:00.
 - State author/agent: Remote Desktop Commander continuity reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
@@ -10,10 +10,10 @@
 ## Executive Status
 
 - Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; OWNER CREDENTIAL RETIREMENT NOT VERIFIED**.
-- Current objective: resume ordinary local-first engineering from the exact current `main` state without reopening completed release work.
+- Current objective: resume ordinary local-first engineering from the completed repository-native continuity/security/knowledge-management baseline without reopening completed release work.
 - Current engineering blocker: **NONE**.
 - Open pull requests at reconciliation time: **NONE**.
-- `PLANS.md` remains intentionally inactive because no new multi-stage task has been selected.
+- `PLANS.md` is back in **NO ACTIVE MULTI-STAGE PLAN** state after local completion of the 2026-09-10 continuity/security/knowledge-management task.
 - Owner-only security hygiene remains external and **NOT VERIFIED**: remove repository Actions secret `RELEASE_ADMIN_TOKEN` and revoke/delete the associated short-lived fine-grained PAT. Its value must never be recorded in chat, repository files, logs, evidence bundles, or documentation.
 
 ## Repository State
@@ -28,7 +28,7 @@
 - Origin: `https://github.com/KaspaPulse/kaspa-gateway-rust.git`.
 - Verified remote `main`: `9a7b18f76dd6184785a4cf972daa1431ee07138f` (`chore(deps): bump the github-actions group with 4 updates (#67)`).
 - The dedicated checkout was fast-forwarded from `b911eb44619f8eab706bc2fe786d1c84ac958f1d` to the verified remote head with no local divergence (`ahead=0`, `behind=0`) before this documentation reconciliation.
-- Reconciliation branch: `docs/project-state-reconcile-20260910`, created locally from verified `main`; no push or pull request has been performed by this session.
+- Current task branch: `feature/project-continuity-lifecycle-20260910`, isolated in `/home/kas/kaspa-gateway-dev/codex/worktrees/project-continuity-lifecycle-20260910`; no push or pull request has been performed by this task.
 - Working tree was clean before the reconciliation branch was created.
 - Open pull request query returned an empty set at reconciliation time.
 - PR #51 is `CLOSED` and was not merged; it is no longer an active maintenance item.
@@ -40,7 +40,7 @@
 ## Uncommitted Work
 
 - No pre-existing user source-code changes were present when this session began.
-- This reconciliation is isolated on local branch `docs/project-state-reconcile-20260910`; only the state handoff is intended to change in this task.
+- The 2026-09-10 continuity lifecycle task is complete locally on its isolated worktree/branch; no unrelated application/runtime changes were made and external integration was not performed.
 - A stale/prunable Git worktree registration under `/tmp/kaspa-gateway-lanes/.../p10-macos-qualification-from-dmg` was observed. It is not part of the active checkout and is not being removed without a separate cleanup reason.
 - Repository secret/PAT retirement remains an external GitHub-settings action, not repository code.
 
@@ -62,7 +62,7 @@
 - Rust workspace toolchain is now Rust `1.98.1`; edition remains `2024`.
 - Desktop Node engine remains `>=24 <27`.
 - `AGENTS.override.md` is absent in the verified current checkout; `AGENTS.md` is the active repository policy.
-- `PLANS.md` remains in **NO ACTIVE MULTI-STAGE PLAN** state.
+- `PLANS.md` is **NO ACTIVE MULTI-STAGE PLAN** after verified local completion of the 2026-09-10 continuity lifecycle task.
 - The September dependency-maintenance sequence is present in verified `main` history:
   - PR #75: dependency security repair and safe Dependabot auto-merge workflow.
   - PR #71: grouped Cargo minor/patch maintenance.
@@ -130,7 +130,12 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 - `AGENTS.md` — permanent agent/engineering/session-start rules.
 - `PROJECT_STATE.md` — canonical current resumable summary.
-- `PLANS.md` — active multi-stage plan only; currently inactive.
+- `ACTIVE_TASK.md` — current task objective, phase, blocker, verification, next action, and completion criteria.
+- `CURRENT_STATE.md` — concise operational handoff for a newly starting session.
+- `PLANS.md` — inactive planning sentinel until a future genuine multi-stage task starts.
+- `docs/continuity/PROJECT_CONTINUITY_POLICY.md` — detailed continuity/security-engineering/knowledge-management policy.
+- `docs/handoff-ledger/` — durable atomic checkpoints.
+- `docs/project-memory/` — stable-ID durable bugs, regressions, security findings, incidents, decisions, and known failures.
 - `docs/adr/0011-repository-native-project-continuity.md` — accepted continuity/source-of-truth decision.
 - `docs/runbooks/desktop-release.md` — release qualification/recovery/publication procedure.
 - `tools/kgw_project_continuity_gate.cjs` — blocking continuity contract.
@@ -138,7 +143,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## Completed and Verified
 
-- Repository-native continuity surfaces and Desktop `0.1.1` release/workflow engineering remain complete.
+- Repository-native continuity now includes `ACTIVE_TASK.md`, `CURRENT_STATE.md`, atomic handoff checkpoints, permanent project-memory categories/templates/records, and fail-closed regression tests in addition to the pre-existing `PROJECT_STATE.md`/`PLANS.md`/ADR/runbook model.
 - Verified current `main` history contains the September maintenance sequence PRs #75, #71, #74, #72, #73, and #67.
 - Current remote `main` is `9a7b18f76dd6184785a4cf972daa1431ee07138f`; the dedicated checkout matched it with zero ahead/behind divergence before this local documentation branch was created.
 - No open pull requests were present at the reconciliation boundary.
@@ -150,9 +155,15 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ### Project Continuity Contract
 
-- Local command: `node tools/kgw_project_continuity_gate.cjs`.
-- Result: **PASS** on verified current `main` before editing this state document.
-- The same gate will be rerun after this reconciliation edit before any local commit.
+- `node --check tools/kgw_project_continuity_gate.cjs`: **PASS**.
+- `node --check tools/kgw_project_continuity_gate_tests.cjs`: **PASS**.
+- `node tools/kgw_project_continuity_gate.cjs`: **PASS** with active/current state, handoff/project memory, dynamic Git-state, regression/security lifecycle, plan/ADR, and release-runbook checks.
+- `node tools/kgw_project_continuity_gate_tests.cjs`: **PASS** with one positive fixture and five fail-closed negative cases.
+- Additional temporary negative checks for missing `ACTIVE_TASK.md`, no durable checkpoint, and invalid project-memory status failed as expected and recovered after restoration.
+- `git diff --check`: **PASS**.
+- Python YAML parse of `.github/workflows/ci.yml`: **PASS**.
+- `actionlint`: **UNAVAILABLE** on this host; not reported as PASS.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/kgw_ai_workflow_gate.ps1`: **UNAVAILABLE** on this host; not reported as PASS.
 
 ### Current Main CI
 
@@ -181,14 +192,16 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ### Graphify
 
-- `.codex/skills/graphify/SKILL.md` was read completely at session start as required by `AGENTS.md`.
-- `graphify-out/graph.json` exists in the checkout.
-- No Graphify refresh is claimed because this reconciliation changes project-state documentation only and no application/source flow has been modified.
-- Graph freshness for the next programming task must be checked before broad source analysis.
+- `.codex/skills/graphify/SKILL.md` was read completely before programming changes as required by `AGENTS.md`.
+- `graphify extract . --code-only --no-cluster`: **PASS**, producing 4,636 nodes and 12,718 raw edges without API-backed semantic extraction.
+- `graphify update .` after the final JavaScript test addition: **PASS**, producing 5,041 nodes, 12,721 edges, and an aggregated 250-community HTML view.
+- Focused post-change query: **PASS**; it resolved `kgw_project_continuity_gate.cjs`, `kgw_project_continuity_gate_tests.cjs`, `ACTIVE_TASK.md`, `CURRENT_STATE.md`, handoff ledger, and project-memory nodes.
+- Initial `graphify diagnose multigraph --extract-path .` invocation failed because the directory argument was invalid; the corrected `graphify diagnose multigraph --graph graphify-out/graph.json` completed.
+- Corrected graph diagnostic reported 370 dangling-endpoint edges and 10 directed same-endpoint collapse candidates. This warning is persisted as `docs/project-memory/KNOWN_FAILURES/FAIL-0001-graphify-code-only-health-warning.md`; the graph is queryable but is not claimed fully healthy.
 
 ## Known Issues / Blockers
 
-- No active repository engineering blocker or open pull request was found at the reconciliation boundary.
+- No external repository engineering blocker or open pull request was found at the task boundary. The continuity lifecycle task is **COMPLETE — VERIFIED LOCALLY**.
 - Owner security hygiene remains external: retire `RELEASE_ADMIN_TOKEN` and the associated short-lived fine-grained PAT; status remains **NOT VERIFIED** until an authorized administration surface confirms removal.
 - Live Kaspa node/bridge runtime health remains **NOT VERIFIED** in this session.
 - Major Dependabot updates and dependency groups containing `duckdb` are intentionally excluded from unattended auto-merge and require explicit compatibility review.
@@ -230,20 +243,20 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## NEXT ACTION
 
-1. Start the next user-requested scoped engineering task from verified current `main` `9a7b18f76dd6184785a4cf972daa1431ee07138f`; create an isolated task branch/worktree before source changes.
-2. Before broad programming analysis, use the existing Graphify graph as required by `AGENTS.md`; refresh it incrementally after source changes and re-query the affected flow.
-3. Run the smallest relevant local verification first, expand proportionally, and reconcile this state file after any meaningful project-state transition.
-4. Do not duplicate eligible Dependabot minor/patch maintenance already covered by protected auto-merge. Manually review major updates and any dependency group containing `duckdb`.
+1. Start the next user-requested scoped engineering task by reading `AGENTS.md`, `PROJECT_STATE.md`, `ACTIVE_TASK.md`, `CURRENT_STATE.md`, and the latest relevant `docs/handoff-ledger/` checkpoint; verify actual Git/filesystem state before changes.
+2. Reuse the completed continuity lifecycle and existing evidence instead of recreating parallel memory/checkpoint systems or repeating completed investigations.
+3. For material bugs/security findings, persist stable-ID records under `docs/project-memory/` and leave regression protection before closure.
+4. Treat `FAIL-0001` as a deferred Graphify-quality warning; investigate it only when graph-quality work is prioritized or an affected traversal matters.
 5. Do not push, create a pull request, publish a release, or perform live-runtime actions unless the user explicitly authorizes that external action.
 
 ## Resume Instructions
 
 1. Read `AGENTS.md` first and `AGENTS.override.md` if present.
-2. Read `PROJECT_STATE.md` second.
-3. Inspect actual local Git branch, HEAD, working tree, latest commit, remote tracking, live GitHub `main`, open PRs, required checks/ruleset, releases, and task-relevant runtime/deployment facts.
-4. If verified reality differs from this summary, reconcile `PROJECT_STATE.md` before relying on stale claims.
-5. Read only ADRs/runbooks relevant to the active task.
-6. Read `PLANS.md` only when it contains an active multi-stage plan.
+2. Read `PROJECT_STATE.md`, then `ACTIVE_TASK.md` and `CURRENT_STATE.md`.
+3. Read the latest relevant `docs/handoff-ledger/` checkpoint and recover `LAST CONFIRMED STATE`, `NEXT ACTION`, and `DO NOT REPEAT`.
+4. Inspect actual local Git branch, HEAD, working tree, latest commit, remotes, and only task-relevant GitHub/runtime/release facts.
+5. If verified reality differs from a durable state surface, reconcile it before relying on the stale claim.
+6. Read only ADRs/runbooks relevant to the active task; read `PLANS.md` when it contains an active multi-stage plan.
 7. Treat conversation memory, old chats, exported handoff archives, and screenshots as advisory only.
-8. Do not repeat completed work unless fresh evidence proves it incomplete or regressed.
-9. Continue from `NEXT ACTION` unless the owner explicitly changes priority.
+8. Do not repeat completed work unless fresh evidence proves it incomplete, untrustworthy, security-sensitive, or regressed.
+9. Continue from the latest verified `NEXT ACTION` unless the owner explicitly changes priority.

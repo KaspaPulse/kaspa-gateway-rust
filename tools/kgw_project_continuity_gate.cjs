@@ -20,6 +20,26 @@ function readRequired(relativePath) {
   return text;
 }
 
+function readMarkdownRecords(relativeDir) {
+  const fullDir = path.join(repoRoot, relativeDir);
+  if (!fs.existsSync(fullDir) || !fs.statSync(fullDir).isDirectory()) {
+    failures.push(`Missing required continuity directory: ${relativeDir}`);
+    return [];
+  }
+  return fs
+    .readdirSync(fullDir, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        entry.name.endsWith(".md") &&
+        !["README.md", "TEMPLATE.md"].includes(entry.name),
+    )
+    .map((entry) => {
+      const relativePath = path.join(relativeDir, entry.name);
+      return { relativePath, text: readRequired(relativePath) };
+    });
+}
+
 function requireMatch(text, pattern, description) {
   if (!pattern.test(text)) {
     failures.push(`Missing continuity policy: ${description}`);
@@ -34,7 +54,35 @@ function forbidMatch(text, pattern, description) {
 
 const agents = readRequired("AGENTS.md");
 const state = readRequired("PROJECT_STATE.md");
+const activeTask = readRequired("ACTIVE_TASK.md");
+const currentState = readRequired("CURRENT_STATE.md");
 const plans = readRequired("PLANS.md");
+const continuityPolicy = readRequired(
+  "docs/continuity/PROJECT_CONTINUITY_POLICY.md",
+);
+const handoffLedger = readRequired("docs/handoff-ledger/README.md");
+const projectMemory = readRequired("docs/project-memory/README.md");
+const bugMemory = readRequired("docs/project-memory/BUGS/README.md");
+const regressionMemory = readRequired(
+  "docs/project-memory/REGRESSIONS/README.md",
+);
+const securityMemory = readRequired("docs/project-memory/SECURITY/README.md");
+const incidentMemory = readRequired("docs/project-memory/INCIDENTS/README.md");
+const decisionMemory = readRequired("docs/project-memory/DECISIONS/README.md");
+const knownFailureMemory = readRequired(
+  "docs/project-memory/KNOWN_FAILURES/README.md",
+);
+const handoffTemplate = readRequired("docs/handoff-ledger/TEMPLATE.md");
+const memoryTemplate = readRequired("docs/project-memory/TEMPLATE.md");
+const handoffRecords = readMarkdownRecords("docs/handoff-ledger");
+const memoryRecords = [
+  ...readMarkdownRecords("docs/project-memory/BUGS"),
+  ...readMarkdownRecords("docs/project-memory/REGRESSIONS"),
+  ...readMarkdownRecords("docs/project-memory/SECURITY"),
+  ...readMarkdownRecords("docs/project-memory/INCIDENTS"),
+  ...readMarkdownRecords("docs/project-memory/DECISIONS"),
+  ...readMarkdownRecords("docs/project-memory/KNOWN_FAILURES"),
+];
 const adrIndex = readRequired("docs/adr/README.md");
 const continuityAdr = readRequired(
   "docs/adr/0011-repository-native-project-continuity.md",
@@ -68,6 +116,46 @@ if (agents) {
     /PLANS\.md[^\n]*active multi-stage/i,
     "PLANS.md active-work ownership rule",
   );
+}
+
+if (activeTask) {
+  requireMatch(activeTask, /^# ACTIVE TASK$/m, "ACTIVE_TASK.md title");
+  for (const [pattern, label] of [
+    [/## Status/i, "active-task status"],
+    [/## Objective/i, "active-task objective"],
+    [/## Scope/i, "active-task scope"],
+    [/## Current Phase/i, "active-task current phase"],
+    [/## Confirmed Progress/i, "active-task confirmed progress"],
+    [/## Current Blocker/i, "active-task blocker classification"],
+    [/## Last Completed Action/i, "active-task last completed action"],
+    [/## Current Action/i, "active-task current action"],
+    [/## Next Action/i, "active-task next action"],
+    [/## Verification Required/i, "active-task verification contract"],
+    [/## Completion Criteria/i, "active-task completion criteria"],
+    [/## DO NOT REPEAT/i, "active-task do-not-repeat boundary"],
+  ]) requireMatch(activeTask, pattern, label);
+}
+
+if (currentState) {
+  requireMatch(currentState, /^# CURRENT STATE$/m, "CURRENT_STATE.md title");
+  requireMatch(
+    currentState,
+    /Current HEAD:[^\n]*(?:VERIFY DYNAMICALLY|derive dynamically)/i,
+    "current-state dynamic HEAD rule",
+  );
+  requireMatch(
+    currentState,
+    /Current remote main:[^\n]*VERIFY DYNAMICALLY/i,
+    "current-state dynamic remote-main rule",
+  );
+  requireMatch(
+    currentState,
+    /Working tree:[^\n]*(?:CLEAN|DIRTY|NOT VERIFIED)/i,
+    "current-state working-tree classification",
+  );
+  requireMatch(currentState, /## NEXT ACTION/i, "current-state next action");
+  requireMatch(currentState, /## DO NOT REPEAT/i, "current-state do-not-repeat");
+  requireMatch(currentState, /NOT VERIFIED/i, "current-state explicit not-verified state");
 }
 
 if (state) {
@@ -162,6 +250,128 @@ if (plans) {
   }
 }
 
+if (continuityPolicy) {
+  requireMatch(
+    continuityPolicy,
+    /READ -> RECOVER -> VERIFY -> RECONCILE -> CHECK -> PRIORITIZE -> CONTINUE -> CHANGE -> TEST -> PROTECT AGAINST REGRESSION -> DOCUMENT -> CHECKPOINT -> HANDOFF/i,
+    "full continuity lifecycle",
+  );
+  requireMatch(continuityPolicy, /## Sources of Truth/i, "source-of-truth policy");
+  requireMatch(
+    continuityPolicy,
+    /Bug -> Reproduce -> Root Cause -> Fix -> Verification -> Regression Protection -> Documentation/i,
+    "important-bug lifecycle",
+  );
+  requireMatch(
+    continuityPolicy,
+    /Fix -> Strengthen -> Verify -> Protect/i,
+    "recurring-problem strengthening lifecycle",
+  );
+  requireMatch(continuityPolicy, /OWASP ASVS 5\.0\.0/i, "OWASP ASVS security reference");
+  requireMatch(
+    continuityPolicy,
+    /NIST Secure Software Development Framework/i,
+    "NIST SSDF security-development reference",
+  );
+  requireMatch(
+    continuityPolicy,
+    /Production-impacting and external actions require explicit authorization/i,
+    "explicit external-action authorization rule",
+  );
+  requireMatch(continuityPolicy, /## End-of-Task Contract/i, "end-of-task verification contract");
+}
+
+if (handoffLedger) {
+  requireMatch(handoffLedger, /LAST CONFIRMED STATE/i, "handoff last confirmed state");
+  requireMatch(handoffLedger, /NEXT ACTION/i, "handoff next action");
+  requireMatch(handoffLedger, /DO NOT REPEAT/i, "handoff do-not-repeat boundary");
+  requireMatch(handoffLedger, /Timestamp/i, "handoff timestamp field");
+  requireMatch(handoffLedger, /Test|evidence/i, "handoff verification/evidence field");
+}
+
+if (handoffTemplate) {
+  for (const [pattern, label] of [
+    [/LAST CONFIRMED STATE/i, "handoff template last confirmed state"],
+    [/COMPLETED \/ VERIFIED/i, "handoff template completed/verified"],
+    [/EVIDENCE \/ TESTS/i, "handoff template evidence/tests"],
+    [/BLOCKERS \/ REMAINING WORK/i, "handoff template blockers/remaining work"],
+    [/NEXT ACTION/i, "handoff template next action"],
+    [/DO NOT REPEAT/i, "handoff template do-not-repeat"],
+  ]) requireMatch(handoffTemplate, pattern, label);
+}
+
+if (!handoffRecords.length) {
+  failures.push("No durable task checkpoint exists under docs/handoff-ledger/.");
+}
+for (const record of handoffRecords) {
+  for (const [pattern, label] of [
+    [/Status:/i, "status"],
+    [/Timestamp:/i, "timestamp"],
+    [/## LAST CONFIRMED STATE/i, "last confirmed state"],
+    [/## (?:COMPLETED|COMPLETED \/ VERIFIED)/i, "completed/verified work"],
+    [/## EVIDENCE/i, "evidence"],
+    [/## NEXT ACTION/i, "next action"],
+    [/## DO NOT REPEAT/i, "do-not-repeat"],
+  ]) requireMatch(record.text, pattern, `${record.relativePath}: ${label}`);
+}
+
+if (memoryTemplate) {
+  for (const [pattern, label] of [
+    [/Status:/i, "memory template status"],
+    [/## Evidence/i, "memory template evidence"],
+    [/## Root Cause/i, "memory template root cause"],
+    [/## Verification/i, "memory template verification"],
+    [/## Regression Protection/i, "memory template regression protection"],
+    [/## NEXT ACTION/i, "memory template next action"],
+    [/## DO NOT REPEAT/i, "memory template do-not-repeat"],
+  ]) requireMatch(memoryTemplate, pattern, label);
+}
+
+if (!memoryRecords.length) {
+  failures.push("No durable project-memory record exists under docs/project-memory/.");
+}
+const memoryStatusPattern =
+  /Status:\s*(?:OPEN|IN PROGRESS|RESOLVED|VERIFIED|NOT REPRODUCIBLE|DEFERRED|BLOCKED|REQUIRES ACTION|DUPLICATE|FALSE POSITIVE)/i;
+const memoryIdPattern = /^(?:# )?(?:BUG|REG|SEC|INC|DEC|FAIL)-\d{4}:/m;
+for (const record of memoryRecords) {
+  requireMatch(record.text, memoryIdPattern, `${record.relativePath}: stable ID`);
+  requireMatch(record.text, memoryStatusPattern, `${record.relativePath}: lifecycle status`);
+  requireMatch(record.text, /## Evidence/i, `${record.relativePath}: evidence`);
+  requireMatch(record.text, /## Root Cause/i, `${record.relativePath}: root cause`);
+  requireMatch(record.text, /## Verification/i, `${record.relativePath}: verification`);
+  requireMatch(
+    record.text,
+    /## Regression Protection/i,
+    `${record.relativePath}: regression protection`,
+  );
+  requireMatch(record.text, /## NEXT ACTION/i, `${record.relativePath}: next action`);
+  requireMatch(record.text, /## DO NOT REPEAT/i, `${record.relativePath}: do-not-repeat`);
+}
+
+if (projectMemory) {
+  requireMatch(projectMemory, /BUG-NNNN/i, "bug stable identifier");
+  requireMatch(projectMemory, /REG-NNNN/i, "regression stable identifier");
+  requireMatch(projectMemory, /SEC-NNNN/i, "security stable identifier");
+  requireMatch(projectMemory, /INC-NNNN/i, "incident stable identifier");
+  requireMatch(projectMemory, /DEC-NNNN/i, "decision stable identifier");
+  requireMatch(projectMemory, /FAIL-NNNN/i, "known-failure stable identifier");
+  requireMatch(projectMemory, /OPEN[\s\S]*IN PROGRESS[\s\S]*RESOLVED[\s\S]*VERIFIED/i, "explicit project-memory statuses");
+}
+
+for (const [text, idPattern, label] of [
+  [bugMemory, /BUG-NNNN/i, "bug memory category"],
+  [regressionMemory, /REG-NNNN/i, "regression memory category"],
+  [securityMemory, /SEC-NNNN/i, "security memory category"],
+  [incidentMemory, /INC-NNNN/i, "incident memory category"],
+  [decisionMemory, /DEC-NNNN/i, "decision memory category"],
+  [knownFailureMemory, /FAIL-NNNN/i, "known-failure memory category"],
+]) {
+  if (!text) continue;
+  requireMatch(text, idPattern, `${label} stable ID`);
+  requireMatch(text, /NEXT ACTION/i, `${label} next-action contract`);
+  requireMatch(text, /status/i, `${label} explicit status contract`);
+}
+
 if (adrIndex) {
   requireMatch(
     adrIndex,
@@ -233,7 +443,22 @@ if (architectureIndex) {
 const combined = [
   agents,
   state,
+  activeTask,
+  currentState,
   plans,
+  continuityPolicy,
+  handoffLedger,
+  projectMemory,
+  bugMemory,
+  regressionMemory,
+  securityMemory,
+  incidentMemory,
+  decisionMemory,
+  knownFailureMemory,
+  handoffTemplate,
+  memoryTemplate,
+  ...handoffRecords.map((record) => record.text),
+  ...memoryRecords.map((record) => record.text),
   adrIndex,
   continuityAdr,
   releaseRunbook,
@@ -255,5 +480,5 @@ if (failures.length) {
 
 console.log("KGW project continuity gate PASSED");
 console.log(
-  "Canonical continuity files, dynamic Git-state semantics, plan lifecycle, evidence sections, ADR lifecycle, and release runbook are present.",
+  "Canonical continuity files, active/current state, durable handoff and project memory, dynamic Git-state semantics, regression/security lifecycles, plan/ADR lifecycle, and release runbook are present.",
 );

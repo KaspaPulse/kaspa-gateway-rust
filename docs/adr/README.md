@@ -41,4 +41,4 @@ Each ADR should include:
 ## Index
 
 - `docs/architecture/adr-0010-same-exe-parallel-self-worker-runtime.md` — **Accepted** — historical location retained for compatibility.
-- `0011-repository-native-project-continuity.md` — **Accepted** — canonical project-state/continuity and source-of-truth model.
+- `0011-repository-native-project-continuity.md` — **Accepted** — canonical project-state/continuity, durable handoff/project-memory, and source-of-truth model.
