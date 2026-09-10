@@ -2,39 +2,47 @@
 
 ## Metadata
 
-- Last state update: 2026-08-17 16:49 +03:00.
-- State author/agent: maintenance-state reconciliation session.
+- Last state update: 2026-09-10 17:55 +03:00.
+- State author/agent: Remote Desktop Commander continuity reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
 
 ## Executive Status
 
-- Overall status: **DESKTOP 0.1.1 RELEASE/WORKFLOW ENGINEERING CLOSED; ORDINARY MAINTENANCE ACTIVE; OWNER CREDENTIAL RETIREMENT PENDING**.
-- Current objective: complete ordinary dependency maintenance without reopening the completed Desktop `0.1.1` release plan or changing runtime/release invariants.
-- Current engineering blocker: **NONE** for the completed Desktop `0.1.1` release/workflow/continuity work.
-- Owner-only security hygiene remains: remove repository Actions secret `RELEASE_ADMIN_TOKEN` and revoke/delete the associated short-lived fine-grained PAT. Its value must never be recorded in chat, repository files, logs, evidence bundles, or documentation.
+- Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; OWNER CREDENTIAL RETIREMENT NOT VERIFIED**.
+- Current objective: resume ordinary local-first engineering from the exact current `main` state without reopening completed release work.
+- Current engineering blocker: **NONE**.
+- Open pull requests at reconciliation time: **NONE**.
+- `PLANS.md` remains intentionally inactive because no new multi-stage task has been selected.
+- Owner-only security hygiene remains external and **NOT VERIFIED**: remove repository Actions secret `RELEASE_ADMIN_TOKEN` and revoke/delete the associated short-lived fine-grained PAT. Its value must never be recorded in chat, repository files, logs, evidence bundles, or documentation.
 
 ## Repository State
 
 - Default integration branch: `main`.
-- Current branch: **VERIFY DYNAMICALLY** with `git branch --show-current` in the actual checkout.
-- Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`.
-- Current remote main: **VERIFY DYNAMICALLY** from Git/GitHub before any decision that depends on it.
-- Working tree: **NOT VERIFIED** in the dedicated server checkout from this agent environment.
-- Dedicated server checkout probe during this reconciliation: `/home/kas/kaspa-gateway-dev/codex/kaspa-gateway-rust` was not mounted/present in this execution environment, so local branch/HEAD/status/remotes were not inferred.
-- Remote tracking state: **NOT VERIFIED** in a local checkout; inspect `git status --short --branch`, `git log -1 --oneline`, and remotes when resuming in the dedicated checkout.
-- Verified code baseline (latest completed maintenance integration evidence): `f3bd629126b8572bda32dd1f8da253d3491430b7` (`chore(deps): bump sysinfo from 0.31.4 to 0.39.6 (#52)`).
-- Verified application/workflow implementation baseline: `197bdead257973164931b34cce20c4556820df44` (`fix: verify desktop release drafts by release ID (#59)`).
-- State-document commit: derive dynamically from Git when needed; do not copy a self-referential state SHA here.
-- Qualified Desktop `0.1.1` source and published tag target: `b911eb44619f8eab706bc2fe786d1c84ac958f1d` (`release: prepare desktop 0.1.1 (#50)`).
-- Reconciliation observation at 2026-08-17 16:49 +03:00: GitHub `main` resolved to `f3bd629126b8572bda32dd1f8da253d3491430b7`; this is a timestamped observation, not a forever-current claim.
-- Active ruleset snapshot re-verified during this reconciliation: ID `20627285`, `main-rebootstrap-baseline`, enforcement active, squash-only integration, unresolved review threads required, no bypass, and six required PR contexts.
+- Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; do not embed the state-document commit as a forever-current HEAD.
+- Current remote main: **VERIFY DYNAMICALLY** from Git/GitHub before any decision that depends on it; the timestamped reconciliation observation is recorded below.
+- Working tree: **CLEAN** at the verified session baseline before this isolated state-document edit; classify it dynamically on every resume.
+- State-document commit: derive dynamically from Git when needed; do not copy a self-referential state SHA into this document.
+- Verified code baseline (historical reconciliation observation): `9a7b18f76dd6184785a4cf972daa1431ee07138f`.
+- Dedicated checkout: `/home/kas/kaspa-gateway-dev/codex/kaspa-gateway-rust`.
+- Origin: `https://github.com/KaspaPulse/kaspa-gateway-rust.git`.
+- Verified remote `main`: `9a7b18f76dd6184785a4cf972daa1431ee07138f` (`chore(deps): bump the github-actions group with 4 updates (#67)`).
+- The dedicated checkout was fast-forwarded from `b911eb44619f8eab706bc2fe786d1c84ac958f1d` to the verified remote head with no local divergence (`ahead=0`, `behind=0`) before this documentation reconciliation.
+- Reconciliation branch: `docs/project-state-reconcile-20260910`, created locally from verified `main`; no push or pull request has been performed by this session.
+- Working tree was clean before the reconciliation branch was created.
+- Open pull request query returned an empty set at reconciliation time.
+- PR #51 is `CLOSED` and was not merged; it is no longer an active maintenance item.
+- Active ruleset `main-rebootstrap-baseline` (ID `20627285`) remains enforced with linear history, squash-only pull-request integration, resolved review threads, six baseline required contexts, and no bypass actors.
+- Active ruleset `kgw-dependency-required-checks-v1` (ID `22426271`) applies to `main`, uses strict up-to-date required checks, adds `Rust address fuzzing` to the protected dependency-maintenance surface, and has no bypass actors.
+- Repository variable `KGW_DEPENDABOT_AUTOMERGE` is verified as `enabled`.
+- Published Desktop `0.1.1` tag target remains `b911eb44619f8eab706bc2fe786d1c84ac958f1d`.
 
 ## Uncommitted Work
 
-- Dedicated server checkout/worktree: **NOT VERIFIED** because it is not mounted in this agent environment. Do not discard or hide local work without inspecting it first.
-- Temporary remote operations branch `ops/release-011-recovery-gate-20260817` remains evidence-only and must not be merged as application history.
-- Repository secret/PAT retirement is an external GitHub-settings action, not uncommitted repository code.
+- No pre-existing user source-code changes were present when this session began.
+- This reconciliation is isolated on local branch `docs/project-state-reconcile-20260910`; only the state handoff is intended to change in this task.
+- A stale/prunable Git worktree registration under `/tmp/kaspa-gateway-lanes/.../p10-macos-qualification-from-dmg` was observed. It is not part of the active checkout and is not being removed without a separate cleanup reason.
+- Repository secret/PAT retirement remains an external GitHub-settings action, not repository code.
 
 ## Desired State
 
@@ -50,25 +58,30 @@
 
 ### Repository
 
-- Desktop package/release line remains `0.1.1` for the completed release described below.
-- Rust workspace policy is Rust `1.97.1`, edition `2024`.
-- Desktop Node engine is `>=24 <27`; blocking CI uses Node `24.19.0` and npm `11.17.0`.
-- `AGENTS.override.md` is absent on the verified GitHub `main` state; `AGENTS.md` is the active repository agent policy.
-- `PLANS.md` remains intentionally in **NO ACTIVE MULTI-STAGE PLAN** state; no new multi-stage plan is required for the current one-at-a-time maintenance sequence.
-- Dependabot maintenance transitions completed in this session before this reconciliation:
-  - PR #53 (`globals` desktop) squash-merged; post-merge `main` baseline was `21ab0782fa741d0ddca6f23d1b60099b54be7cbd` and push CI passed.
-  - PR #54 (`globals` E2E) squash-merged; post-merge `main` baseline was `1499dad88214190f9f6cf4728387e551286c541f` and push CI passed.
-  - PR #55 (GitHub Actions group) squash-merged; post-merge `main` baseline was `bc56b8c53aff889421e36ad91154c61da87808a7` and push CI passed.
-  - PR #52 (`sysinfo` 0.31.4 -> 0.39.6) initially failed `cargo check` because `System::refresh_processes` gained the `remove_dead_processes` argument. The same PR was repaired with the minimal compatibility adaptation `refresh_processes(..., true)`, requalified on exact final head `ef514ba28bd9cdacbd2ca5c2cfe638357a65a655`, and squash-merged as `f3bd629126b8572bda32dd1f8da253d3491430b7`.
-- Open PR audit during this reconciliation found exactly one open maintenance PR before the state PR: Dependabot #51 (`duckdb` and `ureq` grouped update). PRs #52-#55 are no longer open.
+- Desktop package/release line remains `0.1.1`.
+- Rust workspace toolchain is now Rust `1.98.1`; edition remains `2024`.
+- Desktop Node engine remains `>=24 <27`.
+- `AGENTS.override.md` is absent in the verified current checkout; `AGENTS.md` is the active repository policy.
+- `PLANS.md` remains in **NO ACTIVE MULTI-STAGE PLAN** state.
+- The September dependency-maintenance sequence is present in verified `main` history:
+  - PR #75: dependency security repair and safe Dependabot auto-merge workflow.
+  - PR #71: grouped Cargo minor/patch maintenance.
+  - PR #74: Rust toolchain `1.97.1` -> `1.98.1`.
+  - PR #72: desktop npm minor/patch maintenance.
+  - PR #73: E2E npm minor/patch maintenance.
+  - PR #67: GitHub Actions maintenance.
+- Current `main` is `9a7b18f76dd6184785a4cf972daa1431ee07138f` and has no open pull requests at this reconciliation boundary.
+- `.github/workflows/dependabot-auto-merge.yml` is present. It enables protected squash auto-merge only for verified Dependabot minor/patch updates, excludes dependency sets containing `duckdb`, and does not auto-approve major updates.
 
 ### CI
 
-- PR #52 final exact-head CI run `32035617943` completed **success** after the compatibility repair. Its blocking quality job passed formatting, `cargo check`, strict Clippy, Rust tests, desktop npm audit, E2E npm audit, and continuity/runtime/release-workflow contracts.
-- PR #52 final exact head also passed the other required ruleset contexts, including `actionlint`, secret scan, dependency review, supply-chain policy, and Rust security-extended analysis.
-- Post-merge push CI run `32036339504` on merge commit `f3bd629126b8572bda32dd1f8da253d3491430b7` completed **success**. Blocking `quality (rust + npm)` job `95407482545` passed continuity/runtime/release-workflow contracts, formatting, `cargo check`, strict Clippy, Rust tests, desktop npm audit, and E2E npm audit. Node.js 26 compatibility job `95407482622` also passed.
-- The active ruleset requires these six PR contexts: `quality (rust + npm)`, `actionlint`, `TruffleHog verified and unknown secrets`, `dependency vulnerability and license review`, `policy + audit + deny + machete`, and `Rust security-extended analysis`.
-- Any new or rebased PR must qualify its **exact final head**; historical success does not transfer to a moved head.
+- Exact current `main` head `9a7b18f76dd6184785a4cf972daa1431ee07138f` has successful push runs for `CI`, `Workflow Lint`, `Secret Scan`, `OpenSSF Scorecard`, `Dependency & Supply Chain Security`, and `CodeQL`.
+- Current-head push CI run `34114469182` completed **success**.
+- Current-head dependency/supply-chain run `34114469226` completed **success**.
+- Current-head CodeQL push run `34114469224` completed **success**; scheduled CodeQL run `34450142563` also completed **success**.
+- Current-head Secret Scan push run `34114469219` completed **success**; scheduled Secret Scan run `34332233837` also completed **success**.
+- Strict dependency ruleset ID `22426271` requires these seven contexts on `main`: `quality (rust + npm)`, `policy + audit + deny + machete`, `dependency vulnerability and license review`, `Rust security-extended analysis`, `TruffleHog verified and unknown secrets`, `actionlint`, and `Rust address fuzzing`.
+- Historical success never transfers to a moved pull-request head; future protected merges must satisfy the applicable exact-head rules.
 
 ### Release Distribution
 
@@ -101,13 +114,13 @@
 
 ## Drift
 
-- Repository handoff drift found and reconciled: the prior state said Dependabot #51-#55 remained open, but live GitHub shows #52-#55 merged and only #51 remains as the dependency maintenance proposal.
-- Current remote-main observation advanced beyond the former continuity baseline; current values remain dynamically verified rather than embedded as permanent current labels.
-- Qualified source ↔ immutable published Desktop `0.1.1` release: **NONE FOUND** in the latest release re-fetch.
-- Repository ruleset ↔ documented six-context/squash-only policy: **NONE FOUND** in the latest ruleset re-fetch.
-- Local dedicated checkout/worktree drift: **NOT VERIFIED** because the checkout is not accessible from this execution environment.
-- Staging/runtime drift: **NOT VERIFIED**.
-- Owner credential-retirement drift: **NOT VERIFIED** until an authorized administration surface confirms removal.
+- The previous handoff was stale relative to live repository state: it still treated PR #51 as the next maintenance action and did not describe the completed September dependency-maintenance batch.
+- Dedicated checkout drift is now reconciled: local `main` was verified clean, fetched, and fast-forwarded to exact remote `main` `9a7b18f76dd6184785a4cf972daa1431ee07138f` with zero divergence before this documentation branch was created.
+- The previous Rust `1.97.1` policy claim was stale; `rust-toolchain.toml` now pins `1.98.1`.
+- Safe Dependabot auto-merge and the strict seven-check ruleset are newer than the previous handoff and are now represented here.
+- Qualified source ↔ published Desktop `0.1.1` release: no drift observed in the tag target re-fetch performed during this reconciliation.
+- Staging/runtime drift remains **NOT VERIFIED** because no live node/bridge runtime was started or inspected.
+- Owner credential-retirement drift remains **NOT VERIFIED** until an authorized administration surface confirms removal.
 
 ## Current Architecture
 
@@ -126,61 +139,67 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 ## Completed and Verified
 
 - Repository-native continuity surfaces and Desktop `0.1.1` release/workflow engineering remain complete.
-- Dependabot PRs #53, #54, and #55 were independently rebased, exact-head qualified, squash-merged, and followed by successful push CI on their resulting `main` commits.
-- Dependabot PR #52 exposed a real upstream API migration, was repaired minimally on the same PR, exact-head qualified with `cargo check`, strict Clippy, Rust tests, npm audits, security/supply-chain gates, squash-merged, and followed by successful post-merge push CI on `f3bd629126b8572bda32dd1f8da253d3491430b7`.
-- No Desktop `0.1.1` release asset, tag, source binding, or immutable release metadata was changed by this maintenance sequence.
+- Verified current `main` history contains the September maintenance sequence PRs #75, #71, #74, #72, #73, and #67.
+- Current remote `main` is `9a7b18f76dd6184785a4cf972daa1431ee07138f`; the dedicated checkout matched it with zero ahead/behind divergence before this local documentation branch was created.
+- No open pull requests were present at the reconciliation boundary.
+- Protected Dependabot minor/patch auto-merge is present and the repository variable is enabled; major updates and dependency sets containing `duckdb` remain outside unattended auto-merge.
+- The current `main` exact-head CI/security workflow set observed in this reconciliation is successful.
+- No Desktop `0.1.1` release asset, tag, or source target was changed by this reconciliation session.
 
 ## Last Verified Validation
 
 ### Project Continuity Contract
 
-- Command represented by CI: `node tools/kgw_project_continuity_gate.cjs`.
-- Result: **PASS** in post-merge push CI run `32036339504`, job `95407482545`, on `f3bd629126b8572bda32dd1f8da253d3491430b7`.
+- Local command: `node tools/kgw_project_continuity_gate.cjs`.
+- Result: **PASS** on verified current `main` before editing this state document.
+- The same gate will be rerun after this reconciliation edit before any local commit.
 
-### Formatting / Build Static Check
+### Current Main CI
 
-- `cargo fmt --all -- --check`: **PASS** in job `95407482545`.
-- `cargo check --locked --workspace --all-targets`: **PASS** in job `95407482545`.
+- Exact head: `9a7b18f76dd6184785a4cf972daa1431ee07138f`.
+- Push CI run `34114469182`: **success**.
+- Workflow Lint run `34114469184`: **success**.
+- OpenSSF Scorecard run `34114469188`: **success**.
 
-### Clippy
+### Security / Supply Chain
 
-- Strict repository Clippy lanes: **PASS** in job `95407482545`.
-
-### Rust Tests
-
-- `cargo test --locked --workspace --all-targets`: **PASS** in job `95407482545`.
-
-### JavaScript / npm Validation
-
-- Desktop JavaScript lint, E2E lint/syntax checks, desktop npm audit, E2E npm audit: **PASS** in job `95407482545`.
-- Node.js 26 compatibility job `95407482622`: **PASS**, non-blocking.
+- Dependency & Supply Chain Security run `34114469226`: **success**.
+- CodeQL push run `34114469224`: **success**.
+- Secret Scan push run `34114469219`: **success**.
+- Scheduled CodeQL run `34450142563` on the same head: **success**.
+- Scheduled Secret Scan run `34332233837` on the same head: **success**.
 
 ### Release / Distribution Verification
 
-- Release ID `371168378` re-fetch: **PASS** for public immutable `desktop-v0.1.1` identity and unchanged qualified target.
+- `desktop-v0.1.1` re-fetch: `draft=false`, `prerelease=false`, published target `b911eb44619f8eab706bc2fe786d1c84ac958f1d`.
+- Historical immutability/provenance evidence remains in the project record; immutability was not independently re-queried by this session's limited release command.
 
 ### Live Runtime Verification
 
 - Result: **NOT VERIFIED**.
-- Reason: no live node/bridge runtime was executed or inspected in this maintenance session.
+- Reason: no live node/bridge runtime was started, stopped, or inspected in this reconciliation session.
 
 ### Graphify
 
-- Result: **NOT VERIFIED / ENVIRONMENT-LIMITED** in this agent environment.
-- Reason: the dedicated server checkout is not mounted here and no local Graphify execution surface is available. No Graphify PASS is claimed.
+- `.codex/skills/graphify/SKILL.md` was read completely at session start as required by `AGENTS.md`.
+- `graphify-out/graph.json` exists in the checkout.
+- No Graphify refresh is claimed because this reconciliation changes project-state documentation only and no application/source flow has been modified.
+- Graph freshness for the next programming task must be checked before broad source analysis.
 
 ## Known Issues / Blockers
 
+- No active repository engineering blocker or open pull request was found at the reconciliation boundary.
 - Owner security hygiene remains external: retire `RELEASE_ADMIN_TOKEN` and the associated short-lived fine-grained PAT; status remains **NOT VERIFIED** until an authorized administration surface confirms removal.
-- Open maintenance PR #51 groups `duckdb` 1.4.2 -> 1.10505.0 and `ureq` 3.3.0 -> 3.4.0. Upstream release notes explicitly mark DuckDB API changes as breaking; this PR must not be treated as a routine lockfile-only update.
-- RustSec managed advisory policy remains governed by repository configuration; do not claim all advisories are eliminated.
+- Live Kaspa node/bridge runtime health remains **NOT VERIFIED** in this session.
+- Major Dependabot updates and dependency groups containing `duckdb` are intentionally excluded from unattended auto-merge and require explicit compatibility review.
 
 ## Risks
 
 - Mutating immutable `desktop-v0.1.1` would violate the completed release boundary.
-- Merging #51 without exact-head build/tests could import a breaking DuckDB API migration despite the grouped Dependabot label.
-- Recording a static SHA as forever-current `main`/HEAD would recreate self-stale handoff drift.
+- Treating Dependabot auto-merge as a protection bypass would be incorrect; required checks, branch rules, and exact-head freshness remain authoritative.
+- A future major or `duckdb` update can contain breaking API changes and must not be force-fit into the routine auto-merge path.
 - Treating CI, mocks, or release publication as live runtime proof would violate runtime safety policy.
+- Reintroducing static forever-current HEAD claims without re-verification would recreate handoff drift.
 
 ## Constraints / Invariants
 
@@ -204,17 +223,18 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## Pending Decisions
 
-- No Desktop `0.1.1` release-content/source/publication/recovery/workflow-repair or continuity-hardening decision remains.
-- PR #51 requires independent maintenance review because the DuckDB update has documented breaking API changes.
+- No repository maintenance pull request is currently awaiting a decision.
+- No Desktop `0.1.1` release-content/source/publication/recovery/workflow-repair decision remains.
+- A future major Dependabot update or any dependency group containing `duckdb` requires explicit compatibility review before integration.
+- Owner credential retirement remains owner-only/administration-only and stays **NOT VERIFIED** unless an authorized tool confirms it.
 
 ## NEXT ACTION
 
-1. Exact-head qualify and squash-merge the `PROJECT_STATE.md` reconciliation PR created from verified `main` after run `32036339504` passed.
-2. Re-fetch live `main` and PR #51, rebase #51 onto the resulting current `main`, and treat every earlier #51 check as stale.
-3. Review #51 as a potentially breaking DuckDB migration, not a routine minor/patch update. Require exact-head formatting, Cargo check, strict Clippy, Rust tests, npm audits, and all six ruleset contexts; add only the smallest API adaptation if evidence proves one is needed.
-4. Squash-merge #51 only if its exact final head is fully qualified and has no unresolved review threads; then verify post-merge push CI.
-5. Reconcile `PROJECT_STATE.md` again after the final maintenance transition.
-6. Owner credential retirement remains owner-only/administration-only and stays `NOT VERIFIED` unless an authorized tool becomes available.
+1. Start the next user-requested scoped engineering task from verified current `main` `9a7b18f76dd6184785a4cf972daa1431ee07138f`; create an isolated task branch/worktree before source changes.
+2. Before broad programming analysis, use the existing Graphify graph as required by `AGENTS.md`; refresh it incrementally after source changes and re-query the affected flow.
+3. Run the smallest relevant local verification first, expand proportionally, and reconcile this state file after any meaningful project-state transition.
+4. Do not duplicate eligible Dependabot minor/patch maintenance already covered by protected auto-merge. Manually review major updates and any dependency group containing `duckdb`.
+5. Do not push, create a pull request, publish a release, or perform live-runtime actions unless the user explicitly authorizes that external action.
 
 ## Resume Instructions
 
