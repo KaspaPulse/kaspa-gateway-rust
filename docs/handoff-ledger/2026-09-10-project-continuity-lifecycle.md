@@ -65,3 +65,17 @@ Do not redo completed September dependency maintenance, Desktop 0.1.1 release wo
 - `FAIL-0001`: VERIFIED/CLOSED; root cause was diagnosing raw `--no-cluster` pre-build data as final graph health.
 - NEXT ACTION: final local qualification, non-skip commit, push, PR exact-head qualification, protected squash merge, post-merge verification.
 - DO NOT REPEAT: do not treat raw `--no-cluster` unresolved external references as final graph corruption; use normal post-build graph for health claims.
+
+## PR #76 E2E NPM SECURITY REPAIR CHECKPOINT
+- Timestamp: 2026-09-10 20:36 +03:00
+- PR #76 first exact-head run: all material checks passed except `quality (rust + npm)`; failure isolated to `Audit E2E npm tree`.
+- Root cause: `@wdio/mocha-framework` 9.31.5 -> Mocha 10.8.2 -> `js-yaml` 4.3.1, High GHSA-2883-xcg3-v3hh.
+- Repair: exact WebdriverIO 9.31.7 pins; `js-yaml` resolves to 4.3.2; local audit is 0 Critical / 0 High / 0 Moderate.
+- Residual upstream risk: GHSA-73rr-hh4g-fpgx is 3 Low audit nodes via Mocha 11.8.0 / `diff` 7.0.0; deprecations are exactly `glob` 10.5.0 and `whatwg-encoding` 3.1.1.
+- Control: `docs/security/npm-dependency-policy.json` + `tools/kgw_npm_dependency_policy_gate.cjs` enforce exact identities/paths/lock versions/deprecations and expire accepted risk on 2026-10-10.
+- Regression protection: positive policy snapshot + six fail-closed negative tests; CI policy moved immediately after npm install before expensive Rust compilation.
+- Local verification: desktop/E2E policy PASS; continuity gate/tests PASS; actionlint PASS; YAML parse PASS; PowerShell AI gate PASS; E2E lint/check PASS; `git diff --check` PASS.
+- Graphify 0.9.57 final graph: 5,044 nodes / 12,875 edges; all endpoint/duplicate/collapse counters zero; focused query resolves npm policy gate/test.
+- Remote PR head remains `0ec7d01b...`; no npm repair commit/push has occurred at this checkpoint.
+- NEXT ACTION: create non-skip repair commit, re-fetch `origin/main`, push same branch to PR #76, exact-head qualify, protected squash merge, post-merge verify.
+- DO NOT REPEAT: do not downgrade WebdriverIO, force unsupported `diff`/Glob/encoding major overrides, weaken npm audit, or bypass branch protection.

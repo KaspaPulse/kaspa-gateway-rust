@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-09-10",
+  "workspaces": {
+    "desktop": {
+      "path": "apps/kaspa-gateway-desktop",
+      "review_until": null,
+      "allowed_vulnerabilities": [],
+      "allowed_deprecations": [],
+      "required_lock_versions": {}
+    },
+    "e2e": {
+      "path": "e2e",
+      "review_until": "2026-10-10",
+      "allowed_vulnerabilities": [
+        {
+          "name": "diff",
+          "severity": "low",
+          "via_packages": [],
+          "advisory_urls": [
+            "https://github.com/advisories/GHSA-73rr-hh4g-fpgx"
+          ]
+        },
+        {
+          "name": "mocha",
+          "severity": "low",
+          "via_packages": ["diff"],
+          "advisory_urls": []
+        },
+        {
+          "name": "@wdio/mocha-framework",
+          "severity": "low",
+          "via_packages": ["mocha"],
+          "advisory_urls": []
+        }
+      ],
+      "allowed_deprecations": [
+        { "name": "glob", "version": "10.5.0" },
+        { "name": "whatwg-encoding", "version": "3.1.1" }
+      ],
+      "required_lock_versions": {
+        "node_modules/@wdio/mocha-framework": "9.31.7",
+        "node_modules/mocha": "11.8.0",
+        "node_modules/mocha/node_modules/diff": "7.0.0",
+        "node_modules/js-yaml": "4.3.2",
+        "node_modules/glob": "10.5.0",
+        "node_modules/cheerio": "1.2.0",
+        "node_modules/encoding-sniffer": "0.2.1",
+        "node_modules/whatwg-encoding": "3.1.1"
+      }
+    }
+  }
+}

@@ -2,7 +2,7 @@
 
 ## Metadata
 
-- Last state update: 2026-09-10 18:45 +03:00.
+- Last state update: 2026-09-10 20:36 +03:00.
 - State author/agent: Remote Desktop Commander continuity reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
@@ -10,10 +10,10 @@
 ## Executive Status
 
 - Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; OWNER CREDENTIAL RETIREMENT NOT VERIFIED**.
-- Current objective: complete authorized external integration of the verified continuity/security/knowledge-management lifecycle through warning closure, protected PR qualification, squash merge, and post-merge verification without reopening completed release work.
+- Current objective: repair the E2E npm security failure discovered by PR #76, push the already-qualified local repair to the same PR, complete exact-head protected qualification, squash merge, and verify post-merge `main` without reopening completed release work.
 - Current engineering blocker: **NONE**.
-- Open pull requests at reconciliation time: **NONE**.
-- `PLANS.md` is **ACTIVE** for the authorized warning-closure and GitHub integration phase of the 2026-09-10 continuity/security/knowledge-management task.
+- Current task pull request: **PR #76 OPEN** on `feature/project-continuity-lifecycle-20260910` -> `main`; remote head before the npm repair push is `0ec7d01b9d0b5ff5f268db154caa0dd0420f6664`.
+- `PLANS.md` is **ACTIVE** for PR #76 npm security repair, exact-head qualification, protected merge, and post-merge verification.
 - Owner-only security hygiene remains external and **NOT VERIFIED**: remove repository Actions secret `RELEASE_ADMIN_TOKEN` and revoke/delete the associated short-lived fine-grained PAT. Its value must never be recorded in chat, repository files, logs, evidence bundles, or documentation.
 
 ## Repository State
@@ -21,7 +21,7 @@
 - Default integration branch: `main`.
 - Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; do not embed the state-document commit as a forever-current HEAD.
 - Current remote main: **VERIFY DYNAMICALLY** from Git/GitHub before any decision that depends on it; the timestamped reconciliation observation is recorded below.
-- Working tree: **CLEAN** at the verified session baseline before this isolated state-document edit; classify it dynamically on every resume.
+- Working tree: **VERIFY DYNAMICALLY**; at the 2026-09-10 20:36 +03 checkpoint it is intentionally DIRTY with the locally qualified PR #76 npm repair/policy/state reconciliation awaiting commit.
 - State-document commit: derive dynamically from Git when needed; do not copy a self-referential state SHA into this document.
 - Verified code baseline (historical reconciliation observation): `9a7b18f76dd6184785a4cf972daa1431ee07138f`.
 - Verified continuity-lifecycle implementation commit (historical evidence): `f270d5c811176396df0a6c06ac9ad983cb7f229b`.
@@ -29,7 +29,7 @@
 - Origin: `https://github.com/KaspaPulse/kaspa-gateway-rust.git`.
 - Verified remote `main`: `9a7b18f76dd6184785a4cf972daa1431ee07138f` (`chore(deps): bump the github-actions group with 4 updates (#67)`).
 - The dedicated checkout was fast-forwarded from `b911eb44619f8eab706bc2fe786d1c84ac958f1d` to the verified remote head with no local divergence (`ahead=0`, `behind=0`) before this documentation reconciliation.
-- Current task branch: `feature/project-continuity-lifecycle-20260910`, isolated in `/home/kas/kaspa-gateway-dev/codex/worktrees/project-continuity-lifecycle-20260910`; no push or pull request has been performed by this task.
+- Current task branch: `feature/project-continuity-lifecycle-20260910`, isolated in `/home/kas/kaspa-gateway-dev/codex/worktrees/project-continuity-lifecycle-20260910`; it is pushed and PR #76 is open. The remote PR head remains `0ec7d01b...` until the qualified npm repair commit is pushed.
 - Working tree was clean before the reconciliation branch was created.
 - Open pull request query returned an empty set at reconciliation time.
 - PR #51 is `CLOSED` and was not merged; it is no longer an active maintenance item.
@@ -41,7 +41,7 @@
 ## Uncommitted Work
 
 - No pre-existing user source-code changes were present when this session began.
-- The 2026-09-10 continuity lifecycle task is complete locally on its isolated worktree/branch; no unrelated application/runtime changes were made and external integration was not performed.
+- The continuity lifecycle implementation is complete and already under PR #76. Additional intentional uncommitted work now contains only the E2E npm security repair, fail-closed npm policy/regression protection, and state/security documentation reconciliation; no unrelated application/runtime changes are present.
 - A stale/prunable Git worktree registration under `/tmp/kaspa-gateway-lanes/.../p10-macos-qualification-from-dmg` was observed. It is not part of the active checkout and is not being removed without a separate cleanup reason.
 - Repository secret/PAT retirement remains an external GitHub-settings action, not repository code.
 
@@ -71,7 +71,7 @@
   - PR #72: desktop npm minor/patch maintenance.
   - PR #73: E2E npm minor/patch maintenance.
   - PR #67: GitHub Actions maintenance.
-- Current `main` is `9a7b18f76dd6184785a4cf972daa1431ee07138f` and has no open pull requests at this reconciliation boundary.
+- Historical verified `main` baseline is `9a7b18f76dd6184785a4cf972daa1431ee07138f`; PR #76 is currently open against `main`. Re-fetch before the repair push because current remote-main freshness is authoritative.
 - `.github/workflows/dependabot-auto-merge.yml` is present. It enables protected squash auto-merge only for verified Dependabot minor/patch updates, excludes dependency sets containing `duckdb`, and does not auto-approve major updates.
 
 ### CI
@@ -83,6 +83,9 @@
 - Current-head Secret Scan push run `34114469219` completed **success**; scheduled Secret Scan run `34332233837` also completed **success**.
 - Strict dependency ruleset ID `22426271` requires these seven contexts on `main`: `quality (rust + npm)`, `policy + audit + deny + machete`, `dependency vulnerability and license review`, `Rust security-extended analysis`, `TruffleHog verified and unknown secrets`, `actionlint`, and `Rust address fuzzing`.
 - Historical success never transfers to a moved pull-request head; future protected merges must satisfy the applicable exact-head rules.
+- PR #76 first exact-head qualification at `0ec7d01b...` passed actionlint, Secret Scan, Dependency Review, supply-chain policy/audit/deny/machete, Rust address fuzzing, and Rust security-extended/CodeQL. `quality (rust + npm)` failed only at the late E2E npm audit step after Rust checks/tests succeeded.
+- The PR #76 E2E failure was High GHSA-2883-xcg3-v3hh in `js-yaml` 4.3.1. The local repair updates exact WebdriverIO 9.31 pins to 9.31.7, resolves `js-yaml` 4.3.2, and locally reports 0 Critical/High/Moderate npm findings.
+- Residual E2E npm risk is explicitly controlled rather than hidden: one Low GHSA-73rr-hh4g-fpgx dependency chain appears as three audit nodes, and exactly two upstream deprecations remain (`glob` 10.5.0, `whatwg-encoding` 3.1.1). `docs/security/npm-dependency-policy.json` expires these accepted exceptions on 2026-10-10 and fails closed on drift.
 
 ### Release Distribution
 
@@ -168,6 +171,17 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - `pwsh 7.6.6 -NoProfile -ExecutionPolicy Bypass -File tools/kgw_ai_workflow_gate.ps1`: **PASS** after installing the checksum-verified official portable PowerShell archive under the user-local tool directory.
 - Graphify local integration state: `.codex/hooks.json` is valid local ignored JSON, `post-commit` and `post-checkout` hooks are installed, and the Graphify merge driver is registered.
 
+### PR #76 npm repair / warning policy
+
+- `node --check tools/kgw_npm_dependency_policy_gate.cjs`: **PASS**.
+- `node --check tools/kgw_npm_dependency_policy_gate_tests.cjs`: **PASS**.
+- Desktop npm policy gate: **PASS** with 0 Critical/High/Moderate/Low and 0 deprecations.
+- E2E npm policy gate: **PASS** with 0 Critical/High/Moderate, exactly 3 accepted Low nodes from GHSA-73rr-hh4g-fpgx, and exactly 2 accepted deprecations.
+- npm policy regression suite: **PASS** with one positive snapshot and six fail-closed negative cases (new High, new Low, expired review, new deprecation, lock drift, stale exception).
+- E2E `npm run lint`: **PASS**.
+- E2E `npm run check`: **PASS** including the deepmerge security compatibility smoke.
+- Policy execution was moved immediately after npm installation in blocking CI so dependency failures stop before expensive Rust compilation.
+
 ### Current Main CI
 
 - Exact head: `9a7b18f76dd6184785a4cf972daa1431ee07138f`.
@@ -198,15 +212,15 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - `.codex/skills/graphify/SKILL.md` was read completely before programming changes as required by `AGENTS.md`.
 - Local Graphify was upgraded from `0.9.32` to `0.9.57`; Git hooks were refreshed after the upgrade.
 - Root-cause investigation proved the earlier `FAIL-0001` counts came from treating a raw `--no-cluster` pre-build extraction as final graph health. Graphify source explicitly drops absent external/stdlib endpoints during normal build as expected behavior.
-- `graphify extract . --code-only --force`: **PASS**, producing the normal final graph with 5,017 nodes, 12,834 edges, and 244 communities without API-backed semantic extraction.
+- `graphify extract . --code-only --force`: **PASS**, producing the normal final graph with 5,044 nodes, 12,875 edges, and 243 communities without API-backed semantic extraction.
 - `graphify diagnose multigraph --graph graphify-out/graph.json --json`: **PASS/CLEAN** with zero missing endpoints, dangling endpoints, self-loops, exact duplicate edges, or directed/undirected same-endpoint collapse candidates.
 - Graphify MultiDiGraph capability probe: **PASS** on Python 3.12.3 / NetworkX 3.6.1; the installed Graphify source identifies opt-in `--multigraph` as a future capability, not a current project requirement.
-- Focused post-change query: **PASS**; it resolves the continuity gate/test, `ACTIVE_TASK.md`, `CURRENT_STATE.md`, handoff ledger, and project-memory nodes.
+- Focused post-change query: **PASS**; it resolves the new npm dependency policy gate/test and the existing continuity/security graph surfaces.
 - `FAIL-0001` is now **VERIFIED/CLOSED** with the corrected root cause and regression guidance; no final-graph health warning remains at this boundary.
 
 ## Known Issues / Blockers
 
-- No external repository engineering blocker or open pull request was found at the continuation boundary. The continuity lifecycle implementation remains locally verified; warning closure is complete and GitHub integration is **IN PROGRESS — AUTHORIZED**.
+- No local engineering blocker remains. PR #76 is open and its first qualification exposed the now-locally-repaired E2E npm finding; the repaired exact head has not yet been committed/pushed, so remote requalification is the current integration boundary.
 - Owner security hygiene remains external: retire `RELEASE_ADMIN_TOKEN` and the associated short-lived fine-grained PAT; status remains **NOT VERIFIED** until an authorized administration surface confirms removal.
 - Live Kaspa node/bridge runtime health remains **NOT VERIFIED** in this session.
 - Major Dependabot updates and dependency groups containing `duckdb` are intentionally excluded from unattended auto-merge and require explicit compatibility review.
@@ -241,18 +255,18 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## Pending Decisions
 
-- No repository maintenance pull request is currently awaiting a decision.
+- PR #76 requires no design decision at this checkpoint; it requires the qualified npm repair commit/push and exact-head CI requalification.
 - No Desktop `0.1.1` release-content/source/publication/recovery/workflow-repair decision remains.
 - A future major Dependabot update or any dependency group containing `duckdb` requires explicit compatibility review before integration.
 - Owner credential retirement remains owner-only/administration-only and stays **NOT VERIFIED** unless an authorized tool confirms it.
 
 ## NEXT ACTION
 
-1. Rerun all available targeted local gates on the warning-closed branch, including Node syntax, continuity gate/regression tests, `actionlint`, PowerShell AI workflow gate, YAML parse, Graphify final diagnostic/query, and `git diff --check`.
-2. Commit the warning-closure/state reconciliation without a `[skip ci]` token so pull-request workflows are not suppressed.
-3. Push `feature/project-continuity-lifecycle-20260910`, create a pull request against current `main`, and verify the exact pushed head.
-4. Follow every required protected check to completion; root-cause and repair any failure on the same branch, preserving regression protection.
-5. Squash-merge only after exact-head checks and review-thread requirements are satisfied, then verify post-merge `main` CI/security workflows and reconcile durable state/checkpoint records.
+1. Create one non-`[skip ci]` commit containing the qualified E2E npm repair, fail-closed npm policy/tests, security documentation, and reconciled task state.
+2. Re-fetch `origin/main`, verify no unsafe divergence or unexpected PR-head drift, then push `feature/project-continuity-lifecycle-20260910` to the existing PR #76.
+3. Follow every required check on the new exact head; root-cause and repair any failure on the same branch without weakening gates or using protection bypass.
+4. Allow protected squash merge only after exact-head checks and review-thread requirements are satisfied.
+5. Verify post-merge `main` CI/security workflows, reconcile `PROJECT_STATE.md` / `ACTIVE_TASK.md` / `CURRENT_STATE.md` / checkpoint, and return `PLANS.md` to its inactive sentinel.
 
 ## Resume Instructions
 
