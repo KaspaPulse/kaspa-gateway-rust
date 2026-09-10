@@ -2,43 +2,43 @@
 
 ## Status
 
-**NO ACTIVE MULTI-STAGE PLAN**
+**ACTIVE — PR #76 NPM SECURITY REPAIR AND EXACT-HEAD INTEGRATION**
 
-`PLANS.md` is an active-work coordination surface, not a historical archive. The most recent Desktop `0.1.1` release/recovery/workflow-repair plan met its repository/release engineering completion criteria and is closed. Current facts belong in `PROJECT_STATE.md`; durable decisions belong in ADRs; operational procedures belong in runbooks; implementation and review history belongs in Git and pull requests; release history belongs in GitHub Releases.
+## Objective
+Complete the already-implemented repository-native continuity/security/knowledge-management lifecycle by repairing the E2E npm security failure discovered in PR #76, preserving fail-closed warning visibility, and integrating through the protected GitHub path.
 
-## Usage
+## Success Criteria
+- Preserve the verified continuity implementation and runtime/release invariants.
+- Resolve the High E2E npm finding without weakening audit policy.
+- Keep unavoidable residual Low/deprecation risk exact, documented, expiring, and fail-closed on drift.
+- Push the repaired same branch to PR #76 and qualify the exact new head.
+- Required checks pass; any new failure is root-caused and repaired without protection bypass.
+- Protected squash merge completes and post-merge `main` is verified.
+- Durable state/checkpoint files reflect final reality.
 
-Create or replace the active-plan body only when work is genuinely long-horizon, multi-stage, migration-heavy, high-risk, or expected to span sessions. An active plan should define the objective, success criteria, non-goals, constraints, baseline, risks, milestones, decisions needed, progress, discoveries, blockers, final validation, and completion criteria.
+## Milestones
+1. Reopen durable task state and verify repository/PR reality — COMPLETE.
+2. Close local tooling/Graphify warnings — COMPLETE.
+3. Open PR #76 and run first exact-head qualification — COMPLETE; one E2E npm audit failure found.
+4. Root-cause and locally qualify npm repair/policy — COMPLETE.
+5. Commit/push repaired head to PR #76 — NEXT.
+6. Exact-head CI qualification and repairs if needed.
+7. Protected squash merge and post-merge verification.
+8. Reconcile durable state and return this file to the inactive sentinel.
 
-When an active plan reaches its completion criteria:
+## Progress
+- PR #76 is open against `main`; first remote head `0ec7d01b...` passed all material lanes except `quality (rust + npm)`.
+- Root cause was High GHSA-2883-xcg3-v3hh in E2E `js-yaml` 4.3.1 through WebdriverIO/Mocha.
+- Local repair uses exact WebdriverIO 9.31.7 pins; `js-yaml` is 4.3.2 and npm audit is 0 Critical / 0 High / 0 Moderate.
+- Residual GHSA-73rr-hh4g-fpgx Low chain plus two upstream deprecations are controlled by an exact machine-readable policy expiring 2026-10-10.
+- Local gates, regression tests, actionlint, PowerShell AI gate, E2E lint/check, YAML parse, `git diff --check`, and Graphify final health/query all pass.
+- Current phase: state reconciliation immediately before non-skip repair commit and push to the same PR.
 
-1. Reconcile the resulting current state into `PROJECT_STATE.md`.
-2. Record any durable architectural/process decision in the appropriate ADR.
-3. Update the relevant runbook if the operational procedure changed.
-4. Leave release/version history in GitHub Releases and implementation history in Git/PRs.
-5. Return this file to **NO ACTIVE MULTI-STAGE PLAN** rather than preserving a completed execution narrative as active coordination state.
+## Completion Criteria
+All success criteria above are met, no material warning is silently ignored, and the repository can resume from a concise final checkpoint without conversation context.
 
-Do not use this file as a duplicate issue tracker, Git log, CI history, release body, or credential store.
+## Constraints
+Preserve official runtime ownership, immutable Desktop 0.1.1 release boundaries, protected PR/squash integration, exact-head checks, no force push, no `--admin` bypass, and no unrelated application/runtime changes.
 
-## Most Recent Completed Plan
-
-Desktop `0.1.1` release-cycle engineering is closed. The durable evidence and current handoff are intentionally distributed to the systems that own them:
-
-- Current resumable project state: `PROJECT_STATE.md`.
-- Continuity/source-of-truth decision: `docs/adr/0011-repository-native-project-continuity.md`.
-- Release procedure: `docs/runbooks/desktop-release.md`.
-- Draft-release regression guard: `tools/kgw_desktop_release_draft_workflow_gate.cjs`.
-- Publication/recovery/workflow-repair implementation history: Git and PRs #58, #59, and #60.
-- Published release identity and assets: GitHub Release ID `371168378`, tag `desktop-v0.1.1`.
-
-The previous plan is not reopened merely because later maintenance occurs. Start a new scoped plan if a future task independently meets the multi-stage criteria above.
-
-## Starting a New Plan
-
-Before activating a new plan:
-
-1. Read `AGENTS.md` and `PROJECT_STATE.md`.
-2. Verify branch, HEAD, working tree, remotes as relevant, current GitHub `main`, open PRs, required checks/ruleset, and any runtime/release/deployment facts relevant to the task.
-3. Reconcile `PROJECT_STATE.md` first if verified reality differs.
-4. Reuse existing architecture, ADRs, runbooks, workflows, and components before creating parallel machinery.
-5. Define evidence-based exit criteria and keep `NOT VERIFIED` explicit where access or execution is unavailable.
+## NEXT ACTION
+Create the non-`[skip ci]` npm repair/policy commit, re-fetch `origin/main`, push the same branch to PR #76, then follow exact-head CI to protected merge and post-merge verification.

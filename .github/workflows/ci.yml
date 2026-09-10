@@ -78,12 +78,61 @@ jobs:
           printf 'KASPA_GATEWAY_DATA_DIR=%s\n' "$data_root" >> "$GITHUB_ENV"
 
       - name: Install desktop npm dependencies
+        id: desktop-npm-install
         working-directory: apps/kaspa-gateway-desktop
-        run: npm ci --ignore-scripts
+        shell: bash
+        run: |
+          set +e
+          npm ci --ignore-scripts 2>&1 | tee npm-ci.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
 
       - name: Install E2E npm dependencies
+        id: e2e-npm-install
         working-directory: e2e
-        run: npm ci --ignore-scripts
+        shell: bash
+        run: |
+          set +e
+          npm ci --ignore-scripts 2>&1 | tee npm-ci.log
+          status=${PIPESTATUS[0]}
+          exit "$status"
+
+      - name: Verify desktop npm dependency policy
+        id: desktop-npm-policy
+        run: >-
+          node tools/kgw_npm_dependency_policy_gate.cjs
+          --workspace desktop
+          --ci-log apps/kaspa-gateway-desktop/npm-ci.log
+
+      - name: Upload desktop npm policy diagnostics
+        if: failure() && steps.desktop-npm-policy.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-npm-policy-diagnostics
+          path: |
+            apps/kaspa-gateway-desktop/npm-ci.log
+            apps/kaspa-gateway-desktop/npm-audit.json
+          retention-days: 3
+
+      - name: Verify E2E npm dependency policy
+        id: e2e-npm-policy
+        run: >-
+          node tools/kgw_npm_dependency_policy_gate.cjs
+          --workspace e2e
+          --ci-log e2e/npm-ci.log
+
+      - name: Upload E2E npm policy diagnostics
+        if: failure() && steps.e2e-npm-policy.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-npm-policy-diagnostics
+          path: |
+            e2e/npm-ci.log
+            e2e/npm-audit.json
+          retention-days: 3
+
+      - name: Verify npm dependency policy gate regression tests
+        run: node tools/kgw_npm_dependency_policy_gate_tests.cjs
 
       - name: Lint desktop JavaScript
         working-directory: apps/kaspa-gateway-desktop
@@ -106,6 +155,9 @@ jobs:
 
       - name: Verify project continuity contract
         run: node tools/kgw_project_continuity_gate.cjs
+
+      - name: Verify project continuity gate regression tests
+        run: node tools/kgw_project_continuity_gate_tests.cjs
 
       - name: Lint and syntax-check E2E JavaScript
         working-directory: e2e
@@ -185,42 +237,6 @@ jobs:
         with:
           name: rust-test-diagnostics
           path: rust-tests.log
-          retention-days: 3
-
-      - name: Audit desktop npm tree
-        id: desktop-npm-audit
-        working-directory: apps/kaspa-gateway-desktop
-        shell: bash
-        run: |
-          set +e
-          npm audit --audit-level=moderate 2>&1 | tee npm-audit.log
-          status=${PIPESTATUS[0]}
-          exit "$status"
-
-      - name: Upload desktop npm audit diagnostics
-        if: failure() && steps.desktop-npm-audit.outcome == 'failure'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: desktop-npm-audit-diagnostics
-          path: apps/kaspa-gateway-desktop/npm-audit.log
-          retention-days: 3
-
-      - name: Audit E2E npm tree
-        id: e2e-npm-audit
-        working-directory: e2e
-        shell: bash
-        run: |
-          set +e
-          npm audit --audit-level=moderate 2>&1 | tee npm-audit.log
-          status=${PIPESTATUS[0]}
-          exit "$status"
-
-      - name: Upload E2E npm audit diagnostics
-        if: failure() && steps.e2e-npm-audit.outcome == 'failure'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: e2e-npm-audit-diagnostics
-          path: e2e/npm-audit.log
           retention-days: 3
 
   node-current-compatibility:

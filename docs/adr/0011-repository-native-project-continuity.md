@@ -20,7 +20,12 @@ Use the repository as the durable coordination surface with separated responsibi
 
 - `AGENTS.md` — stable agent/engineering policy and session-start protocol.
 - `PROJECT_STATE.md` — small current-state handoff, reconciled after meaningful state transitions.
+- `ACTIVE_TASK.md` — current task boundary, progress, blocker, verification contract, and next action.
+- `CURRENT_STATE.md` — concise operational handoff for a newly starting session.
 - `PLANS.md` — living execution plan only while genuine multi-stage work is active; otherwise it carries an explicit `NO ACTIVE MULTI-STAGE PLAN` sentinel.
+- `docs/handoff-ledger/` — atomic durable checkpoints with `LAST CONFIRMED STATE`, `NEXT ACTION`, and `DO NOT REPEAT`.
+- `docs/project-memory/` — stable-ID records for bugs, regressions, security findings, incidents, scoped decisions, and known failures.
+- `docs/continuity/PROJECT_CONTINUITY_POLICY.md` — detailed lifecycle and security-engineering policy.
 - `docs/adr/` — append-only durable decisions with lifecycle metadata.
 - `docs/runbooks/` — repeatable operational procedures.
 - Git/GitHub Actions/GitHub Releases/repository settings/live runtime state remain the authoritative systems for the facts they own.
@@ -30,6 +35,10 @@ Use the repository as the durable coordination surface with separated responsibi
 When a multi-stage plan reaches its completion criteria, reconcile durable outcomes into `PROJECT_STATE.md`, ADRs, runbooks, release records, and Git/PR history as appropriate, then return `PLANS.md` to the inactive sentinel. Completed execution narratives must not remain an active coordination surface.
 
 Conversation memory, old chat summaries, exported ZIPs, screenshots, and historical reports are advisory only. When they conflict with verified repository/CI/release/runtime reality, verified reality wins and the repository state summary is reconciled.
+
+Important failures also require durable learning: material bugs follow reproduce/root-cause/fix/verification/regression-protection/documentation; recurring problems reconnect to their previous record rather than restarting investigation. Checkpoints and project-memory records complement Git rather than duplicate it.
+
+Project-specific checkpoints are versioned under `docs/handoff-ledger/` so continuity evidence remains repository-native, reviewable, and isolated to Kaspa Gateway.
 
 ## Alternatives Considered
 
@@ -76,13 +85,19 @@ Rejected because CI cannot authoritatively observe every local runtime/worktree/
 - `tools/kgw_project_continuity_gate.cjs` validates the permanent continuity surface in blocking CI.
 - The existing required `quality (rust + npm)` workflow runs the continuity gate; no separate required status-check context is introduced for continuity documentation.
 - The gate requires dynamic current-HEAD/current-main semantics, explicit working-tree classification, Desired/Actual/Drift separation, `Last Verified Validation`, and either an active execution plan contract or the inactive `NO ACTIVE MULTI-STAGE PLAN` contract.
+- The expanded gate also requires the active/current state surfaces, repository-native handoff ledger, permanent problem-memory categories, stable identifier/status rules, root-cause/regression-protection lifecycle, and security-evidence policy.
 - The gate rejects static 40-character SHAs on labels that claim to be current `HEAD`/remote `main`, and checks continuity documentation for likely secret-value assignments.
 
 ## Related Files
 
 - `AGENTS.md`
 - `PROJECT_STATE.md`
+- `ACTIVE_TASK.md`
+- `CURRENT_STATE.md`
 - `PLANS.md`
+- `docs/continuity/PROJECT_CONTINUITY_POLICY.md`
+- `docs/handoff-ledger/`
+- `docs/project-memory/`
 - `docs/architecture/README.md`
 - `docs/adr/README.md`
 - `docs/runbooks/desktop-release.md`
@@ -97,3 +112,4 @@ Rejected because CI cannot authoritatively observe every local runtime/worktree/
 
 - 2026-08-17 — Accepted initial repository-native continuity model.
 - 2026-08-17 — Hardened the model against self-stale current-SHA claims and defined the inactive-plan lifecycle for `PLANS.md`.
+- 2026-09-10 — Extended repository-native continuity with active/current state surfaces, atomic checkpoints, permanent failure memory, root-cause/regression protection, and security-evidence lifecycle.
