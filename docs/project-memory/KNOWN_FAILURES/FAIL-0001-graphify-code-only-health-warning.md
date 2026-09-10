@@ -1,30 +1,30 @@
 # FAIL-0001: Graphify code-only graph health warning
 
-- Status: DEFERRED
+- Status: VERIFIED
 - Date: 2026-09-10
 - Category: KNOWN FAILURE
 - Affected scope: local generated `graphify-out/graph.json`; repository code navigation only.
 
 ## Evidence
-`graphify extract . --code-only --no-cluster` succeeded with 4,636 nodes and 12,718 raw edges. `graphify diagnose multigraph --graph graphify-out/graph.json` reported 0 missing-endpoint edges, 370 dangling-endpoint edges, 10 directed same-endpoint collapse candidates, and 15 undirected candidates. A focused post-change query still resolved `kgw_project_continuity_gate.cjs`, `activeTask`, `currentState`, `handoffRecords`, `memoryRecords`, and `readMarkdownRecords()`.
+The original `graphify extract . --code-only --no-cluster` diagnostic exposed raw pre-build edges and reported dangling/collapse candidates. After upgrading Graphify from 0.9.32 to 0.9.57 and rebuilding the normal final graph with `graphify extract . --code-only --force`, `graphify diagnose multigraph --graph graphify-out/graph.json --json` reported 5,017 nodes, 12,834 edges, and zero missing endpoints, dangling endpoints, self-loops, exact duplicates, or directed/undirected same-endpoint collapse candidates.
 
 ## Root Cause
-NOT YET CONFIRMED. The warning is in generated code-graph topology and is not evidence of an application/runtime defect. The first diagnostic invocation also passed `--extract-path .` incorrectly and failed with `Errno 21`; the corrected command above produced the actual graph-health result.
+CONFIRMED. The earlier warning was produced by diagnosing the `--no-cluster` raw extraction as if it were the final consumer graph. Raw extraction intentionally retains unresolved external/stdlib import/dependency references and parallel relation candidates before the normal build filters or resolves them. Graphify 0.9.57 source explicitly treats edges to absent external/stdlib nodes as expected and drops them during build. Its MultiDiGraph compatibility module also states that opt-in `--multigraph` is a future capability, not a current Kaspa Gateway requirement.
 
 ## Fix / Decision
-Do not block the continuity-lifecycle task on this advisory graph-quality warning because the changed tooling is present and queryable. Do not claim the generated graph is fully healthy.
+Use the normal post-build Graphify graph for repository health claims. Keep raw `--no-cluster` diagnostics as extractor-development evidence only; do not classify their expected external references as a Kaspa Gateway defect. Graphify was upgraded locally to 0.9.57 and Git hooks were refreshed after the upgrade.
 
 ## Verification
-The corrected Graphify diagnostic completed and the focused post-change BFS query found the newly added continuity-gate symbols. Application/runtime tests are not inferred from Graphify.
+The final post-build graph diagnostic is clean: all endpoint/collapse counters are zero. A focused Graphify query resolves the new continuity gate, regression test, `ACTIVE_TASK.md`, `CURRENT_STATE.md`, handoff ledger, and project-memory nodes. The Graphify MultiDiGraph runtime capability probe also passes on Python 3.12.3 / NetworkX 3.6.1.
 
 ## Regression Protection
-Keep Graphify refresh plus post-change query in the repository workflow. When graph diagnostics are used, surface health warnings rather than silently treating graph generation as a full integrity PASS.
+Continue running a normal code-only Graphify refresh plus a post-change query for programming/tooling changes. When raw `--no-cluster` extraction is intentionally inspected, label it as pre-build data and do not conflate expected external references with final graph corruption.
 
 ## Remaining Risk
-Graph traversal may omit or collapse some relationships until the dangling/collapse warning is separately investigated.
+NONE identified for the final generated graph at this verification boundary. Future Graphify or source-topology changes require fresh verification.
 
 ## NEXT ACTION
-DEFERRED — investigate Graphify dangling/collapse diagnostics only when graph-quality work is prioritized or when a code-navigation question depends on affected edges.
+CLOSED. Reopen this stable ID only if a future normal post-build graph diagnostic reports material endpoint/collapse corruption or code navigation demonstrably loses required relationships.
 
 ## DO NOT REPEAT
-Do not rerun broad repository analysis merely to hide this warning; reuse this evidence unless Graphify/version/source topology changes materially.
+Do not diagnose a raw `--no-cluster` extraction and report its expected unresolved external references as final graph health without first building and checking the normal consumer graph.

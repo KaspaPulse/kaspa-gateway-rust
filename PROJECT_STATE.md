@@ -10,10 +10,10 @@
 ## Executive Status
 
 - Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; OWNER CREDENTIAL RETIREMENT NOT VERIFIED**.
-- Current objective: resume ordinary local-first engineering from the completed repository-native continuity/security/knowledge-management baseline without reopening completed release work.
+- Current objective: complete authorized external integration of the verified continuity/security/knowledge-management lifecycle through warning closure, protected PR qualification, squash merge, and post-merge verification without reopening completed release work.
 - Current engineering blocker: **NONE**.
 - Open pull requests at reconciliation time: **NONE**.
-- `PLANS.md` is back in **NO ACTIVE MULTI-STAGE PLAN** state after local completion of the 2026-09-10 continuity/security/knowledge-management task.
+- `PLANS.md` is **ACTIVE** for the authorized warning-closure and GitHub integration phase of the 2026-09-10 continuity/security/knowledge-management task.
 - Owner-only security hygiene remains external and **NOT VERIFIED**: remove repository Actions secret `RELEASE_ADMIN_TOKEN` and revoke/delete the associated short-lived fine-grained PAT. Its value must never be recorded in chat, repository files, logs, evidence bundles, or documentation.
 
 ## Repository State
@@ -63,7 +63,7 @@
 - Rust workspace toolchain is now Rust `1.98.1`; edition remains `2024`.
 - Desktop Node engine remains `>=24 <27`.
 - `AGENTS.override.md` is absent in the verified current checkout; `AGENTS.md` is the active repository policy.
-- `PLANS.md` is **NO ACTIVE MULTI-STAGE PLAN** after verified local completion of the 2026-09-10 continuity lifecycle task.
+- `PLANS.md` is **ACTIVE** while the verified local lifecycle implementation is being exact-head qualified and integrated through GitHub.
 - The September dependency-maintenance sequence is present in verified `main` history:
   - PR #75: dependency security repair and safe Dependabot auto-merge workflow.
   - PR #71: grouped Cargo minor/patch maintenance.
@@ -133,7 +133,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - `PROJECT_STATE.md` — canonical current resumable summary.
 - `ACTIVE_TASK.md` — current task objective, phase, blocker, verification, next action, and completion criteria.
 - `CURRENT_STATE.md` — concise operational handoff for a newly starting session.
-- `PLANS.md` — inactive planning sentinel until a future genuine multi-stage task starts.
+- `PLANS.md` — active warning-closure / protected-integration plan for the current task.
 - `docs/continuity/PROJECT_CONTINUITY_POLICY.md` — detailed continuity/security-engineering/knowledge-management policy.
 - `docs/handoff-ledger/` — durable atomic checkpoints.
 - `docs/project-memory/` — stable-ID durable bugs, regressions, security findings, incidents, decisions, and known failures.
@@ -164,8 +164,9 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - Additional temporary negative checks for missing `ACTIVE_TASK.md`, no durable checkpoint, and invalid project-memory status failed as expected and recovered after restoration.
 - `git diff --check`: **PASS**.
 - Python YAML parse of `.github/workflows/ci.yml`: **PASS**.
-- `actionlint`: **UNAVAILABLE** on this host; not reported as PASS.
-- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/kgw_ai_workflow_gate.ps1`: **UNAVAILABLE** on this host; not reported as PASS.
+- `actionlint 1.7.12 -no-color`: **PASS** after installing the checksum-verified official Linux binary under the user-local tool directory.
+- `pwsh 7.6.6 -NoProfile -ExecutionPolicy Bypass -File tools/kgw_ai_workflow_gate.ps1`: **PASS** after installing the checksum-verified official portable PowerShell archive under the user-local tool directory.
+- Graphify local integration state: `.codex/hooks.json` is valid local ignored JSON, `post-commit` and `post-checkout` hooks are installed, and the Graphify merge driver is registered.
 
 ### Current Main CI
 
@@ -195,15 +196,17 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 ### Graphify
 
 - `.codex/skills/graphify/SKILL.md` was read completely before programming changes as required by `AGENTS.md`.
-- `graphify extract . --code-only --no-cluster`: **PASS**, producing 4,636 nodes and 12,718 raw edges without API-backed semantic extraction.
-- `graphify update .` after the final JavaScript test addition: **PASS**, producing 5,041 nodes, 12,721 edges, and an aggregated 250-community HTML view.
-- Focused post-change query: **PASS**; it resolved `kgw_project_continuity_gate.cjs`, `kgw_project_continuity_gate_tests.cjs`, `ACTIVE_TASK.md`, `CURRENT_STATE.md`, handoff ledger, and project-memory nodes.
-- Initial `graphify diagnose multigraph --extract-path .` invocation failed because the directory argument was invalid; the corrected `graphify diagnose multigraph --graph graphify-out/graph.json` completed.
-- Corrected graph diagnostic reported 370 dangling-endpoint edges and 10 directed same-endpoint collapse candidates. This warning is persisted as `docs/project-memory/KNOWN_FAILURES/FAIL-0001-graphify-code-only-health-warning.md`; the graph is queryable but is not claimed fully healthy.
+- Local Graphify was upgraded from `0.9.32` to `0.9.57`; Git hooks were refreshed after the upgrade.
+- Root-cause investigation proved the earlier `FAIL-0001` counts came from treating a raw `--no-cluster` pre-build extraction as final graph health. Graphify source explicitly drops absent external/stdlib endpoints during normal build as expected behavior.
+- `graphify extract . --code-only --force`: **PASS**, producing the normal final graph with 5,017 nodes, 12,834 edges, and 244 communities without API-backed semantic extraction.
+- `graphify diagnose multigraph --graph graphify-out/graph.json --json`: **PASS/CLEAN** with zero missing endpoints, dangling endpoints, self-loops, exact duplicate edges, or directed/undirected same-endpoint collapse candidates.
+- Graphify MultiDiGraph capability probe: **PASS** on Python 3.12.3 / NetworkX 3.6.1; the installed Graphify source identifies opt-in `--multigraph` as a future capability, not a current project requirement.
+- Focused post-change query: **PASS**; it resolves the continuity gate/test, `ACTIVE_TASK.md`, `CURRENT_STATE.md`, handoff ledger, and project-memory nodes.
+- `FAIL-0001` is now **VERIFIED/CLOSED** with the corrected root cause and regression guidance; no final-graph health warning remains at this boundary.
 
 ## Known Issues / Blockers
 
-- No external repository engineering blocker or open pull request was found at the task boundary. The continuity lifecycle task is **COMPLETE — VERIFIED LOCALLY**.
+- No external repository engineering blocker or open pull request was found at the continuation boundary. The continuity lifecycle implementation remains locally verified; warning closure is complete and GitHub integration is **IN PROGRESS — AUTHORIZED**.
 - Owner security hygiene remains external: retire `RELEASE_ADMIN_TOKEN` and the associated short-lived fine-grained PAT; status remains **NOT VERIFIED** until an authorized administration surface confirms removal.
 - Live Kaspa node/bridge runtime health remains **NOT VERIFIED** in this session.
 - Major Dependabot updates and dependency groups containing `duckdb` are intentionally excluded from unattended auto-merge and require explicit compatibility review.
@@ -245,11 +248,11 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## NEXT ACTION
 
-1. Start the next user-requested scoped engineering task by reading `AGENTS.md`, `PROJECT_STATE.md`, `ACTIVE_TASK.md`, `CURRENT_STATE.md`, and the latest relevant `docs/handoff-ledger/` checkpoint; verify actual Git/filesystem state before changes.
-2. Reuse the completed continuity lifecycle and existing evidence instead of recreating parallel memory/checkpoint systems or repeating completed investigations.
-3. For material bugs/security findings, persist stable-ID records under `docs/project-memory/` and leave regression protection before closure.
-4. Treat `FAIL-0001` as a deferred Graphify-quality warning; investigate it only when graph-quality work is prioritized or an affected traversal matters.
-5. Do not push, create a pull request, publish a release, or perform live-runtime actions unless the user explicitly authorizes that external action.
+1. Rerun all available targeted local gates on the warning-closed branch, including Node syntax, continuity gate/regression tests, `actionlint`, PowerShell AI workflow gate, YAML parse, Graphify final diagnostic/query, and `git diff --check`.
+2. Commit the warning-closure/state reconciliation without a `[skip ci]` token so pull-request workflows are not suppressed.
+3. Push `feature/project-continuity-lifecycle-20260910`, create a pull request against current `main`, and verify the exact pushed head.
+4. Follow every required protected check to completion; root-cause and repair any failure on the same branch, preserving regression protection.
+5. Squash-merge only after exact-head checks and review-thread requirements are satisfied, then verify post-merge `main` CI/security workflows and reconcile durable state/checkpoint records.
 
 ## Resume Instructions
 

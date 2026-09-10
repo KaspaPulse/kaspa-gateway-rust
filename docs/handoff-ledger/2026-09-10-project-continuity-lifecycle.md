@@ -47,3 +47,21 @@ Begin the next user-requested scoped engineering task from verified repository r
 
 ## DO NOT REPEAT
 Do not redo completed September dependency maintenance, Desktop 0.1.1 release work, repository-state reconciliation, or this continuity-lifecycle implementation unless fresh evidence proves regression or a superseding decision intentionally changes the contract.
+
+## CONTINUATION — EXTERNAL INTEGRATION AUTHORIZED
+- Timestamp: 2026-09-10 18:51 +03:00
+- Authorization: owner explicitly authorized push, publication/integration, warning remediation, PR qualification, and final protected merge.
+- Verified branch: `feature/project-continuity-lifecycle-20260910` at `4c14e6b803c9e51c9127cd0b9d4bcabcc51d4c5c`.
+- Verified remote main at continuation boundary: `9a7b18f76dd6184785a4cf972daa1431ee07138f`; branch ahead by 3, behind by 0; no open PRs.
+- NEXT ACTION: close actionable local warnings, then push/create PR and exact-head qualify to protected merge.
+- DO NOT REPEAT: do not rebuild the continuity implementation already verified locally; inspect only the warning/integration boundary.
+
+## WARNING CLOSURE CHECKPOINT
+- Timestamp: 2026-09-10 19:20 +03:00
+- `actionlint` 1.7.12: installed from official checksum-verified release and PASS on repository workflows.
+- PowerShell 7.6.6: official portable archive SHA-256 matched release manifest; `tools/kgw_ai_workflow_gate.ps1` PASS.
+- Graphify local integration: valid ignored `.codex/hooks.json`, post-commit/post-checkout hooks installed, merge driver registered.
+- Graphify: upgraded 0.9.32 -> 0.9.57; normal `--code-only --force` final graph diagnostic is CLEAN with all endpoint/collapse counters zero.
+- `FAIL-0001`: VERIFIED/CLOSED; root cause was diagnosing raw `--no-cluster` pre-build data as final graph health.
+- NEXT ACTION: final local qualification, non-skip commit, push, PR exact-head qualification, protected squash merge, post-merge verification.
+- DO NOT REPEAT: do not treat raw `--no-cluster` unresolved external references as final graph corruption; use normal post-build graph for health claims.
