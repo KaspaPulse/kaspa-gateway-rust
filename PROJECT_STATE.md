@@ -24,6 +24,7 @@
 - Working tree: **CLEAN** at the verified session baseline before this isolated state-document edit; classify it dynamically on every resume.
 - State-document commit: derive dynamically from Git when needed; do not copy a self-referential state SHA into this document.
 - Verified code baseline (historical reconciliation observation): `9a7b18f76dd6184785a4cf972daa1431ee07138f`.
+- Verified continuity-lifecycle implementation commit (historical evidence): `f270d5c811176396df0a6c06ac9ad983cb7f229b`.
 - Dedicated checkout: `/home/kas/kaspa-gateway-dev/codex/kaspa-gateway-rust`.
 - Origin: `https://github.com/KaspaPulse/kaspa-gateway-rust.git`.
 - Verified remote `main`: `9a7b18f76dd6184785a4cf972daa1431ee07138f` (`chore(deps): bump the github-actions group with 4 updates (#67)`).
@@ -144,6 +145,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 ## Completed and Verified
 
 - Repository-native continuity now includes `ACTIVE_TASK.md`, `CURRENT_STATE.md`, atomic handoff checkpoints, permanent project-memory categories/templates/records, and fail-closed regression tests in addition to the pre-existing `PROJECT_STATE.md`/`PLANS.md`/ADR/runbook model.
+- The verified local implementation commit for that lifecycle is `f270d5c811176396df0a6c06ac9ad983cb7f229b`; derive current HEAD dynamically on resume.
 - Verified current `main` history contains the September maintenance sequence PRs #75, #71, #74, #72, #73, and #67.
 - Current remote `main` is `9a7b18f76dd6184785a4cf972daa1431ee07138f`; the dedicated checkout matched it with zero ahead/behind divergence before this local documentation branch was created.
 - No open pull requests were present at the reconciliation boundary.
