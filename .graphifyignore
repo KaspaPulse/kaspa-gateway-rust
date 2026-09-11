@@ -1,0 +1,3 @@
+# The root Cargo.toml is a virtual workspace manifest with no [package].
+# Graphify 0.9.57 intentionally emits no node for virtual workspace roots; exclude only this root manifest to prevent zero-node retry warnings.
+/Cargo.toml

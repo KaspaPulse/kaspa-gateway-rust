@@ -104,3 +104,23 @@ Do not redo completed September dependency maintenance, Desktop 0.1.1 release wo
 - Active branch: `fix/post-merge-ci-race-20260911`, based on merged `main` `3f8174c7...` and not yet pushed at this checkpoint.
 - NEXT ACTION: commit without `[skip ci]`, push, open protected PR to `main`, qualify exact head, squash merge after green, then verify all post-merge main workflows and close the task state.
 - DO NOT REPEAT: do not increase the 40 ms delay as the primary fix, rerun failed CI hoping for luck, bypass branch protection, or reopen the completed npm root-cause investigation.
+## FINAL PROTECTED CLOSURE — PR #77
+- Date: 2026-09-11.
+- PR #77 exact head `871b37668f8b535827ba7e82c3027396f31c22bc`: all protected checks PASS, including `quality (rust + npm)`, supply-chain policy, dependency review, Rust security-extended analysis, Secret Scan, actionlint, and Rust address fuzzing.
+- PR #77 protected squash merge: `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`; no admin bypass.
+- Post-merge `main` verification: CI `34560099528`, Workflow Lint `34560099503`, Secret Scan `34560099512`, OpenSSF Scorecard `34560099501`, and CodeQL `34560099492` all SUCCESS.
+- `REG-0001` is VERIFIED/CLOSED; deterministic test-only READY acknowledgement removed the timing race without weakening production startup checks.
+- Final local regression evidence remains targeted cold PASS, 20/20 repeated PASS, runtime IPC 52/52 PASS, and Rust test warnings = 0.
+
+## LAST CONFIRMED STATE
+Protected `main` is green at the verified final repair baseline. The remaining branch work is documentation-only final state closure; no runtime, release, credential, staging, or production mutation is pending.
+
+## NEXT ACTION
+After this documentation-only closure is merged, begin the next owner-requested task from verified repository reality. Independently review the exact E2E npm residual-risk exceptions no later than 2026-10-10.
+
+## DO NOT REPEAT
+Do not reopen PR #76/#77 or repeat the resolved npm/race investigations without fresh evidence; do not replace semantic synchronization with sleeps, broaden npm exceptions, or bypass branch protection.
+## GRAPHIFY CLOSURE NOTE
+- Graphify 0.9.57 zero-node retry warning for root `Cargo.toml` was confirmed as an intentional virtual-workspace parse result, not repository graph corruption.
+- Root-only `/Cargo.toml` in `.graphifyignore` removes the warning without excluding any nested crate manifest; fresh update emitted no warning and final graph health remained clean.
+- Durable record: `docs/project-memory/KNOWN_FAILURES/FAIL-0002-graphify-virtual-workspace-zero-node.md`.

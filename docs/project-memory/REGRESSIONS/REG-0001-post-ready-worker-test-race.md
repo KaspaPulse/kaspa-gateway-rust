@@ -24,10 +24,10 @@ The repaired targeted test passed after a cold build, then passed 20/20 consecut
 ## Regression Protection
 The existing integration test now synchronizes on the semantic boundary it is intended to test instead of wall-clock timing. The ACK is not issued until parent-visible ownership and READY state are both established. Exit code 17 and the restartability assertions remain unchanged, so loss of durable post-READY failure/restart semantics still fails CI.
 ## Remaining Risk
-The repair removes the fixture race without weakening production startup checks. Remaining confidence depends on protected PR CI and the post-merge `main` CI run on GitHub Actions.
+The fixture race is closed without weakening production startup checks. PR #77 exact-head checks passed, protected squash merge completed, and post-merge `main` CI run `34560099528` succeeded. No task-specific residual risk remains beyond ordinary future regression monitoring.
 
 ## NEXT ACTION
-Push this verified repair through a protected PR, require exact-head CI to pass, squash-merge without bypass, then verify the post-merge `main` CI run is green.
+CLOSED. Reopen this stable ID only if fresh evidence reproduces the same semantic READY/ownership race or demonstrates regression in the post-READY failure/restart contract.
 
 ## DO NOT REPEAT
 Do not fix this recurrence by increasing the 40 ms sleep, retrying CI until it happens to pass, or weakening the parent `try_wait()` startup safety check. Synchronize the test on observable READY ownership instead.
