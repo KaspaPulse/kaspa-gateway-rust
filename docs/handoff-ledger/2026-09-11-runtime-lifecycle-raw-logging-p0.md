@@ -125,3 +125,19 @@ Checkpoint this regression protection to the local bare remote, then run the com
 
 ## DO NOT REPEAT
 Do not treat shutdown-all during STARTING as an empty registry success: Start owns the registry lock through READY. Do not rely only on post-READY parent-loss tests for relaunch safety.
+
+## MILESTONE 7 — CLIPPY CHECKPOINT
+Status: RESOLVED / VERIFIED
+Timestamp: 2026-09-11
+
+## FAILURE EVIDENCE
+The first full Rust quality pass reached desktop test Clippy and failed only on `clippy::redundant_closure` in the new shutdown-all-during-STARTING regression. Earlier `cargo fmt` and `cargo check --locked --workspace --all-targets` had completed successfully.
+
+## FIX / VERIFICATION
+Replaced the redundant zero-argument closure with the shutdown-all function pointer. `cargo fmt --all -- --check` PASS; desktop test Clippy with `-D warnings -A dead-code` PASS; the affected shutdown-all regression PASS; Graphify refresh/re-query PASS.
+
+## NEXT ACTION
+Continue Milestone 7 from the first unrun gate. Do not repeat the already-passed `cargo check --workspace --all-targets` or unrelated Clippy stages unless a later code change makes them relevant.
+
+## DO NOT REPEAT
+Do not hide the initial Clippy failure, and do not rerun the complete expensive Rust quality sequence merely to re-prove stages that were unaffected by this test-only cleanup.

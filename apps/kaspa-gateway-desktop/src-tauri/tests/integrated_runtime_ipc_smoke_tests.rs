@@ -344,7 +344,7 @@ fn shutdown_all_waits_for_startup_then_stops_exact_worker() {
 
     wait_for_file(&lease_path, std::time::Duration::from_secs(2));
     let shutdown =
-        std::thread::spawn(|| integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1());
+        std::thread::spawn(integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1);
     std::thread::sleep(std::time::Duration::from_millis(100));
     assert!(
         !shutdown.is_finished(),
