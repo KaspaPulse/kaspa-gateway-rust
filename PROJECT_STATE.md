@@ -2,7 +2,7 @@
 
 ## Metadata
 
-- Last state update: 2026-09-11 after PR #82 protected merge, post-merge verification, and exact merged Windows mainnet/testnet10 short-smoke verification.
+- Last state update: 2026-09-11 at start of P0 Runtime Lifecycle & Raw Logging Reliability remediation using a verified local-first Git workflow.
 - State author/agent: Remote Desktop Commander continuity reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
@@ -10,10 +10,10 @@
 ## Executive Status
 
 - Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; REPOSITORY RELEASE_ADMIN_TOKEN RETIRED; ASSOCIATED PAT REVOCATION NOT VERIFIED**.
-- Current objective: **COMPLETE — REG-0002 VERIFIED/CLOSED**. Custom live-smoke RPC/P2P overrides now remain synchronized through canonical `EffectiveNodeSettings`; protected integration and exact merged Windows stable-network short smoke are complete.
-- Current engineering blocker: **NONE for REG-0002**. Full synchronization/production capacity remains a separate NOT VERIFIED exercise because short smoke does not wait for IBD and the Windows test drive was below the 640 GB production-disk guideline. Historical fine-grained PAT revocation remains separately NOT VERIFIED.
+- Current objective: **IN PROGRESS — P0 RUNTIME LIFECYCLE & RAW LOGGING RELIABILITY**. Audit and repair network/bridge lifecycle, ownership/readiness/reconciliation, raw stdout/stderr provenance/order, and UI/runtime truth without replacing the accepted same-EXE self-worker architecture.
+- Current engineering blocker: **NONE at task start**. Local-first Git is verified; the next boundary is audit/reproduction of actual lifecycle/raw-log divergences before code changes. Historical PAT revocation remains separately NOT VERIFIED.
 - PR #76 **MERGED** as `3f8174c7e9e663da81e29eda5cd889de196eec7e`; PR #77 **MERGED** as `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`; PR #78 **MERGED** as historical closure baseline `50ad815b3a7569c576d7625900462734961cbc69`.
-- `PLANS.md` is **NO ACTIVE MULTI-STAGE PLAN** after protected PR #82 integration and exact merged Windows live-smoke verification.
+- `PLANS.md` is **ACTIVE** for the P0 Runtime Lifecycle & Raw Logging Reliability remediation and local-release workflow.
 - Repository Actions secret `RELEASE_ADMIN_TOKEN` is **REMOVED / VERIFIED ABSENT BY NAME** after proving no active tracked workflow/code dependency. The historical associated fine-grained PAT remains account-level **NOT VERIFIED**; its value must never be recorded or guessed.
 
 ## Repository State
@@ -30,7 +30,7 @@
 - Verified final repair baseline (historical evidence): `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5` (`fix(ci): eliminate post-ready worker race (#77)`).
 - Verified closure baseline (historical evidence): `50ad815b3a7569c576d7625900462734961cbc69` (`docs: finalize continuity repair closure (#78)`).
 - The dedicated checkout was fast-forwarded from `b911eb44619f8eab706bc2fe786d1c84ac958f1d` to the verified remote head with no local divergence (`ahead=0`, `behind=0`) before this documentation reconciliation.
-- Current task branch: **NONE AUTHORITATIVE WHILE IDLE**; derive dynamically. Historical REG-0002 repair merged through PR #82 at `fb16b9a18b7e17621dfb1c280fef7951c8b819a7`.
+- Current task branch: `fix/runtime-lifecycle-raw-logging-reliability-20260911`, tracking the local bare remote only; real GitHub push is disabled during remediation.
 - Working tree was clean before the reconciliation branch was created.
 - Open pull request query returned an empty set at reconciliation time.
 - PR #51 is `CLOSED` and was not merged; it is no longer an active maintenance item.
@@ -64,7 +64,7 @@
 - Rust workspace toolchain is now Rust `1.98.1`; edition remains `2024`.
 - Desktop Node engine remains `>=24 <27`.
 - `AGENTS.override.md` is absent in the verified current checkout; `AGENTS.md` is the active repository policy.
-- `PLANS.md` is **NO ACTIVE MULTI-STAGE PLAN**; REG-0002 repair/live verification is complete.
+- `PLANS.md` is **ACTIVE** for the P0 runtime lifecycle/raw logging remediation.
 - The September dependency-maintenance sequence is present in verified `main` history:
   - PR #75: dependency security repair and safe Dependabot auto-merge workflow.
   - PR #71: grouped Cargo minor/patch maintenance.

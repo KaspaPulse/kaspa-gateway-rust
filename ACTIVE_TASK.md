@@ -1,42 +1,41 @@
 # ACTIVE TASK
 
 ## Status
-COMPLETE — VERIFIED AND MERGED
+IN PROGRESS — P0 RUNTIME LIFECYCLE & RAW LOGGING RELIABILITY
 
 ## Objective
-Repair the Windows live-smoke custom-endpoint effective-settings drift and complete stable-network short-smoke verification without disturbing unrelated runtime ownership.
+Make network and bridge lifecycle trustworthy end-to-end: UI state must reflect real runtime ownership/readiness, Start/Stop/Restart/recovery/reconciliation must be deterministic, and Raw Log panes must contain ordered native stdout/stderr only.
 
 ## Scope
-- Synchronize custom loopback RPC/P2P values through canonical `EffectiveNodeSettings`.
-- Preserve stable-network, loopback-only, parent-identity, and self-worker equality checks.
-- Protected squash integration only; no admin bypass, force push, or rebase.
-- Verify exact merged `main` on Windows `Server` for isolated mainnet and default testnet10.
+- Audit UI → Tauri IPC → supervisor/runtime → managed node/bridge → stdout/stderr → reconciliation → UI.
+- Repair network and bridge lifecycle without replacing the accepted same-EXE self-worker architecture.
+- Verify ownership identity, readiness, graceful/bounded stop, restart, crash recovery, orphan/stale-state reconciliation, network isolation, bridge attachment/listener readiness, and raw-log provenance/order/identity.
+- Use the LOCAL bare Git remote for every intermediate commit/checkpoint; real GitHub push is blocked until the final local release gate passes.
+- Validate real Windows runtime on `Server`; mocks alone are insufficient.
 
 ## Current Phase
-No active implementation phase remains. REG-0002 is merged and live-verified; this file records the completed boundary.
+Audit and reproduction. Local-first Git workflow is established and verified; no application-code remediation has been committed yet.
 
 ## Confirmed Progress
-PR #82 merged as `fb16b9a18b7e17621dfb1c280fef7951c8b819a7` after every required exact-head check passed. Post-merge CI, CodeQL/Rust security, Secret Scan, and supply-chain posture all passed on the same SHA.
-
-Exact merged Windows short smoke passed for isolated mainnet on RPC `16120` / P2P `16121` with 8 peers and for default testnet10 on RPC `16210` with 7 peers. Parent-loss cleanup and relaunch reconciliation passed; all smoke-owned ports were released. Unrelated PID `35540` remained unchanged on `16110/16111`.
+`local` is a bare repository at `/home/kas/kaspa-gateway-dev/local-git/kaspa-gateway-rust.git` seeded from the real project history. A probe branch/empty commit was pushed, fetched, SHA/history verified, then removed. `origin` fetch still points to GitHub while its push URL is locally disabled.
 
 ## Current Blocker
-NONE for repository-owned repair work. Full synchronization/production capacity remains NOT VERIFIED because the smoke is intentionally short and the Windows test drive has less than the 640 GB production-disk guideline. Historical fine-grained PAT revocation remains separately NOT VERIFIED.
+NONE. First task is to locate and reproduce the first real divergence in lifecycle/state/logging.
 
 ## Last Completed Action
-Verified exact merged Windows mainnet/testnet10 short smoke on `Server`, preserved unrelated runtime ownership, and confirmed post-merge GitHub checks are green.
+Verified WORKTREE → LOCAL REMOTE → FETCH/VERIFY → HISTORY using an isolated local probe without any real GitHub push.
 
 ## Current Action
-NONE. The `REG-0002` repair is closed; derive repository reality dynamically before starting new work.
+Trace actual Start/Stop/Status/Logs/reconciliation paths for node and bridge, compare frontend assumptions with runtime-owned truth, and reproduce the first divergence.
 
 ## Next Action
-No further action for `REG-0002`. Independently re-review npm exceptions by 2026-10-10; perform a full-sync production-readiness exercise only on hardware/storage meeting its explicit requirements; revoke the historical PAT only if the exact token can be safely identified.
+Run focused existing gates/tests and inspect the exact UI action handlers, IPC payloads/responses, worker registry/status/log contracts, and bridge readiness contract. Record each confirmed defect before fixing it.
 
 ## Verification Required
-Completed: focused regression, IPC 52/52, fmt, strict Clippy, continuity/PowerShell/Graphify, PR #82 exact-head checks, post-merge `main`, exact merged Windows mainnet/testnet10 short smoke, cleanup, and unrelated-service preservation.
+Focused regression per defect; full runtime IPC suite; frontend lifecycle/raw-log gates; workspace tests/security gates; production desktop build/artifact; real Windows lifecycle sequences for mainnet/testnet10 and supported bridge modes; no orphan/stale/false READY; final local audit.
 
 ## Completion Criteria
-MET for this task. Short smoke proves startup/RPC/peer connectivity/parent-loss cleanup/relaunch on stable networks; it does not prove full IBD or long-duration production capacity.
+All local release-gate items pass; no known P0/P1 lifecycle/raw-log issue remains; final release commit/artifact/evidence is locally verified; only then one final push to real GitHub followed by exact-commit deployment and production verification.
 
 ## DO NOT REPEAT
-Do not kill unrelated PID `35540`, weaken effective-settings equality, reintroduce direct self-worker smoke shortcuts, start testnet12 without explicit experimental scope, or claim full production readiness from short smoke.
+Do not push intermediate work to GitHub, weaken ownership/READY/stop contracts, replace raw stdout/stderr with diagnostics, kill unrelated Kaspa processes, rewrite accepted runtime topology, or treat mocks/CI as real Windows runtime proof.
