@@ -62,3 +62,24 @@ Audit Stop requested during STARTING and Restart sequencing for the same role/ne
 
 ## DO NOT REPEAT
 Do not restore blocking status acquisition on the global worker registry or interpret registry contention as `Stopped`.
+
+## STARTING CONTROL CHECKPOINT
+Status: VERIFIED
+Timestamp: 2026-09-11
+
+## LAST CONFIRMED STATE
+`BUG-0004` confirmed the UI offered Stop before READY even though backend graceful-stop ownership is not established until the worker is READY and registered.
+
+## COMPLETED / VERIFIED
+- Node Stop is disabled during STARTING/STOPPING and enabled only after READY/running truth.
+- Bridge Stop follows the same contract.
+- Missing/failed IPC remains Reconciling rather than optimistic Stopped/Startable.
+
+## EVIDENCE / TESTS
+Node start-button tests, Bridge readiness tests, and true raw-log frontend tests all PASS after the corrected lifecycle contract.
+
+## NEXT ACTION
+Verify Restart after terminal Stop, crash recovery, relaunch reconciliation, and ownership identity surfaces.
+
+## DO NOT REPEAT
+Do not advertise pre-READY Stop without an explicit backend cancellation protocol.

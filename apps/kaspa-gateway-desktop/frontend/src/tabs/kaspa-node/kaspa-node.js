@@ -2863,7 +2863,7 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
   }
 
   if (stop) {
-    const stopEnabled = Boolean((running || starting) && !stopping && !displayOnlyLocked);
+    const stopEnabled = Boolean(running && !transitionActive && !displayOnlyLocked);
     stop.disabled = !stopEnabled;
     stop.style.opacity = stopEnabled ? "" : "0.45";
     stop.style.cursor = stopEnabled ? "" : "not-allowed";
@@ -2872,7 +2872,7 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
     stop.title = displayOnlyLocked
       ? lockMessage
       : starting
-        ? "Stop node startup"
+        ? "Node startup is in progress. Stop becomes available after READY."
         : stopping
           ? "Node is stopping."
           : running

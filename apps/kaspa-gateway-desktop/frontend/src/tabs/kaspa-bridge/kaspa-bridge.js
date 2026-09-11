@@ -6033,11 +6033,15 @@ function kgwBridgeR51SetRuntimeButtons(net, running, transition = "") {
   }
 
   if (stop) {
-    const stopEnabled = Boolean((running || transition === "starting") && transition !== "stopping");
+    const stopEnabled = Boolean(running && transition !== "starting" && transition !== "stopping");
     stop.disabled = !stopEnabled;
     stop.style.opacity = stopEnabled ? "" : "0.45";
     stop.style.cursor = stopEnabled ? "" : "not-allowed";
-    stop.title = stopEnabled ? "Stop bridge" : "Bridge is not running";
+    stop.title = transition === "starting"
+      ? "Bridge startup is in progress. Stop becomes available after READY."
+      : stopEnabled
+        ? "Stop bridge"
+        : "Bridge is not running";
   }
 }
 
