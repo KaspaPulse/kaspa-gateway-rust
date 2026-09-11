@@ -1290,9 +1290,6 @@ pub(crate) fn kgw_validate_live_smoke_parent_settings_v1(
     if settings.network == kaspa_gateway_rk_node::KgwNetwork::Testnet12 {
         return Err("live smoke parent does not start experimental testnet12".to_string());
     }
-    settings.app_dir_name = appdir.to_string();
-    settings.rpc_endpoint = rpc.to_string();
-    settings.p2p_listen = p2p_listen.map(str::to_string);
     let appdir_path = std::path::Path::new(appdir);
     if !appdir_path.is_absolute()
         || appdir.trim().is_empty()
@@ -1321,6 +1318,14 @@ pub(crate) fn kgw_validate_live_smoke_parent_settings_v1(
     if let Some(listen) = p2p_listen {
         validate_loopback_endpoint("live smoke P2P", listen)?;
     }
+
+    let mut effective_node = settings.effective_node.clone();
+    effective_node.rpc_listen = rpc.to_string();
+    effective_node.p2p_listen = p2p_listen.map(str::to_string);
+    settings
+        .apply_effective_node_settings(effective_node)
+        .map_err(|error| error.to_string())?;
+    settings.app_dir_name = appdir.to_string();
     Ok(settings)
 }
 

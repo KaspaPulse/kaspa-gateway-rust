@@ -1,23 +1,23 @@
 # CURRENT STATE
 
-- Verified at: 2026-09-11 after PR #80 protected merge and post-merge `main` verification.
+- Verified at: 2026-09-11 during Windows live-smoke effective-settings repair.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
-- Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; historical security-hygiene baseline: `1e650b6e96873d269f8a1b09c900a31abd7a7eb6`.
-- Current task branch: **NONE AUTHORITATIVE WHILE IDLE**; derive the actual branch dynamically before new work.
-- Repository Actions secret `RELEASE_ADMIN_TOKEN`: **REMOVED / VERIFIED ABSENT BY NAME**, including a post-merge re-check.
-- Historical associated fine-grained PAT: **NOT VERIFIED**; no exact account-level token identifier/value exists in repository evidence, so unrelated credentials must not be guessed/revoked.
-- Retired-secret protection: merged continuity/security gate rejects any tracked workflow reference to `RELEASE_ADMIN_TOKEN`; seven-case fail-closed suite passed locally and in post-merge CI.
-- Npm security state: 0 Critical/High/Moderate; exactly 3 accepted Low nodes and 2 accepted upstream deprecations remain.
-- Npm upstream review: refreshed 2026-09-11; latest supported WebdriverIO 9.31.7 still provides no compatible exception-removal path.
-- Npm mandatory review/expiry remains **2026-10-10**; no exception was widened or extended.
-- Graphify static-JSON zero-node warning: VERIFIED/CLOSED with exact data/config exclusions only; final graph health remains clean.
-- Working tree: **VERIFY DYNAMICALLY** before every new task; historical post-merge closure classification: **CLEAN**.
-- Current remote main: **VERIFY DYNAMICALLY** before any integration decision; historical security-hygiene baseline is recorded above.
-- Live node/bridge runtime: **NOT VERIFIED**; official live smoke is Windows-only and the authorized `KaspaGateway` device was offline at closure.
-- Published Desktop 0.1.1 source/release boundary is unchanged.
+- Current HEAD: **VERIFY DYNAMICALLY**; task baseline is historical merged `main` `fad670eb29ac3b8a2bb3315032403dc22c060f2d`.
+- Current task branch: `fix/live-smoke-effective-settings-overrides-20260911`.
+- `Server` is the authorized Windows live-smoke device for this task; device `KaspaGateway` is intentionally not used.
+- Existing unrelated `kaspad` service on `Server`: ports 16110/16111 owned by PID 35540; must remain untouched.
+- Official testnet10 short smoke: **PASS** on baseline binary; Rusty Kaspa 2.0.1, RPC ready, 8 peers, parent-loss cleanup and relaunch reconciliation true; not fully synced.
+- Isolated mainnet smoke reproduction: RPC 16120 / P2P 16121; **FAILED BEFORE RPC READY** with effective-settings/compatibility-argument mismatch; isolation ports cleaned and unrelated service preserved.
+- Root cause: live-smoke validator changed top-level RPC/P2P only and left `effective_node` at defaults.
+- Local fix: custom endpoints flow through `NodeSettings::apply_effective_node_settings()`; appdir remains a separate validated override.
+- Regression evidence: focused custom-port test PASS; complete runtime IPC integration suite 52/52 PASS.
+- Working tree: **DIRTY intentionally** with the current repair/state record; verify dynamically before commit.
+- Current remote main: **VERIFY DYNAMICALLY** before push; historical task baseline recorded above.
+- Desktop 0.1.1 release assets/tag/source binding are unchanged.
+- Full sync/production capacity remains **NOT VERIFIED**; short smoke intentionally does not wait for IBD completion.
 
 ## NEXT ACTION
-No further repository-owned action is required for the credential-retirement/npm-review task. Start the next task from dynamically verified `main`; independently re-review npm exceptions by 2026-10-10, and run the Windows live smoke only when the authorized Windows device is online.
+Finish Clippy/continuity/Graphify qualification, checkpoint and protected-integrate the repair, then rebuild exact merged `main` on `Server` and rerun isolated mainnet plus default testnet10 short smoke.
 
 ## DO NOT REPEAT
-Do not recreate `RELEASE_ADMIN_TOKEN`, guess/revoke unrelated PATs, rediscover the already-reviewed npm constraint without new upstream evidence, broaden accepted dependency risk, or run the Windows-only live smoke on Linux `kas`.
+Do not stop PID 35540 or use its appdir, do not weaken effective-settings equality, do not run testnet12, and do not claim production readiness from short smoke.
