@@ -2,26 +2,26 @@
 
 ## Metadata
 
-- Last state update: 2026-09-11 after PR #78 protected merge, successful post-merge verification, and canonical-checkout reconciliation.
+- Last state update: 2026-09-11 during credential-retirement and npm residual-risk review.
 - State author/agent: Remote Desktop Commander continuity reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
 
 ## Executive Status
 
-- Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; OWNER CREDENTIAL RETIREMENT NOT VERIFIED**.
-- Current objective: **COMPLETE** — repository-native continuity/security hardening, post-merge Rust race repair, and durable closure are integrated. No active task is implied by this document.
-- Current engineering blocker: **NONE for this completed task**. Residual E2E npm Low/deprecation risk remains explicit and review-bound through 2026-10-10.
+- Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; REPOSITORY RELEASE_ADMIN_TOKEN RETIRED; ASSOCIATED PAT REVOCATION NOT VERIFIED**.
+- Current objective: **IN PROGRESS** — close remaining repository-owned security hygiene by permanently retiring `RELEASE_ADMIN_TOKEN` workflow dependency and freshly reviewing the exact E2E npm residual-risk contract.
+- Current engineering blocker: **NONE locally**. The historical associated fine-grained PAT remains account-level **NOT VERIFIED** because no token value/identifier is stored in the repository and no safe account-level revocation target is exposed here.
 - PR #76 **MERGED** as `3f8174c7e9e663da81e29eda5cd889de196eec7e`; PR #77 **MERGED** as `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`; PR #78 **MERGED** as historical closure baseline `50ad815b3a7569c576d7625900462734961cbc69`.
-- `PLANS.md` is **NO ACTIVE MULTI-STAGE PLAN** after successful protected integration and post-merge verification.
-- Owner-only security hygiene remains external and **NOT VERIFIED**: remove repository Actions secret `RELEASE_ADMIN_TOKEN` and revoke/delete the associated short-lived fine-grained PAT. Its value must never be recorded in chat, repository files, logs, evidence bundles, or documentation.
+- `PLANS.md` is **ACTIVE** for credential retirement, npm residual-risk re-review, protected integration, and post-merge verification.
+- Repository Actions secret `RELEASE_ADMIN_TOKEN` is **REMOVED / VERIFIED ABSENT BY NAME** after proving no active tracked workflow/code dependency. The historical associated fine-grained PAT remains account-level **NOT VERIFIED**; its value must never be recorded or guessed.
 
 ## Repository State
 
 - Default integration branch: `main`.
 - Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; do not embed the state-document commit as a forever-current HEAD.
 - Current remote main: **VERIFY DYNAMICALLY** from Git/GitHub before any decision that depends on it; the timestamped reconciliation observation is recorded below.
-- Working tree: **VERIFY DYNAMICALLY** before every task; the canonical `main` checkout was CLEAN at the historical closure verification boundary.
+- Working tree: **VERIFY DYNAMICALLY**; at this checkpoint it is intentionally **DIRTY** with the credential-retirement/npm-review task before commit.
 - State-document commit: derive dynamically from Git when needed; do not copy a self-referential state SHA into this document.
 - Verified code baseline (historical reconciliation observation): `9a7b18f76dd6184785a4cf972daa1431ee07138f`.
 - Verified continuity-lifecycle implementation commit (historical evidence): `f270d5c811176396df0a6c06ac9ad983cb7f229b`.
@@ -30,7 +30,7 @@
 - Verified final repair baseline (historical evidence): `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5` (`fix(ci): eliminate post-ready worker race (#77)`).
 - Verified closure baseline (historical evidence): `50ad815b3a7569c576d7625900462734961cbc69` (`docs: finalize continuity repair closure (#78)`).
 - The dedicated checkout was fast-forwarded from `b911eb44619f8eab706bc2fe786d1c84ac958f1d` to the verified remote head with no local divergence (`ahead=0`, `behind=0`) before this documentation reconciliation.
-- Current task branch: **NONE AUTHORITATIVE WHILE IDLE**; derive the actual branch dynamically before new work. Historical closure branches were merged and their remote refs were deleted automatically.
+- Current task branch: `security/credential-retirement-npm-review-20260911`, based on verified `main` baseline `48b78ae2b973ade446c19e8082764d8ff69485cd`.
 - Working tree was clean before the reconciliation branch was created.
 - Open pull request query returned an empty set at reconciliation time.
 - PR #51 is `CLOSED` and was not merged; it is no longer an active maintenance item.
@@ -42,9 +42,9 @@
 ## Uncommitted Work
 
 - No pre-existing user source-code changes were present when this session began.
-- The continuity/npm implementation is merged through PR #76, the deterministic post-merge race repair through PR #77, and durable closure through PR #78. No task-specific uncommitted work is expected; verify dynamically before new work.
+- The continuity/npm implementation is merged through PR #76, the deterministic race repair through PR #77, and durable closure through later protected documentation merges. Current intentional uncommitted work is limited to credential-retirement regression protection, security memory, npm-review evidence, Graphify warning closure, and task-state reconciliation.
 - A stale/prunable Git worktree registration under `/tmp/kaspa-gateway-lanes/.../p10-macos-qualification-from-dmg` was observed. It is not part of the active checkout and is not being removed without a separate cleanup reason.
-- Repository secret/PAT retirement remains an external GitHub-settings action, not repository code.
+- Repository secret retirement has been executed and verified externally; only exact historical PAT revocation remains account-level NOT VERIFIED.
 
 ## Desired State
 
@@ -64,7 +64,7 @@
 - Rust workspace toolchain is now Rust `1.98.1`; edition remains `2024`.
 - Desktop Node engine remains `>=24 <27`.
 - `AGENTS.override.md` is absent in the verified current checkout; `AGENTS.md` is the active repository policy.
-- `PLANS.md` is **NO ACTIVE MULTI-STAGE PLAN**; the continuity/npm integration and post-merge race repair are complete.
+- `PLANS.md` is **ACTIVE** for the current credential-retirement/npm-review security task.
 - The September dependency-maintenance sequence is present in verified `main` history:
   - PR #75: dependency security repair and safe Dependabot auto-merge workflow.
   - PR #71: grouped Cargo minor/patch maintenance.
@@ -84,7 +84,7 @@
 - Post-merge `main` runs on `99b5a751...` all succeeded: CI `34560099528`, Workflow Lint `34560099503`, Secret Scan `34560099512`, OpenSSF Scorecard `34560099501`, and CodeQL `34560099492`.
 - `REG-0001` root cause and deterministic test-only READY ACK repair are verified; production startup exit detection was not weakened.
 - Regression evidence: targeted cold PASS; 20/20 consecutive PASS; complete runtime IPC suite 52/52 PASS; Rust test warnings = 0.
-- Npm policy from PR #76 remains active: 0 Critical/High/Moderate findings; exact Low/deprecation exceptions expire 2026-10-10 and fail closed on drift.
+- Npm policy from PR #76 remains active and was freshly reviewed on 2026-09-11: 0 Critical/High/Moderate findings; exact Low/deprecation exceptions remain unchanged, expire 2026-10-10, and fail closed on drift.
 
 ### Release Distribution
 
@@ -113,7 +113,7 @@
 ### External Dependencies
 
 - Official runtime repository bindings remain defined by repository configuration; live external-runtime availability/version state is **NOT VERIFIED** in this maintenance audit.
-- Owner credential-retirement state remains **NOT VERIFIED** because the available GitHub connector exposes no authorized secret-deletion or fine-grained PAT-revocation action.
+- Repository credential-retirement state is partially closed: `RELEASE_ADMIN_TOKEN` is removed and verified absent; only revocation/deletion of the exact historical fine-grained PAT remains account-level **NOT VERIFIED**.
 
 ## Drift
 
@@ -123,7 +123,7 @@
 - Safe Dependabot auto-merge and the strict seven-check ruleset are newer than the previous handoff and are now represented here.
 - Qualified source ↔ published Desktop `0.1.1` release: no drift observed in the tag target re-fetch performed during this reconciliation.
 - Staging/runtime drift remains **NOT VERIFIED** because no live node/bridge runtime was started or inspected.
-- Owner credential-retirement drift remains **NOT VERIFIED** until an authorized administration surface confirms removal.
+- Repository-secret drift is closed by verified removal plus workflow-reference regression protection. Historical fine-grained PAT revocation drift remains **NOT VERIFIED** until an authorized account-level surface can identify that exact token.
 
 ## Current Architecture
 
@@ -232,7 +232,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 ## Known Issues / Blockers
 
 - No local engineering blocker remains. PR #76 and PR #77 are merged, and post-merge `main` CI/security workflows are green on the final repair baseline.
-- Owner security hygiene remains external: retire `RELEASE_ADMIN_TOKEN` and the associated short-lived fine-grained PAT; status remains **NOT VERIFIED** until an authorized administration surface confirms removal.
+- Repository secret hygiene is **VERIFIED/CLOSED** for `RELEASE_ADMIN_TOKEN`; the exact historical fine-grained PAT remains account-level **NOT VERIFIED** and must not be guessed among unrelated credentials.
 - Live Kaspa node/bridge runtime health remains **NOT VERIFIED** in this session.
 - Major Dependabot updates and dependency groups containing `duckdb` are intentionally excluded from unattended auto-merge and require explicit compatibility review.
 
@@ -269,14 +269,15 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - PR #76/#77 require no further engineering decision; protected integration and post-merge verification are complete.
 - No Desktop `0.1.1` release-content/source/publication/recovery/workflow-repair decision remains.
 - A future major Dependabot update or any dependency group containing `duckdb` requires explicit compatibility review before integration.
-- Owner credential retirement remains owner-only/administration-only and stays **NOT VERIFIED** unless an authorized tool confirms it.
+- Historical fine-grained PAT retirement remains owner/account-administration-only and stays **NOT VERIFIED** unless an authorized surface identifies and confirms revocation of that exact token.
 
 ## NEXT ACTION
 
-1. No further action is required for the completed continuity/post-merge-repair task.
-2. Start the next owner-requested task from verified repository reality rather than reopening PR #76/#77.
-3. Review the existing E2E npm residual-risk policy no later than 2026-10-10 and remove exceptions immediately when supported upstream fixes exist.
-4. Owner credential retirement remains a separate administration task and **NOT VERIFIED** here.
+1. Finish local qualification/checkpoint for the credential-retirement/npm-review task.
+2. Commit without CI skip, re-fetch `origin/main`, push the security branch, and exact-head qualify a protected PR.
+3. Squash-merge only after required checks pass; then verify post-merge `main` and return task/plan state to idle.
+4. Re-review the exact E2E npm residual-risk policy no later than 2026-10-10; remove exceptions immediately when a supported upstream path exists.
+5. Historical fine-grained PAT revocation remains account-level **NOT VERIFIED** unless the exact token can be safely identified.
 
 ## Resume Instructions
 

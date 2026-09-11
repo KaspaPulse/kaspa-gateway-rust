@@ -1,3 +1,11 @@
 # The root Cargo.toml is a virtual workspace manifest with no [package].
 # Graphify 0.9.57 intentionally emits no node for virtual workspace roots; exclude only this root manifest to prevent zero-node retry warnings.
 /Cargo.toml
+
+# Static JSON data/config files accepted by Graphify's JSON extractor but intentionally producing zero code nodes.
+/apps/kaspa-gateway-desktop/frontend/i18n/*.json
+/apps/kaspa-gateway-desktop/src-tauri/gen/schemas/acl-manifests.json
+/apps/kaspa-gateway-desktop/src-tauri/gen/schemas/capabilities.json
+/config/runtime-repository-bindings.json
+/docs/security/npm-dependency-policy.json
+/e2e/capabilities/tauri-embedded.windows.json

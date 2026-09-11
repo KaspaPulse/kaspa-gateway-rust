@@ -1,23 +1,23 @@
 # CURRENT STATE
 
-- Verified at: 2026-09-11 after PR #78 protected merge, post-merge `main` CI, and canonical-checkout reconciliation.
+- Verified at: 2026-09-11 during credential-retirement and npm residual-risk review.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
-- Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; historical verified closure baseline: `50ad815b3a7569c576d7625900462734961cbc69`.
-- Current task branch: **NONE AUTHORITATIVE WHILE IDLE**; derive the current branch dynamically before any new task.
-- PR #76: MERGED as `3f8174c7e9e663da81e29eda5cd889de196eec7e`.
-- PR #77: MERGED as `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5` after all exact-head required checks passed.
-- PR #78: MERGED as historical closure baseline `50ad815b3a7569c576d7625900462734961cbc69` after protected exact-head checks passed.
-- Historical repair baseline `99b5a751...`: CI, CodeQL, Secret Scan, Workflow Lint, and OpenSSF Scorecard = SUCCESS.
-- Historical closure baseline `50ad815b...`: CI run `34576444060`, CodeQL `34576443987`, Secret Scan `34576443893`, and OpenSSF Scorecard `34576443973` = SUCCESS.
-- Regression `REG-0001`: VERIFIED; deterministic test-only READY acknowledgement replaced the flaky 40 ms ownership race.
-- Local regression evidence before PR #77: targeted cold PASS; 20/20 repeats PASS; runtime IPC 52/52 PASS; Rust test warnings = 0.
-- Npm security state: 0 Critical/High/Moderate; residual exact Low/deprecation exceptions remain controlled by policy through 2026-10-10.
-- Working tree: **VERIFY DYNAMICALLY** before every task; the canonical `main` checkout was CLEAN at the historical closure verification boundary.
-- Current remote main: **VERIFY DYNAMICALLY** before any new integration decision; historical verified closure baseline is recorded above.
-- Live node/bridge runtime: **NOT VERIFIED** by this task and was not mutated.
-- Published Desktop 0.1.1 source/release boundary was not changed.
+- Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; historical pre-task baseline: `48b78ae2b973ade446c19e8082764d8ff69485cd`.
+- Current task branch: `security/credential-retirement-npm-review-20260911`.
+- Repository Actions secret `RELEASE_ADMIN_TOKEN`: **REMOVED / VERIFIED ABSENT BY NAME** after proving no active tracked workflow/code dependency.
+- Historical associated fine-grained PAT: **NOT VERIFIED**; no value or account-level token identifier exists in the repository, so unrelated credentials must not be guessed/revoked.
+- Retired-secret regression protection: continuity/security gate now rejects any `.github/workflows/*.yml|yaml` reference to `RELEASE_ADMIN_TOKEN`; negative fixture passes fail-closed testing.
+- Npm security state: 0 Critical/High/Moderate; exactly 3 accepted Low nodes and 2 accepted upstream deprecations remain.
+- Npm upstream review: refreshed 2026-09-11; latest WebdriverIO remains 9.31.7 and no supported compatible exception-removal path exists today.
+- Npm mandatory review/expiry remains **2026-10-10**; no exception was widened or extended.
+- Graphify zero-node warning for static JSON data/config is VERIFIED/CLOSED via exact `.graphifyignore` paths; final graph health remains clean.
+- Working tree: **DIRTY intentionally** with this security-hygiene task; verify dynamically before commit/push.
+- Current remote main: **VERIFY DYNAMICALLY** before integration; historical pre-task baseline is recorded above.
+- Live node/bridge runtime: **NOT VERIFIED**; official live smoke is Windows-only and has not been run on Linux `kas`.
+- Published Desktop 0.1.1 source/release boundary is unchanged.
+
 ## NEXT ACTION
-NONE for the completed continuity/post-merge-repair task. Begin the next user-requested task only after dynamically verifying `main`, branch, working tree, open PRs, and relevant CI; independently review the npm exception policy by 2026-10-10.
+Complete final local gates/checkpoint, commit without CI skip, re-fetch `origin/main`, push protected PR, exact-head qualify to green, protected-squash merge, then verify post-merge `main` and return task/plan state to idle.
 
 ## DO NOT REPEAT
-Do not rerun or reopen PR #76/#77/#78, rediscover the resolved npm advisory or post-READY race, weaken production startup checks, or broaden accepted dependency risk without new evidence.
+Do not recreate `RELEASE_ADMIN_TOKEN`, do not guess/revoke unrelated PATs, do not force unsupported Mocha/diff/Glob/encoding overrides, do not extend npm exceptions without evidence, and do not run the Windows-only live smoke on Linux `kas`.

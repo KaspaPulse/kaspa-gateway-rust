@@ -52,6 +52,22 @@ function forbidMatch(text, pattern, description) {
   }
 }
 
+function readWorkflowSources() {
+  const relativeDir = ".github/workflows";
+  const fullDir = path.join(repoRoot, relativeDir);
+  if (!fs.existsSync(fullDir) || !fs.statSync(fullDir).isDirectory()) {
+    failures.push(`Missing required continuity directory: ${relativeDir}`);
+    return [];
+  }
+  return fs
+    .readdirSync(fullDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && /\.ya?ml$/i.test(entry.name))
+    .map((entry) => {
+      const relativePath = path.join(relativeDir, entry.name);
+      return { relativePath, text: fs.readFileSync(path.join(repoRoot, relativePath), "utf8") };
+    });
+}
+
 const agents = readRequired("AGENTS.md");
 const state = readRequired("PROJECT_STATE.md");
 const activeTask = readRequired("ACTIVE_TASK.md");
@@ -89,6 +105,7 @@ const continuityAdr = readRequired(
 );
 const releaseRunbook = readRequired("docs/runbooks/desktop-release.md");
 const architectureIndex = readRequired("docs/architecture/README.md");
+const workflowSources = readWorkflowSources();
 
 if (agents) {
   requireMatch(
@@ -481,6 +498,14 @@ if (forbiddenSecretAssignment.test(combined)) {
   failures.push(
     "Possible secret value assignment found in continuity documentation.",
   );
+}
+
+for (const workflow of workflowSources) {
+  if (/\bRELEASE_ADMIN_TOKEN\b/.test(workflow.text)) {
+    failures.push(
+      `Retired GitHub Actions secret RELEASE_ADMIN_TOKEN must not be referenced by workflow: ${workflow.relativePath}`,
+    );
+  }
 }
 
 if (failures.length) {

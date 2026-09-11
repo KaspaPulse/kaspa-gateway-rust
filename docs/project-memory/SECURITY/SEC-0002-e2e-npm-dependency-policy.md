@@ -20,6 +20,11 @@ Upgrade `@wdio/cli`, `@wdio/local-runner`, `@wdio/mocha-framework`, and `webdriv
 ## Regression Protection
 Blocking CI captures npm install logs and executes `tools/kgw_npm_dependency_policy_gate.cjs` for both desktop and E2E before Rust compilation. `docs/security/npm-dependency-policy.json` is the machine-readable exception contract. Any unapproved vulnerability, severity/path/advisory drift, deprecation-set drift, lockfile drift, stale exception, or expired review date fails the gate. `tools/kgw_npm_dependency_policy_gate_tests.cjs` exercises the fail-closed behavior.
 
+## Upstream Review — 2026-09-11
+A fresh registry review confirmed there is still no supported compatible removal path. Latest `@wdio/mocha-framework`, `@wdio/cli`, `@wdio/local-runner`, and `webdriverio` remain 9.31.7. `@wdio/mocha-framework` still declares Mocha `^11.8.0`; Mocha 11.8.0 still declares `diff ^7.0.0`, while the non-vulnerable current lines are Mocha 12.0.0 and `diff` 9.0.0 outside WebdriverIO's supported dependency range. Latest `@wdio/config` still declares `glob ^10.2.2`, and latest Cheerio 1.2.0 still declares `encoding-sniffer ^0.2.1`, which retains `whatwg-encoding` 3.1.1.
+
+A clean `npm ci --ignore-scripts` followed by `npm audit --json` reproduced exactly 0 Critical, 0 High, 0 Moderate, and 3 Low nodes (`@wdio/mocha-framework`, `mocha`, `diff`), plus exactly the two already-accepted deprecation warnings. The review date is advanced to 2026-09-11, but the mandatory expiry remains **2026-10-10**; no exception was broadened or extended.
+
 ## Remaining Risk
 One Low-severity upstream advisory remains represented as three npm audit vulnerability nodes: GHSA-73rr-hh4g-fpgx through `@wdio/mocha-framework` 9.31.7 -> Mocha 11.8.0 -> `diff` 7.0.0. Two deprecated transitive packages remain upstream constrained: `glob` 10.5.0 and `whatwg-encoding` 3.1.1. These are explicitly time-bounded and cannot expand silently.
 
