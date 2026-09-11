@@ -1,41 +1,41 @@
 # ACTIVE TASK
 
 ## Status
-IN PROGRESS — CREDENTIAL RETIREMENT AND NPM RESIDUAL-RISK REVIEW
+COMPLETE — VERIFIED AND MERGED
 
 ## Objective
-Close the remaining repository-owned security hygiene: retire the unused `RELEASE_ADMIN_TOKEN` repository secret, prevent workflows from reintroducing dependency on it, and re-review the exact E2E npm residual-risk exceptions against current supported upstream releases.
+Close repository-owned credential-retirement and npm residual-risk review without weakening dependency contracts, runtime/release invariants, or branch protection.
 
 ## Scope
-- Record verified removal of the repository Actions secret without storing any secret value.
-- Add fail-closed regression protection against future workflow references to the retired secret name.
-- Re-review WebdriverIO/Mocha/diff/Cheerio dependency paths using current registry metadata.
-- Keep unsupported major overrides prohibited; preserve the existing 2026-10-10 expiry unless a supported fix is available.
-- Integrate all repository changes through protected squash PR flow.
+- Retire the unused repository Actions secret `RELEASE_ADMIN_TOKEN` without handling its value.
+- Prevent tracked workflows from silently depending on the retired secret again.
+- Re-review the exact E2E npm residual-risk exceptions against current supported upstream versions.
+- Preserve the existing 2026-10-10 npm review deadline unless a supported fix removes the exceptions.
+- Integrate through protected squash PR flow and verify post-merge `main`.
 
 ## Current Phase
-Repository secret removal is externally complete and verified by name-list re-read. Current supported upstream versions still do not eliminate the E2E Low/deprecation exceptions without an unsupported major override.
+No active repository engineering phase remains for this task. PR #80 merged as historical security-hygiene baseline `1e650b6e96873d269f8a1b09c900a31abd7a7eb6`, and its post-merge `main` checks are green.
 
 ## Confirmed Progress
-`RELEASE_ADMIN_TOKEN` had no active workflow/code reference and was removed from GitHub Actions secrets. Current latest WebdriverIO remains 9.31.7 and constrains Mocha to `^11.8.0`; Mocha 12/diff 9 fixes are outside that supported dependency contract. Cheerio 1.2.0 still resolves the deprecated encoding path.
+`RELEASE_ADMIN_TOKEN` is removed and verified absent by repository secret-name listing. The continuity/security gate rejects future workflow references to that retired name, with a fail-closed regression fixture. The 2026-09-11 npm review found no supported compatible path to remove the existing 3 Low / 2 deprecation exceptions, so their exact identities and 2026-10-10 expiry remain unchanged.
 
 ## Current Blocker
-NONE locally. Fine-grained PAT revocation remains NOT VERIFIED because no token value/identifier is stored in the repository and no authorized account-level revocation surface is available from this session.
+NONE for repository-owned work. Historical fine-grained PAT revocation remains account-level **NOT VERIFIED** because no exact token identifier/value is stored or safely exposed here. Live runtime smoke remains **NOT VERIFIED** because the supported smoke is Windows-only and the `KaspaGateway` device is offline.
 
 ## Last Completed Action
-Verified current npm registry dependency constraints and removed the unused repository Actions secret `RELEASE_ADMIN_TOKEN`, then re-read repository secret names to confirm absence.
+Verified PR #80 protected merge and successful post-merge `main` checks: quality, npm/continuity gates, Rust security analysis, Secret Scan, and supply-chain posture all passed on `1e650b6e96873d269f8a1b09c900a31abd7a7eb6`; the retired repository secret remained absent after merge.
 
 ## Current Action
-Add durable security memory and CI/continuity regression protection preventing any tracked workflow from referencing the retired secret; update npm review evidence without broadening or extending exceptions.
+NONE. This repository-owned security task is closed; derive repository reality dynamically before starting new work.
 
 ## Next Action
-Run local continuity/npm/actionlint/Graphify checks, commit without CI skip, push a protected PR, follow exact-head checks to green, merge without bypass, and verify post-merge `main`.
+Review the exact npm exception contract no later than 2026-10-10. Run the official Windows live-network smoke for mainnet/testnet10 when the authorized `KaspaGateway` Windows device is online. Revoke the historical PAT only if an authorized account-level surface identifies that exact token.
 
 ## Verification Required
-Continuity gate/tests, npm policy gate/tests, actionlint, YAML parse, PowerShell AI gate, Graphify final health/query, `git diff --check`, GitHub secret-name absence, exact-head PR checks, and post-merge `main` checks.
+Completed: secret absence, zero workflow references, continuity gate/tests (7 negative cases), npm policy gate/tests, E2E lint/check, actionlint/YAML/PowerShell, Graphify warning-free health, PR #80 exact-head checks, and post-merge `main` checks.
 
 ## Completion Criteria
-Repository secret remains absent; retired secret name cannot be reintroduced into workflows unnoticed; npm residual risk is freshly reviewed and unchanged only with current upstream evidence; protected PR merges green; durable state reflects the new truth.
+MET for repository-owned work. The repository secret is retired, regression protection is merged, npm review evidence is current and unextended, protected integration is green, and unresolved external items remain explicitly NOT VERIFIED.
 
 ## DO NOT REPEAT
-Do not recreate or expose secret values, do not guess or revoke unrelated PATs, do not force Mocha 12/diff 9 or other unsupported majors beneath WebdriverIO 9, and do not weaken/broaden npm exceptions merely to silence warnings.
+Do not recreate `RELEASE_ADMIN_TOKEN`, guess/revoke unrelated PATs, force unsupported npm major overrides, broaden/extend the npm exception contract without evidence, or run the Windows-only live smoke on Linux `kas`.

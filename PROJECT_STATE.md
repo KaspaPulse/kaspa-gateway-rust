@@ -2,7 +2,7 @@
 
 ## Metadata
 
-- Last state update: 2026-09-11 during credential-retirement and npm residual-risk review.
+- Last state update: 2026-09-11 after PR #80 protected merge and successful post-merge security/CI verification.
 - State author/agent: Remote Desktop Commander continuity reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
@@ -10,10 +10,10 @@
 ## Executive Status
 
 - Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; REPOSITORY RELEASE_ADMIN_TOKEN RETIRED; ASSOCIATED PAT REVOCATION NOT VERIFIED**.
-- Current objective: **IN PROGRESS** — close remaining repository-owned security hygiene by permanently retiring `RELEASE_ADMIN_TOKEN` workflow dependency and freshly reviewing the exact E2E npm residual-risk contract.
-- Current engineering blocker: **NONE locally**. The historical associated fine-grained PAT remains account-level **NOT VERIFIED** because no token value/identifier is stored in the repository and no safe account-level revocation target is exposed here.
+- Current objective: **COMPLETE for repository-owned security hygiene** — `RELEASE_ADMIN_TOKEN` is retired and protected against workflow reintroduction; the exact E2E npm residual-risk contract was freshly reviewed without widening or extending exceptions.
+- Current engineering blocker: **NONE for repository-owned work**. The historical associated fine-grained PAT remains account-level **NOT VERIFIED**, and live runtime smoke remains **NOT VERIFIED** while the authorized Windows `KaspaGateway` device is offline.
 - PR #76 **MERGED** as `3f8174c7e9e663da81e29eda5cd889de196eec7e`; PR #77 **MERGED** as `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`; PR #78 **MERGED** as historical closure baseline `50ad815b3a7569c576d7625900462734961cbc69`.
-- `PLANS.md` is **ACTIVE** for credential retirement, npm residual-risk re-review, protected integration, and post-merge verification.
+- `PLANS.md` is **NO ACTIVE MULTI-STAGE PLAN** after protected PR #80 integration and post-merge verification.
 - Repository Actions secret `RELEASE_ADMIN_TOKEN` is **REMOVED / VERIFIED ABSENT BY NAME** after proving no active tracked workflow/code dependency. The historical associated fine-grained PAT remains account-level **NOT VERIFIED**; its value must never be recorded or guessed.
 
 ## Repository State
@@ -21,7 +21,7 @@
 - Default integration branch: `main`.
 - Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; do not embed the state-document commit as a forever-current HEAD.
 - Current remote main: **VERIFY DYNAMICALLY** from Git/GitHub before any decision that depends on it; the timestamped reconciliation observation is recorded below.
-- Working tree: **VERIFY DYNAMICALLY**; at this checkpoint it is intentionally **DIRTY** with the credential-retirement/npm-review task before commit.
+- Working tree: **VERIFY DYNAMICALLY** before every new task; historical security-hygiene integration completed cleanly.
 - State-document commit: derive dynamically from Git when needed; do not copy a self-referential state SHA into this document.
 - Verified code baseline (historical reconciliation observation): `9a7b18f76dd6184785a4cf972daa1431ee07138f`.
 - Verified continuity-lifecycle implementation commit (historical evidence): `f270d5c811176396df0a6c06ac9ad983cb7f229b`.
@@ -30,7 +30,7 @@
 - Verified final repair baseline (historical evidence): `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5` (`fix(ci): eliminate post-ready worker race (#77)`).
 - Verified closure baseline (historical evidence): `50ad815b3a7569c576d7625900462734961cbc69` (`docs: finalize continuity repair closure (#78)`).
 - The dedicated checkout was fast-forwarded from `b911eb44619f8eab706bc2fe786d1c84ac958f1d` to the verified remote head with no local divergence (`ahead=0`, `behind=0`) before this documentation reconciliation.
-- Current task branch: `security/credential-retirement-npm-review-20260911`, based on verified `main` baseline `48b78ae2b973ade446c19e8082764d8ff69485cd`.
+- Current task branch: **NONE AUTHORITATIVE WHILE IDLE**; derive the actual branch dynamically. Historical security-hygiene integration merged through PR #80.
 - Working tree was clean before the reconciliation branch was created.
 - Open pull request query returned an empty set at reconciliation time.
 - PR #51 is `CLOSED` and was not merged; it is no longer an active maintenance item.
@@ -42,7 +42,7 @@
 ## Uncommitted Work
 
 - No pre-existing user source-code changes were present when this session began.
-- The continuity/npm implementation is merged through PR #76, the deterministic race repair through PR #77, and durable closure through later protected documentation merges. Current intentional uncommitted work is limited to credential-retirement regression protection, security memory, npm-review evidence, Graphify warning closure, and task-state reconciliation.
+- The continuity/npm implementation, deterministic race repair, durable closure, and credential-retirement/npm-review hardening are merged. No task-specific uncommitted work is expected; verify dynamically before new work.
 - A stale/prunable Git worktree registration under `/tmp/kaspa-gateway-lanes/.../p10-macos-qualification-from-dmg` was observed. It is not part of the active checkout and is not being removed without a separate cleanup reason.
 - Repository secret retirement has been executed and verified externally; only exact historical PAT revocation remains account-level NOT VERIFIED.
 
@@ -64,7 +64,7 @@
 - Rust workspace toolchain is now Rust `1.98.1`; edition remains `2024`.
 - Desktop Node engine remains `>=24 <27`.
 - `AGENTS.override.md` is absent in the verified current checkout; `AGENTS.md` is the active repository policy.
-- `PLANS.md` is **ACTIVE** for the current credential-retirement/npm-review security task.
+- `PLANS.md` is **NO ACTIVE MULTI-STAGE PLAN**; repository-owned credential-retirement/npm-review work is complete.
 - The September dependency-maintenance sequence is present in verified `main` history:
   - PR #75: dependency security repair and safe Dependabot auto-merge workflow.
   - PR #71: grouped Cargo minor/patch maintenance.
@@ -85,6 +85,9 @@
 - `REG-0001` root cause and deterministic test-only READY ACK repair are verified; production startup exit detection was not weakened.
 - Regression evidence: targeted cold PASS; 20/20 consecutive PASS; complete runtime IPC suite 52/52 PASS; Rust test warnings = 0.
 - Npm policy from PR #76 remains active and was freshly reviewed on 2026-09-11: 0 Critical/High/Moderate findings; exact Low/deprecation exceptions remain unchanged, expire 2026-10-10, and fail closed on drift.
+- PR #80 exact-head required checks all passed before protected squash merge, including quality, policy/audit/deny/machete, dependency review, Rust security-extended analysis, Secret Scan, actionlint, and Rust address fuzzing.
+- PR #80 merged as historical security-hygiene baseline `1e650b6e96873d269f8a1b09c900a31abd7a7eb6`; post-merge push runs succeeded: CI `34598106624`, CodeQL `34598106780`, Secret Scan `34598106647`, and OpenSSF Scorecard `34598106676`.
+- Post-merge CI `quality` explicitly passed desktop/E2E npm policy gates, npm policy regression tests, project continuity contract, and continuity regression tests.
 
 ### Release Distribution
 
@@ -113,7 +116,7 @@
 ### External Dependencies
 
 - Official runtime repository bindings remain defined by repository configuration; live external-runtime availability/version state is **NOT VERIFIED** in this maintenance audit.
-- Repository credential-retirement state is partially closed: `RELEASE_ADMIN_TOKEN` is removed and verified absent; only revocation/deletion of the exact historical fine-grained PAT remains account-level **NOT VERIFIED**.
+- Repository credential-retirement state is **VERIFIED/CLOSED** for `RELEASE_ADMIN_TOKEN`, including post-merge absence and workflow-reference regression protection. Only exact historical fine-grained PAT revocation remains account-level **NOT VERIFIED**.
 
 ## Drift
 
@@ -152,7 +155,8 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - PR #77 exact-head required checks all passed before protected squash merge.
 - Final repair baseline `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5` has successful post-merge CI, Workflow Lint, Secret Scan, OpenSSF Scorecard, and CodeQL evidence.
 - Protected Dependabot minor/patch auto-merge remains present; major updates and dependency groups containing `duckdb` remain outside unattended auto-merge.
-- No Desktop `0.1.1` release asset, tag, source target, production runtime, staging runtime, or credential was changed by this task.
+- PR #80 retired the unused repository Actions secret path, refreshed npm risk evidence, and merged fail-closed protection against future workflow reintroduction of `RELEASE_ADMIN_TOKEN`.
+- No Desktop `0.1.1` release asset, tag, source target, production runtime, or staging runtime was changed by this security-hygiene task.
 
 ## Last Verified Validation
 
@@ -161,7 +165,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - `node --check tools/kgw_project_continuity_gate.cjs`: **PASS**.
 - `node --check tools/kgw_project_continuity_gate_tests.cjs`: **PASS**.
 - `node tools/kgw_project_continuity_gate.cjs`: **PASS** with active/current state, handoff/project memory, dynamic Git-state, regression/security lifecycle, plan/ADR, and release-runbook checks.
-- `node tools/kgw_project_continuity_gate_tests.cjs`: **PASS** with one positive fixture and six fail-closed negative cases.
+- `node tools/kgw_project_continuity_gate_tests.cjs`: **PASS** with one positive fixture and seven fail-closed negative cases.
 - Additional temporary negative checks for missing `ACTIVE_TASK.md`, no durable checkpoint, and invalid project-memory status failed as expected and recovered after restoration.
 - `git diff --check`: **PASS**.
 - Python YAML parse of `.github/workflows/ci.yml`: **PASS**.
@@ -192,12 +196,12 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ### Current Main CI
 
-- Current remote/main identity must still be **VERIFY DYNAMICALLY** before future decisions; historical verified final repair baseline is `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`.
-- Push CI run `34560099528`: **success**.
-- Workflow Lint run `34560099503`: **success**.
-- Secret Scan run `34560099512`: **success**.
-- OpenSSF Scorecard run `34560099501`: **success**.
-- CodeQL run `34560099492`: **success**.
+- Current remote/main identity must still be **VERIFY DYNAMICALLY** before future decisions; historical verified security-hygiene baseline is `1e650b6e96873d269f8a1b09c900a31abd7a7eb6`.
+- Push CI run `34598106624`: **success**.
+- Secret Scan run `34598106647`: **success**.
+- OpenSSF Scorecard / supply-chain posture run `34598106676`: **success**.
+- CodeQL / Rust security-extended run `34598106780`: **success**.
+- CI quality steps for desktop/E2E npm policy, npm policy regression tests, continuity contract, and continuity regression tests: **success**.
 
 ### Security / Supply Chain
 
@@ -205,6 +209,8 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - PR #77 dependency vulnerability/license review: **success**.
 - PR #77 Rust security-extended analysis and Secret Scan: **success**.
 - Residual E2E npm Low/deprecation exceptions remain exact, documented in `SEC-0002`, fail closed on drift, and expire on 2026-10-10.
+- `SEC-0003` records verified repository-secret retirement. Post-merge secret-name listing confirms `RELEASE_ADMIN_TOKEN` remains absent, and the continuity/security gate now fails on any tracked workflow reference to that retired name.
+- `SEC-0002` upstream review was refreshed 2026-09-11; no supported compatible exception-removal path exists yet and the 2026-10-10 deadline was not extended.
 
 ### Release / Distribution Verification
 
@@ -214,7 +220,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 ### Live Runtime Verification
 
 - Result: **NOT VERIFIED**.
-- Reason: no live node/bridge runtime was started, stopped, or inspected in this reconciliation session.
+- Reason: the repository-supported live smoke is Windows-only; it was not run on Linux `kas`, and authorized Windows device `KaspaGateway` was offline at the closure boundary.
 
 ### Graphify
 
@@ -228,12 +234,14 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - `FAIL-0001` is **VERIFIED/CLOSED** with the corrected raw-vs-final graph root cause.
 - `FAIL-0002` is **VERIFIED/CLOSED**: the root `Cargo.toml` is a virtual workspace manifest that Graphify intentionally maps to zero package nodes; root-only `.graphifyignore` now prevents the zero-node retry warning while nested crate manifests remain included.
 - Final Graphify update after the root-only ignore emitted no warnings; graph health remained clean at 5,128 nodes / 12,907 edges with every endpoint/duplicate/collapse counter zero.
+- `FAIL-0003` is **VERIFIED/CLOSED**: persistent zero-node warnings were traced to exact static JSON data/config paths; narrow `.graphifyignore` exclusions removed the warnings without hiding code-bearing sources.
+- Final security-task Graphify update emitted no warnings and remained clean at 5,159 nodes / 12,855 edges with all endpoint/duplicate/collapse counters zero.
 
 ## Known Issues / Blockers
 
-- No local engineering blocker remains. PR #76 and PR #77 are merged, and post-merge `main` CI/security workflows are green on the final repair baseline.
+- No repository-owned engineering blocker remains. PR #80 is merged and its post-merge `main` CI/security checks are green on historical security-hygiene baseline `1e650b6e96873d269f8a1b09c900a31abd7a7eb6`.
 - Repository secret hygiene is **VERIFIED/CLOSED** for `RELEASE_ADMIN_TOKEN`; the exact historical fine-grained PAT remains account-level **NOT VERIFIED** and must not be guessed among unrelated credentials.
-- Live Kaspa node/bridge runtime health remains **NOT VERIFIED** in this session.
+- Live Kaspa node/bridge runtime health remains **NOT VERIFIED**: the supported smoke is Windows-only, and authorized `KaspaGateway` was offline at the closure boundary.
 - Major Dependabot updates and dependency groups containing `duckdb` are intentionally excluded from unattended auto-merge and require explicit compatibility review.
 
 ## Risks
@@ -266,18 +274,18 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## Pending Decisions
 
-- PR #76/#77 require no further engineering decision; protected integration and post-merge verification are complete.
+- PR #76/#77/#80 require no further engineering decision; protected integration and post-merge verification are complete.
 - No Desktop `0.1.1` release-content/source/publication/recovery/workflow-repair decision remains.
 - A future major Dependabot update or any dependency group containing `duckdb` requires explicit compatibility review before integration.
 - Historical fine-grained PAT retirement remains owner/account-administration-only and stays **NOT VERIFIED** unless an authorized surface identifies and confirms revocation of that exact token.
 
 ## NEXT ACTION
 
-1. Finish local qualification/checkpoint for the credential-retirement/npm-review task.
-2. Commit without CI skip, re-fetch `origin/main`, push the security branch, and exact-head qualify a protected PR.
-3. Squash-merge only after required checks pass; then verify post-merge `main` and return task/plan state to idle.
-4. Re-review the exact E2E npm residual-risk policy no later than 2026-10-10; remove exceptions immediately when a supported upstream path exists.
-5. Historical fine-grained PAT revocation remains account-level **NOT VERIFIED** unless the exact token can be safely identified.
+1. No further repository-owned action is required for the completed credential-retirement/npm-review task.
+2. Re-review the exact E2E npm residual-risk contract no later than 2026-10-10 and remove exceptions immediately when a supported upstream path exists.
+3. Run the official Windows mainnet/testnet10 live smoke when the authorized `KaspaGateway` device is online; do not substitute Linux `kas` for that Windows-only contract.
+4. Revoke/delete the historical fine-grained PAT only if an authorized account-level surface identifies that exact token; do not guess among unrelated credentials.
+5. Start any new repository task from dynamically verified `main`, branch, working tree, open PRs, and relevant CI/runtime reality.
 
 ## Resume Instructions
 

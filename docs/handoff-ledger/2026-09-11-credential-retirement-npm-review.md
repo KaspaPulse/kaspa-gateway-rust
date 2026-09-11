@@ -1,6 +1,6 @@
 # CHECKPOINT: CREDENTIAL-RETIREMENT-NPM-REVIEW-2026-09-11
 
-- Status: IN PROGRESS — LOCALLY QUALIFIED BEFORE PROTECTED INTEGRATION
+- Status: COMPLETE — PROTECTED MERGE AND POST-MERGE MAIN VERIFIED
 - Timestamp: 2026-09-11T14:48:27+03:00
 - Task: retire unused release-admin repository credential dependency and freshly review exact E2E npm residual risk.
 - Branch: `security/credential-retirement-npm-review-20260911`.
@@ -31,10 +31,17 @@ Current npm registry review confirms no supported compatible path yet removes th
 - Graphify update after exact data ignores — PASS with no warnings; graph health 5,141 nodes / 12,839 edges and zero endpoint/duplicate/collapse defects.
 
 ## BLOCKERS / REMAINING WORK
-No local engineering blocker. Protected GitHub integration and post-merge verification remain. Historical account-level PAT revocation is NOT VERIFIED and must not be guessed.
+No repository-owned engineering blocker remains. PR #80 exact-head checks and post-merge `main` CI/security checks passed. Historical account-level PAT revocation remains NOT VERIFIED and must not be guessed; Windows live runtime smoke remains NOT VERIFIED while the authorized Windows device is offline.
 
 ## NEXT ACTION
-Run final local gate/state review, create one non-`[skip ci]` commit, re-fetch `origin/main`, push protected PR, exact-head qualify, squash-merge after green, then verify post-merge `main` and return task/plan state to idle.
+Repository-owned task closed. Re-review exact npm exceptions by 2026-10-10; run the official Windows live smoke when `KaspaGateway` is online; revoke the historical PAT only if an authorized account-level surface identifies that exact token.
 
 ## DO NOT REPEAT
 Do not recreate or expose the retired secret, do not revoke unrelated PATs, do not force unsupported npm major overrides, do not extend/broaden the npm exception contract without evidence, and do not add broad Graphify ignores for code-bearing sources.
+
+## FINAL PROTECTED INTEGRATION
+- PR #80: MERGED through protected squash at `1e650b6e96873d269f8a1b09c900a31abd7a7eb6`; no admin bypass.
+- Exact-head required checks: quality, policy/audit/deny/machete, dependency review, Rust security-extended analysis, Secret Scan, actionlint, and Rust address fuzzing — PASS.
+- Post-merge `main`: CI `34598106624`, CodeQL `34598106780`, Secret Scan `34598106647`, and OpenSSF Scorecard `34598106676` — SUCCESS.
+- Post-merge CI quality explicitly passed desktop/E2E npm policy, npm policy regression tests, project continuity contract, and continuity regression tests.
+- Post-merge GitHub secret-name re-read: `RELEASE_ADMIN_TOKEN` remains absent.
