@@ -5428,13 +5428,13 @@ async function runBridgeIntegratedAction(action, net) {
       message
     });
 
-    kgwBridgeR51SetRuntimeButtons(net, action === "stop");
-    kgwBridgeSetRuntimeErrorV1(net, message);
-    kgwBridgeSetRuntimeActivityV1(net, "Bridge " + action + " failed.");
+    kgwBridgeR51SetRuntimeUnknown(net, message);
+    kgwBridgeSetRuntimeActivityV1(net, "Bridge " + action + " failed; reconciling runtime state.");
 
     return true;
   } finally {
     KGW_BRIDGE_RUNTIME_IN_FLIGHT.delete(inFlightKey);
+    window.setTimeout(() => { if (typeof kgwBridgeR51RefreshOne === "function") void kgwBridgeR51RefreshOne(net, "action-settled"); }, 0);
 
     kgwBridgeRuntimeOwnerTraceR64D("r64d-runtime-owner-finally", {
       inFlightKey
@@ -5446,6 +5446,8 @@ const KGW_BRIDGE_R51_STORAGE_PREFIX = "kgw.bridge.direct.v51.";
 const KGW_BRIDGE_R51_LAST_STATUS = {};
 const KGW_BRIDGE_R51_LAST_LOGS = {};
 const KGW_BRIDGE_R51_LAST_ACTIVITY_NOTICE = {};
+const KGW_BRIDGE_R51_STATUS_IN_FLIGHT = new Map();
+const KGW_BRIDGE_R51_LOGS_IN_FLIGHT = new Map();
 let KGW_BRIDGE_R51_TIMER = null;
 
 
@@ -6039,6 +6041,28 @@ function kgwBridgeR51SetRuntimeButtons(net, running, transition = "") {
   }
 }
 
+function kgwBridgeR51SetRuntimeUnknown(net, message = "Runtime status is temporarily unavailable. Reconciling with the backend.") {
+  const panel = kgwBridgeR51Panel(net);
+  if (!panel) return;
+  const policyStatus = byId(id(net, "policyStatus"));
+  if (policyStatus) {
+    policyStatus.textContent = "Reconciling";
+    policyStatus.dataset.state = "reconciling";
+  }
+  const start = panel.querySelector(`[data-bridge-action="start"][data-net="${net}"]`);
+  const stop = panel.querySelector(`[data-bridge-action="stop"][data-net="${net}"]`);
+  for (const button of [start, stop]) {
+    if (!button) continue;
+    button.disabled = true;
+    button.setAttribute?.("aria-disabled", "true");
+    button.style.opacity = "0.45";
+    button.style.cursor = "not-allowed";
+    button.title = message;
+  }
+  kgwBridgeSetRuntimeActivityV1(net, "Reconciling runtime state.");
+  kgwBridgeSetRuntimeErrorV1(net, message);
+}
+
 function kgwBridgeR51Delta(previous, current) {
   const before = String(previous || "");
   const after = String(current || "");
@@ -6062,47 +6086,72 @@ function kgwBridgeR51MaybeActivityNotice(net, statusText) {
 }
 
 async function kgwBridgeR51RefreshOne(net, reason = "live") {
-  try {
-    const status = stringifyRuntimeResult(await invokeBridgeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
-    const running = kgwBridgeR51IsRunning(status);
-    const runtimeError = kgwBridgeRuntimeErrorFromStatus(status);
-    const starting = KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(net + ":start");
-    kgwBridgeR51SetRuntimeButtons(net, running, starting && !running ? "starting" : "");
-    if (!running && runtimeError) {
-      kgwBridgeSetRuntimeErrorV1(net, runtimeError);
-      kgwBridgeSetRuntimeActivityV1(net, "Bridge runtime failed after readiness.");
-      const policyStatus = byId(id(net, "policyStatus"));
-      if (policyStatus) {
-        policyStatus.textContent = kgwBridgeTranslateRuntime("runtime.failed", "Failed");
-        policyStatus.dataset.state = "failed";
-      }
-    }
+  const transitionActive = KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(net + ":start") ||
+    KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(net + ":stop");
 
-    if (KGW_BRIDGE_R51_LAST_STATUS[net] !== status) {
-      KGW_BRIDGE_R51_LAST_STATUS[net] = status;
-      const authority = byId(id(net, "settingsAuthority"));
-      if (authority) {
-        authority.textContent = running
-          ? "Effective settings are active for this runtime"
-          : "Effective settings apply on next Start";
-        authority.dataset.restartRequired = "false";
+  let logsTask = KGW_BRIDGE_R51_LOGS_IN_FLIGHT.get(net);
+  if (!logsTask) {
+    logsTask = (async () => {
+      try {
+        const report = await invokeBridgeIntegratedRuntime("kgw_kgw_runtime_logs_v1", net);
+        const instanceId = kgwBridgeActiveRawLogInstanceIdV1(net);
+        kgwBridgeApplyRuntimeLogReportV1(net, "bridge", report, instanceId);
+        KGW_BRIDGE_R51_LAST_LOGS[net] = report;
+      } catch (_) {
+        // No raw buffer may exist before the child is spawned. Never fabricate text.
+      } finally {
+        if (KGW_BRIDGE_R51_LOGS_IN_FLIGHT.get(net) === logsTask) {
+          KGW_BRIDGE_R51_LOGS_IN_FLIGHT.delete(net);
+        }
       }
-      
-    }
-
-    kgwBridgeR51MaybeActivityNotice(net, status);
-  } catch (error) {
-    kgwBridgeR51SetRuntimeButtons(net, false);
+    })();
+    KGW_BRIDGE_R51_LOGS_IN_FLIGHT.set(net, logsTask);
   }
 
-  try {
-    const report = await invokeBridgeIntegratedRuntime("kgw_kgw_runtime_logs_v1", net);
-    const instanceId = kgwBridgeActiveRawLogInstanceIdV1(net);
-    kgwBridgeApplyRuntimeLogReportV1(net, "bridge", report, instanceId);
-    KGW_BRIDGE_R51_LAST_LOGS[net] = report;
-  } catch {
-    // Runtime may not be ready yet.
+  let statusTask = Promise.resolve();
+  if (!transitionActive) {
+    statusTask = KGW_BRIDGE_R51_STATUS_IN_FLIGHT.get(net);
+    if (!statusTask) {
+      statusTask = (async () => {
+        try {
+          const status = stringifyRuntimeResult(await invokeBridgeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
+          const running = kgwBridgeR51IsRunning(status);
+          const runtimeError = kgwBridgeRuntimeErrorFromStatus(status);
+          kgwBridgeR51SetRuntimeButtons(net, running);
+          if (!running && runtimeError) {
+            kgwBridgeSetRuntimeErrorV1(net, runtimeError);
+            kgwBridgeSetRuntimeActivityV1(net, "Bridge runtime failed after readiness.");
+            const policyStatus = byId(id(net, "policyStatus"));
+            if (policyStatus) {
+              policyStatus.textContent = kgwBridgeTranslateRuntime("runtime.failed", "Failed");
+              policyStatus.dataset.state = "failed";
+            }
+          }
+
+          if (KGW_BRIDGE_R51_LAST_STATUS[net] !== status) {
+            KGW_BRIDGE_R51_LAST_STATUS[net] = status;
+            const authority = byId(id(net, "settingsAuthority"));
+            if (authority) {
+              authority.textContent = running
+                ? "Effective settings are active for this runtime"
+                : "Effective settings apply on next Start";
+              authority.dataset.restartRequired = "false";
+            }
+          }
+          kgwBridgeR51MaybeActivityNotice(net, status);
+        } catch (error) {
+          kgwBridgeR51SetRuntimeUnknown(net, "Status refresh failed: " + normalizeRuntimeError(error));
+        } finally {
+          if (KGW_BRIDGE_R51_STATUS_IN_FLIGHT.get(net) === statusTask) {
+            KGW_BRIDGE_R51_STATUS_IN_FLIGHT.delete(net);
+          }
+        }
+      })();
+      KGW_BRIDGE_R51_STATUS_IN_FLIGHT.set(net, statusTask);
+    }
   }
+
+  await Promise.allSettled([logsTask, statusTask]);
 }
 
 

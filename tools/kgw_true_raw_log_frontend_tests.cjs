@@ -270,6 +270,9 @@ function createWindow(calls) {
     core: {
       invoke: async (command, payload) => {
         calls.push({ command, payload });
+        if (typeof window.__KGW_TEST_INVOKE_HANDLER === "function") {
+          return await window.__KGW_TEST_INVOKE_HANDLER(command, payload);
+        }
         if (command === "kgw_copy_text_to_clipboard_v1") {
           return "clipboard_write_v1;copied=true";
         }
@@ -335,14 +338,17 @@ function installRawLogDom(window, kind, net) {
   const clear = element(document, "button", { ["data-" + kind + "-action"]: "clear-log", "data-net": net }, "Clear Log");
   const empty = element(document, "div", { id: kind + "-" + net + "-logEmpty", ["data-" + kind + "-log-empty"]: net }, "No child stdout/stderr received yet.");
   const output = element(document, "pre", { id: kind + "-" + net + "-logOutput" });
+  const policyStatus = element(document, "span", { id: kind + "-" + net + "-policyStatus" }, "Unknown");
+  const start = element(document, "button", { ["data-" + kind + "-action"]: "start", "data-net": net }, "Start");
+  const stop = element(document, "button", { ["data-" + kind + "-action"]: "stop", "data-net": net }, "Stop");
 
   toolbar.append(copy, clear);
-  logPanel.append(toolbar, empty, output);
+  logPanel.append(toolbar, empty, output, policyStatus, start, stop);
   panel.appendChild(logPanel);
   root.append(tab, panel);
   document.body.appendChild(root);
 
-  return { root, copy, clear, empty, output };
+  return { root, copy, clear, empty, output, policyStatus, start, stop };
 }
 
 function copyCalls(calls) {
@@ -361,7 +367,7 @@ async function nodeRawLogFrontendTests() {
   evalFrontend(
     nodeJsPath,
     window,
-    "window.__kgwTrueRawNodeTest = { kgwNodeApplyRuntimeLogReportV1, kgwNodeHandleLogActionV29, kgwNodeClearRawLogBufferV1, kgwNodeVisibleRawLogTextV1, appendLog };",
+    "window.__kgwTrueRawNodeTest = { kgwNodeApplyRuntimeLogReportV1, kgwNodeHandleLogActionV29, kgwNodeClearRawLogBufferV1, kgwNodeVisibleRawLogTextV1, kgwNodeR51RefreshOne, kgwNodeR51SetRuntimeButtons, appendLog };",
   );
   const api = window.__kgwTrueRawNodeTest;
   const unicode = String.fromCodePoint(0x03a9);
@@ -415,7 +421,7 @@ async function bridgeRawLogFrontendTests() {
   evalFrontend(
     bridgeJsPath,
     window,
-    "window.__kgwTrueRawBridgeTest = { kgwBridgeApplyRuntimeLogReportV1, kgwBridgeHandleLogActionV29, kgwBridgeClearRawLogBufferV1, kgwBridgeRenderRawLogBufferV1, appendLog };",
+    "window.__kgwTrueRawBridgeTest = { kgwBridgeApplyRuntimeLogReportV1, kgwBridgeHandleLogActionV29, kgwBridgeClearRawLogBufferV1, kgwBridgeRenderRawLogBufferV1, kgwBridgeR51RefreshOne, kgwBridgeR51SetRuntimeButtons, appendLog };",
   );
   const api = window.__kgwTrueRawBridgeTest;
   const unicode = String.fromCodePoint(0x03a9);
@@ -470,10 +476,66 @@ async function bridgeRawLogFrontendTests() {
   assert.strictEqual(traceCalls(calls, "frontend.copy_log_failed").length, 1, "Missing bridge output must emit a Copy Log failure trace");
 }
 
+
+async function lifecyclePollingDoesNotStarveRawLogsOrLieAboutState() {
+  for (const kind of ["node", "bridge"]) {
+    const calls = [];
+    const window = createWindow(calls);
+    const dom = installRawLogDom(window, kind, "mainnet");
+    const sourcePath = kind === "node" ? nodeJsPath : bridgeJsPath;
+    const expose = kind === "node"
+      ? "window.__kgwLifecyclePollTest = { refresh: kgwNodeR51RefreshOne, setButtons: kgwNodeR51SetRuntimeButtons };"
+      : "window.__kgwLifecyclePollTest = { refresh: kgwBridgeR51RefreshOne, setButtons: kgwBridgeR51SetRuntimeButtons };";
+    evalFrontend(sourcePath, window, expose);
+    const api = window.__kgwLifecyclePollTest;
+    const runtimeRole = kind;
+    let releaseStatus;
+    const blockedStatus = new Promise((resolve) => { releaseStatus = resolve; });
+    window.__KGW_TEST_INVOKE_HANDLER = async (command, payload) => {
+      if (command === "kgw_runtime_owner_status_v1") return await blockedStatus;
+      if (command === "kgw_kgw_runtime_logs_v1") {
+        return { entries: [{ sequence: 9001, network: "mainnet", runtimeRole, stream: "stdout", receivedMs: 1, rawText: kind + " startup raw before status" }] };
+      }
+      return true;
+    };
+
+    const first = api.refresh("mainnet", "regression-blocked-status");
+    const second = api.refresh("mainnet", "regression-overlap");
+    await Promise.resolve();
+    await Promise.resolve();
+    await new Promise((resolve) => setImmediate(resolve));
+    if (dom.output.textContent !== kind + " startup raw before status") {
+      console.error("LIFECYCLE_POLL_CALLS", kind, calls.map((call) => call.command));
+    }
+    assert.strictEqual(dom.output.textContent, kind + " startup raw before status", kind + " raw logs must not wait for status readiness");
+    assert.strictEqual(calls.filter((call) => call.command === "kgw_runtime_owner_status_v1").length, 1, kind + " refresh must coalesce overlapping status polls");
+    assert.strictEqual(calls.filter((call) => call.command === "kgw_kgw_runtime_logs_v1").length, 1, kind + " concurrent log polls must coalesce while one log fetch is active");
+
+    await new Promise((resolve) => setImmediate(resolve));
+    const third = api.refresh("mainnet", "regression-status-still-blocked");
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.strictEqual(calls.filter((call) => call.command === "kgw_runtime_owner_status_v1").length, 1, kind + " blocked status must remain single-flight");
+    assert.strictEqual(calls.filter((call) => call.command === "kgw_kgw_runtime_logs_v1").length, 2, kind + " raw logs must continue refreshing while status is still blocked");
+
+    releaseStatus("parallel-owned-self-worker status;role=" + runtimeRole + ";network=mainnet;pid=123;running=true;readiness=READY;runtime_error=none");
+    await Promise.all([first, second, third]);
+
+    api.setButtons("mainnet", true);
+    window.__KGW_TEST_INVOKE_HANDLER = async (command) => {
+      if (command === "kgw_runtime_owner_status_v1") throw new Error("transient status transport failure");
+      if (command === "kgw_kgw_runtime_logs_v1") return { entries: [] };
+      return true;
+    };
+    await api.refresh("mainnet", "regression-status-error");
+    assert.notStrictEqual(String(dom.policyStatus.dataset.state || ""), "stopped", kind + " transient status failure must never fabricate STOPPED");
+  }
+}
+
 (async () => {
   try {
     await nodeRawLogFrontendTests();
     await bridgeRawLogFrontendTests();
+    await lifecyclePollingDoesNotStarveRawLogsOrLieAboutState();
     console.log("KGW true raw log frontend tests PASSED");
   } catch (error) {
     fail(error);

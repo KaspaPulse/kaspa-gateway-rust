@@ -162,7 +162,7 @@ async function pendingInvokeLifecycleTest() {
     throw new Error("occupied listener port");
   };
   await api.runBridgeIntegratedAction("start", "mainnet");
-  assert.strictEqual(elements.get("bridge-mainnet-policyStatus").textContent, "Stopped");
+  assert.strictEqual(elements.get("bridge-mainnet-policyStatus").textContent, "Reconciling", "failed Start cannot fabricate STOPPED before status reconciliation");
   assert.strictEqual(elements.get("bridge-mainnet-runtimeError").textContent, "occupied listener port");
 
   let resolveStop;

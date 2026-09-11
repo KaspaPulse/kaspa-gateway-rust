@@ -25,3 +25,19 @@ Trace node/bridge frontend action handlers, IPC response semantics, runtime regi
 
 ## DO NOT REPEAT
 Do not recreate another mirror, use the shallow alternate clone, push intermediate work to GitHub, weaken accepted same-EXE ownership, or infer bugs from architecture alone without reproduction evidence.
+
+## CHECKPOINT — BUG-0002 LOCAL FIX
+Status: IN PROGRESS
+Timestamp: 2026-09-11
+
+## COMPLETED / VERIFIED
+Reproduced frontend raw-log starvation behind a blocked status poll. Node/Bridge refresh now use independent status/log single-flight control; raw logs remain live during lifecycle transitions; transient status failure maps to Reconciling rather than false STOPPED; action completion schedules reconciliation.
+
+## EVIDENCE / TESTS
+`kgw_true_raw_log_frontend_tests.cjs` PASS with blocked-status/live-log, repeated-log, single-status, and false-STOPPED cases for both roles. `kgw_bridge_readiness_frontend_tests.cjs` PASS. `kgw_parallel_self_worker_runtime_gate.cjs` PASS. JS syntax and `git diff --check` PASS.
+
+## NEXT ACTION
+Audit backend global lifecycle-lock responsiveness and bridge mode lifecycle; reproduce the next actual divergence before modifying it.
+
+## DO NOT REPEAT
+Do not serialize raw log delivery behind status, treat status transport failure as terminal state, or stack 700 ms status polls.

@@ -2479,16 +2479,15 @@ async function runNodeIntegratedAction(action, net) {
   } catch (error) {
     KGW_NODE_R51_TRANSITIONS[net] = "";
     const errorText = normalizeRuntimeError(error);
-    const runningAfterFailure = action === "stop";
-    kgwNodeR51SetRuntimeButtons(net, runningAfterFailure, kgwIsBridgeOwnedNodeLockedR65E(net));
-    kgwNodeSetRuntimeNotice(net, runningAfterFailure ? "Running" : "Stopped", runningAfterFailure ? "Stop failed" : "No process owner", errorText);
+    kgwNodeR51SetRuntimeUnknown(net, errorText);
     kgwStartTraceFrontendR1("frontend.button_state_restored_after_failure", {
       network: net,
       action,
       result: "restored",
       details: {
         error: errorText,
-        runningAfterFailure,
+        runningAfterFailure: null,
+        reconciliationRequired: true,
         state: kgwNodeTraceStartButtonStateR1(net)
       }
     });
@@ -2496,6 +2495,7 @@ async function runNodeIntegratedAction(action, net) {
   } finally {
     KGW_NODE_R51_TRANSITIONS[net] = "";
     window.__kgwR29NodeInFlight.delete(inFlightKey);
+    window.setTimeout(() => { if (typeof kgwNodeR51RefreshOne === "function") void kgwNodeR51RefreshOne(net, "action-settled"); }, 0);
   }
 }
 /* KGW_R51_DIRECT_NODE_LOG_RUNTIME_SETTINGS_OWNER */
@@ -2504,6 +2504,8 @@ const KGW_NODE_R51_LAST_STATUS = {};
 const KGW_NODE_R51_LAST_LOGS = {};
 const KGW_NODE_R51_LAST_ACTIVITY_NOTICE = {};
 const KGW_NODE_R51_TRANSITIONS = {};
+const KGW_NODE_R51_STATUS_IN_FLIGHT = new Map();
+const KGW_NODE_R51_LOGS_IN_FLIGHT = new Map();
 let KGW_NODE_R51_TIMER = null;
 
 function kgwNodeR51Keys() {
@@ -2879,6 +2881,30 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
   }
 }
 
+function kgwNodeR51SetRuntimeUnknown(net, message = "Runtime status is temporarily unavailable. Reconciling with the backend.") {
+  const panel = kgwNodeR51Panel(net);
+  if (!panel) return;
+
+  const policyStatus = byId(id(net, "policyStatus"));
+  if (policyStatus) {
+    policyStatus.textContent = "Reconciling";
+    policyStatus.dataset.state = "reconciling";
+  }
+
+  const start = panel.querySelector('[data-node-action="start"][data-net="' + net + '"]');
+  const stop = panel.querySelector('[data-node-action="stop"][data-net="' + net + '"]');
+  for (const button of [start, stop]) {
+    if (!button) continue;
+    button.disabled = true;
+    button.setAttribute?.("aria-disabled", "true");
+    button.style.opacity = "0.45";
+    button.style.cursor = "not-allowed";
+    button.title = message;
+  }
+
+  kgwNodeSetRuntimeNotice(net, "Reconciling", "Backend runtime state unavailable", message);
+}
+
 function kgwNodeR51Delta(previous, current) {
   const before = String(previous || "");
   const after = String(current || "");
@@ -3044,52 +3070,71 @@ async function kgwNodeR51BridgeInprocessLockedV7(net) {
 
 
 async function kgwNodeR51RefreshOne(net, reason = "live") {
-  try {
-    const status = stringifyRuntimeResult(await invokeNodeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
-    const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
-    const running = kgwNodeR51IsRunning(status);
-    const runtimeError = kgwNodeRuntimeErrorFromStatus(status);
-    kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked);
-    if (!running && runtimeError) {
-      kgwNodeSetRuntimeNotice(
-        net,
-        kgwNodeTranslateRuntimeV29("runtime.failed", "Failed"),
-        "Official runtime terminated after READY",
-        runtimeError,
-      );
-    }
+  const transition = String(KGW_NODE_R51_TRANSITIONS[net] || "");
+  const transitionActive = transition === "starting" || transition === "stopping";
 
-    if (KGW_NODE_R51_LAST_STATUS[net] !== status) {
-      KGW_NODE_R51_LAST_STATUS[net] = status;
-      const authority = byId(id(net, "settingsAuthority"));
-      if (authority) {
-        authority.textContent = running
-          ? kgwI18nTextR41(
-              "runtime.effectiveSettingsActive",
-              "Effective settings are active for this runtime"
-            )
-          : kgwI18nTextR41(
-              "runtime.effectiveSettingsNextStart",
-              "Effective settings apply on next Start"
-            );
-        authority.dataset.restartRequired = "false";
+  let logsTask = KGW_NODE_R51_LOGS_IN_FLIGHT.get(net);
+  if (!logsTask) {
+    logsTask = (async () => {
+      try {
+        const report = await invokeNodeIntegratedRuntime("kgw_kgw_runtime_logs_v1", net);
+        kgwNodeApplyRuntimeLogReportV1(net, "node", report);
+        KGW_NODE_R51_LAST_LOGS[net] = report;
+      } catch (_) {
+        // No raw buffer may exist before the child is spawned. Never fabricate text.
+      } finally {
+        if (KGW_NODE_R51_LOGS_IN_FLIGHT.get(net) === logsTask) {
+          KGW_NODE_R51_LOGS_IN_FLIGHT.delete(net);
+        }
       }
-      
+    })();
+    KGW_NODE_R51_LOGS_IN_FLIGHT.set(net, logsTask);
+  }
+
+  let statusTask = Promise.resolve();
+  if (!transitionActive) {
+    statusTask = KGW_NODE_R51_STATUS_IN_FLIGHT.get(net);
+    if (!statusTask) {
+      statusTask = (async () => {
+        try {
+          const status = stringifyRuntimeResult(await invokeNodeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
+          const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
+          const running = kgwNodeR51IsRunning(status);
+          const runtimeError = kgwNodeRuntimeErrorFromStatus(status);
+          kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked);
+          if (!running && runtimeError) {
+            kgwNodeSetRuntimeNotice(
+              net,
+              kgwNodeTranslateRuntimeV29("runtime.failed", "Failed"),
+              "Official runtime terminated after READY",
+              runtimeError,
+            );
+          }
+
+          if (KGW_NODE_R51_LAST_STATUS[net] !== status) {
+            KGW_NODE_R51_LAST_STATUS[net] = status;
+            const authority = byId(id(net, "settingsAuthority"));
+            if (authority) {
+              authority.textContent = running
+                ? kgwI18nTextR41("runtime.effectiveSettingsActive", "Effective settings are active for this runtime")
+                : kgwI18nTextR41("runtime.effectiveSettingsNextStart", "Effective settings apply on next Start");
+              authority.dataset.restartRequired = "false";
+            }
+          }
+          kgwNodeR51MaybeActivityNotice(net, status);
+        } catch (error) {
+          kgwNodeR51SetRuntimeUnknown(net, "Status refresh failed: " + normalizeRuntimeError(error));
+        } finally {
+          if (KGW_NODE_R51_STATUS_IN_FLIGHT.get(net) === statusTask) {
+            KGW_NODE_R51_STATUS_IN_FLIGHT.delete(net);
+          }
+        }
+      })();
+      KGW_NODE_R51_STATUS_IN_FLIGHT.set(net, statusTask);
     }
-
-    kgwNodeR51MaybeActivityNotice(net, status);
-  } catch (error) {
-    const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
-    kgwNodeR51SetRuntimeButtons(net, false, bridgeInprocessLocked);
   }
 
-  try {
-    const report = await invokeNodeIntegratedRuntime("kgw_kgw_runtime_logs_v1", net);
-    kgwNodeApplyRuntimeLogReportV1(net, "node", report);
-    KGW_NODE_R51_LAST_LOGS[net] = report;
-  } catch {
-    // Runtime may not be ready yet.
-  }
+  await Promise.allSettled([logsTask, statusTask]);
 }
 
 // KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_HYDRATION_R65H2
