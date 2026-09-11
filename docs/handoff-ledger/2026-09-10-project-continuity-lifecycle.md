@@ -124,3 +124,11 @@ Do not reopen PR #76/#77 or repeat the resolved npm/race investigations without 
 - Graphify 0.9.57 zero-node retry warning for root `Cargo.toml` was confirmed as an intentional virtual-workspace parse result, not repository graph corruption.
 - Root-only `/Cargo.toml` in `.graphifyignore` removes the warning without excluding any nested crate manifest; fresh update emitted no warning and final graph health remained clean.
 - Durable record: `docs/project-memory/KNOWN_FAILURES/FAIL-0002-graphify-virtual-workspace-zero-node.md`.
+## POST-CLOSURE DYNAMIC-STATE RECONCILIATION
+- Date: 2026-09-11.
+- PR #78 merged successfully and its historical closure baseline passed post-merge CI/security workflows.
+- Canonical local checkout was reconciled to `main` and verified clean with zero divergence from `origin/main` at the closure boundary.
+- Durable state no longer names a forever-current task branch or pre-merge dirty working tree; current Git facts must be derived dynamically before future work.
+- `.codex/hooks.json` remains a local ignored environment file, not repository content; the canonical checkout AI workflow gate passes after local hook restoration.
+- NEXT ACTION: none for this completed task. Start future work only from freshly verified repository reality.
+- DO NOT REPEAT: do not reopen PR #76/#77/#78 or reintroduce static forever-current branch/HEAD/working-tree claims without new evidence.

@@ -2,7 +2,7 @@
 
 ## Metadata
 
-- Last state update: 2026-09-11 after PR #77 protected merge and successful post-merge `main` verification.
+- Last state update: 2026-09-11 after PR #78 protected merge, successful post-merge verification, and canonical-checkout reconciliation.
 - State author/agent: Remote Desktop Commander continuity reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
@@ -10,9 +10,9 @@
 ## Executive Status
 
 - Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; OWNER CREDENTIAL RETIREMENT NOT VERIFIED**.
-- Current objective: **COMPLETE** — repository-native continuity/security hardening is integrated, the post-merge Rust test race is repaired, and durable state is being finalized.
+- Current objective: **COMPLETE** — repository-native continuity/security hardening, post-merge Rust race repair, and durable closure are integrated. No active task is implied by this document.
 - Current engineering blocker: **NONE for this completed task**. Residual E2E npm Low/deprecation risk remains explicit and review-bound through 2026-10-10.
-- PR #76 **MERGED** as `3f8174c7e9e663da81e29eda5cd889de196eec7e`; PR #77 **MERGED** as `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5` and restored green post-merge `main` CI.
+- PR #76 **MERGED** as `3f8174c7e9e663da81e29eda5cd889de196eec7e`; PR #77 **MERGED** as `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`; PR #78 **MERGED** as historical closure baseline `50ad815b3a7569c576d7625900462734961cbc69`.
 - `PLANS.md` is **NO ACTIVE MULTI-STAGE PLAN** after successful protected integration and post-merge verification.
 - Owner-only security hygiene remains external and **NOT VERIFIED**: remove repository Actions secret `RELEASE_ADMIN_TOKEN` and revoke/delete the associated short-lived fine-grained PAT. Its value must never be recorded in chat, repository files, logs, evidence bundles, or documentation.
 
@@ -21,15 +21,16 @@
 - Default integration branch: `main`.
 - Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; do not embed the state-document commit as a forever-current HEAD.
 - Current remote main: **VERIFY DYNAMICALLY** from Git/GitHub before any decision that depends on it; the timestamped reconciliation observation is recorded below.
-- Working tree: **VERIFY DYNAMICALLY**; classification at this pre-closure checkpoint is **DIRTY** only with documentation-only closure changes based on the verified green repair baseline.
+- Working tree: **VERIFY DYNAMICALLY** before every task; the canonical `main` checkout was CLEAN at the historical closure verification boundary.
 - State-document commit: derive dynamically from Git when needed; do not copy a self-referential state SHA into this document.
 - Verified code baseline (historical reconciliation observation): `9a7b18f76dd6184785a4cf972daa1431ee07138f`.
 - Verified continuity-lifecycle implementation commit (historical evidence): `f270d5c811176396df0a6c06ac9ad983cb7f229b`.
 - Dedicated checkout: `/home/kas/kaspa-gateway-dev/codex/kaspa-gateway-rust`.
 - Origin: `https://github.com/KaspaPulse/kaspa-gateway-rust.git`.
 - Verified final repair baseline (historical evidence): `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5` (`fix(ci): eliminate post-ready worker race (#77)`).
+- Verified closure baseline (historical evidence): `50ad815b3a7569c576d7625900462734961cbc69` (`docs: finalize continuity repair closure (#78)`).
 - The dedicated checkout was fast-forwarded from `b911eb44619f8eab706bc2fe786d1c84ac958f1d` to the verified remote head with no local divergence (`ahead=0`, `behind=0`) before this documentation reconciliation.
-- Current closure branch: `docs/project-continuity-finalize-20260911`, based exactly on verified repair baseline `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5` before documentation-only closure.
+- Current task branch: **NONE AUTHORITATIVE WHILE IDLE**; derive the actual branch dynamically before new work. Historical closure branches were merged and their remote refs were deleted automatically.
 - Working tree was clean before the reconciliation branch was created.
 - Open pull request query returned an empty set at reconciliation time.
 - PR #51 is `CLOSED` and was not merged; it is no longer an active maintenance item.
@@ -41,7 +42,7 @@
 ## Uncommitted Work
 
 - No pre-existing user source-code changes were present when this session began.
-- The continuity/npm implementation is merged through PR #76 and the deterministic post-merge race repair through PR #77. Remaining local work is documentation-only final state reconciliation.
+- The continuity/npm implementation is merged through PR #76, the deterministic post-merge race repair through PR #77, and durable closure through PR #78. No task-specific uncommitted work is expected; verify dynamically before new work.
 - A stale/prunable Git worktree registration under `/tmp/kaspa-gateway-lanes/.../p10-macos-qualification-from-dmg` was observed. It is not part of the active checkout and is not being removed without a separate cleanup reason.
 - Repository secret/PAT retirement remains an external GitHub-settings action, not repository code.
 
@@ -272,7 +273,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## NEXT ACTION
 
-1. No further action is required for the completed continuity/post-merge-repair task after this documentation-only closure is integrated.
+1. No further action is required for the completed continuity/post-merge-repair task.
 2. Start the next owner-requested task from verified repository reality rather than reopening PR #76/#77.
 3. Review the existing E2E npm residual-risk policy no later than 2026-10-10 and remove exceptions immediately when supported upstream fixes exist.
 4. Owner credential retirement remains a separate administration task and **NOT VERIFIED** here.
