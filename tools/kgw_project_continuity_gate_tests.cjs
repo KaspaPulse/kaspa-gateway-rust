@@ -77,6 +77,11 @@ function expectFail(label, expectedText, mutate) {
 
 expectPass("baseline continuity fixture");
 
+expectPass("active plan may mention future inactive sentinel in prose", (root) => {
+  const file = path.join(root, "PLANS.md");
+  fs.appendFileSync(file, "\nFuture closure returns this file to NO ACTIVE MULTI-STAGE PLAN.\n");
+});
+
 expectFail(
   "missing active task",
   "Missing required continuity file: ACTIVE_TASK.md",
@@ -112,6 +117,19 @@ expectFail(
 );
 
 expectFail(
+  "duplicate project-memory stable ID",
+  "Duplicate project-memory stable ID",
+  (root) => {
+    const dir = path.join(root, "docs/project-memory/SECURITY");
+    const name = fs
+      .readdirSync(dir)
+      .find((entry) => entry.endsWith(".md") && entry !== "README.md");
+    if (!name) throw new Error("security fixture record missing");
+    fs.copyFileSync(path.join(dir, name), path.join(dir, `DUPLICATE-${name}`));
+  },
+);
+
+expectFail(
   "missing regression-memory category",
   "Missing required continuity file: docs/project-memory/REGRESSIONS/README.md",
   (root) => fs.rmSync(path.join(root, "docs/project-memory/REGRESSIONS/README.md")),
@@ -134,4 +152,4 @@ expectFail(
 );
 
 console.log("KGW project continuity gate regression tests PASSED");
-console.log("Positive fixture and five fail-closed negative cases behaved as required.");
+console.log("Positive fixture and six fail-closed negative cases behaved as required.");

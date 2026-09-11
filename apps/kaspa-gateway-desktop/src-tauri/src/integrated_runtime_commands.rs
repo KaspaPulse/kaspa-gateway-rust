@@ -1969,6 +1969,7 @@ fn kgw_worker_command(
             "KGW_TEST_SELF_WORKER_FAIL_ON_STOP",
             "KGW_TEST_SELF_WORKER_BRIDGE_LISTENER_FAIL_ON_STOP",
             "KGW_TEST_SELF_WORKER_EXIT_AFTER_READY_MS",
+            "KGW_TEST_SELF_WORKER_EXIT_AFTER_READY_ACK_PATH",
             "KGW_TEST_SELF_WORKER_OWNED_NODE_STOP_MARKER_PATH",
         ] {
             if let Some(value) = std::env::var_os(key) {
@@ -4285,6 +4286,20 @@ fn kgw_test_self_worker_hold() {
         .ok()
         .and_then(|value| value.parse::<u64>().ok())
     {
+        if let Some(ack_path) = std::env::var_os("KGW_TEST_SELF_WORKER_EXIT_AFTER_READY_ACK_PATH") {
+            let ack_path = std::path::PathBuf::from(ack_path);
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            while !ack_path.is_file() {
+                if std::time::Instant::now() >= deadline {
+                    eprintln!(
+                        "test-self-worker timed out waiting for parent READY acknowledgement"
+                    );
+                    std::process::exit(18);
+                }
+                std::thread::sleep(std::time::Duration::from_millis(5));
+            }
+            let _ = std::fs::remove_file(&ack_path);
+        }
         std::thread::sleep(std::time::Duration::from_millis(exit_after_ready_ms));
         eprintln!("test-self-worker official runtime terminated after READY");
         std::process::exit(17);

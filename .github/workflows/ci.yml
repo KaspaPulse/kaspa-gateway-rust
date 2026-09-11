@@ -87,6 +87,14 @@ jobs:
           status=${PIPESTATUS[0]}
           exit "$status"
 
+      - name: Upload desktop npm install diagnostics
+        if: failure() && steps.desktop-npm-install.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-npm-install-diagnostics
+          path: apps/kaspa-gateway-desktop/npm-ci.log
+          retention-days: 3
+
       - name: Install E2E npm dependencies
         id: e2e-npm-install
         working-directory: e2e
@@ -96,6 +104,14 @@ jobs:
           npm ci --ignore-scripts 2>&1 | tee npm-ci.log
           status=${PIPESTATUS[0]}
           exit "$status"
+
+      - name: Upload E2E npm install diagnostics
+        if: failure() && steps.e2e-npm-install.outcome == 'failure'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-npm-install-diagnostics
+          path: e2e/npm-ci.log
+          retention-days: 3
 
       - name: Verify desktop npm dependency policy
         id: desktop-npm-policy

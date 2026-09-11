@@ -24,7 +24,7 @@ Focused changes are limited to continuity documentation/state, `tools/kgw_projec
 - `node --check tools/kgw_project_continuity_gate.cjs` — PASS.
 - `node --check tools/kgw_project_continuity_gate_tests.cjs` — PASS.
 - `node tools/kgw_project_continuity_gate.cjs` — PASS.
-- `node tools/kgw_project_continuity_gate_tests.cjs` — PASS (positive fixture + five fail-closed negative cases).
+- `node tools/kgw_project_continuity_gate_tests.cjs` — PASS (positive fixture + six fail-closed negative cases).
 - Temporary manual negative tests for missing `ACTIVE_TASK.md`, missing checkpoint, and invalid memory status — PASS (gate failed as expected, then recovered).
 - `git diff --check` — PASS.
 - Python YAML parse of `.github/workflows/ci.yml` — PASS.
@@ -79,3 +79,28 @@ Do not redo completed September dependency maintenance, Desktop 0.1.1 release wo
 - Remote PR head remains `0ec7d01b...`; no npm repair commit/push has occurred at this checkpoint.
 - NEXT ACTION: create non-skip repair commit, re-fetch `origin/main`, push same branch to PR #76, exact-head qualify, protected squash merge, post-merge verify.
 - DO NOT REPEAT: do not downgrade WebdriverIO, force unsupported `diff`/Glob/encoding major overrides, weaken npm audit, or bypass branch protection.
+## NPM POLICY HARDENING / STABLE-ID GUARD CHECKPOINT
+- Timestamp: 2026-09-10 23:17 +03:00
+- E2E High GHSA-2883-xcg3-v3hh remains fixed locally by exact WebdriverIO 9.31.7 pins and `js-yaml` 4.3.2.
+- The fail-closed npm policy is wired immediately after npm installation; install and policy failure diagnostics are uploaded before expensive Rust work.
+- Residual upstream Low/deprecation risk remains exact and expires on 2026-10-10; it is not hidden or broadly ignored.
+- Graphify exposed a duplicate `SEC-0002` record before commit. The duplicate was removed and the existing canonical `SEC-0002-e2e-npm-dependency-policy.md` remains authoritative.
+- `kgw_project_continuity_gate.cjs` now rejects duplicate BUG/REG/SEC/INC/DEC/FAIL stable IDs; the regression suite has six fail-closed negative cases.
+- Local npm exact-CI path, policy gate/tests, continuity gate/tests, actionlint, YAML parse, PowerShell AI gate, E2E lint/check, `git diff --check`, and Graphify health/query are PASS at this checkpoint.
+- NEXT ACTION: create the non-skip repair commit, fetch `origin/main`, reconcile only if required, push the same branch to PR #76, and exact-head qualify.
+- DO NOT REPEAT: do not recreate a second SEC-0002, do not force unsupported npm major overrides, and do not bypass protected required checks.
+
+## POST-MERGE CI RACE REPAIR CHECKPOINT
+- Timestamp: 2026-09-11 06:04 +03:00
+- PR #76: MERGED at `3f8174c7e9e663da81e29eda5cd889de196eec7e`.
+- Post-merge push CI run `34516559028`: FAILED only in `Run Rust tests`; five sibling push workflows succeeded.
+- Failing test: `post_ready_worker_failure_is_non_running_durable_and_restartable_for_all_roles`.
+- Root cause: test worker published READY then exited after a fixed 40 ms delay; under runner load the parent could validate READY but observe exit before registering the worker as Running.
+- Repair: test-only parent/worker READY acknowledgement file; the deliberate post-READY exit timer starts only after the parent has observed `running=true` and `readiness=READY`.
+- Regression evidence: targeted test cold build PASS, 20/20 repeated targeted runs PASS, full `integrated_runtime_ipc_smoke_tests` 52/52 PASS.
+- Warning closure: path-included runtime test module now scopes `allow(dead_code)` to the test module only; full IPC test emits 0 Rust warnings; production targets remain strict.
+- Additional hardening: continuity gate rejects duplicate stable IDs and correctly detects the inactive-plan sentinel only from the Status value.
+- Local qualification: cargo fmt PASS; targeted test Clippy strict PASS/warnings=0; continuity + npm regression gates PASS; actionlint PASS; YAML PASS; PowerShell AI gate PASS; npm policy PASS; Graphify final graph CLEAN.
+- Active branch: `fix/post-merge-ci-race-20260911`, based on merged `main` `3f8174c7...` and not yet pushed at this checkpoint.
+- NEXT ACTION: commit without `[skip ci]`, push, open protected PR to `main`, qualify exact head, squash merge after green, then verify all post-merge main workflows and close the task state.
+- DO NOT REPEAT: do not increase the 40 ms delay as the primary fix, rerun failed CI hoping for luck, bypass branch protection, or reopen the completed npm root-cause investigation.
