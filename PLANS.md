@@ -2,36 +2,27 @@
 
 ## Status
 
-**ACTIVE — POST-MERGE CI REGRESSION REPAIR AND FINAL CLOSURE**
+**NO ACTIVE MULTI-STAGE PLAN**
 
-## Objective
-Restore protected `main` to fully green after PR #76 by removing the confirmed post-READY self-worker test race, preserving the merged npm/continuity hardening, and completing durable post-merge closure.
+The continuity/security-engineering integration and its post-merge CI repair are complete. PR #76 merged the repository-native continuity/npm hardening; PR #77 removed the confirmed post-READY test race and restored green `main` CI. Current facts belong in `PROJECT_STATE.md`; durable incidents/regressions belong in project memory; implementation history belongs in Git/PRs.
 
-## Success Criteria
-- Keep production runtime startup safety unchanged.
-- Replace wall-clock fixture timing with deterministic parent-observed READY synchronization.
-- Preserve the exact npm dependency policy and duplicate project-memory ID guard.
-- Pass focused local regression/lint/gate verification.
-- Integrate through a new protected exact-head PR with no bypass.
-- Verify every post-merge `main` workflow, especially CI, is green.
-- Reconcile durable state to no active multi-stage plan.
-## Milestones
-1. PR #76 continuity/npm integration — COMPLETE; merged as `3f8174c7...`.
-2. Detect post-merge `main` CI failure — COMPLETE; run `34516559028` isolated one Rust integration-test race.
-3. Root-cause and deterministic test-only ACK repair — COMPLETE.
-4. Local stress verification — COMPLETE: cold PASS, 20/20 repeat PASS, full IPC 52/52 PASS, zero test-harness warnings.
-5. Finish lint/clippy/continuity/Graphify qualification and checkpoint — IN PROGRESS.
-6. Commit, refresh main, push new protected repair PR.
-7. Exact-head CI, protected squash merge, post-merge `main` verification.
-8. Final durable state reconciliation and inactive-plan sentinel.
+## Usage
 
-## Progress
-The prior npm High finding is fixed on `main` and its residual upstream exceptions remain exact through 2026-10-10. The only observed post-merge blocker is the fixed-time post-READY fixture race. `REG-0001` records the recurrence, root cause, deterministic ACK fix, and regression evidence.
+Create or replace an active-plan body only when work is genuinely long-horizon, multi-stage, migration-heavy, high-risk, or expected to span sessions. Reconcile `PROJECT_STATE.md` first whenever verified repository/runtime/release reality differs from durable state.
 
-## Completion Criteria
-All success criteria above are met, no material warning/failure is hidden, protected `main` is green after the repair merge, and repository state can be resumed without conversation context.
-## Constraints
-No production runtime mutation, no release/source-binding change, no force push, no rebase, no `--admin` merge, no retry-only flake handling, and no unsupported npm major override.
+When an active plan reaches completion, update current state, durable memory/checkpoints, relevant ADR/runbook changes, then return this file to **NO ACTIVE MULTI-STAGE PLAN** rather than preserving completed work as active coordination state.
 
-## NEXT ACTION
-Complete focused local qualification, checkpoint the verified post-merge repair, then push a new protected PR and follow exact-head CI through post-merge verification.
+Do not use this file as a duplicate issue tracker, Git log, CI history, release body, or credential store.
+## Most Recent Completed Plan
+
+Repository-native project continuity and durable failure memory were integrated through PR #76, followed by protected repair PR #77 for the post-merge Rust test race. PR #77 exact-head required checks passed and post-merge `main` CI/security workflows are green on historical baseline `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`.
+
+Durable evidence locations:
+- Current resumable state: `PROJECT_STATE.md`, `CURRENT_STATE.md`, and `ACTIVE_TASK.md`.
+- Atomic checkpoint history: `docs/handoff-ledger/2026-09-10-project-continuity-lifecycle.md`.
+- Regression record: `docs/project-memory/REGRESSIONS/REG-0001-post-ready-worker-test-race.md`.
+- Npm residual-risk record: `docs/project-memory/SECURITY/SEC-0002-e2e-npm-dependency-policy.md`.
+- Implementation/review history: Git and PRs #76 and #77.
+- Published release history remains owned by GitHub Releases and was not changed by this plan.
+
+Start a new scoped plan only when a future task independently meets the multi-stage criteria above.
