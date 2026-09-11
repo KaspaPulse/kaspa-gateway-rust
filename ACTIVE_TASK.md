@@ -1,40 +1,42 @@
 # ACTIVE TASK
 
 ## Status
-IN PROGRESS — LIVE-SMOKE EFFECTIVE-SETTINGS CONSISTENCY REPAIR
+COMPLETE — VERIFIED AND MERGED
 
 ## Objective
-Repair the confirmed custom-endpoint drift in the Windows live-smoke parent/self-worker contract, integrate the fix through protected GitHub flow, and finish mainnet/testnet10 short live verification on `Server` without disturbing the unrelated mainnet service already using ports 16110/16111.
+Repair the Windows live-smoke custom-endpoint effective-settings drift and complete stable-network short-smoke verification without disturbing unrelated runtime ownership.
 
 ## Scope
-- Synchronize custom loopback RPC/P2P smoke endpoints through the canonical `EffectiveNodeSettings` path.
-- Extend the existing live-smoke regression test with non-default isolated ports.
-- Preserve testnet12 prohibition, loopback-only validation, parent identity, and effective-settings equality checks.
-- Never stop/kill the unrelated `kaspad` service solely to obtain default ports.
+- Synchronize custom loopback RPC/P2P values through canonical `EffectiveNodeSettings`.
+- Preserve stable-network, loopback-only, parent-identity, and self-worker equality checks.
 - Protected squash integration only; no admin bypass, force push, or rebase.
+- Verify exact merged `main` on Windows `Server` for isolated mainnet and default testnet10.
 
 ## Current Phase
-`REG-0002` is reproduced and locally repaired. The focused regression test passed after a cold build and the full runtime IPC integration suite passed 52/52. Targeted strict Clippy qualification is PASS.
+No active implementation phase remains. REG-0002 is merged and live-verified; this file records the completed boundary.
 
 ## Confirmed Progress
-On Windows `Server`, official testnet10 live smoke passed with Rusty Kaspa 2.0.1, RPC ready, 8 peers, parent-loss cleanup, and relaunch reconciliation. Isolated mainnet smoke on RPC 16120 / P2P 16121 reproduced deterministic effective-settings drift while the unrelated service on 16110/16111 remained untouched and both isolation ports were cleaned up.
+PR #82 merged as `fb16b9a18b7e17621dfb1c280fef7951c8b819a7` after every required exact-head check passed. Post-merge CI, CodeQL/Rust security, Secret Scan, and supply-chain posture all passed on the same SHA.
+
+Exact merged Windows short smoke passed for isolated mainnet on RPC `16120` / P2P `16121` with 8 peers and for default testnet10 on RPC `16210` with 7 peers. Parent-loss cleanup and relaunch reconciliation passed; all smoke-owned ports were released. Unrelated PID `35540` remained unchanged on `16110/16111`.
+
 ## Current Blocker
-NONE locally. The remaining work is protected CI plus Windows rebuild/retest on the merged repair.
+NONE for repository-owned repair work. Full synchronization/production capacity remains NOT VERIFIED because the smoke is intentionally short and the Windows test drive has less than the 640 GB production-disk guideline. Historical fine-grained PAT revocation remains separately NOT VERIFIED.
 
 ## Last Completed Action
-Validated the root cause, changed the validator to use `apply_effective_node_settings`, added RPC/P2P synchronization assertions, passed the focused regression test, and passed all 52 runtime IPC integration tests.
+Verified exact merged Windows mainnet/testnet10 short smoke on `Server`, preserved unrelated runtime ownership, and confirmed post-merge GitHub checks are green.
 
 ## Current Action
-Finish continuity/Graphify/PowerShell qualification and checkpoint this repair without changing unrelated runtime/release policy.
+NONE. The `REG-0002` repair is closed; derive repository reality dynamically before starting new work.
 
 ## Next Action
-Commit without CI skip, push protected PR, exact-head qualify and squash-merge, then rebuild the exact merged Windows `main` and rerun isolated mainnet plus default testnet10 smoke.
+No further action for `REG-0002`. Independently re-review npm exceptions by 2026-10-10; perform a full-sync production-readiness exercise only on hardware/storage meeting its explicit requirements; revoke the historical PAT only if the exact token can be safely identified.
 
 ## Verification Required
-Focused regression PASS; full IPC 52/52 PASS; fmt/diff check PASS; strict Clippy; continuity gate/tests; PowerShell/YAML/actionlint where applicable; Graphify health/query; exact-head PR checks; post-merge `main`; repaired Windows smoke with port/service preservation.
+Completed: focused regression, IPC 52/52, fmt, strict Clippy, continuity/PowerShell/Graphify, PR #82 exact-head checks, post-merge `main`, exact merged Windows mainnet/testnet10 short smoke, cleanup, and unrelated-service preservation.
 
 ## Completion Criteria
-Protected repair merged green; post-merge `main` green; isolated mainnet and default testnet10 short smoke pass on the exact merged Windows binary; smoke-owned ports/processes clean up; unrelated PID/service remains untouched; durable state records short-smoke limits without claiming full synchronization/production capacity.
+MET for this task. Short smoke proves startup/RPC/peer connectivity/parent-loss cleanup/relaunch on stable networks; it does not prove full IBD or long-duration production capacity.
 
 ## DO NOT REPEAT
-Do not kill the unrelated mainnet service, bypass the worker equality check, use unsupported direct self-worker invocation, broaden live-smoke network scope to testnet12, or classify short smoke as full production readiness.
+Do not kill unrelated PID `35540`, weaken effective-settings equality, reintroduce direct self-worker smoke shortcuts, start testnet12 without explicit experimental scope, or claim full production readiness from short smoke.

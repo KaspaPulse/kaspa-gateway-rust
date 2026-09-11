@@ -35,3 +35,14 @@ Protected repair merged green; post-merge `main` green; exact merged Windows bin
 
 ## DO NOT REPEAT
 Do not kill PID `35540` or repurpose its appdir, do not bypass the effective-settings equality check, do not invoke the self-worker directly as a substitute for the parent contract, do not start testnet12, and do not claim production readiness from a short smoke.
+## FINAL PROTECTED INTEGRATION / LIVE VERIFICATION
+- PR #82 merged through protected squash at `fb16b9a18b7e17621dfb1c280fef7951c8b819a7`; no admin bypass.
+- Exact-head checks passed: quality, policy/audit/deny/machete, dependency review, Rust security-extended, Secret Scan, actionlint, Rust address fuzzing, and CodeQL.
+- Post-merge `main` runs: CI `34618666371`, CodeQL `34618666115`, Secret Scan `34618666198`, OpenSSF Scorecard `34618666120` — SUCCESS.
+- Exact merged Windows mainnet isolated smoke: PASS, Rusty Kaspa 2.0.1, 8 peers, parent-loss cleanup and relaunch PASS.
+- Exact merged Windows testnet10 official smoke: PASS, Rusty Kaspa 2.0.1, 7 peers, parent-loss cleanup and relaunch PASS.
+- Smoke ports `16120/16121/16210` released; unrelated PID `35540` remained unchanged on `16110/16111`.
+- Both short smokes remained unsynced; full IBD/production capacity is not proven.
+
+## FINAL STATE
+Repository-owned `REG-0002` work is VERIFIED/CLOSED. No further task-specific engineering action remains. Full-sync production-readiness remains a separate exercise requiring documented hardware/storage capacity.
