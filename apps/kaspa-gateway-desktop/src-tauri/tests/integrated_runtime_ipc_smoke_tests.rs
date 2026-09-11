@@ -247,6 +247,70 @@ fn runtime_owner_lease_requires_exact_process_identity() {
 }
 
 #[test]
+fn status_poll_does_not_block_behind_other_network_startup() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_READY_DELAY_MS", "1200");
+    set_runtime_worker_test_env("KGW_TEST_STARTUP_ATTESTATION_TIMEOUT_MS", "5000");
+
+    let lease_path = runtime_owner_lease_path("node", "mainnet");
+    let _ = std::fs::remove_file(&lease_path);
+    for worker_path in runtime_owner_worker_paths("node", "mainnet") {
+        let _ = std::fs::remove_file(worker_path);
+    }
+
+    let start = std::thread::spawn(|| {
+        kgw_kgw_apply_node_settings_v1(
+            "mainnet".to_string(),
+            "integrated-as-daemon".to_string(),
+            "disable".to_string(),
+            None,
+            None,
+            Some("node".to_string()),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+    });
+
+    let lease_deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !lease_path.is_file() && std::time::Instant::now() < lease_deadline {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(
+        lease_path.is_file(),
+        "delayed mainnet Start must publish its owner reservation"
+    );
+
+    let status_started = std::time::Instant::now();
+    let status = integrated_runtime_commands::kgw_runtime_owner_status_v1(
+        Some("testnet10".to_string()),
+        Some("node".to_string()),
+    );
+    let status_elapsed = status_started.elapsed();
+
+    let start_result = start.join().expect("delayed Start thread must not panic");
+    assert!(
+        start_result.is_ok(),
+        "delayed mainnet Start must eventually succeed: {start_result:?}"
+    );
+    let _ = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()));
+
+    assert!(
+        status_elapsed < std::time::Duration::from_millis(250),
+        "testnet10 status must not block behind mainnet startup; elapsed={status_elapsed:?}; status={status:?}",
+    );
+    let error =
+        status.expect_err("busy worker registry must return a truthful transient status error");
+    assert_contains_all(&error, &["registry_busy=true", "runtime_state=reconciling"]);
+}
+
+#[test]
 fn live_smoke_parent_accepts_only_valid_stable_network_runtime_settings() {
     let appdir = std::env::temp_dir()
         .join("KaspaGateway")

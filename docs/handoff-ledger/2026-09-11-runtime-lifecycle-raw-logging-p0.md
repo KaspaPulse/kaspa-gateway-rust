@@ -41,3 +41,24 @@ Audit backend global lifecycle-lock responsiveness and bridge mode lifecycle; re
 
 ## DO NOT REPEAT
 Do not serialize raw log delivery behind status, treat status transport failure as terminal state, or stack 700 ms status polls.
+
+## BACKEND STATUS ISOLATION CHECKPOINT
+Status: VERIFIED
+Timestamp: 2026-09-11
+
+## LAST CONFIRMED STATE
+`BUG-0003` reproduced cross-network status blocking behind a delayed mainnet Start and repaired worker status to fail fast with typed reconciliation evidence instead of waiting on the global registry mutex.
+
+## COMPLETED / VERIFIED
+- Targeted backend status-isolation regression PASS.
+- Full runtime IPC suite 53/53 PASS.
+- Frontend raw-log/readiness gates PASS.
+
+## EVIDENCE / TESTS
+Before repair, testnet10 status waited about 1.226s behind mainnet startup. After repair, the targeted test satisfies the 250ms bound and returns `registry_busy=true;runtime_state=reconciling`.
+
+## NEXT ACTION
+Audit Stop requested during STARTING and Restart sequencing for the same role/network.
+
+## DO NOT REPEAT
+Do not restore blocking status acquisition on the global worker registry or interpret registry contention as `Stopped`.

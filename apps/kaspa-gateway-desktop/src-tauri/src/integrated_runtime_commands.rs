@@ -3141,9 +3141,19 @@ fn kgw_worker_status(
     network: Option<&str>,
     runtime_role: Option<&str>,
 ) -> Result<Option<String>, String> {
-    let mut workers = kgw_parallel_self_workers()
-        .lock()
-        .map_err(|_| "parallel self-worker lock failed".to_string())?;
+    let mut workers = match kgw_parallel_self_workers().try_lock() {
+        Ok(workers) => workers,
+        Err(std::sync::TryLockError::WouldBlock) => {
+            return Err(format!(
+                "registry_busy=true;runtime_state=reconciling;network={};runtime_role={};message=Runtime ownership transition is in progress. Retry status without changing UI ownership state.",
+                network.unwrap_or("all"),
+                runtime_role.unwrap_or("all")
+            ));
+        }
+        Err(std::sync::TryLockError::Poisoned(_)) => {
+            return Err("parallel self-worker lock failed".to_string());
+        }
+    };
 
     let wanted_network = network.map(|value| value.trim().to_ascii_lowercase());
     let wanted_role = runtime_role.map(|value| value.trim().to_ascii_lowercase());
