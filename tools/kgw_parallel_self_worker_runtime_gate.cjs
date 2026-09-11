@@ -24,6 +24,7 @@ function read(file) {
 const integrated = read(files.integratedRuntime);
 const controller = read(files.serviceController);
 const libRs = read(files.libRs);
+const closeHandler = libRs.match(/\.on_window_event\(\|window, event\| \{([\s\S]*?)\n        \}\)\n        \.run\(context\)/)?.[1] || "";
 
 const checks = [
   ["parallel registry", integrated.includes("KGW_PARALLEL_SELF_WORKERS") && integrated.includes("OnceLock") && integrated.includes("HashMap")],
@@ -43,7 +44,12 @@ const checks = [
   ["stable mainline owner", /stable|mainline/i.test(controller)],
   ["tn12 owner", /tn12/i.test(controller)],
   ["distinct rpc ports", /16110/.test(controller) && /16210/.test(controller) && /16310/.test(controller)],
-  ["tauri module registered", libRs.includes("integrated_runtime_commands")]
+  ["tauri module registered", libRs.includes("integrated_runtime_commands")],
+  ["close request intercepted", closeHandler.includes("WindowEvent::CloseRequested") && closeHandler.includes("api.prevent_close()")],
+  ["close shutdown is single-flight", closeHandler.includes("KGW_CLOSE_SHUTDOWN_STARTED") && closeHandler.includes("swap(true")],
+  ["close uses owned shutdown-all", closeHandler.includes("kgw_shutdown_all_runtime_workers_v1")],
+  ["close exits only after shutdown success", /Ok\(_\) => \{[\s\S]*?app\.exit\(0\)/.test(closeHandler)],
+  ["close failure stays open and retryable", /Err\(error\) => \{[\s\S]*?KGW_CLOSE_SHUTDOWN_STARTED[\s\S]*?store\(false/.test(closeHandler)]
 ];
 
 const failed = checks.filter(([, ok]) => !ok);

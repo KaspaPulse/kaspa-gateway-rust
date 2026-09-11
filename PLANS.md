@@ -16,19 +16,19 @@ Rehabilitate network/bridge lifecycle and raw logging end-to-end using the accep
 - Real GitHub receives exactly one final validated push; deployment uses exactly that commit.
 
 ## Milestones
-1. Establish and verify local bare remote workflow; block real GitHub push — COMPLETE.
-2. Audit full UI→IPC→runtime→process→logs→UI execution paths and reproduce defects.
-3. Repair network lifecycle defects with regression coverage and local checkpoint commits.
-4. Repair bridge lifecycle/readiness/attachment/listener defects with regression coverage.
-5. Repair raw stdout/stderr ordering/provenance/diagnostics separation and frontend rendering.
-6. Repair reconciliation/orphan/stale-state/UI truth after crash, close, and relaunch.
-7. Run full local regression/security/build/artifact validation.
-8. Run real Windows lifecycle matrix for mainnet/testnet10 and every supported bridge mode.
-9. Consolidate local commits, independently verify final production artifact/evidence, and pass local release gate.
-10. Perform one final real-GitHub push, deploy exact commit, verify production, and close durable state.
+1. Establish and verify local bare remote workflow; block real GitHub push — **COMPLETE**.
+2. Audit full UI→IPC→runtime→process→logs→UI execution paths and reproduce defects — **COMPLETE LOCALLY**.
+3. Repair network lifecycle defects with regression coverage and local checkpoint commits — **COMPLETE LOCALLY**.
+4. Repair bridge lifecycle/readiness/attachment/listener defects with regression coverage — **COMPLETE LOCALLY AT SOURCE/IPC/FRONTEND LEVEL; WINDOWS PROOF REMAINS IN MILESTONE 8**.
+5. Repair raw stdout/stderr ordering/provenance/diagnostics separation and frontend rendering — **COMPLETE LOCALLY**.
+6. Repair reconciliation/orphan/stale-state/UI truth after crash, close, and relaunch — **COMPLETE LOCALLY**.
+7. Run full local regression/security/build/artifact validation — **NEXT / NOT YET COMPLETE**.
+8. Run real Windows lifecycle matrix for mainnet/testnet10 and every supported bridge mode — **PENDING MILESTONE 7**.
+9. Consolidate local commits, independently verify final production artifact/evidence, and pass local release gate — **PENDING**.
+10. Perform one final real-GitHub push, deploy exact commit, verify production, and close durable state — **PENDING; REAL GITHUB REMAINS BLOCKED UNTIL FINAL LOCAL GATE**.
 
 ## Progress
-Local Git mirror and push/fetch/history probe are verified. Graphify identified the integrated runtime and frontend node/bridge surfaces; no application-code change has been made yet.
+Local remediation has four verified defect records and local checkpoints: BUG-0002 frontend raw-log/status truth, BUG-0003 non-blocking cross-network status reconciliation, BUG-0004 STARTING control semantics, and BUG-0005 exact ownership observability. CloseRequested wiring, shutdown-all during STARTING, terminal Stop→restart, post-READY crash recovery, parent-loss cleanup, and STARTING parent-loss relaunch reconciliation are now covered locally. Runtime IPC is green at 55/55; real Windows and release-artifact proof remain intentionally pending.
 
 ## Completion Criteria
 Every local release checklist item is evidenced; no known P0/P1 issue remains; final diff/artifact/evidence match the release commit; post-push remote HEAD and deployed commit match exactly.
@@ -37,4 +37,4 @@ Every local release checklist item is evidenced; no known P0/P1 issue remains; f
 No intermediate GitHub pushes, no force push/rebase of remote history, no admin bypass, no unnecessary runtime rewrite, no direct frontend process ownership, no fake logs, no weakening of testnet12 policy or ownership identity.
 
 ## NEXT ACTION
-Reproduce the first actual lifecycle/logging divergence and fix it through Audit → Root Cause → Fix → Test → Verify → Local Commit → Local Push, then continue to the next issue.
+Checkpoint the close/relaunch regression protection to the local bare remote, then execute Milestone 7: the repository's full applicable local regression, security, lint/type, build, packaging, artifact, and final-diff gates. Do not run the real Windows matrix until Milestone 7 is green, and do not push to real GitHub.

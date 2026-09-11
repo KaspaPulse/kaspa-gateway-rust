@@ -14,22 +14,22 @@ Make network and bridge lifecycle trustworthy end-to-end: UI state must reflect 
 - Validate real Windows runtime on `Server`; mocks alone are insufficient.
 
 ## Current Phase
-Local remediation and lifecycle reconciliation. `BUG-0002`, `BUG-0003`, and `BUG-0004` are committed and checkpointed to the local bare remote; `BUG-0005` ownership observability is locally verified and awaiting its checkpoint commit.
+Local remediation is complete at the source/IPC/frontend level. `BUG-0002` through `BUG-0005` are committed to the local bare remote; close/relaunch contract protection is locally verified and awaiting its checkpoint commit. Milestone 7 full local release validation is next.
 
 ## Confirmed Progress
 `local` remains the only push target for intermediate work and `origin` push remains disabled. Frontend raw logs/status truth, backend cross-network status responsiveness, and STARTING control semantics are repaired. READY status now retains and reports exact worker/parent identity plus runtime endpoint semantics without changing ownership behavior.
 
 ## Current Blocker
-NONE. Real Windows runtime validation remains intentionally pending until local source remediation and relaunch reconciliation are complete.
+NONE. Source/IPC/frontend remediation and close/relaunch reconciliation are locally complete; full local release validation is the next gate, with real Windows validation intentionally pending behind it.
 
 ## Last Completed Action
-`BUG-0005` targeted ownership-status regression passed, the full runtime IPC suite passed 53/53, Rust formatting passed, and Graphify was incrementally refreshed/re-queried.
+CloseRequested wiring is guarded; shutdown-all during a delayed STARTING transition and STARTING parent-loss relaunch reconciliation both pass. The complete runtime IPC suite now passes 55/55 and the parallel self-worker runtime gate passes.
 
 ## Current Action
-Checkpoint `BUG-0005` locally, then verify application CloseRequested/exit wiring through bounded `shutdown_all` and stale/dead-owner reconciliation across application relaunch.
+Review and checkpoint the close/relaunch regression protection to the local bare remote only.
 
 ## Next Action
-Close any confirmed close/relaunch lifecycle gap with focused regression protection, then proceed to the remaining local release gates and real Windows lifecycle matrix before any final publication.
+Run the full applicable local regression/security/build/package/artifact gates. Only after those are green proceed to the real Windows lifecycle matrix; no real GitHub push is allowed yet.
 
 ## Verification Required
 Focused regression per defect; full runtime IPC suite; frontend lifecycle/raw-log gates; workspace tests/security gates; production desktop build/artifact; real Windows lifecycle sequences for mainnet/testnet10 and supported bridge modes; no orphan/stale/false READY; final local audit.

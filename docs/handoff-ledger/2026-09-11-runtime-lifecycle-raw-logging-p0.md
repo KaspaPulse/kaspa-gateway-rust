@@ -104,3 +104,24 @@ Verify application close/exit wiring through bounded `shutdown_all`, then stale/
 
 ## DO NOT REPEAT
 Do not reduce ownership evidence to PID-only status or fabricate an explicit P2P endpoint when upstream selects the official default.
+
+## CLOSE / RELAUNCH CONTRACT CHECKPOINT
+Status: VERIFIED LOCALLY
+Timestamp: 2026-09-11
+
+## LAST CONFIRMED STATE
+CloseRequested already prevented immediate window close and called owned `shutdown_all` before success-only `app.exit(0)`. Start holds the worker-registry transition until READY, so shutdown-all requested during STARTING waits rather than returning a false `stopped=0`.
+
+## COMPLETED / VERIFIED
+- Added regression protection for shutdown-all requested during delayed STARTING: it waits, then terminally stops the exact worker and removes lease/sidecar.
+- Added STARTING parent-loss relaunch coverage: the exact child terminates after parent loss and relaunch reconciliation clears durable stale ownership without false READY.
+- Extended the parallel self-worker runtime gate to protect CloseRequested prevent-close, single-flight shutdown, shutdown-all invocation, success-only exit, and retryable failure behavior.
+
+## EVIDENCE / TESTS
+Targeted close/startup test PASS; targeted STARTING parent-loss/relaunch test PASS; parallel self-worker runtime gate PASS; complete runtime IPC suite PASS 55/55; Rust formatting PASS; Graphify refresh/re-query PASS.
+
+## NEXT ACTION
+Checkpoint this regression protection to the local bare remote, then run the complete applicable local regression/security/build/package/artifact gates before Windows validation.
+
+## DO NOT REPEAT
+Do not treat shutdown-all during STARTING as an empty registry success: Start owns the registry lock through READY. Do not rely only on post-READY parent-loss tests for relaunch safety.
