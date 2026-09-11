@@ -14,22 +14,22 @@ Make network and bridge lifecycle trustworthy end-to-end: UI state must reflect 
 - Validate real Windows runtime on `Server`; mocks alone are insufficient.
 
 ## Current Phase
-Audit and reproduction. Local-first Git workflow is established and verified; no application-code remediation has been committed yet.
+Local remediation and lifecycle reconciliation. `BUG-0002`, `BUG-0003`, and `BUG-0004` are committed and checkpointed to the local bare remote; `BUG-0005` ownership observability is locally verified and awaiting its checkpoint commit.
 
 ## Confirmed Progress
-`local` is a bare repository at `/home/kas/kaspa-gateway-dev/local-git/kaspa-gateway-rust.git` seeded from the real project history. A probe branch/empty commit was pushed, fetched, SHA/history verified, then removed. `origin` fetch still points to GitHub while its push URL is locally disabled.
+`local` remains the only push target for intermediate work and `origin` push remains disabled. Frontend raw logs/status truth, backend cross-network status responsiveness, and STARTING control semantics are repaired. READY status now retains and reports exact worker/parent identity plus runtime endpoint semantics without changing ownership behavior.
 
 ## Current Blocker
-NONE. First task is to locate and reproduce the first real divergence in lifecycle/state/logging.
+NONE. Real Windows runtime validation remains intentionally pending until local source remediation and relaunch reconciliation are complete.
 
 ## Last Completed Action
-Verified WORKTREE → LOCAL REMOTE → FETCH/VERIFY → HISTORY using an isolated local probe without any real GitHub push.
+`BUG-0005` targeted ownership-status regression passed, the full runtime IPC suite passed 53/53, Rust formatting passed, and Graphify was incrementally refreshed/re-queried.
 
 ## Current Action
-Trace actual Start/Stop/Status/Logs/reconciliation paths for node and bridge, compare frontend assumptions with runtime-owned truth, and reproduce the first divergence.
+Checkpoint `BUG-0005` locally, then verify application CloseRequested/exit wiring through bounded `shutdown_all` and stale/dead-owner reconciliation across application relaunch.
 
 ## Next Action
-Run focused existing gates/tests and inspect the exact UI action handlers, IPC payloads/responses, worker registry/status/log contracts, and bridge readiness contract. Record each confirmed defect before fixing it.
+Close any confirmed close/relaunch lifecycle gap with focused regression protection, then proceed to the remaining local release gates and real Windows lifecycle matrix before any final publication.
 
 ## Verification Required
 Focused regression per defect; full runtime IPC suite; frontend lifecycle/raw-log gates; workspace tests/security gates; production desktop build/artifact; real Windows lifecycle sequences for mainnet/testnet10 and supported bridge modes; no orphan/stale/false READY; final local audit.

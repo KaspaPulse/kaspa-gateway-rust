@@ -83,3 +83,24 @@ Verify Restart after terminal Stop, crash recovery, relaunch reconciliation, and
 
 ## DO NOT REPEAT
 Do not advertise pre-READY Stop without an explicit backend cancellation protocol.
+
+## OWNERSHIP OBSERVABILITY CHECKPOINT
+Status: VERIFIED
+Timestamp: 2026-09-11
+
+## LAST CONFIRMED STATE
+`BUG-0005` confirmed that READY status omitted exact worker/parent identity and endpoint evidence even though startup had already verified and owned those values.
+
+## COMPLETED / VERIFIED
+- Managed workers retain verified worker and parent PID/start-time/executable identity.
+- READY status exposes exact identity plus RPC, Stratum, and explicit-vs-official-default P2P semantics.
+- No new process-identity lookup or ownership semantic was introduced.
+
+## EVIDENCE / TESTS
+Targeted ownership-status regression PASS (1/1); full runtime IPC suite PASS (53/53); Rust formatting PASS; Graphify incremental refresh/re-query PASS.
+
+## NEXT ACTION
+Verify application close/exit wiring through bounded `shutdown_all`, then stale/dead-owner relaunch reconciliation.
+
+## DO NOT REPEAT
+Do not reduce ownership evidence to PID-only status or fabricate an explicit P2P endpoint when upstream selects the official default.

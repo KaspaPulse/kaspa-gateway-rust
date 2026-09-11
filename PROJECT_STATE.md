@@ -2,7 +2,7 @@
 
 ## Metadata
 
-- Last state update: 2026-09-11 at start of P0 Runtime Lifecycle & Raw Logging Reliability remediation using a verified local-first Git workflow.
+- Last state update: 2026-09-11 during P0 Runtime Lifecycle & Raw Logging Reliability remediation after verified local checkpoints for BUG-0002 through BUG-0005 work.
 - State author/agent: Remote Desktop Commander continuity reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
@@ -11,7 +11,7 @@
 
 - Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; REPOSITORY RELEASE_ADMIN_TOKEN RETIRED; ASSOCIATED PAT REVOCATION NOT VERIFIED**.
 - Current objective: **IN PROGRESS — P0 RUNTIME LIFECYCLE & RAW LOGGING RELIABILITY**. Audit and repair network/bridge lifecycle, ownership/readiness/reconciliation, raw stdout/stderr provenance/order, and UI/runtime truth without replacing the accepted same-EXE self-worker architecture.
-- Current engineering blocker: **NONE at task start**. Local-first Git is verified; the next boundary is audit/reproduction of actual lifecycle/raw-log divergences before code changes. Historical PAT revocation remains separately NOT VERIFIED.
+- Current engineering blocker: **NONE**. Local-first Git remains enforced; BUG-0002/0003/0004 are locally committed and verified, BUG-0005 ownership observability is locally verified pending checkpoint commit, and the next engineering boundary is close/relaunch reconciliation before Windows validation. Historical PAT revocation remains separately NOT VERIFIED.
 - PR #76 **MERGED** as `3f8174c7e9e663da81e29eda5cd889de196eec7e`; PR #77 **MERGED** as `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`; PR #78 **MERGED** as historical closure baseline `50ad815b3a7569c576d7625900462734961cbc69`.
 - `PLANS.md` is **ACTIVE** for the P0 Runtime Lifecycle & Raw Logging Reliability remediation and local-release workflow.
 - Repository Actions secret `RELEASE_ADMIN_TOKEN` is **REMOVED / VERIFIED ABSENT BY NAME** after proving no active tracked workflow/code dependency. The historical associated fine-grained PAT remains account-level **NOT VERIFIED**; its value must never be recorded or guessed.
@@ -31,7 +31,7 @@
 - Verified closure baseline (historical evidence): `50ad815b3a7569c576d7625900462734961cbc69` (`docs: finalize continuity repair closure (#78)`).
 - The dedicated checkout was fast-forwarded from `b911eb44619f8eab706bc2fe786d1c84ac958f1d` to the verified remote head with no local divergence (`ahead=0`, `behind=0`) before this documentation reconciliation.
 - Current task branch: `fix/runtime-lifecycle-raw-logging-reliability-20260911`, tracking the local bare remote only; real GitHub push is disabled during remediation.
-- Working tree was clean before the reconciliation branch was created.
+- Task working tree is expected to alternate between clean local checkpoints and intentional scoped changes; verify dynamically before acting. Intermediate task pushes go only to the local bare remote.
 - Open pull request query returned an empty set at reconciliation time.
 - PR #51 is `CLOSED` and was not merged; it is no longer an active maintenance item.
 - Active ruleset `main-rebootstrap-baseline` (ID `20627285`) remains enforced with linear history, squash-only pull-request integration, resolved review threads, six baseline required contexts, and no bypass actors.
@@ -289,10 +289,10 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## NEXT ACTION
 
-1. No further action is required for REG-0002.
-2. Start future repository work from dynamically verified `main`, branch, working tree, open PRs, and relevant runtime reality.
-3. Re-review npm exceptions by 2026-10-10 and remove them immediately when a supported upstream path exists.
-4. Perform full-sync/production-readiness testing only on a host/storage profile meeting the documented requirements; short smoke is not full-sync proof.
+1. Complete the active P0 runtime lifecycle/raw-log task from the latest local checkpoint; do not restart completed BUG-0002/0003/0004 work.
+2. Verify application CloseRequested/exit uses bounded `shutdown_all` and verify stale/dead-owner reconciliation across relaunch; add focused regression protection only for a confirmed gap.
+3. After source remediation is locally complete, run the applicable local release/security/build/artifact gates and the real Windows lifecycle matrix on `Server` before any final publication.
+4. Re-review npm exceptions by 2026-10-10 and remove them immediately when a supported upstream path exists.
 5. Revoke the historical fine-grained PAT only if the exact token can be safely identified.
 
 ## Resume Instructions

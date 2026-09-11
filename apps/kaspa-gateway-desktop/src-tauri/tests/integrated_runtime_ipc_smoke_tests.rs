@@ -402,6 +402,30 @@ fn ready_worker_publishes_and_normal_stop_removes_exact_owner_lease() {
     .expect("worker identity must be typed JSON");
     assert!(worker["workerPid"].as_u64().is_some_and(|pid| pid > 0));
 
+    let status = integrated_runtime_commands::kgw_runtime_owner_status_v1(
+        Some("mainnet".to_string()),
+        Some("node".to_string()),
+    )
+    .expect("READY worker status must expose exact ownership evidence");
+    for field in [
+        "worker_pid=",
+        "worker_start_time=",
+        "worker_executable=",
+        "parent_pid=",
+        "parent_start_time=",
+        "parent_executable=",
+        "network=mainnet",
+        "appdir=",
+        "rpc=127.0.0.1:16110",
+        "p2p=official-default",
+        "stratum=0.0.0.0:5555",
+    ] {
+        assert!(
+            status.contains(field),
+            "missing ownership field `{field}` in `{status}`"
+        );
+    }
+
     let stopped = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()))
         .expect("normal test worker Stop should succeed");
     assert_contains_all(&stopped, &["graceful=true", "forced=false"]);

@@ -39,6 +39,14 @@ struct KgwParallelSelfWorker {
     node_mode: String,
     child: Child,
     spawned_pid: u32,
+    worker_start_time: u64,
+    worker_executable: String,
+    parent_pid: u32,
+    parent_start_time: u64,
+    parent_executable: String,
+    rpc_endpoint: String,
+    p2p_listen: Option<String>,
+    stratum_listen: String,
     stop_request_path: std::path::PathBuf,
     stop_outcome_path: std::path::PathBuf,
     reader_handles: Vec<std::thread::JoinHandle<()>>,
@@ -2704,6 +2712,14 @@ fn kgw_worker_start(
             node_mode: stored_node_mode.clone(),
             child,
             spawned_pid: pid,
+            worker_start_time: worker_identity.start_time,
+            worker_executable: worker_identity.executable.clone(),
+            parent_pid: parent_identity.pid,
+            parent_start_time: parent_identity.start_time,
+            parent_executable: parent_identity.executable.clone(),
+            rpc_endpoint: settings.rpc_endpoint.clone(),
+            p2p_listen: settings.p2p_listen.clone(),
+            stratum_listen: settings.stratum_listen.clone(),
             stop_request_path,
             stop_outcome_path,
             reader_handles,
@@ -3233,10 +3249,16 @@ fn kgw_worker_status(
         }
 
         lines.push(format!(
-            "parallel-owned-self-worker status;role={};network={};pid={};running={};readiness={};readiness_evidence={};runtime_error={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};started_ms={};node_mode={}",
+            "parallel-owned-self-worker status;role={};network={};pid={};worker_pid={};worker_start_time={};worker_executable={};parent_pid={};parent_start_time={};parent_executable={};running={};readiness={};readiness_evidence={};runtime_error={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};p2p={};stratum={};started_ms={};node_mode={}",
             worker.role,
             worker.network,
             worker.child.id(),
+            worker.spawned_pid,
+            worker.worker_start_time,
+            kgw_worker_stop_field_v1(&worker.worker_executable),
+            worker.parent_pid,
+            worker.parent_start_time,
+            kgw_worker_stop_field_v1(&worker.parent_executable),
             running,
             if running {
                 "READY"
@@ -3254,6 +3276,9 @@ fn kgw_worker_status(
                 .map(kgw_worker_stop_field_v1)
                 .unwrap_or_else(|| "none".to_string()),
             worker.appdir,
+            worker.rpc_endpoint,
+            worker.p2p_listen.as_deref().unwrap_or("official-default"),
+            worker.stratum_listen,
             worker.started_ms,
             worker.node_mode
         ));

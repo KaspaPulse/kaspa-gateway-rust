@@ -1,23 +1,27 @@
 # CURRENT STATE
 
-- Verified at: 2026-09-11 at start of P0 Runtime Lifecycle & Raw Logging Reliability remediation.
+- Verified at: 2026-09-11 during P0 Runtime Lifecycle & Raw Logging Reliability remediation.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
-- Current HEAD: **VERIFY DYNAMICALLY**; task baseline is historical `main` `b88cc2571cb65ca30c1361ee3aa9b21eb551ea7c`.
+- Current HEAD: **VERIFY DYNAMICALLY**; latest committed local checkpoint before `BUG-0005` is `1f1abe63890b3488d7ac2b201c30c4b467683538`.
 - Current branch: `fix/runtime-lifecycle-raw-logging-reliability-20260911`.
-- Current remote main: **VERIFY DYNAMICALLY** before final integration.
-- Working tree: **DIRTY** intentionally with task-state/checkpoint setup before the first local commit.
-- Local development remote: `/home/kas/kaspa-gateway-dev/local-git/kaspa-gateway-rust.git` (`local`).
+- Current remote main: **VERIFY DYNAMICALLY** before final integration; task baseline observation is `b88cc2571cb65ca30c1361ee3aa9b21eb551ea7c`.
+- Working tree: **DIRTY** intentionally while `BUG-0005` ownership-observability checkpoint is being finalized; classify dynamically on resume.
+- Local development remote: `/home/kas/kaspa-gateway-dev/local-git/kaspa-gateway-rust.git` (`local`) and current task branch tracks `local/...` only.
 - Real GitHub fetch remote: `origin=https://github.com/KaspaPulse/kaspa-gateway-rust.git`.
 - Real GitHub push path: **DISABLED LOCALLY** during remediation (`local-first-push-disabled://...`).
-- Local workflow probe: **PASS** — local commit, push, fetch, direct bare-ref verification, and ancestry verification succeeded.
+- Local checkpoints already verified on `local`: `e2b00ef` task open, `147b57e` BUG-0002, `dc41641` BUG-0003, `1f1abe6` BUG-0004.
+- `BUG-0002`: raw logs/status polling decoupled; IPC uncertainty remains Reconciling instead of false STOPPED.
+- `BUG-0003`: status no longer blocks behind another network lifecycle transition; registry contention returns reconciliation evidence.
+- `BUG-0004`: Stop is not advertised before READY ownership exists.
+- `BUG-0005`: READY status now exposes exact worker/parent process identity and endpoint semantics; targeted PASS and full runtime IPC PASS 53/53 before checkpoint commit.
+- Existing IPC coverage re-verifies terminal Stop→reacquire, post-READY crash recovery/restart, parent-loss cleanup, shutdown ordering, and mainnet/testnet10 isolation.
 - Architecture: accepted same-EXE self-worker runtime (`role:network` ownership); do not rewrite unnecessarily.
-- Frontend node/bridge tabs currently invoke `kgw_kgw_*` integrated runtime commands; legacy node/bridge commands remain registered and require audit for interference/drift.
-- Real Windows validation host: `Server`.
-- Current P0 runtime lifecycle/raw-log correctness: **NOT VERIFIED** until end-to-end reproduction and real Windows lifecycle matrix complete.
+- Real Windows validation host: `Server`; mocks/Linux integration tests are not final Windows proof.
+- Current P0 runtime lifecycle/raw-log correctness: **NOT VERIFIED** for release until close/relaunch reconciliation, local release gates, packaged Windows lifecycle matrix, and artifact validation complete.
 - Live unrelated Kaspa service on `Server` is outside this remediation and must not be killed or adopted accidentally.
 
 ## NEXT ACTION
-Audit and reproduce lifecycle/raw-log divergences before code changes, starting with actual UI handlers and integrated runtime status/log semantics.
+Checkpoint `BUG-0005` to the local bare remote, then verify CloseRequested/exit → bounded `shutdown_all` and stale/dead-owner application relaunch reconciliation.
 
 ## DO NOT REPEAT
-Do not push intermediate commits to real GitHub, do not bypass local remote checkpoints, and do not infer runtime health from prior short-smoke evidence.
+Do not push intermediate commits to real GitHub, redo already-green restart/crash/isolation tests without a relevant code change, reduce ownership identity to PID-only evidence, or fabricate an explicit P2P endpoint when upstream owns the official default.
