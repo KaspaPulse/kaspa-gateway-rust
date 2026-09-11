@@ -13,23 +13,23 @@ Close the repository-native continuity/security-engineering task after protected
 - Integrate through protected squash PRs only and verify post-merge `main`.
 
 ## Current Phase
-Engineering work is complete. PR #76 merged as `3f8174c7e9e663da81e29eda5cd889de196eec7e`; PR #77 repaired the post-merge test race and merged as `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`.
+No active engineering phase remains. PR #76 integrated the continuity/npm hardening, PR #77 repaired the post-merge test race, and PR #78 integrated the durable closure state. Any future session must derive branch/HEAD/working-tree reality dynamically before starting new work.
 ## Confirmed Progress
-PR #77 exact-head checks all passed, including `quality (rust + npm)`, supply-chain policy, dependency review, Rust security analysis, Secret Scan, actionlint, and Rust address fuzzing. Post-merge `main` runs `34560099528` (CI), `34560099492` (CodeQL), `34560099512` (Secret Scan), `34560099503` (Workflow Lint), and `34560099501` (OpenSSF Scorecard) all completed successfully.
+PR #77 exact-head checks all passed, including `quality (rust + npm)`, supply-chain policy, dependency review, Rust security analysis, Secret Scan, actionlint, and Rust address fuzzing. PR #78 also passed protected exact-head checks and merged. Historical post-closure baseline `50ad815b3a7569c576d7625900462734961cbc69` then passed CI, CodeQL, Secret Scan, and OpenSSF Scorecard push workflows.
 
 ## Current Blocker
 NONE for this task. Residual E2E npm Low/deprecation risk remains explicitly time-bounded by the existing dependency policy through 2026-10-10 and is not hidden.
 
 ## Last Completed Action
-Verified protected merge of PR #77 and successful post-merge `main` workflow set on exact SHA `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`.
+Verified protected merge of PR #78 and successful post-merge workflow set on historical closure baseline `50ad815b3a7569c576d7625900462734961cbc69`.
 
 ## Current Action
-Finalize durable state documentation and return `PLANS.md` to the inactive sentinel.
+NONE. This task is closed; verify repository reality dynamically before accepting a new task.
 
 ## Next Action
 NONE for this completed task. Start the next owner-requested task from current repository reality; review the existing npm exception policy no later than 2026-10-10.
 ## Verification Required
-Completed: targeted cold test PASS; 20/20 repeat PASS; full runtime IPC suite 52/52 PASS; Rust test warnings = 0; cargo fmt/clippy PASS; continuity/npm policy gates PASS; actionlint/YAML/PowerShell PASS; Graphify final graph clean; PR #77 exact-head checks PASS; post-merge `main` workflows PASS.
+Completed: targeted cold test PASS; 20/20 repeat PASS; full runtime IPC suite 52/52 PASS; Rust test warnings = 0; cargo fmt/clippy PASS; continuity/npm policy gates PASS; actionlint/YAML/PowerShell PASS; Graphify final graph clean; PR #77 and PR #78 protected exact-head checks PASS; historical post-closure `main` workflows PASS.
 
 ## Completion Criteria
 MET. Protected repair merge completed without bypass; post-merge `main` is green; durable regression evidence exists; npm exceptions remain exact and expiring; runtime/release invariants were not changed.
