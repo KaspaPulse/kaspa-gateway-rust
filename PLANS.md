@@ -2,37 +2,20 @@
 
 ## Status
 
-**ACTIVE — LIVE-SMOKE EFFECTIVE-SETTINGS CONSISTENCY REPAIR**
+**NO ACTIVE MULTI-STAGE PLAN**
 
-## Objective
-Repair custom-endpoint live-smoke consistency and complete safe Windows short-smoke verification for stable mainnet/testnet10 without disturbing unrelated runtime ownership.
+The `REG-0002` live-smoke effective-settings repair is complete. PR #82 synchronized custom loopback RPC/P2P smoke endpoints through canonical `EffectiveNodeSettings`, passed protected integration and post-merge verification, and exact merged Windows short smoke passed for stable mainnet/testnet10 without disturbing the unrelated existing service.
 
-## Success Criteria
-- Custom loopback RPC/P2P smoke endpoints remain identical in top-level and `effective_node` settings.
-- Existing regression test proves non-default isolated ports and existing stable-network/loopback restrictions.
-- Focused and full IPC tests plus strict lint/gates pass.
-- Protected exact-head PR merges without bypass and post-merge `main` is green.
-- Exact merged Windows binary passes isolated mainnet smoke and default testnet10 smoke.
-- Existing service on 16110/16111 is untouched; smoke ports/processes are released after each run.
-- Final state explicitly distinguishes short smoke from full synchronization/production readiness.
+## Usage
 
-## Milestones
-1. Verify repository/runtime reality and Windows test host — COMPLETE.
-2. Run default testnet10 smoke — COMPLETE / PASS.
-3. Reproduce isolated mainnet failure without touching existing service — COMPLETE.
-4. Root-cause effective-settings drift and implement canonical synchronization repair — COMPLETE.
-5. Local regression/stress/lint/continuity/Graphify qualification — IN PROGRESS.
-6. Protected commit/PR/exact-head integration and post-merge verification.
-7. Rebuild merged Windows binary; rerun isolated mainnet and default testnet10 smoke.
-8. Clean smoke artifacts from working tree, reconcile durable state, return plan to inactive sentinel.
-## Progress
-The official testnet10 smoke passed on Windows `Server`. A mainnet smoke using isolated loopback ports reproduced a deterministic parent/self-worker settings mismatch while preserving the unrelated service. The validator is repaired through the canonical effective-settings synchronizer; focused regression and all 52 IPC integration tests pass.
+Create or replace an active-plan body only when work is genuinely long-horizon, multi-stage, migration-heavy, high-risk, or expected to span sessions. Reconcile `PROJECT_STATE.md` first whenever verified repository/runtime/release reality differs from durable state.
 
-## Completion Criteria
-All success criteria above are met, no material warning/failure is hidden, the unrelated service remains unaffected, live-smoke evidence is recorded with its limitations, and repository state can be resumed without conversation context.
+When an active plan reaches completion, update current state, durable memory/checkpoints, relevant ADR/runbook changes, then return this file to **NO ACTIVE MULTI-STAGE PLAN** rather than preserving completed work as active coordination state.
 
-## Constraints
-No force push, rebase, admin bypass, direct self-worker invocation, testnet12 live start, unrelated-service termination, immutable Desktop release mutation, or claim of full sync from short smoke.
+Do not use this file as a duplicate issue tracker, Git log, CI history, release body, or credential store.
 
-## NEXT ACTION
-Finish local qualification/checkpoint, protected-integrate the repair, then rebuild and live-verify exact merged `main` on Windows before final closure.
+## Most Recent Completed Plan
+
+`REG-0002` completed through protected PR #82 at historical repair baseline `fb16b9a18b7e17621dfb1c280fef7951c8b819a7`. Exact merged Windows mainnet/testnet10 short smoke passed on `Server`; smoke-owned ports cleaned up and unrelated PID `35540` remained untouched.
+
+The smoke proved stable-network startup, RPC readiness, peer connectivity, parent-loss cleanup, and relaunch reconciliation. It did **not** prove full IBD or production-capacity readiness; both networks remained unsynced during the short observation window and the test drive was below the 640 GB production-disk guideline.
