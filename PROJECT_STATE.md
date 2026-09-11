@@ -2,7 +2,7 @@
 
 ## Metadata
 
-- Last state update: 2026-09-11 after PR #80 protected merge and successful post-merge security/CI verification.
+- Last state update: 2026-09-11 during `REG-0002` Windows live-smoke effective-settings consistency repair after PR #81 merge.
 - State author/agent: Remote Desktop Commander continuity reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
@@ -10,10 +10,10 @@
 ## Executive Status
 
 - Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; REPOSITORY RELEASE_ADMIN_TOKEN RETIRED; ASSOCIATED PAT REVOCATION NOT VERIFIED**.
-- Current objective: **COMPLETE for repository-owned security hygiene** — `RELEASE_ADMIN_TOKEN` is retired and protected against workflow reintroduction; the exact E2E npm residual-risk contract was freshly reviewed without widening or extending exceptions.
-- Current engineering blocker: **NONE for repository-owned work**. The historical associated fine-grained PAT remains account-level **NOT VERIFIED**, and live runtime smoke remains **NOT VERIFIED** while the authorized Windows `KaspaGateway` device is offline.
+- Current objective: **IN PROGRESS — REG-0002 LIVE-SMOKE EFFECTIVE-SETTINGS CONSISTENCY REPAIR**. Synchronize custom loopback RPC/P2P smoke endpoints through canonical `EffectiveNodeSettings`, protected-integrate the repair, then rerun exact merged Windows mainnet/testnet10 short smoke on `Server` without disturbing the unrelated 16110/16111 service.
+- Current engineering blocker: **NONE locally**. The repair is implemented and locally qualified; remaining work is protected GitHub integration plus Windows rebuild/retest on exact merged `main`. The historical fine-grained PAT remains account-level **NOT VERIFIED**.
 - PR #76 **MERGED** as `3f8174c7e9e663da81e29eda5cd889de196eec7e`; PR #77 **MERGED** as `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`; PR #78 **MERGED** as historical closure baseline `50ad815b3a7569c576d7625900462734961cbc69`.
-- `PLANS.md` is **NO ACTIVE MULTI-STAGE PLAN** after protected PR #80 integration and post-merge verification.
+- `PLANS.md` is **ACTIVE** for `REG-0002` repair, protected integration, and exact merged Windows live-smoke verification.
 - Repository Actions secret `RELEASE_ADMIN_TOKEN` is **REMOVED / VERIFIED ABSENT BY NAME** after proving no active tracked workflow/code dependency. The historical associated fine-grained PAT remains account-level **NOT VERIFIED**; its value must never be recorded or guessed.
 
 ## Repository State
@@ -21,7 +21,7 @@
 - Default integration branch: `main`.
 - Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; do not embed the state-document commit as a forever-current HEAD.
 - Current remote main: **VERIFY DYNAMICALLY** from Git/GitHub before any decision that depends on it; the timestamped reconciliation observation is recorded below.
-- Working tree: **VERIFY DYNAMICALLY** before every new task; historical security-hygiene integration completed cleanly.
+- Working tree: **VERIFY DYNAMICALLY**; at this checkpoint it is intentionally **DIRTY** with the `REG-0002` repair/state evidence before commit.
 - State-document commit: derive dynamically from Git when needed; do not copy a self-referential state SHA into this document.
 - Verified code baseline (historical reconciliation observation): `9a7b18f76dd6184785a4cf972daa1431ee07138f`.
 - Verified continuity-lifecycle implementation commit (historical evidence): `f270d5c811176396df0a6c06ac9ad983cb7f229b`.
@@ -30,7 +30,7 @@
 - Verified final repair baseline (historical evidence): `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5` (`fix(ci): eliminate post-ready worker race (#77)`).
 - Verified closure baseline (historical evidence): `50ad815b3a7569c576d7625900462734961cbc69` (`docs: finalize continuity repair closure (#78)`).
 - The dedicated checkout was fast-forwarded from `b911eb44619f8eab706bc2fe786d1c84ac958f1d` to the verified remote head with no local divergence (`ahead=0`, `behind=0`) before this documentation reconciliation.
-- Current task branch: **NONE AUTHORITATIVE WHILE IDLE**; derive the actual branch dynamically. Historical security-hygiene integration merged through PR #80.
+- Current task branch: `fix/live-smoke-effective-settings-overrides-20260911`, based on merged `main` baseline `fad670eb29ac3b8a2bb3315032403dc22c060f2d`.
 - Working tree was clean before the reconciliation branch was created.
 - Open pull request query returned an empty set at reconciliation time.
 - PR #51 is `CLOSED` and was not merged; it is no longer an active maintenance item.
@@ -64,7 +64,7 @@
 - Rust workspace toolchain is now Rust `1.98.1`; edition remains `2024`.
 - Desktop Node engine remains `>=24 <27`.
 - `AGENTS.override.md` is absent in the verified current checkout; `AGENTS.md` is the active repository policy.
-- `PLANS.md` is **NO ACTIVE MULTI-STAGE PLAN**; repository-owned credential-retirement/npm-review work is complete.
+- `PLANS.md` is **ACTIVE** for the live-smoke effective-settings repair and final Windows verification.
 - The September dependency-maintenance sequence is present in verified `main` history:
   - PR #75: dependency security repair and safe Dependabot auto-merge workflow.
   - PR #71: grouped Cargo minor/patch maintenance.
@@ -219,8 +219,8 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ### Live Runtime Verification
 
-- Result: **NOT VERIFIED**.
-- Reason: the repository-supported live smoke is Windows-only; it was not run on Linux `kas`, and authorized Windows device `KaspaGateway` was offline at the closure boundary.
+- Result: **PARTIALLY VERIFIED / REPAIR IN PROGRESS**.
+- Windows `Server` is the authorized smoke host for this task. Official testnet10 short smoke passed on baseline `main` with Rusty Kaspa 2.0.1, RPC ready, 8 peers, parent-loss cleanup, and relaunch reconciliation. Isolated mainnet RPC 16120 / P2P 16121 reproduced `effective Node settings do not match worker-owned compatibility arguments`; ports cleaned and unrelated PID 35540 on 16110/16111 remained untouched.
 
 ### Graphify
 
@@ -239,9 +239,9 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## Known Issues / Blockers
 
-- No repository-owned engineering blocker remains. PR #80 is merged and its post-merge `main` CI/security checks are green on historical security-hygiene baseline `1e650b6e96873d269f8a1b09c900a31abd7a7eb6`.
+- `REG-0002` is the active repository-owned item. Root cause is confirmed and locally repaired; focused regression PASS, runtime IPC suite 52/52 PASS, fmt/diff-check PASS, targeted strict Clippy PASS. Protected integration and exact merged Windows smoke remain.
 - Repository secret hygiene is **VERIFIED/CLOSED** for `RELEASE_ADMIN_TOKEN`; the exact historical fine-grained PAT remains account-level **NOT VERIFIED** and must not be guessed among unrelated credentials.
-- Live Kaspa node/bridge runtime health remains **NOT VERIFIED**: the supported smoke is Windows-only, and authorized `KaspaGateway` was offline at the closure boundary.
+- Live runtime is **PARTIALLY VERIFIED**: baseline testnet10 short smoke PASS on Windows `Server`; isolated mainnet exposed `REG-0002` and awaits retest after protected repair integration. Full sync/production capacity remains NOT VERIFIED.
 - Major Dependabot updates and dependency groups containing `duckdb` are intentionally excluded from unattended auto-merge and require explicit compatibility review.
 
 ## Risks
@@ -281,11 +281,11 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## NEXT ACTION
 
-1. No further repository-owned action is required for the completed credential-retirement/npm-review task.
-2. Re-review the exact E2E npm residual-risk contract no later than 2026-10-10 and remove exceptions immediately when a supported upstream path exists.
-3. Run the official Windows mainnet/testnet10 live smoke when the authorized `KaspaGateway` device is online; do not substitute Linux `kas` for that Windows-only contract.
-4. Revoke/delete the historical fine-grained PAT only if an authorized account-level surface identifies that exact token; do not guess among unrelated credentials.
-5. Start any new repository task from dynamically verified `main`, branch, working tree, open PRs, and relevant CI/runtime reality.
+1. Finish continuity/Graphify/PowerShell qualification and checkpoint `REG-0002`.
+2. Commit without CI skip, push protected PR, exact-head qualify, squash-merge without bypass, and verify post-merge `main`.
+3. Rebuild/update exact merged `main` on Windows `Server`; rerun isolated mainnet on 16120/16121 and default testnet10 short smoke while preserving unrelated PID 35540 on 16110/16111.
+4. Return task/plan state to idle only after smoke-owned ports/processes are clean and evidence is recorded; do not claim full synchronization/production capacity from short smoke.
+5. Independently re-review npm exceptions by 2026-10-10; revoke the historical PAT only if the exact token can be safely identified.
 
 ## Resume Instructions
 

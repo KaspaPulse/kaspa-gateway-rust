@@ -257,11 +257,19 @@ fn live_smoke_parent_accepts_only_valid_stable_network_runtime_settings() {
     let accepted = integrated_runtime_commands::kgw_validate_live_smoke_parent_settings_v1(
         "mainnet",
         &appdir,
-        "127.0.0.1:16110",
-        Some("127.0.0.1:16111"),
+        "127.0.0.1:16120",
+        Some("127.0.0.1:16121"),
     )
     .expect("valid isolated mainnet smoke settings must pass");
     assert_eq!(accepted.network.as_str(), "mainnet");
+    assert_eq!(accepted.rpc_endpoint, "127.0.0.1:16120");
+    assert_eq!(accepted.effective_node.rpc_listen, accepted.rpc_endpoint);
+    assert_eq!(accepted.p2p_listen.as_deref(), Some("127.0.0.1:16121"));
+    assert_eq!(
+        accepted.effective_node.p2p_listen.as_deref(),
+        accepted.p2p_listen.as_deref(),
+        "live-smoke compatibility arguments must stay synchronized with effective settings",
+    );
     assert!(
         integrated_runtime_commands::kgw_validate_live_smoke_parent_settings_v1(
             "testnet12",

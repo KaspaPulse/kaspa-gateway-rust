@@ -2,29 +2,37 @@
 
 ## Status
 
-**NO ACTIVE MULTI-STAGE PLAN**
+**ACTIVE — LIVE-SMOKE EFFECTIVE-SETTINGS CONSISTENCY REPAIR**
 
-The repository-owned credential-retirement and npm residual-risk review is complete. PR #80 retired the obsolete repository secret path, added fail-closed workflow protection, refreshed npm review evidence, and passed protected integration plus post-merge `main` verification. Current facts belong in `PROJECT_STATE.md`; durable security/known-failure evidence belongs in project memory; implementation history belongs in Git/PRs.
+## Objective
+Repair custom-endpoint live-smoke consistency and complete safe Windows short-smoke verification for stable mainnet/testnet10 without disturbing unrelated runtime ownership.
 
-## Usage
+## Success Criteria
+- Custom loopback RPC/P2P smoke endpoints remain identical in top-level and `effective_node` settings.
+- Existing regression test proves non-default isolated ports and existing stable-network/loopback restrictions.
+- Focused and full IPC tests plus strict lint/gates pass.
+- Protected exact-head PR merges without bypass and post-merge `main` is green.
+- Exact merged Windows binary passes isolated mainnet smoke and default testnet10 smoke.
+- Existing service on 16110/16111 is untouched; smoke ports/processes are released after each run.
+- Final state explicitly distinguishes short smoke from full synchronization/production readiness.
 
-Create or replace an active-plan body only when work is genuinely long-horizon, multi-stage, migration-heavy, high-risk, or expected to span sessions. Reconcile `PROJECT_STATE.md` first whenever verified repository/runtime/release reality differs from durable state.
+## Milestones
+1. Verify repository/runtime reality and Windows test host — COMPLETE.
+2. Run default testnet10 smoke — COMPLETE / PASS.
+3. Reproduce isolated mainnet failure without touching existing service — COMPLETE.
+4. Root-cause effective-settings drift and implement canonical synchronization repair — COMPLETE.
+5. Local regression/stress/lint/continuity/Graphify qualification — IN PROGRESS.
+6. Protected commit/PR/exact-head integration and post-merge verification.
+7. Rebuild merged Windows binary; rerun isolated mainnet and default testnet10 smoke.
+8. Clean smoke artifacts from working tree, reconcile durable state, return plan to inactive sentinel.
+## Progress
+The official testnet10 smoke passed on Windows `Server`. A mainnet smoke using isolated loopback ports reproduced a deterministic parent/self-worker settings mismatch while preserving the unrelated service. The validator is repaired through the canonical effective-settings synchronizer; focused regression and all 52 IPC integration tests pass.
 
-When an active plan reaches completion, update current state, durable memory/checkpoints, relevant ADR/runbook changes, then return this file to **NO ACTIVE MULTI-STAGE PLAN** rather than preserving completed work as active coordination state.
+## Completion Criteria
+All success criteria above are met, no material warning/failure is hidden, the unrelated service remains unaffected, live-smoke evidence is recorded with its limitations, and repository state can be resumed without conversation context.
 
-Do not use this file as a duplicate issue tracker, Git log, CI history, release body, or credential store.
+## Constraints
+No force push, rebase, admin bypass, direct self-worker invocation, testnet12 live start, unrelated-service termination, immutable Desktop release mutation, or claim of full sync from short smoke.
 
-## Most Recent Completed Plan
-
-Credential retirement and npm residual-risk review completed through protected PR #80. Repository secret `RELEASE_ADMIN_TOKEN` is removed and workflow dependency on that retired name is now fail-closed. The 2026-09-11 npm review confirmed the existing upstream-only exceptions remain necessary under the supported dependency contract and still expire on 2026-10-10.
-
-Durable evidence locations:
-- Current resumable state: `PROJECT_STATE.md`, `CURRENT_STATE.md`, and `ACTIVE_TASK.md`.
-- Task checkpoint: `docs/handoff-ledger/2026-09-11-credential-retirement-npm-review.md`.
-- Credential-retirement record: `docs/project-memory/SECURITY/SEC-0003-release-admin-token-retirement.md`.
-- Npm residual-risk record: `docs/project-memory/SECURITY/SEC-0002-e2e-npm-dependency-policy.md`.
-- Graphify warning record: `docs/project-memory/KNOWN_FAILURES/FAIL-0003-graphify-static-json-zero-node.md`.
-- Implementation/review history: Git and PR #80.
-- Published release history remains owned by GitHub Releases and was not changed by this plan.
-
-Start a new scoped plan only when a future task independently meets the multi-stage criteria above.
+## NEXT ACTION
+Finish local qualification/checkpoint, protected-integrate the repair, then rebuild and live-verify exact merged `main` on Windows before final closure.

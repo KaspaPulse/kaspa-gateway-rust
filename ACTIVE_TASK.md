@@ -1,41 +1,40 @@
 # ACTIVE TASK
 
 ## Status
-COMPLETE — VERIFIED AND MERGED
+IN PROGRESS — LIVE-SMOKE EFFECTIVE-SETTINGS CONSISTENCY REPAIR
 
 ## Objective
-Close repository-owned credential-retirement and npm residual-risk review without weakening dependency contracts, runtime/release invariants, or branch protection.
+Repair the confirmed custom-endpoint drift in the Windows live-smoke parent/self-worker contract, integrate the fix through protected GitHub flow, and finish mainnet/testnet10 short live verification on `Server` without disturbing the unrelated mainnet service already using ports 16110/16111.
 
 ## Scope
-- Retire the unused repository Actions secret `RELEASE_ADMIN_TOKEN` without handling its value.
-- Prevent tracked workflows from silently depending on the retired secret again.
-- Re-review the exact E2E npm residual-risk exceptions against current supported upstream versions.
-- Preserve the existing 2026-10-10 npm review deadline unless a supported fix removes the exceptions.
-- Integrate through protected squash PR flow and verify post-merge `main`.
+- Synchronize custom loopback RPC/P2P smoke endpoints through the canonical `EffectiveNodeSettings` path.
+- Extend the existing live-smoke regression test with non-default isolated ports.
+- Preserve testnet12 prohibition, loopback-only validation, parent identity, and effective-settings equality checks.
+- Never stop/kill the unrelated `kaspad` service solely to obtain default ports.
+- Protected squash integration only; no admin bypass, force push, or rebase.
 
 ## Current Phase
-No active repository engineering phase remains for this task. PR #80 merged as historical security-hygiene baseline `1e650b6e96873d269f8a1b09c900a31abd7a7eb6`, and its post-merge `main` checks are green.
+`REG-0002` is reproduced and locally repaired. The focused regression test passed after a cold build and the full runtime IPC integration suite passed 52/52. Targeted strict Clippy qualification is PASS.
 
 ## Confirmed Progress
-`RELEASE_ADMIN_TOKEN` is removed and verified absent by repository secret-name listing. The continuity/security gate rejects future workflow references to that retired name, with a fail-closed regression fixture. The 2026-09-11 npm review found no supported compatible path to remove the existing 3 Low / 2 deprecation exceptions, so their exact identities and 2026-10-10 expiry remain unchanged.
-
+On Windows `Server`, official testnet10 live smoke passed with Rusty Kaspa 2.0.1, RPC ready, 8 peers, parent-loss cleanup, and relaunch reconciliation. Isolated mainnet smoke on RPC 16120 / P2P 16121 reproduced deterministic effective-settings drift while the unrelated service on 16110/16111 remained untouched and both isolation ports were cleaned up.
 ## Current Blocker
-NONE for repository-owned work. Historical fine-grained PAT revocation remains account-level **NOT VERIFIED** because no exact token identifier/value is stored or safely exposed here. Live runtime smoke remains **NOT VERIFIED** because the supported smoke is Windows-only and the `KaspaGateway` device is offline.
+NONE locally. The remaining work is protected CI plus Windows rebuild/retest on the merged repair.
 
 ## Last Completed Action
-Verified PR #80 protected merge and successful post-merge `main` checks: quality, npm/continuity gates, Rust security analysis, Secret Scan, and supply-chain posture all passed on `1e650b6e96873d269f8a1b09c900a31abd7a7eb6`; the retired repository secret remained absent after merge.
+Validated the root cause, changed the validator to use `apply_effective_node_settings`, added RPC/P2P synchronization assertions, passed the focused regression test, and passed all 52 runtime IPC integration tests.
 
 ## Current Action
-NONE. This repository-owned security task is closed; derive repository reality dynamically before starting new work.
+Finish continuity/Graphify/PowerShell qualification and checkpoint this repair without changing unrelated runtime/release policy.
 
 ## Next Action
-Review the exact npm exception contract no later than 2026-10-10. Run the official Windows live-network smoke for mainnet/testnet10 when the authorized `KaspaGateway` Windows device is online. Revoke the historical PAT only if an authorized account-level surface identifies that exact token.
+Commit without CI skip, push protected PR, exact-head qualify and squash-merge, then rebuild the exact merged Windows `main` and rerun isolated mainnet plus default testnet10 smoke.
 
 ## Verification Required
-Completed: secret absence, zero workflow references, continuity gate/tests (7 negative cases), npm policy gate/tests, E2E lint/check, actionlint/YAML/PowerShell, Graphify warning-free health, PR #80 exact-head checks, and post-merge `main` checks.
+Focused regression PASS; full IPC 52/52 PASS; fmt/diff check PASS; strict Clippy; continuity gate/tests; PowerShell/YAML/actionlint where applicable; Graphify health/query; exact-head PR checks; post-merge `main`; repaired Windows smoke with port/service preservation.
 
 ## Completion Criteria
-MET for repository-owned work. The repository secret is retired, regression protection is merged, npm review evidence is current and unextended, protected integration is green, and unresolved external items remain explicitly NOT VERIFIED.
+Protected repair merged green; post-merge `main` green; isolated mainnet and default testnet10 short smoke pass on the exact merged Windows binary; smoke-owned ports/processes clean up; unrelated PID/service remains untouched; durable state records short-smoke limits without claiming full synchronization/production capacity.
 
 ## DO NOT REPEAT
-Do not recreate `RELEASE_ADMIN_TOKEN`, guess/revoke unrelated PATs, force unsupported npm major overrides, broaden/extend the npm exception contract without evidence, or run the Windows-only live smoke on Linux `kas`.
+Do not kill the unrelated mainnet service, bypass the worker equality check, use unsupported direct self-worker invocation, broaden live-smoke network scope to testnet12, or classify short smoke as full production readiness.
