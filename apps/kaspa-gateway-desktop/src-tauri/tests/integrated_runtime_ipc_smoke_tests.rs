@@ -1,3 +1,7 @@
+// This integration harness path-includes the complete runtime module but intentionally
+// exercises only selected private entry points. Suppress artificial dead-code warnings
+// for this test-only module; production targets remain warning-strict.
+#[allow(dead_code)]
 #[path = "../src/integrated_runtime_commands.rs"]
 mod integrated_runtime_commands;
 
@@ -104,6 +108,7 @@ fn clear_runtime_worker_test_env() {
         "KGW_TEST_SELF_WORKER_FAIL_ON_STOP",
         "KGW_TEST_SELF_WORKER_BRIDGE_LISTENER_FAIL_ON_STOP",
         "KGW_TEST_SELF_WORKER_EXIT_AFTER_READY_MS",
+        "KGW_TEST_SELF_WORKER_EXIT_AFTER_READY_ACK_PATH",
         "KGW_TEST_SELF_WORKER_OWNED_NODE_STOP_MARKER_PATH",
         "KGW_TEST_SELF_WORKER_PARENT_PID",
         "KGW_TEST_SELF_WORKER_PARENT_START_TIME",
@@ -648,6 +653,22 @@ fn post_ready_worker_failure_is_non_running_durable_and_restartable_for_all_role
         ("bridge", "remote", "official-external-node"),
         ("bridge", "integrated-inproc", "official-inprocess-node"),
     ] {
+        let ready_ack_path = std::env::temp_dir()
+            .join("KaspaGateway")
+            .join("test-fixtures")
+            .join(format!(
+                "post-ready-exit-ack-{}-{role}-{bridge_kind}",
+                std::process::id()
+            ));
+        if let Some(parent) = ready_ack_path.parent() {
+            std::fs::create_dir_all(parent).expect("post-READY ACK directory must be creatable");
+        }
+        let _ = std::fs::remove_file(&ready_ack_path);
+        set_runtime_worker_test_env(
+            "KGW_TEST_SELF_WORKER_EXIT_AFTER_READY_ACK_PATH",
+            &ready_ack_path,
+        );
+
         let started = kgw_kgw_apply_node_settings_v1(
             "mainnet".to_string(),
             node_kind.to_string(),
@@ -663,6 +684,15 @@ fn post_ready_worker_failure_is_non_running_durable_and_restartable_for_all_role
         )
         .unwrap_or_else(|error| panic!("{role}/{bridge_kind} fixture must reach READY: {error}"));
         assert_contains_all(&started, &["runtime_state=running", "readiness=READY"]);
+
+        let pre_ack_status = integrated_runtime_commands::kgw_runtime_owner_status_v1(
+            Some("mainnet".to_string()),
+            Some(role.to_string()),
+        )
+        .expect("worker must remain readable before post-READY exit acknowledgement");
+        assert_contains_all(&pre_ack_status, &["running=true", "readiness=READY"]);
+        std::fs::write(&ready_ack_path, b"ACK")
+            .expect("test must acknowledge parent-observed READY before deliberate exit");
 
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
         let status = loop {

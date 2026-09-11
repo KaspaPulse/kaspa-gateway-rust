@@ -2,7 +2,7 @@
 
 ## Metadata
 
-- Last state update: 2026-09-10 20:36 +03:00.
+- Last state update: 2026-09-10 23:13 +03:00; refreshed during post-merge regression repair.
 - State author/agent: Remote Desktop Commander continuity reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
@@ -10,10 +10,10 @@
 ## Executive Status
 
 - Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; OWNER CREDENTIAL RETIREMENT NOT VERIFIED**.
-- Current objective: repair the E2E npm security failure discovered by PR #76, push the already-qualified local repair to the same PR, complete exact-head protected qualification, squash merge, and verify post-merge `main` without reopening completed release work.
-- Current engineering blocker: **NONE**.
-- Current task pull request: **PR #76 OPEN** on `feature/project-continuity-lifecycle-20260910` -> `main`; remote head before the npm repair push is `0ec7d01b9d0b5ff5f268db154caa0dd0420f6664`.
-- `PLANS.md` is **ACTIVE** for PR #76 npm security repair, exact-head qualification, protected merge, and post-merge verification.
+- Current objective: restore fully green protected `main` after PR #76 by repairing the confirmed post-READY integration-test race, integrate the deterministic test-only fix through a new protected PR, and verify post-merge `main` without reopening completed release work.
+- Current engineering blocker: **POST-MERGE CI REGRESSION UNDER VERIFIED LOCAL REPAIR; remote protected qualification still required**.
+- PR #76 is **MERGED** as `3f8174c7e9e663da81e29eda5cd889de196eec7e`. No repair PR has been pushed yet for the post-merge Rust-test regression.
+- `PLANS.md` is **ACTIVE** for post-merge CI regression repair, protected exact-head integration, and final `main` verification.
 - Owner-only security hygiene remains external and **NOT VERIFIED**: remove repository Actions secret `RELEASE_ADMIN_TOKEN` and revoke/delete the associated short-lived fine-grained PAT. Its value must never be recorded in chat, repository files, logs, evidence bundles, or documentation.
 
 ## Repository State
@@ -21,7 +21,7 @@
 - Default integration branch: `main`.
 - Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; do not embed the state-document commit as a forever-current HEAD.
 - Current remote main: **VERIFY DYNAMICALLY** from Git/GitHub before any decision that depends on it; the timestamped reconciliation observation is recorded below.
-- Working tree: **VERIFY DYNAMICALLY**; at the 2026-09-10 20:36 +03 checkpoint it is intentionally DIRTY with the locally qualified PR #76 npm repair/policy/state reconciliation awaiting commit.
+- Working tree: **VERIFY DYNAMICALLY**; at the current checkpoint it is intentionally DIRTY with the locally verified post-merge Rust race repair, regression record, and closure hardening awaiting commit.
 - State-document commit: derive dynamically from Git when needed; do not copy a self-referential state SHA into this document.
 - Verified code baseline (historical reconciliation observation): `9a7b18f76dd6184785a4cf972daa1431ee07138f`.
 - Verified continuity-lifecycle implementation commit (historical evidence): `f270d5c811176396df0a6c06ac9ad983cb7f229b`.
@@ -29,7 +29,7 @@
 - Origin: `https://github.com/KaspaPulse/kaspa-gateway-rust.git`.
 - Verified remote `main`: `9a7b18f76dd6184785a4cf972daa1431ee07138f` (`chore(deps): bump the github-actions group with 4 updates (#67)`).
 - The dedicated checkout was fast-forwarded from `b911eb44619f8eab706bc2fe786d1c84ac958f1d` to the verified remote head with no local divergence (`ahead=0`, `behind=0`) before this documentation reconciliation.
-- Current task branch: `feature/project-continuity-lifecycle-20260910`, isolated in `/home/kas/kaspa-gateway-dev/codex/worktrees/project-continuity-lifecycle-20260910`; it is pushed and PR #76 is open. The remote PR head remains `0ec7d01b...` until the qualified npm repair commit is pushed.
+- Current task branch: `fix/post-merge-ci-race-20260911`, isolated in `/home/kas/kaspa-gateway-dev/codex/worktrees/project-continuity-lifecycle-20260910`; it currently starts from the merged PR #76 `main` baseline and has not yet been pushed as a repair PR.
 - Working tree was clean before the reconciliation branch was created.
 - Open pull request query returned an empty set at reconciliation time.
 - PR #51 is `CLOSED` and was not merged; it is no longer an active maintenance item.
@@ -41,7 +41,7 @@
 ## Uncommitted Work
 
 - No pre-existing user source-code changes were present when this session began.
-- The continuity lifecycle implementation is complete and already under PR #76. Additional intentional uncommitted work now contains only the E2E npm security repair, fail-closed npm policy/regression protection, and state/security documentation reconciliation; no unrelated application/runtime changes are present.
+- The continuity lifecycle and npm policy implementation from PR #76 are merged. Intentional uncommitted work now contains only post-merge CI repair/hardening: deterministic test-only READY synchronization, REG-0001, duplicate stable-ID protection, npm-install diagnostics, and state/risk reconciliation; no production runtime protocol change is intended.
 - A stale/prunable Git worktree registration under `/tmp/kaspa-gateway-lanes/.../p10-macos-qualification-from-dmg` was observed. It is not part of the active checkout and is not being removed without a separate cleanup reason.
 - Repository secret/PAT retirement remains an external GitHub-settings action, not repository code.
 
@@ -63,7 +63,7 @@
 - Rust workspace toolchain is now Rust `1.98.1`; edition remains `2024`.
 - Desktop Node engine remains `>=24 <27`.
 - `AGENTS.override.md` is absent in the verified current checkout; `AGENTS.md` is the active repository policy.
-- `PLANS.md` is **ACTIVE** while the verified local lifecycle implementation is being exact-head qualified and integrated through GitHub.
+- `PLANS.md` is **ACTIVE** while the post-merge Rust-test regression is being repaired and prepared for protected integration.
 - The September dependency-maintenance sequence is present in verified `main` history:
   - PR #75: dependency security repair and safe Dependabot auto-merge workflow.
   - PR #71: grouped Cargo minor/patch maintenance.
@@ -71,21 +71,19 @@
   - PR #72: desktop npm minor/patch maintenance.
   - PR #73: E2E npm minor/patch maintenance.
   - PR #67: GitHub Actions maintenance.
-- Historical verified `main` baseline is `9a7b18f76dd6184785a4cf972daa1431ee07138f`; PR #76 is currently open against `main`. Re-fetch before the repair push because current remote-main freshness is authoritative.
+- Historical fully green pre-PR-#76 `main` baseline is `9a7b18f76dd6184785a4cf972daa1431ee07138f`. PR #76 later merged as `3f8174c7e9e663da81e29eda5cd889de196eec7e`; re-fetch before the new repair push because current remote-main freshness is authoritative.
 - `.github/workflows/dependabot-auto-merge.yml` is present. It enables protected squash auto-merge only for verified Dependabot minor/patch updates, excludes dependency sets containing `duckdb`, and does not auto-approve major updates.
 
 ### CI
 
-- Exact current `main` head `9a7b18f76dd6184785a4cf972daa1431ee07138f` has successful push runs for `CI`, `Workflow Lint`, `Secret Scan`, `OpenSSF Scorecard`, `Dependency & Supply Chain Security`, and `CodeQL`.
-- Current-head push CI run `34114469182` completed **success**.
-- Current-head dependency/supply-chain run `34114469226` completed **success**.
-- Current-head CodeQL push run `34114469224` completed **success**; scheduled CodeQL run `34450142563` also completed **success**.
-- Current-head Secret Scan push run `34114469219` completed **success**; scheduled Secret Scan run `34332233837` also completed **success**.
-- Strict dependency ruleset ID `22426271` requires these seven contexts on `main`: `quality (rust + npm)`, `policy + audit + deny + machete`, `dependency vulnerability and license review`, `Rust security-extended analysis`, `TruffleHog verified and unknown secrets`, `actionlint`, and `Rust address fuzzing`.
-- Historical success never transfers to a moved pull-request head; future protected merges must satisfy the applicable exact-head rules.
-- PR #76 first exact-head qualification at `0ec7d01b...` passed actionlint, Secret Scan, Dependency Review, supply-chain policy/audit/deny/machete, Rust address fuzzing, and Rust security-extended/CodeQL. `quality (rust + npm)` failed only at the late E2E npm audit step after Rust checks/tests succeeded.
-- The PR #76 E2E failure was High GHSA-2883-xcg3-v3hh in `js-yaml` 4.3.1. The local repair updates exact WebdriverIO 9.31 pins to 9.31.7, resolves `js-yaml` 4.3.2, and locally reports 0 Critical/High/Moderate npm findings.
-- Residual E2E npm risk is explicitly controlled rather than hidden: one Low GHSA-73rr-hh4g-fpgx dependency chain appears as three audit nodes, and exactly two upstream deprecations remain (`glob` 10.5.0, `whatwg-encoding` 3.1.1). `docs/security/npm-dependency-policy.json` expires these accepted exceptions on 2026-10-10 and fails closed on drift.
+- PR #76 merged as `3f8174c7e9e663da81e29eda5cd889de196eec7e` after its repaired exact head satisfied protected merge requirements.
+- Post-merge push workflows on that `main` commit: CodeQL `34516559022` success; Secret Scan `34516558918` success; OpenSSF Scorecard `34516559014` success; Workflow Lint `34516558949` success; Dependency & Supply Chain Security `34516558906` success.
+- Post-merge CI run `34516559028` failed only in `quality (rust + npm)` -> `Run Rust tests` -> `post_ready_worker_failure_is_non_running_durable_and_restartable_for_all_roles`.
+- Confirmed root cause: the test self-worker wrote READY, then used a fixed 40 ms deliberate-exit delay. Under runner load, the child could exit after READY but before the parent completed READY ownership registration and returned start success.
+- Local repair uses a test-only READY ACK file: deliberate exit timing starts only after the caller observes successful start plus `running=true` / `readiness=READY`. The production parent `try_wait()` startup safety behavior is unchanged.
+- Regression evidence: targeted cold test PASS; 20/20 consecutive repetitions PASS; full `integrated_runtime_ipc_smoke_tests` 52/52 PASS; test-harness Rust warnings = 0.
+- Strict dependency ruleset ID `22426271` continues to require the seven protected contexts; historical success does not transfer to the new repair head.
+- Npm policy from PR #76 remains active: zero Critical/High/Moderate findings; exact Low/deprecation exceptions expire 2026-10-10 and fail closed on drift.
 
 ### Release Distribution
 
@@ -150,10 +148,10 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - Repository-native continuity now includes `ACTIVE_TASK.md`, `CURRENT_STATE.md`, atomic handoff checkpoints, permanent project-memory categories/templates/records, and fail-closed regression tests in addition to the pre-existing `PROJECT_STATE.md`/`PLANS.md`/ADR/runbook model.
 - The verified local implementation commit for that lifecycle is `f270d5c811176396df0a6c06ac9ad983cb7f229b`; derive current HEAD dynamically on resume.
 - Verified current `main` history contains the September maintenance sequence PRs #75, #71, #74, #72, #73, and #67.
-- Current remote `main` is `9a7b18f76dd6184785a4cf972daa1431ee07138f`; the dedicated checkout matched it with zero ahead/behind divergence before this local documentation branch was created.
+- Historical pre-PR-#76 fully green `main` was `9a7b18f76dd6184785a4cf972daa1431ee07138f`; PR #76 then merged as `3f8174c7e9e663da81e29eda5cd889de196eec7e`. Current remote `main` must be verified dynamically before push.
 - No open pull requests were present at the reconciliation boundary.
 - Protected Dependabot minor/patch auto-merge is present and the repository variable is enabled; major updates and dependency sets containing `duckdb` remain outside unattended auto-merge.
-- The current `main` exact-head CI/security workflow set observed in this reconciliation is successful.
+- On PR #76 merge `3f8174c7...`, five security/lint/scorecard push workflows succeeded but CI run `34516559028` failed one Rust integration-test race; therefore current `main` is not claimed fully green until the repair lands and post-merge CI passes.
 - No Desktop `0.1.1` release asset, tag, or source target was changed by this reconciliation session.
 
 ## Last Verified Validation
@@ -163,7 +161,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - `node --check tools/kgw_project_continuity_gate.cjs`: **PASS**.
 - `node --check tools/kgw_project_continuity_gate_tests.cjs`: **PASS**.
 - `node tools/kgw_project_continuity_gate.cjs`: **PASS** with active/current state, handoff/project memory, dynamic Git-state, regression/security lifecycle, plan/ADR, and release-runbook checks.
-- `node tools/kgw_project_continuity_gate_tests.cjs`: **PASS** with one positive fixture and five fail-closed negative cases.
+- `node tools/kgw_project_continuity_gate_tests.cjs`: **PASS** with one positive fixture and six fail-closed negative cases.
 - Additional temporary negative checks for missing `ACTIVE_TASK.md`, no durable checkpoint, and invalid project-memory status failed as expected and recovered after restoration.
 - `git diff --check`: **PASS**.
 - Python YAML parse of `.github/workflows/ci.yml`: **PASS**.
@@ -182,20 +180,29 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - E2E `npm run check`: **PASS** including the deepmerge security compatibility smoke.
 - Policy execution was moved immediately after npm installation in blocking CI so dependency failures stop before expensive Rust compilation.
 
+### Post-Merge Rust Regression Repair
+
+- `REG-0001` records CI run `34516559028`, the fixed-time 40 ms post-READY fixture race, the test-only ACK repair, and the no-sleep-increase/no-safety-weakening boundary.
+- Targeted test after cold build: **PASS**.
+- Consecutive stress repetitions on the warm build: **20/20 PASS** under concurrent host load.
+- Complete `integrated_runtime_ipc_smoke_tests`: **52/52 PASS**.
+- After test-module-scoped dead-code suppression for the path-included runtime module, the complete suite remains **52/52 PASS** with zero Rust test-harness warnings.
+- Protected repair-PR CI and post-merge `main` CI remain required; local evidence is not substituted for remote qualification.
+
 ### Current Main CI
 
-- Exact head: `9a7b18f76dd6184785a4cf972daa1431ee07138f`.
-- Push CI run `34114469182`: **success**.
-- Workflow Lint run `34114469184`: **success**.
-- OpenSSF Scorecard run `34114469188`: **success**.
+- Current remote/main identity must be **VERIFY DYNAMICALLY** before decisions; the post-PR-#76 historical observation is merge `3f8174c7e9e663da81e29eda5cd889de196eec7e`.
+- On that observation, five push workflows succeeded: CodeQL `34516559022`, Secret Scan `34516558918`, OpenSSF Scorecard `34516559014`, Workflow Lint `34516558949`, and Dependency & Supply Chain Security `34516558906`.
+- CI run `34516559028` failed in one Rust integration-test race. It is **not** classified as green main evidence.
+- The deterministic ACK repair is locally verified but remains unmerged until a new protected exact-head PR passes.
 
 ### Security / Supply Chain
 
-- Dependency & Supply Chain Security run `34114469226`: **success**.
-- CodeQL push run `34114469224`: **success**.
-- Secret Scan push run `34114469219`: **success**.
-- Scheduled CodeQL run `34450142563` on the same head: **success**.
-- Scheduled Secret Scan run `34332233837` on the same head: **success**.
+- Post-PR-#76 Dependency & Supply Chain Security run `34516558906`: **success**.
+- Post-PR-#76 CodeQL run `34516559022`: **success**.
+- Post-PR-#76 Secret Scan run `34516558918`: **success**.
+- The post-merge CI regression is a deterministic test-fixture synchronization issue; no new security-workflow failure was observed.
+- Residual E2E npm Low/deprecation exceptions remain exact, documented in `SEC-0002`, and expire on 2026-10-10.
 
 ### Release / Distribution Verification
 
@@ -220,7 +227,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## Known Issues / Blockers
 
-- No local engineering blocker remains. PR #76 is open and its first qualification exposed the now-locally-repaired E2E npm finding; the repaired exact head has not yet been committed/pushed, so remote requalification is the current integration boundary.
+- No local engineering blocker remains after the post-READY race repair. PR #76 is merged; the current integration boundary is a new protected repair PR followed by post-merge `main` verification.
 - Owner security hygiene remains external: retire `RELEASE_ADMIN_TOKEN` and the associated short-lived fine-grained PAT; status remains **NOT VERIFIED** until an authorized administration surface confirms removal.
 - Live Kaspa node/bridge runtime health remains **NOT VERIFIED** in this session.
 - Major Dependabot updates and dependency groups containing `duckdb` are intentionally excluded from unattended auto-merge and require explicit compatibility review.
@@ -255,18 +262,18 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## Pending Decisions
 
-- PR #76 requires no design decision at this checkpoint; it requires the qualified npm repair commit/push and exact-head CI requalification.
+- PR #76 is closed/merged and requires no further action. The current decision is already made: integrate the deterministic test-only ACK repair through a new protected exact-head PR without weakening production startup safety.
 - No Desktop `0.1.1` release-content/source/publication/recovery/workflow-repair decision remains.
 - A future major Dependabot update or any dependency group containing `duckdb` requires explicit compatibility review before integration.
 - Owner credential retirement remains owner-only/administration-only and stays **NOT VERIFIED** unless an authorized tool confirms it.
 
 ## NEXT ACTION
 
-1. Create one non-`[skip ci]` commit containing the qualified E2E npm repair, fail-closed npm policy/tests, security documentation, and reconciled task state.
-2. Re-fetch `origin/main`, verify no unsafe divergence or unexpected PR-head drift, then push `feature/project-continuity-lifecycle-20260910` to the existing PR #76.
-3. Follow every required check on the new exact head; root-cause and repair any failure on the same branch without weakening gates or using protection bypass.
+1. Finish focused clippy/continuity/npm/actionlint/PowerShell/Graphify verification on the deterministic post-READY ACK repair.
+2. Create one non-`[skip ci]` repair commit, fetch `origin/main`, and reconcile only if verified remote `main` advanced.
+3. Push a new repair branch/PR and follow every required exact-head check; root-cause any failure without weakening gates or using protection bypass.
 4. Allow protected squash merge only after exact-head checks and review-thread requirements are satisfied.
-5. Verify post-merge `main` CI/security workflows, reconcile `PROJECT_STATE.md` / `ACTIVE_TASK.md` / `CURRENT_STATE.md` / checkpoint, and return `PLANS.md` to its inactive sentinel.
+5. Verify post-merge `main` CI/security workflows are fully green, then reconcile durable state and return `PLANS.md` to its inactive sentinel.
 
 ## Resume Instructions
 

@@ -43,3 +43,15 @@ For every warning:
 ## Current Action
 
 The current E2E residual npm risk is documented in `SECURITY_ADVISORIES.md`, `SEC-0002`, and `docs/security/npm-dependency-policy.json`. CI must keep that contract fail-closed and force re-review no later than 2026-10-10. Do not broaden exceptions merely to keep CI green.
+
+## Managed npm Exceptions — 2026-09-10
+
+The E2E tree has zero Critical, High, or Moderate npm audit findings after updating the supported WebdriverIO 9.31 line to exact 9.31.7 pins and resolving `js-yaml` to 4.3.2.
+
+Temporary upstream-only exceptions are machine-controlled in `docs/security/npm-dependency-policy.json` through **2026-10-10**:
+
+- Low GHSA-73rr-hh4g-fpgx through `@wdio/mocha-framework` 9.31.7 -> Mocha 11.8.0 -> `diff` 7.0.0.
+- Deprecated `glob` 10.5.0 in supported WebdriverIO/config paths.
+- Deprecated `whatwg-encoding` 3.1.1 through current Cheerio/encoding-sniffer.
+
+`tools/kgw_npm_dependency_policy_gate.cjs` fails blocking CI on any new finding, severity/advisory/path/lock drift, deprecation-set drift, stale exception, or review-window expiry. Broad ignores and unsupported major overrides are prohibited. Durable evidence and the removal condition are tracked as `SEC-0002`.

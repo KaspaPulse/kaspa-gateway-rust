@@ -1,40 +1,38 @@
 # ACTIVE TASK
 
 ## Status
-IN PROGRESS — PR #76 REPAIR / EXACT-HEAD QUALIFICATION
+IN PROGRESS — POST-MERGE CI REGRESSION REPAIR
 
 ## Objective
-Complete protected integration of the repository-native continuity/security-engineering lifecycle, including root-cause repair of the E2E npm security failure discovered by PR #76 and durable prevention of warning/audit drift.
+Restore fully green protected `main` after PR #76 by fixing the confirmed post-READY self-worker integration-test race, preserving the merged continuity/npm hardening, and closing the task only after protected repair integration and post-merge verification.
 
 ## Scope
-- Preserve the completed continuity lifecycle and existing runtime/release invariants.
-- Repair the PR #76 E2E npm audit failure without weakening security gates.
-- Convert unavoidable residual npm findings/deprecations into exact, expiring, fail-closed policy.
-- Push the repaired same branch, requalify exact head, protected-squash merge, and verify post-merge `main`.
-
+- Preserve PR #76 continuity and npm dependency-policy implementation.
+- Repair only the confirmed Rust integration-test synchronization race; do not weaken production startup safety.
+- Preserve exact, expiring npm upstream exceptions and duplicate stable-ID protection.
+- Push this repair through a new protected PR, squash-merge without bypass, and verify post-merge `main`.
 ## Current Phase
-Local repair is qualified. PR #76 remote head is still `0ec7d01b9d0b5ff5f268db154caa0dd0420f6664`; the next action is a non-skip commit of the npm repair/policy and state reconciliation, then push to the same PR and exact-head CI.
+PR #76 is merged as `3f8174c7e9e663da81e29eda5cd889de196eec7e`. Five observed post-merge workflows passed, but CI run `34516559028` failed only in `Run Rust tests` on `post_ready_worker_failure_is_non_running_durable_and_restartable_for_all_roles`. Root cause is confirmed and the deterministic test-only ACK repair is locally verified.
 
 ## Confirmed Progress
-PR #76 is open against `main`. Its first exact-head qualification passed all required lanes except `quality (rust + npm)`, whose sole material failure was E2E npm audit: High GHSA-2883-xcg3-v3hh in `js-yaml` 4.3.1. The local repair updates the supported WebdriverIO 9.31 line to exact 9.31.7 pins, resolving `js-yaml` to 4.3.2 and reducing npm audit to 0 Critical/High/Moderate. A new fail-closed npm policy gate controls the single residual Low advisory chain and exactly two upstream deprecations through 2026-10-10.
+The prior E2E High npm finding is fixed on `main`; npm policy remains fail-closed and time-bounded. For the Rust regression, the repaired targeted test passed after a cold build, passed 20/20 consecutive repetitions under host load, and the full runtime IPC integration suite passed 52/52 with zero test-harness Rust warnings.
 
 ## Current Blocker
-NONE locally. Residual upstream E2E risk is explicit and time-bounded, not hidden: GHSA-73rr-hh4g-fpgx appears as three Low audit nodes via WebdriverIO/Mocha/diff; `glob` 10.5.0 and `whatwg-encoding` 3.1.1 remain deprecated. Any drift or expiry now fails CI.
+NONE locally. Protected remote qualification of the new repair head is still required.
 
 ## Last Completed Action
-Full local qualification passed: desktop/E2E npm policy gates, npm policy regression tests, continuity gate/regression tests, actionlint, workflow YAML parse, PowerShell AI workflow gate, E2E lint/check, `git diff --check`, and Graphify 0.9.57 final graph diagnostic/query. Final graph: 5,044 nodes / 12,875 edges with all endpoint/duplicate/collapse counters zero.
-
+Added semantic READY acknowledgement to the deliberate post-READY exit fixture, preserved the real parent `try_wait()` startup safety check, added `REG-0001`, and verified the complete 52-test runtime IPC suite.
 ## Current Action
-Reconcile durable checkpoint/state, create one non-`[skip ci]` repair commit, verify remote `main` freshness, then push the same branch to PR #76.
+Finish local lint/clippy/continuity/Graphify qualification, commit this post-merge repair without CI skip, refresh `origin/main`, then push a new repair PR.
 
 ## Next Action
-Push the repaired exact head to PR #76, follow every required check to completion, root-cause any new failure without bypass, allow protected squash auto-merge only after exact-head green, then verify post-merge `main` CI/security state and close the task records.
+Run protected exact-head CI on the repair PR, root-cause any failure without retry-only behavior or bypass, squash-merge after green, and verify all post-merge `main` workflows including CI.
 
 ## Verification Required
-Completed locally: npm desktop/E2E policy PASS; npm gate positive + six negative fail-closed tests PASS; continuity gate + five negative tests PASS; actionlint PASS; PowerShell AI gate PASS; YAML parse PASS; E2E lint/check PASS; Graphify final graph CLEAN/query PASS; `git diff --check` PASS. Remote exact-head CI must be rerun after push.
+Completed: targeted cold test PASS; 20/20 repeat PASS; full runtime IPC suite 52/52 PASS; test-harness Rust warnings = 0. Still required before push: focused clippy, continuity/npm policy gates, actionlint/YAML/PowerShell, `git diff --check`, and Graphify refresh/query. Remote exact-head and post-merge CI remain mandatory.
 
 ## Completion Criteria
-PR #76 repaired head is pushed; required checks pass on that exact head; protected squash merge completes without bypass; post-merge `main` is verified; actionable warnings are fixed and residual upstream warnings remain exact/time-bounded; durable state/checkpoint records reflect final reality.
+Repair PR merged through protected squash; post-merge `main` CI/security workflows green; npm policy exceptions remain exact and unexpired; durable state/checkpoints are reconciled to the final repository truth.
 
 ## DO NOT REPEAT
-Do not redo the continuity implementation, Graphify root-cause investigation, or the first PR #76 CI run. Do not downgrade WebdriverIO, force unsupported major overrides, weaken npm audit thresholds, or use `--admin`/protection bypass to make the PR green.
+Do not rerun PR #76, increase the 40 ms timer as a flaky-test workaround, weaken the parent startup `try_wait()` safety check, force unsupported npm dependency overrides, or use `--admin`/protection bypass.

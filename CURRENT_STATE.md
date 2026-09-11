@@ -1,22 +1,21 @@
 # CURRENT STATE
 
-- Verified at: 2026-09-10 20:36 +03:00.
+- Verified at: 2026-09-10 23:13 +03:00 and refreshed during this repair session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
-- Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; historical pre-repair-commit value: `0ec7d01b9d0b5ff5f268db154caa0dd0420f6664`.
-- Current task branch: `feature/project-continuity-lifecycle-20260910`.
-- Open PR: **#76**, `chore: harden project continuity and durable failure memory`, base `main`, remote head still `0ec7d01b...`.
-- PR #76 first qualification: all material lanes passed except `quality (rust + npm)`; the failing step was E2E npm audit High GHSA-2883-xcg3-v3hh in `js-yaml` 4.3.1.
-- Local repair: WebdriverIO 9.31.7 exact pins resolve `js-yaml` 4.3.2; npm audit now has 0 Critical/High/Moderate.
-- Residual accepted risk: one Low advisory chain GHSA-73rr-hh4g-fpgx represented by 3 audit nodes; deprecations `glob` 10.5.0 and `whatwg-encoding` 3.1.1; mandatory review/expiry 2026-10-10.
-- New protection: `tools/kgw_npm_dependency_policy_gate.cjs`, regression tests, and `docs/security/npm-dependency-policy.json`; CI runs policy immediately after npm install and fails on any drift/new warning/expiry.
-- Working tree: DIRTY intentionally with the qualified npm repair/policy/state reconciliation; verify dynamically before commit.
-- Current remote main: **VERIFY DYNAMICALLY** with an explicit fetch/query before push; historical verified baseline: `9a7b18f76dd6184785a4cf972daa1431ee07138f`.
-- Live node/bridge runtime: **NOT VERIFIED**; no runtime or production mutation is part of this task.
-- Graphify 0.9.57 final graph: 5,044 nodes / 12,875 edges; missing/dangling/self-loop/duplicate/collapse counters all zero.
+- Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; historical post-PR-#76 baseline: `3f8174c7e9e663da81e29eda5cd889de196eec7e`.
+- Current task branch: `fix/post-merge-ci-race-20260911`; local repair branch, not yet pushed at this checkpoint.
+- PR #76: MERGED; merge SHA `3f8174c7e9e663da81e29eda5cd889de196eec7e`.
+- Post-merge CI: run `34516559028` failed only in Rust test `post_ready_worker_failure_is_non_running_durable_and_restartable_for_all_roles`.
+- Root cause: fixed 40 ms deliberate post-READY exit timer raced parent READY/ownership registration under runner load.
+- Local repair: test-only READY ACK gate; production startup exit detection remains unchanged.
+- Local regression evidence: targeted cold PASS; 20/20 repeats PASS; full runtime IPC suite 52/52 PASS; Rust test warnings = 0.
+- Npm security state: zero Critical/High/Moderate; residual exact Low/deprecation exceptions expire 2026-10-10.
+- Working tree: DIRTY intentionally with post-merge CI repair, regression record, and closure hardening.
+- Current remote main: **VERIFY DYNAMICALLY** before push; historical verified post-PR-#76 baseline is recorded above.
+- Live node/bridge runtime: **NOT VERIFIED** and not mutated by this task.
 - Latest durable checkpoint: `docs/handoff-ledger/2026-09-10-project-continuity-lifecycle.md`.
-
 ## NEXT ACTION
-Create a non-skip repair commit, re-fetch `origin/main`, push the same branch to PR #76, exact-head qualify to green, protected-squash merge, then verify post-merge `main` and close durable state.
+Complete focused local qualification, create a non-skip repair commit, fetch `origin/main`, push a new protected PR from the repair branch, exact-head qualify, squash-merge, then verify post-merge `main` CI and reconcile final state.
 
 ## DO NOT REPEAT
-Do not repeat the first PR #76 CI run or rediscover the npm root cause. Do not hide the residual Low/deprecation findings with broad ignores or unsupported major overrides.
+Do not rerun or reopen PR #76. Do not replace semantic synchronization with a larger sleep, retry failing CI until green, weaken production startup checks, or hide npm findings with broad exceptions.

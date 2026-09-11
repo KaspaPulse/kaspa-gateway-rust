@@ -214,7 +214,7 @@ if (state) {
 }
 
 if (plans) {
-  const inactivePlan = /NO ACTIVE MULTI-STAGE PLAN/i.test(plans);
+  const inactivePlan = /## Status\s*\n+\s*\*\*NO ACTIVE MULTI-STAGE PLAN\*\*\s*(?:\n|$)/i.test(plans);
   if (inactivePlan) {
     requireMatch(plans, /## Usage/i, "inactive PLANS usage contract");
     requireMatch(
@@ -333,8 +333,19 @@ if (!memoryRecords.length) {
 const memoryStatusPattern =
   /Status:\s*(?:OPEN|IN PROGRESS|RESOLVED|VERIFIED|NOT REPRODUCIBLE|DEFERRED|BLOCKED|REQUIRES ACTION|DUPLICATE|FALSE POSITIVE)/i;
 const memoryIdPattern = /^(?:# )?(?:BUG|REG|SEC|INC|DEC|FAIL)-\d{4}:/m;
+const memoryIds = new Map();
 for (const record of memoryRecords) {
   requireMatch(record.text, memoryIdPattern, `${record.relativePath}: stable ID`);
+  const idMatch = record.text.match(/(?:^# )?((?:BUG|REG|SEC|INC|DEC|FAIL)-\d{4}):/m);
+  if (idMatch) {
+    const stableId = idMatch[1].toUpperCase();
+    const previous = memoryIds.get(stableId);
+    if (previous) {
+      failures.push(`Duplicate project-memory stable ID ${stableId}: ${previous} and ${record.relativePath}.`);
+    } else {
+      memoryIds.set(stableId, record.relativePath);
+    }
+  }
   requireMatch(record.text, memoryStatusPattern, `${record.relativePath}: lifecycle status`);
   requireMatch(record.text, /## Evidence/i, `${record.relativePath}: evidence`);
   requireMatch(record.text, /## Root Cause/i, `${record.relativePath}: root cause`);
