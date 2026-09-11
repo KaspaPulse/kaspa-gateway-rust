@@ -2,27 +2,30 @@
 
 ## Status
 
-**NO ACTIVE MULTI-STAGE PLAN**
+**ACTIVE — CREDENTIAL RETIREMENT AND NPM RESIDUAL-RISK REVIEW**
 
-The continuity/security-engineering integration and its post-merge CI repair are complete. PR #76 merged the repository-native continuity/npm hardening; PR #77 removed the confirmed post-READY test race and restored green `main` CI. Current facts belong in `PROJECT_STATE.md`; durable incidents/regressions belong in project memory; implementation history belongs in Git/PRs.
+## Objective
+Close remaining repository-owned security hygiene without weakening supported dependency contracts or branch protection.
 
-## Usage
+## Success Criteria
+- `RELEASE_ADMIN_TOKEN` repository Actions secret is absent and verified.
+- No tracked GitHub Actions workflow can reference the retired secret without failing the continuity/security gate.
+- A durable `SEC-0003` record captures removal evidence without any secret value.
+- `SEC-0002` and the machine-readable npm policy show a fresh 2026-09-11 review using current upstream versions.
+- Existing npm exceptions are removed only if a supported path exists; otherwise their identities and 2026-10-10 expiry remain unchanged.
+- Local gates, exact-head PR checks, protected squash merge, and post-merge `main` checks pass.
 
-Create or replace an active-plan body only when work is genuinely long-horizon, multi-stage, migration-heavy, high-risk, or expected to span sessions. Reconcile `PROJECT_STATE.md` first whenever verified repository/runtime/release reality differs from durable state.
+## Milestones
+1. Reconcile current `main`, open task state, verify secret usage and npm upstream reality — COMPLETE.
+2. Remove unused repository Actions secret and verify absence — COMPLETE.
+3. Add durable retired-secret regression protection and security memory — IN PROGRESS.
+4. Refresh npm review evidence without changing unsupported dependency boundaries.
+5. Run local qualification and Graphify.
+6. Commit/push/open protected PR and exact-head qualify.
+7. Protected squash merge, post-merge `main` verification, final state reconciliation.
 
-When an active plan reaches completion, update current state, durable memory/checkpoints, relevant ADR/runbook changes, then return this file to **NO ACTIVE MULTI-STAGE PLAN** rather than preserving completed work as active coordination state.
+## Progress
+Repository reality is reconciled on `main`. The unused `RELEASE_ADMIN_TOKEN` repository Actions secret was proven unreferenced, removed, and verified absent. Current npm registry review confirms no supported compatible path yet removes the exact residual Low/deprecation findings; the existing 2026-10-10 expiry remains unchanged. Durable `SEC-0003` evidence and workflow-reference regression protection are being added through the existing continuity gate.
 
-Do not use this file as a duplicate issue tracker, Git log, CI history, release body, or credential store.
-## Most Recent Completed Plan
-
-Repository-native project continuity and durable failure memory were integrated through PR #76, followed by protected repair PR #77 for the post-merge Rust test race. PR #77 exact-head required checks passed and post-merge `main` CI/security workflows are green on historical baseline `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`.
-
-Durable evidence locations:
-- Current resumable state: `PROJECT_STATE.md`, `CURRENT_STATE.md`, and `ACTIVE_TASK.md`.
-- Atomic checkpoint history: `docs/handoff-ledger/2026-09-10-project-continuity-lifecycle.md`.
-- Regression record: `docs/project-memory/REGRESSIONS/REG-0001-post-ready-worker-test-race.md`.
-- Npm residual-risk record: `docs/project-memory/SECURITY/SEC-0002-e2e-npm-dependency-policy.md`.
-- Implementation/review history: Git and PRs #76 and #77.
-- Published release history remains owned by GitHub Releases and was not changed by this plan.
-
-Start a new scoped plan only when a future task independently meets the multi-stage criteria above.
+## Completion Criteria
+All success criteria above are met; the retired secret remains absent and cannot be reintroduced by tracked workflows unnoticed; npm exceptions remain exact and unextended; local and remote protected checks pass; post-merge `main` is verified; project state/checkpoint records reflect final reality.

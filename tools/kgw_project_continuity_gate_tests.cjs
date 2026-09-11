@@ -21,6 +21,7 @@ const fixturePaths = [
   "docs/runbooks/desktop-release.md",
   "docs/architecture/README.md",
   "tools/kgw_project_continuity_gate.cjs",
+  ".github/workflows",
 ];
 
 function copyFixture() {
@@ -130,6 +131,18 @@ expectFail(
 );
 
 expectFail(
+  "retired release admin secret workflow reference",
+  "Retired GitHub Actions secret RELEASE_ADMIN_TOKEN must not be referenced by workflow",
+  (root) => {
+    const file = path.join(root, ".github/workflows/ci.yml");
+    fs.appendFileSync(
+      file,
+      "\n# negative fixture only\n# RELEASE_ADMIN_TOKEN must remain retired\n",
+    );
+  },
+);
+
+expectFail(
   "missing regression-memory category",
   "Missing required continuity file: docs/project-memory/REGRESSIONS/README.md",
   (root) => fs.rmSync(path.join(root, "docs/project-memory/REGRESSIONS/README.md")),
@@ -152,4 +165,4 @@ expectFail(
 );
 
 console.log("KGW project continuity gate regression tests PASSED");
-console.log("Positive fixture and six fail-closed negative cases behaved as required.");
+console.log("Positive fixture and seven fail-closed negative cases behaved as required.");

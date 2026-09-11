@@ -4,7 +4,7 @@
 
 The corrected security gates find no Critical/High/Moderate npm vulnerability in either npm workspace and no currently blocking RustSec vulnerability. Residual dependency warnings remain explicitly tracked rather than hidden.
 
-Current npm classification (2026-09-10):
+Current npm classification (reviewed 2026-09-11):
 
 - desktop: 0 Critical/High/Moderate/Low npm vulnerabilities and 0 deprecation warnings
 - E2E: 0 Critical/High/Moderate; 3 Low npm audit nodes from the single GHSA-73rr-hh4g-fpgx upstream chain
@@ -44,7 +44,7 @@ For every warning:
 
 The current E2E residual npm risk is documented in `SECURITY_ADVISORIES.md`, `SEC-0002`, and `docs/security/npm-dependency-policy.json`. CI must keep that contract fail-closed and force re-review no later than 2026-10-10. Do not broaden exceptions merely to keep CI green.
 
-## Managed npm Exceptions — 2026-09-10
+## Managed npm Exceptions — reviewed 2026-09-11
 
 The E2E tree has zero Critical, High, or Moderate npm audit findings after updating the supported WebdriverIO 9.31 line to exact 9.31.7 pins and resolving `js-yaml` to 4.3.2.
 
@@ -55,3 +55,5 @@ Temporary upstream-only exceptions are machine-controlled in `docs/security/npm-
 - Deprecated `whatwg-encoding` 3.1.1 through current Cheerio/encoding-sniffer.
 
 `tools/kgw_npm_dependency_policy_gate.cjs` fails blocking CI on any new finding, severity/advisory/path/lock drift, deprecation-set drift, stale exception, or review-window expiry. Broad ignores and unsupported major overrides are prohibited. Durable evidence and the removal condition are tracked as `SEC-0002`.
+
+Fresh 2026-09-11 registry verification found no supported compatible removal path. Latest WebdriverIO remains 9.31.7 and `@wdio/mocha-framework` still constrains Mocha to `^11.8.0`; the non-vulnerable current Mocha/diff lines are Mocha 12.0.0 / diff 9.0.0 outside that supported contract. Latest `@wdio/config` remains on the glob 10 line, and Cheerio 1.2.0 still retains the encoding-sniffer path that resolves `whatwg-encoding` 3.1.1. The **2026-10-10** review deadline is unchanged; no exception was widened or extended.
