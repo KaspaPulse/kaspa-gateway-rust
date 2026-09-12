@@ -215,3 +215,26 @@ Fix/verification:
 
 NEXT ACTION: local checkpoint → exact bundle transfer → rerun Windows zero-touch.
 DO NOT REPEAT: do not mutate production P2P defaults to accommodate validation isolation.
+
+## BUG-0009 WINDOWS BRIDGE LOCATOR CHECKPOINT
+
+Status: LOCAL FIX VERIFIED; exact Windows rerun pending.
+
+COMPLETED / VERIFIED
+- Windows `e81883b...` proved Mainnet/Testnet10 Node START -> READY -> raw log -> clipboard copy -> STOP with isolated ports.
+- Mainnet Bridge failed before runtime start because the E2E harness targeted a nonexistent instance-port `data-testid`.
+- DOM evidence identified the actual production id `bridge-mainnet-instancePort-1`.
+- E2E read/write paths now use the real id, with compatibility fallback only on read.
+- Bridge locator smoke, E2E lint, and E2E check PASS locally.
+
+EVIDENCE / TESTS
+- `e2e/helpers/bridge-locator-smoke.mjs`: red before fix, PASS after fix.
+- `npm run lint`: PASS.
+- `npm run check`: PASS.
+- Windows artifact root from failing run: `C:\KGW-Local-Validation\artifacts\zero-touch-e81883b`.
+
+NEXT ACTION
+- Commit/push this checkpoint to local mirror only, transfer exact HEAD to `Server`, rerun Windows zero-touch, then continue from the next real divergence.
+
+DO NOT REPEAT
+- Do not rerun completed non-Windows gates; do not touch real GitHub; do not alter production Bridge runtime merely to accommodate a stale E2E locator.

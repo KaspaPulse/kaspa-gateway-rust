@@ -38,6 +38,7 @@ import {
   readByTestId,
   saveDomState,
   setControlCheckedByTestId,
+  setControlValueById,
   setControlValueByTestId,
   shutdownAllRuntimeWorkers,
   stopRuntime,
@@ -212,8 +213,8 @@ async function startBridgeFromSettings(network, settings) {
   let selection = await readBridgeRuntimeSelection(network);
   const bridgePort = settings.bridgePort || selection.bridgePort || null;
   if (bridgePort && selection.bridgeInstanceId) {
-    await setControlValueByTestId(
-      `kgw-bridge-instance-field-${network}-${selection.bridgeInstanceId}-instancePort`,
+    await setControlValueById(
+      `bridge-${network}-instancePort-${selection.bridgeInstanceId}`,
       String(bridgePort),
     );
     selection = await readBridgeRuntimeSelection(network);

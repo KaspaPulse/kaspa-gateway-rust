@@ -106,7 +106,8 @@ export async function readBridgeRuntimeSelection(network) {
     const active = panel?.querySelector?.('[data-bridge-action="select-instance"].active') ||
       panel?.querySelector?.('[data-bridge-action="select-instance"]');
     const bridgeInstanceId = String(active?.dataset?.instanceId || "1");
-    const input = panel?.querySelector?.(`[data-testid="kgw-bridge-instance-field-${net}-${bridgeInstanceId}-instancePort"]`);
+    const input = panel?.querySelector?.(`#bridge-${net}-instancePort-${bridgeInstanceId}`) ||
+      panel?.querySelector?.(`[data-testid="kgw-bridge-instance-field-${net}-${bridgeInstanceId}-instancePort"]`);
     const bridgeLevel = panel?.querySelector?.(`[data-testid="kgw-bridge-field-${net}-stratumPort"]`);
     const rawPort = String(input?.value || input?.placeholder || bridgeLevel?.value || "").trim().replace(/^:/, "");
     const port = Number(rawPort);
