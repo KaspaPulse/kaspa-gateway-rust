@@ -1674,6 +1674,62 @@ fn start_command_is_registered_and_payload_matches_frontend() {
 }
 
 #[test]
+fn effective_node_settings_serde_matches_frontend_rocks_db_contract() {
+    let encoded = serde_json::to_value(kaspa_gateway_rk_node::EffectiveNodeSettings::default())
+        .expect("effective node settings must serialize");
+    let object = encoded
+        .as_object()
+        .expect("effective node settings must be an object");
+    for key in ["rocksDbPreset", "rocksDbCacheSize", "rocksDbWalDir"] {
+        assert!(
+            object.contains_key(key),
+            "serialized IPC schema missing frontend key {key}"
+        );
+    }
+    for legacy in ["rocksdbPreset", "rocksdbCacheSize", "rocksdbWalDir"] {
+        assert!(
+            !object.contains_key(legacy),
+            "serialized IPC schema must not emit legacy key {legacy}"
+        );
+    }
+
+    let mut frontend = encoded.clone();
+    let frontend = frontend
+        .as_object_mut()
+        .expect("frontend payload must be an object");
+    frontend.insert("rocksDbPreset".to_string(), serde_json::json!("hdd"));
+    frontend.insert("rocksDbCacheSize".to_string(), serde_json::json!(512));
+    frontend.insert(
+        "rocksDbWalDir".to_string(),
+        serde_json::json!("kgw-test-wal"),
+    );
+    let decoded: kaspa_gateway_rk_node::EffectiveNodeSettings =
+        serde_json::from_value(serde_json::Value::Object(frontend.clone()))
+            .expect("frontend RocksDB field names must deserialize at the Tauri IPC boundary");
+    assert_eq!(decoded.rocksdb_preset.as_deref(), Some("hdd"));
+    assert_eq!(decoded.rocksdb_cache_size, Some(512));
+    assert_eq!(decoded.rocksdb_wal_dir.as_deref(), Some("kgw-test-wal"));
+
+    let mut legacy = encoded;
+    let legacy = legacy
+        .as_object_mut()
+        .expect("legacy payload must be an object");
+    legacy.remove("rocksDbPreset");
+    legacy.remove("rocksDbCacheSize");
+    legacy.remove("rocksDbWalDir");
+    legacy.insert("rocksdbPreset".to_string(), serde_json::json!("hdd"));
+    legacy.insert("rocksdbCacheSize".to_string(), serde_json::json!(256));
+    legacy.insert(
+        "rocksdbWalDir".to_string(),
+        serde_json::json!("kgw-legacy-wal"),
+    );
+    let decoded_legacy: kaspa_gateway_rk_node::EffectiveNodeSettings =
+        serde_json::from_value(serde_json::Value::Object(legacy.clone()))
+            .expect("legacy Rust-derived RocksDB field names must remain accepted");
+    assert_eq!(decoded_legacy.rocksdb_cache_size, Some(256));
+}
+
+#[test]
 fn typed_effective_node_settings_are_validated_and_keep_backend_owned_paths() {
     let effective = kaspa_gateway_rk_node::EffectiveNodeSettings {
         log_level: "trace".to_string(),

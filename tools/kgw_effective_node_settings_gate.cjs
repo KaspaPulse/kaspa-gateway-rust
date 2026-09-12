@@ -22,6 +22,10 @@ const owner = fs.readFileSync(
   "crates/kaspa-gateway-rk-node/src/kgw_real_owner_runtime.rs",
   "utf8",
 );
+const nodeSchema = fs.readFileSync(
+  "crates/kaspa-gateway-rk-node/src/kgw_service_controller.rs",
+  "utf8",
+);
 
 const schemaFields = [
   "logLevel", "asyncThreads", "ramScale", "yes", "noLogFiles", "sanity",
@@ -54,6 +58,15 @@ assert.ok(node.includes('cardCheck(net.key, "disableUpnp", "--disable-upnp", tru
 assert.ok(node.includes('cardCheck(net.key, "rpcBorshEnabled", "--rpclisten-borsh", false)'));
 assert.ok(node.includes('cardCheck(net.key, "rpcJsonEnabled", "--rpclisten-json", false)'));
 assert.ok(bridge.includes('id(net.key, "inprocessDisableUpnp")}" type="checkbox" checked'));
+
+for (const [rustField, frontendField, legacyField] of [
+  ["rocksdb_preset", "rocksDbPreset", "rocksdbPreset"],
+  ["rocksdb_cache_size", "rocksDbCacheSize", "rocksdbCacheSize"],
+  ["rocksdb_wal_dir", "rocksDbWalDir", "rocksdbWalDir"],
+]) {
+  const contract = `#[serde(rename = "${frontendField}", alias = "${legacyField}")]\n    pub ${rustField}`;
+  assert.ok(nodeSchema.includes(contract), `EffectiveNodeSettings serde contract missing ${frontendField}`);
+}
 
 assert.ok(ipc.includes("Option<kaspa_gateway_rk_node::EffectiveNodeSettings>"));
 assert.ok(ipc.includes("--effective-node-settings-path"));

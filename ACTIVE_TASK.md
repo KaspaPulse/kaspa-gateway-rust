@@ -14,7 +14,7 @@ Make network and bridge lifecycle trustworthy end-to-end: UI state must reflect 
 - Validate real Windows runtime on `Server`; mocks alone are insufficient.
 
 ## Current Phase
-Local remediation is complete at the source/IPC/frontend level. `BUG-0002` through `BUG-0005` and close/relaunch regression protection are committed to the local bare remote. Milestone 7 is IN PROGRESS; `BUG-0006` is checkpointed locally and Desktop `0.1.2` is the local-only patch release candidate for this remediation. Published immutable `0.1.1` remains untouched.
+Local remediation is complete through `BUG-0006`, and Milestone 7 non-Windows validation is green. Milestone 8 real Windows validation is IN PROGRESS; the first exact-HEAD zero-touch run exposed `BUG-0007` (RocksDB IPC casing drift), now fixed and locally verified pending checkpoint transfer. Desktop `0.1.2` remains local-only and immutable `0.1.1` remains untouched.
 
 ## Confirmed Progress
 `local` remains the only push target for intermediate work and `origin` push remains disabled. Frontend raw logs/status truth, backend cross-network status responsiveness, and STARTING control semantics are repaired. READY status now retains and reports exact worker/parent identity plus runtime endpoint semantics without changing ownership behavior.
@@ -26,10 +26,10 @@ NONE. Source/IPC/frontend remediation and close/relaunch reconciliation are loca
 Workspace Rust tests pass, the Desktop E2E-feature cargo check passes, and the full local gate advanced through raw-log checks. `BUG-0006` frontend regression and `kgw_true_raw_log_gate.ps1` now pass after preserving typed child rawText while rejecting only untyped transport envelopes.
 
 ## Current Action
-Checkpoint the Windows E2E isolated-port profile locally, transfer the exact local candidate to `Server`, and begin Milestone 8 real Windows zero-touch/lifecycle validation without touching the unrelated 16110/16111 service.
+Checkpoint `BUG-0007` locally, transfer the exact checkpoint to `Server`, and rerun Windows zero-touch from Mainnet Node without touching the unrelated 16110/16111 service.
 
 ## Next Action
-Run Windows zero-touch on `Server` with isolated mainnet ports, then extend real lifecycle coverage through restart/crash/relaunch and all supported Bridge modes. No real GitHub push is allowed yet.
+Rerun Windows zero-touch on `Server` with the BUG-0007 checkpoint; continue sequentially through any newly exposed runtime divergence, then restart/crash/relaunch and all supported Bridge modes. No real GitHub push is allowed yet.
 
 ## Verification Required
 Focused regression per defect; full runtime IPC suite; frontend lifecycle/raw-log gates; workspace tests/security gates; production desktop build/artifact; real Windows lifecycle sequences for mainnet/testnet10 and supported bridge modes; no orphan/stale/false READY; final local audit.

@@ -23,12 +23,12 @@ Rehabilitate network/bridge lifecycle and raw logging end-to-end using the accep
 5. Repair raw stdout/stderr ordering/provenance/diagnostics separation and frontend rendering — **COMPLETE LOCALLY**.
 6. Repair reconciliation/orphan/stale-state/UI truth after crash, close, and relaunch — **COMPLETE LOCALLY**.
 7. Run full local regression/security/build/artifact validation — **COMPLETE FOR NON-WINDOWS GATES; WINDOWS ARTIFACT/GUI PROOF CONTINUES IN MILESTONE 8**.
-8. Run real Windows lifecycle matrix for mainnet/testnet10 and every supported bridge mode — **IN PROGRESS; ISOLATED PORT PROFILE VERIFIED LOCALLY**.
+8. Run real Windows lifecycle matrix for mainnet/testnet10 and every supported bridge mode — **IN PROGRESS; FIRST ZERO-TOUCH RUN EXPOSED BUG-0007, LOCAL FIX VERIFIED**.
 9. Consolidate local commits, independently verify final production artifact/evidence, and pass local release gate — **PENDING**.
 10. Perform one final real-GitHub push, deploy exact commit, verify production, and close durable state — **PENDING; REAL GITHUB REMAINS BLOCKED UNTIL FINAL LOCAL GATE**.
 
 ## Progress
-Local remediation has BUG-0002 through BUG-0006 verified locally. Close/relaunch protection is checkpointed, runtime IPC is green at 55/55, full workspace Rust tests pass, and the E2E-feature cargo check passes. Milestone 7 reached the true-raw-log gate, exposed and checkpointed BUG-0006, and now passes that gate. Desktop 0.1.2 is the local-only patch release candidate with consistent version metadata. Windows-only zero-touch E2E is assigned to Milestone 8; remaining non-Windows release/security/artifact gates continue locally.
+Local remediation has BUG-0002 through BUG-0006 checkpointed; Milestone 7 non-Windows validation is green, Desktop 0.1.2 is the local-only candidate, and Windows validation has begun. The first isolated-port zero-touch run reached a real Mainnet Start but exposed BUG-0007 before spawn; the RocksDB serde casing contract is now fixed locally and IPC regression is green at 56/56.
 
 ## Completion Criteria
 Every local release checklist item is evidenced; no known P0/P1 issue remains; final diff/artifact/evidence match the release commit; post-push remote HEAD and deployed commit match exactly.
@@ -37,4 +37,4 @@ Every local release checklist item is evidenced; no known P0/P1 issue remains; f
 No intermediate GitHub pushes, no force push/rebase of remote history, no admin bypass, no unnecessary runtime rewrite, no direct frontend process ownership, no fake logs, no weakening of testnet12 policy or ownership identity.
 
 ## NEXT ACTION
-Checkpoint the local-only 0.1.2 version metadata, finish remaining non-Windows release build/artifact/final-diff gates, then run Windows-only zero-touch lifecycle/package validation on Server. Do not repeat already-passed expensive stages and do not push to real GitHub.
+Checkpoint BUG-0007, transfer the exact checkpoint to Server, rerun zero-touch from Mainnet Node, and continue sequentially through the remaining Windows lifecycle/bridge matrix. Do not repeat already-passed non-Windows gates and do not push to real GitHub.

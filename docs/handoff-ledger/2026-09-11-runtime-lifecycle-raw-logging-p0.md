@@ -182,3 +182,20 @@ Checkpoint locally, transfer exact local history to `Server`, and run zero-touch
 
 ## DO NOT REPEAT
 Do not stop or adopt the unrelated service to satisfy test defaults, and do not change production defaults for validation convenience.
+## BUG-0007 WINDOWS IPC SCHEMA DRIFT CHECKPOINT
+Status: VERIFIED LOCALLY; exact Windows rerun pending checkpoint transfer.
+
+Evidence:
+- `Server` zero-touch on HEAD `583ac620...` reached the real Mainnet Start click.
+- `kgw_kgw_apply_node_settings_v1` rejected `effectiveNodeSettings` before spawn: unknown field `rocksDbCacheSize`.
+- Root cause: serde acronym casing produced `rocksdb*` keys while frontend contract uses `rocksDb*`.
+- No validation runtime port opened; unrelated PID 33436 on 16110/16111 was preserved.
+
+Fix/verification:
+- Explicit serde rename + legacy alias for RocksDB preset/cache/WAL fields.
+- Focused red→green serde regression PASS.
+- Effective Node settings contract gate PASS.
+- Runtime IPC suite PASS 56/56.
+
+NEXT ACTION: local checkpoint → exact bundle transfer → rerun Windows zero-touch from Mainnet Node.
+DO NOT REPEAT: do not weaken `deny_unknown_fields` or bypass typed effective settings via preview text.

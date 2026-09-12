@@ -159,8 +159,11 @@ pub struct EffectiveNodeSettings {
     pub max_tracked_addresses: usize,
     pub retention_period_days: Option<f64>,
     pub perf_metrics_interval_sec: u64,
+    #[serde(rename = "rocksDbPreset", alias = "rocksdbPreset")]
     pub rocksdb_preset: Option<String>,
+    #[serde(rename = "rocksDbCacheSize", alias = "rocksdbCacheSize")]
     pub rocksdb_cache_size: Option<usize>,
+    #[serde(rename = "rocksDbWalDir", alias = "rocksdbWalDir")]
     pub rocksdb_wal_dir: Option<String>,
     pub override_params_file: Option<String>,
     pub log_dir: Option<String>,
