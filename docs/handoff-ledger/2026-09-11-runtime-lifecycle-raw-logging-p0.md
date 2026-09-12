@@ -258,3 +258,27 @@ NEXT ACTION
 
 DO NOT REPEAT
 - Do not maintain a second hard-coded evidence port table that can drift from the E2E execution profile.
+
+## WINDOWS ZERO-TOUCH BASELINE VERIFIED — 2026-09-12
+
+Status: VERIFIED / PASS.
+
+COMPLETED / VERIFIED
+- Exact local HEAD `3414f9ca82f3eb3b728cd241ae568b355d7fd64b` ran on Windows `Server`.
+- Mainnet Node and Testnet10 Node passed START -> READY -> raw-log/copy -> STOP on isolated RPC/P2P ports.
+- Mainnet Bridge and Testnet10 Bridge (external-node mode) passed START -> READY -> raw-log/copy -> STOP on isolated Stratum ports.
+- Native clipboard SHA-256 matched expected raw-log SHA-256 for all four cases.
+- Evidence validation returned `validation_errors=[]`; all smoke-owned ports were free after cleanup.
+- The unrelated service remained on `16110/16111` and was not adopted, stopped, or modified.
+
+EVIDENCE / TESTS
+- `C:\KGW-Local-Validation\artifacts\zero-touch-3414f9c\zero-touch-result.json`: `success=true`, `exit_code=0`.
+- Passed stages: Mainnet Node, Testnet10 Node, Mainnet Bridge, Testnet10 Bridge.
+- Mainnet isolated ports: RPC `16120`, P2P `16121`, Bridge `5556`.
+- Testnet10 isolated ports: RPC `16210`, P2P `16211`, Bridge `5656`.
+
+NEXT ACTION
+Add focused real-Windows coverage for restart, forced crash recovery, application close/relaunch reconciliation, and in-process Bridge mode. Do not rerun this baseline matrix unless a later source change invalidates it.
+
+DO NOT REPEAT
+Do not treat the earlier BUG-0009/BUG-0010 failed runs as current blockers; the exact `3414f9ca...` rerun supersedes them with a complete PASS.

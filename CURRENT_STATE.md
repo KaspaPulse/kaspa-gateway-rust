@@ -5,7 +5,7 @@
 - Current HEAD: **VERIFY DYNAMICALLY**; latest committed local checkpoint is `4f6cf39f033177211f14402efaca1510e97562be` (BUG-0007 effective-node-settings serde contract).
 - Current branch: `fix/runtime-lifecycle-raw-logging-reliability-20260911`.
 - Current remote main: **VERIFY DYNAMICALLY** before final integration; task baseline observation is `b88cc2571cb65ca30c1361ee3aa9b21eb551ea7c`.
-- Working tree: **DIRTY** intentionally with locally verified `BUG-0010` zero-touch evidence port-profile fix, regression coverage, and state evidence pending checkpoint commit; classify dynamically on resume.
+- Working tree: **CLEAN** at the exact `3414f9ca...` Windows zero-touch verification boundary before this evidence-only state update; classify dynamically on resume.
 - Local development remote: `/home/kas/kaspa-gateway-dev/local-git/kaspa-gateway-rust.git` (`local`) and current task branch tracks `local/...` only.
 - Real GitHub fetch remote: `origin=https://github.com/KaspaPulse/kaspa-gateway-rust.git`.
 - Real GitHub push path: **DISABLED LOCALLY** during remediation (`local-first-push-disabled://...`).
@@ -26,7 +26,7 @@
 - Live unrelated Kaspa service on `Server` is outside this remediation and must not be killed or adopted accidentally.
 
 ## NEXT ACTION
-Checkpoint `BUG-0010`, transfer the exact local branch checkpoint to `Server`, and rerun zero-touch to verify BUG-0009/BUG-0010 together; continue from the first subsequent Windows divergence only.
+Record the exact `3414f9ca...` Windows zero-touch PASS, then continue with real-Windows restart/crash/relaunch reconciliation and in-process Bridge mode only; do not repeat the passed baseline matrix.
 
 ## DO NOT REPEAT
 Do not push intermediate commits to real GitHub, redo already-green restart/crash/isolation tests without a relevant code change, reduce ownership identity to PID-only evidence, or fabricate an explicit P2P endpoint when upstream owns the official default.
