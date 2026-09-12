@@ -1398,6 +1398,19 @@ function kgwNodeRawLogBufferV1(net, role = "node") {
   return KGW_NODE_RAW_LOG_BUFFERS_V1.get(key);
 }
 
+function kgwNodeRawLogTextHasTransportWrapperV1(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) return false;
+  if (/^kgw_raw_process_log_v1(?:;|$)/i.test(text)) return true;
+  return /^(?:\[KGW_CHILD_STD(?:OUT|ERR)\]\s*)?\{[\s\S]*["']eventKind["']\s*:\s*["']diagnostic_transport_record["']/i.test(text);
+}
+
+function kgwNodeLegacyTransportReportTextV1(report) {
+  if (typeof report === "string") return report;
+  if (!report || typeof report !== "object" || Array.isArray(report) || Array.isArray(report.entries)) return "";
+  return String(report.rawText ?? report.raw_text ?? report.line ?? "");
+}
+
 function kgwNodeNormalizeRawLogEntryV1(entry, expectedNet, expectedRole = "node") {
   if (!entry || typeof entry !== "object") return null;
 
@@ -1455,6 +1468,8 @@ function kgwNodeRenderRawLogBufferV1(net, role = "node") {
 }
 
 function kgwNodeApplyRuntimeLogReportV1(net, role, report) {
+  const legacyTransportText = kgwNodeLegacyTransportReportTextV1(report);
+  if (kgwNodeRawLogTextHasTransportWrapperV1(legacyTransportText)) return 0;
   const entries = Array.isArray(report?.entries) ? report.entries : [];
   const buffer = kgwNodeRawLogBufferV1(net, role);
   let accepted = 0;

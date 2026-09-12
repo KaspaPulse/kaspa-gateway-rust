@@ -4171,6 +4171,19 @@ function kgwBridgeRawLogBufferV1(net, role = "bridge", instanceId = "") {
   return KGW_BRIDGE_RAW_LOG_BUFFERS_V1.get(key);
 }
 
+function kgwBridgeRawLogTextHasTransportWrapperV1(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) return false;
+  if (/^kgw_raw_process_log_v1(?:;|$)/i.test(text)) return true;
+  return /^(?:\[KGW_CHILD_STD(?:OUT|ERR)\]\s*)?\{[\s\S]*["']eventKind["']\s*:\s*["']diagnostic_transport_record["']/i.test(text);
+}
+
+function kgwBridgeLegacyTransportReportTextV1(report) {
+  if (typeof report === "string") return report;
+  if (!report || typeof report !== "object" || Array.isArray(report) || Array.isArray(report.entries)) return "";
+  return String(report.rawText ?? report.raw_text ?? report.line ?? "");
+}
+
 function kgwBridgeNormalizeRawLogEntryV1(entry, expectedNet, expectedRole = "bridge", expectedInstanceId = "") {
   void expectedInstanceId;
   if (!entry || typeof entry !== "object") return null;
@@ -4237,6 +4250,8 @@ function kgwBridgeRenderRawLogBufferV1(net, role = "bridge", instanceId = kgwBri
 }
 
 function kgwBridgeApplyRuntimeLogReportV1(net, role, report, instanceId = kgwBridgeActiveRawLogInstanceIdV1(net)) {
+  const legacyTransportText = kgwBridgeLegacyTransportReportTextV1(report);
+  if (kgwBridgeRawLogTextHasTransportWrapperV1(legacyTransportText)) return 0;
   const entries = Array.isArray(report?.entries) ? report.entries : [];
   const buffer = kgwBridgeRawLogBufferV1(net, role, instanceId);
   let accepted = 0;

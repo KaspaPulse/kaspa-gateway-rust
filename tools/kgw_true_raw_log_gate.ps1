@@ -198,12 +198,8 @@ try {
 
     Assert-NotContains -Text $runtimeSource -Needle "kgw_raw_process_log_v1" -Message "Rust runtime source must not serialize the old raw-process envelope."
 
-    $rawTextEnvelopePattern = @'
-rawText\s*:\s*["'][^"']*kgw_raw_process_log_v1
-'@.Trim()
-    if (-not [regex]::IsMatch($frontendTestSource, $rawTextEnvelopePattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
-        Add-Failure "Frontend fixtures must include a transport-envelope rejection case."
-    }
+    Assert-Contains -Text $frontendTestSource -Needle "Untyped Node transport wrapper is rejected before display or copy" -Message "Frontend fixtures must reject an untyped Node transport envelope."
+    Assert-Contains -Text $frontendTestSource -Needle "Untyped Bridge transport wrapper is rejected before display or copy" -Message "Frontend fixtures must reject an untyped Bridge transport envelope."
     if ([regex]::IsMatch($nodeSource + "`n" + $bridgeSource, 'appendLog\s*\([^)]*kgw_raw_process_log_v1', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
         Add-Failure "Frontend code must not append the old transport envelope into a UI buffer."
     }
@@ -215,6 +211,9 @@ rawText\s*:\s*["'][^"']*kgw_raw_process_log_v1
     Assert-Contains -Text $bridgeSource -Needle "kgwBridgeApplyRuntimeLogReportV1" -Message "Bridge UI must consume typed raw log reports."
     Assert-Contains -Text $nodeSource -Needle "kgwNodeRawLogTextHasTransportWrapperV1" -Message "Node UI must reject transport wrapper text before display or copy."
     Assert-Contains -Text $bridgeSource -Needle "kgwBridgeRawLogTextHasTransportWrapperV1" -Message "Bridge UI must reject transport wrapper text before display or copy."
+    Assert-Contains -Text $nodeSource -Needle "kgwNodeRawLogTextHasTransportWrapperV1(legacyTransportText)" -Message "Node UI must apply transport rejection only at the untyped report boundary."
+    Assert-Contains -Text $bridgeSource -Needle "kgwBridgeRawLogTextHasTransportWrapperV1(legacyTransportText)" -Message "Bridge UI must apply transport rejection only at the untyped report boundary."
+    Assert-Contains -Text $frontendTestSource -Needle "transport-looking official literals remain verbatim" -Message "Typed child rawText that resembles transport framing must remain verbatim."
     Assert-Contains -Text $nodeSource -Needle 'runtimeRole: metadata.runtimeRole || "node"' -Message "Node Copy Log must carry runtime role metadata to native clipboard traces."
     Assert-Contains -Text $bridgeSource -Needle 'runtimeRole: metadata.runtimeRole || "bridge"' -Message "Bridge Copy Log must carry runtime role metadata to native clipboard traces."
     Assert-Contains -Text $bridgeSource -Needle 'bridgeInstanceId: metadata.bridgeInstanceId || ""' -Message "Bridge Copy Log must carry bridge instance metadata to native clipboard traces."

@@ -11,7 +11,7 @@
 
 - Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; REPOSITORY RELEASE_ADMIN_TOKEN RETIRED; ASSOCIATED PAT REVOCATION NOT VERIFIED**.
 - Current objective: **IN PROGRESS — P0 RUNTIME LIFECYCLE & RAW LOGGING RELIABILITY**. Audit and repair network/bridge lifecycle, ownership/readiness/reconciliation, raw stdout/stderr provenance/order, and UI/runtime truth without replacing the accepted same-EXE self-worker architecture.
-- Current engineering blocker: **NONE**. Local-first Git remains enforced; BUG-0002 through BUG-0005 are locally committed and verified, close/relaunch contracts are locally green with runtime IPC 55/55, and the next engineering boundary is full local release validation before Windows validation. Historical PAT revocation remains separately NOT VERIFIED.
+- Current engineering blocker: **NONE**. Local-first Git remains enforced; BUG-0002 through BUG-0005 plus close/relaunch protection are locally checkpointed, BUG-0006 is locally verified pending checkpoint, workspace Rust tests and the E2E-feature build pass, and Milestone 7 resumes at zero-touch live E2E before Windows validation. Historical PAT revocation remains separately NOT VERIFIED.
 - PR #76 **MERGED** as `3f8174c7e9e663da81e29eda5cd889de196eec7e`; PR #77 **MERGED** as `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`; PR #78 **MERGED** as historical closure baseline `50ad815b3a7569c576d7625900462734961cbc69`.
 - `PLANS.md` is **ACTIVE** for the P0 Runtime Lifecycle & Raw Logging Reliability remediation and local-release workflow.
 - Repository Actions secret `RELEASE_ADMIN_TOKEN` is **REMOVED / VERIFIED ABSENT BY NAME** after proving no active tracked workflow/code dependency. The historical associated fine-grained PAT remains account-level **NOT VERIFIED**; its value must never be recorded or guessed.
@@ -289,9 +289,9 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 ## NEXT ACTION
 
-1. Complete the active P0 runtime lifecycle/raw-log task from the latest local checkpoint; do not restart completed BUG-0002 through BUG-0005 or close/relaunch verification.
-2. Run the applicable full local release/security/build/package/artifact gates; treat any failure as blocking and fix it locally before continuing.
-3. Only after local gates are green, run the real Windows lifecycle matrix on `Server` before any final publication.
+1. Complete the active P0 runtime lifecycle/raw-log task from the latest local checkpoint; do not restart completed BUG-0002 through BUG-0006 or close/relaunch verification.
+2. Resume Milestone 7 at zero-touch live E2E, then complete remaining security/build/package/artifact/final-diff gates; treat any failure as blocking and fix it locally before continuing.
+3. Only after all local gates are green, run the real Windows lifecycle matrix on `Server` before any final publication.
 4. Re-review npm exceptions by 2026-10-10 and remove them immediately when a supported upstream path exists.
 5. Revoke the historical fine-grained PAT only if the exact token can be safely identified.
 

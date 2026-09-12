@@ -28,7 +28,7 @@ Rehabilitate network/bridge lifecycle and raw logging end-to-end using the accep
 10. Perform one final real-GitHub push, deploy exact commit, verify production, and close durable state — **PENDING; REAL GITHUB REMAINS BLOCKED UNTIL FINAL LOCAL GATE**.
 
 ## Progress
-Local remediation has four verified defect records and local checkpoints: BUG-0002 frontend raw-log/status truth, BUG-0003 non-blocking cross-network status reconciliation, BUG-0004 STARTING control semantics, and BUG-0005 exact ownership observability. CloseRequested wiring, shutdown-all during STARTING, terminal Stop→restart, post-READY crash recovery, parent-loss cleanup, and STARTING parent-loss relaunch reconciliation are now covered locally. Runtime IPC is green at 55/55; real Windows and release-artifact proof remain intentionally pending.
+Local remediation has BUG-0002 through BUG-0006 verified locally. Close/relaunch protection is checkpointed, runtime IPC is green at 55/55, full workspace Rust tests pass, and the E2E-feature cargo check passes. Milestone 7 reached the true-raw-log gate, exposed BUG-0006, and now passes that gate; zero-touch live E2E is the next unrun stage. Real Windows and release-artifact proof remain intentionally pending.
 
 ## Completion Criteria
 Every local release checklist item is evidenced; no known P0/P1 issue remains; final diff/artifact/evidence match the release commit; post-push remote HEAD and deployed commit match exactly.
@@ -37,4 +37,4 @@ Every local release checklist item is evidenced; no known P0/P1 issue remains; f
 No intermediate GitHub pushes, no force push/rebase of remote history, no admin bypass, no unnecessary runtime rewrite, no direct frontend process ownership, no fake logs, no weakening of testnet12 policy or ownership identity.
 
 ## NEXT ACTION
-Checkpoint the close/relaunch regression protection to the local bare remote, then execute Milestone 7: the repository's full applicable local regression, security, lint/type, build, packaging, artifact, and final-diff gates. Do not run the real Windows matrix until Milestone 7 is green, and do not push to real GitHub.
+Checkpoint BUG-0006 to the local bare remote, then resume Milestone 7 at zero-touch live E2E and continue through Graphify, security, packaging, artifact, and final-diff gates. Do not repeat already-passed expensive stages, do not run the Windows matrix until Milestone 7 is green, and do not push to real GitHub.

@@ -141,3 +141,24 @@ Continue Milestone 7 from the first unrun gate. Do not repeat the already-passed
 
 ## DO NOT REPEAT
 Do not hide the initial Clippy failure, and do not rerun the complete expensive Rust quality sequence merely to re-prove stages that were unaffected by this test-only cleanup.
+
+## BUG-0006 RAW-LOG BOUNDARY CHECKPOINT
+Status: VERIFIED LOCALLY
+Timestamp: 2026-09-12
+
+## LAST CONFIRMED STATE
+Milestone 7 advanced through the Desktop E2E-feature cargo check and reached the true-raw-log gate. The gate exposed a missing explicit frontend boundary between legacy untyped transport envelopes and typed child raw-log records.
+
+## COMPLETED / VERIFIED
+- Node and Bridge reject untyped top-level legacy transport envelopes before typed raw-log ingestion.
+- Typed `entry.rawText` remains opaque/verbatim even when official stdout/stderr resembles internal transport framing.
+- Sequence ordering remains monotonic by typed record sequence.
+
+## EVIDENCE / TESTS
+Workspace Rust tests PASS; E2E-feature cargo check PASS; frontend raw-log regression PASS; `kgw_true_raw_log_gate.ps1` PASS after the boundary repair.
+
+## NEXT ACTION
+Checkpoint BUG-0006 to the local bare remote, then resume the full-local gate at zero-touch live E2E. Do not repeat the already-passed E2E-feature build or earlier raw-log stages.
+
+## DO NOT REPEAT
+Do not conflate typed child payload content with an untyped transport envelope, and do not restart Milestone 7 from its beginning after this checkpoint.

@@ -375,6 +375,19 @@ async function nodeRawLogFrontendTests() {
   const stderrLine = `stderr raw line;equals=value;json={"kind":"stderr"};unicode=${unicode};path=C:\\Kaspa\\stderr.log`;
   const transportLookingStdout = "kgw_raw_process_log_v1;network=mainnet;source=self-worker;runtime_role=node;received_ms=1;line=official-literal";
   const transportLookingStderr = "[KGW_CHILD_STDERR] {\"eventKind\":\"diagnostic_transport_record\"}";
+  const mainnetBeforeTyped = window.document.getElementById("node-mainnet-logOutput");
+  assert.strictEqual(
+    api.kgwNodeApplyRuntimeLogReportV1("mainnet", "node", "kgw_raw_process_log_v1;network=mainnet;line=legacy-wrapper"),
+    0,
+    "Untyped Node transport wrapper is rejected before display or copy",
+  );
+  assert.strictEqual(mainnetBeforeTyped.textContent, "", "Rejected Node transport wrapper must not enter the raw buffer");
+  assert.strictEqual(
+    api.kgwNodeApplyRuntimeLogReportV1("mainnet", "node", { rawText: "[KGW_CHILD_STDERR] {\"eventKind\":\"diagnostic_transport_record\"}" }),
+    0,
+    "Untyped Node diagnostic transport envelope is rejected before display or copy",
+  );
+  assert.strictEqual(mainnetBeforeTyped.textContent, "", "Rejected Node diagnostic envelope must not enter the raw buffer");
 
   api.kgwNodeApplyRuntimeLogReportV1("mainnet", "node", {
     entries: [
@@ -390,7 +403,7 @@ async function nodeRawLogFrontendTests() {
   const mainnet = window.document.getElementById("node-mainnet-logOutput");
   const mainnetEmpty = window.document.getElementById("node-mainnet-logEmpty");
   const expectedNodeRaw = [stdoutLine, stderrLine, transportLookingStdout, transportLookingStderr].join("\n");
-  assert.strictEqual(mainnet.textContent, expectedNodeRaw, "Every typed Node child record is rendered verbatim, including transport-looking official literals");
+  assert.strictEqual(mainnet.textContent, expectedNodeRaw, "Sequence ordering is preserved for typed Node child records while transport-looking official literals remain verbatim");
   assert.strictEqual(mainnetEmpty.hidden, true, "Node empty state must be separate from raw log text");
 
   api.appendLog("mainnet", "MAINNET initialized.");
@@ -429,6 +442,19 @@ async function bridgeRawLogFrontendTests() {
   const stderrLine = `bridge stderr;equals=value;json={"kind":"bridge-stderr"};unicode=${unicode};path=C:\\Kaspa\\bridge.err`;
   const transportLookingStdout = "kgw_raw_process_log_v1;network=mainnet;source=self-worker;runtime_role=bridge;received_ms=1;line=official-literal";
   const transportLookingStderr = "{\"source\":\"native\",\"stage\":\"diagnostic_transport.child.stderr\",\"network\":\"mainnet\",\"eventKind\":\"diagnostic_transport_record\"}";
+  const mainnetBeforeTyped = window.document.getElementById("bridge-mainnet-logOutput");
+  assert.strictEqual(
+    api.kgwBridgeApplyRuntimeLogReportV1("mainnet", "bridge", "kgw_raw_process_log_v1;network=mainnet;line=legacy-wrapper", "1"),
+    0,
+    "Untyped Bridge transport wrapper is rejected before display or copy",
+  );
+  assert.strictEqual(mainnetBeforeTyped.textContent, "", "Rejected Bridge transport wrapper must not enter the raw buffer");
+  assert.strictEqual(
+    api.kgwBridgeApplyRuntimeLogReportV1("mainnet", "bridge", { rawText: "{\"eventKind\":\"diagnostic_transport_record\"}" }, "1"),
+    0,
+    "Untyped Bridge diagnostic transport envelope is rejected before display or copy",
+  );
+  assert.strictEqual(mainnetBeforeTyped.textContent, "", "Rejected Bridge diagnostic envelope must not enter the raw buffer");
 
   api.kgwBridgeApplyRuntimeLogReportV1("mainnet", "bridge", {
     entries: [
@@ -444,7 +470,7 @@ async function bridgeRawLogFrontendTests() {
 
   const mainnet = window.document.getElementById("bridge-mainnet-logOutput");
   const expectedBridgeRaw = [stdoutLine, stderrLine, "same Bridge process record", transportLookingStdout, transportLookingStderr].join("\n");
-  assert.strictEqual(mainnet.textContent, expectedBridgeRaw, "Every typed Bridge process record is rendered verbatim without content or listener filtering");
+  assert.strictEqual(mainnet.textContent, expectedBridgeRaw, "Sequence ordering is preserved for typed Bridge process records while transport-looking official literals remain verbatim");
   api.appendLog("mainnet", "KGW bridge start confirmed.");
   assert.strictEqual(mainnet.textContent, expectedBridgeRaw, "Bridge legacy appendLog must not fabricate raw lines");
 
