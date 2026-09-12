@@ -141,6 +141,25 @@ export async function waitForPort(host, port, timeoutMs = 120000) {
   });
 }
 
+export async function waitForPortFree(host, port, timeoutMs = 60000) {
+  return await waitUntil(`port free ${host}:${port}`, timeoutMs, 500, async () => {
+    return await new Promise((resolve) => {
+      const socket = net.createConnection({ host, port });
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        socket.destroy();
+        resolve(value);
+      };
+      socket.setTimeout(1000);
+      socket.once("connect", () => finish(false));
+      socket.once("timeout", () => finish(false));
+      socket.once("error", () => finish({ host, port, free: true, observedAt: new Date().toISOString() }));
+    });
+  });
+}
+
 export async function probeLocalStratum({ host = "127.0.0.1", port, outputDirectory, label }) {
   const payload = JSON.stringify({
     id: 1,
