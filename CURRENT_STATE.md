@@ -2,7 +2,7 @@
 
 - Verified at: 2026-09-12 during Milestone 7 local validation for P0 Runtime Lifecycle & Raw Logging Reliability remediation.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
-- Current HEAD: **VERIFY DYNAMICALLY**; latest committed local checkpoint is `4f6cf39f033177211f14402efaca1510e97562be` (BUG-0007 effective-node-settings serde contract).
+- Current HEAD: **VERIFY DYNAMICALLY**; latest committed local recovery-harness checkpoint before BUG-0011 is `587a3ebf6e57b602c5492d3160f29c23684fedbc`.
 - Current branch: `fix/runtime-lifecycle-raw-logging-reliability-20260911`.
 - Current remote main: **VERIFY DYNAMICALLY** before final integration; task baseline observation is `b88cc2571cb65ca30c1361ee3aa9b21eb551ea7c`.
 - Working tree: **CLEAN** at the exact `3414f9ca...` Windows zero-touch verification boundary before this evidence-only state update; classify dynamically on resume.
@@ -22,11 +22,12 @@
 - Architecture: accepted same-EXE self-worker runtime (`role:network` ownership); do not rewrite unnecessarily.
 - Real Windows validation host: `Server`; mocks/Linux integration tests are not final Windows proof.
 - Close/relaunch contract: **VERIFIED LOCALLY** — CloseRequested is guarded by prevent-close/single-flight/shutdown-all/success-only exit; shutdown-all during STARTING waits for the owned transition; STARTING parent-loss relaunch reconciliation clears exact stale ownership. Runtime IPC PASS 55/55.
-- Current P0 runtime lifecycle/raw-log correctness: **NOT VERIFIED** for release until full local release gates, packaged Windows lifecycle matrix, and artifact validation complete.
+- `BUG-0011`: Windows exact-owner crash proved runtime correctly reaches `running=false;readiness=FAILED` while preserving terminal PID identity; the E2E helper misclassified retained PID as live ownership. Local predicate fix is green; focused Windows rerun pending.
+- Current P0 runtime lifecycle/raw-log correctness: **NOT VERIFIED** for release until focused Windows recovery/mode tests, full local release gates, packaged Windows lifecycle matrix, and artifact validation complete.
 - Live unrelated Kaspa service on `Server` is outside this remediation and must not be killed or adopted accidentally.
 
 ## NEXT ACTION
-Record the exact `3414f9ca...` Windows zero-touch PASS, then continue with real-Windows restart/crash/relaunch reconciliation and in-process Bridge mode only; do not repeat the passed baseline matrix.
+Checkpoint BUG-0011 locally and rerun only the focused Windows node recovery spec; then execute the already-checkpointed in-process Bridge and native close/relaunch focused coverage. Do not repeat the passed baseline matrix.
 
 ## DO NOT REPEAT
 Do not push intermediate commits to real GitHub, redo already-green restart/crash/isolation tests without a relevant code change, reduce ownership identity to PID-only evidence, or fabricate an explicit P2P endpoint when upstream owns the official default.

@@ -23,12 +23,12 @@ Rehabilitate network/bridge lifecycle and raw logging end-to-end using the accep
 5. Repair raw stdout/stderr ordering/provenance/diagnostics separation and frontend rendering — **COMPLETE LOCALLY**.
 6. Repair reconciliation/orphan/stale-state/UI truth after crash, close, and relaunch — **COMPLETE LOCALLY**.
 7. Run full local regression/security/build/artifact validation — **COMPLETE FOR NON-WINDOWS GATES; WINDOWS ARTIFACT/GUI PROOF CONTINUES IN MILESTONE 8**.
-8. Run real Windows lifecycle matrix for mainnet/testnet10 and every supported bridge mode — **IN PROGRESS; BASELINE NODE + EXTERNAL BRIDGE ZERO-TOUCH PASS ON WINDOWS**.
+8. Run real Windows lifecycle matrix for mainnet/testnet10 and every supported bridge mode — **IN PROGRESS; BASELINE NODE + EXTERNAL BRIDGE PASS; FOCUSED RECOVERY FOUND BUG-0011 HARNESS MISCLASSIFICATION**.
 9. Consolidate local commits, independently verify final production artifact/evidence, and pass local release gate — **PENDING**.
 10. Perform one final real-GitHub push, deploy exact commit, verify production, and close durable state — **PENDING; REAL GITHUB REMAINS BLOCKED UNTIL FINAL LOCAL GATE**.
 
 ## Progress
-Local remediation has BUG-0002 through BUG-0010 checkpointed; Milestone 7 non-Windows validation is green and Desktop 0.1.2 is local-only. Exact local HEAD `3414f9ca...` passed Windows zero-touch for Mainnet/Testnet10 Node and external Bridge, including START -> READY -> raw-log/copy -> STOP, isolated ports, real PIDs, and zero validation errors. Remaining Windows scope is restart/crash/relaunch reconciliation plus in-process Bridge mode.
+Local remediation has BUG-0002 through BUG-0010 checkpointed; focused node recovery, in-process Bridge, and close/relaunch harnesses are also checkpointed locally. Windows baseline passed. The focused node recovery run proved exact-owner crash reconciliation returns `running=false;readiness=FAILED` but exposed BUG-0011 in the E2E stopped-state classifier; its local fix is green and awaits focused Windows rerun.
 
 ## Completion Criteria
 Every local release checklist item is evidenced; no known P0/P1 issue remains; final diff/artifact/evidence match the release commit; post-push remote HEAD and deployed commit match exactly.
@@ -37,4 +37,4 @@ Every local release checklist item is evidenced; no known P0/P1 issue remains; f
 No intermediate GitHub pushes, no force push/rebase of remote history, no admin bypass, no unnecessary runtime rewrite, no direct frontend process ownership, no fake logs, no weakening of testnet12 policy or ownership identity.
 
 ## NEXT ACTION
-Record the successful baseline Windows matrix, then add focused restart/crash/relaunch and in-process Bridge validation on Server. Do not repeat already-passed baseline/non-Windows gates and do not push to real GitHub.
+Checkpoint BUG-0011, rerun only focused node recovery on Server, then run focused in-process Bridge and native close/relaunch tests. Do not repeat baseline/non-Windows gates and do not push to real GitHub.

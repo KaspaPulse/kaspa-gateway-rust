@@ -56,6 +56,13 @@ export function pidFromStatus(statusText) {
   return Number.isSafeInteger(pid) && pid > 0 ? pid : null;
 }
 
+export function isStoppedOwnerStatus(statusText) {
+  const text = String(statusText ?? "");
+  const fields = parseKeyValueLine(text);
+  if (String(fields.running || "").toLowerCase() === "false") return true;
+  return /no .*worker status yet|stopped/i.test(text) && String(fields.running || "").toLowerCase() !== "true";
+}
+
 export function assertNoTransportWrappers(text, label) {
   assert.equal(containsTransportWrapper(text), false, `${label} contains diagnostic transport wrapper text`);
 }

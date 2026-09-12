@@ -1,9 +1,22 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import { isStoppedOwnerStatus } from "./assertions.mjs";
 
 const wdio = fs.readFileSync(new URL("../wdio.conf.mjs", import.meta.url), "utf8");
 assert.ok(wdio.includes('process.env.KGW_E2E_SPEC || "./specs/zero-touch-live-matrix.e2e.js"'));
 assert.ok(wdio.includes("specs: [selectedSpec]"), "WDIO must use the selected local spec");
+
+
+assert.equal(
+  isStoppedOwnerStatus("role=node;network=mainnet;pid=4242;running=false;readiness=FAILED"),
+  true,
+  "terminal status must remain stopped even when PID is retained as crash evidence",
+);
+assert.equal(
+  isStoppedOwnerStatus("role=node;network=mainnet;pid=4242;running=true;readiness=READY"),
+  false,
+  "running owner status must never be classified as stopped",
+);
 
 const killScript = fs.readFileSync(new URL("./kgw_kill_exact_owned_process.ps1", import.meta.url), "utf8");
 const executableGuard = killScript.indexOf("owned process executable mismatch");

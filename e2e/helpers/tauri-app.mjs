@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import path from "node:path";
-import { parseKeyValueLine, pidFromStatus } from "./assertions.mjs";
+import { isStoppedOwnerStatus, parseKeyValueLine, pidFromStatus } from "./assertions.mjs";
 import { waitUntil } from "./windows.mjs";
 import { writeJson, writeText } from "./paths.mjs";
 
@@ -286,9 +286,8 @@ export async function waitForOwnerStatus({ network, runtimeRole, timeoutMs = 120
 export async function waitForStopped({ network, runtimeRole, timeoutMs = 30000 }) {
   return await waitUntil(`stopped status ${runtimeRole}/${network}`, timeoutMs, 500, async () => {
     const status = String(await invoke("kgw_runtime_owner_status_v1", { network, runtimeRole }, 30000));
-    if (!pidFromStatus(status) && /running=false/i.test(status)) return { status };
-    if (/no .*worker status yet|stopped|running=false/i.test(status) && !/pid=\d+/i.test(status)) return { status };
-    return false;
+    if (!isStoppedOwnerStatus(status)) return false;
+    return { status, pid: pidFromStatus(status), fields: parseKeyValueLine(status) };
   });
 }
 

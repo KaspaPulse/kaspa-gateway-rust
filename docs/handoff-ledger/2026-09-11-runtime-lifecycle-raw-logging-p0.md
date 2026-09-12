@@ -282,3 +282,21 @@ Add focused real-Windows coverage for restart, forced crash recovery, applicatio
 
 DO NOT REPEAT
 Do not treat the earlier BUG-0009/BUG-0010 failed runs as current blockers; the exact `3414f9ca...` rerun supersedes them with a complete PASS.
+
+## BUG-0011 WINDOWS RECOVERY CLASSIFIER CHECKPOINT
+Status: LOCAL FIX VERIFIED; focused Windows rerun pending.
+
+## COMPLETED / VERIFIED
+- Exact-owner crash kill on Windows matched PID, executable, and start-time for Mainnet and Testnet10.
+- Runtime reconciled both crashes to `running=false;readiness=FAILED` with terminal error evidence.
+- Retained PID/start-time/executable are terminal crash evidence, not live ownership.
+- E2E `waitForStopped()` now classifies explicit `running=false` as terminal and preserves parsed PID/fields as evidence.
+
+## EVIDENCE / TESTS
+`recovery-f7a82e7` captured both failures; E2E lint/check, recovery smoke, `git diff --check`, and Graphify refresh/query PASS after the fix.
+
+## NEXT ACTION
+Commit/push BUG-0011 to `local` only, transfer exact HEAD to `Server`, and rerun only `lifecycle-recovery.e2e.js`.
+
+## DO NOT REPEAT
+Do not remove terminal ownership identity from runtime status and do not rerun the already-passed Windows baseline matrix.
