@@ -14,7 +14,7 @@ Make network and bridge lifecycle trustworthy end-to-end: UI state must reflect 
 - Validate real Windows runtime on `Server`; mocks alone are insufficient.
 
 ## Current Phase
-Local remediation is complete through `BUG-0008`, and Milestone 7 non-Windows validation is green. Milestone 8 real Windows validation is IN PROGRESS: Mainnet/Testnet10 Node START -> READY -> raw-log/copy -> STOP passed on `Server`, then Mainnet Bridge exposed `BUG-0009` in the E2E instance-port locator. BUG-0009 is fixed and locally verified pending checkpoint transfer. Desktop `0.1.2` remains local-only and immutable `0.1.1` remains untouched.
+Local remediation is complete through `BUG-0009`, and Milestone 7 non-Windows validation is green. Milestone 8 real Windows validation is IN PROGRESS: Mainnet/Testnet10 Node START -> READY -> raw-log/copy -> STOP passed on `Server`; BUG-0009 Bridge locator is locally fixed. The same Windows result also exposed `BUG-0010` evidence-port profile drift, now locally fixed and pending checkpoint transfer. Desktop `0.1.2` remains local-only and immutable `0.1.1` remains untouched.
 
 ## Confirmed Progress
 `local` remains the only push target for intermediate work and `origin` push remains disabled. Frontend raw logs/status truth, backend cross-network status responsiveness, and STARTING control semantics are repaired. READY status now retains and reports exact worker/parent identity plus runtime endpoint semantics without changing ownership behavior.
@@ -26,10 +26,10 @@ NONE. Source/IPC/frontend remediation and close/relaunch reconciliation are loca
 Workspace Rust tests pass, the Desktop E2E-feature cargo check passes, and the full local gate advanced through raw-log checks. `BUG-0006` frontend regression and `kgw_true_raw_log_gate.ps1` now pass after preserving typed child rawText while rejecting only untyped transport envelopes.
 
 ## Current Action
-Checkpoint `BUG-0009` locally, transfer the exact checkpoint to `Server`, and rerun Windows zero-touch through the Bridge cases without touching the unrelated 16110/16111 service.
+Checkpoint `BUG-0010` locally, transfer the exact checkpoint to `Server`, and rerun Windows zero-touch to verify BUG-0009/BUG-0010 together without touching the unrelated 16110/16111 service.
 
 ## Next Action
-Rerun Windows zero-touch on `Server` with the BUG-0009 checkpoint; continue sequentially through Bridge readiness/raw-log/copy/stop and any newly exposed divergence, then restart/crash/relaunch. No real GitHub push is allowed yet.
+Rerun Windows zero-touch on `Server` with the BUG-0010 checkpoint; continue sequentially through Bridge readiness/raw-log/copy/stop and any newly exposed divergence, then restart/crash/relaunch. No real GitHub push is allowed yet.
 
 ## Verification Required
 Focused regression per defect; full runtime IPC suite; frontend lifecycle/raw-log gates; workspace tests/security gates; production desktop build/artifact; real Windows lifecycle sequences for mainnet/testnet10 and supported bridge modes; no orphan/stale/false READY; final local audit.

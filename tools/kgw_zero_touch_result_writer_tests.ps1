@@ -126,6 +126,59 @@ try {
     }
     Assert-True -Condition $rejectedOldPowerShell -Message "PowerShell major version below 7 must be rejected"
     Assert-KgwZeroTouchPowerShell7 -MajorVersion 7
+
+    $portEnvNames = @(
+        "KGW_E2E_MAINNET_RPC_PORT",
+        "KGW_E2E_MAINNET_P2P_PORT",
+        "KGW_E2E_MAINNET_BRIDGE_PORT",
+        "KGW_E2E_TESTNET10_RPC_PORT",
+        "KGW_E2E_TESTNET10_P2P_PORT",
+        "KGW_E2E_TESTNET10_BRIDGE_PORT"
+    )
+    $savedPortEnv = @{}
+    foreach ($name in $portEnvNames) {
+        $savedPortEnv[$name] = [Environment]::GetEnvironmentVariable($name, "Process")
+        [Environment]::SetEnvironmentVariable($name, $null, "Process")
+    }
+    try {
+        $defaultStages = @(Get-KgwZeroTouchRequiredStages)
+        $defaultMainnet = $defaultStages | Where-Object Slug -eq "mainnet-node"
+        Assert-Equal -Actual ([int]$defaultMainnet.RequiredPorts[0]) -Expected 16110 -Message "default Mainnet RPC evidence port"
+        Assert-Equal -Actual ([int]$defaultMainnet.RequiredPorts[1]) -Expected 16111 -Message "default Mainnet P2P evidence port"
+
+        $env:KGW_E2E_MAINNET_RPC_PORT = "16120"
+        $env:KGW_E2E_MAINNET_P2P_PORT = "16121"
+        $env:KGW_E2E_MAINNET_BRIDGE_PORT = "5566"
+        $env:KGW_E2E_TESTNET10_RPC_PORT = "16220"
+        $env:KGW_E2E_TESTNET10_P2P_PORT = "16221"
+        $env:KGW_E2E_TESTNET10_BRIDGE_PORT = "5666"
+        $isolatedStages = @(Get-KgwZeroTouchRequiredStages)
+        $isolatedMainnet = $isolatedStages | Where-Object Slug -eq "mainnet-node"
+        $isolatedMainnetBridge = $isolatedStages | Where-Object Slug -eq "mainnet-bridge"
+        $isolatedTestnet10 = $isolatedStages | Where-Object Slug -eq "testnet10-node"
+        $isolatedTestnet10Bridge = $isolatedStages | Where-Object Slug -eq "testnet10-bridge"
+        Assert-Equal -Actual ([int]$isolatedMainnet.RequiredPorts[0]) -Expected 16120 -Message "isolated Mainnet RPC evidence port"
+        Assert-Equal -Actual ([int]$isolatedMainnet.RequiredPorts[1]) -Expected 16121 -Message "isolated Mainnet P2P evidence port"
+        Assert-Equal -Actual ([int]$isolatedMainnetBridge.RequiredPorts[0]) -Expected 5566 -Message "isolated Mainnet Bridge evidence port"
+        Assert-Equal -Actual ([int]$isolatedTestnet10.RequiredPorts[0]) -Expected 16220 -Message "isolated Testnet10 RPC evidence port"
+        Assert-Equal -Actual ([int]$isolatedTestnet10.RequiredPorts[1]) -Expected 16221 -Message "isolated Testnet10 P2P evidence port"
+        Assert-Equal -Actual ([int]$isolatedTestnet10Bridge.RequiredPorts[0]) -Expected 5666 -Message "isolated Testnet10 Bridge evidence port"
+
+        $env:KGW_E2E_MAINNET_RPC_PORT = "abc"
+        $invalidPortRejected = $false
+        try {
+            [void](Get-KgwZeroTouchRequiredStages)
+        }
+        catch {
+            $invalidPortRejected = $_.Exception.Message -match "integer TCP port in 1024\.\.65535"
+        }
+        Assert-True -Condition $invalidPortRejected -Message "invalid evidence port override must fail closed"
+    }
+    finally {
+        foreach ($name in $portEnvNames) {
+            [Environment]::SetEnvironmentVariable($name, $savedPortEnv[$name], "Process")
+        }
+    }
 }
 catch {
     Add-TestFailure "Unexpected test harness error: $($_.Exception.Message)"

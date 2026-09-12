@@ -238,3 +238,23 @@ NEXT ACTION
 
 DO NOT REPEAT
 - Do not rerun completed non-Windows gates; do not touch real GitHub; do not alter production Bridge runtime merely to accommodate a stale E2E locator.
+
+## BUG-0010 ZERO-TOUCH EVIDENCE PORT PROFILE CHECKPOINT
+
+Status: LOCAL FIX VERIFIED; exact Windows rerun pending.
+
+COMPLETED / VERIFIED
+- Exact Windows `e81883b...` result proved isolated Mainnet Node ports 16120/16121 but evidence validation still demanded 16110/16111.
+- Red PowerShell regression reproduced all six Node/Bridge RequiredPorts mismatches under env overrides.
+- Evidence required stages now consume the same `KGW_E2E_*_PORT` process environment contract as the E2E runtime matrix.
+- Defaults remain the production/default validation ports when env overrides are absent.
+- Invalid env port values fail closed.
+
+EVIDENCE / TESTS
+- `tools/kgw_zero_touch_result_writer_tests.ps1`: FAIL before fix on six isolated-port assertions; PASS after fix.
+
+NEXT ACTION
+- Commit/push to local mirror only, transfer exact HEAD to `Server`, rerun Windows zero-touch once to validate BUG-0009 and BUG-0010 together.
+
+DO NOT REPEAT
+- Do not maintain a second hard-coded evidence port table that can drift from the E2E execution profile.

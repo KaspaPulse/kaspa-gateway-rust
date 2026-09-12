@@ -410,7 +410,33 @@ function New-KgwZeroTouchWriterFailureResultObject {
     }
 }
 
+function Get-KgwZeroTouchEvidencePort {
+    param(
+        [Parameter(Mandatory)][string]$EnvironmentName,
+        [Parameter(Mandatory)][int]$DefaultPort
+    )
+
+    $raw = [Environment]::GetEnvironmentVariable($EnvironmentName, "Process")
+    if ([string]::IsNullOrWhiteSpace($raw)) {
+        return $DefaultPort
+    }
+
+    $port = 0
+    if (-not [int]::TryParse($raw, [ref]$port) -or $port -lt 1024 -or $port -gt 65535) {
+        throw "$EnvironmentName must be an integer TCP port in 1024..65535; got '$raw'."
+    }
+
+    return $port
+}
+
 function Get-KgwZeroTouchRequiredStages {
+    $mainnetRpcPort = Get-KgwZeroTouchEvidencePort -EnvironmentName "KGW_E2E_MAINNET_RPC_PORT" -DefaultPort 16110
+    $mainnetP2pPort = Get-KgwZeroTouchEvidencePort -EnvironmentName "KGW_E2E_MAINNET_P2P_PORT" -DefaultPort 16111
+    $mainnetBridgePort = Get-KgwZeroTouchEvidencePort -EnvironmentName "KGW_E2E_MAINNET_BRIDGE_PORT" -DefaultPort 5556
+    $testnet10RpcPort = Get-KgwZeroTouchEvidencePort -EnvironmentName "KGW_E2E_TESTNET10_RPC_PORT" -DefaultPort 16210
+    $testnet10P2pPort = Get-KgwZeroTouchEvidencePort -EnvironmentName "KGW_E2E_TESTNET10_P2P_PORT" -DefaultPort 16211
+    $testnet10BridgePort = Get-KgwZeroTouchEvidencePort -EnvironmentName "KGW_E2E_TESTNET10_BRIDGE_PORT" -DefaultPort 5656
+
     return @(
         [pscustomobject]@{
             Name = "Mainnet Node"
@@ -418,7 +444,7 @@ function Get-KgwZeroTouchRequiredStages {
             Network = "mainnet"
             RuntimeRole = "node"
             OwnerStatusFile = "node-owner-status.json"
-            RequiredPorts = @(16110, 16111)
+            RequiredPorts = @($mainnetRpcPort, $mainnetP2pPort)
         },
         [pscustomobject]@{
             Name = "Testnet10 Node"
@@ -426,7 +452,7 @@ function Get-KgwZeroTouchRequiredStages {
             Network = "testnet10"
             RuntimeRole = "node"
             OwnerStatusFile = "node-owner-status.json"
-            RequiredPorts = @(16210, 16211)
+            RequiredPorts = @($testnet10RpcPort, $testnet10P2pPort)
         },
         [pscustomobject]@{
             Name = "Mainnet Bridge"
@@ -434,7 +460,7 @@ function Get-KgwZeroTouchRequiredStages {
             Network = "mainnet"
             RuntimeRole = "bridge"
             OwnerStatusFile = "bridge-owner-status.json"
-            RequiredPorts = @(5556)
+            RequiredPorts = @($mainnetBridgePort)
         },
         [pscustomobject]@{
             Name = "Testnet10 Bridge"
@@ -442,7 +468,7 @@ function Get-KgwZeroTouchRequiredStages {
             Network = "testnet10"
             RuntimeRole = "bridge"
             OwnerStatusFile = "bridge-owner-status.json"
-            RequiredPorts = @(5656)
+            RequiredPorts = @($testnet10BridgePort)
         }
     )
 }
