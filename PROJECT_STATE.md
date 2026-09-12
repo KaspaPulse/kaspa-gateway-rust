@@ -9,9 +9,9 @@
 
 ## Executive Status
 
-- Overall status: **DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; SEPTEMBER DEPENDENCY MAINTENANCE CLOSED; SAFE DEPENDABOT AUTO-MERGE ACTIVE; REPOSITORY RELEASE_ADMIN_TOKEN RETIRED; ASSOCIATED PAT REVOCATION NOT VERIFIED**.
+- Overall status: **IMMUTABLE DESKTOP 0.1.1 RELEASE BOUNDARY PRESERVED; LOCAL-ONLY DESKTOP 0.1.2 RUNTIME-RELIABILITY CANDIDATE IN VALIDATION; REPOSITORY RELEASE_ADMIN_TOKEN RETIRED; ASSOCIATED PAT REVOCATION NOT VERIFIED**.
 - Current objective: **IN PROGRESS — P0 RUNTIME LIFECYCLE & RAW LOGGING RELIABILITY**. Audit and repair network/bridge lifecycle, ownership/readiness/reconciliation, raw stdout/stderr provenance/order, and UI/runtime truth without replacing the accepted same-EXE self-worker architecture.
-- Current engineering blocker: **NONE**. Local-first Git remains enforced; BUG-0002 through BUG-0005 plus close/relaunch protection are locally checkpointed, BUG-0006 is locally verified pending checkpoint, workspace Rust tests and the E2E-feature build pass, and Milestone 7 resumes at zero-touch live E2E before Windows validation. Historical PAT revocation remains separately NOT VERIFIED.
+- Current engineering blocker: **NONE**. Local-first Git remains enforced; BUG-0002 through BUG-0006 plus close/relaunch protection are locally checkpointed, workspace Rust tests and the E2E-feature build pass, supply-chain/npm/secret/workflow checks are green, and local-only Desktop 0.1.2 metadata is consistent pending release-build/artifact validation before Windows validation. Historical PAT revocation remains separately NOT VERIFIED.
 - PR #76 **MERGED** as `3f8174c7e9e663da81e29eda5cd889de196eec7e`; PR #77 **MERGED** as `99b5a751e21bf6d11d6cad1ac3884e3b5f23a9e5`; PR #78 **MERGED** as historical closure baseline `50ad815b3a7569c576d7625900462734961cbc69`.
 - `PLANS.md` is **ACTIVE** for the P0 Runtime Lifecycle & Raw Logging Reliability remediation and local-release workflow.
 - Repository Actions secret `RELEASE_ADMIN_TOKEN` is **REMOVED / VERIFIED ABSENT BY NAME** after proving no active tracked workflow/code dependency. The historical associated fine-grained PAT remains account-level **NOT VERIFIED**; its value must never be recorded or guessed.
@@ -60,7 +60,7 @@
 
 ### Repository
 
-- Desktop package/release line remains `0.1.1`.
+- Published Desktop package/release line remains immutable `0.1.1`; active local remediation candidate metadata is `0.1.2` and is not yet pushed, tagged, drafted, published, or deployed.
 - Rust workspace toolchain is now Rust `1.98.1`; edition remains `2024`.
 - Desktop Node engine remains `>=24 <27`.
 - `AGENTS.override.md` is absent in the verified current checkout; `AGENTS.md` is the active repository policy.
@@ -290,8 +290,8 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 ## NEXT ACTION
 
 1. Complete the active P0 runtime lifecycle/raw-log task from the latest local checkpoint; do not restart completed BUG-0002 through BUG-0006 or close/relaunch verification.
-2. Resume Milestone 7 at zero-touch live E2E, then complete remaining security/build/package/artifact/final-diff gates; treat any failure as blocking and fix it locally before continuing.
-3. Only after all local gates are green, run the real Windows lifecycle matrix on `Server` before any final publication.
+2. Finish local-only Desktop 0.1.2 release build/artifact/final-diff gates; treat any failure as blocking and fix it locally before continuing.
+3. Run Windows-only zero-touch/lifecycle/package validation on `Server` only after non-Windows local gates are green and before any final publication.
 4. Re-review npm exceptions by 2026-10-10 and remove them immediately when a supported upstream path exists.
 5. Revoke the historical fine-grained PAT only if the exact token can be safely identified.
 

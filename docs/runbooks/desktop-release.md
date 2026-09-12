@@ -4,7 +4,7 @@
 
 This runbook covers qualification, recovery verification, publication, and post-publication verification for Kaspa Gateway Desktop GitHub Releases. It does not start/stop Kaspa node or bridge runtimes and does not authorize `testnet12` live smoke.
 
-The active `0.1.1` release-specific state belongs in `PROJECT_STATE.md`/`PLANS.md`; this runbook is the durable procedure.
+The active release-candidate-specific state belongs in `PROJECT_STATE.md`/`PLANS.md`; this runbook is the durable procedure. Published immutable release history remains historical evidence, not a reusable version identity.
 
 ## Preconditions
 

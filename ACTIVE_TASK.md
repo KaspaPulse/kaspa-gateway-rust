@@ -14,7 +14,7 @@ Make network and bridge lifecycle trustworthy end-to-end: UI state must reflect 
 - Validate real Windows runtime on `Server`; mocks alone are insufficient.
 
 ## Current Phase
-Local remediation is complete at the source/IPC/frontend level. `BUG-0002` through `BUG-0005` and close/relaunch regression protection are committed to the local bare remote. Milestone 7 is IN PROGRESS; `BUG-0006` fixed the explicit untyped transport-envelope boundary and is locally verified pending checkpoint commit.
+Local remediation is complete at the source/IPC/frontend level. `BUG-0002` through `BUG-0005` and close/relaunch regression protection are committed to the local bare remote. Milestone 7 is IN PROGRESS; `BUG-0006` is checkpointed locally and Desktop `0.1.2` is the local-only patch release candidate for this remediation. Published immutable `0.1.1` remains untouched.
 
 ## Confirmed Progress
 `local` remains the only push target for intermediate work and `origin` push remains disabled. Frontend raw logs/status truth, backend cross-network status responsiveness, and STARTING control semantics are repaired. READY status now retains and reports exact worker/parent identity plus runtime endpoint semantics without changing ownership behavior.
@@ -26,10 +26,10 @@ NONE. Source/IPC/frontend remediation and close/relaunch reconciliation are loca
 Workspace Rust tests pass, the Desktop E2E-feature cargo check passes, and the full local gate advanced through raw-log checks. `BUG-0006` frontend regression and `kgw_true_raw_log_gate.ps1` now pass after preserving typed child rawText while rejecting only untyped transport envelopes.
 
 ## Current Action
-Checkpoint `BUG-0006` to the local bare remote only, then resume Milestone 7 at zero-touch live E2E without repeating already-passed expensive stages.
+Validate and checkpoint the local-only `0.1.2` release metadata, then continue remaining non-Windows Milestone 7 build/artifact gates without repeating already-passed stages.
 
 ## Next Action
-Resume the full local gate from zero-touch live E2E, then Graphify/diff hygiene and remaining security/build/package/artifact gates. Only after Milestone 7 is green proceed to the Windows lifecycle matrix; no real GitHub push is allowed yet.
+Complete the remaining non-Windows release build/artifact and final-audit gates for local candidate `0.1.2`; run Windows-only zero-touch/lifecycle/package validation on `Server` afterward. No real GitHub push is allowed yet.
 
 ## Verification Required
 Focused regression per defect; full runtime IPC suite; frontend lifecycle/raw-log gates; workspace tests/security gates; production desktop build/artifact; real Windows lifecycle sequences for mainnet/testnet10 and supported bridge modes; no orphan/stale/false READY; final local audit.
