@@ -162,3 +162,23 @@ Checkpoint BUG-0006 to the local bare remote, then resume the full-local gate at
 
 ## DO NOT REPEAT
 Do not conflate typed child payload content with an untyped transport envelope, and do not restart Milestone 7 from its beginning after this checkpoint.
+## WINDOWS E2E ISOLATION PROFILE CHECKPOINT
+Status: VERIFIED LOCALLY
+Timestamp: 2026-09-12
+
+## LAST CONFIRMED STATE
+Milestone 7 non-Windows gates are green and Desktop 0.1.2 is the local-only candidate. `Server` has an unrelated live mainnet service on 16110/16111, so default-port zero-touch execution would not be safe.
+
+## COMPLETED / VERIFIED
+- Added validated opt-in E2E runtime port profile with unchanged defaults.
+- Zero-touch writes isolated RPC/P2P/upstream/Bridge ports through real UI controls before Start.
+- Cross-network negative assertions and evidence capture use the same runtime profile.
+
+## EVIDENCE / TESTS
+Runtime-port smoke PASS; JS syntax PASS; E2E lint PASS; E2E `npm run check` PASS.
+
+## NEXT ACTION
+Checkpoint locally, transfer exact local history to `Server`, and run zero-touch with mainnet RPC/P2P overrides while preserving the unrelated 16110/16111 service.
+
+## DO NOT REPEAT
+Do not stop or adopt the unrelated service to satisfy test defaults, and do not change production defaults for validation convenience.

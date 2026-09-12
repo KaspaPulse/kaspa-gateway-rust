@@ -22,8 +22,8 @@ Rehabilitate network/bridge lifecycle and raw logging end-to-end using the accep
 4. Repair bridge lifecycle/readiness/attachment/listener defects with regression coverage — **COMPLETE LOCALLY AT SOURCE/IPC/FRONTEND LEVEL; WINDOWS PROOF REMAINS IN MILESTONE 8**.
 5. Repair raw stdout/stderr ordering/provenance/diagnostics separation and frontend rendering — **COMPLETE LOCALLY**.
 6. Repair reconciliation/orphan/stale-state/UI truth after crash, close, and relaunch — **COMPLETE LOCALLY**.
-7. Run full local regression/security/build/artifact validation — **NEXT / NOT YET COMPLETE**.
-8. Run real Windows lifecycle matrix for mainnet/testnet10 and every supported bridge mode — **PENDING MILESTONE 7**.
+7. Run full local regression/security/build/artifact validation — **COMPLETE FOR NON-WINDOWS GATES; WINDOWS ARTIFACT/GUI PROOF CONTINUES IN MILESTONE 8**.
+8. Run real Windows lifecycle matrix for mainnet/testnet10 and every supported bridge mode — **IN PROGRESS; ISOLATED PORT PROFILE VERIFIED LOCALLY**.
 9. Consolidate local commits, independently verify final production artifact/evidence, and pass local release gate — **PENDING**.
 10. Perform one final real-GitHub push, deploy exact commit, verify production, and close durable state — **PENDING; REAL GITHUB REMAINS BLOCKED UNTIL FINAL LOCAL GATE**.
 

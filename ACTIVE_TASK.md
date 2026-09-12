@@ -26,10 +26,10 @@ NONE. Source/IPC/frontend remediation and close/relaunch reconciliation are loca
 Workspace Rust tests pass, the Desktop E2E-feature cargo check passes, and the full local gate advanced through raw-log checks. `BUG-0006` frontend regression and `kgw_true_raw_log_gate.ps1` now pass after preserving typed child rawText while rejecting only untyped transport envelopes.
 
 ## Current Action
-Validate and checkpoint the local-only `0.1.2` release metadata, then continue remaining non-Windows Milestone 7 build/artifact gates without repeating already-passed stages.
+Checkpoint the Windows E2E isolated-port profile locally, transfer the exact local candidate to `Server`, and begin Milestone 8 real Windows zero-touch/lifecycle validation without touching the unrelated 16110/16111 service.
 
 ## Next Action
-Complete the remaining non-Windows release build/artifact and final-audit gates for local candidate `0.1.2`; run Windows-only zero-touch/lifecycle/package validation on `Server` afterward. No real GitHub push is allowed yet.
+Run Windows zero-touch on `Server` with isolated mainnet ports, then extend real lifecycle coverage through restart/crash/relaunch and all supported Bridge modes. No real GitHub push is allowed yet.
 
 ## Verification Required
 Focused regression per defect; full runtime IPC suite; frontend lifecycle/raw-log gates; workspace tests/security gates; production desktop build/artifact; real Windows lifecycle sequences for mainnet/testnet10 and supported bridge modes; no orphan/stale/false READY; final local audit.

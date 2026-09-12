@@ -5,7 +5,7 @@
 - Current HEAD: **VERIFY DYNAMICALLY**; latest committed local checkpoint is `8bdaff43c65cfaa9f40de177bff221ac80a6bfcd` (BUG-0006 raw-log boundary).
 - Current branch: `fix/runtime-lifecycle-raw-logging-reliability-20260911`.
 - Current remote main: **VERIFY DYNAMICALLY** before final integration; task baseline observation is `b88cc2571cb65ca30c1361ee3aa9b21eb551ea7c`.
-- Working tree: **DIRTY** intentionally with local-only Desktop `0.1.2` release metadata and state reconciliation pending checkpoint commit; classify dynamically on resume.
+- Working tree: **DIRTY** intentionally with Windows E2E isolated-port validation harness changes pending checkpoint commit; classify dynamically on resume.
 - Local development remote: `/home/kas/kaspa-gateway-dev/local-git/kaspa-gateway-rust.git` (`local`) and current task branch tracks `local/...` only.
 - Real GitHub fetch remote: `origin=https://github.com/KaspaPulse/kaspa-gateway-rust.git`.
 - Real GitHub push path: **DISABLED LOCALLY** during remediation (`local-first-push-disabled://...`).
@@ -24,7 +24,7 @@
 - Live unrelated Kaspa service on `Server` is outside this remediation and must not be killed or adopted accidentally.
 
 ## NEXT ACTION
-Checkpoint local-only Desktop 0.1.2 release metadata, then complete remaining non-Windows Milestone 7 build/artifact/final-audit gates. Windows-only zero-touch validation remains Milestone 8.
+Checkpoint the isolated Windows E2E port profile, transfer the exact local branch to `Server`, and run zero-touch with mainnet overrides while proving the unrelated 16110/16111 service remains untouched.
 
 ## DO NOT REPEAT
 Do not push intermediate commits to real GitHub, redo already-green restart/crash/isolation tests without a relevant code change, reduce ownership identity to PID-only evidence, or fabricate an explicit P2P endpoint when upstream owns the official default.

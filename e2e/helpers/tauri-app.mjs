@@ -12,6 +12,28 @@ export async function clickTestId(testId) {
   return element;
 }
 
+async function setControlValue(selector, value) {
+  const result = await browser.execute((css, nextValue) => {
+    const node = document.querySelector(css);
+    if (!node) return { ok: false, reason: "missing" };
+    if (node.disabled || node.readOnly) return { ok: false, reason: "not-editable" };
+    node.value = String(nextValue);
+    node.dispatchEvent(new Event("input", { bubbles: true }));
+    node.dispatchEvent(new Event("change", { bubbles: true }));
+    return { ok: true, value: String(node.value || "") };
+  }, selector, String(value));
+  assert.equal(result?.ok, true, `Unable to set ${selector}: ${result?.reason || "unknown"}`);
+  return result.value;
+}
+
+export async function setControlValueByTestId(testId, value) {
+  return await setControlValue(`[data-testid="${testId}"]`, value);
+}
+
+export async function setControlValueById(elementId, value) {
+  return await setControlValue(`#${elementId}`, value);
+}
+
 export async function readByTestId(testId) {
   const element = await $(`[data-testid="${testId}"]`);
   await element.waitForExist({ timeout: 30000 });
