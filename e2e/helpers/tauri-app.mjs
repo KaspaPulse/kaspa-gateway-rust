@@ -34,6 +34,25 @@ export async function setControlValueById(elementId, value) {
   return await setControlValue(`#${elementId}`, value);
 }
 
+async function setControlChecked(selector, checked) {
+  const result = await browser.execute((css, nextChecked) => {
+    const node = document.querySelector(css);
+    if (!node) return { ok: false, reason: "missing" };
+    if (node.disabled || node.readOnly) return { ok: false, reason: "not-editable" };
+    node.checked = Boolean(nextChecked);
+    node.dispatchEvent(new Event("input", { bubbles: true }));
+    node.dispatchEvent(new Event("change", { bubbles: true }));
+    return { ok: true, checked: Boolean(node.checked) };
+  }, selector, Boolean(checked));
+  assert.equal(result?.ok, true, `Unable to set ${selector}: ${result?.reason || "unknown"}`);
+  assert.equal(result.checked, Boolean(checked), `Checkbox ${selector} did not retain requested state`);
+  return result.checked;
+}
+
+export async function setControlCheckedByTestId(testId, checked) {
+  return await setControlChecked(`[data-testid="${testId}"]`, checked);
+}
+
 export async function readByTestId(testId) {
   const element = await $(`[data-testid="${testId}"]`);
   await element.waitForExist({ timeout: 30000 });

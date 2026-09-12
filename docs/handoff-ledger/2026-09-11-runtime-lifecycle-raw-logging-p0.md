@@ -199,3 +199,19 @@ Fix/verification:
 
 NEXT ACTION: local checkpoint → exact bundle transfer → rerun Windows zero-touch from Mainnet Node.
 DO NOT REPEAT: do not weaken `deny_unknown_fields` or bypass typed effective settings via preview text.
+
+## BUG-0008 WINDOWS ISOLATED P2P CHECKPOINT
+Status: VERIFIED LOCALLY; exact Windows rerun pending checkpoint transfer.
+
+Evidence:
+- BUG-0007 payload passed Tauri and reached self-worker spawn on `Server`.
+- RPC override `16120` applied, but spawn omitted `--listen` and Rusty Kaspa fell back to occupied `16111`.
+- Child panic reported Windows AddrInUse; unrelated PID 33436 remained the owner of 16110/16111.
+
+Fix/verification:
+- E2E now enables the real `listenEnabled` checkbox before setting isolated P2P host/port.
+- Red wiring smoke reproduced the omission before the fix.
+- Runtime-port smoke PASS; E2E lint/check PASS.
+
+NEXT ACTION: local checkpoint → exact bundle transfer → rerun Windows zero-touch.
+DO NOT REPEAT: do not mutate production P2P defaults to accommodate validation isolation.

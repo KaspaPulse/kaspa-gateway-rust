@@ -37,6 +37,7 @@ import {
   rawTextFromReport,
   readByTestId,
   saveDomState,
+  setControlCheckedByTestId,
   setControlValueByTestId,
   shutdownAllRuntimeWorkers,
   stopRuntime,
@@ -188,6 +189,7 @@ async function startNodeFromSettings(network, settings) {
   await setControlValueByTestId(`kgw-node-field-${network}-rpcListenHost`, "127.0.0.1");
   await setControlValueByTestId(`kgw-node-field-${network}-rpcListenPort`, String(settings.rpcPort));
   if (settings.p2pPort) {
+    await setControlCheckedByTestId(`kgw-node-field-${network}-listenEnabled`, true);
     await setControlValueByTestId(`kgw-node-field-${network}-listenHost`, "127.0.0.1");
     await setControlValueByTestId(`kgw-node-field-${network}-listenPort`, String(settings.p2pPort));
   }
