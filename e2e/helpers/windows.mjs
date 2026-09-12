@@ -79,6 +79,15 @@ export async function waitForClipboardShaToFile({ outputPath, expectedSha = "", 
   });
 }
 
+export async function killExactOwnedProcess({ pid, expectedExecutable, expectedStartTime, outputPath }) {
+  return await runPowerShell(helperScript("kgw_kill_exact_owned_process.ps1"), [
+    "-ProcessId", String(pid),
+    "-ExpectedExecutable", String(expectedExecutable || ""),
+    "-ExpectedStartTime", String(expectedStartTime || ""),
+    "-OutputPath", outputPath,
+  ], { timeout: 30000 });
+}
+
 export async function captureWindowsEvidence({ repository, outputDirectory, ports = [], desktopPid = "" }) {
   return await runPowerShell(helperScript("kgw_windows_evidence.ps1"), [
     "-Repository",
