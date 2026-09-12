@@ -12,4 +12,14 @@ const forceKill = killScript.indexOf("Stop-Process -Id $ProcessId -Force");
 assert.ok(executableGuard >= 0 && startTimeGuard >= 0 && forceKill >= 0);
 assert.ok(executableGuard < forceKill, "executable identity must be checked before force kill");
 assert.ok(startTimeGuard < forceKill, "start-time identity must be checked before force kill");
+
+const waitScript = fs.readFileSync(new URL("./kgw_wait_exact_process_exit.ps1", import.meta.url), "utf8");
+assert.ok(waitScript.includes("exact_identity_exited"), "close/relaunch evidence must track exact identity exit");
+assert.equal(waitScript.includes("Stop-Process"), false, "close/relaunch wait helper must never kill a process");
+
+const relaunch = fs.readFileSync(new URL("./app-close-relaunch.mjs", import.meta.url), "utf8");
+const closeRequest = relaunch.indexOf("firstBrowser.closeWindow()");
+const exactExit = relaunch.indexOf("waitForExactProcessExit({");
+const newSession = relaunch.indexOf('secondBrowser = await newSession("after-relaunch"');
+assert.ok(closeRequest >= 0 && closeRequest < exactExit && exactExit < newSession);
 console.log("recovery harness smoke: PASS");

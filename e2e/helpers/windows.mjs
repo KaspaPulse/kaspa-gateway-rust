@@ -88,6 +88,16 @@ export async function killExactOwnedProcess({ pid, expectedExecutable, expectedS
   ], { timeout: 30000 });
 }
 
+export async function waitForExactProcessExit({ pid, expectedExecutable, expectedStartTime, outputPath, timeoutSeconds = 45 }) {
+  return await runPowerShell(helperScript("kgw_wait_exact_process_exit.ps1"), [
+    "-ProcessId", String(pid),
+    "-ExpectedExecutable", String(expectedExecutable || ""),
+    "-ExpectedStartTime", String(expectedStartTime || ""),
+    "-OutputPath", outputPath,
+    "-TimeoutSeconds", String(timeoutSeconds),
+  ], { timeout: (Number(timeoutSeconds) + 15) * 1000 });
+}
+
 export async function captureWindowsEvidence({ repository, outputDirectory, ports = [], desktopPid = "" }) {
   return await runPowerShell(helperScript("kgw_windows_evidence.ps1"), [
     "-Repository",
