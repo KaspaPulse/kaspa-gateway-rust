@@ -1,0 +1,21 @@
+const fs = require("node:fs");
+const path = require("node:path");
+const root = path.resolve(__dirname, "..");
+const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
+const explorerJs = read("apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.js");
+const explorerCss = read("apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.css");
+const settings = read("apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js");
+const topJs = read("apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.js");
+const topHtml = read("apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.html");
+const topTemplate = read("apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.template.js");
+function check(v, m) { if (!v) throw new Error(m); }
+check(!explorerCss.includes("#explorer #explorerStatus {\n  display: none !important;"), "Explorer status must not be permanently hidden");
+check((explorerJs.match(/setStatus\((?:section|root), "Enter a valid Kaspa address\.", "error"\)/g) || []).length >= 4, "All invalid Explorer actions need visible error status");
+check(explorerJs.includes('node.setAttribute("aria-live", state === "error" ? "assertive" : "polite")'), "Explorer ARIA-live state missing");
+check(explorerJs.includes('invokeCommand("validate_kaspa_address"'), "Explorer must use canonical backend address validation");
+check((explorerJs.match(/await kgwCanonicalKaspaAddress\(address\)/g) || []).length >= 4, "All active Explorer filter/fetch owners must use canonical validation");
+check(settings.includes('dialog.open({ title: "Choose directory", directory: true, multiple: false })'), "Settings Browse must invoke native directory dialog");
+check(settings.includes('settings_validate_custom_path') && settings.includes('Browse cancelled; path unchanged.'), "Settings Browse selected/cancel contract missing");
+check(topHtml.includes('id="topAddressesStatus"') && topTemplate.includes('topAddressesStatus'), "Top Addresses status target missing from runtime template");
+for (const state of ["LOADING —", "EMPTY —", "ERROR —", "SUCCESS —"]) check(topJs.includes(state), `Top Addresses ${state} state missing`);
+console.log("kgw_functional_ui_repair_tests: PASS");

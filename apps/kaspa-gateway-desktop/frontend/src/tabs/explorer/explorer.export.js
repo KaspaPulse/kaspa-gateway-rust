@@ -642,7 +642,7 @@ function kgwExportCenteredOpenPromptV10() {
       document.removeEventListener("keydown", onKeyDown, true);
       backdrop.remove();
       if (previousActive && typeof previousActive.focus === "function") {
-        try { previousActive.focus(); } catch (_) {}
+        try { previousActive.focus(); } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
       }
       resolve(Boolean(value));
     }

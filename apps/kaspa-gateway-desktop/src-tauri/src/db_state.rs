@@ -1,6 +1,6 @@
 use kaspa_gateway_config::default_user_data_dir;
 use kaspa_gateway_db::{DatabaseManager, DatabasePaths, TransactionsRepository};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 
 static DB_OPERATION_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -49,4 +49,16 @@ pub fn transactions_repository_unlocked() -> Result<TransactionsRepository, Stri
     manager
         .transactions_repository()
         .map_err(|error| error.to_string())
+}
+
+/// Non-queuing entry for restore: an overlapping request must not become a new restore.
+pub fn try_with_database_root<T>(
+    target: &str,
+    operation: impl FnOnce(&Path) -> Result<T, String>,
+) -> Result<T, String> {
+    let _guard = lock()
+        .try_lock()
+        .map_err(|error| format!("{target}: database operation is busy or unavailable: {error}"))?;
+    let root = database_root()?;
+    operation(&root)
 }

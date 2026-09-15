@@ -1,27 +1,33 @@
 # CURRENT STATE
 
-- Verified at: 2026-09-11 after protected PR #82 merge, post-merge `main` verification, and exact merged Windows stable-network short smoke.
+- Verified at: 2026-09-12 during Milestone 7 local validation for P0 Runtime Lifecycle & Raw Logging Reliability remediation.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
-- Current HEAD: **VERIFY DYNAMICALLY**; historical `REG-0002` repair baseline: `fb16b9a18b7e17621dfb1c280fef7951c8b819a7`.
-- Current task branch: **NONE AUTHORITATIVE WHILE IDLE**; derive dynamically before new work.
-- Current remote main: **VERIFY DYNAMICALLY** before any integration decision; historical REG-0002 runtime-code baseline is `fb16b9a18b7e17621dfb1c280fef7951c8b819a7`.
-- Working tree: **VERIFY DYNAMICALLY** before every task; historical exact-merged smoke boundary was CLEAN before this documentation reconciliation.
-- `REG-0002`: **VERIFIED/CLOSED**. Custom live-smoke RPC/P2P endpoints now flow through canonical `EffectiveNodeSettings` and remain synchronized with top-level worker compatibility values.
-- PR #82: MERGED through protected squash; all exact-head required checks passed.
-- Post-merge `main`: CI, CodeQL/Rust security, Secret Scan, and OpenSSF Scorecard/supply-chain = SUCCESS on `fb16b9a...`.
-- Windows host: `Server` is the verified live-smoke host used for this task.
-- Exact merged mainnet short smoke: PASS on RPC `16120` / P2P `16121`, Rusty Kaspa 2.0.1, 8 peers, parent-loss cleanup and relaunch reconciliation PASS.
-- Exact merged testnet10 short smoke: PASS on RPC `16210`, Rusty Kaspa 2.0.1, 7 peers, parent-loss cleanup and relaunch reconciliation PASS.
-- Smoke-owned ports `16120/16121/16210`: FREE after completion.
-- Unrelated existing service: PID `35540` remained unchanged and continued owning `16110/16111` throughout smoke testing.
-- Both short smokes reported `IsSynced=false`; full synchronization/production capacity is **NOT VERIFIED**.
-- Windows smoke drive free space was about 570 GB, below the runbook's 640 GB production-disk guideline; do not run/claim full production sync on that drive from this evidence.
-- Repository secret `RELEASE_ADMIN_TOKEN`: REMOVED / VERIFIED ABSENT; historical associated PAT remains account-level NOT VERIFIED.
-- Npm residual-risk review/expiry remains 2026-10-10 with no broadened exceptions.
-- Desktop `0.1.1` immutable release/source boundary remains unchanged.
+- Current HEAD: **VERIFY DYNAMICALLY**; latest committed local recovery-harness checkpoint before BUG-0011 is `587a3ebf6e57b602c5492d3160f29c23684fedbc`.
+- Current branch: `fix/runtime-lifecycle-raw-logging-reliability-20260911`.
+- Current remote main: **VERIFY DYNAMICALLY** before final integration; task baseline observation is `b88cc2571cb65ca30c1361ee3aa9b21eb551ea7c`.
+- Working tree: **CLEAN** at the exact `3414f9ca...` Windows zero-touch verification boundary before this evidence-only state update; classify dynamically on resume.
+- Local development remote: `/home/kas/kaspa-gateway-dev/local-git/kaspa-gateway-rust.git` (`local`) and current task branch tracks `local/...` only.
+- Real GitHub fetch remote: `origin=https://github.com/KaspaPulse/kaspa-gateway-rust.git`.
+- Real GitHub push path: **DISABLED LOCALLY** during remediation (`local-first-push-disabled://...`).
+- Local checkpoints already verified on `local`: `e2b00ef` task open, `147b57e` BUG-0002, `dc41641` BUG-0003, `1f1abe6` BUG-0004, `b948849` BUG-0005, `2e1c545` close/relaunch protection, `5242804` strict-Clippy cleanup, `8bdaff4` BUG-0006, `4cbf127` Desktop 0.1.2 candidate metadata, `583ac62` Windows E2E isolated-port profile, `4f6cf39` BUG-0007.
+- `BUG-0002`: raw logs/status polling decoupled; IPC uncertainty remains Reconciling instead of false STOPPED.
+- `BUG-0003`: status no longer blocks behind another network lifecycle transition; registry contention returns reconciliation evidence.
+- `BUG-0004`: Stop is not advertised before READY ownership exists.
+- `BUG-0005`: READY status exposes exact worker/parent process identity and endpoint semantics; checkpointed locally at `b948849` with targeted PASS and runtime IPC PASS 53/53.
+- `BUG-0006`: untyped top-level transport envelopes are explicitly rejected before typed raw-log ingestion, while typed official child `rawText` remains verbatim; frontend regression PASS and true-raw-log gate PASS.
+- `BUG-0007`: real Windows Mainnet Start exposed `rocksDb*` vs serde `rocksdb*` IPC casing drift; explicit serde rename+legacy aliases are locally verified and runtime IPC PASS 56/56; exact Windows rerun pending.
+- `BUG-0008`: **WINDOWS VERIFIED**. Isolated P2P now enables the real `--listen` UI toggle; Mainnet ran on 16120/16121 and Testnet10 on 16210/16211 without touching the foreign 16110/16111 service.
+- Release candidate: **Desktop 0.1.2 LOCAL ONLY**; package/Cargo/Tauri/lock metadata are consistent and `cargo check --locked -p kaspa-gateway-desktop` passes. Published immutable Desktop 0.1.1 is unchanged.
+- Existing IPC coverage re-verifies terminal Stop→reacquire, post-READY crash recovery/restart, parent-loss cleanup, shutdown ordering, and mainnet/testnet10 isolation.
+- Architecture: accepted same-EXE self-worker runtime (`role:network` ownership); do not rewrite unnecessarily.
+- Real Windows validation host: `Server`; mocks/Linux integration tests are not final Windows proof.
+- Close/relaunch contract: **VERIFIED LOCALLY** — CloseRequested is guarded by prevent-close/single-flight/shutdown-all/success-only exit; shutdown-all during STARTING waits for the owned transition; STARTING parent-loss relaunch reconciliation clears exact stale ownership. Runtime IPC PASS 55/55.
+- `BUG-0011`: Windows exact-owner crash proved runtime correctly reaches `running=false;readiness=FAILED` while preserving terminal PID identity; the E2E helper misclassified retained PID as live ownership. Local predicate fix is green; focused Windows rerun pending.
+- Current P0 runtime lifecycle/raw-log correctness: **NOT VERIFIED** for release until focused Windows recovery/mode tests, full local release gates, packaged Windows lifecycle matrix, and artifact validation complete.
+- Live unrelated Kaspa service on `Server` is outside this remediation and must not be killed or adopted accidentally.
 
 ## NEXT ACTION
-No further action for `REG-0002`. Start the next task from dynamically verified Git/GitHub/runtime reality. Re-review npm exceptions by 2026-10-10; perform full-sync production readiness only on a host meeting the documented storage/runtime requirements.
+Checkpoint BUG-0011 locally and rerun only the focused Windows node recovery spec; then execute the already-checkpointed in-process Bridge and native close/relaunch focused coverage. Do not repeat the passed baseline matrix.
 
 ## DO NOT REPEAT
-Do not stop PID `35540`, do not reopen the fixed custom-endpoint drift without new evidence, do not weaken self-worker equality/loopback/stable-network constraints, and do not treat short-smoke peer connectivity as proof of full synchronization.
+Do not push intermediate commits to real GitHub, redo already-green restart/crash/isolation tests without a relevant code change, reduce ownership identity to PID-only evidence, or fabricate an explicit P2P endpoint when upstream owns the official default.

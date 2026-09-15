@@ -247,6 +247,132 @@ fn runtime_owner_lease_requires_exact_process_identity() {
 }
 
 #[test]
+fn status_poll_does_not_block_behind_other_network_startup() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_READY_DELAY_MS", "1200");
+    set_runtime_worker_test_env("KGW_TEST_STARTUP_ATTESTATION_TIMEOUT_MS", "5000");
+
+    let lease_path = runtime_owner_lease_path("node", "mainnet");
+    let _ = std::fs::remove_file(&lease_path);
+    for worker_path in runtime_owner_worker_paths("node", "mainnet") {
+        let _ = std::fs::remove_file(worker_path);
+    }
+
+    let start = std::thread::spawn(|| {
+        kgw_kgw_apply_node_settings_v1(
+            "mainnet".to_string(),
+            "integrated-as-daemon".to_string(),
+            "disable".to_string(),
+            None,
+            None,
+            Some("node".to_string()),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+    });
+
+    let lease_deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while !lease_path.is_file() && std::time::Instant::now() < lease_deadline {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(
+        lease_path.is_file(),
+        "delayed mainnet Start must publish its owner reservation"
+    );
+
+    let status_started = std::time::Instant::now();
+    let status = integrated_runtime_commands::kgw_runtime_owner_status_v1(
+        Some("testnet10".to_string()),
+        Some("node".to_string()),
+    );
+    let status_elapsed = status_started.elapsed();
+
+    let start_result = start.join().expect("delayed Start thread must not panic");
+    assert!(
+        start_result.is_ok(),
+        "delayed mainnet Start must eventually succeed: {start_result:?}"
+    );
+    let _ = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()));
+
+    assert!(
+        status_elapsed < std::time::Duration::from_millis(250),
+        "testnet10 status must not block behind mainnet startup; elapsed={status_elapsed:?}; status={status:?}",
+    );
+    let error =
+        status.expect_err("busy worker registry must return a truthful transient status error");
+    assert_contains_all(&error, &["registry_busy=true", "runtime_state=reconciling"]);
+}
+
+#[test]
+fn shutdown_all_waits_for_startup_then_stops_exact_worker() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_COMMAND", "1");
+    set_runtime_worker_test_env("KGW_TEST_SELF_WORKER_READY_DELAY_MS", "900");
+    set_runtime_worker_test_env("KGW_TEST_STARTUP_ATTESTATION_TIMEOUT_MS", "5000");
+
+    let lease_path = runtime_owner_lease_path("node", "mainnet");
+    let _ = std::fs::remove_file(&lease_path);
+    for worker_path in runtime_owner_worker_paths("node", "mainnet") {
+        let _ = std::fs::remove_file(worker_path);
+    }
+
+    let start = std::thread::spawn(|| {
+        kgw_kgw_apply_node_settings_v1(
+            "mainnet".to_string(),
+            "integrated-as-daemon".to_string(),
+            "disable".to_string(),
+            None,
+            None,
+            Some("node".to_string()),
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+    });
+
+    wait_for_file(&lease_path, std::time::Duration::from_secs(2));
+    let shutdown =
+        std::thread::spawn(integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1);
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    assert!(
+        !shutdown.is_finished(),
+        "shutdown-all must not report success while Start still owns the transition"
+    );
+
+    let started = start.join().expect("delayed Start thread must not panic");
+    assert!(
+        started.is_ok(),
+        "delayed Start must reach READY: {started:?}"
+    );
+    let stopped = shutdown
+        .join()
+        .expect("shutdown-all thread must not panic")
+        .expect("shutdown-all must stop the exact worker after startup completes");
+    assert!(!stopped.contains("stopped=0"), "{stopped}");
+    assert_contains_all(&stopped, &["role=node", "network=mainnet", "running=false"]);
+    assert!(
+        !lease_path.exists(),
+        "shutdown-all must remove the exact owner lease"
+    );
+    assert!(
+        runtime_owner_worker_paths("node", "mainnet").is_empty(),
+        "shutdown-all must remove the exact worker identity sidecar"
+    );
+}
+
+#[test]
 fn live_smoke_parent_accepts_only_valid_stable_network_runtime_settings() {
     let appdir = std::env::temp_dir()
         .join("KaspaGateway")
@@ -337,6 +463,30 @@ fn ready_worker_publishes_and_normal_stop_removes_exact_owner_lease() {
     )
     .expect("worker identity must be typed JSON");
     assert!(worker["workerPid"].as_u64().is_some_and(|pid| pid > 0));
+
+    let status = integrated_runtime_commands::kgw_runtime_owner_status_v1(
+        Some("mainnet".to_string()),
+        Some("node".to_string()),
+    )
+    .expect("READY worker status must expose exact ownership evidence");
+    for field in [
+        "worker_pid=",
+        "worker_start_time=",
+        "worker_executable=",
+        "parent_pid=",
+        "parent_start_time=",
+        "parent_executable=",
+        "network=mainnet",
+        "appdir=",
+        "rpc=127.0.0.1:16110",
+        "p2p=official-default",
+        "stratum=0.0.0.0:5555",
+    ] {
+        assert!(
+            status.contains(field),
+            "missing ownership field `{field}` in `{status}`"
+        );
+    }
 
     let stopped = kgw_kgw_disable_network_v1("mainnet".to_string(), Some("node".to_string()))
         .expect("normal test worker Stop should succeed");
@@ -648,6 +798,91 @@ fn ready_node_external_bridge_and_inprocess_bridge_exit_after_exact_parent_loss(
 }
 
 #[test]
+fn starting_worker_parent_loss_is_reconciled_on_relaunch() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    let role = "node";
+    let lease_path = runtime_owner_lease_path(role, "mainnet");
+    let _ = std::fs::remove_file(&lease_path);
+    for path in runtime_owner_worker_paths(role, "mainnet") {
+        let _ = std::fs::remove_file(path);
+    }
+    let ready_path = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join(format!("starting-parent-loss-{}.ready", std::process::id()));
+    let _ = std::fs::remove_file(&ready_path);
+
+    let mut parent = std::process::Command::new(
+        std::env::current_exe().expect("test executable path must be available"),
+    )
+    .arg("--exact")
+    .arg("nested_parent_fixture")
+    .arg("--nocapture")
+    .env("KGW_TEST_NESTED_PARENT_CHILD", "1")
+    .env("KGW_TEST_SELF_WORKER_COMMAND", "1")
+    .env("KGW_TEST_SELF_WORKER_READY_DELAY_MS", "1200")
+    .env("KGW_TEST_STARTUP_ATTESTATION_TIMEOUT_MS", "5000")
+    .env("KGW_TEST_PARENT_FIXTURE_ROLE", role)
+    .env("KGW_TEST_PARENT_FIXTURE_NETWORK", "mainnet")
+    .env("KGW_TEST_PARENT_FIXTURE_NODE_KIND", "integrated-as-daemon")
+    .env("KGW_TEST_PARENT_FIXTURE_BRIDGE_KIND", "disable")
+    .env("KGW_TEST_PARENT_FIXTURE_READY_PATH", &ready_path)
+    .stdin(std::process::Stdio::null())
+    .stdout(std::process::Stdio::null())
+    .stderr(std::process::Stdio::null())
+    .spawn()
+    .expect("nested STARTING parent fixture must spawn");
+
+    wait_for_file(&lease_path, std::time::Duration::from_secs(2));
+    let sidecar_deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while runtime_owner_worker_paths(role, "mainnet").is_empty()
+        && std::time::Instant::now() < sidecar_deadline
+    {
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert_eq!(runtime_owner_worker_paths(role, "mainnet").len(), 1);
+    assert!(
+        !ready_path.is_file(),
+        "fixture must still be STARTING when its exact desktop parent is terminated"
+    );
+
+    parent
+        .kill()
+        .expect("STARTING desktop parent must terminate");
+    parent
+        .wait()
+        .expect("STARTING desktop parent must be reaped");
+
+    let appdir = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("nodes")
+        .join("mainnet")
+        .to_string_lossy()
+        .to_string();
+    let reconciliation = integrated_runtime_commands::kgw_runtime_owner_reconcile_for_test_v1(
+        role, "mainnet", &appdir,
+    )
+    .expect("relaunch must reconcile a STARTING worker after exact parent loss");
+    assert!(
+        reconciliation.as_deref().is_some_and(|evidence| {
+            evidence.contains("removed-terminal-lease") || evidence.contains("orphan-terminated")
+        }),
+        "STARTING parent-loss reconciliation evidence missing: {reconciliation:?}"
+    );
+    assert!(
+        !lease_path.exists(),
+        "relaunch must clear the stale owner lease"
+    );
+    assert!(runtime_owner_worker_paths(role, "mainnet").is_empty());
+    assert!(
+        !ready_path.exists(),
+        "killed parent must never publish READY"
+    );
+}
+
+#[test]
 fn post_ready_worker_failure_is_non_running_durable_and_restartable_for_all_roles() {
     let _guard = runtime_test_lock()
         .lock()
@@ -724,8 +959,17 @@ fn post_ready_worker_failure_is_non_running_durable_and_restartable_for_all_role
                 "running=false",
                 "readiness=FAILED",
                 "runtime_error=runtime terminated unexpectedly after READY",
-                "exit_status:exit status: 17",
             ],
+        );
+        #[cfg(windows)]
+        assert!(
+            status.contains("exit_status:exit code: 17"),
+            "Windows exit status must preserve exact code 17: {status}"
+        );
+        #[cfg(not(windows))]
+        assert!(
+            status.contains("exit_status:exit status: 17"),
+            "Unix exit status must preserve exact code 17: {status}"
         );
 
         let logs =
@@ -1436,6 +1680,62 @@ fn start_command_is_registered_and_payload_matches_frontend() {
             "frontend start payload must contain `{field}`"
         );
     }
+}
+
+#[test]
+fn effective_node_settings_serde_matches_frontend_rocks_db_contract() {
+    let encoded = serde_json::to_value(kaspa_gateway_rk_node::EffectiveNodeSettings::default())
+        .expect("effective node settings must serialize");
+    let object = encoded
+        .as_object()
+        .expect("effective node settings must be an object");
+    for key in ["rocksDbPreset", "rocksDbCacheSize", "rocksDbWalDir"] {
+        assert!(
+            object.contains_key(key),
+            "serialized IPC schema missing frontend key {key}"
+        );
+    }
+    for legacy in ["rocksdbPreset", "rocksdbCacheSize", "rocksdbWalDir"] {
+        assert!(
+            !object.contains_key(legacy),
+            "serialized IPC schema must not emit legacy key {legacy}"
+        );
+    }
+
+    let mut frontend = encoded.clone();
+    let frontend = frontend
+        .as_object_mut()
+        .expect("frontend payload must be an object");
+    frontend.insert("rocksDbPreset".to_string(), serde_json::json!("hdd"));
+    frontend.insert("rocksDbCacheSize".to_string(), serde_json::json!(512));
+    frontend.insert(
+        "rocksDbWalDir".to_string(),
+        serde_json::json!("kgw-test-wal"),
+    );
+    let decoded: kaspa_gateway_rk_node::EffectiveNodeSettings =
+        serde_json::from_value(serde_json::Value::Object(frontend.clone()))
+            .expect("frontend RocksDB field names must deserialize at the Tauri IPC boundary");
+    assert_eq!(decoded.rocksdb_preset.as_deref(), Some("hdd"));
+    assert_eq!(decoded.rocksdb_cache_size, Some(512));
+    assert_eq!(decoded.rocksdb_wal_dir.as_deref(), Some("kgw-test-wal"));
+
+    let mut legacy = encoded;
+    let legacy = legacy
+        .as_object_mut()
+        .expect("legacy payload must be an object");
+    legacy.remove("rocksDbPreset");
+    legacy.remove("rocksDbCacheSize");
+    legacy.remove("rocksDbWalDir");
+    legacy.insert("rocksdbPreset".to_string(), serde_json::json!("hdd"));
+    legacy.insert("rocksdbCacheSize".to_string(), serde_json::json!(256));
+    legacy.insert(
+        "rocksdbWalDir".to_string(),
+        serde_json::json!("kgw-legacy-wal"),
+    );
+    let decoded_legacy: kaspa_gateway_rk_node::EffectiveNodeSettings =
+        serde_json::from_value(serde_json::Value::Object(legacy.clone()))
+            .expect("legacy Rust-derived RocksDB field names must remain accepted");
+    assert_eq!(decoded_legacy.rocksdb_cache_size, Some(256));
 }
 
 #[test]

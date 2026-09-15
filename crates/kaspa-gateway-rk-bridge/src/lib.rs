@@ -2569,10 +2569,20 @@ instances:
             match startup_rx.recv().unwrap() {
                 BridgeOwnerStartupOutcome::Failed(error) => {
                     assert!(
+                        error.contains("Stratum listener setup failed:"),
+                        "unexpected official bind diagnostic: {error}"
+                    );
+                    #[cfg(windows)]
+                    assert!(
+                        error.contains("os error 10048"),
+                        "expected WSAEADDRINUSE: {error}"
+                    );
+                    #[cfg(not(windows))]
+                    assert!(
                         error
                             .to_ascii_lowercase()
                             .contains("address already in use"),
-                        "unexpected official bind diagnostic: {error}"
+                        "expected address-in-use diagnostic: {error}"
                     );
                 }
                 BridgeOwnerStartupOutcome::Ready(_) => {

@@ -120,7 +120,7 @@ assert.strictEqual(
 api.kgwBridgeR51SetRuntimeButtons("mainnet", false, "starting");
 assert.strictEqual(elements.get("bridge-mainnet-policyStatus").textContent, "Starting");
 assert.strictEqual(start.disabled, true, "Start must remain disabled while attestation is pending");
-assert.strictEqual(stop.disabled, false, "the existing transition state keeps Stop available during startup");
+assert.strictEqual(stop.disabled, true, "Stop must remain disabled until READY because backend startup cancellation is not an owned lifecycle contract");
 
 api.kgwBridgeR51SetRuntimeButtons("mainnet", true, "stopping");
 assert.strictEqual(elements.get("bridge-mainnet-policyStatus").textContent, "Stopping");
@@ -162,7 +162,7 @@ async function pendingInvokeLifecycleTest() {
     throw new Error("occupied listener port");
   };
   await api.runBridgeIntegratedAction("start", "mainnet");
-  assert.strictEqual(elements.get("bridge-mainnet-policyStatus").textContent, "Stopped");
+  assert.strictEqual(elements.get("bridge-mainnet-policyStatus").textContent, "Reconciling", "failed Start cannot fabricate STOPPED before status reconciliation");
   assert.strictEqual(elements.get("bridge-mainnet-runtimeError").textContent, "occupied listener port");
 
   let resolveStop;

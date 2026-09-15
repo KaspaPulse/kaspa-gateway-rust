@@ -1,21 +1,40 @@
 # EXECUTION PLAN
 
 ## Status
+**ACTIVE — P0 RUNTIME LIFECYCLE & RAW LOGGING RELIABILITY**
 
-**NO ACTIVE MULTI-STAGE PLAN**
+## Objective
+Rehabilitate network/bridge lifecycle and raw logging end-to-end using the accepted same-EXE ownership architecture, local-first Git development, real Windows runtime validation, and a single final GitHub publication.
 
-The `REG-0002` live-smoke effective-settings repair is complete. PR #82 synchronized custom loopback RPC/P2P smoke endpoints through canonical `EffectiveNodeSettings`, passed protected integration and post-merge verification, and exact merged Windows short smoke passed for stable mainnet/testnet10 without disturbing the unrelated existing service.
+## Success Criteria
+- Network and bridge state machines are truthful across Start/Ready/Stop/Stopped/Restart/Crash/Recovery/Relaunch/Reconciliation.
+- Exact process ownership identity is verified; no orphan, stale READY, false READY, or cross-network ownership.
+- Bridge readiness proves node attachment and listener readiness for every supported mode.
+- Native stdout/stderr is preserved, ordered, timestamped/identified by metadata, and separated from application diagnostics.
+- UI state reconciles to runtime truth after failures, application close, and relaunch.
+- Full local tests/security/build/artifact/Windows validation pass with no P0/P1 issue.
+- Real GitHub receives exactly one final validated push; deployment uses exactly that commit.
 
-## Usage
+## Milestones
+1. Establish and verify local bare remote workflow; block real GitHub push — **COMPLETE**.
+2. Audit full UI→IPC→runtime→process→logs→UI execution paths and reproduce defects — **COMPLETE LOCALLY**.
+3. Repair network lifecycle defects with regression coverage and local checkpoint commits — **COMPLETE LOCALLY**.
+4. Repair bridge lifecycle/readiness/attachment/listener defects with regression coverage — **COMPLETE LOCALLY AT SOURCE/IPC/FRONTEND LEVEL; WINDOWS PROOF REMAINS IN MILESTONE 8**.
+5. Repair raw stdout/stderr ordering/provenance/diagnostics separation and frontend rendering — **COMPLETE LOCALLY**.
+6. Repair reconciliation/orphan/stale-state/UI truth after crash, close, and relaunch — **COMPLETE LOCALLY**.
+7. Run full local regression/security/build/artifact validation — **COMPLETE FOR NON-WINDOWS GATES; WINDOWS ARTIFACT/GUI PROOF CONTINUES IN MILESTONE 8**.
+8. Run real Windows lifecycle matrix for mainnet/testnet10 and every supported bridge mode — **IN PROGRESS; BASELINE NODE + EXTERNAL BRIDGE PASS; FOCUSED RECOVERY FOUND BUG-0011 HARNESS MISCLASSIFICATION**.
+9. Consolidate local commits, independently verify final production artifact/evidence, and pass local release gate — **PENDING**.
+10. Perform one final real-GitHub push, deploy exact commit, verify production, and close durable state — **PENDING; REAL GITHUB REMAINS BLOCKED UNTIL FINAL LOCAL GATE**.
 
-Create or replace an active-plan body only when work is genuinely long-horizon, multi-stage, migration-heavy, high-risk, or expected to span sessions. Reconcile `PROJECT_STATE.md` first whenever verified repository/runtime/release reality differs from durable state.
+## Progress
+Local remediation has BUG-0002 through BUG-0010 checkpointed; focused node recovery, in-process Bridge, and close/relaunch harnesses are also checkpointed locally. Windows baseline passed. The focused node recovery run proved exact-owner crash reconciliation returns `running=false;readiness=FAILED` but exposed BUG-0011 in the E2E stopped-state classifier; its local fix is green and awaits focused Windows rerun.
 
-When an active plan reaches completion, update current state, durable memory/checkpoints, relevant ADR/runbook changes, then return this file to **NO ACTIVE MULTI-STAGE PLAN** rather than preserving completed work as active coordination state.
+## Completion Criteria
+Every local release checklist item is evidenced; no known P0/P1 issue remains; final diff/artifact/evidence match the release commit; post-push remote HEAD and deployed commit match exactly.
 
-Do not use this file as a duplicate issue tracker, Git log, CI history, release body, or credential store.
+## Constraints
+No intermediate GitHub pushes, no force push/rebase of remote history, no admin bypass, no unnecessary runtime rewrite, no direct frontend process ownership, no fake logs, no weakening of testnet12 policy or ownership identity.
 
-## Most Recent Completed Plan
-
-`REG-0002` completed through protected PR #82 at historical repair baseline `fb16b9a18b7e17621dfb1c280fef7951c8b819a7`. Exact merged Windows mainnet/testnet10 short smoke passed on `Server`; smoke-owned ports cleaned up and unrelated PID `35540` remained untouched.
-
-The smoke proved stable-network startup, RPC readiness, peer connectivity, parent-loss cleanup, and relaunch reconciliation. It did **not** prove full IBD or production-capacity readiness; both networks remained unsynced during the short observation window and the test drive was below the 640 GB production-disk guideline.
+## NEXT ACTION
+Checkpoint BUG-0011, rerun only focused node recovery on Server, then run focused in-process Bridge and native close/relaunch tests. Do not repeat baseline/non-Windows gates and do not push to real GitHub.

@@ -79,6 +79,25 @@ export async function waitForClipboardShaToFile({ outputPath, expectedSha = "", 
   });
 }
 
+export async function killExactOwnedProcess({ pid, expectedExecutable, expectedStartTime, outputPath }) {
+  return await runPowerShell(helperScript("kgw_kill_exact_owned_process.ps1"), [
+    "-ProcessId", String(pid),
+    "-ExpectedExecutable", String(expectedExecutable || ""),
+    "-ExpectedStartTime", String(expectedStartTime || ""),
+    "-OutputPath", outputPath,
+  ], { timeout: 30000 });
+}
+
+export async function waitForExactProcessExit({ pid, expectedExecutable, expectedStartTime, outputPath, timeoutSeconds = 45 }) {
+  return await runPowerShell(helperScript("kgw_wait_exact_process_exit.ps1"), [
+    "-ProcessId", String(pid),
+    "-ExpectedExecutable", String(expectedExecutable || ""),
+    "-ExpectedStartTime", String(expectedStartTime || ""),
+    "-OutputPath", outputPath,
+    "-TimeoutSeconds", String(timeoutSeconds),
+  ], { timeout: (Number(timeoutSeconds) + 15) * 1000 });
+}
+
 export async function captureWindowsEvidence({ repository, outputDirectory, ports = [], desktopPid = "" }) {
   return await runPowerShell(helperScript("kgw_windows_evidence.ps1"), [
     "-Repository",
@@ -128,6 +147,25 @@ export async function waitForPort(host, port, timeoutMs = 120000) {
       socket.once("connect", () => finish({ host, port, connected: true, observedAt: new Date().toISOString() }));
       socket.once("timeout", () => finish(false));
       socket.once("error", () => finish(false));
+    });
+  });
+}
+
+export async function waitForPortFree(host, port, timeoutMs = 60000) {
+  return await waitUntil(`port free ${host}:${port}`, timeoutMs, 500, async () => {
+    return await new Promise((resolve) => {
+      const socket = net.createConnection({ host, port });
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        socket.destroy();
+        resolve(value);
+      };
+      socket.setTimeout(1000);
+      socket.once("connect", () => finish(false));
+      socket.once("timeout", () => finish(false));
+      socket.once("error", () => finish({ host, port, free: true, observedAt: new Date().toISOString() }));
     });
   });
 }

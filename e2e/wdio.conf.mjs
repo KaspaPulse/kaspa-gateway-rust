@@ -9,6 +9,7 @@ const artifactRoot = process.env.KGW_ZERO_TOUCH_ARTIFACT_DIR ||
 const appBinaryPath = process.env.KGW_E2E_APP_BINARY ||
   path.join(repository, "target", "debug", "kaspa-gateway-desktop.exe");
 const embeddedPort = Number(process.env.TAURI_WEBDRIVER_PORT || process.env.WDIO_EMBEDDED_PORT || "4445");
+const selectedSpec = process.env.KGW_E2E_SPEC || "./specs/zero-touch-live-matrix.e2e.js";
 
 async function writeFailureArtifact(name, content) {
   const failures = path.join(artifactRoot, "wdio-failures");
@@ -18,7 +19,7 @@ async function writeFailureArtifact(name, content) {
 
 export const config = {
   runner: "local",
-  specs: ["./specs/zero-touch-live-matrix.e2e.js"],
+  specs: [selectedSpec],
   maxInstances: 1,
   capabilities: [
     {
@@ -74,7 +75,7 @@ export const config = {
     await fs.mkdir(artifactRoot, { recursive: true });
     await fs.writeFile(
       path.join(artifactRoot, "wdio-session.json"),
-      JSON.stringify({ repository, artifactRoot, appBinaryPath, embeddedPort }, null, 2),
+      JSON.stringify({ repository, artifactRoot, appBinaryPath, embeddedPort, selectedSpec }, null, 2),
       "utf8"
     );
   },

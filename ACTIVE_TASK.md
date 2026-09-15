@@ -1,42 +1,41 @@
 # ACTIVE TASK
 
 ## Status
-COMPLETE — VERIFIED AND MERGED
+IN PROGRESS — P0 RUNTIME LIFECYCLE & RAW LOGGING RELIABILITY
 
 ## Objective
-Repair the Windows live-smoke custom-endpoint effective-settings drift and complete stable-network short-smoke verification without disturbing unrelated runtime ownership.
+Make network and bridge lifecycle trustworthy end-to-end: UI state must reflect real runtime ownership/readiness, Start/Stop/Restart/recovery/reconciliation must be deterministic, and Raw Log panes must contain ordered native stdout/stderr only.
 
 ## Scope
-- Synchronize custom loopback RPC/P2P values through canonical `EffectiveNodeSettings`.
-- Preserve stable-network, loopback-only, parent-identity, and self-worker equality checks.
-- Protected squash integration only; no admin bypass, force push, or rebase.
-- Verify exact merged `main` on Windows `Server` for isolated mainnet and default testnet10.
+- Audit UI → Tauri IPC → supervisor/runtime → managed node/bridge → stdout/stderr → reconciliation → UI.
+- Repair network and bridge lifecycle without replacing the accepted same-EXE self-worker architecture.
+- Verify ownership identity, readiness, graceful/bounded stop, restart, crash recovery, orphan/stale-state reconciliation, network isolation, bridge attachment/listener readiness, and raw-log provenance/order/identity.
+- Use the LOCAL bare Git remote for every intermediate commit/checkpoint; real GitHub push is blocked until the final local release gate passes.
+- Validate real Windows runtime on `Server`; mocks alone are insufficient.
 
 ## Current Phase
-No active implementation phase remains. REG-0002 is merged and live-verified; this file records the completed boundary.
+Local remediation is complete through `BUG-0010`; focused Windows recovery/in-process/close-relaunch harnesses are checkpointed locally. Baseline Windows zero-touch is VERIFIED PASS. The first focused recovery run on `f7a82e7...` proved runtime crash reconciliation is correct but exposed `BUG-0011` in the E2E stopped-state classifier. Desktop `0.1.2` remains local-only and immutable `0.1.1` remains untouched.
 
 ## Confirmed Progress
-PR #82 merged as `fb16b9a18b7e17621dfb1c280fef7951c8b819a7` after every required exact-head check passed. Post-merge CI, CodeQL/Rust security, Secret Scan, and supply-chain posture all passed on the same SHA.
-
-Exact merged Windows short smoke passed for isolated mainnet on RPC `16120` / P2P `16121` with 8 peers and for default testnet10 on RPC `16210` with 7 peers. Parent-loss cleanup and relaunch reconciliation passed; all smoke-owned ports were released. Unrelated PID `35540` remained unchanged on `16110/16111`.
+`local` remains the only push target for intermediate work and `origin` push remains disabled. Frontend raw logs/status truth, backend cross-network status responsiveness, and STARTING control semantics are repaired. READY status now retains and reports exact worker/parent identity plus runtime endpoint semantics without changing ownership behavior.
 
 ## Current Blocker
-NONE for repository-owned repair work. Full synchronization/production capacity remains NOT VERIFIED because the smoke is intentionally short and the Windows test drive has less than the 640 GB production-disk guideline. Historical fine-grained PAT revocation remains separately NOT VERIFIED.
+BUG-0011 LOCAL FIX VERIFIED; focused Windows rerun pending. Runtime already reports `running=false;readiness=FAILED` after exact-owner crash while retaining PID identity as terminal evidence; the E2E helper incorrectly treated retained PID as liveness.
 
 ## Last Completed Action
-Verified exact merged Windows mainnet/testnet10 short smoke on `Server`, preserved unrelated runtime ownership, and confirmed post-merge GitHub checks are green.
+Workspace Rust tests pass, the Desktop E2E-feature cargo check passes, and the full local gate advanced through raw-log checks. `BUG-0006` frontend regression and `kgw_true_raw_log_gate.ps1` now pass after preserving typed child rawText while rejecting only untyped transport envelopes.
 
 ## Current Action
-NONE. The `REG-0002` repair is closed; derive repository reality dynamically before starting new work.
+Checkpoint BUG-0011 locally, transfer exact HEAD to `Server`, and rerun only the focused node lifecycle recovery spec. Then continue with the already-checkpointed in-process Bridge and native close/relaunch focused tests.
 
 ## Next Action
-No further action for `REG-0002`. Independently re-review npm exceptions by 2026-10-10; perform a full-sync production-readiness exercise only on hardware/storage meeting its explicit requirements; revoke the historical PAT only if the exact token can be safely identified.
+Verify BUG-0011 on Windows with only `lifecycle-recovery.e2e.js`; if green, run the focused in-process Bridge and native close/relaunch coverage without repeating the baseline matrix. No real GitHub push is allowed yet.
 
 ## Verification Required
-Completed: focused regression, IPC 52/52, fmt, strict Clippy, continuity/PowerShell/Graphify, PR #82 exact-head checks, post-merge `main`, exact merged Windows mainnet/testnet10 short smoke, cleanup, and unrelated-service preservation.
+Focused regression per defect; full runtime IPC suite; frontend lifecycle/raw-log gates; workspace tests/security gates; production desktop build/artifact; real Windows lifecycle sequences for mainnet/testnet10 and supported bridge modes; no orphan/stale/false READY; final local audit.
 
 ## Completion Criteria
-MET for this task. Short smoke proves startup/RPC/peer connectivity/parent-loss cleanup/relaunch on stable networks; it does not prove full IBD or long-duration production capacity.
+All local release-gate items pass; no known P0/P1 lifecycle/raw-log issue remains; final release commit/artifact/evidence is locally verified; only then one final push to real GitHub followed by exact-commit deployment and production verification.
 
 ## DO NOT REPEAT
-Do not kill unrelated PID `35540`, weaken effective-settings equality, reintroduce direct self-worker smoke shortcuts, start testnet12 without explicit experimental scope, or claim full production readiness from short smoke.
+Do not push intermediate work to GitHub, weaken ownership/READY/stop contracts, replace raw stdout/stderr with diagnostics, kill unrelated Kaspa processes, rewrite accepted runtime topology, or treat mocks/CI as real Windows runtime proof.

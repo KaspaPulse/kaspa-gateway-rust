@@ -16,6 +16,7 @@ import {
   writeJson,
   writeText,
 } from "../helpers/paths.mjs";
+import { runtimePortProfile } from "../helpers/runtime-ports.mjs";
 import {
   captureWindowsEvidence,
   probeLocalStratum,
@@ -36,6 +37,9 @@ import {
   rawTextFromReport,
   readByTestId,
   saveDomState,
+  setControlCheckedByTestId,
+  setControlValueById,
+  setControlValueByTestId,
   shutdownAllRuntimeWorkers,
   stopRuntime,
   waitForOwnerStatus,
@@ -53,33 +57,35 @@ const observed = {
   warnings: [],
 };
 
+const runtimePorts = runtimePortProfile();
+
 const nodeCases = {
   mainnet: {
     slug: "mainnet-node",
-    rpcPort: 16110,
-    p2pPort: 16111,
+    rpcPort: runtimePorts.mainnet.rpcPort,
+    p2pPort: runtimePorts.mainnet.p2pPort,
     mustNot: [/testnet10/i, /testnet12/i, /nodes[\\/]+testnet10/i, /nodes[\\/]+testnet12/i],
   },
   testnet10: {
     slug: "testnet10-node",
-    rpcPort: 16210,
-    p2pPort: 16211,
-    mustNot: [/nodes[\\/]+mainnet/i, /mainnet/i, /127\.0\.0\.1:16110/],
+    rpcPort: runtimePorts.testnet10.rpcPort,
+    p2pPort: runtimePorts.testnet10.p2pPort,
+    mustNot: [/nodes[\\/]+mainnet/i, /mainnet/i, new RegExp(`127\\.0\\.0\\.1:${runtimePorts.mainnet.rpcPort}`)],
   },
 };
 
 const bridgeCases = {
   mainnet: {
     slug: "mainnet-bridge",
-    nodeRpcPort: 16110,
-    bridgePort: 5556,
+    nodeRpcPort: runtimePorts.mainnet.rpcPort,
+    bridgePort: runtimePorts.mainnet.bridgePort,
     mustNot: [/runtimeRole\s*=\s*node/i, /runtime_role\s*=\s*node/i, /node output/i, /testnet10/i, /testnet12/i],
   },
   testnet10: {
     slug: "testnet10-bridge",
-    nodeRpcPort: 16210,
-    bridgePort: 5656,
-    mustNot: [/runtimeRole\s*=\s*node/i, /runtime_role\s*=\s*node/i, /node output/i, /mainnet/i, /127\.0\.0\.1:16110/],
+    nodeRpcPort: runtimePorts.testnet10.rpcPort,
+    bridgePort: runtimePorts.testnet10.bridgePort,
+    mustNot: [/runtimeRole\s*=\s*node/i, /runtime_role\s*=\s*node/i, /node output/i, /mainnet/i, new RegExp(`127\\.0\\.0\\.1:${runtimePorts.mainnet.rpcPort}`)],
   },
 };
 
@@ -181,6 +187,13 @@ async function waitForNativeClipboardTrace({ network, runtimeRole, bridgeInstanc
 
 async function startNodeFromSettings(network, settings) {
   await openNodeSettings(network);
+  await setControlValueByTestId(`kgw-node-field-${network}-rpcListenHost`, "127.0.0.1");
+  await setControlValueByTestId(`kgw-node-field-${network}-rpcListenPort`, String(settings.rpcPort));
+  if (settings.p2pPort) {
+    await setControlCheckedByTestId(`kgw-node-field-${network}-listenEnabled`, true);
+    await setControlValueByTestId(`kgw-node-field-${network}-listenHost`, "127.0.0.1");
+    await setControlValueByTestId(`kgw-node-field-${network}-listenPort`, String(settings.p2pPort));
+  }
   await clickTestId(`kgw-node-start-${network}`);
   const status = await waitForOwnerStatus({ network, runtimeRole: "node", timeoutMs: 180000 });
   recordPid(network, "node", status.pid);
@@ -196,9 +209,17 @@ async function startNodeFromSettings(network, settings) {
 
 async function startBridgeFromSettings(network, settings) {
   await openBridgeSettings(network);
-  const selection = await readBridgeRuntimeSelection(network);
+  await setControlValueByTestId(`kgw-bridge-field-${network}-kaspadAddress`, `127.0.0.1:${settings.nodeRpcPort}`);
+  let selection = await readBridgeRuntimeSelection(network);
+  const bridgePort = settings.bridgePort || selection.bridgePort || null;
+  if (bridgePort && selection.bridgeInstanceId) {
+    await setControlValueById(
+      `bridge-${network}-instancePort-${selection.bridgeInstanceId}`,
+      String(bridgePort),
+    );
+    selection = await readBridgeRuntimeSelection(network);
+  }
   const selectedInstancePort = selection.bridgePort || null;
-  const bridgePort = settings.bridgePort || selectedInstancePort;
   await writeJson(path.join(settings.outputDirectory, "bridge-runtime-selection.json"), {
     ...selection,
     selectedInstancePort,
@@ -361,11 +382,12 @@ async function exerciseBridge(network) {
     await startNodeFromSettings(network, {
       outputDirectory,
       rpcPort: config.nodeRpcPort,
-      p2pPort: network === "testnet10" ? 16211 : 16111,
+      p2pPort: nodeCases[network].p2pPort,
     });
 
     const status = await startBridgeFromSettings(network, {
       outputDirectory,
+      nodeRpcPort: config.nodeRpcPort,
       bridgePort: config.bridgePort,
     });
     assert.match(status.status, new RegExp(`network=${network}`, "i"), "bridge status must identify the selected network");
@@ -414,7 +436,7 @@ async function exerciseBridge(network) {
       ],
     });
   } finally {
-    await writeCaseEvidence(config.slug, [config.nodeRpcPort, config.bridgePort, config.bridgePort + 1, network === "testnet10" ? 16211 : 16111]).catch((error) => {
+    await writeCaseEvidence(config.slug, [config.nodeRpcPort, config.bridgePort, config.bridgePort + 1, nodeCases[network].p2pPort]).catch((error) => {
       observed.warnings.push(`bridge ${network} evidence capture failed: ${error.message || error}`);
     });
     await stopRuntime(network, "bridge");

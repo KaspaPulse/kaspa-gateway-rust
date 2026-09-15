@@ -529,7 +529,7 @@ function createHarness(options = {}) {
   const executable = source
     .replace(/export\s+async\s+function\s+initKaspaNodeTab/, "async function initKaspaNodeTab")
     .replace(/export\s+default\s+initKaspaNodeTab\s*;/, "")
-    + "\nwindow.__kgwStartButtonTest = { initKaspaNodeTab, getTauriInvoke, kgwResolvePublicTauriInvokeR1, kgwStartTraceTauriShapeR1 };\n";
+    + "\nwindow.__kgwStartButtonTest = { initKaspaNodeTab, getTauriInvoke, kgwResolvePublicTauriInvokeR1, kgwStartTraceTauriShapeR1, kgwNodeR51SetRuntimeButtons, KGW_NODE_R51_TRANSITIONS };\n";
   vm.runInNewContext(executable, sandbox, { filename: nodeJsPath });
 
   return { window, document, root };
@@ -589,7 +589,9 @@ async function dynamicClickTests() {
   };
 
   calls.length = 0;
-  root.querySelector('[data-node-action="start"][data-net="mainnet"]').click();
+  const mainnetStartReady = root.querySelector('[data-node-action="start"][data-net="mainnet"]');
+  mainnetStartReady.disabled = false;
+  mainnetStartReady.click();
   await flush();
   assert.strictEqual(startCalls(calls).length, 1, "mainnet Start click must invoke exactly once");
   assert.strictEqual(startCalls(calls)[0].payload.network, "mainnet");
@@ -604,7 +606,9 @@ async function dynamicClickTests() {
 
   root.querySelector('[data-node-network-tab="testnet10"]').click();
   calls.length = 0;
-  root.querySelector('[data-node-action="start"][data-net="testnet10"]').click();
+  const testnet10StartReady = root.querySelector('[data-node-action="start"][data-net="testnet10"]');
+  testnet10StartReady.disabled = false;
+  testnet10StartReady.click();
   await flush();
   assert.strictEqual(startCalls(calls).length, 1, "testnet10 Start click must invoke exactly once after tab switch");
   assert.strictEqual(startCalls(calls)[0].payload.network, "testnet10");
@@ -629,9 +633,10 @@ async function dynamicClickTests() {
   const statusNode = document.getElementById("node-mainnet-runtimeStatus");
   const evidenceNode = document.getElementById("node-mainnet-runtimeEvidence");
   assert.strictEqual(startCalls(calls).length, 1, "failed Start click must still invoke exactly once");
-  assert.strictEqual(mainnetStart.disabled, false, "failed Start must restore button state");
+  assert.strictEqual(mainnetStart.disabled, true, "failed Start must remain non-startable until backend reconciliation proves terminal state");
   assert.ok(traceStages(calls).includes("frontend.invoke_rejected"), "failed Start must trace invoke rejection");
   assert.ok(traceStages(calls).includes("frontend.button_state_restored_after_failure"), "failed Start must trace button restoration");
+  assert.strictEqual(statusNode.textContent, "Reconciling", "failed Start must expose Reconciling until backend status is known");
   assert.ok(
     errorNode.textContent.includes("Access is denied."),
     "failed Start must expose original error, actual text: " + errorNode.textContent + "; status=" + statusNode.textContent + "; evidence=" + evidenceNode.textContent,
@@ -639,6 +644,20 @@ async function dynamicClickTests() {
 
   const rawLog = document.getElementById("node-mainnet-logOutput").textContent;
   assert.ok(!/initialized|parallel-owned-self-worker started|KGW node start response/i.test(rawLog), "raw log must not contain synthetic startup success text");
+}
+
+async function startupStopAvailabilityTests() {
+  const { window, root } = createHarness();
+  await window.__kgwStartButtonTest.initKaspaNodeTab(root);
+  await flush();
+  const api = window.__kgwStartButtonTest;
+  const stop = root.querySelector('[data-node-action="stop"][data-net="mainnet"]');
+  api.KGW_NODE_R51_TRANSITIONS.mainnet = "starting";
+  api.kgwNodeR51SetRuntimeButtons("mainnet", false, false);
+  assert.strictEqual(stop.disabled, true, "Node Stop must remain disabled until READY; pre-READY cancellation is not an owned backend contract");
+  api.KGW_NODE_R51_TRANSITIONS.mainnet = "";
+  api.kgwNodeR51SetRuntimeButtons("mainnet", true, false);
+  assert.strictEqual(stop.disabled, false, "Node Stop must become available after READY/running truth is confirmed");
 }
 
 async function stopTruthfulnessTests() {
@@ -732,7 +751,8 @@ async function missingInvokeApiVisibleErrorTest() {
 
   const errorNode = document.getElementById("node-mainnet-runtimeError");
   assert.ok(errorNode.textContent.includes("Tauri invoke API is not available"), "missing invoke API must be visible in the UI");
-  assert.strictEqual(start.disabled, false, "missing invoke API must restore Start button state");
+  assert.strictEqual(start.disabled, true, "missing invoke API must keep Start disabled until IPC/runtime truth can be reconciled");
+  assert.strictEqual(document.getElementById("node-mainnet-runtimeStatus").textContent, "Reconciling", "missing invoke API must expose Reconciling rather than fabricate Stopped");
 }
 
 async function tracePayloadSafetyTests() {
@@ -897,6 +917,7 @@ async function copyLogFrontendTests() {
     staticPlacementTests();
     configuredTauriInvokeResolverTests();
     await dynamicClickTests();
+    await startupStopAvailabilityTests();
     await stopTruthfulnessTests();
     await missingInvokeApiVisibleErrorTest();
     await tracePayloadSafetyTests();

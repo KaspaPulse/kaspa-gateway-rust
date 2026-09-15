@@ -69,7 +69,7 @@ function kgwSettingsTraceDatasetR29B(target) {
         out[key] = String(ds[key] || "").slice(0, 160);
       }
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   return out;
 }
 
@@ -91,7 +91,7 @@ function kgwSettingsTraceTargetSnapshotR29B(target) {
       snapshot.valueLength = value.length;
       snapshot.valuePreview = value.slice(0, 180);
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 
   return snapshot;
 }
@@ -168,7 +168,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
     try {
       const lang = String(document.documentElement.getAttribute("lang") || document.body.getAttribute("lang") || "");
       if (lang) return lower(lang);
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 
     try {
       const keys = ["kgw.language", "kgw_locale", "language", "locale", "i18nextLng"];
@@ -176,7 +176,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
         const value = localStorage.getItem(key);
         if (value) return lower(value);
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 
     try {
       const apiCandidates = [window.kgwI18n, window.KGWI18n, window.KGW_I18N, window.i18n];
@@ -189,7 +189,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
         if (typeof api.getLanguage === "function") return lower(api.getLanguage());
         if (typeof api.getLocale === "function") return lower(api.getLocale());
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 
     return "";
   }
@@ -219,7 +219,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
           if (typeof value === "string" && value.trim() && value !== key) return value;
         }
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
     return fallback;
   }
 
@@ -996,7 +996,7 @@ function kgwNodeSmallOwnerTraceR44D(net, action, phase, details) {
     if (typeof invoke === "function") {
       invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 }
 
 
@@ -1007,8 +1007,7 @@ function kgwI18nTextR41(key, fallback) {
     if (window.kgwT && typeof window.kgwT === "function") return window.kgwT(key, fallback);
     if (window.KGW_I18N && typeof window.KGW_I18N.t === "function") return window.KGW_I18N.t(key, fallback);
     if (window.i18n && typeof window.i18n.t === "function") return window.i18n.t(key, fallback);
-  } catch (_) {
-  }
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   return fallback;
 }
 
@@ -1135,14 +1134,14 @@ function kgwNodeNetworkEnabled(net) {
     const stored = localStorage.getItem(kgwNodeNetworkPolicyKey(net));
     if (stored === "1") return true;
     if (stored === "0") return false;
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   return profile ? profile.enabledByDefault !== false : false;
 }
 
 function kgwNodeSetNetworkEnabled(net, enabled) {
   try {
     localStorage.setItem(kgwNodeNetworkPolicyKey(net), enabled ? "1" : "0");
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 }
 
 function kgwNodeNetworkPolicyMessage(net) {
@@ -1326,7 +1325,7 @@ function kgwNodeLogAutoScrollEnabledR27(net) {
 function kgwNodeSetLogAutoScrollR27(net, enabled) {
   try {
     localStorage.setItem(kgwNodeLogAutoScrollKeyR27(net), enabled ? "1" : "0");
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 
   const out = byId(id(net, "logOutput"));
   if (enabled && out) out.scrollTop = out.scrollHeight;
@@ -1398,6 +1397,19 @@ function kgwNodeRawLogBufferV1(net, role = "node") {
   return KGW_NODE_RAW_LOG_BUFFERS_V1.get(key);
 }
 
+function kgwNodeRawLogTextHasTransportWrapperV1(value) {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) return false;
+  if (/^kgw_raw_process_log_v1(?:;|$)/i.test(text)) return true;
+  return /^(?:\[KGW_CHILD_STD(?:OUT|ERR)\]\s*)?\{[\s\S]*["']eventKind["']\s*:\s*["']diagnostic_transport_record["']/i.test(text);
+}
+
+function kgwNodeLegacyTransportReportTextV1(report) {
+  if (typeof report === "string") return report;
+  if (!report || typeof report !== "object" || Array.isArray(report) || Array.isArray(report.entries)) return "";
+  return String(report.rawText ?? report.raw_text ?? report.line ?? "");
+}
+
 function kgwNodeNormalizeRawLogEntryV1(entry, expectedNet, expectedRole = "node") {
   if (!entry || typeof entry !== "object") return null;
 
@@ -1455,6 +1467,8 @@ function kgwNodeRenderRawLogBufferV1(net, role = "node") {
 }
 
 function kgwNodeApplyRuntimeLogReportV1(net, role, report) {
+  const legacyTransportText = kgwNodeLegacyTransportReportTextV1(report);
+  if (kgwNodeRawLogTextHasTransportWrapperV1(legacyTransportText)) return 0;
   const entries = Array.isArray(report?.entries) ? report.entries : [];
   const buffer = kgwNodeRawLogBufferV1(net, role);
   let accepted = 0;
@@ -1675,7 +1689,7 @@ function kgwNodeSaveInnerTabR101U(net, selected) {
   const normalized = kgwNodeNormalizeInnerTabR101U(selected);
   try {
     localStorage.setItem(kgwNodeInnerTabStorageKeyR101U(net), normalized);
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   return normalized;
 }
 
@@ -1993,7 +2007,7 @@ function kgwNodeExplicitTraceR27D(net, action, phase, details) {
     if (typeof invoke === "function") {
       invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 }
 /* KGW_NODE_LAST_NETWORK_RESTORE_R101W2 */
 const KGW_NODE_LAST_NETWORK_KEY_R101W2 = "kgw.node.lastNetwork";
@@ -2007,7 +2021,7 @@ function kgwNodeReadLastNetworkR101W2() {
 function kgwNodeSaveLastNetworkR101W2(net) {
   const normalized = kgwNodeNormalizeNetworkR101W2(net);
   if (!normalized) return "";
-  try { localStorage.setItem(KGW_NODE_LAST_NETWORK_KEY_R101W2, normalized); } catch (_) {}
+  try { localStorage.setItem(KGW_NODE_LAST_NETWORK_KEY_R101W2, normalized); } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   return normalized;
 }
 
@@ -2479,16 +2493,15 @@ async function runNodeIntegratedAction(action, net) {
   } catch (error) {
     KGW_NODE_R51_TRANSITIONS[net] = "";
     const errorText = normalizeRuntimeError(error);
-    const runningAfterFailure = action === "stop";
-    kgwNodeR51SetRuntimeButtons(net, runningAfterFailure, kgwIsBridgeOwnedNodeLockedR65E(net));
-    kgwNodeSetRuntimeNotice(net, runningAfterFailure ? "Running" : "Stopped", runningAfterFailure ? "Stop failed" : "No process owner", errorText);
+    kgwNodeR51SetRuntimeUnknown(net, errorText);
     kgwStartTraceFrontendR1("frontend.button_state_restored_after_failure", {
       network: net,
       action,
       result: "restored",
       details: {
         error: errorText,
-        runningAfterFailure,
+        runningAfterFailure: null,
+        reconciliationRequired: true,
         state: kgwNodeTraceStartButtonStateR1(net)
       }
     });
@@ -2496,6 +2509,7 @@ async function runNodeIntegratedAction(action, net) {
   } finally {
     KGW_NODE_R51_TRANSITIONS[net] = "";
     window.__kgwR29NodeInFlight.delete(inFlightKey);
+    window.setTimeout(() => { if (typeof kgwNodeR51RefreshOne === "function") void kgwNodeR51RefreshOne(net, "action-settled"); }, 0);
   }
 }
 /* KGW_R51_DIRECT_NODE_LOG_RUNTIME_SETTINGS_OWNER */
@@ -2504,6 +2518,8 @@ const KGW_NODE_R51_LAST_STATUS = {};
 const KGW_NODE_R51_LAST_LOGS = {};
 const KGW_NODE_R51_LAST_ACTIVITY_NOTICE = {};
 const KGW_NODE_R51_TRANSITIONS = {};
+const KGW_NODE_R51_STATUS_IN_FLIGHT = new Map();
+const KGW_NODE_R51_LOGS_IN_FLIGHT = new Map();
 let KGW_NODE_R51_TIMER = null;
 
 function kgwNodeR51Keys() {
@@ -2603,7 +2619,7 @@ function kgwNodeR51ReadCommandOptionsR38C(net) {
       if (!name) continue;
       state[name] = Boolean(item.checked);
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   return state;
 }
 
@@ -2752,6 +2768,10 @@ function kgwNodeR51SetAsDefaults(net) {
   });
 }
 
+/* R9B compatibility boundary: current input/change owners identify programmatic writes via Event.isTrusted. */
+function kgwNodeSettingsWithProgrammaticWriteR9B(callback) {
+  return callback();
+}
 function kgwNodeR51RestoreDefaults(net) {
   kgwNodeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-begin", {
     patch: "R29B",
@@ -2861,7 +2881,7 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
   }
 
   if (stop) {
-    const stopEnabled = Boolean((running || starting) && !stopping && !displayOnlyLocked);
+    const stopEnabled = Boolean(running && !transitionActive && !displayOnlyLocked);
     stop.disabled = !stopEnabled;
     stop.style.opacity = stopEnabled ? "" : "0.45";
     stop.style.cursor = stopEnabled ? "" : "not-allowed";
@@ -2870,13 +2890,37 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
     stop.title = displayOnlyLocked
       ? lockMessage
       : starting
-        ? "Stop node startup"
+        ? "Node startup is in progress. Stop becomes available after READY."
         : stopping
           ? "Node is stopping."
           : running
             ? "Stop node"
             : "Node is not running";
   }
+}
+
+function kgwNodeR51SetRuntimeUnknown(net, message = "Runtime status is temporarily unavailable. Reconciling with the backend.") {
+  const panel = kgwNodeR51Panel(net);
+  if (!panel) return;
+
+  const policyStatus = byId(id(net, "policyStatus"));
+  if (policyStatus) {
+    policyStatus.textContent = "Reconciling";
+    policyStatus.dataset.state = "reconciling";
+  }
+
+  const start = panel.querySelector('[data-node-action="start"][data-net="' + net + '"]');
+  const stop = panel.querySelector('[data-node-action="stop"][data-net="' + net + '"]');
+  for (const button of [start, stop]) {
+    if (!button) continue;
+    button.disabled = true;
+    button.setAttribute?.("aria-disabled", "true");
+    button.style.opacity = "0.45";
+    button.style.cursor = "not-allowed";
+    button.title = message;
+  }
+
+  kgwNodeSetRuntimeNotice(net, "Reconciling", "Backend runtime state unavailable", message);
 }
 
 function kgwNodeR51Delta(previous, current) {
@@ -2936,7 +2980,7 @@ function kgwSetBridgeOwnedNodeLockR65E(net, locked, details) {
         source: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E"
       }
     }));
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 }
 
 function kgwIsBridgeOwnedNodeLockedR65E(net) {
@@ -2990,7 +3034,7 @@ function kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, locked, reason) {
       patch: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E",
       reason: reason || "unknown"
     });
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 }
 
 async function kgwNodeR51BridgeInprocessLockedV7(net) {
@@ -3044,52 +3088,71 @@ async function kgwNodeR51BridgeInprocessLockedV7(net) {
 
 
 async function kgwNodeR51RefreshOne(net, reason = "live") {
-  try {
-    const status = stringifyRuntimeResult(await invokeNodeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
-    const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
-    const running = kgwNodeR51IsRunning(status);
-    const runtimeError = kgwNodeRuntimeErrorFromStatus(status);
-    kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked);
-    if (!running && runtimeError) {
-      kgwNodeSetRuntimeNotice(
-        net,
-        kgwNodeTranslateRuntimeV29("runtime.failed", "Failed"),
-        "Official runtime terminated after READY",
-        runtimeError,
-      );
-    }
+  const transition = String(KGW_NODE_R51_TRANSITIONS[net] || "");
+  const transitionActive = transition === "starting" || transition === "stopping";
 
-    if (KGW_NODE_R51_LAST_STATUS[net] !== status) {
-      KGW_NODE_R51_LAST_STATUS[net] = status;
-      const authority = byId(id(net, "settingsAuthority"));
-      if (authority) {
-        authority.textContent = running
-          ? kgwI18nTextR41(
-              "runtime.effectiveSettingsActive",
-              "Effective settings are active for this runtime"
-            )
-          : kgwI18nTextR41(
-              "runtime.effectiveSettingsNextStart",
-              "Effective settings apply on next Start"
-            );
-        authority.dataset.restartRequired = "false";
+  let logsTask = KGW_NODE_R51_LOGS_IN_FLIGHT.get(net);
+  if (!logsTask) {
+    logsTask = (async () => {
+      try {
+        const report = await invokeNodeIntegratedRuntime("kgw_kgw_runtime_logs_v1", net);
+        kgwNodeApplyRuntimeLogReportV1(net, "node", report);
+        KGW_NODE_R51_LAST_LOGS[net] = report;
+      } catch (_) {
+        // No raw buffer may exist before the child is spawned. Never fabricate text.
+      } finally {
+        if (KGW_NODE_R51_LOGS_IN_FLIGHT.get(net) === logsTask) {
+          KGW_NODE_R51_LOGS_IN_FLIGHT.delete(net);
+        }
       }
-      
+    })();
+    KGW_NODE_R51_LOGS_IN_FLIGHT.set(net, logsTask);
+  }
+
+  let statusTask = Promise.resolve();
+  if (!transitionActive) {
+    statusTask = KGW_NODE_R51_STATUS_IN_FLIGHT.get(net);
+    if (!statusTask) {
+      statusTask = (async () => {
+        try {
+          const status = stringifyRuntimeResult(await invokeNodeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
+          const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
+          const running = kgwNodeR51IsRunning(status);
+          const runtimeError = kgwNodeRuntimeErrorFromStatus(status);
+          kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked);
+          if (!running && runtimeError) {
+            kgwNodeSetRuntimeNotice(
+              net,
+              kgwNodeTranslateRuntimeV29("runtime.failed", "Failed"),
+              "Official runtime terminated after READY",
+              runtimeError,
+            );
+          }
+
+          if (KGW_NODE_R51_LAST_STATUS[net] !== status) {
+            KGW_NODE_R51_LAST_STATUS[net] = status;
+            const authority = byId(id(net, "settingsAuthority"));
+            if (authority) {
+              authority.textContent = running
+                ? kgwI18nTextR41("runtime.effectiveSettingsActive", "Effective settings are active for this runtime")
+                : kgwI18nTextR41("runtime.effectiveSettingsNextStart", "Effective settings apply on next Start");
+              authority.dataset.restartRequired = "false";
+            }
+          }
+          kgwNodeR51MaybeActivityNotice(net, status);
+        } catch (error) {
+          kgwNodeR51SetRuntimeUnknown(net, "Status refresh failed: " + normalizeRuntimeError(error));
+        } finally {
+          if (KGW_NODE_R51_STATUS_IN_FLIGHT.get(net) === statusTask) {
+            KGW_NODE_R51_STATUS_IN_FLIGHT.delete(net);
+          }
+        }
+      })();
+      KGW_NODE_R51_STATUS_IN_FLIGHT.set(net, statusTask);
     }
-
-    kgwNodeR51MaybeActivityNotice(net, status);
-  } catch (error) {
-    const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
-    kgwNodeR51SetRuntimeButtons(net, false, bridgeInprocessLocked);
   }
 
-  try {
-    const report = await invokeNodeIntegratedRuntime("kgw_kgw_runtime_logs_v1", net);
-    kgwNodeApplyRuntimeLogReportV1(net, "node", report);
-    KGW_NODE_R51_LAST_LOGS[net] = report;
-  } catch {
-    // Runtime may not be ready yet.
-  }
+  await Promise.allSettled([logsTask, statusTask]);
 }
 
 // KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_HYDRATION_R65H2
@@ -3204,7 +3267,7 @@ function kgwNodeTranslateRuntimeV29(key, fallback) {
     try {
       const value = runtime(key, fallback);
       if (value && value !== key) return value;
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   }
   return fallback || key;
 }
@@ -3586,7 +3649,7 @@ function installActions(root) {
           details: JSON.stringify(payload)
         }).catch(function () {});
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   }
   // KGW_EXPLICIT_TRACE_OWNER_R27D_NODE_END
 
@@ -3823,7 +3886,7 @@ updateAllCommands();
     const finalSize = clampSize(size);
     try {
       window.localStorage.setItem(storageKey(net), String(finalSize));
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
     return finalSize;
   }
 

@@ -228,7 +228,7 @@ function kgwShellCanonicalVisibleTabsR63F() {
     if (Array.isArray(ids) && ids.length) {
       return new Set(ids);
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
   return new Set(["explorer", "kaspa-node", "kaspa-bridge", "analysis", "top-addresses", "log", "settings"]);
 }
@@ -259,7 +259,7 @@ function kgwShellApplyDisplayOwnerBeforeBootR63F(reason = "boot-before-open-tab"
    * Existing display owners still apply preferences; after each apply, schedule saved-tab restoration.
    */
   const scheduleRestore = (suffix) => {
-    try { kgwShellScheduleSavedMainTabRestoreR102C(String(reason || "") + "-" + suffix); } catch (_) {}
+    try { kgwShellScheduleSavedMainTabRestoreR102C(String(reason || "") + "-" + suffix); } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
   };
 
   try {
@@ -270,7 +270,7 @@ function kgwShellApplyDisplayOwnerBeforeBootR63F(reason = "boot-before-open-tab"
       scheduleRestore("r71-apply");
       return true;
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
   try {
     const canonical = window.kgwShellDisplayAndActiveTabOwnerR59C;
@@ -280,7 +280,7 @@ function kgwShellApplyDisplayOwnerBeforeBootR63F(reason = "boot-before-open-tab"
       scheduleRestore("r59c-read-apply");
       return true;
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
   try {
     const canonical = window.kgwShellDisplayAndActiveTabOwnerR59C;
@@ -289,7 +289,7 @@ function kgwShellApplyDisplayOwnerBeforeBootR63F(reason = "boot-before-open-tab"
       scheduleRestore("r59c-default-apply");
       return true;
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
   scheduleRestore("no-apply-owner");
   return false;
@@ -668,7 +668,7 @@ function kgwMainTabTraceR35C(tabId, phase, details) {
         details: JSON.stringify(payload)
       }).catch(function () {});
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 }
 // KGW_EXPLICIT_MAIN_TAB_TRACE_OWNER_R35C_END
 
@@ -694,7 +694,7 @@ function kgwShellReadLastMainTabR101W2() {
 function kgwShellSaveLastMainTabR101W2(tabId) {
   const candidate = String(tabId || "").trim();
   if (!kgwShellIsValidMainTabR101W2(candidate)) return "";
-  try { localStorage.setItem(KGW_SHELL_LAST_MAIN_TAB_KEY_R101W2, candidate); } catch (_) {}
+  try { localStorage.setItem(KGW_SHELL_LAST_MAIN_TAB_KEY_R101W2, candidate); } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
   return candidate;
 }
 
@@ -718,12 +718,38 @@ function kgwShellResolveStartupTabR101W2(hashValue, reason = "startup") {
  */
 let kgwShellPendingSavedMainTabR102C = "";
 
+/* AUD-013 / KGW_SHELL_EXPLICIT_NAVIGATION_WINS_R103
+ * Saved-tab restore is a bootstrap concern. Once a top-level navigation event expresses
+ * explicit intent, stale bootstrap callbacks and later display-hydration schedules must
+ * not override that intent. Generation ordering also protects rapid explicit navigation.
+ */
+let kgwShellExplicitNavigationGenerationR103 = 0;
+let kgwShellExplicitNavigationSeenR103 = false;
+
+function kgwShellRecordExplicitNavigationR103(tabId) {
+  const candidate = kgwShellKnownMainTabR102C(tabId);
+  if (!candidate) return kgwShellExplicitNavigationGenerationR103;
+  kgwShellExplicitNavigationGenerationR103 += 1;
+  kgwShellExplicitNavigationSeenR103 = true;
+  kgwShellPendingSavedMainTabR102C = "";
+  return kgwShellExplicitNavigationGenerationR103;
+}
+
+function kgwShellExplicitNavigationIsCurrentR103(generation) {
+  return Number(generation) === kgwShellExplicitNavigationGenerationR103;
+}
+
+function kgwShellSavedRestoreTokenCurrentR103(generation) {
+  return !kgwShellExplicitNavigationSeenR103 &&
+    Number(generation) === kgwShellExplicitNavigationGenerationR103;
+}
+
 function kgwShellKnownMainTabR102C(tabId) {
   const candidate = String(tabId || "").replace(/^#/, "").trim();
   if (!candidate) return "";
   try {
     if (Array.isArray(KGW_TABS) && KGW_TABS.some((tab) => tab && tab.id === candidate)) return candidate;
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
   return "";
 }
 
@@ -745,29 +771,32 @@ function kgwShellShouldBypassDisplayFilterR102C(tabId, options) {
 }
 
 function kgwShellScheduleSavedMainTabRestoreR102C(reason = "schedule") {
+  if (kgwShellExplicitNavigationSeenR103) return false;
   const saved = kgwShellSavedMainTabR102C();
   if (!saved) return false;
+  const restoreGenerationR103 = kgwShellExplicitNavigationGenerationR103;
   kgwShellPendingSavedMainTabR102C = saved;
 
   [0, 80, 250, 800, 1600].forEach((delay) => {
     window.setTimeout(() => {
+      if (!kgwShellSavedRestoreTokenCurrentR103(restoreGenerationR103)) return;
       const pending = kgwShellKnownMainTabR102C(kgwShellPendingSavedMainTabR102C || kgwShellSavedMainTabR102C());
       if (!pending) return;
 
       try {
-        const activeButton = typeof kgwShellDisplayOwnerActiveButtonR59C === "function" ? kgwShellDisplayOwnerActiveButtonR59C() : null;
+        const activeButton = null; // Display-owner helpers are scoped inside the preferences owner; hash fallback is authoritative here.
         const activeTabId = activeButton && activeButton.dataset ? String(activeButton.dataset.tab || "") : String(window.location.hash || "").replace(/^#/, "");
         if (activeTabId === pending) return;
-      } catch (_) {}
+      } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
       try {
         kgwMainTabTraceR35C(pending, "r102c-saved-main-tab-deferred-restore", {
           reason: String(reason || ""),
           delay,
           activeHash: String(window.location.hash || ""),
-          visibleNow: typeof kgwShellDisplayOwnerTabIdVisibleR59C === "function" ? kgwShellDisplayOwnerTabIdVisibleR59C(pending) : null
+          visibleNow: null
         });
-      } catch (_) {}
+      } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
       try {
         void openTab(pending, {
@@ -775,7 +804,7 @@ function kgwShellScheduleSavedMainTabRestoreR102C(reason = "schedule") {
           allowHiddenSavedTab: true,
           reason: "r102c-deferred-saved-main-tab-restore"
         });
-      } catch (_) {}
+      } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
     }, delay);
   });
 
@@ -788,6 +817,9 @@ async function openTab(tabId, options = {}) {
   const requestedTabId = String(tabId || "");
   const openOptions = options && typeof options === "object" ? options : {};
   const openReason = String(openOptions.reason || "programmatic");
+  const explicitNavigationGenerationR103 = Number.isInteger(openOptions.explicitNavigationGeneration)
+    ? openOptions.explicitNavigationGeneration
+    : null;
   const shouldPersistLastMainTabR101Y = openOptions.persist === true;
   const shouldBypassDisplayFilterR102C = kgwShellShouldBypassDisplayFilterR102C(requestedTabId, openOptions);
   /* KGW_SHELL_DISPLAY_OWNER_SCOPE_REPAIR_R60 */
@@ -814,7 +846,7 @@ async function openTab(tabId, options = {}) {
         persistAllowed: shouldPersistLastMainTabR101Y,
         bypassDisplayFilterR102C: shouldBypassDisplayFilterR102C
       });
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
     tabId = resolvedTabId;
   } else if (resolvedTabId) {
     tabId = resolvedTabId;
@@ -824,6 +856,12 @@ async function openTab(tabId, options = {}) {
 
   const tab = tabById(tabId);
   await initTab(tab);
+
+  if (explicitNavigationGenerationR103 !== null &&
+      !kgwShellExplicitNavigationIsCurrentR103(explicitNavigationGenerationR103)) {
+    return false;
+  }
+
   activateTab(tab.id);
 
   if (shouldPersistLastMainTabR101Y) {
@@ -863,9 +901,11 @@ function bindNavigation() {
           persistRequested: trusted
         });
 
+        const explicitNavigationGenerationR103 = kgwShellRecordExplicitNavigationR103(button.dataset.tab);
         await openTab(button.dataset.tab, {
           persist: trusted,
-          reason: trusted ? "trusted-main-tab-click" : "untrusted-main-tab-click"
+          reason: trusted ? "trusted-main-tab-click" : "untrusted-main-tab-click",
+          explicitNavigationGeneration: explicitNavigationGenerationR103
         });
       } catch (error) {
         kgwFatal(error, "shell");
@@ -896,7 +936,7 @@ function applyTheme(theme) {
 
   try {
     localStorage.setItem(KGW_THEME_KEY, value);
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
   window.dispatchEvent(new CustomEvent("kgw:theme-changed", { detail: { theme: value } }));
 }
@@ -1327,14 +1367,14 @@ console.log("[KGW Explorer][busy-ui] global controller installed");
         await window.__TAURI__.opener.openUrl(url);
         return true;
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
     try {
       if (window.__TAURI__?.shell?.open) {
         await window.__TAURI__.shell.open(url);
         return true;
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
     const invoke = getTauriInvoke();
     if (typeof invoke === "function") {
@@ -1351,7 +1391,7 @@ console.log("[KGW Explorer][busy-ui] global controller installed");
         try {
           await invoke(command, args);
           return true;
-        } catch (_) {}
+        } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
       }
     }
 
@@ -1644,7 +1684,7 @@ function kgwShellDisplayOwnerResolveTabIdR59C(tabId, reason = "resolve") {
       requestedTab: requested || null,
       fallbackTab: fallback || null
     });
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
   return fallback || requested || defaults().activeTab;
 }
@@ -1688,7 +1728,7 @@ function kgwShellDisplayOwnerEnsureActiveTabR59C(reason = "ensure-active") {
         allowHiddenSavedTab: Boolean(savedTabId && savedTabId === resolvedTabId),
         reason: savedTabId && savedTabId === resolvedTabId ? "display-owner-restore-saved-tab" : "display-owner-ensure-active"
       });
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
   }, 0);
 
   kgwShellScheduleSavedMainTabRestoreR102C("ensure-active-after-schedule");
@@ -1706,7 +1746,7 @@ function kgwShellDisplayOwnerPublishR59C() {
       resolveTabId: kgwShellDisplayOwnerResolveTabIdR59C,
       ensureActiveTab: kgwShellDisplayOwnerEnsureActiveTabR59C
     };
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 }
 
 /* KGW_SHELL_DIRECT_DISPLAY_APPLY_OWNER_R73
@@ -1775,7 +1815,7 @@ function kgwShellCollectSelectsForKindR75(selectors, universe, kind) {
       document.querySelectorAll(selector).forEach((node) => {
         if (node && node.tagName === "SELECT" && !nodes.includes(node)) nodes.push(node);
       });
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
   });
 
   try {
@@ -1784,7 +1824,7 @@ function kgwShellCollectSelectsForKindR75(selectors, universe, kind) {
         nodes.push(node);
       }
     });
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
   return nodes;
 }
@@ -1817,7 +1857,7 @@ function kgwShellApplySelectVisibilityR75(select, allowedValues, reason) {
     select.value = firstAllowed;
     try {
       select.dispatchEvent(new Event("change", { bubbles: true }));
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
   }
 
   select.dataset.kgwDisplayReason = String(reason || "");
@@ -1852,7 +1892,7 @@ function kgwShellApplyLooseMenuVisibilityR75(kind, allowedValues, reason) {
       document.querySelectorAll(selector).forEach((node) => {
         if (node && !nodes.includes(node)) nodes.push(node);
       });
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
   });
 
   let shown = 0;
@@ -2039,7 +2079,7 @@ function kgwShellSetSelectOptionsVisibleR73(selectors, allowedValues, reason) {
       ownerIds: nodes.map((node) => String(node.id || "")).join(","),
       allowed: allowed.join(",")
     });
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 }
 
 function kgwShellSetMenuOptionsVisibleR73(optionSelectors, allowedValues, reason) {
@@ -2056,7 +2096,7 @@ function kgwShellSetMenuOptionsVisibleR73(optionSelectors, allowedValues, reason
       hidden: String(stats.hidden),
       allowed: allowed.join(",")
     });
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 }
 
 function kgwShellApplyDisplayPreferencesDirectR73(prefs, reason = "direct-shell-apply") {
@@ -2070,7 +2110,7 @@ function kgwShellApplyDisplayPreferencesDirectR73(prefs, reason = "direct-shell-
         reason: String(reason || ""),
         message: String(error && error.message || error)
       });
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
   }
 
   kgwShellSetSelectOptionsVisibleR73([
@@ -2102,7 +2142,7 @@ function kgwShellApplyDisplayPreferencesDirectR73(prefs, reason = "direct-shell-
     window.dispatchEvent(new CustomEvent("kgw:shell-display-applied-r78", {
       detail: normalized
     }));
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
   try {
     kgwMainTabTraceR35C("settings", "r78-direct-shell-apply", {
@@ -2111,14 +2151,14 @@ function kgwShellApplyDisplayPreferencesDirectR73(prefs, reason = "direct-shell-
       currencies: normalized.currencies.join(","),
       tabs: normalized.tabs.join(",")
     });
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
   return normalized;
 }
 
 try {
   window.kgwShellApplyDisplayPreferencesDirectR73 = kgwShellApplyDisplayPreferencesDirectR73;
-} catch (_) {}
+} catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
 function applyTabs(selectedTabs) {
     const normalizedTabs = kgwShellAsArrayR75(selectedTabs, ["kaspa-node", "kaspa-bridge", "settings"]);
@@ -2158,7 +2198,7 @@ function applyTabs(selectedTabs) {
         shown: String(shown),
         hidden: String(hidden)
       });
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary shell behavior is preserved. */ }
 
     kgwShellDisplayOwnerEnsureActiveTabR59C("apply-tabs-r75");
   }

@@ -264,3 +264,7 @@
 }
 
 /* KGW TOP ADDRESSES NO FAKE DATA END */
+
+.top-addresses-status { min-height: 1.4em; margin: 4px 0 8px; font-size: 0.9rem; }
+.top-addresses-status[data-state="error"] { font-weight: 700; }
+.top-addresses-status[data-state="success"] { font-weight: 600; }

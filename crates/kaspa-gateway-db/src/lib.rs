@@ -4,7 +4,10 @@
 // Forbidden: HTTP API fetch orchestration, Tauri IPC ownership, and frontend/UI behavior.
 // ============================================================================
 
+pub mod backup_restore;
+
 use duckdb::{Connection, OptionalExt, params};
+use kaspa_gateway_core::KaspaAddress;
 use rusqlite as sqlite;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -422,16 +425,20 @@ impl AddressRecord {
         validate_optional_text("name", &name)?;
         validate_network(&network)?;
 
-        if !is_kaspa_address_like(&address) {
-            return Err(DbError::InvalidRecord(
-                "address must start with kaspa:, kaspatest:, kaspadev:, or kaspasim:".to_string(),
-            ));
+        let parsed = KaspaAddress::parse(&address).map_err(|_| {
+            DbError::InvalidRecord("address must be a valid Kaspa address".to_string())
+        })?;
+        let address_network = parsed.network().to_string();
+        if address_network != network {
+            return Err(DbError::InvalidRecord(format!(
+                "address network {address_network} does not match record network {network}"
+            )));
         }
 
         let now = now_ms();
 
         Ok(Self {
-            address,
+            address: parsed.into_string(),
             name,
             network,
             created_at_ms: now,

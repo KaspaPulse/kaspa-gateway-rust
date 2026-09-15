@@ -38,7 +38,7 @@ function kgwSettingsNormalizeNumericFields() {
         node.value = normalized;
         try {
           node.setSelectionRange(pos, pos);
-        } catch (_) {}
+        } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
       }
     });
   });
@@ -98,7 +98,7 @@ function kgwSettingsUiTraceR48B3(action, phase, details) {
     if (typeof invoke === "function") {
       invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 function setSaveEnabled(enabled) {
   const save = q("#settingsSaveSettings");
@@ -213,6 +213,7 @@ function selectEndpoint(row) {
   if (path) path.value = row.dataset.apiPath || "";
 
   combineUrl();
+  kgwSettingsUpdateEndpointResetAvailability(row);
 }
 
 
@@ -531,7 +532,7 @@ function kgwSettingsApplyDisplayChecksR65(checks, reason = "display-checks") {
       patch: "R69",
       reason
     });
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 
   try {
     kgwSettingsUiTraceR48B3("settings-display", "r69-display-checks-applied", {
@@ -540,7 +541,7 @@ function kgwSettingsApplyDisplayChecksR65(checks, reason = "display-checks") {
       currencies: kgwSettingsSelectedDisplayKeysR65(source, "currency:").join(","),
       tabs: kgwSettingsSelectedDisplayKeysR65(source, "tab:").join(",")
     });
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 
 function kgwSettingsBuildCanonicalDefaultStateR65(reason = "display-defaults-r65", persist = false) {
@@ -559,7 +560,7 @@ function kgwSettingsBuildCanonicalDefaultStateR65(reason = "display-defaults-r65
   if (persist) {
     try {
       localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(finalState, null, 2));
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
   }
 
   kgwSettingsApplyShellDisplayFromState(finalState, reason);
@@ -735,6 +736,281 @@ function kgwSettingsBackendInvokeR4(command, payload = {}) {
   return invoke(command, payload);
 }
 
+const KGW_SETTINGS_WORKFLOW_STATE = {
+  backendSettings: null,
+  busy: false
+};
+
+function kgwSettingsDialogApi() {
+  return window.__TAURI__?.dialog || null;
+}
+
+function kgwSettingsProfileSetStatus(message, kind = "info") {
+  let status = q("#settingsProfileStatus");
+  const profile = q("#settingsApiProfile");
+  if (!status && profile) {
+    status = document.createElement("div");
+    status.id = "settingsProfileStatus";
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    profile.parentElement?.appendChild(status);
+  }
+
+  if (status) {
+    status.textContent = String(message || "");
+    status.dataset.kind = kind;
+  }
+}
+
+function kgwSettingsActiveBackendProfile(settings) {
+  const list = Array.isArray(settings?.api_profiles) ? settings.api_profiles : [];
+  return list.find((profile) => profile?.name === settings?.active_api_profile) || list[0] || null;
+}
+
+function kgwSettingsUpdateEndpointResetAvailability(row) {
+  const button = q("#settingsResetSelectedEndpoint");
+  if (!button) return;
+  const key = String(row?.dataset?.apiKey || "");
+  const supported = key === "base_url" || row?.dataset?.kgwPersistedEndpoint === "true";
+  button.disabled = !supported;
+  button.setAttribute("aria-disabled", String(!supported));
+  button.title = supported ? "Reset the selected persisted endpoint to its canonical default." : "This endpoint is not stored by the current Settings contract.";
+}
+
+function kgwSettingsApplyBackendProfiles(settings) {
+  if (!settings || typeof settings !== "object") return;
+  KGW_SETTINGS_WORKFLOW_STATE.backendSettings = settings;
+  const select = q("#settingsApiProfile");
+  const profiles = Array.isArray(settings.api_profiles) ? settings.api_profiles : [];
+  if (select) {
+    select.innerHTML = "";
+    profiles.forEach((profile) => {
+      const option = document.createElement("option");
+      option.value = profile.name;
+      option.textContent = profile.name;
+      select.appendChild(option);
+    });
+    select.value = settings.active_api_profile || profiles[0]?.name || "";
+  }
+
+  const active = kgwSettingsActiveBackendProfile(settings);
+  const endpointMap = new Map((active?.endpoints || []).map((endpoint) => [endpoint.name, endpoint]));
+  qa(".tree-row[data-api-key]").forEach((row) => {
+    const key = String(row.dataset.apiKey || "");
+    row.dataset.kgwPersistedEndpoint = "false";
+    if (key === "base_url" && active) {
+      row.dataset.apiBase = active.base_url || "";
+      row.dataset.apiPath = "";
+      row.dataset.kgwPersistedEndpoint = "true";
+      return;
+    }
+    const endpoint = endpointMap.get(key);
+    if (endpoint && active) {
+      row.dataset.apiBase = active.base_url || "";
+      row.dataset.apiPath = endpoint.path || "";
+      row.dataset.kgwPersistedEndpoint = "true";
+    }
+  });
+  const selected = q(".tree-row.is-selected") || q(".tree-row");
+  if (selected) selectEndpoint(selected);
+}
+
+async function kgwSettingsRefreshBackendProfiles(reason = "refresh") {
+  try {
+    const settings = await kgwSettingsBackendInvokeR4("settings_load");
+    kgwSettingsApplyBackendProfiles(settings);
+    settingsLogger().log("settings backend profiles refreshed", { reason });
+    return settings;
+  } catch (error) {
+    kgwSettingsProfileSetStatus(`Profile load failed: ${error?.message || error}`, "error");
+    throw error;
+  }
+}
+
+async function kgwSettingsRunProfileMutation(command, payload, successMessage) {
+  if (KGW_SETTINGS_WORKFLOW_STATE.busy) return null;
+  KGW_SETTINGS_WORKFLOW_STATE.busy = true;
+  kgwSettingsProfileSetStatus("Working...", "info");
+  try {
+    const settings = await kgwSettingsBackendInvokeR4(command, payload);
+    kgwSettingsApplyBackendProfiles(settings);
+    kgwSettingsProfileSetStatus(successMessage, "success");
+    return settings;
+  } catch (error) {
+    kgwSettingsProfileSetStatus(`Action failed: ${error?.message || error}`, "error");
+    return null;
+  } finally {
+    KGW_SETTINGS_WORKFLOW_STATE.busy = false;
+  }
+}
+
+async function kgwSettingsProfileAddAction() {
+  const name = window.prompt("New API profile name (letters, numbers, dot, dash or underscore):", "");
+  if (name == null) return;
+  await kgwSettingsRunProfileMutation("settings_profile_add", { name }, "API profile added and saved.");
+}
+
+async function kgwSettingsProfileRenameAction() {
+  const select = q("#settingsApiProfile");
+  const current = String(select?.value || "");
+  if (!current) return kgwSettingsProfileSetStatus("Select an API profile first.", "error");
+  const newName = window.prompt("New API profile name:", current);
+  if (newName == null || newName === current) return;
+  await kgwSettingsRunProfileMutation("settings_profile_rename", { name: current, newName }, "API profile renamed and saved.");
+}
+
+async function kgwSettingsProfileDeleteAction() {
+  const select = q("#settingsApiProfile");
+  const name = String(select?.value || "");
+  if (!name) return kgwSettingsProfileSetStatus("Select an API profile first.", "error");
+  if (!window.confirm(`Delete API profile "${name}"?`)) return;
+  await kgwSettingsRunProfileMutation("settings_profile_delete", { name }, "API profile deleted and saved.");
+}
+
+async function kgwSettingsProfileSelectAction() {
+  const select = q("#settingsApiProfile");
+  const name = String(select?.value || "");
+  if (!name) return;
+  await kgwSettingsRunProfileMutation("settings_profile_select", { name }, "Active API profile saved.");
+}
+
+async function kgwSettingsResetSelectedEndpointAction() {
+  const row = q(".tree-row.is-selected");
+  const profileName = String(q("#settingsApiProfile")?.value || "");
+  const endpointName = String(row?.dataset?.apiKey || "");
+  if (!row || !profileName || !endpointName) {
+    kgwSettingsProfileSetStatus("Select a persisted endpoint first.", "error");
+    return;
+  }
+  await kgwSettingsRunProfileMutation(
+    "settings_reset_selected_endpoint",
+    { profileName, endpointName },
+    "Selected endpoint reset to its canonical default and saved."
+  );
+}
+
+async function kgwSettingsRefreshAddressesLocalOnly() {
+  const invoke = kgwSettingsAddressInvoke();
+  if (!invoke) throw new Error("Tauri invoke API is not available.");
+  const records = await invoke("get_all_addresses");
+  await kgwRenderSettingsAddressRows(records, { localOnly: true });
+  if (typeof window.kgwRefreshSavedAddresses === "function") {
+    await window.kgwRefreshSavedAddresses();
+  }
+  try {
+    window.dispatchEvent(new CustomEvent("kgw:saved-addresses-changed"));
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
+  return records;
+}
+
+function kgwSettingsAddressIoStatus(report, action) {
+  const warnings = Array.isArray(report?.warnings) ? report.warnings : [];
+  const imported = Number(report?.imported || 0);
+  const exported = Number(report?.exported || 0);
+  const skipped = Number(report?.skipped || 0);
+  const count = action === "import" ? `${imported} imported, ${skipped} skipped` : `${exported} exported`;
+  const warningText = warnings.length ? `; ${warnings.join(" | ")}` : "";
+  kgwSettingsAddressSetStatus(`Last Updated: ${count}${warningText}`);
+}
+
+async function kgwSettingsExportAddressesAction() {
+  const dialog = kgwSettingsDialogApi();
+  const invoke = kgwSettingsAddressInvoke();
+  if (!dialog || typeof dialog.save !== "function" || !invoke) {
+    kgwSettingsAddressSetStatus("Last Updated: native save dialog is unavailable.");
+    return;
+  }
+
+  try {
+    const stats = await invoke("address_book_stats");
+    const selected = await dialog.save({
+      title: "Export saved Kaspa addresses",
+      defaultPath: stats?.default_export_json_path || "kaspa_gateway_addresses.json",
+      filters: [
+        { name: "JSON", extensions: ["json"] },
+        { name: "CSV", extensions: ["csv"] }
+      ]
+    });
+    if (!selected) {
+      kgwSettingsAddressSetStatus("Last Updated: export cancelled.");
+      return;
+    }
+    const isCsv = String(selected).toLowerCase().endsWith(".csv");
+    const command = isCsv ? "address_book_export_csv" : "address_book_export_json";
+    const report = await invoke(command, { request: { path: String(selected), network: "mainnet" } });
+    kgwSettingsAddressIoStatus(report, "export");
+  } catch (error) {
+    kgwSettingsAddressSetStatus(`Last Updated: export failed - ${error?.message || error}`);
+  }
+}
+
+async function kgwSettingsImportAddressesAction() {
+  const dialog = kgwSettingsDialogApi();
+  const invoke = kgwSettingsAddressInvoke();
+  if (!dialog || typeof dialog.open !== "function" || !invoke) {
+    kgwSettingsAddressSetStatus("Last Updated: native open dialog is unavailable.");
+    return;
+  }
+
+  try {
+    const selected = await dialog.open({
+      title: "Import saved Kaspa addresses",
+      multiple: false,
+      directory: false,
+      filters: [
+        { name: "Address files", extensions: ["json", "csv"] }
+      ]
+    });
+    const path = Array.isArray(selected) ? selected[0] : selected;
+    if (!path) {
+      kgwSettingsAddressSetStatus("Last Updated: import cancelled.");
+      return;
+    }
+    const isCsv = String(path).toLowerCase().endsWith(".csv");
+    const command = isCsv ? "address_book_import_csv" : "address_book_import_json";
+    const report = await invoke(command, { request: { path: String(path), network: "mainnet" } });
+    await kgwSettingsRefreshAddressesLocalOnly();
+    kgwSettingsAddressIoStatus(report, "import");
+  } catch (error) {
+    kgwSettingsAddressSetStatus(`Last Updated: import failed - ${error?.message || error}`);
+  }
+}
+
+function kgwInstallSettingsRealWorkflowActions() {
+  if (window.__kgwSettingsRealWorkflowActionsInstalled) return;
+  window.__kgwSettingsRealWorkflowActionsInstalled = true;
+
+  const bindings = [
+    ["settingsProfileAdd", kgwSettingsProfileAddAction],
+    ["settingsProfileRename", kgwSettingsProfileRenameAction],
+    ["settingsProfileDelete", kgwSettingsProfileDeleteAction],
+    ["settingsResetSelectedEndpoint", kgwSettingsResetSelectedEndpointAction],
+    ["settingsExportAddresses", kgwSettingsExportAddressesAction],
+    ["settingsImportAddresses", kgwSettingsImportAddressesAction]
+  ];
+  bindings.forEach(([id, handler]) => {
+    const button = q(`#${CSS.escape(id)}`);
+    if (!button || button.dataset.kgwRealWorkflowBound === "true") return;
+    button.dataset.kgwRealWorkflowBound = "true";
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      void handler();
+    });
+  });
+
+  const select = q("#settingsApiProfile");
+  if (select && select.dataset.kgwProfileSelectBound !== "true") {
+    select.dataset.kgwProfileSelectBound = "true";
+    select.addEventListener("change", () => void kgwSettingsProfileSelectAction());
+  }
+  const addressStatus = q("#settingsAddressLastUpdated");
+  if (addressStatus) {
+    addressStatus.setAttribute("role", "status");
+    addressStatus.setAttribute("aria-live", "polite");
+  }
+  void kgwSettingsRefreshBackendProfiles("workflow-install");
+}
+
 function kgwSettingsIsStaleUserPathR4(value) {
   const text = String(value || "");
   return /^[A-Za-z]:[\\/]+Users[\\/]+[^\\/]+[\\/]+AppData[\\/]+Roaming[\\/]+KaspaGateway/i.test(text) || /AppData[\\/]+Roaming[\\/]+KaspaGateway/i.test(text);
@@ -845,7 +1121,7 @@ async function saveState() {
     });
     try {
       console.error("[settings] save failed", error);
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
     setSaveEnabled(true);
     return false;
   } finally {
@@ -860,7 +1136,7 @@ async function resetDefaults(options = {}) {
   if (shouldClearStorage) {
     try {
       localStorage.removeItem(SETTINGS_STORAGE_KEY);
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
   }
 
   qa("input[type='checkbox']").forEach((node) => {
@@ -900,6 +1176,52 @@ async function resetDefaults(options = {}) {
   setSaveEnabled(false);
 
   await kgwSettingsLoadDynamicPathDefaultsR4("reset-defaults");
+}
+
+function kgwSettingsPathStatus(targetId, message, state = "info") {
+  const target = q(`#${CSS.escape(targetId)}`);
+  if (!target) return;
+  let status = target.parentElement?.querySelector(`[data-settings-path-status="${targetId}"]`);
+  if (!status) {
+    status = document.createElement("span");
+    status.dataset.settingsPathStatus = targetId;
+    status.setAttribute("role", state === "error" ? "alert" : "status");
+    status.setAttribute("aria-live", state === "error" ? "assertive" : "polite");
+    target.parentElement?.appendChild(status);
+  }
+  status.dataset.state = state;
+  status.textContent = String(message || "");
+}
+
+async function kgwSettingsBrowsePath(targetId) {
+  const target = q(`#${CSS.escape(targetId)}`);
+  const dialog = kgwSettingsDialogApi();
+  if (!target || !dialog || typeof dialog.open !== "function") {
+    kgwSettingsPathStatus(targetId, "Native directory chooser is unavailable.", "error");
+    return false;
+  }
+  const before = String(target.value || "");
+  try {
+    const selected = await dialog.open({ title: "Choose directory", directory: true, multiple: false });
+    const path = Array.isArray(selected) ? selected[0] : selected;
+    if (!path) {
+      kgwSettingsPathStatus(targetId, "Browse cancelled; path unchanged.", "info");
+      return false;
+    }
+    const report = await kgwSettingsBackendInvokeR4("settings_validate_custom_path", {
+      key: targetId,
+      path: String(path),
+      createIfMissing: false
+    });
+    target.value = String(report?.path || path);
+    kgwSettingsPathStatus(targetId, "Directory selected.", "success");
+    markDirty();
+    return true;
+  } catch (error) {
+    target.value = before;
+    kgwSettingsPathStatus(targetId, `Browse failed: ${error?.message || error}`, "error");
+    return false;
+  }
 }
 
 function bindStaticActions() {
@@ -1003,16 +1325,13 @@ function bindStaticActions() {
     button.dataset.bound = "true";
 
     button.addEventListener("click", (event) => {
+      event.preventDefault();
       kgwSettingsUiTraceR48B3("settings-field-action", "r48b3-browse-for-click", {
         trusted: Boolean(event && event.isTrusted),
         target: String(button.dataset.browseFor || ""),
         text: String(button.textContent || "").trim()
       });
-      const target = q(`#${CSS.escape(button.dataset.browseFor)}`);
-      if (target && !target.value) {
-        void kgwSettingsLoadDynamicPathDefaultsR4("browse-defaults");
-      }
-      markDirty();
+      void kgwSettingsBrowsePath(String(button.dataset.browseFor || ""));
     });
   });
 
@@ -1053,16 +1372,10 @@ function bindStaticActions() {
   }
 
   const placeholderActions = [
-    "settingsProfileAdd",
-    "settingsProfileRename",
-    "settingsProfileDelete",
-    "settingsResetSelectedEndpoint",
     "settingsAddressAdd",
     "settingsAddressDelete",
     "settingsAddressClear",
     "settingsAddressRefresh",
-    "settingsExportAddresses",
-    "settingsImportAddresses",
     "settingsDbRefresh",
     "settingsDbCompact",
     "settingsDbClearCaches",
@@ -1262,6 +1575,7 @@ export async function initSettingsTab() {
   bindStaticActions();
   resetDefaults({ clearStorage: false, applyShell: false });
   loadSavedState();
+  kgwInstallSettingsRealWorkflowActions();
   kgwDisplaySelectionEnsureDefaultsR1("settings-init");
   kgwSettingsNormalizeNumericFields();
   void kgwSettingsLoadDynamicPathDefaultsR4("settings-init");
@@ -1401,7 +1715,8 @@ const KGW_SETTINGS_ADDRESS_STATE = {
   knownNames: new Map(),
   priceUsd: 0,
   balances: new Map(),
-  loading: false
+  loading: false,
+  restoreEpoch: 0
 };
 
 function kgwSettingsAddressInvoke() {
@@ -1597,13 +1912,16 @@ function kgwSettingsAddressSelect(row) {
   }
 }
 
-async function kgwRenderSettingsAddressRows(records) {
+async function kgwRenderSettingsAddressRows(records, options = {}) {
   const { rows } = kgwSettingsAddressElements();
-  if (!rows) return;
+  if (!rows) return false;
 
+  const restoreEpoch = options.restoreEpoch ?? KGW_SETTINGS_ADDRESS_STATE.restoreEpoch;
+  const list = options.localOnly === true
+    ? records.map(kgwSettingsAddressNormalize).filter((item) => kgwSettingsIsKaspaAddress(item.address))
+    : await kgwEnrichSettingsAddressRows(records);
+  if (restoreEpoch !== KGW_SETTINGS_ADDRESS_STATE.restoreEpoch) return false;
   rows.innerHTML = "";
-
-  const list = await kgwEnrichSettingsAddressRows(records);
 
   if (!list.length) {
     const tr = document.createElement("tr");
@@ -1612,7 +1930,7 @@ async function kgwRenderSettingsAddressRows(records) {
     td.textContent = (window.kgwT ? window.kgwT("settings.noSavedAddresses") : "No saved addresses.");
     tr.appendChild(td);
     rows.appendChild(tr);
-    return;
+    return true;
   }
 
   for (const item of list) {
@@ -1650,6 +1968,7 @@ async function kgwRenderSettingsAddressRows(records) {
 
     rows.appendChild(tr);
   }
+  return true;
 }
 
 async function kgwRefreshSettingsAddresses() {
@@ -1662,12 +1981,14 @@ async function kgwRefreshSettingsAddresses() {
     return [];
   }
 
+  const restoreEpoch = KGW_SETTINGS_ADDRESS_STATE.restoreEpoch;
   KGW_SETTINGS_ADDRESS_STATE.loading = true;
   kgwSettingsAddressSetStatus("Last Updated: loading...");
 
   try {
     const records = await invoke("get_all_addresses");
-    await kgwRenderSettingsAddressRows(records);
+    if (restoreEpoch !== KGW_SETTINGS_ADDRESS_STATE.restoreEpoch) return [];
+    if (!await kgwRenderSettingsAddressRows(records, { restoreEpoch })) return [];
     kgwSettingsAddressSetStatus(`Last Updated: ${kgwSettingsAddressNow()}`);
 
     if (typeof window.kgwRefreshSavedAddresses === "function") {
@@ -1676,12 +1997,19 @@ async function kgwRefreshSettingsAddresses() {
 
     return records;
   } catch (error) {
-    await kgwRenderSettingsAddressRows([]);
+    if (restoreEpoch !== KGW_SETTINGS_ADDRESS_STATE.restoreEpoch) return [];
+    await kgwRenderSettingsAddressRows([], { restoreEpoch });
     kgwSettingsAddressSetStatus(`Last Updated: failed - ${error?.message || error}`);
     return [];
   } finally {
     KGW_SETTINGS_ADDRESS_STATE.loading = false;
   }
+}
+
+function kgwNotifySavedAddressesChanged() {
+  try {
+    window.dispatchEvent(new CustomEvent("kgw:saved-addresses-changed"));
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 
 async function kgwSaveSettingsAddress() {
@@ -1711,6 +2039,7 @@ async function kgwSaveSettingsAddress() {
 
     KGW_SETTINGS_ADDRESS_STATE.balances.delete(cleanAddress);
     await kgwRefreshSettingsAddresses();
+    kgwNotifySavedAddressesChanged();
   } catch (error) {
     kgwSettingsAddressSetStatus(`Last Updated: save failed - ${error?.message || error}`);
   }
@@ -1746,6 +2075,7 @@ async function kgwDeleteSettingsAddress() {
     if (elements.address) elements.address.value = "";
 
     await kgwRefreshSettingsAddresses();
+    kgwNotifySavedAddressesChanged();
   } catch (error) {
     kgwSettingsAddressSetStatus(`Last Updated: delete failed - ${error?.message || error}`);
   }
@@ -2266,7 +2596,8 @@ document.addEventListener("click", (event) => {
 
 /* KGW_SETTINGS_DB_MAINTENANCE_ACTIONS_OWNER_V1 */
 const KGW_SETTINGS_DB_ACTION_STATE = {
-  selectedKind: ""
+  selectedKind: "",
+  restoring: false
 };
 
 function kgwSettingsDbKindFromFileName(value) {
@@ -2341,6 +2672,61 @@ async function kgwSettingsDbInvokeAction(command, args) {
   return result;
 }
 
+// AUD-001: one restore flight owns its visible result and post-restore refresh.
+function kgwSettingsRestoreStatus(message, state) {
+  let node = document.getElementById("settingsRestoreStatus");
+  if (!node) {
+    node = document.createElement("p");
+    node.id = "settingsRestoreStatus";
+    node.setAttribute("aria-live", "polite");
+    document.querySelector("#settings [data-settings-panel='database-maintenance'] .database-panel")?.appendChild(node);
+  }
+  node.setAttribute("role", state === "error" ? "alert" : "status");
+  node.dataset.state = state;
+  node.textContent = String(message);
+  kgwSettingsDbStatus(message);
+}
+async function kgwSettingsRestoreLatest() {
+  if (KGW_SETTINGS_DB_ACTION_STATE.restoring) return null;
+  KGW_SETTINGS_DB_ACTION_STATE.restoring = true;
+  const controls = Array.from(document.querySelectorAll("#settingsDbRefresh,#settingsDbCompact,#settingsDbClearCaches,#settingsDbBackup,#settingsDbRestore,#settingsDbDelete"));
+  const disabled = controls.map((node) => node.disabled);
+  controls.forEach((node) => { node.disabled = true; });
+  let restored = false;
+  try {
+    if (!confirm("Restore the latest database backup? The current data will be kept in a safety backup.")) {
+      kgwSettingsRestoreStatus("Restore cancelled. No data changed.", "cancelled");
+      return null;
+    }
+    KGW_SETTINGS_ADDRESS_STATE.restoreEpoch += 1;
+    kgwSettingsRestoreStatus("Restoring the selected backup...", "running");
+    const invoke = kgwSettingsDbInvoke();
+    if (typeof invoke !== "function") throw new Error("Tauri invoke API is not available.");
+    const result = await invoke("kgw_settings_database_restore_latest", {});
+    if (result?.ok !== true || !result.backup_path || !Array.isArray(result.rows)) {
+      throw new Error(result?.message || "Restore did not return a verified result.");
+    }
+    restored = true;
+    const records = await invoke("get_all_addresses", {});
+    if (!Array.isArray(records)) throw new Error("Restored address state could not be read.");
+    kgwRenderSettingsDatabaseRows(result.rows);
+    const rendered = await kgwRenderSettingsAddressRows(records, { localOnly: true, restoreEpoch: KGW_SETTINGS_ADDRESS_STATE.restoreEpoch });
+    if (!rendered) throw new Error("Restored address rows were not rendered.");
+    kgwClearSettingsAddressFields();
+    kgwSettingsAddressSetStatus(`Last Updated: ${kgwSettingsAddressNow()}`);
+    kgwSettingsRestoreStatus(result.message, "success");
+    return result;
+  } catch (error) {
+    const prefix = restored ? "Restore data completed, but UI verification failed: " : "Restore failed: ";
+    kgwSettingsRestoreStatus(prefix + (error?.message || error), "error");
+    console.error("[KGW Settings DB] restore failed", error);
+    return null;
+  } finally {
+    controls.forEach((node, index) => { node.disabled = disabled[index]; });
+    KGW_SETTINGS_DB_ACTION_STATE.restoring = false;
+  }
+}
+
 function kgwInstallSettingsDbMaintenanceActions() {
   if (window.__kgwSettingsDbMaintenanceActionsInstalled) return;
   window.__kgwSettingsDbMaintenanceActionsInstalled = true;
@@ -2358,6 +2744,7 @@ function kgwInstallSettingsDbMaintenanceActions() {
     event.stopImmediatePropagation();
 
     const id = button.id;
+    if (KGW_SETTINGS_DB_ACTION_STATE.restoring) return;
 
     kgwSettingsUiTraceR48B3("settings-database", "r48b3-database-action-click", {
       trusted: Boolean(event && event.isTrusted),
@@ -2390,8 +2777,7 @@ function kgwInstallSettingsDbMaintenanceActions() {
       }
 
       if (id === "settingsDbRestore") {
-        if (!confirm("Restore the latest database backup? A safety backup will be created first.")) return;
-        await kgwSettingsDbInvokeAction("kgw_settings_database_restore_latest");
+        await kgwSettingsRestoreLatest();
         return;
       }
 

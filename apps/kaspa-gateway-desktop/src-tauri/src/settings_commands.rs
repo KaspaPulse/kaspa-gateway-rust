@@ -140,6 +140,44 @@ pub fn settings_reset() -> Result<SettingsDeep, String> {
 }
 
 #[tauri::command]
+pub fn settings_profile_add(name: String) -> Result<SettingsDeep, String> {
+    let mut settings = settings_load()?;
+    profile_add(&mut settings, &name)?;
+    settings_save(settings)
+}
+
+#[tauri::command]
+pub fn settings_profile_rename(name: String, new_name: String) -> Result<SettingsDeep, String> {
+    let mut settings = settings_load()?;
+    profile_rename(&mut settings, &name, &new_name)?;
+    settings_save(settings)
+}
+
+#[tauri::command]
+pub fn settings_profile_delete(name: String) -> Result<SettingsDeep, String> {
+    let mut settings = settings_load()?;
+    profile_delete(&mut settings, &name)?;
+    settings_save(settings)
+}
+
+#[tauri::command]
+pub fn settings_profile_select(name: String) -> Result<SettingsDeep, String> {
+    let mut settings = settings_load()?;
+    profile_select(&mut settings, &name)?;
+    settings_save(settings)
+}
+
+#[tauri::command]
+pub fn settings_reset_selected_endpoint(
+    profile_name: String,
+    endpoint_name: String,
+) -> Result<SettingsDeep, String> {
+    let mut settings = settings_load()?;
+    reset_selected_endpoint(&mut settings, &profile_name, &endpoint_name)?;
+    settings_save(settings)
+}
+
+#[tauri::command]
 pub fn settings_import_config(
     request: SettingsConfigMigrationRequest,
 ) -> Result<SettingsConfigMigrationReport, String> {
@@ -384,6 +422,114 @@ pub fn settings_api_endpoint_editor(
 
     profile.endpoints = endpoints;
     settings_save(settings)
+}
+
+fn normalize_profile_name(value: &str) -> Result<String, String> {
+    let name = value.trim().to_string();
+    validate_safe_key(&name)?;
+    Ok(name)
+}
+
+fn profile_index(settings: &SettingsDeep, name: &str) -> Option<usize> {
+    settings
+        .api_profiles
+        .iter()
+        .position(|profile| profile.name.eq_ignore_ascii_case(name.trim()))
+}
+
+fn profile_add(settings: &mut SettingsDeep, name: &str) -> Result<(), String> {
+    let name = normalize_profile_name(name)?;
+    if profile_index(settings, &name).is_some() {
+        return Err("API profile already exists.".to_string());
+    }
+    let source = profile_index(settings, &settings.active_api_profile)
+        .and_then(|index| settings.api_profiles.get(index).cloned())
+        .or_else(|| settings.api_profiles.first().cloned())
+        .ok_or_else(|| "No API profile is available to clone.".to_string())?;
+    let mut profile = source;
+    profile.name = name.clone();
+    settings.api_profiles.push(profile);
+    settings.active_api_profile = name;
+    Ok(())
+}
+
+fn profile_rename(settings: &mut SettingsDeep, name: &str, new_name: &str) -> Result<(), String> {
+    let new_name = normalize_profile_name(new_name)?;
+    let index =
+        profile_index(settings, name).ok_or_else(|| "API profile was not found.".to_string())?;
+    if let Some(existing) = profile_index(settings, &new_name)
+        && existing != index
+    {
+        return Err("API profile already exists.".to_string());
+    }
+    let old_name = settings.api_profiles[index].name.clone();
+    settings.api_profiles[index].name = new_name.clone();
+    if settings.active_api_profile.eq_ignore_ascii_case(&old_name) {
+        settings.active_api_profile = new_name;
+    }
+    Ok(())
+}
+
+fn profile_delete(settings: &mut SettingsDeep, name: &str) -> Result<(), String> {
+    if settings.api_profiles.len() <= 1 {
+        return Err("The last API profile cannot be deleted.".to_string());
+    }
+    let index =
+        profile_index(settings, name).ok_or_else(|| "API profile was not found.".to_string())?;
+    let removed = settings.api_profiles.remove(index);
+    if settings
+        .active_api_profile
+        .eq_ignore_ascii_case(&removed.name)
+    {
+        settings.active_api_profile = settings.api_profiles[0].name.clone();
+    }
+    Ok(())
+}
+
+fn profile_select(settings: &mut SettingsDeep, name: &str) -> Result<(), String> {
+    let index =
+        profile_index(settings, name).ok_or_else(|| "API profile was not found.".to_string())?;
+    settings.active_api_profile = settings.api_profiles[index].name.clone();
+    Ok(())
+}
+
+fn reset_selected_endpoint(
+    settings: &mut SettingsDeep,
+    profile_name: &str,
+    endpoint_name: &str,
+) -> Result<(), String> {
+    let target_index = profile_index(settings, profile_name)
+        .ok_or_else(|| "API profile was not found.".to_string())?;
+    let defaults = default_settings()?;
+    let default_profile = defaults
+        .api_profiles
+        .first()
+        .ok_or_else(|| "Default API profile is unavailable.".to_string())?;
+    let endpoint_name = endpoint_name.trim();
+    if endpoint_name == "base_url" {
+        settings.api_profiles[target_index].base_url = default_profile.base_url.clone();
+        return Ok(());
+    }
+    let default_endpoint = default_profile
+        .endpoints
+        .iter()
+        .find(|endpoint| endpoint.name == endpoint_name)
+        .cloned()
+        .ok_or_else(|| {
+            "Selected endpoint is not resettable by the persisted Settings contract.".to_string()
+        })?;
+
+    let target = &mut settings.api_profiles[target_index];
+    if let Some(existing) = target
+        .endpoints
+        .iter_mut()
+        .find(|endpoint| endpoint.name == endpoint_name)
+    {
+        *existing = default_endpoint;
+    } else {
+        target.endpoints.push(default_endpoint);
+    }
+    Ok(())
 }
 
 fn default_settings() -> Result<SettingsDeep, String> {
@@ -1113,5 +1259,51 @@ mod tests {
     #[test]
     fn secure_values_are_encoded_as_hex() {
         assert_eq!(hex_encode(b"abc"), "616263");
+    }
+
+    #[test]
+    fn profile_crud_mutators_preserve_valid_active_profile() {
+        let mut settings = default_settings().expect("settings");
+        profile_add(&mut settings, "AuditProfile").expect("add");
+        assert_eq!(settings.active_api_profile, "AuditProfile");
+        assert!(profile_index(&settings, "AuditProfile").is_some());
+
+        profile_rename(&mut settings, "AuditProfile", "AuditRenamed").expect("rename");
+        assert_eq!(settings.active_api_profile, "AuditRenamed");
+        assert!(profile_index(&settings, "AuditRenamed").is_some());
+
+        profile_select(&mut settings, "Default").expect("select");
+        assert_eq!(settings.active_api_profile, "Default");
+        profile_delete(&mut settings, "AuditRenamed").expect("delete");
+        assert!(profile_index(&settings, "AuditRenamed").is_none());
+        validate_settings(&settings).expect("valid after mutations");
+    }
+
+    #[test]
+    fn selected_endpoint_reset_is_limited_to_persisted_contract() {
+        let mut settings = default_settings().expect("settings");
+        let profile = settings.api_profiles.first_mut().expect("profile");
+        profile.base_url = "https://example.invalid".to_string();
+        let balance = profile
+            .endpoints
+            .iter_mut()
+            .find(|item| item.name == "balance")
+            .expect("balance");
+        balance.path = "/custom".to_string();
+
+        reset_selected_endpoint(&mut settings, "Default", "base_url").expect("base reset");
+        reset_selected_endpoint(&mut settings, "Default", "balance").expect("endpoint reset");
+        let profile = settings.api_profiles.first().expect("profile");
+        assert_eq!(profile.base_url, "https://api.kaspa.org");
+        assert_eq!(
+            profile
+                .endpoints
+                .iter()
+                .find(|item| item.name == "balance")
+                .unwrap()
+                .path,
+            "/addresses/{kaspaAddress}/balance"
+        );
+        assert!(reset_selected_endpoint(&mut settings, "Default", "api_key").is_err());
     }
 }

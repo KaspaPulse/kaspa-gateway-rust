@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import path from "node:path";
-import { parseKeyValueLine, pidFromStatus } from "./assertions.mjs";
+import { isStoppedOwnerStatus, parseKeyValueLine, pidFromStatus } from "./assertions.mjs";
 import { waitUntil } from "./windows.mjs";
 import { writeJson, writeText } from "./paths.mjs";
 
@@ -10,6 +10,47 @@ export async function clickTestId(testId) {
   await element.scrollIntoView();
   await element.click();
   return element;
+}
+
+async function setControlValue(selector, value) {
+  const result = await browser.execute((css, nextValue) => {
+    const node = document.querySelector(css);
+    if (!node) return { ok: false, reason: "missing" };
+    if (node.disabled || node.readOnly) return { ok: false, reason: "not-editable" };
+    node.value = String(nextValue);
+    node.dispatchEvent(new Event("input", { bubbles: true }));
+    node.dispatchEvent(new Event("change", { bubbles: true }));
+    return { ok: true, value: String(node.value || "") };
+  }, selector, String(value));
+  assert.equal(result?.ok, true, `Unable to set ${selector}: ${result?.reason || "unknown"}`);
+  return result.value;
+}
+
+export async function setControlValueByTestId(testId, value) {
+  return await setControlValue(`[data-testid="${testId}"]`, value);
+}
+
+export async function setControlValueById(elementId, value) {
+  return await setControlValue(`#${elementId}`, value);
+}
+
+async function setControlChecked(selector, checked) {
+  const result = await browser.execute((css, nextChecked) => {
+    const node = document.querySelector(css);
+    if (!node) return { ok: false, reason: "missing" };
+    if (node.disabled || node.readOnly) return { ok: false, reason: "not-editable" };
+    node.checked = Boolean(nextChecked);
+    node.dispatchEvent(new Event("input", { bubbles: true }));
+    node.dispatchEvent(new Event("change", { bubbles: true }));
+    return { ok: true, checked: Boolean(node.checked) };
+  }, selector, Boolean(checked));
+  assert.equal(result?.ok, true, `Unable to set ${selector}: ${result?.reason || "unknown"}`);
+  assert.equal(result.checked, Boolean(checked), `Checkbox ${selector} did not retain requested state`);
+  return result.checked;
+}
+
+export async function setControlCheckedByTestId(testId, checked) {
+  return await setControlChecked(`[data-testid="${testId}"]`, checked);
 }
 
 export async function readByTestId(testId) {
@@ -65,7 +106,8 @@ export async function readBridgeRuntimeSelection(network) {
     const active = panel?.querySelector?.('[data-bridge-action="select-instance"].active') ||
       panel?.querySelector?.('[data-bridge-action="select-instance"]');
     const bridgeInstanceId = String(active?.dataset?.instanceId || "1");
-    const input = panel?.querySelector?.(`[data-testid="kgw-bridge-instance-field-${net}-${bridgeInstanceId}-instancePort"]`);
+    const input = panel?.querySelector?.(`#bridge-${net}-instancePort-${bridgeInstanceId}`) ||
+      panel?.querySelector?.(`[data-testid="kgw-bridge-instance-field-${net}-${bridgeInstanceId}-instancePort"]`);
     const bridgeLevel = panel?.querySelector?.(`[data-testid="kgw-bridge-field-${net}-stratumPort"]`);
     const rawPort = String(input?.value || input?.placeholder || bridgeLevel?.value || "").trim().replace(/^:/, "");
     const port = Number(rawPort);
@@ -244,9 +286,8 @@ export async function waitForOwnerStatus({ network, runtimeRole, timeoutMs = 120
 export async function waitForStopped({ network, runtimeRole, timeoutMs = 30000 }) {
   return await waitUntil(`stopped status ${runtimeRole}/${network}`, timeoutMs, 500, async () => {
     const status = String(await invoke("kgw_runtime_owner_status_v1", { network, runtimeRole }, 30000));
-    if (!pidFromStatus(status) && /running=false/i.test(status)) return { status };
-    if (/no .*worker status yet|stopped|running=false/i.test(status) && !/pid=\d+/i.test(status)) return { status };
-    return false;
+    if (!isStoppedOwnerStatus(status)) return false;
+    return { status, pid: pidFromStatus(status), fields: parseKeyValueLine(status) };
   });
 }
 

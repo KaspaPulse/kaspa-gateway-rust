@@ -1,0 +1,28 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+
+const root = path.resolve(__dirname, '..');
+const file = path.join(root, 'apps/kaspa-gateway-desktop/src-tauri/src/lib.rs');
+const source = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+const cfg = '#[cfg(feature = "e2e-test")]\n    let builder = {';
+const guestPath = '../../../../e2e/node_modules/@wdio/tauri-plugin/dist-js/index.js';
+assert.ok(source.includes(cfg), 'AUD-010 guest seam must remain e2e-test-only');
+assert.ok(source.includes(`"${guestPath}"`), 'seam must embed the locked official WDIO guest bundle');
+assert.ok(source.includes('.rfind("\\nexport {")'), 'seam must strip only the terminal ESM export block');
+assert.ok(source.includes('initPromise = init();'), 'guest bundle must explicitly initialize during Tauri invoke initialization');
+assert.ok(source.includes('builder.append_invoke_initialization_script(&initialization_script)'), 'guest bundle must initialize before app scripts');
+assert.ok(source.includes('const facade = Object.create(originalCore)'), 'seam must preserve the original Core through a facade');
+assert.ok(source.includes("Object.defineProperty(facade, 'invoke'"), 'facade invoke must be independently configurable');
+assert.ok(source.includes('window.__wdio_original_core__ = originalCore'), 'seam must preserve the exact original Core');
+assert.ok(source.includes('tauri.core = facade'), 'e2e global Core must switch to the mutable facade');
+assert.ok(source.includes('setupInvokeInterception();'), 'official guest interceptor must own the facade invoke path');
+assert.ok(source.includes('window.__wdio_mutable_core_facade__ = true'), 'seam must expose deterministic readiness marker');
+assert.ok(source.includes('attempt >= 100'), 'facade wait must be bounded');
+assert.ok(source.includes('installMutableCoreFacade(attempt + 1), 50'), 'facade wait cadence must remain deterministic');
+assert.ok(source.includes('window.__wdio_mutable_core_facade_error__'), 'facade exhaustion must fail closed with a marker');
+assert.ok(!source.includes('__wdio_internal_invoke_fallback__'), 'ineffective immutable internal-invoke fallback must not remain');
+assert.equal((source.match(/@wdio\/tauri-plugin\/dist-js\/index\.js/g) || []).length, 1, 'exactly one guest bundle owner is allowed');
+assert.equal((source.match(/append_invoke_initialization_script/g) || []).length, 1, 'exactly one AUD-010 initialization seam is allowed');
+assert.equal((source.match(/on_page_load\(\|webview, _payload\|/g) || []).length, 0, 'late page-load seam must not remain');
+console.log('AUD-010 Tauri guest initialization seam contract PASS');

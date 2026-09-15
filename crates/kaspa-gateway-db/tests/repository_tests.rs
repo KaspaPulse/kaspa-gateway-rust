@@ -167,6 +167,11 @@ fn transactions_repository_upserts_lists_counts_and_deletes() {
 
 #[test]
 fn invalid_records_are_rejected() {
+    let valid = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g";
+    let bad_checksum = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44q";
     assert!(AddressRecord::new("", "Name", "mainnet").is_err());
+    assert!(AddressRecord::new(bad_checksum, "Name", "mainnet").is_err());
+    assert!(AddressRecord::new(valid, "Name", "testnet").is_err());
+    assert!(AddressRecord::new(valid, "Name", "mainnet").is_ok());
     assert!(TransactionRecord::new("tx", "address", "transfer", "incoming", -1).is_err());
 }
