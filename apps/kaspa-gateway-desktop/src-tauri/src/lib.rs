@@ -919,6 +919,55 @@ pub fn run() {
         .plugin(tauri_plugin_wdio::init());
 
     #[cfg(feature = "e2e-test")]
+    let builder = {
+        let guest_script =
+            include_str!("../../../../e2e/node_modules/@wdio/tauri-plugin/dist-js/index.js");
+        let export_offset = guest_script
+            .rfind("\nexport {")
+            .unwrap_or(guest_script.len());
+        let mut initialization_script = guest_script[..export_offset].to_owned();
+        initialization_script.push_str("\nif (!isInitialized) { initPromise = init(); }\n");
+        initialization_script.push_str(
+            r#"
+(() => {
+  const installMutableCoreFacade = (attempt) => {
+    const tauri = window.__TAURI__;
+    const originalCore = tauri?.core;
+    if (originalCore && typeof originalCore.invoke === 'function') {
+      const originalInvoke = originalCore.invoke.bind(originalCore);
+      const facade = Object.create(originalCore);
+      Object.defineProperty(facade, 'invoke', {
+        value: originalInvoke,
+        writable: true,
+        configurable: true,
+        enumerable: true
+      });
+      window.__wdio_original_core__ = originalCore;
+      tauri.core = facade;
+      setupInvokeInterception();
+      if (!tauri.core?._wdioInvokeInterceptor) {
+        window.__wdio_mutable_core_facade_error__ =
+          'WDIO invoke interception did not install on mutable core facade';
+        return;
+      }
+      window.__wdio_mutable_core_facade__ = true;
+      return;
+    }
+    if (attempt >= 100) {
+      window.__wdio_mutable_core_facade_error__ =
+        'Tauri global core unavailable after bounded initialization wait';
+      return;
+    }
+    window.setTimeout(() => installMutableCoreFacade(attempt + 1), 50);
+  };
+  installMutableCoreFacade(0);
+})();
+"#,
+        );
+        builder.append_invoke_initialization_script(&initialization_script)
+    };
+
+    #[cfg(feature = "e2e-test")]
     let context = tauri::generate_context!("tauri.e2e.conf.json");
     #[cfg(not(feature = "e2e-test"))]
     let context = tauri::generate_context!();
