@@ -141,3 +141,10 @@ No meaningful task is complete until the requested change is implemented, applic
 - Keep generated Graphify snapshots in a separate commit from documentation, tooling, or application changes.
 - Use `[skip ci]` for local workflow commits.
 - Do not push during local workflow tasks unless explicitly requested.
+
+## Interruption-safe continuity - owner baseline v2
+
+Apply [the interruption-safe execution supplement](docs/continuity/INTERRUPTION_SAFE_EXECUTION.md) under the existing repository contract and [continuity policy](docs/continuity/PROJECT_CONTINUITY_POLICY.md).
+Read [repository adoption](docs/continuity/REPOSITORY_ADOPTION.md), [resume procedure](docs/continuity/RESUME.md) and [checkpoint template](docs/continuity/CHECKPOINT_TEMPLATE.md).
+Persist material-operation intent before execution, then verify and record outcomes immediately afterward. Recover uncertain results before retries and preserve active work/ownership.
+Validate NEXT ACTION and reuse only source-bound evidence. Continue actual authorized work; no push, release or production authority is added.
