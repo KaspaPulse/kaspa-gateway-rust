@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
-"""Fail closed on TruffleHog findings with one exact historical false positive."""
+"""Fail closed on TruffleHog findings with exact historical false positives."""
 
 import json
 import sys
 from pathlib import Path
 
-ALLOWED_HISTORICAL_FALSE_POSITIVE = (
-    "8f209ba516707b11098bd962972da38157346833",
-    "crates/kaspa-gateway-security/src/lib.rs",
-    374,
-    "URI",
-    "PLAIN",
-    False,
-)
+ALLOWED_HISTORICAL_FALSE_POSITIVES = {
+    ("8f209ba516707b11098bd962972da38157346833", "crates/kaspa-gateway-security/src/lib.rs", 374, "URI", "PLAIN", False),
+    ("3f6fb666241135be0f6f5071994bcf4deeb75326", "crates/kaspa-gateway-security/src/lib.rs", 374, "URI", "PLAIN", False),
+}
 
 
 def fingerprint(result: dict) -> tuple[object, ...]:
@@ -32,7 +28,7 @@ def fingerprint(result: dict) -> tuple[object, ...]:
 
 
 def evaluate(path: Path) -> tuple[int, int, list[tuple[object, ...]]]:
-    allowed_count = 0
+    seen_allowed: set[tuple[object, ...]] = set()
     unexpected: list[tuple[object, ...]] = []
     with path.open("r", encoding="utf-8-sig") as handle:
         for line_number, line in enumerate(handle, start=1):
@@ -49,13 +45,13 @@ def evaluate(path: Path) -> tuple[int, int, list[tuple[object, ...]]]:
                     f"invalid TruffleHog result type on output line {line_number}"
                 )
             current = fingerprint(result)
-            if current == ALLOWED_HISTORICAL_FALSE_POSITIVE:
-                allowed_count += 1
-                if allowed_count > 1:
+            if current in ALLOWED_HISTORICAL_FALSE_POSITIVES:
+                if current in seen_allowed:
                     raise ValueError("historical false-positive result appeared more than once")
+                seen_allowed.add(current)
                 continue
             unexpected.append(current)
-    return allowed_count, len(unexpected), unexpected
+    return len(seen_allowed), len(unexpected), unexpected
 
 
 def describe(item: tuple[object, ...]) -> str:

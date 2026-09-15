@@ -61,9 +61,13 @@ def expect_exit(expected: int, result: subprocess.CompletedProcess[str], label: 
 
 
 def main() -> int:
+    squash = changed(git_commit="3f6fb666241135be0f6f5071994bcf4deeb75326")
     expect_exit(0, run([]), "empty result set")
-    expect_exit(0, run([BASE]), "exact historical false positive")
-    expect_exit(1, run([BASE, BASE]), "duplicate historical exception")
+    expect_exit(0, run([BASE]), "exact original historical false positive")
+    expect_exit(0, run([squash]), "exact squash historical false positive")
+    expect_exit(0, run([BASE, squash]), "both exact historical false positives")
+    expect_exit(1, run([BASE, BASE]), "duplicate original historical exception")
+    expect_exit(1, run([squash, squash]), "duplicate squash historical exception")
     expect_exit(1, run([changed(git_commit="deadbeef")]), "commit drift")
     expect_exit(1, run([changed(git_file="other.rs")]), "path drift")
     expect_exit(1, run([changed(git_line=375)]), "line drift")
