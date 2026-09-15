@@ -23,7 +23,17 @@ export function installRustAnalysisBinding() {
 
   bindWhenReady();
   document.addEventListener("DOMContentLoaded", bindWhenReady, { once: true });
-  window.addEventListener("kgw:tab:shown", bindWhenReady);
+  window.addEventListener("kgw:tab:shown", () => {
+    ANALYSIS_STATE.addressesLoaded = false;
+    bindWhenReady();
+  });
+  window.addEventListener("kgw:saved-addresses-changed", () => {
+    ANALYSIS_STATE.addressesLoaded = false;
+    loadSavedAddresses().catch((error) => {
+      logAnalysisError("Failed to refresh analysis addresses", error);
+      setStatus("Could not refresh saved addresses. Manual input is still available.", "error");
+    });
+  });
 
   logAnalysis("Rust analysis binding installed: analysis_report owner.");
 }
@@ -78,7 +88,7 @@ function kgwAnalysisBindingTraceR50D3(action, phase, details) {
         details: safeDetails
       })
     }).catch(function () {});
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 function translateI18n(key) {
   const runtime = window.kgwT || window.kgwI18n;
@@ -103,8 +113,7 @@ async function appendLog(level, message) {
         message
       }
     });
-  } catch {
-  }
+  } catch { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 
 function logAnalysis(message, data) {
@@ -265,10 +274,14 @@ async function loadSavedAddresses() {
   return rows;
 }
 
+export function kgwNormalizeAnalysisTimeRange(value) {
+  const normalized = String(value || "all").trim();
+  return { "30d": "last_month", "90d": "last_3_months", "1y": "last_year" }[normalized] || normalized || "all";
+}
+
 function getTimeRange() {
   const node = q("#analysisTimeRange") || q("[data-analysis-time-range]");
-  const value = String(node?.value || "all").trim();
-  return value || "all";
+  return kgwNormalizeAnalysisTimeRange(node?.value || "all");
 }
 
 function formatMetricValue(metric) {

@@ -4360,6 +4360,7 @@ dependencies = [
 name = "kaspa-gateway-core"
 version = "0.1.0"
 dependencies = [
+ "kaspa-addresses 2.0.1",
  "serde",
  "thiserror 2.0.20",
 ]
@@ -4369,6 +4370,7 @@ name = "kaspa-gateway-db"
 version = "0.1.0"
 dependencies = [
  "duckdb",
+ "kaspa-gateway-core",
  "rusqlite",
  "serde",
  "thiserror 2.0.20",
@@ -4480,6 +4482,7 @@ version = "0.1.0"
 dependencies = [
  "secrecy",
  "thiserror 2.0.20",
+ "url",
  "zeroize",
 ]
 

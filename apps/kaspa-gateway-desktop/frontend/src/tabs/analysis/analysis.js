@@ -569,7 +569,7 @@ function kgwAnalysisUiTraceR50B(action, phase, details) {
         ? tauri.invoke.bind(tauri)
         : window.__TAURI_INVOKE__;
     if (typeof invoke === "function") invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 function kgwAnalysisEscapeSelector(id) {
   if (typeof CSS !== "undefined" && typeof CSS.escape === "function") return CSS.escape(id);
@@ -1666,7 +1666,7 @@ function kgwExportCenteredOpenPromptV10() {
       document.removeEventListener("keydown", onKeyDown, true);
       backdrop.remove();
       if (previousActive && typeof previousActive.focus === "function") {
-        try { previousActive.focus(); } catch (_) {}
+        try { previousActive.focus(); } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
       }
       resolve(Boolean(value));
     }

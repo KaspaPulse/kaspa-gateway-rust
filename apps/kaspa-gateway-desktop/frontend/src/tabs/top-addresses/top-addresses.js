@@ -116,14 +116,25 @@ function tableParts() {
   return { table, thead, tbody };
 }
 
-function setStatus(message) {
-  const node =
+function setStatus(message, state = "info") {
+  let node =
     q("#topAddressesStatus") ||
     q("[data-top-addresses-status]") ||
     q(".top-addresses-status");
-
-  if (node) node.textContent = message;
-  console.log("[KGW Top Addresses]", message);
+  if (!node) {
+    node = document.createElement("div");
+    node.id = "topAddressesStatus";
+    node.className = "top-addresses-status";
+    const shell = q(".ta-python-shell") || root();
+    shell?.prepend(node);
+  }
+  if (node) {
+    node.textContent = String(message || "");
+    node.dataset.state = state;
+    node.setAttribute("role", state === "error" ? "alert" : "status");
+    node.setAttribute("aria-live", state === "error" ? "assertive" : "polite");
+  }
+  console.log("[KGW Top Addresses]", state, message);
 }
 
 function setLastUpdated(text) {
@@ -654,7 +665,7 @@ function kgwExportCenteredOpenPromptV10() {
       document.removeEventListener("keydown", onKeyDown, true);
       backdrop.remove();
       if (previousActive && typeof previousActive.focus === "function") {
-        try { previousActive.focus(); } catch (_) {}
+        try { previousActive.focus(); } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
       }
       resolve(Boolean(value));
     }
@@ -755,18 +766,18 @@ function exportPdf() {
 
 async function refreshTopAddresses() {
   if (TOP_ADDRESSES_STATE.running) {
-    setStatus("Top addresses fetch is already running...");
+    setStatus("LOADING — Top addresses fetch is already running...", "loading");
     return;
   }
 
   const call = invoke();
   if (!call) {
-    setStatus("Tauri invoke API is not available.");
+    setStatus("ERROR — Tauri invoke API is not available.", "error");
     return;
   }
 
   TOP_ADDRESSES_STATE.running = true;
-  setStatus("Refreshing top addresses...");
+  setStatus("LOADING — Refreshing top addresses...", "loading");
 
   try {
     const response = await call("fetch_top_addresses_rust", { limit: 10000 });
@@ -778,10 +789,14 @@ async function refreshTopAddresses() {
     setLastUpdated(formatDateTime(new Date()));
     applyFilter();
 
-    setStatus(`Loaded ${TOP_ADDRESSES_STATE.rows.length} top addresses.`);
+    if (TOP_ADDRESSES_STATE.rows.length === 0) {
+      setStatus("EMPTY — No top addresses were returned for the current request.", "empty");
+    } else {
+      setStatus(`SUCCESS — Loaded ${TOP_ADDRESSES_STATE.rows.length} top addresses.`, "success");
+    }
   } catch (error) {
     console.error(error);
-    setStatus(error?.message || String(error));
+    setStatus(`ERROR — ${error?.message || String(error)}`, "error");
   } finally {
     TOP_ADDRESSES_STATE.running = false;
   }
@@ -816,7 +831,7 @@ function kgwTopAddressesUiTraceR49D(action, phase, details) {
     if (typeof invoke === "function") {
       invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 function installButtonHandlers() {
   const bindings = [

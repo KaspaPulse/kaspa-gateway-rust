@@ -129,11 +129,7 @@ pub fn analysis_report(request: AnalysisDeepRequest) -> Result<AnalysisDeepRepor
     let mut records = load_records(&request, &mut warnings)?;
 
     apply_time_range_filter(&mut records, &request.time_range)?;
-    records.sort_by_key(|record| record.timestamp_ms);
-
-    if request.limit > 0 && records.len() > request.limit {
-        let keep_from = records.len().saturating_sub(request.limit);
-        records = records.into_iter().skip(keep_from).collect();
+    if select_latest_records(&mut records, request.limit) {
         warnings.push(format!(
             "Result limited to latest {} transactions.",
             request.limit
@@ -335,11 +331,7 @@ pub fn analysis_graph_report(request: AnalysisDeepRequest) -> Result<AnalysisGra
     let mut records = load_records(&request, &mut warnings)?;
 
     apply_time_range_filter(&mut records, &request.time_range)?;
-
-    if request.limit > 0 && records.len() > request.limit {
-        let keep_from = records.len().saturating_sub(request.limit);
-        records = records.into_iter().skip(keep_from).collect();
-    }
+    select_latest_records(&mut records, request.limit);
 
     let mut node_totals: BTreeMap<String, i64> = BTreeMap::new();
     let mut edge_map: BTreeMap<(String, String, String), EdgeAccumulator> = BTreeMap::new();
@@ -517,6 +509,21 @@ fn load_records(
     }
 }
 
+fn select_latest_records(records: &mut Vec<TransactionRecord>, limit: usize) -> bool {
+    records.sort_by(|left, right| {
+        left.timestamp_ms
+            .cmp(&right.timestamp_ms)
+            .then_with(|| left.txid.cmp(&right.txid))
+            .then_with(|| left.address.cmp(&right.address))
+    });
+    if limit == 0 || records.len() <= limit {
+        return false;
+    }
+    let keep_from = records.len().saturating_sub(limit);
+    records.drain(0..keep_from);
+    true
+}
+
 fn validate_request(request: &AnalysisDeepRequest) -> Result<(), String> {
     if request.limit > 500_000 {
         return Err("limit cannot exceed 500000.".to_string());
@@ -529,6 +536,15 @@ fn validate_request(request: &AnalysisDeepRequest) -> Result<(), String> {
     time_range_start_ms(&request.time_range)?;
 
     Ok(())
+}
+
+fn canonical_time_range(value: &str) -> &str {
+    match value.trim() {
+        "30d" => "last_month",
+        "90d" => "last_3_months",
+        "1y" => "last_year",
+        other => other,
+    }
 }
 
 fn apply_time_range_filter(
@@ -545,7 +561,7 @@ fn apply_time_range_filter(
 fn time_range_start_ms(value: &str) -> Result<Option<i64>, String> {
     let now = now_ms();
 
-    let days: i64 = match value {
+    let days: i64 = match canonical_time_range(value) {
         "all" | "" => return Ok(None),
         "last_3_days" => 3,
         "last_week" => 7,
@@ -773,6 +789,70 @@ mod tests {
     #[test]
     fn unknown_time_range_is_rejected() {
         assert!(time_range_start_ms("bad_range").is_err());
+    }
+
+    #[test]
+    fn legacy_ui_time_ranges_map_to_canonical_contract() {
+        assert_eq!(canonical_time_range("30d"), "last_month");
+        assert_eq!(canonical_time_range("90d"), "last_3_months");
+        assert_eq!(canonical_time_range("1y"), "last_year");
+        assert_eq!(canonical_time_range("all"), "all");
+        assert!(time_range_start_ms("30d").is_ok());
+        assert!(time_range_start_ms("90d").is_ok());
+        assert!(time_range_start_ms("1y").is_ok());
+    }
+
+    fn selection_record(txid: &str, timestamp_ms: i64) -> TransactionRecord {
+        TransactionRecord {
+            txid: txid.to_string(),
+            address: "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g"
+                .to_string(),
+            tx_type: "transfer".to_string(),
+            direction: "incoming".to_string(),
+            amount_sompi: 1,
+            from_address: None,
+            to_address: None,
+            counterparty: Some(txid.to_string()),
+            block_height: None,
+            timestamp_ms,
+            raw_json: Some("{}".to_string()),
+            created_at_ms: timestamp_ms,
+            updated_at_ms: timestamp_ms,
+        }
+    }
+
+    #[test]
+    fn latest_selection_is_deterministic_for_limits_and_ties() {
+        let base = vec![
+            selection_record("old", 10),
+            selection_record("tie-b", 30),
+            selection_record("middle", 20),
+            selection_record("tie-a", 30),
+        ];
+        let mut one = base.clone();
+        assert!(select_latest_records(&mut one, 1));
+        assert_eq!(
+            one.iter().map(|r| r.txid.as_str()).collect::<Vec<_>>(),
+            vec!["tie-b"]
+        );
+
+        let mut two = base.clone();
+        assert!(select_latest_records(&mut two, 2));
+        assert_eq!(
+            two.iter().map(|r| r.txid.as_str()).collect::<Vec<_>>(),
+            vec!["tie-a", "tie-b"]
+        );
+
+        let mut all = base.clone();
+        assert!(!select_latest_records(&mut all, 0));
+        assert_eq!(
+            all.iter().map(|r| r.txid.as_str()).collect::<Vec<_>>(),
+            vec!["old", "middle", "tie-a", "tie-b"]
+        );
+
+        let mut n = base;
+        assert!(!select_latest_records(&mut n, 10));
+        assert_eq!(n.len(), 4);
     }
 
     #[test]

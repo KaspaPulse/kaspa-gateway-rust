@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 secrecy.workspace = true
 thiserror.workspace = true
+url.workspace = true
 zeroize.workspace = true
 
 

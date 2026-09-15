@@ -25,7 +25,7 @@ function pushLocal(entry) {
     while (window.__KGW_FRONTEND_LOGS.length > MAX_BUFFER) {
       window.__KGW_FRONTEND_LOGS.shift();
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 
   try {
     const existing = JSON.parse(localStorage.getItem(LOG_STORAGE_KEY) || "[]");
@@ -36,7 +36,7 @@ function pushLocal(entry) {
     }
 
     localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(existing));
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 
 function getTauriInvoke() {
@@ -63,7 +63,7 @@ function sendToTauriLog(entry) {
         message: `${entry.message}${details}`
       }
     }).catch(() => {});
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 
 export function kgwLog(level, message, details = "", source = "frontend") {
@@ -82,7 +82,7 @@ export function kgwLog(level, message, details = "", source = "frontend") {
     if (entry.level === "error") console.error(line);
     else if (entry.level === "warn") console.warn(line);
     else console.log(line);
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 
   pushLocal(entry);
   sendToTauriLog(entry);
@@ -144,11 +144,11 @@ export function getBufferedLogs() {
 export function clearBufferedLogs() {
   try {
     localStorage.removeItem(LOG_STORAGE_KEY);
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 
   try {
     window.__KGW_FRONTEND_LOGS = [];
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 
 if (!window.__KGW_LOGGER_INSTALLED) {

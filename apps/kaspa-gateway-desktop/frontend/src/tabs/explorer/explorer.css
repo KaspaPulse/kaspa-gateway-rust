@@ -37,7 +37,13 @@
 }
 
 #explorer #explorerStatus {
-  display: none !important;
+  display: block;
+  min-height: 1.4em;
+  margin-top: 4px;
+  font-size: 0.9rem;
+}
+#explorer #explorerStatus[data-state="error"] {
+  font-weight: 700;
 }
 
 #explorer .explorer-py-card {

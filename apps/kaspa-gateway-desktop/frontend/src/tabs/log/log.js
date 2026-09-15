@@ -48,6 +48,14 @@ function copyText(key) {
     copiedStatus: {
       en: "Copied to clipboard.",
       ar: "تم النسخ إلى الحافظة."
+    },
+    copyFailedButton: {
+      en: "Copy failed",
+      ar: "فشل النسخ"
+    },
+    copyFailedStatus: {
+      en: "Copy failed. Clipboard access is unavailable or was rejected.",
+      ar: "فشل النسخ. الوصول إلى الحافظة غير متاح أو تم رفضه."
     }
   };
 
@@ -77,9 +85,13 @@ function saveState() {
   localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(state));
 }
 
-function parseLevel(line) {
-  const match = String(line || "").match(/level="([^"]+)"/);
-  return match ? match[1].toUpperCase() : "INFO";
+export function kgwParseLogLevel(line) {
+  const text = String(line || "");
+  const structured = text.match(/(?:^|\s)level="(TRACE|DEBUG|INFO|WARN|ERROR)"(?:\s|$)/i);
+  if (structured) return structured[1].toUpperCase();
+
+  const native = text.match(/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}(?:[.,]\d+)?\s+-\s+(TRACE|DEBUG|INFO|WARN|ERROR)\s+-\s+\[[^\]]+\]\s+-\s+/i);
+  return native ? native[1].toUpperCase() : "UNKNOWN";
 }
 
 function severityRank(level) {
@@ -95,9 +107,9 @@ function severityRank(level) {
 function shouldShow(line) {
   const severity = qs("#logSeverity")?.value || "ALL";
   const search = String(qs("#logSearch")?.value || "").trim().toLowerCase();
-  const level = parseLevel(line);
+  const level = kgwParseLogLevel(line);
 
-  if (severity !== "ALL" && severityRank(level) < severityRank(severity)) {
+  if (severity !== "ALL" && (level === "UNKNOWN" || severityRank(level) < severityRank(severity))) {
     return false;
   }
 
@@ -167,7 +179,7 @@ async function clearLog() {
   await refreshLog();
 }
 
-function showCopyStatus(message) {
+function showCopyStatus(message, success = true) {
   let node = qs("#logCopyStatus");
 
   if (!node) {
@@ -189,7 +201,7 @@ function showCopyStatus(message) {
 
   if (button) {
     if (!button.dataset.originalText) button.dataset.originalText = oldText;
-    button.textContent = copyText("copiedButton");
+    button.textContent = copyText(success ? "copiedButton" : "copyFailedButton");
   }
 
   clearTimeout(copyStatusTimer);
@@ -203,21 +215,49 @@ function showCopyStatus(message) {
   }, 2200);
 }
 
-async function copyLog() {
-  const text = filteredLines.join("\n");
+export async function kgwCopyTextToClipboard(text, env = {}) {
+  const clipboard = Object.prototype.hasOwnProperty.call(env, "clipboard")
+    ? env.clipboard
+    : globalThis.navigator?.clipboard;
+  let apiError = null;
 
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-  } else {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    textarea.remove();
+  if (clipboard && typeof clipboard.writeText === "function") {
+    try {
+      await clipboard.writeText(String(text));
+      return true;
+    } catch (error) {
+      apiError = error;
+    }
   }
 
-  showCopyStatus(copyText("copiedStatus"));
+  const doc = Object.prototype.hasOwnProperty.call(env, "document") ? env.document : globalThis.document;
+  if (!doc || typeof doc.createElement !== "function" || typeof doc.execCommand !== "function" || !doc.body) {
+    throw apiError || new Error("Clipboard copy is unavailable.");
+  }
+
+  const textarea = doc.createElement("textarea");
+  textarea.value = String(text);
+  doc.body.appendChild(textarea);
+  try {
+    textarea.select();
+    const copied = doc.execCommand("copy");
+    if (copied !== true) throw new Error("Clipboard fallback was rejected.");
+    return true;
+  } finally {
+    textarea.remove();
+  }
+}
+
+async function copyLog() {
+  const text = filteredLines.join("\n");
+  try {
+    await kgwCopyTextToClipboard(text);
+    showCopyStatus(copyText("copiedStatus"), true);
+    return true;
+  } catch (error) {
+    showCopyStatus(copyText("copyFailedStatus"), false);
+    throw error;
+  }
 }
 
 function applyInitialState() {
@@ -251,7 +291,7 @@ function kgwLogUiTraceR49B2(action, phase, details) {
         details: safeDetails
       })
     }).catch(function () {});
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 export function initLogTab() {
   applyInitialState();

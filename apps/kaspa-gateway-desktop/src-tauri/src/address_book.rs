@@ -172,7 +172,14 @@ pub fn address_book_import_csv(
         };
 
         match import_one_record(&repository, &name, &address, &network) {
-            Ok(()) => imported += 1,
+            Ok(ImportDisposition::Imported) => imported += 1,
+            Ok(ImportDisposition::Unchanged) => {
+                skipped += 1;
+                warnings.push(format!(
+                    "Skipped row {}: address already exists unchanged.",
+                    index + 1
+                ));
+            }
             Err(error) => {
                 skipped += 1;
                 warnings.push(format!("Skipped row {}: {}", index + 1, error));
@@ -216,7 +223,14 @@ pub fn address_book_import_json(
         let network = clean_network(record.network.as_deref().unwrap_or(&default_network));
 
         match import_one_record(&repository, &name, &record.address, &network) {
-            Ok(()) => imported += 1,
+            Ok(ImportDisposition::Imported) => imported += 1,
+            Ok(ImportDisposition::Unchanged) => {
+                skipped += 1;
+                warnings.push(format!(
+                    "Skipped JSON item {}: address already exists unchanged.",
+                    index + 1
+                ));
+            }
             Err(error) => {
                 skipped += 1;
                 warnings.push(format!("Skipped JSON item {}: {}", index + 1, error));
@@ -234,14 +248,19 @@ pub fn address_book_import_json(
     })
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ImportDisposition {
+    Imported,
+    Unchanged,
+}
+
 fn import_one_record(
     repository: &kaspa_gateway_db::AddressesRepository,
     name: &str,
     address: &str,
     network: &str,
-) -> Result<(), String> {
+) -> Result<ImportDisposition, String> {
     let parsed = KaspaAddress::parse(address).map_err(|error| error.to_string())?;
-
     let record = AddressRecord::new(
         parsed.as_str().to_string(),
         clean_name(name),
@@ -249,11 +268,23 @@ fn import_one_record(
     )
     .map_err(|error| error.to_string())?;
 
+    if let Some(existing) = repository
+        .get(&record.address)
+        .map_err(|error| error.to_string())?
+    {
+        if existing.name == record.name && existing.network == record.network {
+            return Ok(ImportDisposition::Unchanged);
+        }
+        return Err(
+            "saved address already exists with different data; import will not overwrite it"
+                .to_string(),
+        );
+    }
+
     repository
         .upsert(&record)
         .map_err(|error| error.to_string())?;
-
-    Ok(())
+    Ok(ImportDisposition::Imported)
 }
 
 fn safe_existing_path(value: &str) -> Result<PathBuf, String> {
@@ -455,6 +486,30 @@ mod tests {
     fn csv_cell_blocks_formula_injection() {
         assert_eq!(csv_cell("=cmd"), "\"'=cmd\"");
         assert_eq!(csv_cell("+SUM(A1:A2)"), "\"'+SUM(A1:A2)\"");
+    }
+
+    #[test]
+    fn import_preserves_existing_conflicting_record() {
+        let stamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("time")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("kgw_address_import_conflict_{stamp}"));
+        let manager = DatabaseManager::new(DatabasePaths::new(&root).expect("paths"));
+        manager.initialize_all().expect("init");
+        let repository = manager.addresses_repository().expect("repository");
+        let address = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g";
+        let original = AddressRecord::new(address, "Original", "mainnet").expect("record");
+        repository.upsert(&original).expect("save original");
+
+        let error = import_one_record(&repository, "Changed", address, "mainnet").unwrap_err();
+        assert!(error.contains("will not overwrite"));
+        let saved = repository.get(address).expect("get").expect("saved");
+        assert_eq!(saved.name, "Original");
+        assert_eq!(
+            import_one_record(&repository, "Original", address, "mainnet").unwrap(),
+            ImportDisposition::Unchanged
+        );
     }
 
     #[test]

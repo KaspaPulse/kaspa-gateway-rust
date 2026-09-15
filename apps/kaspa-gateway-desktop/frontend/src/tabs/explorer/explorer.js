@@ -3,8 +3,7 @@ function kgwI18nTextR41(key, fallback) {
     if (window.kgwT && typeof window.kgwT === "function") return window.kgwT(key, fallback);
     if (window.KGW_I18N && typeof window.KGW_I18N.t === "function") return window.KGW_I18N.t(key, fallback);
     if (window.i18n && typeof window.i18n.t === "function") return window.i18n.t(key, fallback);
-  } catch (_) {
-  }
+  } catch (_) { /* Best-effort i18n lookup; fallback text remains authoritative. */ }
   return fallback;
 }
 
@@ -123,11 +122,17 @@ async function tryInvokeMany(candidates) {
   if (lastError) throw lastError;
   return null;
 }
-function setStatus(section, message) {
+function setStatus(section, message, state = "info") {
   const cleanMessage = String(message || "");
 
   const node = qs("#explorerStatus", section);
-  if (node) node.textContent = cleanMessage;
+  if (node) {
+    node.hidden = false;
+    node.textContent = cleanMessage;
+    node.dataset.state = state;
+    node.setAttribute("role", state === "error" ? "alert" : "status");
+    node.setAttribute("aria-live", state === "error" ? "assertive" : "polite");
+  }
 
   if (typeof window.kgwSetGlobalFetchProgressText === "function") {
     window.kgwSetGlobalFetchProgressText(cleanMessage);
@@ -260,6 +265,16 @@ function isKaspaAddress(value) {
 
 function normalizeAddress(value) {
   return String(value || "").trim();
+}
+
+async function kgwCanonicalKaspaAddress(address) {
+  const clean = normalizeAddress(address);
+  if (!isKaspaAddress(clean)) return "";
+  try {
+    return normalizeAddress(await invokeCommand("validate_kaspa_address", { address: clean }));
+  } catch {
+    return "";
+  }
 }
 
 function addressLookupKeys(address) {
@@ -1742,7 +1757,7 @@ function kgwRenderGroupedCollapsedTransactions(section, rows) {
           <td>${txid}</td>
           <td>${row?.direction || ""}</td>
           <td>${kgwSummaryFormatKas(Number(row?.amount_kas ?? row?.amountKas ?? row?.amount ?? 0) || 0)}</td>
-          <td>${kgwFormatUsd(Number(row?.value_usd ?? row?.valueUsd ?? row?.usd_value ?? row?.usdValue ?? kgwSummaryUsdForKas(row?.amount_kas ?? row?.amountKas ?? row?.amount ?? 0)) || 0)}</td>
+          <td>${kgwSummaryFormatUsd(Number(row?.value_usd ?? row?.valueUsd ?? row?.usd_value ?? row?.usdValue ?? kgwSummaryUsdForKas(row?.amount_kas ?? row?.amountKas ?? row?.amount ?? 0)) || 0)}</td>
           <td>${row?.tx_type || row?.type || ""}</td>
         `;
 
@@ -1844,7 +1859,7 @@ function kgwRenderGroupedCollapsedTransactions(section, rows) {
       <td>${group.rows.length.toLocaleString()} transactions</td>
       <td></td>
       <td>${kgwSummaryFormatKas(group.incoming - group.outgoing)}</td>
-      <td>${kgwFormatUsd(group.usd)}</td>
+      <td>${kgwSummaryFormatUsd(group.usd)}</td>
       <td></td>
     `;
 
@@ -1863,7 +1878,7 @@ function kgwRenderGroupedCollapsedTransactions(section, rows) {
         <td>${txid}</td>
         <td>${row?.direction || ""}</td>
         <td>${kgwSummaryFormatKas(Number(row?.amount_kas ?? row?.amountKas ?? row?.amount ?? 0) || 0)}</td>
-        <td>${kgwFormatUsd(Number(row?.value_usd ?? row?.valueUsd ?? row?.usd_value ?? row?.usdValue ?? 0) || 0)}</td>
+        <td>${kgwSummaryFormatUsd(Number(row?.value_usd ?? row?.valueUsd ?? row?.usd_value ?? row?.usdValue ?? 0) || 0)}</td>
         <td>${row?.tx_type || row?.type || ""}</td>
       `;
 
@@ -2028,8 +2043,8 @@ async function kgwLoadTransactionDaySummaries(section, address, startTs, endTs) 
 }
 
 async function kgwLoadTransactionsForDay(section, address, day) {
-  const startTs = kgwSummaryDayToSeconds(day, false);
-  const endTs = kgwSummaryDayToSeconds(day, true);
+  const startTs = kgwDayToEpochSeconds(day, false);
+  const endTs = kgwDayToEpochSeconds(day, true);
 
   if (!Number.isFinite(startTs) || !Number.isFinite(endTs)) {
     kgwFilterTrace("day load invalid range", { day, startTs, endTs });
@@ -2307,7 +2322,7 @@ function kgwFilterTbody(section) {
 }
 
 async function kgwApplyFilterSingleOwner(section) {
-  const address = explorerState.selectedAddress || normalizeAddress(qs("#explorerAddress", section)?.value);
+  let address = explorerState.selectedAddress || normalizeAddress(qs("#explorerAddress", section)?.value);
   const startTs = parseDateSeconds(qs("#explorerFromDate", section)?.value, false);
   const endTs = parseDateSeconds(qs("#explorerToDate", section)?.value, true);
 
@@ -2321,9 +2336,11 @@ async function kgwApplyFilterSingleOwner(section) {
     endTs
   });
 
-  if (!isKaspaAddress(address)) {
+  address = await kgwCanonicalKaspaAddress(address);
+  if (!address) {
     clearExplorerTransactionTable(section, "Enter a valid Kaspa address.");
-    kgwFilterLog("invalid address", { address });
+    setStatus(section, "Enter a valid Kaspa address.", "error");
+    kgwFilterLog("invalid address", { validated: false });
     return;
   }
 
@@ -2549,7 +2566,7 @@ function kgwStartLiveDbPollingDuringFetch(section, address, startTs, endTs, isFo
 
   kgwLiveDbPollingTick();
 
-  const timer = window.setInterval(tick, 2000);
+  const timer = window.setInterval(kgwLiveDbPollingTick, 2000);
 
   return async function stopLiveDbPolling(finalRefresh = true) {
     stopped = true;
@@ -2748,7 +2765,7 @@ async function kgwRenderDaySummariesDirect(section, summaries, statusText = "") 
         <td>${txid}</td>
         <td>${row?.direction || ""}</td>
         <td>${kgwSummaryFormatKas(Number(row?.amount_kas ?? row?.amountKas ?? row?.amount ?? 0) || 0)}</td>
-        <td>${kgwFormatUsd(Number(row?.value_usd ?? row?.valueUsd ?? row?.usd_value ?? row?.usdValue ?? 0) || 0)}</td>
+        <td>${kgwSummaryFormatUsd(Number(row?.value_usd ?? row?.valueUsd ?? row?.usd_value ?? row?.usdValue ?? 0) || 0)}</td>
         <td>${row?.tx_type || row?.type || ""}</td>
       `;
 
@@ -3014,7 +3031,7 @@ async function kgwRenderDaySummariesOnly(section, rows, statusText = "") {
         <td>${txid}</td>
         <td>${row?.direction || ""}</td>
         <td>${kgwSummaryFormatKas(Number(row?.amount_kas ?? row?.amountKas ?? row?.amount ?? 0) || 0)}</td>
-        <td>${kgwFormatUsd(Number(row?.value_usd ?? row?.valueUsd ?? row?.usd_value ?? row?.usdValue ?? 0) || 0)}</td>
+        <td>${kgwSummaryFormatUsd(Number(row?.value_usd ?? row?.valueUsd ?? row?.usd_value ?? row?.usdValue ?? 0) || 0)}</td>
         <td>${row?.tx_type || row?.type || ""}</td>
       `;
 
@@ -3115,10 +3132,12 @@ async function applyExplorerFiltersFromDatabase(section) {
     return;
   }
 
-  const address = normalizeAddress(qs("#explorerAddress", section)?.value);
+  let address = normalizeAddress(qs("#explorerAddress", section)?.value);
+  address = await kgwCanonicalKaspaAddress(address);
 
-  if (!isKaspaAddress(address)) {
+  if (!address) {
     clearExplorerTransactionTable(section, "Enter a valid Kaspa address.");
+    setStatus(section, "Enter a valid Kaspa address.", "error");
     return;
   }
 
@@ -4600,7 +4619,7 @@ async function kgwFinalLocalDatabaseRefreshAfterFetch(root, address, startTs, en
 async function fetchTransactions(section, forceMode) {
   const root = kgwClean2Section(section);
   const isForce = Boolean(forceMode);
-  const address = normalizeAddress(qs("#explorerAddress", root)?.value);
+  let address = normalizeAddress(qs("#explorerAddress", root)?.value);
 
   
   kgwExplorerUiTraceR53B3("explorer-fetch", "r53b3-explorer-fetch-owner-begin", {
@@ -4608,8 +4627,10 @@ async function fetchTransactions(section, forceMode) {
     addressLength: String(address || "").length
   });
 
-  if (!isKaspaAddress(address)) {
+  address = await kgwCanonicalKaspaAddress(address);
+  if (!address) {
     clearExplorerTransactionTable(root, "Enter a valid Kaspa address.");
+    setStatus(root, "Enter a valid Kaspa address.", "error");
     return;
   }
 
@@ -4777,7 +4798,7 @@ kgwExplorerUiTraceR53B3("explorer-fetch", "r53b3-explorer-fetch-owner-finally", 
 
 async function applyFilter(section) {
   const root = kgwClean2Section(section);
-  const address = explorerState.selectedAddress || normalizeAddress(qs("#explorerAddress", root)?.value);
+  let address = explorerState.selectedAddress || normalizeAddress(qs("#explorerAddress", root)?.value);
 
   kgwClean2Log("applyFilter start", {
     address,
@@ -4786,8 +4807,10 @@ async function applyFilter(section) {
     search: String(qs("#explorerSearch", root)?.value || "")
   });
 
-  if (!isKaspaAddress(address)) {
+  address = await kgwCanonicalKaspaAddress(address);
+  if (!address) {
     clearExplorerTransactionTable(root, "Enter a valid Kaspa address.");
+    setStatus(root, "Enter a valid Kaspa address.", "error");
     return;
   }
 

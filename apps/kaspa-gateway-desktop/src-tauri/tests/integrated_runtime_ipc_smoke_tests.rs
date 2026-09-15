@@ -959,8 +959,17 @@ fn post_ready_worker_failure_is_non_running_durable_and_restartable_for_all_role
                 "running=false",
                 "readiness=FAILED",
                 "runtime_error=runtime terminated unexpectedly after READY",
-                "exit_status:exit status: 17",
             ],
+        );
+        #[cfg(windows)]
+        assert!(
+            status.contains("exit_status:exit code: 17"),
+            "Windows exit status must preserve exact code 17: {status}"
+        );
+        #[cfg(not(windows))]
+        assert!(
+            status.contains("exit_status:exit status: 17"),
+            "Unix exit status must preserve exact code 17: {status}"
         );
 
         let logs =

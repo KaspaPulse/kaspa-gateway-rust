@@ -25,7 +25,7 @@ const owner = fs.readFileSync(
 const nodeSchema = fs.readFileSync(
   "crates/kaspa-gateway-rk-node/src/kgw_service_controller.rs",
   "utf8",
-);
+).replace(/\r\n?/g, "\n");
 
 const schemaFields = [
   "logLevel", "asyncThreads", "ramScale", "yes", "noLogFiles", "sanity",

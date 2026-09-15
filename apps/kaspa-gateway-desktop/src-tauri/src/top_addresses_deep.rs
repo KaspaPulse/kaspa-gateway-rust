@@ -689,7 +689,7 @@ mod tests {
     fn parses_api_rows_from_array() {
         let raw = json!([
             {
-                "address": "kaspa:qwerty123456789012345678901234567890123456789012345678901234",
+                "address": "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g",
                 "balance": "100000000"
             }
         ]);

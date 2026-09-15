@@ -69,7 +69,7 @@ function kgwSettingsTraceDatasetR29B(target) {
         out[key] = String(ds[key] || "").slice(0, 160);
       }
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
   return out;
 }
 
@@ -91,7 +91,7 @@ function kgwSettingsTraceTargetSnapshotR29B(target) {
       snapshot.valueLength = value.length;
       snapshot.valuePreview = value.slice(0, 180);
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
   return snapshot;
 }
@@ -168,7 +168,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
     try {
       const lang = String(document.documentElement.getAttribute("lang") || document.body.getAttribute("lang") || "");
       if (lang) return lower(lang);
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
     try {
       const keys = ["kgw.language", "kgw_locale", "language", "locale", "i18nextLng"];
@@ -176,7 +176,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
         const value = localStorage.getItem(key);
         if (value) return lower(value);
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
     try {
       const apiCandidates = [window.kgwI18n, window.KGWI18n, window.KGW_I18N, window.i18n];
@@ -189,7 +189,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
         if (typeof api.getLanguage === "function") return lower(api.getLanguage());
         if (typeof api.getLocale === "function") return lower(api.getLocale());
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
     return "";
   }
@@ -219,7 +219,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
           if (typeof value === "string" && value.trim() && value !== key) return value;
         }
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
     return fallback;
   }
 
@@ -630,7 +630,7 @@ function kgwBridgeSmallOwnerTraceR44D(net, action, phase, details) {
     if (typeof invoke === "function") {
       invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 }
 
 
@@ -641,8 +641,7 @@ function kgwI18nTextR41(key, fallback) {
     if (window.kgwT && typeof window.kgwT === "function") return window.kgwT(key, fallback);
     if (window.KGW_I18N && typeof window.KGW_I18N.t === "function") return window.KGW_I18N.t(key, fallback);
     if (window.i18n && typeof window.i18n.t === "function") return window.i18n.t(key, fallback);
-  } catch (_) {
-  }
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
   return fallback;
 }
 
@@ -754,14 +753,14 @@ function kgwBridgeNetworkEnabled(net) {
     const stored = localStorage.getItem(kgwBridgeNetworkPolicyKey(net));
     if (stored === "1") return true;
     if (stored === "0") return false;
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
   return profile ? profile.enabledByDefault !== false : false;
 }
 
 function kgwBridgeSetNetworkEnabled(net, enabled) {
   try {
     localStorage.setItem(kgwBridgeNetworkPolicyKey(net), enabled ? "1" : "0");
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 }
 
 function kgwBridgeNetworkPolicyMessage(net) {
@@ -1902,9 +1901,7 @@ function bridgeSyncInstancePreviewRowsR8B(net) {
 
 // KGW_BRIDGE_INSTANCE_PORT_CONFLICT_REPAIR_R110G
 function kgwBridgeRepairInstancePortsBeforeConflictR110G(triggerNet) {
-  const nets = Array.isArray(BRIDGE_NETWORK_ORDER)
-    ? BRIDGE_NETWORK_ORDER
-    : Object.keys(BRIDGE_NETWORKS || {});
+  const nets = BRIDGE_NETWORKS.map((item) => item.key);
 
   const normalizePort = (value) => {
     const clean = String(value || "").trim().replace(/^:/, "");
@@ -1932,7 +1929,7 @@ function kgwBridgeRepairInstancePortsBeforeConflictR110G(triggerNet) {
   const changed = [];
 
   for (const net of nets) {
-    const cfg = BRIDGE_NETWORKS?.[net] || {};
+    const cfg = kgwBridgeNetworkProfile(net) || {};
     const defaultPort = normalizePort(cfg.stratumPort || cfg.port || "");
     const instances = Array.isArray(bridgeInstances?.[net]) ? bridgeInstances[net] : [];
     const used = new Set();
@@ -1974,20 +1971,20 @@ function kgwBridgeRepairInstancePortsBeforeConflictR110G(triggerNet) {
 
   if (changed.length > 0) {
     try {
-      kgwBridgeTrace?.("bridge", String(triggerNet || ""), "port-conflict", "r110g-instance-ports-repaired", {
+      kgwBridgeSmallOwnerTraceR44D(String(triggerNet || ""), "port-conflict", "r110g-instance-ports-repaired", {
         patch: "KGW_BRIDGE_INSTANCE_PORT_CONFLICT_REPAIR_R110G",
         owner: "bridgeAssertNoPortConflictsR5-existing-owner",
         changed
       });
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
     try {
       if (typeof renderInstances === "function" && triggerNet) renderInstances(triggerNet);
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
     try {
       if (typeof updateCommand === "function" && triggerNet) updateCommand(triggerNet);
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
   }
 
   return changed;
@@ -2009,7 +2006,7 @@ function kgwBridgeAutofixButtonInitialLabelR111G(root = document) {
         el.setAttribute("data-kgw-owner", "bridgeInstances");
       }
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 }
 
 function bridgeAssertNoPortConflictsR5(net) {
@@ -2024,7 +2021,7 @@ function bridgeAssertNoPortConflictsR5(net) {
     return String(n);
   };
 
-  const cfg = BRIDGE_NETWORKS?.[net] || {};
+  const cfg = kgwBridgeNetworkProfile(net) || {};
   const defaultPort = normalizePort(cfg.stratumPort || cfg.port || "");
   const structured = typeof kgwBridgeR51ReadStructuredInstancesR26B === "function"
     ? kgwBridgeR51ReadStructuredInstancesR26B(net)
@@ -2065,8 +2062,8 @@ function bridgeAssertNoPortConflictsR5(net) {
   };
 
   try {
-    kgwBridgeTrace?.("bridge", net, "port-conflict", "r110h-scoped-start-conflict-check", conflictDetails);
-  } catch (_) {}
+    kgwBridgeSmallOwnerTraceR44D(net, "port-conflict", "r110h-scoped-start-conflict-check", conflictDetails);
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
   if (!activeRecord) {
     return { ok: true, conflictCount: 0, conflicts: [], message: "" };
@@ -2075,11 +2072,11 @@ function bridgeAssertNoPortConflictsR5(net) {
   if (!activePort) {
     const msg = "Active Bridge instance has no valid Stratum port.";
     try {
-      kgwBridgeTrace?.("bridge", net, "port-conflict", "r110h-active-instance-port-invalid", {
+      kgwBridgeSmallOwnerTraceR44D(net, "port-conflict", "r110h-active-instance-port-invalid", {
         ...conflictDetails,
         message: msg
       });
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
     throw new Error(msg);
   }
 
@@ -2133,7 +2130,7 @@ function bridgeTracePortConflictR33(net, phase, validation, details) {
       conflicts: bridgePortConflictCompactSummaryR33(validation).slice(0, 20),
       details: details && typeof details === "object" ? details : {}
     });
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 }
 
 function bridgeStartButtonsForNetR33(net) {
@@ -2760,7 +2757,7 @@ function kgwBridgeSaveInnerTabR101U(net, selected) {
   const normalized = kgwBridgeNormalizeInnerTabR101U(selected);
   try {
     localStorage.setItem(kgwBridgeInnerTabStorageKeyR101U(net), normalized);
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
   return normalized;
 }
 
@@ -3304,7 +3301,7 @@ function bridgeTracePortProfileR35B(net, phase, details) {
       policy: "manual-valid-unused-ports-accepted-even-inside-other-network-range",
       details: details && typeof details === "object" ? details : {}
     });
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 }
 
 
@@ -3326,7 +3323,7 @@ function bridgeTracePortAutofixR37(net, phase, details) {
       policy: "user-triggered-only-change-actual-conflicts",
       details: details && typeof details === "object" ? details : {}
     });
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 }
 
 function bridgePortOwnerPriorityR37(owner) {
@@ -3397,7 +3394,7 @@ function bridgeUniqueConflictOwnersR45(owners) {
 
 function bridgeConfiguredPortRecordsR45() {
   const records = [];
-  let collected = [];
+  let collected;
 
   try {
     collected = bridgeCollectConfiguredPortsR5();
@@ -3777,19 +3774,8 @@ function kgwBridgeAutoFixTextR54D3(key) {
     return text;
   };
 
-  try {
-    if (typeof t === "function") {
-      const translated = cleanTranslated(t(i18nKey));
-      if (translated) return translated;
-    }
-  } catch (_) {}
-
-  try {
-    if (typeof translate === "function") {
-      const translated = cleanTranslated(translate(i18nKey));
-      if (translated) return translated;
-    }
-  } catch (_) {}
+  const translated = cleanTranslated(kgwI18nTextR41(i18nKey, fallbackText));
+  if (translated) return translated;
 
   return fallbackText;
 }
@@ -4088,7 +4074,7 @@ function kgwBridgeLogAutoScrollEnabledR27(net) {
 function kgwBridgeSetLogAutoScrollR27(net, enabled) {
   try {
     localStorage.setItem(kgwBridgeLogAutoScrollKeyR27(net), enabled ? "1" : "0");
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
   const out = byId(id(net, "logOutput"));
   if (enabled && out) out.scrollTop = out.scrollHeight;
@@ -4615,7 +4601,7 @@ function kgwBridgeExplicitTraceR27D(net, action, phase, details) {
     if (typeof invoke === "function") {
       invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 }
 /* KGW_BRIDGE_LAST_NETWORK_RESTORE_R101W2 */
 const KGW_BRIDGE_LAST_NETWORK_KEY_R101W2 = "kgw.bridge.lastNetwork";
@@ -4629,7 +4615,7 @@ function kgwBridgeReadLastNetworkR101W2() {
 function kgwBridgeSaveLastNetworkR101W2(net) {
   const normalized = kgwBridgeNormalizeNetworkR101W2(net);
   if (!normalized) return "";
-  try { localStorage.setItem(KGW_BRIDGE_LAST_NETWORK_KEY_R101W2, normalized); } catch (_) {}
+  try { localStorage.setItem(KGW_BRIDGE_LAST_NETWORK_KEY_R101W2, normalized); } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
   return normalized;
 }
 
@@ -5085,7 +5071,7 @@ async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {
 
   try {
     window.alert(message);
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
   return true;
 }
@@ -5123,7 +5109,7 @@ function kgwSetBridgeOwnedNodeLockR65E(net, locked, details) {
         source: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E"
       }
     }));
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 }
 
 function kgwIsBridgeOwnedNodeLockedR65E(net) {
@@ -5142,7 +5128,7 @@ function kgwBridgeCurrentNodeModeFromUiR65F(net) {
   try {
     const direct = byId(id(net, "nodeMode"));
     if (direct && "value" in direct) return String(direct.value || "");
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
   try {
     const panel = document.querySelector('[data-bridge-panel="' + String(net || "") + '"]') ||
@@ -5151,7 +5137,7 @@ function kgwBridgeCurrentNodeModeFromUiR65F(net) {
       const select = panel.querySelector('[id$="-nodeMode"], [data-bridge-setting="nodeMode"], select[name="nodeMode"]');
       if (select && "value" in select) return String(select.value || "");
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
   return "";
 }
@@ -5200,7 +5186,7 @@ async function runBridgeIntegratedAction(action, net) {
           details: JSON.stringify(payload)
         }).catch(function () {});
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
   }
 
   kgwBridgeRuntimeOwnerTraceR64D("r64d-runtime-owner-enter", {
@@ -5499,7 +5485,7 @@ function kgwBridgeR51CommitInstanceDomStateR26B(net) {
       kgwBridgeSmallOwnerTraceR44D(net, "settings-persistence", "r26b-commit-instance-dom-state-failed", {
         message: error && error.message ? error.message : String(error)
       });
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
     return Array.isArray(bridgeInstances && bridgeInstances[net]) ? bridgeInstances[net] : [];
   }
 }
@@ -5541,7 +5527,7 @@ function kgwBridgeR51ReadCommandOptionsR38C(net) {
       if (!name) continue;
       state[name] = Boolean(item.checked);
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
   return state;
 }
 
@@ -5558,7 +5544,7 @@ function kgwBridgeR51ReadInstanceCommandOptionsR38C(net) {
       state[instanceId] = state[instanceId] || {};
       state[instanceId][name] = Boolean(item.checked);
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
   return state;
 }
 
@@ -5634,7 +5620,7 @@ function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
         count: bridgeInstances[net].length,
         activeInstance: String(activeInstance[net] || "")
       });
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
     return true;
   } catch (error) {
@@ -5642,7 +5628,7 @@ function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
       kgwBridgeSmallOwnerTraceR44D(net, "settings-persistence", "r26b-apply-structured-instances-failed", {
         message: error && error.message ? error.message : String(error)
       });
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
     return false;
   }
 }
@@ -5983,6 +5969,11 @@ function kgwBridgeR51SetAsDefaults(net) {
     persisted: Boolean(stored),
     persistedKeyCount: stored && typeof stored === "object" ? Object.keys(stored).length : 0
   });
+}
+
+/* R9B compatibility boundary: current input/change owners identify programmatic writes via Event.isTrusted. */
+function kgwBridgeSettingsWithProgrammaticWriteR9B(callback) {
+  return callback();
 }
 
 function kgwBridgeR51RestoreDefaults(net) {
@@ -6343,7 +6334,7 @@ function kgwBridgeTranslateRuntimeV29(key, fallback) {
     try {
       const value = runtime(key, fallback);
       if (value && value !== key) return value;
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
   }
   return fallback || key;
 }
@@ -6918,7 +6909,7 @@ function installActions(root) {
           details: JSON.stringify(payload)
         }).catch(function () {});
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
   }
   // KGW_EXPLICIT_TRACE_OWNER_R27D_BRIDGE_END
 
@@ -7131,7 +7122,7 @@ const bridgeRoot = root || document.getElementById("kaspa-bridge");
     const finalSize = clampSize(size);
     try {
       window.localStorage.setItem(storageKey(net), String(finalSize));
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
     return finalSize;
   }
 
@@ -7282,4 +7273,4 @@ if (typeof window !== "undefined") {
 
 
 // KGW_BRIDGE_AUTOFIX_BUTTON_INITIAL_LABEL_R111G
-try { kgwBridgeAutofixButtonInitialLabelR111G(document); } catch (_) {}
+try { kgwBridgeAutofixButtonInitialLabelR111G(document); } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }

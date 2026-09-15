@@ -69,7 +69,7 @@ function kgwSettingsTraceDatasetR29B(target) {
         out[key] = String(ds[key] || "").slice(0, 160);
       }
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   return out;
 }
 
@@ -91,7 +91,7 @@ function kgwSettingsTraceTargetSnapshotR29B(target) {
       snapshot.valueLength = value.length;
       snapshot.valuePreview = value.slice(0, 180);
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 
   return snapshot;
 }
@@ -168,7 +168,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
     try {
       const lang = String(document.documentElement.getAttribute("lang") || document.body.getAttribute("lang") || "");
       if (lang) return lower(lang);
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 
     try {
       const keys = ["kgw.language", "kgw_locale", "language", "locale", "i18nextLng"];
@@ -176,7 +176,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
         const value = localStorage.getItem(key);
         if (value) return lower(value);
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 
     try {
       const apiCandidates = [window.kgwI18n, window.KGWI18n, window.KGW_I18N, window.i18n];
@@ -189,7 +189,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
         if (typeof api.getLanguage === "function") return lower(api.getLanguage());
         if (typeof api.getLocale === "function") return lower(api.getLocale());
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 
     return "";
   }
@@ -219,7 +219,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
           if (typeof value === "string" && value.trim() && value !== key) return value;
         }
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
     return fallback;
   }
 
@@ -996,7 +996,7 @@ function kgwNodeSmallOwnerTraceR44D(net, action, phase, details) {
     if (typeof invoke === "function") {
       invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 }
 
 
@@ -1007,8 +1007,7 @@ function kgwI18nTextR41(key, fallback) {
     if (window.kgwT && typeof window.kgwT === "function") return window.kgwT(key, fallback);
     if (window.KGW_I18N && typeof window.KGW_I18N.t === "function") return window.KGW_I18N.t(key, fallback);
     if (window.i18n && typeof window.i18n.t === "function") return window.i18n.t(key, fallback);
-  } catch (_) {
-  }
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   return fallback;
 }
 
@@ -1135,14 +1134,14 @@ function kgwNodeNetworkEnabled(net) {
     const stored = localStorage.getItem(kgwNodeNetworkPolicyKey(net));
     if (stored === "1") return true;
     if (stored === "0") return false;
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   return profile ? profile.enabledByDefault !== false : false;
 }
 
 function kgwNodeSetNetworkEnabled(net, enabled) {
   try {
     localStorage.setItem(kgwNodeNetworkPolicyKey(net), enabled ? "1" : "0");
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 }
 
 function kgwNodeNetworkPolicyMessage(net) {
@@ -1326,7 +1325,7 @@ function kgwNodeLogAutoScrollEnabledR27(net) {
 function kgwNodeSetLogAutoScrollR27(net, enabled) {
   try {
     localStorage.setItem(kgwNodeLogAutoScrollKeyR27(net), enabled ? "1" : "0");
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 
   const out = byId(id(net, "logOutput"));
   if (enabled && out) out.scrollTop = out.scrollHeight;
@@ -1690,7 +1689,7 @@ function kgwNodeSaveInnerTabR101U(net, selected) {
   const normalized = kgwNodeNormalizeInnerTabR101U(selected);
   try {
     localStorage.setItem(kgwNodeInnerTabStorageKeyR101U(net), normalized);
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   return normalized;
 }
 
@@ -2008,7 +2007,7 @@ function kgwNodeExplicitTraceR27D(net, action, phase, details) {
     if (typeof invoke === "function") {
       invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 }
 /* KGW_NODE_LAST_NETWORK_RESTORE_R101W2 */
 const KGW_NODE_LAST_NETWORK_KEY_R101W2 = "kgw.node.lastNetwork";
@@ -2022,7 +2021,7 @@ function kgwNodeReadLastNetworkR101W2() {
 function kgwNodeSaveLastNetworkR101W2(net) {
   const normalized = kgwNodeNormalizeNetworkR101W2(net);
   if (!normalized) return "";
-  try { localStorage.setItem(KGW_NODE_LAST_NETWORK_KEY_R101W2, normalized); } catch (_) {}
+  try { localStorage.setItem(KGW_NODE_LAST_NETWORK_KEY_R101W2, normalized); } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   return normalized;
 }
 
@@ -2620,7 +2619,7 @@ function kgwNodeR51ReadCommandOptionsR38C(net) {
       if (!name) continue;
       state[name] = Boolean(item.checked);
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   return state;
 }
 
@@ -2769,6 +2768,10 @@ function kgwNodeR51SetAsDefaults(net) {
   });
 }
 
+/* R9B compatibility boundary: current input/change owners identify programmatic writes via Event.isTrusted. */
+function kgwNodeSettingsWithProgrammaticWriteR9B(callback) {
+  return callback();
+}
 function kgwNodeR51RestoreDefaults(net) {
   kgwNodeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-begin", {
     patch: "R29B",
@@ -2977,7 +2980,7 @@ function kgwSetBridgeOwnedNodeLockR65E(net, locked, details) {
         source: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E"
       }
     }));
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 }
 
 function kgwIsBridgeOwnedNodeLockedR65E(net) {
@@ -3031,7 +3034,7 @@ function kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, locked, reason) {
       patch: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E",
       reason: reason || "unknown"
     });
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 }
 
 async function kgwNodeR51BridgeInprocessLockedV7(net) {
@@ -3264,7 +3267,7 @@ function kgwNodeTranslateRuntimeV29(key, fallback) {
     try {
       const value = runtime(key, fallback);
       if (value && value !== key) return value;
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   }
   return fallback || key;
 }
@@ -3646,7 +3649,7 @@ function installActions(root) {
           details: JSON.stringify(payload)
         }).catch(function () {});
       }
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
   }
   // KGW_EXPLICIT_TRACE_OWNER_R27D_NODE_END
 
@@ -3883,7 +3886,7 @@ updateAllCommands();
     const finalSize = clampSize(size);
     try {
       window.localStorage.setItem(storageKey(net), String(finalSize));
-    } catch (_) {}
+    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
     return finalSize;
   }
 

@@ -79,35 +79,35 @@ fn file_status(
 
 #[tauri::command]
 pub fn kgw_settings_database_status() -> Result<Vec<SettingsDatabaseStatusRow>, String> {
-    let root = crate::db_state::database_root()?;
+    crate::db_state::with_database_manager("settings.db_status", database_status_for_manager)
+}
 
-    let address_count =
-        crate::db_state::with_database_manager("settings.db_status.addresses", |manager| {
-            let repository = manager
-                .addresses_repository()
-                .map_err(|error| error.to_string())?;
-
-            let count = repository.list().map_err(|error| error.to_string())?.len();
-
-            Ok(count)
-        })
-        .unwrap_or(0);
+fn database_status_for_manager(
+    manager: &kaspa_gateway_db::DatabaseManager,
+) -> Result<Vec<SettingsDatabaseStatusRow>, String> {
+    let root = &manager.paths().root;
+    let address_count = manager
+        .addresses_repository()
+        .map_err(|error| error.to_string())?
+        .list()
+        .map_err(|error| error.to_string())?
+        .len();
 
     let rows = vec![
         file_status(
-            &root,
+            root,
             "Addresses.duckdb",
             &["Addresses.duckdb", "addresses.duckdb"],
             format!("{address_count} addresses"),
         ),
         file_status(
-            &root,
+            root,
             "AppData.duckdb",
             &["AppData.duckdb", "appdata.duckdb", "app_data.duckdb"],
             "application settings / app data".to_string(),
         ),
         file_status(
-            &root,
+            root,
             "Transactions.duckdb",
             &["Transactions.duckdb", "transactions.duckdb"],
             "transaction store".to_string(),
@@ -137,92 +137,15 @@ fn db_operation_result(
     })
 }
 
-fn now_ms_string() -> String {
-    UNIX_EPOCH
-        .elapsed()
-        .map(|duration| duration.as_millis().to_string())
-        .unwrap_or_else(|_| "0".to_string())
-}
-
 fn database_paths_for_root(root: &Path) -> Result<kaspa_gateway_db::DatabasePaths, String> {
     kaspa_gateway_db::DatabasePaths::new(root).map_err(|error| error.to_string())
 }
 
-fn copy_if_exists(source: &Path, destination_dir: &Path) -> Result<(), String> {
-    if !source.exists() {
-        return Ok(());
-    }
-
-    fs::create_dir_all(destination_dir).map_err(|error| error.to_string())?;
-
-    let file_name = source
-        .file_name()
-        .ok_or_else(|| format!("invalid database path: {}", source.display()))?;
-
-    fs::copy(source, destination_dir.join(file_name)).map_err(|error| error.to_string())?;
-    Ok(())
-}
-
 fn backup_all_databases_with_label(label: &str) -> Result<PathBuf, String> {
-    let root = crate::db_state::database_root()?;
-    let paths = database_paths_for_root(&root)?;
-    let backup_dir = root
-        .join("backups")
-        .join(format!("{}-{}", label, now_ms_string()));
-
-    fs::create_dir_all(&backup_dir).map_err(|error| error.to_string())?;
-
-    for file in [
-        &paths.app_data,
-        &paths.addresses,
-        &paths.transactions,
-        &paths.transactions_sqlite,
-    ] {
-        copy_if_exists(file, &backup_dir)?;
-        let wal = PathBuf::from(format!("{}.wal", file.display()));
-        copy_if_exists(&wal, &backup_dir)?;
-    }
-
-    Ok(backup_dir)
-}
-
-fn latest_backup_dir() -> Result<PathBuf, String> {
-    let root = crate::db_state::database_root()?;
-    let backup_root = root.join("backups");
-
-    let mut dirs = fs::read_dir(&backup_root)
-        .map_err(|error| format!("backup directory not found: {error}"))?
-        .flatten()
-        .map(|entry| entry.path())
-        .filter(|path| path.is_dir())
-        .collect::<Vec<_>>();
-
-    dirs.sort();
-
-    dirs.pop()
-        .ok_or_else(|| "no database backup directories found".to_string())
-}
-
-fn restore_backup_dir(backup_dir: &Path) -> Result<(), String> {
-    let root = crate::db_state::database_root()?;
-    fs::create_dir_all(&root).map_err(|error| error.to_string())?;
-
-    for entry in fs::read_dir(backup_dir).map_err(|error| error.to_string())? {
-        let entry = entry.map_err(|error| error.to_string())?;
-        let source = entry.path();
-
-        if !source.is_file() {
-            continue;
-        }
-
-        let Some(file_name) = source.file_name() else {
-            continue;
-        };
-
-        fs::copy(&source, root.join(file_name)).map_err(|error| error.to_string())?;
-    }
-
-    Ok(())
+    crate::db_state::with_database_manager("settings.db.backup", |manager| {
+        kaspa_gateway_db::backup_restore::backup_databases(&manager.paths().root, label)
+            .map_err(|error| error.to_string())
+    })
 }
 
 fn parse_database_kind(value: &str) -> Result<kaspa_gateway_db::DatabaseKind, String> {
@@ -267,16 +190,31 @@ pub fn kgw_settings_database_backup() -> Result<SettingsDatabaseOperationResult,
 
 #[tauri::command]
 pub fn kgw_settings_database_restore_latest() -> Result<SettingsDatabaseOperationResult, String> {
-    let safety = backup_all_databases_with_label("kgw-pre-restore-backup")?;
-    let latest = latest_backup_dir()?;
-    restore_backup_dir(&latest)?;
-    db_operation_result(
-        format!(
-            "Database restored from latest backup. Safety backup: {}",
-            safety.display()
-        ),
-        Some(latest),
-    )
+    crate::db_state::try_with_database_root("settings.db.restore", |root| {
+        let restored = kaspa_gateway_db::backup_restore::restore_latest(root)
+            .map_err(|error| error.to_string())?;
+        let manager = kaspa_gateway_db::DatabaseManager::new(database_paths_for_root(root)?);
+        let rows = database_status_for_manager(&manager).map_err(|error| {
+            format!(
+                "Restore data verified, but status refresh failed: {error}; safety backup: {}",
+                restored.safety_backup.display()
+            )
+        })?;
+        let mut message = format!(
+            "Database restored and verified from: {}. Safety backup: {}",
+            restored.restored_from.display(),
+            restored.safety_backup.display()
+        );
+        if let Some(warning) = restored.cleanup_warning {
+            message.push_str(&format!(". {warning}"));
+        }
+        Ok(SettingsDatabaseOperationResult {
+            ok: true,
+            message,
+            backup_path: Some(restored.restored_from.display().to_string()),
+            rows,
+        })
+    })
 }
 
 #[tauri::command]

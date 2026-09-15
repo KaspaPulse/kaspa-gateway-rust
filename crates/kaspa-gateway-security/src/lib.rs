@@ -1,5 +1,6 @@
 use secrecy::{ExposeSecret, SecretString};
 use thiserror::Error;
+use url::Url;
 use zeroize::Zeroize;
 
 #[derive(Debug, Error)]
@@ -81,46 +82,103 @@ pub fn mask_address(input: &str) -> String {
     format!("{start}...{end}")
 }
 
-pub fn redact_url(input: &str) -> String {
-    let sensitive_keys = [
-        "key",
-        "apikey",
-        "api_key",
-        "token",
-        "secret",
-        "auth",
-        "password",
-        "signature",
-        "private",
-        "pin",
-    ];
+const REDACTED_URL_CREDENTIAL: &str = "redacted";
+const SENSITIVE_URL_KEYS: [&str; 10] = [
+    "key",
+    "apikey",
+    "api_key",
+    "token",
+    "secret",
+    "auth",
+    "password",
+    "signature",
+    "private",
+    "pin",
+];
 
-    let Some((base, query)) = input.split_once('?') else {
-        return input.to_string();
-    };
+fn is_sensitive_url_key(key: &str) -> bool {
+    let key = key.to_ascii_lowercase();
+    SENSITIVE_URL_KEYS
+        .iter()
+        .any(|sensitive| key.contains(sensitive))
+}
 
-    let redacted_query = query
+fn redact_url_pairs(value: &str) -> String {
+    value
         .split('&')
-        .map(|part| {
-            let Some((key, _value)) = part.split_once('=') else {
-                return part.to_string();
-            };
-
-            let key_lower = key.to_ascii_lowercase();
-            let is_sensitive = sensitive_keys
-                .iter()
-                .any(|sensitive| key_lower.contains(sensitive));
-
-            if is_sensitive {
-                format!("{key}=***")
-            } else {
-                part.to_string()
-            }
+        .map(|part| match part.split_once('=') {
+            Some((key, _)) if is_sensitive_url_key(key) => format!("{key}=***"),
+            None if is_sensitive_url_key(part) => "***".to_string(),
+            _ => part.to_string(),
         })
         .collect::<Vec<_>>()
-        .join("&");
+        .join("&")
+}
 
-    format!("{base}?{redacted_query}")
+fn redact_url_authority_fallback(input: &str) -> String {
+    let Some(scheme_end) = input.find("://") else {
+        return input.to_string();
+    };
+    let authority_start = scheme_end + 3;
+    let authority_end = input[authority_start..]
+        .find(['/', '?', '#'])
+        .map(|offset| authority_start + offset)
+        .unwrap_or(input.len());
+    let authority = &input[authority_start..authority_end];
+    let Some(at) = authority.rfind('@') else {
+        return input.to_string();
+    };
+    format!(
+        "{}{}@{}{}",
+        &input[..authority_start],
+        REDACTED_URL_CREDENTIAL,
+        &authority[at + 1..],
+        &input[authority_end..]
+    )
+}
+
+fn redact_url_fallback(input: &str) -> String {
+    let (before_fragment, fragment) = input
+        .split_once('#')
+        .map(|(left, right)| (left, Some(right)))
+        .unwrap_or((input, None));
+    let (base, query) = before_fragment
+        .split_once('?')
+        .map(|(left, right)| (left, Some(right)))
+        .unwrap_or((before_fragment, None));
+    let mut output = redact_url_authority_fallback(base);
+    if let Some(query) = query {
+        output.push('?');
+        output.push_str(&redact_url_pairs(query));
+    }
+    if let Some(fragment) = fragment {
+        output.push('#');
+        output.push_str(&redact_url_pairs(fragment));
+    }
+    output
+}
+
+pub fn redact_url(input: &str) -> String {
+    let Ok(mut parsed) = Url::parse(input) else {
+        return redact_url_fallback(input);
+    };
+
+    if !parsed.username().is_empty() {
+        let _ = parsed.set_username(REDACTED_URL_CREDENTIAL);
+    }
+    if parsed.password().is_some() {
+        let _ = parsed.set_password(Some(REDACTED_URL_CREDENTIAL));
+    }
+    if let Some(query) = parsed.query() {
+        let query = redact_url_pairs(query);
+        parsed.set_query(Some(&query));
+    }
+    if let Some(fragment) = parsed.fragment() {
+        let fragment = redact_url_pairs(fragment);
+        parsed.set_fragment(Some(&fragment));
+    }
+
+    parsed.to_string()
 }
 
 pub fn sanitize_for_logging(value: impl ToString) -> String {
@@ -308,6 +366,28 @@ mod tests {
         assert!(redacted.contains("token=***"));
         assert!(redacted.contains("safe=value"));
         assert!(!redacted.contains("secret123"));
+    }
+
+    #[test]
+    fn url_authority_query_and_fragment_credentials_are_redacted() {
+        let cases = [
+            "https://user_label:pass_value@example.invalid/path",
+            "https://user_label@example.invalid/path",
+            "https://user%40label:pass%3Avalue@example.invalid/path",
+            "https://[2001:db8::1]/path?token=query_value&safe=ok#password=fragment_value",
+            "https://user_label:pass_value@[2001:db8::1]/path?api_key=query_value",
+            "https://user_label:pass_value@example.invalid:bad/path?token=query_value",
+        ];
+        for input in cases {
+            let redacted = redact_url(input);
+            assert!(!redacted.contains("user_label"));
+            assert!(!redacted.contains("pass_value"));
+            assert!(!redacted.contains("query_value"));
+            assert!(!redacted.contains("fragment_value"));
+        }
+        let safe = redact_url("https://example.invalid/path?safe=value#section");
+        assert!(safe.contains("safe=value"));
+        assert!(safe.ends_with("#section"));
     }
 
     #[test]

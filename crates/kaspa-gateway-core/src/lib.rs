@@ -1,3 +1,4 @@
+use kaspa_addresses::Address as NativeKaspaAddress;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use thiserror::Error;
@@ -59,63 +60,24 @@ pub struct KaspaAddress(String);
 
 impl KaspaAddress {
     pub fn parse(input: impl AsRef<str>) -> Result<Self> {
-        let raw = input.as_ref().trim();
+        let input = input.as_ref();
+        let raw = input.trim();
 
         if raw.is_empty() {
             return Err(GatewayError::Validation(
                 "Kaspa address cannot be empty".to_string(),
             ));
         }
-
-        if raw.chars().any(char::is_whitespace) {
+        if raw != input || raw.chars().any(char::is_whitespace) {
             return Err(GatewayError::Validation(
                 "Kaspa address cannot contain whitespace".to_string(),
             ));
         }
 
-        let allowed_prefixes = [
-            KASPA_MAINNET_PREFIX,
-            KASPA_TESTNET_PREFIX,
-            KASPA_DEVNET_PREFIX,
-            KASPA_SIMNET_PREFIX,
-        ];
-
-        if !allowed_prefixes
-            .iter()
-            .any(|prefix| raw.starts_with(prefix))
-        {
-            return Err(GatewayError::Validation(
-                "Kaspa address must start with kaspa:, kaspatest:, kaspadev:, or kaspasim:"
-                    .to_string(),
-            ));
-        }
-
-        let (_, payload) = raw
-            .split_once(':')
-            .ok_or_else(|| GatewayError::Validation("Kaspa address is missing ':'".to_string()))?;
-
-        if payload.len() < 20 {
-            return Err(GatewayError::Validation(
-                "Kaspa address payload is too short".to_string(),
-            ));
-        }
-
-        if payload.len() > 512 {
-            return Err(GatewayError::Validation(
-                "Kaspa address payload is too long".to_string(),
-            ));
-        }
-
-        if !payload
-            .chars()
-            .all(|ch| ch.is_ascii_lowercase() || ch.is_ascii_digit())
-        {
-            return Err(GatewayError::Validation(
-                "Kaspa address payload contains invalid characters".to_string(),
-            ));
-        }
-
-        Ok(Self(raw.to_string()))
+        let native = NativeKaspaAddress::try_from(raw).map_err(|_| {
+            GatewayError::Validation("Kaspa address encoding or checksum is invalid".to_string())
+        })?;
+        Ok(Self(native.to_string()))
     }
 
     pub fn unchecked(value: impl Into<String>) -> Self {
@@ -418,11 +380,30 @@ mod tests {
     }
 
     #[test]
-    fn kaspa_address_accepts_safe_prefixes() {
-        let address = KaspaAddress::parse("kaspa:qwerty12345678901234").expect("address");
+    fn kaspa_address_uses_canonical_checksum_decoder() {
+        use kaspa_addresses::{Address as NativeAddress, Prefix, Version};
 
-        assert_eq!(address.network(), KaspaNetwork::Mainnet);
-        assert_eq!(address.as_str(), "kaspa:qwerty12345678901234");
+        for (prefix, network) in [
+            (Prefix::Mainnet, KaspaNetwork::Mainnet),
+            (Prefix::Testnet, KaspaNetwork::Testnet),
+            (Prefix::Devnet, KaspaNetwork::Devnet),
+            (Prefix::Simnet, KaspaNetwork::Simnet),
+        ] {
+            let native = NativeAddress::new(prefix, Version::PubKey, &[7_u8; 32]).to_string();
+            let address = KaspaAddress::parse(&native).expect("canonical address");
+            assert_eq!(address.network(), network);
+            assert_eq!(address.as_str(), native);
+        }
+    }
+
+    #[test]
+    fn kaspa_address_rejects_checksum_and_whitespace_mutations() {
+        let valid = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g";
+        let bad_checksum = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44q";
+        assert!(KaspaAddress::parse(valid).is_ok());
+        assert!(KaspaAddress::parse(bad_checksum).is_err());
+        assert!(KaspaAddress::parse(format!(" {valid}")).is_err());
+        assert!(KaspaAddress::parse(format!("{valid} ")).is_err());
     }
 
     #[test]

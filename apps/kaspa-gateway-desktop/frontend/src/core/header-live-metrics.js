@@ -39,7 +39,7 @@ function kgwLog(message) {
     } else {
       console.log(`[KGW][header-live-metrics] ${message}`);
     }
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 
 function kgwSetClock() {
@@ -62,12 +62,12 @@ async function kgwResolveInvoke() {
   try {
     const core = await import("@tauri-apps/api/core");
     if (core?.invoke) return core.invoke;
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 
   try {
     const tauri = await import("@tauri-apps/api/tauri");
     if (tauri?.invoke) return tauri.invoke;
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 
   throw new Error("Tauri invoke API is not available");
 }
@@ -106,7 +106,7 @@ function kgwPublishKaspaUsdPrice(value) {
     window.dispatchEvent(new CustomEvent("kgw:kaspa-price-updated", {
       detail: { priceUsd }
     }));
-  } catch (_) {}
+  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
 }
 
 function kgwOwnMetricValueElement(kind, element) {
