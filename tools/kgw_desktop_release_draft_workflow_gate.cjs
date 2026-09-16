@@ -51,6 +51,16 @@ assert.ok(
   "draft verification must not use the published-release-by-tag endpoint",
 );
 
+assert.match(
+  workflow,
+  /cp "\$root\/windows\/kaspa-gateway-desktop-windows-x64\.exe"\s+"\$stage\/KASPA_GATEWAY_WINDOWS_X64_RAW_\$\{REQUESTED_VERSION\}_\$\{short\}\.exe"/u,
+  "draft assembly must publish the qualified raw Windows executable",
+);
+assert.ok(
+  workflow.includes("KASPA_GATEWAY_WINDOWS_X64_RAW_*.exe"),
+  "draft release checksum manifest must cover the raw Windows executable",
+);
+
 const tagRefOccurrences = (
   workflow.match(/git\/ref\/tags\/\$tag/gu) ?? []
 ).length;
