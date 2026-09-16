@@ -9,11 +9,34 @@ const windowsConfigPath =
   "apps/kaspa-gateway-desktop/src-tauri/tauri.windows.conf.json";
 const macosConfigPath =
   "apps/kaspa-gateway-desktop/src-tauri/tauri.macos.conf.json";
+const rustToolchainPath = "rust-toolchain.toml";
 
-const workflow = readFileSync(workflowPath, "utf8");
+const workflow = readFileSync(workflowPath, "utf8").replace(/\r\n?/gu, "\n");
 const desktopManifest = readFileSync(desktopManifestPath, "utf8");
 const windowsConfig = JSON.parse(readFileSync(windowsConfigPath, "utf8"));
 const macosConfig = JSON.parse(readFileSync(macosConfigPath, "utf8"));
+const rustToolchain = readFileSync(rustToolchainPath, "utf8");
+
+const canonicalRustMatch = rustToolchain.match(
+  /^\s*channel\s*=\s*"([^"]+)"\s*$/mu,
+);
+assert.ok(canonicalRustMatch, "rust-toolchain.toml must declare a channel");
+const canonicalRustVersion = canonicalRustMatch[1];
+const artifactRustToolchains = [
+  ...workflow.matchAll(/^\s*toolchain:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*$/gmu),
+].map((match) => match[1]);
+assert.equal(
+  artifactRustToolchains.length,
+  2,
+  "desktop artifact workflow must declare exactly one Rust toolchain per native job",
+);
+for (const workflowRustVersion of artifactRustToolchains) {
+  assert.equal(
+    workflowRustVersion,
+    canonicalRustVersion,
+    "desktop artifact workflow Rust toolchains must match rust-toolchain.toml",
+  );
+}
 
 assert.deepEqual(windowsConfig.bundle.targets, ["nsis"]);
 assert.deepEqual(windowsConfig.bundle.icon, ["icons/icon.ico"]);
