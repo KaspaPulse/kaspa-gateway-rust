@@ -5,8 +5,8 @@
 This project is maintained at:
 
 - Repository: KaspaPulse/kaspa-gateway-rust
-- Public release tag: desktop-v0.1.0-20260519-165127
-- Desktop target: Windows x64
+- Public release tag: desktop-v0.1.1
+- Desktop targets: Windows x64 and macOS Universal (Intel + Apple Silicon)
 - Runtime model: KGW same-exe parallel self-worker runtime
 
 ## Reporting a Vulnerability
@@ -34,7 +34,7 @@ The project currently claims a repository and release security baseline, not for
 
 Required repository quality and security checks include:
 
-- Rust 1.97.1 formatting with `cargo fmt --all -- --check`
+- Rust 1.98.1 formatting with `cargo fmt --all -- --check`
 - Locked workspace compilation with `cargo check --locked --workspace --all-targets`
 - Clippy across the workspace with warnings denied
 - Rust workspace tests
@@ -85,15 +85,14 @@ Dependency and license exceptions must remain narrow, documented, and limited to
 
 ## Release Asset Expectations
 
-Release assets must include:
+Release publication follows [`docs/runbooks/desktop-release.md`](docs/runbooks/desktop-release.md). The qualified desktop release set includes:
 
-- Windows installer
-- Timestamped installer copy
-- Portable executable
-- INSTALL.txt
-- SHA256SUMS.txt
+- Windows x64 NSIS installer
+- macOS Universal DMG and application ZIP
+- `SHA256SUMS.txt` covering the product artifacts
+- Preserved Sigstore/SLSA build-provenance bundles for Windows and macOS artifacts
 
-Code signing is recommended for future releases. Unsigned Windows executables may trigger SmartScreen warnings even when the build is clean.
+OS-native signing is a separate trust layer from build provenance. Windows Authenticode and Apple Developer ID/notarization must be reported exactly as configured for the release; provenance must not be represented as native code signing.
 
 ## Not Yet Claimed
 
