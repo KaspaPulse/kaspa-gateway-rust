@@ -104,6 +104,8 @@ tools/                        Repository-native contract and quality gates
 
 - [`AGENTS.md`](AGENTS.md) — durable repository engineering, safety, and agent rules.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — public contribution process, coding standards, and testing expectations.
+- [docs/USER_GUIDE.md](docs/USER_GUIDE.md) — installation, first-run, runtime operation, configuration, shutdown, and troubleshooting.
+- [docs/EXTERNAL_INTERFACES.md](docs/EXTERNAL_INTERFACES.md) — GUI, CLI, files, managed runtime listeners, defaults, failures, and security boundaries.
 - [`PROJECT_STATE.md`](PROJECT_STATE.md) — current verified resume boundary; always reconcile it against live Git/CI/release/runtime state.
 - [`PLANS.md`](PLANS.md) — living plan for active multi-stage work.
 - [`docs/architecture/`](docs/architecture/) — runtime architecture and contracts.
