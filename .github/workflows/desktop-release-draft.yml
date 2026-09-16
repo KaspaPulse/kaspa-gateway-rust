@@ -259,6 +259,7 @@ jobs:
           mkdir -m 700 "$stage"
 
           cp "$root/windows/KaspaGateway-windows-x64-nsis.exe"             "$stage/KASPA_GATEWAY_WINDOWS_X64_NSIS_${REQUESTED_VERSION}_${short}.exe"
+          cp "$root/windows/kaspa-gateway-desktop-windows-x64.exe"             "$stage/KASPA_GATEWAY_WINDOWS_X64_RAW_${REQUESTED_VERSION}_${short}.exe"
 
           cp "$root/macos/KaspaGateway-macos-universal.dmg"             "$stage/KASPA_GATEWAY_MACOS_UNIVERSAL_DMG_${REQUESTED_VERSION}_${short}.dmg"
 
@@ -270,7 +271,7 @@ jobs:
 
           (
             cd "$stage"
-            sha256sum               KASPA_GATEWAY_WINDOWS_X64_NSIS_*.exe               KASPA_GATEWAY_MACOS_UNIVERSAL_DMG_*.dmg               KASPA_GATEWAY_MACOS_UNIVERSAL_APP_*.zip               KASPA_GATEWAY_WINDOWS_BUILD_PROVENANCE_*.sigstore.json               KASPA_GATEWAY_MACOS_BUILD_PROVENANCE_*.sigstore.json               > SHA256SUMS.txt
+            sha256sum               KASPA_GATEWAY_WINDOWS_X64_NSIS_*.exe               KASPA_GATEWAY_WINDOWS_X64_RAW_*.exe               KASPA_GATEWAY_MACOS_UNIVERSAL_DMG_*.dmg               KASPA_GATEWAY_MACOS_UNIVERSAL_APP_*.zip               KASPA_GATEWAY_WINDOWS_BUILD_PROVENANCE_*.sigstore.json               KASPA_GATEWAY_MACOS_BUILD_PROVENANCE_*.sigstore.json               > SHA256SUMS.txt
           )
 
       - name: Create draft release with all qualified assets
