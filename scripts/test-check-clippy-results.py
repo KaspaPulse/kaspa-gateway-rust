@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Regression tests for the exact Desktop Clippy exception policy."""
+"""Regression tests for the exact production Clippy diagnostic policy."""
 
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 import tempfile
@@ -10,24 +11,47 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).with_name("check-clippy-results.py")
 
-COLLAPSIBLE = """error: this `if` statement can be collapsed
-  --> apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs:4079:5
-   |
-   = note: `-D clippy::collapsible-if` implied by `-D warnings`
-error: could not compile `kaspa-gateway-desktop` (lib) due to 1 previous error
-"""
 
-TOO_MANY = """error: this function has too many arguments (8/7)
-  --> apps/kaspa-gateway-desktop/src-tauri/src/lib.rs:1841:1
-   |
-   = note: `-D clippy::too-many-arguments` implied by `-D warnings`
-error: could not compile `kaspa-gateway-desktop` (lib) due to 1 previous error
-"""
+def diagnostic(path: str, line: int, code: str, *, level: str = "warning", message: str = "fixture") -> str:
+    return json.dumps(
+        {
+            "reason": "compiler-message",
+            "message": {
+                "level": level,
+                "message": message,
+                "code": {"code": code, "explanation": None},
+                "spans": [
+                    {
+                        "file_name": path,
+                        "line_start": line,
+                        "line_end": line,
+                        "column_start": 1,
+                        "column_end": 2,
+                        "is_primary": True,
+                    }
+                ],
+            },
+        },
+        separators=(",", ":"),
+    )
 
 
-def run(text: str) -> subprocess.CompletedProcess[str]:
+COLLAPSIBLE = diagnostic(
+    "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs",
+    4079,
+    "clippy::collapsible_if",
+)
+TOO_MANY = diagnostic(
+    "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs",
+    1841,
+    "clippy::too_many_arguments",
+)
+
+
+def run(lines: list[str]) -> subprocess.CompletedProcess[str]:
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False) as handle:
-        handle.write(text)
+        handle.write("\n".join(lines))
+        handle.write("\n")
         path = Path(handle.name)
     try:
         return subprocess.run(
@@ -49,31 +73,49 @@ def expect(code: int, result: subprocess.CompletedProcess[str], label: str) -> N
 
 
 def main() -> int:
-    expect(0, run(COLLAPSIBLE), "exact collapsible-if")
-    expect(0, run(TOO_MANY), "exact too-many-arguments")
-    expect(0, run(COLLAPSIBLE + TOO_MANY), "both reviewed diagnostics")
+    expect(0, run([]), "clean production diagnostics")
+    expect(0, run([COLLAPSIBLE]), "exact collapsible-if")
+    expect(0, run([TOO_MANY]), "exact too-many-arguments")
+    expect(0, run([COLLAPSIBLE, TOO_MANY]), "both reviewed diagnostics")
     expect(
         1,
-        run(COLLAPSIBLE.replace(":4079:5", ":4080:5")),
+        run([diagnostic(
+            "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs",
+            4080,
+            "clippy::collapsible_if",
+        )]),
         "line drift fails closed",
     )
     expect(
         1,
-        run(COLLAPSIBLE.replace("integrated_runtime_commands.rs", "other.rs")),
+        run([diagnostic(
+            "apps/kaspa-gateway-desktop/src-tauri/src/other.rs",
+            4079,
+            "clippy::collapsible_if",
+        )]),
         "path drift fails closed",
     )
     expect(
         1,
-        run(COLLAPSIBLE.replace("clippy::collapsible-if", "clippy::needless-borrow")),
+        run([diagnostic(
+            "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs",
+            4079,
+            "clippy::needless_borrow",
+        )]),
         "lint drift fails closed",
     )
     expect(
         1,
-        run("error[E0308]: mismatched types\n  --> src/lib.rs:1:1\n"),
-        "rustc error fails closed",
+        run([diagnostic("crates/kaspa-gateway-rk-bridge/src/observation.rs", 30, "dead_code")]),
+        "unrelated warning fails closed",
     )
-    expect(1, run(""), "empty log fails closed")
-    print("Desktop Clippy exact-exception policy regression tests PASS")
+    expect(
+        1,
+        run([diagnostic("apps/kaspa-gateway-desktop/src-tauri/src/lib.rs", 1, "E0308", level="error")]),
+        "compiler error fails closed",
+    )
+    expect(1, run(["not-json"]), "invalid JSON fails closed")
+    print("Production Clippy exact-diagnostic policy regression tests PASS")
     return 0
 
 
