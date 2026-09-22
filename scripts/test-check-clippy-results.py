@@ -78,6 +78,15 @@ def main() -> int:
     expect(0, run([TOO_MANY]), "exact too-many-arguments")
     expect(0, run([COLLAPSIBLE, TOO_MANY]), "both reviewed diagnostics")
     expect(
+        0,
+        run([diagnostic(
+            "apps/kaspa-gateway-desktop/src-tauri/tests/../src/integrated_runtime_commands.rs",
+            4079,
+            "clippy::collapsible_if",
+        )]),
+        "lexical tests/../src alias normalizes to exact fingerprint",
+    )
+    expect(
         1,
         run([diagnostic(
             "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs",

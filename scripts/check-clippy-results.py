@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Fail closed on production Clippy diagnostics except two exact reviewed Desktop lints."""
+"""Fail closed on Clippy diagnostics except reviewed exact fingerprints."""
 
 from __future__ import annotations
 
 import json
+import posixpath
 import sys
 from pathlib import Path
 
@@ -37,7 +38,8 @@ def primary_fingerprint(message: dict) -> tuple[str, int, str]:
     primary = next((span for span in spans if span.get("is_primary")), None)
     if primary is None:
         return ("<unclassified>", -1, code)
-    path = str(primary.get("file_name") or "<unknown>").replace("\\", "/")
+    raw_path = str(primary.get("file_name") or "<unknown>").replace("\\", "/")
+    path = posixpath.normpath(raw_path)
     line = int(primary.get("line_start") or -1)
     return (path, line, code)
 
