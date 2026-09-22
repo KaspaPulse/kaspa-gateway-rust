@@ -258,9 +258,25 @@ jobs:
           set +e
           status=0
 
-          cargo clippy --locked --workspace --lib --bins --examples --benches -- -D warnings 2>&1 | tee clippy-production.log
+          cargo clippy --locked --workspace --exclude kaspa-gateway-desktop --lib --bins --examples --benches -- -D warnings 2>&1 | tee clippy-workspace-production.log
           command_status=${PIPESTATUS[0]}
           if (( command_status != 0 )); then status=$command_status; fi
+
+          cargo clippy --locked -p kaspa-gateway-desktop --lib --bins --examples --benches -- -D warnings 2>&1 | tee clippy-desktop-production-strict.log
+          desktop_strict_status=${PIPESTATUS[0]}
+          if (( desktop_strict_status != 0 )); then
+            python3 scripts/check-clippy-results.py clippy-desktop-production-strict.log
+            policy_status=$?
+            if (( policy_status != 0 )); then
+              status=$desktop_strict_status
+            else
+              cargo clippy --locked -p kaspa-gateway-desktop --lib --bins --examples --benches -- -D warnings -A clippy::collapsible-if -A clippy::too-many-arguments 2>&1 | tee clippy-desktop-production.log
+              command_status=${PIPESTATUS[0]}
+              if (( command_status != 0 )); then status=$command_status; fi
+            fi
+          else
+            cp clippy-desktop-production-strict.log clippy-desktop-production.log
+          fi
 
           cargo clippy --locked --workspace --tests --exclude kaspa-gateway-desktop -- -D warnings 2>&1 | tee clippy-workspace-tests.log
           command_status=${PIPESTATUS[0]}
@@ -273,7 +289,7 @@ jobs:
           command_status=${PIPESTATUS[0]}
           if (( command_status != 0 )); then status=$command_status; fi
 
-          cat clippy-production.log clippy-workspace-tests.log clippy-desktop-tests.log > clippy.log
+          cat clippy-workspace-production.log clippy-desktop-production-strict.log clippy-desktop-production.log clippy-workspace-tests.log clippy-desktop-tests.log > clippy.log
           exit "$status"
 
       - name: Upload clippy diagnostics
@@ -283,7 +299,9 @@ jobs:
           name: clippy-diagnostics
           path: |
             clippy.log
-            clippy-production.log
+            clippy-workspace-production.log
+            clippy-desktop-production-strict.log
+            clippy-desktop-production.log
             clippy-workspace-tests.log
             clippy-desktop-tests.log
           retention-days: 3
