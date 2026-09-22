@@ -1,0 +1,27 @@
+{
+  "_type": "https://in-toto.io/Statement/v1",
+  "predicate": {
+    "attestationType": "KSSS_TRUSTED_RELEASE_IDENTITY",
+    "gitTree": "644c8d35eaf9ce92c6643f92f515f03d7c833081",
+    "policyBundleDigest": "3c1c8b449d736aba5fec5cffd688496b06d81f287f55fff4c3f42e36c3b58ec6",
+    "release": "v1.2.0",
+    "releaseIdentitySha256": "b36910adfc3c3e9157de2ffc5637b691879a8a2007a8a0776c1991f38694f4f2",
+    "repository": "https://github.com/KaspaPulse/security-governance",
+    "resolverDigest": "802e3ca1ed73de8d28881b6103f5d780bfdeda84ee11cca10e2b5ee4d21f474d",
+    "schemaDigest": "815379b5e5475fccae47be16e85a0939fb17d86d075b485a8b5589a4e8204ffb",
+    "sequence": 2,
+    "sourceSha": "967ed5068947a39961d5d5cc483ef65d25a61059",
+    "tag": "v1.2.0",
+    "treeHash": "a078a00debf7ba2c7568e7ad61cf28b0e81f977a62eac72d6768d4813de57401",
+    "validatorDigest": "9cf2a4af4761c6f38640cbb700c96345f893ed814280773c88c092310c6875ab"
+  },
+  "predicateType": "https://github.com/KaspaPulse/security-governance/attestation/ksss-trusted-release/v1",
+  "subject": [
+    {
+      "digest": {
+        "sha256": "3c1c8b449d736aba5fec5cffd688496b06d81f287f55fff4c3f42e36c3b58ec6"
+      },
+      "name": "ksss-policy-bundle-v1.2.0.json"
+    }
+  ]
+}

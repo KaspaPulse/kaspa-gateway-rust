@@ -8,6 +8,6 @@ license.workspace = true
 [dependencies]
 serde.workspace = true
 thiserror.workspace = true
-kaspa-addresses = { git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3" }
+kaspa-addresses = { git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "98a4ccd8d200853787f227bd4536ac540cf34957" }
 
 

@@ -1,0 +1,14 @@
+{
+  "expires_at": "2027-09-20T00:00:00+00:00",
+  "minimum_allowed_ksss_sequence": 1,
+  "root_version": "ksss-trust-root-1",
+  "rotation_policy": {
+    "mode": "PREVIOUS_ROOT_AUTHORIZES_NEXT",
+    "recovery_procedure_ref": "standards/KSSS/TRUSTED-RELEASE-PUBLICATION.md#root-rotation"
+  },
+  "schema_family": "trust-root",
+  "schema_version": "1.0.0",
+  "trusted_issuer": "https://token.actions.githubusercontent.com",
+  "trusted_signer_or_workflow_identity": "https://github.com/KaspaPulse/security-governance/.github/workflows/ksss-trusted-release.yml@refs/heads/main",
+  "valid_from": "2026-09-20T00:00:00+00:00"
+}

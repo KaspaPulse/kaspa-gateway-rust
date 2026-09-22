@@ -9,6 +9,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title data-i18n="app.title">Kaspa Gateway</title>
     <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./src/styles/settings-ux.css" />
+    <link rel="stylesheet" href="./src/styles/status.css" />
   
 <style id="KGW_R87_I18N_SAFE_APPLY_SELECT_FREEZE_STYLE">
   #shellLanguageSelect,
@@ -86,7 +88,7 @@
         <div class="kgw-brand">
           <div class="kgw-logo" aria-hidden="true"><img class="kgw-logo-image" src="./assets/kaspa-white.ico" alt="" /></div>
           <div class="kgw-title-block">
-            <h1 data-i18n="ui.shell.kaspagateway.v0.1.0">KaspaGateway V0.1.0</h1>
+            <h1 id="kgwAppVersionTitle" data-kgw-no-i18n="true">KaspaGateway</h1>
           <!-- KGW REAL HEADER METRICS START -->
           <div id="kgwHeaderMetrics" class="kgw-header-metrics" aria-label="Kaspa live network metrics" data-i18n-aria-label="ui.shell.kaspa.live.network.metrics">
             <div class="kgw-header-metric kgw-header-metric-price" id="kgwHeaderPriceBox" title="Waiting for live update" data-i18n-title="ui.shell.waiting.for.live.update">
@@ -176,7 +178,7 @@
       </main>
       <!-- KGW GLOBAL READY SOCIAL BAR START -->
       <div id="kgwShellBottomBar" class="kgw-shell-bottom-bar" role="contentinfo" aria-label="Application status and links" data-i18n-aria-label="ui.shell.application.status.and.links">
-        <div id="kgwShellReadyStatus" class="kgw-shell-ready-status" data-i18n="status.ready">Ready</div>
+        <div class="kgw-application-state"><span>Application: </span><span id="kgwShellReadyStatus" class="kgw-shell-ready-status" data-status-tone="ready" data-i18n="status.ready">Ready</span></div>
         <nav class="kgw-shell-social-links" aria-label="Kaspa Gateway links" data-i18n-aria-label="ui.shell.kaspa.gateway.links">
           <button type="button" class="kgw-shell-link-button" data-kgw-link="donations" data-i18n="links.donations">Donations</button>
           <span class="kgw-shell-link-separator" aria-hidden="true">|</span>

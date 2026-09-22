@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0.0",
+  "invalidated_by": [
+    "CODE_ONLY_CHANGE",
+    "DEPENDENCY_CHANGE",
+    "RUNTIME_CONFIG_CHANGE",
+    "POLICY_CHANGE"
+  ],
+  "last_verified_at": "2026-09-20T15:17:23Z",
+  "superseded_by": null,
+  "schema_family": "known-failure",
+  "record_id": "KGW-EVIDENCE-PORT-PROFILE",
+  "failure_fingerprint": {
+    "component": "zero-touch-evidence",
+    "operation_class": "VERIFY_RUNTIME_PORTS",
+    "failure_class": "VALIDATOR_EXECUTION_PROFILE_DRIFT",
+    "resource_class": "loopback-listener",
+    "runtime": "windows-tauri",
+    "architecture_generation": "same-exe-self-worker-v1",
+    "privilege_model": "standard-user",
+    "dependency_fingerprint": "git:Cargo.lock:96deee8bb36d2964c8083d94d84ba65c8745d633"
+  },
+  "applies_when": {
+    "repository": "KaspaPulse/kaspa-gateway-rust",
+    "platform": "windows",
+    "architecture_generation": "same-exe-self-worker-v1",
+    "component": "zero-touch-evidence"
+  },
+  "recommended_action": "Use the same validated port profile in execution and evidence; preserve unrelated processes.",
+  "rejected_remediations": [
+    "Do not demand default ports when the executed case used an isolated profile."
+  ],
+  "evidence_refs": [
+    "repo:docs/project-memory/BUGS/BUG-0010-zero-touch-evidence-port-profile-drift.md"
+  ]
+}

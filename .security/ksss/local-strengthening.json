@@ -1,0 +1,6 @@
+{
+  "schema_family": "local-strengthening",
+  "schema_version": "1.0.0",
+  "repository": "KaspaPulse/kaspa-gateway-rust",
+  "controls": {}
+}

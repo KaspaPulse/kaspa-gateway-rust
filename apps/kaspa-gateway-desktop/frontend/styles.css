@@ -746,21 +746,7 @@ header select,
 }
 /* KGW_IN_APP_LOGO_IMAGE_END */
 
-/* KGW_NODE_BRIDGE_OUTER_SCROLLBAR_AUTO_FIX_START */
-#kgwMain > #kaspa-node.active,
-#kgwMain > #kaspa-bridge.active,
-.kgw-main > #kaspa-node.active,
-.kgw-main > #kaspa-bridge.active {
-  overflow: hidden !important;
-  scrollbar-gutter: auto !important;
-}
-
-#kaspa-node.node-v6-root,
-#kaspa-bridge.bridge-v7-root {
-  overflow: hidden !important;
-  scrollbar-gutter: auto !important;
-}
-/* KGW_NODE_BRIDGE_OUTER_SCROLLBAR_AUTO_FIX_END */
+/* Node/Bridge geometry lives in src/styles/settings-ux.css. */
 
 /* KGW_MAIN_TAB_SCROLL_OWNER_FIX_START */
 #kgwMain,
@@ -770,14 +756,7 @@ main {
   scrollbar-gutter: auto !important;
 }
 
-#kgwMain > #kaspa-node.active,
-#kgwMain > #kaspa-bridge.active,
-.kgw-main > #kaspa-node.active,
-.kgw-main > #kaspa-bridge.active {
-  min-height: 0 !important;
-  overflow: hidden !important;
-  scrollbar-gutter: auto !important;
-}
+
 /* KGW_MAIN_TAB_SCROLL_OWNER_FIX_END */
 
 /* KGW_HEADER_CLOCK_OWNERSHIP_CONTRACT_START */

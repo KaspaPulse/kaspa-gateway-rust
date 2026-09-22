@@ -79,7 +79,9 @@ function parseLockGitSources(lockText) {
   const re = /source\s*=\s*"git\+([^"?]+)\?[^"]*?(?:branch=([^#"]+))?[^"]*#([0-9a-f]{40})"/g;
   let m;
   while ((m = re.exec(lockText)) !== null) {
+    const block = lockText.slice(lockText.lastIndexOf("[[package]]", m.index), m.index);
     hits.push({
+      name: /^name\s*=\s*"([^"]+)"/m.exec(block)?.[1] || "",
       url: m[1],
       branch: m[2] || "",
       rev: m[3],
@@ -138,7 +140,7 @@ if (!findings.some((x) => x.level === "error")) {
   networks = manifest.networks || {};
 }
 
-const expectedNetworks = ["mainnet", "testnet10", "testnet12"];
+const expectedNetworks = ["mainnet", "testnet10", "testnet13"];
 
 for (const net of expectedNetworks) {
   const b = networks[net];
@@ -178,9 +180,15 @@ for (const net of ["mainnet", "testnet10"]) {
   }
 }
 
-if (networks.testnet12 && networks.testnet12.family !== "tn12") {
-  addFinding(findings, "error", "testnet12-family-must-be-tn12", {
-    actual: networks.testnet12.family
+if (Object.keys(networks).sort().join(",") !== [...expectedNetworks].sort().join(",")) {
+  addFinding(findings, "error", "unexpected-network-binding");
+}
+if (networks.testnet13 && (networks.testnet13.repo !== "https://github.com/kaspanet/rusty-kaspa.git" || networks.testnet13.branch !== "dagknight")) {
+  addFinding(findings, "error", "tn13-must-use-official-dagknight");
+}
+if (networks.testnet13 && networks.testnet13.family !== "tn13") {
+  addFinding(findings, "error", "testnet13-family-must-be-tn13", {
+    actual: networks.testnet13.family
   });
 }
 
@@ -196,16 +204,16 @@ if (networks.mainnet && networks.testnet10) {
   }
 }
 
-if (networks.testnet12) {
-  if (networks.testnet12.experimental !== true) {
-    addFinding(findings, "error", "testnet12-must-be-marked-experimental", {
-      actual: networks.testnet12.experimental
+if (networks.testnet13) {
+  if (networks.testnet13.experimental !== true) {
+    addFinding(findings, "error", "testnet13-must-be-marked-experimental", {
+      actual: networks.testnet13.experimental
     });
   }
 
-  if (networks.testnet12.enabledByDefault !== false) {
-    addFinding(findings, "error", "testnet12-must-be-disabled-by-default", {
-      actual: networks.testnet12.enabledByDefault
+  if (networks.testnet13.enabledByDefault !== false) {
+    addFinding(findings, "error", "testnet13-must-be-disabled-by-default", {
+      actual: networks.testnet13.enabledByDefault
     });
   }
 }
@@ -218,14 +226,17 @@ if (!findings.some((x) => x.level === "error")) {
   const nodeCargo = read(files.nodeCargo);
   const bridgeCargo = read(files.bridgeCargo);
 
-  const aliases = [
-    ["node", "kaspad-lib-mainline", "kaspad", "mainnet", nodeCargo],
-    ["node", "kaspa-utils-mainline", "kaspa-utils", "mainnet", nodeCargo],
-    ["node", "kaspad-lib-tn12", "kaspad", "testnet12", nodeCargo],
-    ["node", "kaspa-utils-tn12", "kaspa-utils", "testnet12", nodeCargo],
-    ["bridge", "kaspa-stratum-bridge-mainline", "kaspa-stratum-bridge", "mainnet", bridgeCargo],
-    ["bridge", "kaspa-stratum-bridge-tn12", "kaspa-stratum-bridge", "testnet12", bridgeCargo]
-  ];
+  // Check every runtime alias; checking only kaspad/bridge misses RPC type drift.
+  const aliases = [];
+  for (const [family, network] of [["mainline", "mainnet"], ["tn13", "testnet13"]]) {
+    for (const [alias, pkg] of [
+      ["kaspad-lib", "kaspad"], ["kaspa-core", "kaspa-core"],
+      ["kaspa-grpc-client", "kaspa-grpc-client"], ["kaspa-rpc-core", "kaspa-rpc-core"],
+      ["kaspa-utils", "kaspa-utils"], ["kaspa-wrpc-server", "kaspa-wrpc-server"]
+    ]) aliases.push(["node", alias + "-" + family, pkg, network, nodeCargo]);
+    for (const pkg of ["kaspa-grpc-client", "kaspa-rpc-core", "kaspa-stratum-bridge"])
+      aliases.push(["bridge", pkg + "-" + family, pkg, network, bridgeCargo]);
+  }
 
   for (const [scope, alias, expectedPackage, network, source] of aliases) {
     const parsed = parseCargoAlias(source, alias);
@@ -281,18 +292,37 @@ if (!findings.some((x) => x.level === "error")) {
     requireContains("src/lib.rs bridge runtime", bridgeRuntime, "Self::Mainnet | Self::Testnet10 => BridgeRuntimeFamily::Mainline", "stable bridge family");
   }
 
-  if (networks.testnet12) {
-    requireContains("kgw_service_controller.rs", serviceController, 'Self::Testnet12 => "' + networks.testnet12.branch + '"', "testnet12 service branch");
-    requireContains("kgw_service_controller.rs", serviceController, 'Self::Testnet12 => "' + networks.testnet12.rev + '"', "testnet12 service rev");
-    requireContains("official_kaspa_runtime.rs", officialRuntime, 'Self::Testnet12 => "' + networks.testnet12.branch + '"', "testnet12 node branch");
-    requireContains("official_kaspa_runtime.rs", officialRuntime, 'Self::Testnet12 => "' + networks.testnet12.rev + '"', "testnet12 node rev");
-    requireContains("src/lib.rs bridge runtime", bridgeRuntime, 'Self::Testnet12 => "' + networks.testnet12.branch + '"', "testnet12 bridge branch");
-    requireContains("src/lib.rs bridge runtime", bridgeRuntime, 'Self::Testnet12 => "' + networks.testnet12.rev + '"', "testnet12 bridge rev");
-    requireContains("official_kaspa_runtime.rs", officialRuntime, "Self::Testnet12 => KaspaRuntimeFamily::Tn12", "testnet12 node family");
-    requireContains("src/lib.rs bridge runtime", bridgeRuntime, "Self::Testnet12 => BridgeRuntimeFamily::Tn12", "testnet12 bridge family");
+  if (networks.testnet13) {
+    requireContains("kgw_service_controller.rs", serviceController, 'Self::Testnet13 => "' + networks.testnet13.branch + '"', "testnet13 service branch");
+    requireContains("kgw_service_controller.rs", serviceController, 'Self::Testnet13 => "' + networks.testnet13.rev + '"', "testnet13 service rev");
+    requireContains("official_kaspa_runtime.rs", officialRuntime, 'Self::Testnet13 => "' + networks.testnet13.branch + '"', "testnet13 node branch");
+    requireContains("official_kaspa_runtime.rs", officialRuntime, 'Self::Testnet13 => "' + networks.testnet13.rev + '"', "testnet13 node rev");
+    requireContains("src/lib.rs bridge runtime", bridgeRuntime, 'Self::Testnet13 => "' + networks.testnet13.branch + '"', "testnet13 bridge branch");
+    requireContains("src/lib.rs bridge runtime", bridgeRuntime, 'Self::Testnet13 => "' + networks.testnet13.rev + '"', "testnet13 bridge rev");
+    requireContains("official_kaspa_runtime.rs", officialRuntime, "Self::Testnet13 => KaspaRuntimeFamily::Tn13", "testnet13 node family");
+    requireContains("src/lib.rs bridge runtime", bridgeRuntime, "Self::Testnet13 => BridgeRuntimeFamily::Tn13", "testnet13 bridge family");
   }
 
   lockSources = exists(files.cargoLock) ? parseLockGitSources(read(files.cargoLock)) : [];
+  if (!exists(files.cargoLock)) addFinding(findings, "error", "cargo-lock-required");
+  for (const item of cargoAliases) {
+    const binding = networks[item.network];
+    if (!binding) continue;
+    if (!lockSources.some((source) => source.name === item.expectedPackage &&
+        normalizeRepo(source.url) === normalizeRepo(binding.repo) &&
+        source.rev === binding.rev)) {
+      addFinding(findings, "error", "cargo-lock-runtime-package-drift", {
+        alias: item.alias, package: item.expectedPackage, expectedRev: binding.rev
+      });
+    }
+  }
+  for (const source of lockSources) {
+    if (/rusty-kaspa/i.test(source.url) &&
+        (normalizeRepo(source.url) !== "https://github.com/kaspanet/rusty-kaspa" ||
+         ![networks.mainnet.rev, networks.testnet13.rev].includes(source.rev))) {
+      addFinding(findings, "error", "cargo-lock-unapproved-runtime-source", { source });
+    }
+  }
 
   if (exists(files.cargoLock)) {
     for (const net of expectedNetworks) {

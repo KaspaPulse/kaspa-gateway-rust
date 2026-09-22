@@ -19,7 +19,54 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
+  ksss-adoption:
+    name: KSSS v1.2.0 adoption
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install pinned Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: "v3.0.6"
+
+      - name: Verify KSSS release and runtime signatures
+        run: |
+          python3 -B .security/ksss/trust_acceptance.py verify \
+            --explicit-time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --require-cryptographic --cosign cosign \
+            --output "${RUNNER_TEMP}/kgw-ksss-trust.json"
+
+      - name: Verify offline adoption and rejection contracts
+        run: python3 -B tools/kgw_ksss_gate.py
+
+      - name: Capture evaluated changes and freshness
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          base="$BASE_SHA"
+          if ! [[ "$base" =~ ^[0-9a-f]{40}$ ]] || [[ "$base" == 0000000000000000000000000000000000000000 ]]; then
+            base="$(git rev-parse HEAD^)"
+          fi
+          python3 -B .security/ksss/consumer.py evaluate --base "$base" \
+            --output "${RUNNER_TEMP}/kgw-ksss-evaluation.json"
+
+      - name: Retain KSSS evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kgw-ksss-adoption-evidence
+          path: ${{ runner.temp }}/kgw-ksss-*.json
+          if-no-files-found: error
+          retention-days: 14
+
   quality:
+    needs: ksss-adoption
     name: quality (rust + npm)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -162,6 +209,9 @@ jobs:
 
       - name: Verify runtime automation claims
         run: node tools/kgw_runtime_automation_claims_gate.cjs
+
+      - name: Verify desktop version contract
+        run: node tools/kgw_desktop_version_contract_gate.cjs
 
       - name: Verify desktop artifact workflow contract
         run: node tools/kgw_desktop_artifacts_workflow_gate.cjs

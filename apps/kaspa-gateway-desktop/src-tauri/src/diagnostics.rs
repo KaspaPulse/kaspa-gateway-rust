@@ -113,6 +113,11 @@ pub fn clear_logs(state: State<'_, LogState>) -> Result<String, String> {
 }
 
 #[tauri::command]
+pub fn kgw_app_version_v1() -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+}
+
+#[tauri::command]
 pub fn diagnostics_report(state: State<'_, LogState>) -> Result<DesktopDiagnosticsReport, String> {
     let runtime = runtime_check_default().map_err(|error| error.to_string())?;
     let logs_count = state
@@ -175,6 +180,11 @@ fn now_ms() -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn app_version_matches_package_metadata() {
+        assert_eq!(kgw_app_version_v1(), env!("CARGO_PKG_VERSION"));
+    }
 
     #[test]
     fn severity_filters_are_normalized() {

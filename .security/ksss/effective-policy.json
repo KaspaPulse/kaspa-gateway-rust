@@ -1,0 +1,111 @@
+{
+  "active_exceptions": [],
+  "controls": {
+    "KSSS-L0-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L0-002": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L1-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L1-002": {
+      "parameters": {},
+      "required": false
+    },
+    "KSSS-L10-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L10-002": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L11-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L12-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L13-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L14-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L14-002": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L2-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L2-002": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L3-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L4-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L5-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L6-001": {
+      "parameters": {},
+      "required": false
+    },
+    "KSSS-L7-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L8-001": {
+      "parameters": {},
+      "required": true
+    },
+    "KSSS-L9-001": {
+      "parameters": {},
+      "required": true
+    }
+  },
+  "effective_policy_digest": "17d32834567e420c4cae93e1992de60a46229ca0cf12b623d3a089c900d0ef63",
+  "policy_resolution_inputs_digest": "3a329b10e53240b533dc7f61c31b0899c3672ad651e190df95300b74ed83061a",
+  "repository": "KaspaPulse/kaspa-gateway-rust",
+  "required_controls": [
+    "KSSS-L0-001",
+    "KSSS-L0-002",
+    "KSSS-L1-001",
+    "KSSS-L10-001",
+    "KSSS-L10-002",
+    "KSSS-L11-001",
+    "KSSS-L12-001",
+    "KSSS-L13-001",
+    "KSSS-L14-001",
+    "KSSS-L14-002",
+    "KSSS-L2-001",
+    "KSSS-L2-002",
+    "KSSS-L3-001",
+    "KSSS-L4-001",
+    "KSSS-L5-001",
+    "KSSS-L7-001",
+    "KSSS-L8-001",
+    "KSSS-L9-001"
+  ],
+  "resolver_version": "1.0.0",
+  "schema_family": "effective-policy",
+  "schema_version": "1.0.0"
+}

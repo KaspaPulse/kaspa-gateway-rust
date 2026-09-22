@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0.0",
+  "invalidated_by": [
+    "CODE_ONLY_CHANGE",
+    "DEPENDENCY_CHANGE",
+    "RUNTIME_CONFIG_CHANGE",
+    "POLICY_CHANGE"
+  ],
+  "last_verified_at": "2026-09-12T07:45:01Z",
+  "superseded_by": null,
+  "schema_family": "known-good-path",
+  "record_id": "KGW-STABLE-NETWORK-BASELINE-3414F9C",
+  "operation_class": "STABLE_NETWORK_BASELINE",
+  "preconditions": {
+    "source_sha": "3414f9ca82f3eb3b728cd241ae568b355d7fd64b",
+    "host": "Server",
+    "isolated_ports": true,
+    "unrelated_service_preserved": true
+  },
+  "procedure": "Use the recorded zero-touch procedure and port profile only when its exact source, configuration, environment and artifact predicates remain valid. Later recovery/in-process/installed-artifact cases are separate.",
+  "verification": {
+    "historical_result": "PASS",
+    "covers": [
+      "mainnet node",
+      "testnet10 node",
+      "mainnet external bridge",
+      "testnet10 external bridge"
+    ],
+    "does_not_cover": [
+      "full synchronization",
+      "in-process bridge",
+      "current installed artifact",
+      "crash recovery and close/relaunch"
+    ],
+    "receipt_sha256": "41fc6eef81c68898eb969aa0a63f9c6ac72cfe2fca9aff220d6faa759d4e7b09"
+  },
+  "applies_when": {
+    "repository": "KaspaPulse/kaspa-gateway-rust",
+    "source_sha": "3414f9ca82f3eb3b728cd241ae568b355d7fd64b",
+    "platform": "windows",
+    "mode": "isolated-baseline"
+  },
+  "evidence_refs": [
+    "repo:docs/handoff-ledger/2026-09-11-runtime-lifecycle-raw-logging-p0.md",
+    "Server:C:/KGW-Local-Validation/artifacts/zero-touch-3414f9c/zero-touch-result.json"
+  ]
+}

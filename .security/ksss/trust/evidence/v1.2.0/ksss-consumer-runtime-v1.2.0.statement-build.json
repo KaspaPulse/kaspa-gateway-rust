@@ -1,0 +1,8 @@
+{
+  "artifact_name": "ksss-consumer-runtime-v1.2.0.tar.gz",
+  "artifact_sha256": "38309d2ab8fa30096d99940f855e88173faa182e60db33f2a96b2d3408507430",
+  "output": "/home/runner/work/_temp/ksss-trusted-release/ksss-consumer-runtime-v1.2.0.intoto.json",
+  "schema": "ksss-consumer-runtime-statement-build-v1",
+  "statement_sha256": "fc7d257762ad8c9e7f909dd1206e43f1819ec1debd8ccc734affb7af5c2af6f7",
+  "status": "PASS"
+}

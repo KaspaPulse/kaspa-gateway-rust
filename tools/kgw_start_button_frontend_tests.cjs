@@ -86,8 +86,8 @@ function staticPlacementTests() {
     "Node Start must wait through the backend readiness window",
   );
   assert.ok(
-    source.includes("const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 70000"),
-    "Node Stop UI timeout must remain above the parent graceful Stop bound",
+    source.includes("const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 0"),
+    "Node Stop must defer terminality to the async backend without a JS wall-clock cutoff",
   );
   assert.ok(source.includes('action === "start" ? "Starting" : "Stopping"'), "Stop click must enter Stopping before backend completion");
   assert.ok(source.includes('evidence.fields.running === "false"'), "Stopped requires terminal backend liveness evidence");
@@ -490,7 +490,7 @@ function createHarness(options = {}) {
   for (const [net, label, active] of [
     ["mainnet", "Mainnet", true],
     ["testnet10", "Testnet 10", false],
-    ["testnet12", "Testnet 12 · Experimental", false],
+    ["testnet13", "Testnet 13 · Experimental", false],
   ]) {
     const button = document.createElement("button");
     button.setAttribute("type", "button");
@@ -614,10 +614,10 @@ async function dynamicClickTests() {
   assert.strictEqual(startCalls(calls)[0].payload.network, "testnet10");
 
   calls.length = 0;
-  const testnet12Start = root.querySelector('[data-node-action="start"][data-net="testnet12"]');
-  testnet12Start.click();
+  const testnet13Start = root.querySelector('[data-node-action="start"][data-net="testnet13"]');
+  testnet13Start.click();
   await flush();
-  assert.strictEqual(startCalls(calls).length, 0, "testnet12 Start must not invoke while opt-in is disabled");
+  assert.strictEqual(startCalls(calls).length, 0, "testnet13 Start must not invoke while opt-in is disabled");
 
   window.__TAURI__.tauri.invoke = async (command, payload) => {
     calls.push({ command, payload });

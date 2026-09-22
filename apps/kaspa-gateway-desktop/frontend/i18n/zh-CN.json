@@ -178,7 +178,7 @@
       "changedPrefix": "KGW Auto Fix Ports changed"
     }
   },
-  "bridge.serviceEventPlanningDescription": "KGW service-event planning for all bridges in parallel. mainnet/testnet10 use official stable v2.0.1; testnet12 is experimental and opt-in.",
+  "bridge.serviceEventPlanningDescription": "KGW service-event planning for all bridges in parallel. mainnet/testnet10 use official stable v2.0.1; testnet13 is experimental and opt-in.",
   "coinbase": "coinbase",
   "common": {
     "loading": "Loading",
@@ -1546,7 +1546,7 @@
       "kaspanode": "Kaspa Node"
     }
   },
-  "node.serviceEventPlanningDescription": "KGW service-event planning for mainnet, testnet10, and testnet12. mainnet/testnet10 use official stable v2.0.1; testnet12 is experimental and opt-in.",
+  "node.serviceEventPlanningDescription": "KGW service-event planning for mainnet, testnet10, and testnet13. mainnet/testnet10 use official stable v2.0.1; testnet13 is experimental and opt-in.",
   "outgoing": "出账",
   "runtime.ready": "就绪",
   "runtime.failed": "Failed",
@@ -1807,13 +1807,6 @@
                 "important": {}
               }
             }
-          }
-        }
-      },
-      "kaspagateway": {
-        "v0": {
-          "1": {
-            "0": "KaspaGateway V0.1.0"
           }
         }
       },
@@ -2081,7 +2074,7 @@
       "api": {
         "and": {
           "amp": {
-            "performance": "API &amp; Performance"
+            "performance": "API & Performance"
           },
           "performance": {
             "tabs": "API and performance tabs"

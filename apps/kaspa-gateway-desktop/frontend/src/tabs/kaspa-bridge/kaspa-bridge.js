@@ -1,3 +1,7 @@
+import { applyStatusTone, renderStatusSummary } from "../../status.js";
+import { BRIDGE_MANAGED, BRIDGE_REQUIRED, BRIDGE_OPTIONAL, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
+import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
+
 // KGW_SETTINGS_OWNER_V19
 (function installKgwSettingsOwnerV19() {
   "use strict";
@@ -257,12 +261,12 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
       text.includes("set as defaults") ||
       text.includes("saved") ||
       text.includes("restored") ||
-      text.includes("تم الحفظ") ||
-      text.includes("تم الضبط") ||
-      text.includes("تمت الاستعادة") ||
-      text.includes("حفظ") ||
-      text.includes("استعادة") ||
-      text.includes("افتراض")
+      text.includes("طھظ… ط§ظ„ط­ظپط¸") ||
+      text.includes("طھظ… ط§ظ„ط¶ط¨ط·") ||
+      text.includes("طھظ…طھ ط§ظ„ط§ط³طھط¹ط§ط¯ط©") ||
+      text.includes("ط­ظپط¸") ||
+      text.includes("ط§ط³طھط¹ط§ط¯ط©") ||
+      text.includes("ط§ظپطھط±ط§ط¶")
     );
   }
 
@@ -284,7 +288,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
       const id = lower(current.id);
       const cls = lower(current.className);
 
-      if (id.includes("testnet12") || cls.includes("testnet12") || id.includes("tn12") || cls.includes("tn12")) return "testnet12";
+      if (id.includes("testnet13") || cls.includes("testnet13") || id.includes("tn13") || cls.includes("tn13")) return "testnet13";
       if (id.includes("testnet10") || cls.includes("testnet10") || id.includes("tn10") || cls.includes("tn10")) return "testnet10";
       if (id.includes("mainnet") || cls.includes("mainnet")) return "mainnet";
 
@@ -303,16 +307,16 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
         ""
     );
 
-    if (raw.includes("restore") || raw.includes("استعادة")) return "restore";
-    if (raw.includes("default") || raw.includes("افتراض") || raw.includes("ضبط")) return "defaults";
+    if (raw.includes("restore") || raw.includes("ط§ط³طھط¹ط§ط¯ط©")) return "restore";
+    if (raw.includes("default") || raw.includes("ط§ظپطھط±ط§ط¶") || raw.includes("ط¶ط¨ط·")) return "defaults";
     return "save";
   }
 
   function feedbackText(action) {
     if (isArabic()) {
-      if (action === "restore") return "تمت الاستعادة";
-      if (action === "defaults") return "تم الضبط";
-      return "تم الحفظ";
+      if (action === "restore") return "طھظ…طھ ط§ظ„ط§ط³طھط¹ط§ط¯ط©";
+      if (action === "defaults") return "طھظ… ط§ظ„ط¶ط¨ط·";
+      return "طھظ… ط§ظ„ط­ظپط¸";
     }
 
     if (action === "restore") return translate("settings.feedback.restored", "Restored");
@@ -354,18 +358,34 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
     return map;
   }
 
-  function setDisabled(root, network, disabled, reason) {
-    buttons(root, network || "all").forEach(function (button) {
-      button.disabled = !!disabled;
-      button.setAttribute("aria-disabled", disabled ? "true" : "false");
-      button.classList.toggle(DISABLED_CLASS, !!disabled);
-      button.dataset.kgwSettingsOwnerV19Disabled = disabled ? "true" : "false";
-    });
-
-    trace(root, disabled ? "v19-disabled" : "v19-enabled", {
-      network: network || "all",
-      reason: reason || "unspecified"
-    });
+  function setDisabled(root, network, _disabled, reason) {
+    const networks = network && network !== "all" ? [network] : kgwBridgeR51Keys();
+    const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === "object"
+      ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
+    const stable = value => JSON.stringify(canonical(value));
+    for (const net of networks) {
+      const current = kgwBridgeR51ReadSettings(net);
+      const saved = kgwBridgeR51Load("saved:" + net) || kgwBridgeR51Load("factory:" + net) || current;
+      const personal = kgwBridgeR51Load("default:" + net);
+      const defaults = personal || kgwBridgeR51Load("factory:" + net) || current;
+      const sameSaved = stable(current) === stable(saved);
+      const sameDefaults = stable(current) === stable(defaults);
+      buttons(root, net).forEach(button => {
+        const action = actionName(button);
+        const disabled = action === "save" ? sameSaved : sameDefaults;
+        button.disabled = disabled;
+        button.setAttribute("aria-disabled", String(disabled));
+        button.classList.toggle(DISABLED_CLASS, disabled);
+        button.dataset.kgwSettingsOwnerV19Disabled = String(disabled);
+        button.title = disabled
+          ? (action === "save" ? "No unsaved changes." : "Current settings already match the selected defaults.")
+          : (action === "restore" ? "Load " + (personal ? "your personal" : "KaspaGateway") + " defaults. Save to retain them."
+            : action === "defaults" ? "Use current settings as your personal defaults for this network." : "Save this network's settings.");
+      });
+      const helper = root.querySelector('[data-settings-defaults-context="' + net + '"]');
+      if (helper) helper.textContent = "Restore uses " + (personal ? "personal defaults" : "KaspaGateway defaults") + ". Settings apply on the next Start.";
+    }
+    trace(root, "settings-actions-reconciled", { network, reason });
   }
 
   function setDirty(root, network, dirty, reason) {
@@ -380,9 +400,9 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
       value === "restored" ||
       value === "set" ||
       value === "set as defaults" ||
-      value === "تم الحفظ" ||
-      value === "تم الضبط" ||
-      value === "تمت الاستعادة"
+      value === "طھظ… ط§ظ„ط­ظپط¸" ||
+      value === "طھظ… ط§ظ„ط¶ط¨ط·" ||
+      value === "طھظ…طھ ط§ظ„ط§ط³طھط¹ط§ط¯ط©"
     );
   }
 
@@ -398,6 +418,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
 
   function restoreLabel(button) {
     button.textContent = button.dataset.kgwSettingsOwnerV19OriginalLabel || fallbackText(actionName(button));
+    button.setAttribute("aria-label", button.textContent);
   }
 
   function restoreLabels(root, network) {
@@ -425,6 +446,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
 
   function startVisualFeedbackAfterOriginalClick(root, network, button, action) {
     window.setTimeout(function () {
+      if (button.dataset.kgwSettingsActionResult !== "success") return;
       clearFeedback(root, network, "new-feedback");
 
       dirtyMap(root).set(network, false);
@@ -580,6 +602,10 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
         return;
       }
 
+      if (action !== "restore" && Object.keys(kgwBridgeValidateForm(network, true)).length) {
+        event.preventDefault(); event.stopImmediatePropagation(); return;
+      }
+      button.dataset.kgwSettingsActionResult = "pending";
       startVisualFeedbackAfterOriginalClick(root, network, button, action);
     }, true);
 
@@ -700,29 +726,14 @@ async function kgwBridgeLoadEnvironmentPathHintsR5() {
   }
 }
 
-async function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsR5(net, options = {}) {
-  const force = options.force === true;
-  const pathHints = await kgwBridgeLoadEnvironmentPathHintsR5();
-  const rustyRoot = kgwBridgeRustyKaspaLocalAppDataRootR5(pathHints, net);
-
-  const values = {
-    appdir: rustyRoot,
-    config: ""
-  };
-
-  Object.entries(values).forEach(([name, value]) => {
+async function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsR5(net, _options = {}) {
+  const context = await kgwBridgeBackendInvokeR5("kgw_settings_context_v1", {network: net});
+  for (const name of ["appdir", "inprocessAppdirMirror"]) {
     const field = byId(id(net, name));
-    if (!field) return;
-    const current = String(field.value || "");
-    if (force || kgwBridgeIsEmptyOrGeneratedPathR5(current)) {
-      field.value = value;
-      field.dispatchEvent(new Event("input", { bubbles: true }));
-      field.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-  });
-
+    if (field) { field.value = context.appDir; field.title = context.appDir; }
+  }
   updateCommand(net);
-  return values;
+  return {appdir: context.appDir};
 }
 
 function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
@@ -734,9 +745,9 @@ function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
  * These are defaults only. Manual valid unused ports remain accepted anywhere.
  */
 const BRIDGE_NETWORKS = [
-  { key: "mainnet", label: "MAINNET", testnet: false, netsuffix: "", kaspadPort: "16110", stratumPort: ":5555", promPort: ":2112", dashboardPort: "3030", enabledByDefault: true, runtime: "Official stable v2.0.1" },
-  { key: "testnet10", label: "TESTNET10", testnet: true, netsuffix: "10", kaspadPort: "16210", stratumPort: ":5655", promPort: ":2212", dashboardPort: "3130", enabledByDefault: true, runtime: "Official stable v2.0.1" },
-  { key: "testnet12", label: "TESTNET12", testnet: true, netsuffix: "12", kaspadPort: "16310", stratumPort: ":5755", promPort: ":2312", dashboardPort: "3230", enabledByDefault: false, experimental: true, runtime: "Experimental TN12 build" }
+  { key: "mainnet", label: "Mainnet", testnet: false, netsuffix: "", kaspadPort: "16110", stratumPort: ":5555", promPort: ":2112", dashboardPort: "3030", enabledByDefault: true, runtime: "Official Rusty Kaspa" },
+  { key: "testnet10", label: "Testnet 10", testnet: true, netsuffix: "10", kaspadPort: "16210", stratumPort: ":5655", promPort: ":2212", dashboardPort: "3130", enabledByDefault: true, runtime: "Official Rusty Kaspa" },
+  { key: "testnet13", label: "Testnet 13", testnet: true, netsuffix: "13", kaspadPort: "16210", stratumPort: ":5755", promPort: ":2312", dashboardPort: "3230", enabledByDefault: false, experimental: true, runtime: "DAGKnight - Experimental" }
 ];
 
 function kgwBridgeNetworkPolicyKey(net) {
@@ -767,7 +778,8 @@ function kgwBridgeNetworkPolicyMessage(net) {
   const profile = kgwBridgeNetworkProfile(net);
   if (!profile) return "";
   if (profile.experimental) {
-    return "Experimental network. Disabled by default and requires explicit opt-in.";
+    return "Experimental network. Disabled by default and requires explicit opt-in."
+      + (net === "testnet13" ? " The bundled Testnet13 node has no DNS seeders. For public sync, set a trusted Testnet13 peer in the node's Connect or Add Peer settings." : "");
   }
   return `${profile.runtime}. External local-node mode is recommended for mining bridges.`;
 }
@@ -775,13 +787,13 @@ function kgwBridgeNetworkPolicyMessage(net) {
 const bridgeInstances = {
   mainnet: [{ id: 1 }],
   testnet10: [{ id: 1 }],
-  testnet12: [{ id: 1 }]
+  testnet13: [{ id: 1 }]
 };
 
 let activeInstance = {
   mainnet: 1,
   testnet10: 1,
-  testnet12: 1
+  testnet13: 1
 };
 
 function byId(id) {
@@ -836,7 +848,13 @@ function kgwBridgeInstanceCommandStateKeyR13B(net, instanceId, name) {
 function kgwBridgeInstanceCommandOptionEnabledR13B(net, instanceId, name) {
   const key = kgwBridgeInstanceCommandStateKeyR13B(net, instanceId, name);
   window.__kgwBridgeInstanceCommandComposerR13B = window.__kgwBridgeInstanceCommandComposerR13B || {};
-  return window.__kgwBridgeInstanceCommandComposerR13B[key] !== false;
+  const stored = window.__kgwBridgeInstanceCommandComposerR13B[key];
+  if (stored !== undefined) return stored !== false;
+  if (["instanceBlockWaitTime", "instanceExtranonceSize", "instanceSharesPerMin"].includes(name)) {
+    const record = (bridgeInstances[net] || []).find(item => String(item.id) === String(instanceId));
+    return Boolean(String(record?.[name] || "").trim());
+  }
+  return true;
 }
 
 function kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, name) {
@@ -860,6 +878,12 @@ function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
   const key = kgwBridgeInstanceCommandStateKeyR13B(net, instanceId, name);
   window.__kgwBridgeInstanceCommandComposerR13B = window.__kgwBridgeInstanceCommandComposerR13B || {};
   window.__kgwBridgeInstanceCommandComposerR13B[key] = Boolean(enabled);
+  kgwBridgeR51Panel(net)?.querySelectorAll("[data-bridge-instance-command-option-toggle-r13b]").forEach(toggle => {
+    if (String(toggle.dataset.instanceId) !== String(instanceId) || toggle.dataset.bridgeInstanceCommandOptionToggleR13b !== name) return;
+    toggle.checked = Boolean(enabled);
+    toggle.title = enabled ? "Included in command" : "Excluded from command";
+    toggle.setAttribute("aria-label", toggle.title);
+  });
   updateCommand(net);
   bridgeSyncInstancePreviewRowsR8B(net);
 
@@ -910,6 +934,9 @@ function kgwBridgeCommandInlineStateR7(net) {
 
 function kgwBridgeCommandOptionEnabledR7(net, name) {
   const state = kgwBridgeCommandInlineStateR7(net);
+  if (BRIDGE_REQUIRED.has(name)) return true;
+  if (BRIDGE_MANAGED[name]) return false;
+  if (BRIDGE_OPTIONAL.has(name)) return state[String(name)] === true;
   return state[String(name)] !== false;
 }
 
@@ -918,6 +945,7 @@ function kgwBridgeCommandShouldIncludeR7(net, name) {
 }
 
 function kgwBridgeCommandInlineToggleR7(net, name) {
+  if (BRIDGE_MANAGED[name] || BRIDGE_REQUIRED.has(name)) return "";
   const enabled = kgwBridgeCommandOptionEnabledR7(net, name);
   const label = enabled ? "Included" : "Excluded";
   return `<input type="checkbox" class="kgw-command-option-checkbox-r9" data-bridge-command-option-toggle-r7="${esc(String(name))}" data-net="${esc(String(net))}" ${enabled ? "checked" : ""} aria-label="${enabled ? "Included in command" : "Excluded from command"}" title="${enabled ? "Included in command" : "Excluded from command"}">`; // KGW_BRIDGE_COMMAND_COMPOSER_CHECKBOX_ONLY_R9
@@ -1100,11 +1128,11 @@ function renderPorts(net) {
 function renderCpuMiner(net) {
   return `
     <div class="bridge-v7-grid">
-      ${cardCheck(net.key, "internalCpuMiner", "--internal-cpu-miner", false)}
-      ${cardInput(net.key, "internalCpuMinerAddress", "--internal-cpu-miner-address", "", "kaspa:...", "span2")}
-      ${cardInput(net.key, "internalCpuMinerThreads", "--internal-cpu-miner-threads", "", "threads")}
-      ${cardInput(net.key, "internalCpuMinerThrottleMs", "--internal-cpu-miner-throttle-ms", "", "optional")}
-      ${cardInput(net.key, "internalCpuMinerTemplatePollMs", "--internal-cpu-miner-template-poll-ms", "", "optional", "span2")}
+      ${cardCheck(net.key, "internalCpuMiner", "Enable CPU Mining", false)}
+      ${cardInput(net.key, "internalCpuMinerAddress", "Mining / Reward Address", "", "kaspatest:...", "span2")}
+      ${cardInput(net.key, "internalCpuMinerThreads", "CPU Threads", "1", "threads")}
+      ${cardInput(net.key, "internalCpuMinerThrottleMs", "Throttle (milliseconds)", "", "optional")}
+      ${cardInput(net.key, "internalCpuMinerTemplatePollMs", "Template Poll Interval (milliseconds)", "", "optional", "span2")}
     </div>`;
 }
 
@@ -1324,6 +1352,12 @@ function kgwBridgeBoolValueV1(value, fallback) {
 function kgwBridgeEffectiveSettingsV1(net, structuredInstances) {
   if (bridgeHasConfig(net)) return null;
   const profile = bridgeProfile(net);
+  if (net !== "mainnet") {
+    return { version: 1, global: {
+      kaspaRpcEndpoint: kgwBridgePortListenV1(bridgeNodeMode(net) === "inprocess" ? v(net, "inprocessRpcListen") : v(net, "kaspadAddress"), "127.0.0.1:" + profile.kaspadPort),
+      logToFile: false, healthCheckListen: null, webDashboardListen: null, approximateGeoLookup: false,
+    }, instances: [] };
+  }
   const records = Array.isArray(structuredInstances?.instances) ? structuredInstances.instances : [];
   const instances = records.map((raw, index) => {
     const instance = bridgeNormalizeInstanceRecord(raw, index + 1);
@@ -1331,9 +1365,9 @@ function kgwBridgeEffectiveSettingsV1(net, structuredInstances) {
     const included = (fieldName) => kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, fieldName);
     return {
       instanceId: String(instance.id || (index + 1)),
-      stratumListen: kgwBridgePortListenV1(included("instancePort") ? instance.instancePort : "", index === 0 ? v(net, "stratumPort") || profile?.stratumPort : ""),
-      minShareDiff: kgwBridgeParseUnsignedV1("Instance minimum share difficulty", included("instanceDiff") ? instance.instanceDiff : "", kgwBridgeParseUnsignedV1("Minimum share difficulty", v(net, "minShareDiff"), 8192, 4294967295), 4294967295),
-      prometheusListen: kgwBridgePortListenV1(included("instanceProm") ? instance.instanceProm : "", index === 0 ? v(net, "promPort") || profile?.promPort : ""),
+      stratumListen: kgwBridgePortListenV1(included("instancePort") ? instance.instancePort : "", index === 0 ? kgwBridgeEffectiveValue(net, "stratumPort") || profile?.stratumPort : ""),
+      minShareDiff: kgwBridgeParseUnsignedV1("Instance minimum share difficulty", included("instanceDiff") ? instance.instanceDiff : "", kgwBridgeParseUnsignedV1("Minimum share difficulty", kgwBridgeEffectiveValue(net, "minShareDiff"), 8192, 4294967295), 4294967295),
+      prometheusListen: kgwBridgePortListenV1(included("instanceProm") ? instance.instanceProm : "", index === 0 ? kgwBridgeEffectiveValue(net, "promPort") : ""),
       logToFile: included("instanceLogToFile") ? kgwBridgeBoolValueV1(instance.instanceLogToFile, null) : null,
       blockWaitTimeMs: included("instanceBlockWaitTime") && instance.instanceBlockWaitTime ? kgwBridgeParseDurationMsV1("Instance block wait time", instance.instanceBlockWaitTime, null) : null,
       extranonceSize: included("instanceExtranonceSize") && instance.instanceExtranonceSize ? kgwBridgeParseUnsignedV1("Instance extranonce size", instance.instanceExtranonceSize, null, 8) : null,
@@ -1347,19 +1381,19 @@ function kgwBridgeEffectiveSettingsV1(net, structuredInstances) {
   return {
     version: 1,
     global: {
-      kaspaRpcEndpoint: kgwBridgePortListenV1(v(net, "kaspadAddress"), `127.0.0.1:${profile?.kaspadPort || "16110"}`),
-      blockWaitTimeMs: kgwBridgeParseDurationMsV1("Block wait time", v(net, "blockWaitTime"), 1000),
-      printStats: kgwBridgeBoolValueV1(v(net, "printStats"), true),
-      logToFile: kgwBridgeBoolValueV1(v(net, "logToFile"), false),
-      healthCheckListen: kgwBridgePortListenV1(v(net, "healthCheckPort")),
-      webDashboardListen: kgwBridgePortListenV1(v(net, "webDashboardPort")),
-      varDiff: kgwBridgeBoolValueV1(v(net, "varDiff"), true),
-      sharesPerMin: kgwBridgeParseUnsignedV1("Shares per minute", v(net, "sharesPerMin"), 20, 4294967295),
-      varDiffStats: kgwBridgeBoolValueV1(v(net, "varDiffStats"), false),
-      extranonceSize: kgwBridgeParseUnsignedV1("Extranonce size", v(net, "extranonceSize"), 0, 8),
-      pow2Clamp: kgwBridgeBoolValueV1(v(net, "pow2Clamp"), false),
-      coinbaseTagSuffix: kgwBridgeOptionalTextV1(v(net, "coinbaseTagSuffix")),
-      approximateGeoLookup: net === "testnet12" && kgwBridgeBoolValueV1(v(net, "approxGeoLookup"), false)
+      kaspaRpcEndpoint: kgwBridgePortListenV1(bridgeNodeMode(net) === "inprocess" ? v(net, "inprocessRpcListen") : kgwBridgeEffectiveValue(net, "kaspadAddress"), `127.0.0.1:${profile?.kaspadPort || "16110"}`),
+      blockWaitTimeMs: kgwBridgeParseDurationMsV1("Block wait time", kgwBridgeEffectiveValue(net, "blockWaitTime"), 1000),
+      printStats: kgwBridgeBoolValueV1(kgwBridgeEffectiveValue(net, "printStats"), true),
+      logToFile: kgwBridgeBoolValueV1(kgwBridgeEffectiveValue(net, "logToFile"), false),
+      healthCheckListen: kgwBridgePortListenV1(kgwBridgeEffectiveValue(net, "healthCheckPort")),
+      webDashboardListen: kgwBridgePortListenV1(kgwBridgeEffectiveValue(net, "webDashboardPort")),
+      varDiff: kgwBridgeBoolValueV1(kgwBridgeEffectiveValue(net, "varDiff"), true),
+      sharesPerMin: kgwBridgeParseUnsignedV1("Shares per minute", kgwBridgeEffectiveValue(net, "sharesPerMin"), 20, 4294967295),
+      varDiffStats: kgwBridgeBoolValueV1(kgwBridgeEffectiveValue(net, "varDiffStats"), false),
+      extranonceSize: kgwBridgeParseUnsignedV1("Extranonce size", kgwBridgeEffectiveValue(net, "extranonceSize"), 0, 8),
+      pow2Clamp: kgwBridgeBoolValueV1(kgwBridgeEffectiveValue(net, "pow2Clamp"), false),
+      coinbaseTagSuffix: kgwBridgeOptionalTextV1(kgwBridgeEffectiveValue(net, "coinbaseTagSuffix")),
+      approximateGeoLookup: net === "testnet13" && kgwBridgeBoolValueV1(kgwBridgeEffectiveValue(net, "approxGeoLookup"), false)
     },
     instances
   };
@@ -1877,8 +1911,13 @@ function bridgeCreateInstanceRecordR9(net) {
 }
 
 function bridgeInstancePreviewTextR8B(net, instance) {
-  const value = bridgeBuildUpstreamInstanceArg(net, instance);
-  return value ? "--instance=" + value : "--instance=";
+  if (!kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, "instance")) return "Excluded from runtime.";
+  const raw = byId(id(net, "commandPreview"))?.dataset.effectiveSettings;
+  if (!raw) return "Waiting for validated effective settings.";
+  try {
+    const resolved = JSON.parse(raw).effectiveBridgeSettings?.instances?.find(item => String(item.instanceId) === String(instance.id));
+    return resolved ? JSON.stringify(resolved) : "No effective instance in this configuration.";
+  } catch { return "Waiting for validated effective settings."; }
 }
 
 function bridgeSyncInstancePreviewRowsR8B(net) {
@@ -2010,6 +2049,7 @@ function kgwBridgeAutofixButtonInitialLabelR111G(root = document) {
 }
 
 function bridgeAssertNoPortConflictsR5(net) {
+  if (net !== "mainnet") return;
   // KGW_BRIDGE_SCOPED_START_CONFLICT_R110H
   // Start validation must be scoped to the requested network/active instance.
   // Stale or duplicated rows from other networks must not block Start.
@@ -2093,7 +2133,7 @@ function bridgeAssertNoPortConflictsR5(net) {
  * - Blocks Start before runtime if any configured port conflict touches the active network.
  * - Updates Start button disabled/title state live.
  * - Save remains allowed with warning.
- * - Covers mainnet, testnet10, testnet12 through BRIDGE_NETWORKS.
+ * - Covers mainnet, testnet10, testnet13 through BRIDGE_NETWORKS.
  */
 function bridgePortConflictCompactSummaryR33(validation) {
   const conflicts = validation && Array.isArray(validation.conflicts) ? validation.conflicts : [];
@@ -2323,29 +2363,23 @@ function bridgeInstancePromPlaceholderR49(net) {
 
 function renderInstances(net) {
   net = bridgeInstanceNetworkKeyR15(net, net);
+  if (net !== "mainnet") return ""; // Testnet mining is embedded CPU-only, including restored settings.
   bridgeEnsureInstanceState(net);
 
   return `
     <div class="bridge-v7-instance-tabs bridge-v7-instance-tabs-r7b">
       ${bridgeInstances[net].map((instance, index) => `
-        <button
-          type="button"
-          class="bridge-v7-instance-pill-r7b bridge-v7-instance-pill-r11 ${String(activeInstance[net]) === String(instance.id) || (!activeInstance[net] && index === 0) ? "active" : ""}"
-          data-bridge-action="select-instance"
-          data-network="${net}"
-          data-instance-id="${instance.id}">
-          <span class="bridge-v7-instance-title-r7b">Instance ${index + 1}</span>
-          <span
-            role="button"
-            tabindex="-1"
-            class="bridge-v7-instance-trash-inline-r7b bridge-v7-instance-trash-r9 bridge-v7-instance-trash-r11"
-            data-bridge-action="remove-instance"
-            data-network="${net}"
-            data-instance-id="${instance.id}"
-            title="Delete Instance ${index + 1}"
-            aria-label="Delete Instance ${index + 1}"
-            data-disabled="${bridgeInstances[net].length <= 1 ? "true" : "false"}">🗑</span>
-        </button>`).join("")}
+        <span class="kgw-instance-tab">
+          <button type="button"
+            class="bridge-v7-instance-pill-r7b bridge-v7-instance-pill-r11 ${String(activeInstance[net]) === String(instance.id) || (!activeInstance[net] && index === 0) ? "active" : ""}"
+            data-bridge-action="select-instance" data-network="${net}" data-instance-id="${instance.id}">
+            Instance ${index + 1}
+          </button>
+          <button type="button" class="bridge-v7-instance-trash-r11"
+            data-bridge-action="remove-instance" data-network="${net}" data-instance-id="${instance.id}"
+            title="Delete Instance ${index + 1}" aria-label="Delete Instance ${index + 1}"
+            ${bridgeInstances[net].length <= 1 ? "disabled" : ""}>Delete</button>
+        </span>`).join("")}
       <button
         type="button"
         class="bridge-v7-instance-add bridge-v7-instance-add-r7b bridge-v7-instance-add-r11"
@@ -2363,15 +2397,15 @@ function renderInstances(net) {
           <label class="bridge-v7-card bridge-v7-instance-preview-card-r8b">
             <span class="kgw-command-option-title-row-r8e">
               ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instance")}
-              <span class="kgw-command-option-title-text-r8e">--instance preview</span>
+              <span class="kgw-command-option-title-text-r8e">Effective instance</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <input
               readonly
               data-bridge-instance-preview="true"
               data-network="${net}"
               data-instance-id="${instance.id}"
-              value="${bridgeInstancePreviewTextR8B(net, instance)}"
-              title="${bridgeInstancePreviewTextR8B(net, instance)}" />
+              value="${esc(bridgeInstancePreviewTextR8B(net, instance))}"
+              title="${esc(bridgeInstancePreviewTextR8B(net, instance))}" />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -2379,7 +2413,7 @@ function renderInstances(net) {
               ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instancePort")}
               <span class="kgw-command-option-title-text-r8e">port</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input id="${id(net, `instancePort-${instance.id}`)}" data-bridge-instance-field="instancePort" value="${instance.instancePort || ""}" placeholder="${esc(bridgeInstancePortPlaceholderR49(net))}" />
+            <input id="${id(net, `instancePort-${instance.id}`)}" data-bridge-instance-field="instancePort" value="${esc(instance.instancePort || "")}" placeholder="${esc(bridgeInstancePortPlaceholderR49(net))}" />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -2387,7 +2421,7 @@ function renderInstances(net) {
               ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceDiff")}
               <span class="kgw-command-option-title-text-r8e">diff</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input id="${id(net, `instanceDiff-${instance.id}`)}" data-bridge-instance-field="instanceDiff" value="${instance.instanceDiff || "2048"}" placeholder="2048" ${kgwBridgeDifficultyInputAttrsR16C("instanceDiff")} />
+            <input id="${id(net, `instanceDiff-${instance.id}`)}" data-bridge-instance-field="instanceDiff" value="${esc(instance.instanceDiff || "2048")}" placeholder="2048" ${kgwBridgeDifficultyInputAttrsR16C("instanceDiff")} />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -2395,7 +2429,7 @@ function renderInstances(net) {
               ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceProm")}
               <span class="kgw-command-option-title-text-r8e">prom</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input id="${id(net, `instanceProm-${instance.id}`)}" data-bridge-instance-field="instanceProm" value="${instance.instanceProm || ""}" placeholder="${esc(bridgeInstancePromPlaceholderR49(net))}" />
+            <input id="${id(net, `instanceProm-${instance.id}`)}" data-bridge-instance-field="instanceProm" value="${esc(instance.instanceProm || "")}" placeholder="${esc(bridgeInstancePromPlaceholderR49(net))}" />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -2404,7 +2438,7 @@ function renderInstances(net) {
               <span class="kgw-command-option-title-text-r8e">log</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${id(net, `instanceLogToFile-${instance.id}`)}" data-bridge-instance-field="instanceLogToFile">
-              <option value="not set" ${instance.instanceLogToFile === "not set" ? "selected" : ""}>not set</option>
+              <option value="not set" ${instance.instanceLogToFile === "not set" ? "selected" : ""}>Inherit global</option>
               <option value="false" ${instance.instanceLogToFile === "false" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instanceLogToFile === "true" ? "selected" : ""}>true</option>
             </select>
@@ -2415,7 +2449,7 @@ function renderInstances(net) {
               ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceBlockWaitTime")}
               <span class="kgw-command-option-title-text-r8e">wait</span>
             </span>
-            <input id="${id(net, `instanceBlockWaitTime-${instance.id}`)}" data-bridge-instance-field="instanceBlockWaitTime" value="${instance.instanceBlockWaitTime || ""}" placeholder="optional ms" />
+            <input id="${id(net, `instanceBlockWaitTime-${instance.id}`)}" data-bridge-instance-field="instanceBlockWaitTime" value="${esc(instance.instanceBlockWaitTime || "")}" placeholder="Enable to override global milliseconds" />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -2423,7 +2457,7 @@ function renderInstances(net) {
               ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceExtranonceSize")}
               <span class="kgw-command-option-title-text-r8e">extranonce</span>
             </span>
-            <input id="${id(net, `instanceExtranonceSize-${instance.id}`)}" data-bridge-instance-field="instanceExtranonceSize" value="${instance.instanceExtranonceSize || ""}" placeholder="optional" />
+            <input id="${id(net, `instanceExtranonceSize-${instance.id}`)}" data-bridge-instance-field="instanceExtranonceSize" value="${esc(instance.instanceExtranonceSize || "")}" placeholder="optional" />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -2432,7 +2466,7 @@ function renderInstances(net) {
               <span class="kgw-command-option-title-text-r8e">var_diff</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${id(net, `instanceVarDiff-${instance.id}`)}" data-bridge-instance-field="instanceVarDiff">
-              <option value="not set" ${instance.instanceVarDiff === "not set" ? "selected" : ""}>not set</option>
+              <option value="not set" ${instance.instanceVarDiff === "not set" ? "selected" : ""}>Inherit global</option>
               <option value="false" ${instance.instanceVarDiff === "false" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instanceVarDiff === "true" ? "selected" : ""}>true</option>
             </select>
@@ -2444,7 +2478,7 @@ function renderInstances(net) {
               <span class="kgw-command-option-title-text-r8e">var_stats</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${id(net, `instanceVarDiffStats-${instance.id}`)}" data-bridge-instance-field="instanceVarDiffStats">
-              <option value="not set" ${instance.instanceVarDiffStats === "not set" ? "selected" : ""}>not set</option>
+              <option value="not set" ${instance.instanceVarDiffStats === "not set" ? "selected" : ""}>Inherit global</option>
               <option value="false" ${instance.instanceVarDiffStats === "false" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instanceVarDiffStats === "true" ? "selected" : ""}>true</option>
             </select>
@@ -2455,7 +2489,7 @@ function renderInstances(net) {
               ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceSharesPerMin")}
               <span class="kgw-command-option-title-text-r8e">shares/min</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input id="${id(net, `instanceSharesPerMin-${instance.id}`)}" data-bridge-instance-field="instanceSharesPerMin" value="${instance.instanceSharesPerMin || ""}" placeholder="optional" ${kgwBridgeDifficultyInputAttrsR16C("instanceSharesPerMin")} />
+            <input id="${id(net, `instanceSharesPerMin-${instance.id}`)}" data-bridge-instance-field="instanceSharesPerMin" value="${esc(instance.instanceSharesPerMin || "")}" placeholder="optional" ${kgwBridgeDifficultyInputAttrsR16C("instanceSharesPerMin")} />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -2464,7 +2498,7 @@ function renderInstances(net) {
               <span class="kgw-command-option-title-text-r8e">pow2</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${id(net, `instancePow2Clamp-${instance.id}`)}" data-bridge-instance-field="instancePow2Clamp">
-              <option value="not set" ${instance.instancePow2Clamp === "not set" ? "selected" : ""}>not set</option>
+              <option value="not set" ${instance.instancePow2Clamp === "not set" ? "selected" : ""}>Inherit global</option>
               <option value="false" ${instance.instancePow2Clamp === "false" ? "selected" : ""}>false</option>
               <option value="true" ${instance.instancePow2Clamp === "true" ? "selected" : ""}>true</option>
             </select>
@@ -2495,7 +2529,7 @@ function renderInprocessNodeSettings(net) {
     ? `--testnet${net.netsuffix ? " --netsuffix=" + esc(net.netsuffix) : ""}`
     : "mainnet";
 
-  return `
+  const markup = `
     <div class="bridge-v12d-inprocess-node-settings bridge-v12d-inprocess-inactive" data-net="${net.key}" data-bridge-inprocess-node-settings="${net.key}" data-kgw-owner="KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D">
       <div class="bridge-v12d-node-tabs">${tabButtons}</div>
 
@@ -2601,6 +2635,7 @@ function renderInprocessNodeSettings(net) {
 
       <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="perf" hidden>
         <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          ${cardInput(net.key, "inprocessAsyncThreads", "--async-threads", "16")}
           <label class="bridge-v7-card check">
             <input id="${id(net.key, "inprocessPerfMetrics")}" type="checkbox" checked>
             <span data-i18n="bridge.inprocessNodeSettings.perfMetrics">${esc(kgwI18nTextR41("bridge.inprocessNodeSettings.perfMetrics", "--perf-metrics"))}</span>
@@ -2669,68 +2704,54 @@ function renderInprocessNodeSettings(net) {
         </div>
       </section>
     </div>`;
+  const template = document.createElement("template");
+  template.innerHTML = markup;
+  const danger = template.content.querySelector('[data-bridge-inprocess-node-panel="danger"] .bridge-v7-grid');
+  const unsafe = template.content.querySelector('[id$="-inprocessUnsafeRpc"]')?.closest(".bridge-v7-card");
+  if (danger && unsafe) danger.prepend(unsafe);
+  if (danger) danger.insertAdjacentHTML("beforebegin", '<p class="kgw-danger-warning">Unsafe RPC exposes RPC beyond loopback. Unsynced mining bypasses synchronization. Enable only when you understand the risk.</p>');
+  return template.innerHTML;
 }
-/* KGW_BRIDGE_FLAT_TWO_TABS_ULTRA_COMPACT_OWNER_R101N
- * Existing Bridge settings owner refinement.
- * Bridge top-level settings tabs are General / Advanced only.
- * General uses flat ultra-compact fields; Advanced keeps complex owners safely.
- */
-function kgwBridgeFlatSectionFieldsR101N(html) {
-  return String(html || "")
-    .replace(/^\s*<div\s+class=["']bridge-v7-grid["']>\s*/i, "")
-    .replace(/\s*<\/div>\s*$/i, "");
-}
-
-function kgwBridgeFlatGroupBodyR101N(sections) {
-  return sections.map((body) => kgwBridgeFlatSectionFieldsR101N(body)).join("\n");
-}
-
 function renderSections(net) {
-  /* KGW_BRIDGE_GROUPED_SETTINGS_TABS_OWNER_R101G */
-  /* KGW_BRIDGE_GROUPED_SETTINGS_TABS_COMPACT_FIX_R101H */
-  /* KGW_BRIDGE_FLAT_TWO_TABS_ULTRA_COMPACT_OWNER_R101N */
-  /* KGW_BRIDGE_FOUR_TABS_ULTRA_COMPACT_FIX_R101O */
-  /* KGW_BRIDGE_MERGE_ADVANCED_INTO_GENERAL_R101P
-   * Advanced fields are merged into General because there is enough space.
-   * Bridge internal tabs are General / In-Processor / Instances.
-   */
+  const template = document.createElement("template");
+  template.innerHTML = [renderRuntime(net), renderLogging(net), renderDifficulty(net), renderPorts(net),
+    ...(net.key === "mainnet" ? [] : [renderCpuMiner(net)])].join("");
+  const cards = new Map();
+  template.content.querySelectorAll(".bridge-v7-card").forEach(card => {
+    const field = card.querySelector("[id]");
+    if (!field) return;
+    const name = field.id.slice(("bridge-" + net.key + "-").length);
+    const testnetAllowed = ["nodeMode", "kaspadAddress", "appdir", "testnet"].includes(name) || name.startsWith("internalCpuMiner");
+    if (net.key === "mainnet" || testnetAllowed) cards.set(name, card.outerHTML);
+  });
+  const take = names => {
+    const fields = names.split(" ").map(name => { const card = cards.get(name) || ""; cards.delete(name); return card; }).join("");
+    return '<div class="kgw-settings-grid">' + fields + "</div>";
+  };
+  const inprocess = document.createElement("template");
+  inprocess.innerHTML = renderInprocessNodeSettings(net);
+  const danger = inprocess.content.querySelector('[data-bridge-inprocess-node-panel="danger"]');
+  const dangerBody = danger.innerHTML;
+  danger.remove();
+  inprocess.content.querySelector('[data-bridge-inprocess-node-tab="danger"]').remove();
   const groups = [
-    ["general", "General"],
-    ["inprocessor", "In-Processor"],
-    ["instances", "Instances"]
+    ["general", "connection", "Connection", take("nodeMode kaspadAddress appdir testnet")],
+    ...(net.key === "mainnet" ? [["general", "ports", "Ports", take("stratumPort promPort healthCheckPort webDashboardPort")]] : []),
+    ["general", "mining", net.key === "mainnet" ? "Mining" : "CPU Mining",
+      take(net.key === "mainnet" ? "minShareDiff blockWaitTime extranonceSize coinbaseTagSuffix" :
+        "internalCpuMiner internalCpuMinerAddress internalCpuMinerThreads internalCpuMinerThrottleMs internalCpuMinerTemplatePollMs")],
+    ["general", "monitoring", "Monitoring", net.key === "mainnet" ? take("printStats") :
+      '<p class="kgw-settings-info">The embedded rkstratum_cpu_miner uses this network&#39;s node. Live Bridge Monitor shows runtime state and raw logs.</p>'],
+    ...(net.key === "mainnet" ? [["advanced", "instances", "Instances",
+      '<div id="' + id(net.key, "instances") + '">' + renderInstances(net.key) + "</div>"]] : []),
+    ["advanced", "inprocessor", "In-Processor", inprocess.innerHTML],
+    ...(net.key === "mainnet" ? [["advanced", "difficulty", "Difficulty", take("varDiff sharesPerMin varDiffStats pow2Clamp")]] : []),
+    ["advanced", "diagnostics", "Logging / Diagnostics", net.key === "mainnet" ? take("config logToFile approxGeoLookup") :
+      '<p class="kgw-settings-info">Raw stdout/stderr logs are available in Live Bridge Monitor. Managed logging and network ownership remain unchanged.</p>'],
+    ["advanced", "dangerous", "Dangerous", dangerBody]
   ];
-
-  const tabs = groups.map(([key, label], index) =>
-    `<button type="button" class="bridge-v7-section-tab bridge-v7-section-tab--grouped bridge-v7-section-tab--flat${index === 0 ? " active" : ""}" data-net="${net.key}" data-bridge-section-tab="${key}">${label}</button>`
-  ).join("");
-
-  const generalFields = kgwBridgeFlatGroupBodyR101N([
-    renderRuntime(net),
-    renderLogging(net),
-    renderDifficulty(net),
-    renderPorts(net),
-    ...(net.key === "mainnet" ? [] : [renderCpuMiner(net)])
-  ]);
-
-  const panels = `
-    <section class="bridge-v7-section bridge-v7-section-group bridge-v7-section-group--flat active" data-net="${net.key}" data-bridge-section-panel="general">
-      ${kgwBridgeDifficultyDatalistR16C()}
-      <div class="bridge-v7-flat-eight-grid" data-bridge-flat-grid="general">${generalFields}</div>
-    </section>
-    <section class="bridge-v7-section bridge-v7-section-group bridge-v7-section-group--flat bridge-v7-section-group--standalone" data-net="${net.key}" data-bridge-section-panel="inprocessor" hidden>
-      <div class="bridge-v7-flat-complex-block bridge-v7-flat-inprocess-block" data-bridge-flat-complex="inprocessor">
-        ${renderInprocessNodeSettings(net)}
-      </div>
-    </section>
-    <section id="${id(net.key, "instances")}" class="bridge-v7-section bridge-v7-section-group bridge-v7-section-group--flat bridge-v7-section-group--standalone" data-net="${net.key}" data-bridge-section-panel="instances" hidden>
-      <div class="bridge-v7-flat-complex-block bridge-v7-flat-instances-block" data-bridge-flat-complex="instances">
-        ${renderInstances(net.key)}
-      </div>
-    </section>`;
-
-  return `
-    <div class="bridge-v7-section-tabs bridge-v7-section-tabs--grouped bridge-v7-section-tabs--flat">${tabs}</div>
-    <div class="bridge-v7-sections bridge-v7-sections--grouped bridge-v7-sections--flat bridge-v7-sections--four-tabs">${panels}</div>`;
+  if (cards.size) throw new Error("Ungrouped Bridge settings: " + [...cards.keys()].join(", "));
+  return kgwBridgeDifficultyDatalistR16C() + renderSettingsTabs("bridge", net.key, groups);
 }
 
 /* KGW_BRIDGE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U
@@ -2775,14 +2796,14 @@ function renderNetworkPanel(net, index) {
     <div class="bridge-v7-network-panel${index === 0 ? " active" : ""}" data-bridge-network-panel="${net.key}" data-testid="kgw-bridge-panel-${net.key}"${index === 0 ? "" : " hidden"}>
       <section class="kgw-network-policy${net.experimental ? " is-experimental" : ""}" data-net="${net.key}" data-testid="kgw-bridge-policy-${net.key}">
         <div>
-          <strong>${net.label}</strong>
+          <strong>${net.label}</strong>${net.experimental ? '<span class="kgw-experimental-badge">Experimental - opt-in required</span>' : ""}
           <span>${esc(kgwBridgeNetworkPolicyMessage(net.key))}</span>
         </div>
         <div class="kgw-network-policy-controls">
           <span id="${id(net.key, "policyStatus")}" class="kgw-network-policy-status">Stopped</span>
           <label>
             <input type="checkbox" data-bridge-network-enabled="${net.key}" data-testid="kgw-bridge-policy-enabled-${net.key}" data-net="${net.key}"${kgwBridgeNetworkEnabled(net.key) ? " checked" : ""}>
-            Enabled
+            Profile enabled
           </label>
         </div>
       </section>
@@ -2792,10 +2813,19 @@ function renderNetworkPanel(net, index) {
       </div>
 
       <div class="bridge-v7-inner-panel${settingsActive ? " active" : ""}" data-net="${net.key}" data-bridge-inner-panel="settings"${settingsActive ? "" : " hidden"}>
-        <section class="bridge-v7-command">
-          <div class="bridge-v7-command-title">Command Preview</div>
-          <textarea id="${id(net.key, "commandPreview")}" readonly spellcheck="false" wrap="soft"></textarea>
-          <button type="button" class="bridge-v7-copy" data-bridge-action="copy-command" data-net="${net.key}" title="Copy command">⧉</button>
+        <div class="kgw-settings-scroll">
+        <section class="bridge-v7-command kgw-effective-preview">
+          <div class="kgw-preview-row">
+            <strong>Effective bridge settings</strong>
+            <button type="button" data-settings-preview-toggle aria-expanded="false" aria-controls="${id(net.key, "previewBody")}">Expand</button>
+            <button type="button" class="bridge-v7-copy" data-bridge-action="copy-command" data-net="${net.key}" title="Copy effective settings">Copy settings</button>
+            <button type="button" data-bridge-action="copy-path" data-net="${net.key}">Copy data directory</button>
+          </div>
+          <p id="${id(net.key, "previewStatus")}" class="kgw-preview-status" role="status" aria-live="polite"></p>
+          <div class="kgw-preview-body" id="${id(net.key, "previewBody")}" hidden>
+            <p class="kgw-preview-help">The embedded node and bridge libraries consume these settings inside KaspaGateway self-workers.</p>
+            <textarea id="${id(net.key, "commandPreview")}" aria-label="Effective bridge settings preview" readonly spellcheck="false" wrap="soft"></textarea>
+          </div>
         </section>
 
         <section class="bridge-v7-toolbar">
@@ -2812,21 +2842,25 @@ function renderNetworkPanel(net, index) {
         </section>
 
         ${renderSections(net)}
+        </div>
 
         <div class="settings-bottom-actions bridge-settings-bottom-actions">
         <button type="button" data-bridge-action="save-settings" data-net="${net.key}">Save Settings</button>
         <button type="button" data-bridge-action="restore-defaults" data-net="${net.key}">Restore Defaults</button>
         <button type="button" data-bridge-action="set-defaults" data-net="${net.key}">Set as Defaults</button>
+        <p class="kgw-settings-help" data-settings-defaults-context="${net.key}">Restore uses KaspaGateway defaults. Settings apply on the next Start.</p>
         </div>
 
       </div>
 
       <div class="bridge-v7-inner-panel${logActive ? " active" : ""}" data-net="${net.key}" data-bridge-inner-panel="log" data-testid="kgw-bridge-live-panel-${net.key}"${logActive ? "" : " hidden"}>
+        <p id="${id(net.key, "monitorState")}" class="kgw-monitor-state" role="status">Bridge: Stopped. Node connection: not checked.</p>
         <div class="bridge-v7-log-toolbar">
+          <button type="button" data-bridge-action="monitor-next" data-net="${net.key}">Configure Node</button>
           <button type="button" data-bridge-action="copy-log" data-testid="kgw-bridge-copy-log-${net.key}" data-net="${net.key}">Copy Log</button>
           <button type="button" data-bridge-action="clear-log" data-testid="kgw-bridge-clear-log-${net.key}" data-net="${net.key}">Clear Log</button>
         </div>
-        <div id="${id(net.key, "logEmpty")}" class="bridge-v7-log-empty" data-bridge-log-empty="${net.key}">No child stdout/stderr received yet.</div>
+        <div id="${id(net.key, "logEmpty")}" class="bridge-v7-log-empty" data-bridge-log-empty="${net.key}">Bridge is stopped. Choose a node connection in Settings, then start the bridge.</div>
         <pre id="${id(net.key, "logOutput")}" class="bridge-v7-log" data-testid="kgw-bridge-log-output-${net.key}"></pre>
       </div>
 </div>`;
@@ -2866,6 +2900,7 @@ function bridgeRefreshInstances(net) {
     }
 
     container.innerHTML = renderInstances(net);
+    decorateSettingsFields(container);
     bridgeInstallInstanceContainerOwnerR11(container, net);
   }
 
@@ -2943,7 +2978,7 @@ function bridgeInstallAllVisibleInstanceContainerOwnersR11(root) {
 }
 
 /* KGW_BRIDGE_INSTANCES_TEMP_TRACE_REMOVED
- * Temporary scoped runtime trace for Bridge Instances across mainnet/testnet10/testnet12.
+ * Temporary scoped runtime trace for Bridge Instances across mainnet/testnet10/testnet13.
  * No global click listener. No forbidden legacy phase names.
  */
 
@@ -2951,7 +2986,7 @@ function bridgeInstallAllVisibleInstanceContainerOwnersR11(root) {
 
 /* KGW_BRIDGE_INSTANCES_NETWORK_KEY_FIX_R15
  * Canonical network-key resolver for Bridge Instances.
- * Normalizes Bridge Instances network keys for mainnet, testnet10, and testnet12.
+ * Normalizes Bridge Instances network keys for mainnet, testnet10, and testnet13.
  */
 function bridgeInstanceNetworkKeyR15(value, fallback) {
   const known = new Set(BRIDGE_NETWORKS.map((item) => item.key));
@@ -3004,7 +3039,11 @@ function removeInstance(net, instanceId) {
   kgwBridgeSmallOwnerTraceR44D(net, "remove-instance", "r44d-owner-begin", { instanceId: String(instanceId || "") });
   bridgeEnsureInstanceState(net);
   if (bridgeInstances[net].length <= 1) return;
+  const removedIndex = bridgeInstances[net].findIndex(instance => String(instance.id) === String(instanceId));
   bridgeInstances[net] = bridgeInstances[net].filter((instance) => String(instance.id) !== String(instanceId));
+  if (!bridgeInstances[net].some(instance => String(instance.id) === String(activeInstance[net]))) {
+    activeInstance[net] = bridgeInstances[net][Math.max(0, removedIndex - 1)].id;
+  }
   bridgeRefreshInstances(net);
   kgwBridgeSmallOwnerTraceR44D(net, "remove-instance", "r44d-owner-complete", { instanceId: String(instanceId || "") });
 }
@@ -3031,6 +3070,7 @@ function renderAllNetworks(root) {
   const host = root.querySelector("#bridgeNetworkPanels");
   if (!host) return;
   host.innerHTML = BRIDGE_NETWORKS.map(renderNetworkPanel).join("");
+  installSettingsLayout(root);
 
 
   setTimeout(kgwInstallBridgeLogAutoScrollControlsR27, 0);
@@ -3060,7 +3100,7 @@ const KGW_BRIDGE_PORT_PROFILES_R35B = Object.freeze({
     prom: Object.freeze({ min: 2200, max: 2299, preferred: 2212, instanceStart: 2213 }),
     dashboard: Object.freeze({ min: 3100, max: 3199, preferred: 3130 })
   }),
-  testnet12: Object.freeze({
+  testnet13: Object.freeze({
     stratum: Object.freeze({ min: 5700, max: 5799, preferred: 5755, instanceStart: 5756 }),
     prom: Object.freeze({ min: 2300, max: 2399, preferred: 2312, instanceStart: 2313 }),
     dashboard: Object.freeze({ min: 3200, max: 3299, preferred: 3230 })
@@ -3073,7 +3113,7 @@ const KGW_BRIDGE_PORT_PROFILES_R35B = Object.freeze({
  * bridge-level network settings outside the instance editor:
  * - stratum instances follow --stratum-port + 1 onward.
  * - prom instances follow --prom-port + 1 onward.
- * - each network remains isolated: mainnet, testnet10, testnet12.
+ * - each network remains isolated: mainnet, testnet10, testnet13.
  * - valid clearly manual out-of-range instance ports are preserved.
  */
 function bridgeStaticPortProfileR91(net) {
@@ -3817,24 +3857,7 @@ function bridgeInstallPortAutofixButtonR37(root) {
     button.className = "kgw-bridge-port-autofix-next-to-stop-r44";
     button.textContent = kgwBridgeAutoFixTextR54D3("button");
     button.title = kgwBridgeAutoFixTextR54D3("title");
-    button.style.display = "inline-flex";
-    button.style.alignItems = "center";
-    button.style.justifyContent = "center";
-    button.style.width = "150px";
-    button.style.minWidth = "150px";
-    button.style.maxWidth = "170px";
-    button.style.height = "29px";
-    button.style.marginLeft = "8px";
-    button.style.padding = "0 10px";
-    button.style.whiteSpace = "nowrap";
-    button.style.overflow = "hidden";
-    button.style.textOverflow = "ellipsis";
-    button.style.border = "1px solid rgba(148, 163, 184, 0.7)";
-    button.style.borderRadius = "0";
-    button.style.background = "rgba(71, 85, 105, 0.95)";
-    button.style.color = "#fff";
-    button.style.fontSize = "12px";
-    button.style.cursor = "pointer";
+
 
     const stopButton =
       byId(id(net, "stop")) ||
@@ -3870,7 +3893,7 @@ function bridgeNodeMode(net) {
 }
 
 function bridgeHasConfig(net) {
-  return Boolean(v(net, "config"));
+  return kgwBridgeCommandOptionEnabledR7(net, "config") && Boolean(v(net, "config"));
 }
 
 function bridgeControl(net, name) {
@@ -4018,7 +4041,7 @@ function bridgeSyncModeControls(net) {
 
   bridgeSyncInprocessNodeSettingsV12D(net);
 
-  if (configMode) return;
+  if (configMode) { kgwBridgeSyncDependencies(net); return; }
 
   const testnetControl = bridgeControl(net, "testnet");
   if (testnetControl) {
@@ -4040,6 +4063,7 @@ function bridgeSyncModeControls(net) {
   ]) {
     bridgeSetDisabled(net, name, !internalMinerEnabled, "Enable --internal-cpu-miner first.");
   }
+  kgwBridgeSyncDependencies(net);
 }
 
 function bridgeSyncAllModeControls() {
@@ -4303,7 +4327,7 @@ function buildCommandLines(net) {
   const lines = ["stratum-bridge"];
   const kaspadArgs = [];
   const nodeMode = bridgeNodeMode(net);
-  const configValue = v(net, "config");
+  const configValue = bridgeHasConfig(net) ? v(net, "config") : "";
 
   if (configValue) {
     addRawValue(lines, "--config", configValue);
@@ -4401,7 +4425,7 @@ function buildCommandLines(net) {
 }
 
 function kgwBridgeEffectiveNodeInteger(net, name, fallback) {
-  if (!kgwBridgeCommandShouldIncludeR7(net, name)) return fallback;
+  if (!bridgeFieldEnabled(name, kgwBridgeForm(net), kgwBridgeCommandInlineStateR7(net))) return fallback;
   const raw = v(net, name);
   if (!raw) return fallback;
   const value = Number(raw);
@@ -4420,6 +4444,8 @@ function kgwBridgeEffectiveNodeNumber(net, name, fallback) {
 
 function kgwBridgeEffectiveInprocessNodeSettings(net) {
   if (bridgeNodeMode(net) !== "inprocess") return null;
+  const errors = kgwBridgeValidateForm(net);
+  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
   const profile = bridgeProfile(net);
   if (v(net, "inprocessConfigfile")) {
     throw new Error("In-process --configfile is unsupported because the desktop owns network and database isolation.");
@@ -4436,7 +4462,7 @@ function kgwBridgeEffectiveInprocessNodeSettings(net) {
 
   return {
     logLevel: kgwBridgeCommandShouldIncludeR7(net, "inprocessLogLevel") ? v(net, "inprocessLogLevel") || "info" : "info",
-    asyncThreads: 16,
+    asyncThreads: kgwBridgeEffectiveNodeInteger(net, "inprocessAsyncThreads", 16),
     ramScale: kgwBridgeEffectiveNodeNumber(net, "inprocessRamScale", 1),
     yes: c(net, "inprocessYes"),
     noLogFiles: true,
@@ -4509,60 +4535,63 @@ async function kgwLoadBridgeOwnerCommandPreview(net, fallbackText) {
 }
 
 
+const KGW_BRIDGE_PREVIEW_REQUESTS = new Map();
+function kgwBridgePreviewMessage(net, message, error = false) {
+  const status = byId(id(net, "previewStatus"));
+  if (status) {
+    status.textContent = message;
+    status.classList.toggle("kgw-field-error", error);
+    applyStatusTone(status, error ? "error" : message.startsWith("Validating") ? "validating" : "verified");
+  }
+}
+async function kgwBridgePreparePreview(net, payload) {
+  const invoke = getTauriInvoke();
+  if (!invoke) throw new Error("The desktop runtime is unavailable.");
+  return invokeWithTimeout(invoke, "kgw_runtime_settings_preview_v1", payload, 10000);
+}
 function updateCommand(net) {
   const preview = byId(id(net, "commandPreview"));
   if (!preview) return "";
-
+  const previous = KGW_BRIDGE_PREVIEW_REQUESTS.get(net);
+  if (previous?.timer) window.clearTimeout(previous.timer);
+  const request = {sequence: (previous?.sequence || 0) + 1, timer: null};
+  KGW_BRIDGE_PREVIEW_REQUESTS.set(net, request);
+  preview.value = "";
+  delete preview.dataset.effectiveSettings;
   try {
     bridgeSyncModeControls(net);
     bridgeReassignInstancePortsFromExternalRangeR91(net, "update-command");
     bridgeSyncInstancePreviewRowsR8B(net);
-
-    const lines = buildCommandLines(net);
-    const duplicatePorts = bridgeDuplicatePorts(lines);
-    const portValidation = bridgeValidatePortConflictsR5(net);
-    const allDuplicatePorts = [...new Set([...duplicatePorts, ...portValidation.conflicts.map((item) => item.port)])];
-    const first = lines.shift() || "stratum-bridge";
-    const text = lines.length ? `${first} ${lines.join(" ")}` : first;
-
-    preview.value = text;
-    preview.textContent = text;
-    preview.dataset.kgwBridgeCommandOwner = "readme-instance-command-owner";
-    preview.dataset.kgwBridgeNetwork = net;
-
-    const profileWarning = bridgePortProfileWarningMessageR35B(net);
-
-    if (allDuplicatePorts.length || !portValidation.ok) {
-      preview.dataset.kgwBridgeCommandWarning = portValidation.message || `duplicate ports: ${allDuplicatePorts.join(",")}`;
-      preview.classList.add("bridge-v7-command-warning");
-    } else if (profileWarning) {
-      preview.dataset.kgwBridgeCommandWarning = profileWarning;
-      preview.classList.add("bridge-v7-command-warning");
-      bridgeTracePortProfileR35B(net, "r35b-out-of-profile-warning", {
-        warning: profileWarning.slice(0, 1200),
-        policy: "warning-only; start is not blocked unless a real conflict exists"
-      });
-    } else {
-      delete preview.dataset.kgwBridgeCommandWarning;
-      preview.classList.remove("bridge-v7-command-warning");
-    }
-
-    bridgeApplyPortConflictStartStateR33(net, portValidation, "update-command");
-
-    bridgeSyncInstancePreviewRowsR8B(net);
-    return text;
+    const errors = kgwBridgeValidateForm(net);
+    if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
+    const payload = buildApplyPayload(net, "kgw_kgw_apply_node_settings_v1");
+    kgwBridgePreviewMessage(net, "Validating effective settings...");
+    request.timer = window.setTimeout(async () => {
+      try {
+        const result = await kgwBridgePreparePreview(net, payload);
+        if (KGW_BRIDGE_PREVIEW_REQUESTS.get(net) !== request) return;
+        preview.value = JSON.stringify(result, null, 2);
+        preview.dataset.effectiveSettings = JSON.stringify(result);
+        bridgeSyncInstancePreviewRowsR8B(net);
+        preview.dataset.kgwBridgeCommandOwner = "typed-effective-settings-preview";
+        preview.dataset.kgwBridgeNetwork = net;
+        preview.classList.remove("bridge-v7-command-warning");
+        for (const name of ["appdir", "inprocessAppdirMirror"]) {
+          const field = byId(id(net, name)); if (field) { field.value = result.appDir; field.title = result.appDir; }
+        }
+        kgwBridgePreviewMessage(net, "Validated by the same settings resolver used by Start. Embedded libraries; no external executable.");
+      } catch (error) {
+        if (KGW_BRIDGE_PREVIEW_REQUESTS.get(net) !== request) return;
+        preview.value = "";
+        kgwBridgePreviewMessage(net, normalizeRuntimeError(error), true);
+      }
+    }, 180);
+    return payload.bridgeCommandPreview;
   } catch (error) {
-    const message = "stratum-bridge # command preview error: " + normalizeRuntimeError(error);
-    preview.value = message;
-    preview.textContent = message;
-    preview.dataset.kgwBridgeCommandOwner = "readme-instance-command-owner-error";
-    preview.dataset.kgwBridgeNetwork = net;
-    preview.dataset.kgwBridgeCommandWarning = normalizeRuntimeError(error);
-    preview.classList.add("bridge-v7-command-warning");
-    return message;
+    kgwBridgePreviewMessage(net, normalizeRuntimeError(error), true);
+    return "";
   }
 }
-
 
 function updateAllCommands() {
   bridgeSyncAllModeControls();
@@ -4607,7 +4636,7 @@ function kgwBridgeExplicitTraceR27D(net, action, phase, details) {
 const KGW_BRIDGE_LAST_NETWORK_KEY_R101W2 = "kgw.bridge.lastNetwork";
 function kgwBridgeNormalizeNetworkR101W2(value) {
   const normalized = String(value || "").trim();
-  return normalized === "mainnet" || normalized === "testnet10" || normalized === "testnet12" ? normalized : "";
+  return normalized === "mainnet" || normalized === "testnet10" || normalized === "testnet13" ? normalized : "";
 }
 function kgwBridgeReadLastNetworkR101W2() {
   try { return kgwBridgeNormalizeNetworkR101W2(localStorage.getItem(KGW_BRIDGE_LAST_NETWORK_KEY_R101W2)); } catch (_) { return ""; }
@@ -4738,6 +4767,7 @@ function installDelegatedTabs(root) {
 
       panel.querySelectorAll("[data-bridge-section-tab]").forEach((item) => {
         item.classList.toggle("active", item === sectionTab);
+        item.setAttribute("aria-selected", String(item === sectionTab));
       });
 
       panel.querySelectorAll("[data-bridge-section-panel]").forEach((item) => {
@@ -4782,7 +4812,7 @@ function installDelegatedTabs(root) {
 // The Bridge child contract is 101 seconds and the same-EXE parent is bounded at
 // 110 seconds. Keep the UI request strictly above both terminal-result boundaries.
 const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 120000;
-const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS = 70000;
+const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS = 0;
 const KGW_BRIDGE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_bridge_runtime_flags_v1";
 const KGW_BRIDGE_START_TRACE_COMMAND_V1 = "kgw_start_trace_frontend_v1";
 const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();
@@ -4931,11 +4961,24 @@ function appendReadableRuntimeResult(_net, _title, _result) {
   // Runtime action summaries are UI/status data and must not be written into the raw bridge log pane.
 }
 
+function kgwBridgeStartOptions(net) {
+  const enabled = net !== "mainnet" && c(net, "internalCpuMiner");
+  return {
+    configFile: bridgeHasConfig(net) ? v(net, "config") : null,
+    internalCpuMiner: enabled ? {
+      enabled: true, address: v(net, "internalCpuMinerAddress"),
+      threads: kgwBridgeParseUnsignedV1("CPU threads", v(net, "internalCpuMinerThreads"), 1, 256),
+      throttleMs: kgwBridgeParseUnsignedV1("CPU throttle", v(net, "internalCpuMinerThrottleMs"), null, 60000),
+      templatePollMs: kgwBridgeParseUnsignedV1("Template poll interval", v(net, "internalCpuMinerTemplatePollMs"), null, 60000),
+    } : { enabled: false },
+  };
+}
+
 function buildApplyPayload(net, command) {
   if (command === "kgw_kgw_apply_node_settings_v1") {
     bridgeAssertNoPortConflictsR5(net);
 
-    const preview = updateCommand(net) || byId(id(net, "commandPreview"))?.value || "";
+    const preview = buildCommandLines(net).join(" ");
     const nodeMode = bridgeNodeMode(net) === "inprocess" ? "inprocess" : "external";
 
     // KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F
@@ -4965,7 +5008,8 @@ function buildApplyPayload(net, command) {
       bridgeStructuredInstances: JSON.stringify(structuredInstances || {}),
       effectiveNodeSettings: kgwBridgeEffectiveInprocessNodeSettings(net),
       effectiveBridgeSettings: kgwBridgeEffectiveSettingsV1(net, structuredInstances),
-      experimentalNetworkOptIn: net === "testnet12" && kgwBridgeNetworkEnabled(net),
+      bridgeOptions: kgwBridgeStartOptions(net),
+      experimentalNetworkOptIn: net === "testnet13" && kgwBridgeNetworkEnabled(net),
     };
   }
 
@@ -4981,6 +5025,10 @@ function buildApplyPayload(net, command) {
   return { network: net };
 }
 function invokeWithTimeout(invoke, command, args, timeoutMs) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return Promise.resolve().then(() => invoke(command, args));
+  }
+
   let timer = null;
 
   const timeout = new Promise((_, reject) => {
@@ -5006,7 +5054,13 @@ async function invokeBridgeIntegratedRuntime(command, net) {
   const timeoutMs = command === "kgw_kgw_disable_network_v1"
     ? KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS
     : KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS;
-  return await invokeWithTimeout(invoke, command, buildApplyPayload(net, command), timeoutMs);
+  const payload = buildApplyPayload(net, command);
+  if (command === "kgw_kgw_apply_node_settings_v1") {
+    const errors = kgwBridgeValidateForm(net, true);
+    if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
+    await kgwBridgePreparePreview(net, payload);
+  }
+  return await invokeWithTimeout(invoke, command, payload, timeoutMs);
 }
 
 
@@ -5026,18 +5080,21 @@ function kgwBridgeV7RuntimeRunningFromText(text) {
   );
 }
 
-function kgwBridgeSetRuntimeErrorV1(net, errorText = "") {
+function kgwBridgeSetRuntimeErrorV1(net, errorText = "", errorSource = "") {
   const errorNode = byId(id(net, "runtimeError"));
   if (!errorNode) return;
   const text = String(errorText || "").trim();
   errorNode.textContent = text;
   errorNode.hidden = !text;
+  errorNode.dataset.runtimeErrorSource = errorSource;
+  applyStatusTone(errorNode, "error");
 }
 
-function kgwBridgeSetRuntimeActivityV1(net, message = "") {
+function kgwBridgeSetRuntimeActivityV1(net, message = "", state = "") {
   const statusNode = byId(id(net, "runtimeStatus"));
   if (!statusNode) return;
   statusNode.textContent = String(message || "").trim();
+  applyStatusTone(statusNode, state || byId(id(net, "policyStatus"))?.dataset.state);
 }
 
 function kgwBridgeMarkRestartRequiredV1(net) {
@@ -5218,6 +5275,9 @@ async function runBridgeIntegratedAction(action, net) {
   }
 
   if (action === "start") {
+    if (Object.keys(kgwBridgeValidateForm(net, true)).length) return true;
+    if ((c(net, "internalCpuMiner") || c(net, "inprocessUnsafeRpc") || c(net, "inprocessEnableUnsyncedMining")) &&
+        !await confirmUserAction("Start " + net + " with the selected advanced risk settings?\n\nUnsafe RPC exposes RPC beyond loopback. Unsynced mining bypasses synchronization. CPU mining uses additional CPU resources.")) return true;
     kgwBridgeRuntimeOwnerTraceR64D("r64d-preflight-begin", {
       command
     });
@@ -5369,16 +5429,16 @@ async function runBridgeIntegratedAction(action, net) {
           previewDeclaredInprocess: kgwBridgePreviewDeclaresInprocessR65F(preview),
           bridgeStartWasInprocess
         });
-        kgwBridgeSetRuntimeActivityV1(net, "Bridge READY attestation confirmed.");
+        kgwBridgeSetRuntimeActivityV1(net, "Bridge READY attestation confirmed.", "ready");
         kgwBridgeR51KickRawLogLiveR134E(net, "bridge-start-confirmed");
       } else if (blocked) {
         kgwBridgeR51SetRuntimeButtons(net, false);
         kgwBridgeSetRuntimeErrorV1(net, raw);
-        kgwBridgeSetRuntimeActivityV1(net, "Bridge start failed.");
+        kgwBridgeSetRuntimeActivityV1(net, "Bridge start failed.", "failed");
       } else {
         kgwBridgeR51SetRuntimeButtons(net, false);
         kgwBridgeSetRuntimeErrorV1(net, "Backend Start did not provide READY attestation: " + raw);
-        kgwBridgeSetRuntimeActivityV1(net, "Bridge start was not confirmed by READY attestation.");
+        kgwBridgeSetRuntimeActivityV1(net, "Bridge start was not confirmed by READY attestation.", "warning");
       }
     }
 
@@ -5537,9 +5597,9 @@ function kgwBridgeR51ReadInstanceCommandOptionsR38C(net) {
     const root = document.getElementById("kaspa-bridge");
     if (!root) return state;
 
-    for (const item of root.querySelectorAll('[data-bridge-instance-command-option-toggle-r13-b][data-net="' + String(net || "") + '"]')) {
+    for (const item of root.querySelectorAll('[data-bridge-instance-command-option-toggle-r13b][data-net="' + String(net || "") + '"]')) {
       const instanceId = String(item.dataset.instanceId || "");
-      const name = String(item.dataset.bridgeInstanceCommandOptionToggleR13B || "");
+      const name = String(item.dataset.bridgeInstanceCommandOptionToggleR13b || "");
       if (!instanceId || !name) continue;
       state[instanceId] = state[instanceId] || {};
       state[instanceId][name] = Boolean(item.checked);
@@ -5554,7 +5614,7 @@ function kgwBridgeR51ApplyCommandOptionsR38C(net, values) {
     if (commandOptions && typeof commandOptions === "object") {
       const state = kgwBridgeCommandInlineStateR7(net);
       for (const [name, enabled] of Object.entries(commandOptions)) {
-        state[String(name)] = Boolean(enabled);
+        state[String(name)] = Boolean(enabled) && (!BRIDGE_OPTIONAL.has(name) || Boolean(String(values[id(net, name)]?.value || "").trim()));
       }
       kgwBridgeRefreshInlineCommandTogglesR7(net);
     }
@@ -5564,7 +5624,9 @@ function kgwBridgeR51ApplyCommandOptionsR38C(net, values) {
       for (const [instanceId, options] of Object.entries(instanceOptions)) {
         if (!options || typeof options !== "object") continue;
         for (const [name, enabled] of Object.entries(options)) {
-          kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, Boolean(enabled));
+          const optional = ["instanceBlockWaitTime", "instanceExtranonceSize", "instanceSharesPerMin"].includes(name);
+          const record = (bridgeInstances[net] || []).find(item => String(item.id) === String(instanceId));
+          kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, Boolean(enabled) && (!optional || Boolean(String(record?.[name] || "").trim())));
         }
       }
       bridgeSyncInstancePreviewRowsR8B(net);
@@ -5649,7 +5711,7 @@ function kgwBridgeR51Fields(net) {
     if (!field.id || !field.id.startsWith(`bridge-${net}-`)) return false;
     if (field.id.endsWith("-commandPreview")) return false;
     if (field.id.endsWith("-logOutput")) return false;
-    if (field.readOnly) return false;
+    if (field.closest(".bridge-v7-log-toolbar")) return false;
     return true;
   });
 }
@@ -5662,7 +5724,7 @@ function kgwBridgeSettingsActionIsR6(action) {
 
 function kgwBridgeNetFromSettingsEventR6(event, root, fallbackNet = "") {
   const target = event?.target;
-  const carrier = target?.closest?.("[data-net], [data-network], [data-bridge-settings-panel], [id*='mainnet' i], [id*='testnet10' i], [id*='testnet12' i]");
+  const carrier = target?.closest?.("[data-net], [data-network], [data-bridge-settings-panel], [id*='mainnet' i], [id*='testnet10' i], [id*='testnet13' i]");
 
   const raw = [
     target?.dataset?.net,
@@ -5675,7 +5737,7 @@ function kgwBridgeNetFromSettingsEventR6(event, root, fallbackNet = "") {
     fallbackNet,
   ].filter(Boolean).join(" ").toLowerCase();
 
-  if (raw.includes("testnet12") || raw.includes("tn12")) return "testnet12";
+  if (raw.includes("testnet13") || raw.includes("tn13")) return "testnet13";
   if (raw.includes("testnet10") || raw.includes("tn10")) return "testnet10";
   if (raw.includes("mainnet")) return "mainnet";
 
@@ -5706,7 +5768,7 @@ function kgwBridgeR51ReadSettings(net) {
   values[KGW_BRIDGE_R51_INSTANCE_COMMAND_OPTIONS_KEY_R38C] = kgwBridgeR51ReadInstanceCommandOptionsR38C(net);
 
   for (const field of kgwBridgeR51Fields(net)) {
-    if (!field.id) continue;
+    if (!field.id || BRIDGE_MANAGED[field.id.slice(("bridge-" + net + "-").length)]) continue;
 
     values[field.id] = field.type === "checkbox"
       ? { type: "checkbox", checked: Boolean(field.checked) }
@@ -5728,12 +5790,12 @@ function kgwBridgeR51ReadSettings(net) {
  *
  * Runtime screenshots showed stale network-level bridge ports:
  * - testnet10 was replayed as :5556 / :2113
- * - testnet12 was replayed as :5557 / :2114
+ * - testnet13 was replayed as :5557 / :2114
  *
  * Correct bridge-level network ranges already exist in KGW_BRIDGE_PORT_PROFILES_R35B:
  * - mainnet   :5555 / :2112
  * - testnet10 :5655 / :2212
- * - testnet12 :5755 / :2312
+ * - testnet13 :5755 / :2312
  *
  * This patch normalizes only known stale sequential saved/default values while
  * preserving explicit custom user ports.
@@ -5782,7 +5844,7 @@ function kgwBridgeR95BKnownStaleSequentialPort(net, fieldName) {
       stratumPort: "5556",
       promPort: "2113"
     },
-    testnet12: {
+    testnet13: {
       stratumPort: "5557",
       promPort: "2114"
     }
@@ -5853,6 +5915,8 @@ function kgwBridgeR51WriteSettings(net, values) {
   for (const field of kgwBridgeR51Fields(net)) {
     if (!field.id) continue;
 
+    const name = field.id.slice(("bridge-" + net + "-").length);
+    if (BRIDGE_MANAGED[name]) continue;
     const item = values[field.id];
     if (!item) continue;
 
@@ -5914,6 +5978,7 @@ function kgwBridgeR51LoadSavedSettings() {
 
 
 function kgwBridgeR51SaveSettings(net) {
+  kgwBridgeRequireValidSettings(net);
   kgwBridgeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-begin", {
     patch: "R29B",
     owner: "bridge-r51-settings-owner"
@@ -5943,6 +6008,7 @@ function kgwBridgeR51SaveSettings(net) {
 }
 
 function kgwBridgeR51SetAsDefaults(net) {
+  kgwBridgeRequireValidSettings(net);
   kgwBridgeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-begin", {
     patch: "R29B",
     owner: "bridge-r51-settings-owner"
@@ -6011,7 +6077,7 @@ function kgwBridgeRuntimeErrorFromStatus(text) {
   return error && error.toLowerCase() !== "none" ? error : "";
 }
 
-function kgwBridgeR51SetRuntimeButtons(net, running, transition = "") {
+function kgwBridgeR51SetRuntimeButtons(net, running, transition = "", runtimeError = "", statusText = "") {
   const panel = kgwBridgeR51Panel(net);
   if (!panel) return;
 
@@ -6020,15 +6086,35 @@ function kgwBridgeR51SetRuntimeButtons(net, running, transition = "") {
   const stop = panel.querySelector(`[data-bridge-action="stop"][data-net="${net}"]`);
   const policyStatus = byId(id(net, "policyStatus"));
 
+  const presentation = runtimePresentation({role: "Bridge", enabled: networkEnabled, running, transition, error: runtimeError});
   if (policyStatus) {
-    const state = !networkEnabled ? "Disabled" : transition === "starting" ? "Starting" : transition === "stopping" ? "Stopping" : running ? "Running" : "Stopped";
-    policyStatus.textContent = state;
-    policyStatus.dataset.state = state.toLowerCase();
+    policyStatus.textContent = presentation.processLabel;
+    policyStatus.dataset.state = presentation.process.toLowerCase();
+    applyStatusTone(policyStatus, presentation.process);
+  }
+  const summary = byId(id(net, "monitorState"));
+  renderStatusSummary(summary, presentation.processLabel + " | Profile: " + presentation.profile +
+    " | Startup readiness: " + (running ? "Verified" : transition ? "Pending" : "Not ready") +
+    " | " + runtimeObservationSummary((parseRuntimeKeyValueResponse(statusText).fields || {}), running, net !== "mainnet"));
+  const empty = byId(id(net, "logEmpty"));
+  if (empty) empty.textContent = runtimeError ? "Bridge failed. Review the error in Settings and the logs below."
+    : transition ? "Bridge is " + presentation.process.toLowerCase() + ". Waiting for runtime output."
+    : running ? "Bridge is running. Waiting for log output."
+    : bridgeNodeMode(net) === "inprocess" ? "Bridge is stopped. Start Bridge to start its owned node and Stratum service."
+    : "Bridge is stopped. Start Bridge checks the configured node connection before starting the service.";
+  const settingsInvalid = Boolean(panel.querySelector('[aria-invalid="true"]') ||
+    byId(id(net, "previewStatus"))?.classList.contains("kgw-field-error"));
+  const next = panel.querySelector('[data-bridge-action="monitor-next"]');
+  if (next) {
+    next.hidden = running || Boolean(transition);
+    next.textContent = !networkEnabled ? "Enable Profile in Settings" : settingsInvalid ? "Review Settings" : "Start Bridge";
+    next.dataset.nextAction = networkEnabled && !settingsInvalid ? "start" : "settings";
   }
 
   if (start) {
-    const startBlocked = Boolean(running || transition === "starting" || transition === "stopping" || !networkEnabled);
+    const startBlocked = Boolean(running || transition === "starting" || transition === "stopping" || !networkEnabled || settingsInvalid);
     start.disabled = startBlocked;
+    start.setAttribute("aria-disabled", String(startBlocked));
     start.style.opacity = startBlocked ? "0.45" : "";
     start.style.cursor = startBlocked ? "not-allowed" : "";
     start.title = !networkEnabled
@@ -6041,6 +6127,7 @@ function kgwBridgeR51SetRuntimeButtons(net, running, transition = "") {
   if (stop) {
     const stopEnabled = Boolean(running && transition !== "starting" && transition !== "stopping");
     stop.disabled = !stopEnabled;
+    stop.setAttribute("aria-disabled", String(!stopEnabled));
     stop.style.opacity = stopEnabled ? "" : "0.45";
     stop.style.cursor = stopEnabled ? "" : "not-allowed";
     stop.title = transition === "starting"
@@ -6051,13 +6138,16 @@ function kgwBridgeR51SetRuntimeButtons(net, running, transition = "") {
   }
 }
 
-function kgwBridgeR51SetRuntimeUnknown(net, message = "Runtime status is temporarily unavailable. Reconciling with the backend.") {
+function kgwBridgeR51SetRuntimeUnknown(net, message = "Runtime status is temporarily unavailable. Reconciling with the backend.", errorSource = "") {
   const panel = kgwBridgeR51Panel(net);
   if (!panel) return;
   const policyStatus = byId(id(net, "policyStatus"));
   if (policyStatus) {
     policyStatus.textContent = "Reconciling";
     policyStatus.dataset.state = "reconciling";
+    applyStatusTone(policyStatus, "reconciling");
+    const summary = byId(id(net, "monitorState"));
+    renderStatusSummary(summary, "Bridge: Reconciling | RPC/synchronization/mining: unknown");
   }
   const start = panel.querySelector(`[data-bridge-action="start"][data-net="${net}"]`);
   const stop = panel.querySelector(`[data-bridge-action="stop"][data-net="${net}"]`);
@@ -6070,7 +6160,10 @@ function kgwBridgeR51SetRuntimeUnknown(net, message = "Runtime status is tempora
     button.title = message;
   }
   kgwBridgeSetRuntimeActivityV1(net, "Reconciling runtime state.");
-  kgwBridgeSetRuntimeErrorV1(net, message);
+  const currentError = byId(id(net, "runtimeError"));
+  const preserveActionError = errorSource === "status-refresh" && currentError?.textContent?.trim() &&
+    currentError.dataset.runtimeErrorSource !== "status-refresh";
+  if (!preserveActionError) kgwBridgeSetRuntimeErrorV1(net, message, errorSource);
 }
 
 function kgwBridgeR51Delta(previous, current) {
@@ -6127,21 +6220,31 @@ async function kgwBridgeR51RefreshOne(net, reason = "live") {
           const status = stringifyRuntimeResult(await invokeBridgeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
           const running = kgwBridgeR51IsRunning(status);
           const runtimeError = kgwBridgeRuntimeErrorFromStatus(status);
-          kgwBridgeR51SetRuntimeButtons(net, running);
+          const statusFields = parseRuntimeKeyValueResponse(status).fields || {};
+          const errorNode = byId(id(net, "runtimeError"));
+          // Clear only recovered polling feedback; preserve Start/Stop and runtime errors.
+          if (!runtimeError && statusFields.role === "bridge" && statusFields.network === String(net) &&
+              ["true", "false"].includes(statusFields.running) &&
+              errorNode?.dataset.runtimeErrorSource === "status-refresh") {
+            kgwBridgeSetRuntimeErrorV1(net, "");
+            kgwBridgeSetRuntimeActivityV1(net, running ? "Bridge is running." : "Bridge is stopped.", running ? "running" : "stopped");
+          }
+          kgwBridgeR51SetRuntimeButtons(net, running, "", runtimeError, status);
           if (!running && runtimeError) {
             kgwBridgeSetRuntimeErrorV1(net, runtimeError);
-            kgwBridgeSetRuntimeActivityV1(net, "Bridge runtime failed after readiness.");
+            kgwBridgeSetRuntimeActivityV1(net, "Bridge runtime failed after readiness.", "failed");
             const policyStatus = byId(id(net, "policyStatus"));
             if (policyStatus) {
               policyStatus.textContent = kgwBridgeTranslateRuntime("runtime.failed", "Failed");
               policyStatus.dataset.state = "failed";
+              applyStatusTone(policyStatus, "failed");
             }
           }
 
           if (KGW_BRIDGE_R51_LAST_STATUS[net] !== status) {
             KGW_BRIDGE_R51_LAST_STATUS[net] = status;
             const authority = byId(id(net, "settingsAuthority"));
-            if (authority) {
+            if (authority && (!running || authority.dataset.restartRequired !== "true")) {
               authority.textContent = running
                 ? "Effective settings are active for this runtime"
                 : "Effective settings apply on next Start";
@@ -6150,7 +6253,7 @@ async function kgwBridgeR51RefreshOne(net, reason = "live") {
           }
           kgwBridgeR51MaybeActivityNotice(net, status);
         } catch (error) {
-          kgwBridgeR51SetRuntimeUnknown(net, "Status refresh failed: " + normalizeRuntimeError(error));
+          kgwBridgeR51SetRuntimeUnknown(net, "Status refresh failed: " + normalizeRuntimeError(error), "status-refresh");
         } finally {
           if (KGW_BRIDGE_R51_STATUS_IN_FLIGHT.get(net) === statusTask) {
             KGW_BRIDGE_R51_STATUS_IN_FLIGHT.delete(net);
@@ -6204,43 +6307,6 @@ function kgwBridgeR51StartLiveRefresh() {
   }, 700);
 }
 
-function installKgwBridgeR51BottomStyle() {
-  if (document.getElementById("kgw-bridge-r51-bottom-style")) return;
-
-  const style = document.createElement("style");
-  style.id = "kgw-bridge-r51-bottom-style";
-  style.textContent = `
-    [data-bridge-network-panel] {
-      position: relative;
-      min-height: 680px;
-      padding-bottom: 48px;
-    }
-
-    .bridge-settings-bottom-actions {
-      position: absolute;
-      right: 12px;
-      bottom: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 8px;
-      z-index: 2;
-    }
-
-    .bridge-settings-bottom-actions button {
-      min-width: 112px;
-      height: 28px;
-      padding: 4px 10px;
-      border: 1px solid rgba(148, 163, 184, 0.55);
-      background: rgba(80, 80, 80, 0.9);
-      color: #fff;
-      cursor: pointer;
-      font-size: 12px;
-      line-height: 1;
-    }
-  `;
-  document.head.appendChild(style);
-}
 
 
 /* KGW_BRIDGE_ACTION_AND_LOG_FEEDBACK_OWNER_V1 */
@@ -6432,6 +6498,7 @@ function kgwBridgeSetClipboardStatusV1(net, message, state = "info") {
 
   status.textContent = String(message || "");
   status.dataset.state = String(state || "info");
+  applyStatusTone(status, state);
   status.hidden = !status.textContent;
   return true;
 }
@@ -6700,7 +6767,7 @@ function installActions(root) {
         kgwBridgeSetInstanceCommandOptionR13B(
           include.dataset.net,
           include.dataset.instanceId,
-          include.dataset.bridgeInstanceCommandOptionToggleR13B,
+          include.dataset.bridgeInstanceCommandOptionToggleR13b,
           include.checked
         );
       }
@@ -6856,7 +6923,7 @@ function installActions(root) {
 
   function normalizeNet(value) {
     const raw = String(value || "").toLowerCase();
-    if (raw.includes("testnet12") || raw.includes("tn12")) return "testnet12";
+    if (raw.includes("testnet13") || raw.includes("tn13")) return "testnet13";
     if (raw.includes("testnet10") || raw.includes("tn10")) return "testnet10";
     if (raw.includes("mainnet")) return "mainnet";
     return "";
@@ -6941,7 +7008,7 @@ function installActions(root) {
     scopedUpdate(net, event.isTrusted ? "trusted-input" : "programmatic-input");
   }, true);
 
-  root.addEventListener("change", (event) => {
+  root.addEventListener("change", async (event) => {
     const target = event.target;
     if (!target || !target.matches || !target.matches("input, select, textarea")) return;
     if (target.readOnly || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
@@ -6951,22 +7018,24 @@ function installActions(root) {
 
     if (target.matches("[data-bridge-network-enabled]")) {
       const profile = kgwBridgeNetworkProfile(net);
+      const wasEnabled = kgwBridgeNetworkEnabled(net);
       let enabled = Boolean(target.checked);
 
       if (enabled && profile?.experimental) {
-        const confirmed = window.confirm(
-          "Testnet 12 is experimental and uses a separate non-production runtime. Enable it only for isolated testing. Continue?"
-        );
-        if (!confirmed) {
+        target.checked = false;
+        target.disabled = true;
+        try {
+          enabled = (await confirmUserAction("Testnet 13 is experimental and uses a separate non-production runtime. Enable it only for isolated testing. Continue?")) === true;
+        } catch (error) {
           enabled = false;
-          target.checked = false;
-        }
+          kgwBridgeSetRuntimeErrorV1(net, normalizeRuntimeError(error));
+        } finally { target.disabled = false; target.checked = enabled; }
       }
 
       kgwBridgeSetNetworkEnabled(net, enabled);
       kgwBridgeR51SetRuntimeButtons(net, false);
 
-      if (!enabled) {
+      if (!enabled && wasEnabled) {
         void runBridgeIntegratedAction("stop", net);
       }
     }
@@ -7014,19 +7083,37 @@ function installActions(root) {
     }
 
     if (action === "save-settings") {
-      if (typeof kgwBridgeR51SaveSettings === "function") kgwBridgeR51SaveSettings(net);
+      try {
+        kgwBridgeR51SaveSettings(net);
+        button.dataset.kgwSettingsActionResult = "success";
+      } catch (error) {
+        button.dataset.kgwSettingsActionResult = "failed";
+        kgwBridgeSetRuntimeErrorV1(net, normalizeRuntimeError(error));
+      }
       scopedUpdate(net, "save-settings");
       return;
     }
 
     if (action === "set-defaults") {
-      if (typeof kgwBridgeR51SetAsDefaults === "function") kgwBridgeR51SetAsDefaults(net);
+      try {
+        kgwBridgeR51SetAsDefaults(net);
+        button.dataset.kgwSettingsActionResult = "success";
+      } catch (error) {
+        button.dataset.kgwSettingsActionResult = "failed";
+        kgwBridgeSetRuntimeErrorV1(net, normalizeRuntimeError(error));
+      }
       scopedUpdate(net, "set-defaults");
       return;
     }
 
     if (action === "restore-defaults") {
-      if (typeof kgwBridgeR51RestoreDefaults === "function") kgwBridgeR51RestoreDefaults(net);
+      try {
+        kgwBridgeR51RestoreDefaults(net);
+        button.dataset.kgwSettingsActionResult = "success";
+      } catch (error) {
+        button.dataset.kgwSettingsActionResult = "failed";
+        kgwBridgeSetRuntimeErrorV1(net, normalizeRuntimeError(error));
+      }
       scopedUpdate(net, "restore-defaults");
       return;
     }
@@ -7036,11 +7123,27 @@ function installActions(root) {
       return;
     }
 
-    if (action === "copy-command") {
-      const preview = document.getElementById("bridge-" + net + "-commandPreview");
-      if (preview && navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(String(preview.value || preview.textContent || "")).catch(function () {});
-      }
+    if (action === "monitor-next") {
+      const panel = kgwBridgeR51Panel(net);
+      if (button.dataset.nextAction === "start") panel?.querySelector('[data-bridge-action="start"]')?.click();
+      else panel?.querySelector('[data-bridge-inner-tab="settings"]')?.click();
+      return;
+    }
+    if (action === "copy-command" || action === "copy-path") {
+      void (async () => {
+        let text = v(net, "appdir");
+        if (action === "copy-command") {
+          const errors = kgwBridgeValidateForm(net);
+          if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
+          const request = KGW_BRIDGE_PREVIEW_REQUESTS.get(net);
+          const result = await kgwBridgePreparePreview(net, buildApplyPayload(net, "kgw_kgw_apply_node_settings_v1"));
+          if (KGW_BRIDGE_PREVIEW_REQUESTS.get(net) !== request) throw new Error("Settings changed while copying. Try again.");
+          text = JSON.stringify(result, null, 2);
+        }
+        if (!text) throw new Error("There is no validated value to copy.");
+        await kgwBridgeDispatchClipboardWriteV1(net, text, {characterCount: [...text].length, lineCount: text.split(/\r?\n/).length});
+        kgwBridgePreviewMessage(net, action === "copy-path" ? "Data directory copied." : "Effective settings copied.");
+      })().catch(error => kgwBridgePreviewMessage(net, "Copy failed: " + normalizeRuntimeError(error), true));
       return;
     }
 
@@ -7078,7 +7181,6 @@ const bridgeRoot = root || document.getElementById("kaspa-bridge");
   window.setTimeout(updateAllCommands, 150);
   bridgeSyncAllModeControls();
   updateAllCommands();
-  installKgwBridgeR51BottomStyle();
   kgwBridgeR51StartLiveRefresh();
 
 
@@ -7095,7 +7197,7 @@ const bridgeRoot = root || document.getElementById("kaspa-bridge");
   const TOOLBAR_SELECTOR = ".bridge-v7-log-toolbar";
   const ACTION_ATTR = "data-bridge-action";
   const PREFIX = "bridge";
-  const NETWORKS = ["mainnet", "testnet10", "testnet12"];
+  const NETWORKS = ["mainnet", "testnet10", "testnet13"];
   const MIN_SIZE = 10;
   const MAX_SIZE = 18;
   const DEFAULT_SIZE = 12;
@@ -7274,3 +7376,103 @@ if (typeof window !== "undefined") {
 
 // KGW_BRIDGE_AUTOFIX_BUTTON_INITIAL_LABEL_R111G
 try { kgwBridgeAutofixButtonInitialLabelR111G(document); } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
+
+function kgwBridgeForm(net) {
+  const values = { network: net };
+  kgwBridgeR51Panel(net)?.querySelectorAll(".bridge-v7-card input[id], .bridge-v7-card select[id]").forEach(field => {
+    values[field.id.slice(("bridge-" + net + "-").length)] = field.type === "checkbox" ? field.checked : field.value;
+  });
+  return values;
+}
+function kgwBridgeEffectiveValue(net, name) {
+  return bridgeFieldEnabled(name, kgwBridgeForm(net), kgwBridgeCommandInlineStateR7(net)) ? v(net, name) : "";
+}
+function kgwBridgeValidateForm(net, focus = false) {
+  const errors = validateBridgeForm(kgwBridgeForm(net), kgwBridgeCommandInlineStateR7(net), net);
+  const panel = kgwBridgeR51Panel(net);
+  for (const instance of net !== "mainnet" || bridgeHasConfig(net) ? [] : bridgeInstances[net] || []) {
+    if (!kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, "instance")) continue;
+    const waitField = byId(id(net, "instanceBlockWaitTime-" + instance.id));
+    if (waitField && kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, "instanceBlockWaitTime") &&
+        !/^[1-9]\d*(ms|s)?$/.test(waitField.value.trim()))
+      errors["instanceBlockWaitTime-" + instance.id] = "Enter a positive duration, for example 50ms or 1s.";
+    for (const [name, min, max] of [["instanceDiff",1,4294967295],["instanceExtranonceSize",0,8],["instanceSharesPerMin",1,4294967295]]) {
+      if (!kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, name)) continue;
+      const field = byId(id(net, name + "-" + instance.id));
+      if (!field) continue;
+      const raw = String(field.value || "").trim();
+
+      if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw)) || Number(raw) < min || Number(raw) > max)
+        errors[field.id.slice(("bridge-" + net + "-").length)] = "Enter a whole number from " + min + " to " + max + ".";
+    }
+  }
+  renderFieldErrors(panel, "bridge-" + net + "-", errors);
+  if (focus && Object.keys(errors).length) {
+    const field = byId(id(net, Object.keys(errors)[0]));
+    panel?.querySelector('[data-bridge-inner-tab="settings"]')?.click();
+    const section = field?.closest("[data-bridge-section-panel]");
+    panel?.querySelector('[data-bridge-section-tab="' + section?.dataset.bridgeSectionPanel + '"]')?.click();
+    revealSettingsField(field);
+    field?.focus();
+  }
+  return errors;
+}
+function kgwBridgeRequireValidSettings(net) {
+  const errors = kgwBridgeValidateForm(net, true);
+  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
+  bridgeAssertNoPortConflictsR5(net);
+  kgwBridgeEffectiveInprocessNodeSettings(net);
+  kgwBridgeEffectiveSettingsV1(net, kgwBridgeR51ReadStructuredInstancesR26B(net));
+}
+function kgwBridgeSyncDependencies(net) {
+  const values = kgwBridgeForm(net), options = kgwBridgeCommandInlineStateR7(net);
+  const panel = kgwBridgeR51Panel(net);
+  for (const name of Object.keys(values)) {
+    const field = byId(id(net, name)); if (!field) continue;
+    if (/^instance/.test(name)) continue;
+    const managed = BRIDGE_MANAGED[name];
+    const forbidden = net === "mainnet" && ["internalCpuMiner", "inprocessEnableUnsyncedMining"].includes(name);
+    const active = bridgeFieldEnabled(name, values, options) && !forbidden;
+    field.disabled = !active && !["appdir", "inprocessAppdirMirror"].includes(name);
+    field.readOnly = Boolean(managed);
+    field.title = managed || (forbidden ? "Test networks only." : !active ? "Enable the parent option to use this value." : field.value || "");
+    const card = field.closest(".bridge-v7-card");
+    card?.classList.toggle("kgw-field-inactive", !active);
+    if (card) { card.title = field.title; card.removeAttribute("data-i18n-title"); }
+    const state = managed ? (/unsupported/i.test(managed) ? "Unsupported" : "Managed")
+      : forbidden ? "Test networks only"
+      : !active ? "Not active" : "";
+    setSettingFieldState(field, state);
+    if (field.tagName === "INPUT" || field.tagName === "SELECT") {
+      const label = card?.querySelector(".kgw-command-option-title-text-r8e, span");
+      if (label) { label.id = field.id + "-label"; field.setAttribute("aria-labelledby", label.id); }
+    }
+  }
+  panel?.querySelectorAll("[data-bridge-command-option-toggle-r7]").forEach(toggle => {
+    const name = toggle.dataset.bridgeCommandOptionToggleR7;
+    toggle.disabled = Boolean(BRIDGE_MANAGED[name] ||
+      (name.startsWith("inprocess") && values.nodeMode !== "inprocess") ||
+      (name.startsWith("internalCpuMiner") && name !== "internalCpuMiner" && !values.internalCpuMiner) ||
+      (name === "inprocessPerfMetricsIntervalSec" && !values.inprocessPerfMetrics));
+  });
+  panel?.querySelectorAll("[data-bridge-instance-command-option-toggle-r13b]").forEach(toggle => {
+    const instanceId = toggle.dataset.instanceId, name = toggle.dataset.bridgeInstanceCommandOptionToggleR13b;
+    if (!instanceId || !name) return;
+    const field = byId(id(net, name + "-" + instanceId));
+    if (name === "instanceLogToFile") {
+      toggle.disabled = true;
+      if (field) { field.disabled = true; field.title = BRIDGE_MANAGED.logToFile; }
+      return;
+    }
+    const parentActive = !bridgeHasConfig(net) && kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instance");
+    toggle.disabled = bridgeHasConfig(net) || (name !== "instance" && !parentActive);
+    if (field) {
+      field.disabled = !toggle.checked || !parentActive;
+      setSettingFieldState(field, bridgeHasConfig(net) ? "Managed" : !parentActive ? "Not active" : !toggle.checked ? "Override off" : "Custom value");
+    }
+    const label = field?.closest(".bridge-v7-card")?.querySelector(".kgw-command-option-title-text-r8e");
+    if (field && label) { label.id = field.id + "-label"; field.setAttribute("aria-labelledby", label.id); }
+  });
+  decorateSettingsFields(panel);
+}
+export { kgwBridgeEffectiveInprocessNodeSettings, kgwBridgeEffectiveSettingsV1, kgwBridgeValidateForm };

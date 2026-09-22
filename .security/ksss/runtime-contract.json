@@ -1,0 +1,38 @@
+{
+  "schema": "kgw-runtime-qualification-contract-v1",
+  "repository": "KaspaPulse/kaspa-gateway-rust",
+  "required_host_os": "windows",
+  "cases": [
+    "mainnet:node",
+    "testnet10:node",
+    "mainnet:bridge:external",
+    "testnet10:bridge:external",
+    "mainnet:bridge:inprocess",
+    "testnet10:bridge:inprocess"
+  ],
+  "required_checks": [
+    "ui_request_crossed_ipc",
+    "effective_settings_applied",
+    "ready_owned_process",
+    "endpoints_bound_to_owner",
+    "real_stdout_stderr",
+    "ui_matches_backend",
+    "stop_releases_ports",
+    "restart_new_identity",
+    "crash_reconciled",
+    "close_relaunch_reconciled"
+  ],
+  "identity_fields": [
+    "source_sha",
+    "tree_hash",
+    "artifact_sha256",
+    "environment_fingerprint"
+  ],
+  "owner_identity_fields": [
+    "pid",
+    "start_time",
+    "executable"
+  ],
+  "claim_boundary": "Adoption/CI/build success cannot substitute for real packaged Windows evidence. Receipt validation validates supplied evidence; it does not execute the application.",
+  "testnet13": "NOT_ENABLED_WITHOUT_EXPLICIT_OPT_IN"
+}

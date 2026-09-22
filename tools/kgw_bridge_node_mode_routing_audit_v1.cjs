@@ -278,7 +278,7 @@ if (blockers.length === 0) {
     ["tauriLib_runBridgeSelfWorker", loaded.tauriLib, "kgw_run_bridge_self_worker"],
     ["rkBridge_startOfficialBridgeOwner", loaded.rkBridge, "start_official_bridge_owner_thread_v1"],
     ["rkBridge_startMainlineBridgeOwner", loaded.rkBridge, "start_mainline_bridge_owner_thread"],
-    ["rkBridge_startTn12BridgeOwner", loaded.rkBridge, "start_tn12_bridge_owner_thread"],
+    ["rkBridge_startTn13BridgeOwner", loaded.rkBridge, "start_tn13_bridge_owner_thread"],
     ["rkBridge_bridgeEventFromSettings", loaded.rkBridge, "bridge_service_event_from_settings_v1"],
   ];
 
@@ -315,8 +315,8 @@ if (blockers.length === 0) {
     ? fs.readFileSync(path.join(reportDir, "extracts", "rkBridge_startMainlineBridgeOwner.txt"), "utf8")
     : "";
 
-  const rkTn12Extract = extractedFunctions.rkBridge_startTn12BridgeOwner
-    ? fs.readFileSync(path.join(reportDir, "extracts", "rkBridge_startTn12BridgeOwner.txt"), "utf8")
+  const rkTn13Extract = extractedFunctions.rkBridge_startTn13BridgeOwner
+    ? fs.readFileSync(path.join(reportDir, "extracts", "rkBridge_startTn13BridgeOwner.txt"), "utf8")
     : "";
 
   const hasFrontendNodeMode = /\bnodeMode\b/.test(bridgeJs) && /--node-mode/.test(bridgeJs);
@@ -423,10 +423,10 @@ if (blockers.length === 0) {
 
   const mainlineUsesRpcApi =
     /KaspaApi::new\s*\(\s*event\.kaspa_rpc_endpoint/.test(rkMainlineExtract);
-  const tn12UsesRpcApi =
-    /KaspaApi::new\s*\(\s*event\.kaspa_rpc_endpoint/.test(rkTn12Extract);
+  const tn13UsesRpcApi =
+    /KaspaApi::new\s*\(\s*event\.kaspa_rpc_endpoint/.test(rkTn13Extract);
 
-  if (mainlineUsesRpcApi || tn12UsesRpcApi) {
+  if (mainlineUsesRpcApi || tn13UsesRpcApi) {
     addFinding(
       "HIGH",
       "rk-bridge-owner-runtime",
@@ -434,7 +434,7 @@ if (blockers.length === 0) {
       {
         file: loaded.rkBridge.rel,
         mainlineUsesRpcApi,
-        tn12UsesRpcApi,
+        tn13UsesRpcApi,
       }
     );
   }
@@ -451,12 +451,12 @@ if (blockers.length === 0) {
   ];
 
   const inprocessImplementationSignals = kaspadLaunchSignals
-    .map(re => ({ pattern: String(re), mainline: re.test(rkMainlineExtract), tn12: re.test(rkTn12Extract), runBridge: re.test(runBridgeExtract) }));
+    .map(re => ({ pattern: String(re), mainline: re.test(rkMainlineExtract), tn13: re.test(rkTn13Extract), runBridge: re.test(runBridgeExtract) }));
 
   evidence.inprocessImplementationSignals = inprocessImplementationSignals;
 
-  const hasSpawnInOwner = /Command::new|\.spawn\s*\(/.test(rkMainlineExtract + "\n" + rkTn12Extract + "\n" + runBridgeExtract);
-  const hasKaspadArgsInOwner = /--utxoindex|--rpclisten|appdir|kaspad/i.test(rkMainlineExtract + "\n" + rkTn12Extract + "\n" + runBridgeExtract);
+  const hasSpawnInOwner = /Command::new|\.spawn\s*\(/.test(rkMainlineExtract + "\n" + rkTn13Extract + "\n" + runBridgeExtract);
+  const hasKaspadArgsInOwner = /--utxoindex|--rpclisten|appdir|kaspad/i.test(rkMainlineExtract + "\n" + rkTn13Extract + "\n" + runBridgeExtract);
 
   if (!hasSpawnInOwner && !hasKaspadArgsInOwner) {
     addFinding(
@@ -607,7 +607,7 @@ reportLines.push(`- extracts/`);
 reportLines.push(`- EVIDENCE.json`);
 reportLines.push(`- FINDINGS.json`);
 reportLines.push("");
-reportLines.push(`## Expected Correct Model From RKStratumTN12 Docs`);
+reportLines.push(`## Expected Correct Model From dagknight Docs`);
 reportLines.push("");
 reportLines.push(`- external mode: stratum-bridge connects to an already running kaspad through RPC.`);
 reportLines.push(`- inprocess mode: stratum-bridge starts/runs kaspad internally and kaspad args must be passed after the required '--' separator.`);

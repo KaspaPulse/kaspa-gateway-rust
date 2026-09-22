@@ -1866,6 +1866,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "dashmap"
+version = "6.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6361d5c062261c78a176addb82d4c821ae42bed6089de0e12603cd25de2059c"
+dependencies = [
+ "cfg-if",
+ "crossbeam-utils",
+ "hashbrown 0.14.5",
+ "lock_api",
+ "once_cell",
+ "parking_lot_core",
+]
+
+[[package]]
 name = "data-encoding"
 version = "2.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2792,11 +2806,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "899def5c37c4fd7b2664648c28120ecec138e4d395b459e5ca34f9cce2dd77fd"
 dependencies = [
  "cfg-if",
- "js-sys",
  "libc",
  "r-efi 5.3.0",
  "wasip2",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -3097,6 +3109,12 @@ checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "hashbrown"
+version = "0.14.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
+
+[[package]]
+name = "hashbrown"
 version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
@@ -3348,7 +3366,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core 0.62.2",
+ "windows-core 0.61.2",
 ]
 
 [[package]]
@@ -3733,8 +3751,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-addresses"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "borsh",
  "js-sys",
@@ -3749,7 +3767,7 @@ dependencies = [
 [[package]]
 name = "kaspa-addresses"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "borsh",
  "js-sys",
@@ -3763,16 +3781,16 @@ dependencies = [
 
 [[package]]
 name = "kaspa-addressmanager"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "borsh",
  "igd-next",
  "itertools 0.13.0",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-database 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-database 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "local-ip-address",
  "log",
  "parking_lot",
@@ -3786,15 +3804,15 @@ dependencies = [
 [[package]]
 name = "kaspa-addressmanager"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "borsh",
  "igd-next",
  "itertools 0.13.0",
- "kaspa-consensus-core 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-database 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-database 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "local-ip-address",
  "log",
  "parking_lot",
@@ -3807,8 +3825,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-alloc"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "mimalloc",
 ]
@@ -3816,15 +3834,15 @@ dependencies = [
 [[package]]
 name = "kaspa-alloc"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "mimalloc",
 ]
 
 [[package]]
 name = "kaspa-build-info"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "duct",
  "faster-hex 0.9.0",
@@ -3833,7 +3851,7 @@ dependencies = [
 [[package]]
 name = "kaspa-build-info"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "duct",
  "faster-hex 0.9.0",
@@ -3841,16 +3859,16 @@ dependencies = [
 
 [[package]]
 name = "kaspa-connectionmanager"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "duration-string",
  "futures-util",
  "itertools 0.13.0",
- "kaspa-addressmanager 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-p2p-lib 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-addressmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-p2p-lib 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "parking_lot",
  "rand 0.8.7",
@@ -3860,15 +3878,15 @@ dependencies = [
 [[package]]
 name = "kaspa-connectionmanager"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "duration-string",
  "futures-util",
  "itertools 0.13.0",
- "kaspa-addressmanager 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-p2p-lib 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-addressmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-p2p-lib 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "parking_lot",
  "rand 0.8.7",
@@ -3877,8 +3895,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-consensus"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "arc-swap",
  "async-channel 2.5.0",
@@ -3888,24 +3906,24 @@ dependencies = [
  "futures-util",
  "indexmap 2.14.0",
  "itertools 0.13.0",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-consensus-notify 1.2.0-toc.2",
- "kaspa-consensusmanager 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-database 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-math 1.2.0-toc.2",
- "kaspa-merkle 1.2.0-toc.2",
- "kaspa-muhash 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-pow 1.2.0-toc.2",
- "kaspa-seq-commit 1.2.0-toc.2",
- "kaspa-smt 1.2.0-toc.2",
- "kaspa-smt-store 1.2.0-toc.2",
- "kaspa-txscript 1.2.0-toc.2",
- "kaspa-txscript-errors 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-database 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-merkle 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-muhash 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-pow 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-seq-commit 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-smt 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-smt-store 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-txscript-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "once_cell",
  "parking_lot",
@@ -3922,35 +3940,37 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "arc-swap",
  "async-channel 2.5.0",
  "bincode",
  "crossbeam-channel",
+ "dashmap",
  "faster-hex 0.9.0",
  "futures-util",
  "indexmap 2.14.0",
  "itertools 0.13.0",
- "kaspa-addresses 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-consensus-notify 2.0.1",
- "kaspa-consensusmanager 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-database 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-math 2.0.1",
- "kaspa-merkle 2.0.1",
- "kaspa-muhash 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-pow 2.0.1",
- "kaspa-seq-commit 2.0.1",
- "kaspa-smt 2.0.1",
- "kaspa-smt-store 2.0.1",
- "kaspa-txscript 2.0.1",
- "kaspa-txscript-errors 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-database 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-merkle 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-muhash 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-pow 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-seq-commit 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-smt 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-smt-store 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-txscript-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
+ "num-traits",
  "once_cell",
  "parking_lot",
  "rand 0.8.7",
@@ -3958,6 +3978,7 @@ dependencies = [
  "rocksdb",
  "secp256k1",
  "serde",
+ "serde_json",
  "smallvec",
  "thiserror 2.0.20",
  "tokio",
@@ -3965,8 +3986,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-consensus-client"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "ahash",
  "borsh",
@@ -3975,13 +3996,13 @@ dependencies = [
  "hex",
  "itertools 0.13.0",
  "js-sys",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-math 1.2.0-toc.2",
- "kaspa-txscript 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
- "kaspa-wasm-core 1.2.0-toc.2",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-wasm-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "rand 0.8.7",
  "secp256k1",
  "serde",
@@ -3996,7 +4017,7 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus-client"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "ahash",
  "borsh",
@@ -4005,13 +4026,13 @@ dependencies = [
  "hex",
  "itertools 0.13.0",
  "js-sys",
- "kaspa-addresses 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-math 2.0.1",
- "kaspa-txscript 2.0.1",
- "kaspa-utils 2.0.1",
- "kaspa-wasm-core 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-wasm-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "rand 0.8.7",
  "secp256k1",
  "serde",
@@ -4020,52 +4041,13 @@ dependencies = [
  "thiserror 2.0.20",
  "wasm-bindgen",
  "workflow-log",
- "workflow-wasm",
-]
-
-[[package]]
-name = "kaspa-consensus-core"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
-dependencies = [
- "arc-swap",
- "async-trait",
- "bitflags 2.13.1",
- "borsh",
- "cfg-if",
- "faster-hex 0.9.0",
- "futures-util",
- "getrandom 0.3.4",
- "itertools 0.13.0",
- "js-sys",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-math 1.2.0-toc.2",
- "kaspa-merkle 1.2.0-toc.2",
- "kaspa-muhash 1.2.0-toc.2",
- "kaspa-smt 1.2.0-toc.2",
- "kaspa-txscript-errors 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
- "rand 0.8.7",
- "secp256k1",
- "serde",
- "serde-value",
- "serde-wasm-bindgen",
- "serde_json",
- "smallvec",
- "thiserror 2.0.20",
- "wasm-bindgen",
- "workflow-core",
- "workflow-log",
- "workflow-serializer",
  "workflow-wasm",
 ]
 
 [[package]]
 name = "kaspa-consensus-core"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -4077,15 +4059,54 @@ dependencies = [
  "getrandom 0.2.17",
  "itertools 0.13.0",
  "js-sys",
- "kaspa-addresses 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-math 2.0.1",
- "kaspa-merkle 2.0.1",
- "kaspa-muhash 2.0.1",
- "kaspa-smt 2.0.1",
- "kaspa-txscript-errors 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-merkle 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-muhash 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-smt 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-txscript-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "rand 0.8.7",
+ "secp256k1",
+ "serde",
+ "serde-value",
+ "serde-wasm-bindgen",
+ "serde_json",
+ "smallvec",
+ "thiserror 2.0.20",
+ "wasm-bindgen",
+ "workflow-core",
+ "workflow-log",
+ "workflow-serializer",
+ "workflow-wasm",
+]
+
+[[package]]
+name = "kaspa-consensus-core"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
+dependencies = [
+ "arc-swap",
+ "async-trait",
+ "bitflags 2.13.1",
+ "borsh",
+ "cfg-if",
+ "faster-hex 0.9.0",
+ "futures-util",
+ "getrandom 0.2.17",
+ "itertools 0.13.0",
+ "js-sys",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-merkle 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-muhash 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-smt 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-txscript-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "rand 0.8.7",
  "secp256k1",
  "serde",
@@ -4103,18 +4124,18 @@ dependencies = [
 
 [[package]]
 name = "kaspa-consensus-notify"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "async-channel 2.5.0",
  "cfg-if",
  "derive_more 0.99.20",
  "futures",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "paste",
  "thiserror 2.0.20",
@@ -4124,17 +4145,17 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus-notify"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "async-channel 2.5.0",
  "cfg-if",
  "derive_more 0.99.20",
  "futures",
- "kaspa-consensus-core 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "paste",
  "thiserror 2.0.20",
@@ -4143,18 +4164,18 @@ dependencies = [
 
 [[package]]
 name = "kaspa-consensus-wasm"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "cfg-if",
  "faster-hex 0.9.0",
  "js-sys",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-consensus-client 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-txscript 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "rand 0.8.7",
  "secp256k1",
  "serde",
@@ -4169,17 +4190,17 @@ dependencies = [
 [[package]]
 name = "kaspa-consensus-wasm"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "cfg-if",
  "faster-hex 0.9.0",
  "js-sys",
- "kaspa-addresses 2.0.1",
- "kaspa-consensus-client 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-txscript 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "rand 0.8.7",
  "secp256k1",
  "serde",
@@ -4193,18 +4214,18 @@ dependencies = [
 
 [[package]]
 name = "kaspa-consensusmanager"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "duration-string",
  "futures",
  "futures-util",
  "itertools 0.13.0",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-consensus-notify 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "parking_lot",
  "rand 0.8.7",
@@ -4214,17 +4235,17 @@ dependencies = [
 [[package]]
 name = "kaspa-consensusmanager"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "duration-string",
  "futures",
  "futures-util",
  "itertools 0.13.0",
- "kaspa-addresses 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-consensus-notify 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "parking_lot",
  "rand 0.8.7",
@@ -4233,8 +4254,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-core"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -4254,7 +4275,7 @@ dependencies = [
 [[package]]
 name = "kaspa-core"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "anyhow",
  "cfg-if",
@@ -4273,16 +4294,16 @@ dependencies = [
 
 [[package]]
 name = "kaspa-database"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "bincode",
  "enum-primitive-derive",
  "faster-hex 0.9.0",
  "indexmap 2.14.0",
  "itertools 0.13.0",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "num-traits",
  "num_cpus",
  "parking_lot",
@@ -4297,15 +4318,15 @@ dependencies = [
 [[package]]
 name = "kaspa-database"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "bincode",
  "enum-primitive-derive",
  "faster-hex 0.9.0",
  "indexmap 2.14.0",
  "itertools 0.13.0",
- "kaspa-hashes 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "num-traits",
  "num_cpus",
  "parking_lot",
@@ -4341,8 +4362,8 @@ dependencies = [
  "kaspa-gateway-node",
  "kaspa-gateway-runtime",
  "kaspa-gateway-security",
- "kaspa-grpc-client 2.0.1",
- "kaspa-rpc-core 2.0.1",
+ "kaspa-grpc-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "serde_json",
  "tokio",
 ]
@@ -4360,7 +4381,7 @@ dependencies = [
 name = "kaspa-gateway-core"
 version = "0.1.0"
 dependencies = [
- "kaspa-addresses 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "serde",
  "thiserror 2.0.20",
 ]
@@ -4378,7 +4399,7 @@ dependencies = [
 
 [[package]]
 name = "kaspa-gateway-desktop"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "duckdb",
  "kaspa-gateway-api",
@@ -4403,7 +4424,7 @@ dependencies = [
  "tauri-plugin-wdio-webdriver",
  "tracing",
  "tracing-subscriber",
- "ureq 3.4.2",
+ "ureq",
  "zip 8.6.0",
 ]
 
@@ -4426,12 +4447,13 @@ dependencies = [
 name = "kaspa-gateway-rk-bridge"
 version = "0.1.0"
 dependencies = [
- "kaspa-grpc-client 1.2.0-toc.2",
- "kaspa-grpc-client 2.0.1",
- "kaspa-rpc-core 1.2.0-toc.2",
- "kaspa-rpc-core 2.0.1",
- "kaspa-stratum-bridge 1.2.0-toc.2",
- "kaspa-stratum-bridge 2.0.1",
+ "kaspa-gateway-core",
+ "kaspa-grpc-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-grpc-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-stratum-bridge 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-stratum-bridge 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "serde",
  "serde_json",
  "thiserror 2.0.20",
@@ -4442,19 +4464,19 @@ dependencies = [
 name = "kaspa-gateway-rk-node"
 version = "0.1.0"
 dependencies = [
- "kaspa-core 1.2.0-toc.2",
- "kaspa-core 2.0.1",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "kaspa-gateway-rk-bridge",
- "kaspa-grpc-client 1.2.0-toc.2",
- "kaspa-grpc-client 2.0.1",
- "kaspa-rpc-core 1.2.0-toc.2",
- "kaspa-rpc-core 2.0.1",
- "kaspa-utils 1.2.0-toc.2",
- "kaspa-utils 2.0.1",
- "kaspa-wrpc-server 1.2.0-toc.2",
- "kaspa-wrpc-server 2.0.1",
- "kaspad 1.2.0-toc.2",
- "kaspad 2.0.1",
+ "kaspa-grpc-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-grpc-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-wrpc-server 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-wrpc-server 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspad 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspad 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "serde",
  "thiserror 2.0.20",
  "tokio",
@@ -4488,8 +4510,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-grpc-client"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "async-channel 2.5.0",
  "async-stream",
@@ -4499,12 +4521,12 @@ dependencies = [
  "futures-util",
  "h2",
  "itertools 0.13.0",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-grpc-core 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-rpc-core 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
- "kaspa-utils-tower 1.2.0-toc.2",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-grpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "parking_lot",
  "paste",
@@ -4522,7 +4544,7 @@ dependencies = [
 [[package]]
 name = "kaspa-grpc-client"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "async-channel 2.5.0",
  "async-stream",
@@ -4532,12 +4554,12 @@ dependencies = [
  "futures-util",
  "h2",
  "itertools 0.13.0",
- "kaspa-core 2.0.1",
- "kaspa-grpc-core 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-rpc-core 2.0.1",
- "kaspa-utils 2.0.1",
- "kaspa-utils-tower 2.0.1",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-grpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "parking_lot",
  "paste",
@@ -4554,8 +4576,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-grpc-core"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "async-channel 2.5.0",
  "async-stream",
@@ -4563,12 +4585,12 @@ dependencies = [
  "faster-hex 0.9.0",
  "futures",
  "h2",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-rpc-core 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "paste",
  "prost",
@@ -4587,7 +4609,7 @@ dependencies = [
 [[package]]
 name = "kaspa-grpc-core"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "async-channel 2.5.0",
  "async-stream",
@@ -4595,12 +4617,12 @@ dependencies = [
  "faster-hex 0.9.0",
  "futures",
  "h2",
- "kaspa-addresses 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-rpc-core 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "paste",
  "prost",
@@ -4618,8 +4640,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-grpc-server"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "async-channel 2.5.0",
  "async-stream",
@@ -4628,15 +4650,15 @@ dependencies = [
  "futures",
  "h2",
  "itertools 0.13.0",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-grpc-core 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-rpc-core 1.2.0-toc.2",
- "kaspa-rpc-macros 1.2.0-toc.2",
- "kaspa-rpc-service 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
- "kaspa-utils-tower 1.2.0-toc.2",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-grpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-macros 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-service 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "once_cell",
  "parking_lot",
@@ -4655,7 +4677,7 @@ dependencies = [
 [[package]]
 name = "kaspa-grpc-server"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "async-channel 2.5.0",
  "async-stream",
@@ -4664,15 +4686,15 @@ dependencies = [
  "futures",
  "h2",
  "itertools 0.13.0",
- "kaspa-consensus-core 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-grpc-core 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-rpc-core 2.0.1",
- "kaspa-rpc-macros 2.0.1",
- "kaspa-rpc-service 2.0.1",
- "kaspa-utils 2.0.1",
- "kaspa-utils-tower 2.0.1",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-grpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-macros 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-service 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "once_cell",
  "parking_lot",
@@ -4690,8 +4712,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-hashes"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "blake2b_simd",
  "blake3",
@@ -4699,7 +4721,7 @@ dependencies = [
  "cc",
  "faster-hex 0.9.0",
  "js-sys",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "keccak",
  "serde",
  "sha2 0.10.9",
@@ -4712,7 +4734,7 @@ dependencies = [
 [[package]]
 name = "kaspa-hashes"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "blake2b_simd",
  "blake3",
@@ -4720,7 +4742,7 @@ dependencies = [
  "cc",
  "faster-hex 0.9.0",
  "js-sys",
- "kaspa-utils 2.0.1",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "keccak",
  "serde",
  "sha2 0.10.9",
@@ -4732,17 +4754,17 @@ dependencies = [
 
 [[package]]
 name = "kaspa-index-core"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
  "derive_more 0.99.20",
  "futures",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "paste",
  "serde",
@@ -4753,16 +4775,16 @@ dependencies = [
 [[package]]
 name = "kaspa-index-core"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
  "derive_more 0.99.20",
  "futures",
- "kaspa-consensus-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "paste",
  "serde",
@@ -4772,23 +4794,23 @@ dependencies = [
 
 [[package]]
 name = "kaspa-index-processor"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
  "derive_more 0.99.20",
  "futures",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-consensus-notify 1.2.0-toc.2",
- "kaspa-consensusmanager 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-database 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-index-core 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
- "kaspa-utxoindex 1.2.0-toc.2",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-database 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-index-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utxoindex 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "paste",
  "thiserror 2.0.20",
@@ -4799,22 +4821,22 @@ dependencies = [
 [[package]]
 name = "kaspa-index-processor"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
  "derive_more 0.99.20",
  "futures",
- "kaspa-consensus-core 2.0.1",
- "kaspa-consensus-notify 2.0.1",
- "kaspa-consensusmanager 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-database 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-index-core 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-utils 2.0.1",
- "kaspa-utxoindex 2.0.1",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-database 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-index-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utxoindex 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "paste",
  "thiserror 2.0.20",
@@ -4824,13 +4846,13 @@ dependencies = [
 
 [[package]]
 name = "kaspa-math"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "borsh",
  "faster-hex 0.9.0",
  "js-sys",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "malachite-base",
  "malachite-nz",
  "serde",
@@ -4845,14 +4867,15 @@ dependencies = [
 [[package]]
 name = "kaspa-math"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "borsh",
  "faster-hex 0.9.0",
  "js-sys",
- "kaspa-utils 2.0.1",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "malachite-base",
  "malachite-nz",
+ "num-traits",
  "serde",
  "serde-wasm-bindgen",
  "thiserror 2.0.20",
@@ -4864,36 +4887,36 @@ dependencies = [
 
 [[package]]
 name = "kaspa-merkle"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
- "kaspa-hashes 1.2.0-toc.2",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
 ]
 
 [[package]]
 name = "kaspa-merkle"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
- "kaspa-hashes 2.0.1",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
 ]
 
 [[package]]
 name = "kaspa-mining"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "futures-util",
  "itertools 0.13.0",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-consensusmanager 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-mining-errors 1.2.0-toc.2",
- "kaspa-muhash 1.2.0-toc.2",
- "kaspa-txscript 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-mining-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-muhash 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "parking_lot",
  "rand 0.8.7",
@@ -4907,19 +4930,19 @@ dependencies = [
 [[package]]
 name = "kaspa-mining"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "futures-util",
  "itertools 0.13.0",
- "kaspa-addresses 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-consensusmanager 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-mining-errors 2.0.1",
- "kaspa-muhash 2.0.1",
- "kaspa-txscript 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-mining-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-muhash 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "parking_lot",
  "rand 0.8.7",
@@ -4932,29 +4955,29 @@ dependencies = [
 
 [[package]]
 name = "kaspa-mining-errors"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
- "kaspa-consensus-core 1.2.0-toc.2",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "kaspa-mining-errors"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
- "kaspa-consensus-core 2.0.1",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "kaspa-muhash"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-math 1.2.0-toc.2",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "rand_chacha 0.3.1",
  "serde",
 ]
@@ -4962,18 +4985,18 @@ dependencies = [
 [[package]]
 name = "kaspa-muhash"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
- "kaspa-hashes 2.0.1",
- "kaspa-math 2.0.1",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "rand_chacha 0.3.1",
  "serde",
 ]
 
 [[package]]
 name = "kaspa-notify"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
@@ -4983,13 +5006,13 @@ dependencies = [
  "futures-util",
  "indexmap 2.14.0",
  "itertools 0.13.0",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-txscript 1.2.0-toc.2",
- "kaspa-txscript-errors 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-txscript-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "parking_lot",
  "paste",
@@ -5005,7 +5028,7 @@ dependencies = [
 [[package]]
 name = "kaspa-notify"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
@@ -5015,13 +5038,13 @@ dependencies = [
  "futures-util",
  "indexmap 2.14.0",
  "itertools 0.13.0",
- "kaspa-addresses 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-txscript 2.0.1",
- "kaspa-txscript-errors 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-txscript-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "parking_lot",
  "paste",
@@ -5036,30 +5059,30 @@ dependencies = [
 
 [[package]]
 name = "kaspa-p2p-flows"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "async-trait",
  "chrono",
  "futures",
  "indexmap 2.14.0",
  "itertools 0.13.0",
- "kaspa-addressmanager 1.2.0-toc.2",
- "kaspa-connectionmanager 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-consensus-notify 1.2.0-toc.2",
- "kaspa-consensusmanager 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-mining 1.2.0-toc.2",
- "kaspa-muhash 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-p2p-lib 1.2.0-toc.2",
- "kaspa-p2p-mining 1.2.0-toc.2",
- "kaspa-seq-commit 1.2.0-toc.2",
- "kaspa-smt 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
- "kaspa-utils-tower 1.2.0-toc.2",
+ "kaspa-addressmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-connectionmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-mining 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-muhash 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-p2p-lib 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-p2p-mining 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-seq-commit 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-smt 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "parking_lot",
  "rand 0.8.7",
@@ -5074,29 +5097,29 @@ dependencies = [
 [[package]]
 name = "kaspa-p2p-flows"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "async-trait",
  "chrono",
  "futures",
  "indexmap 2.14.0",
  "itertools 0.13.0",
- "kaspa-addressmanager 2.0.1",
- "kaspa-connectionmanager 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-consensus-notify 2.0.1",
- "kaspa-consensusmanager 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-mining 2.0.1",
- "kaspa-muhash 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-p2p-lib 2.0.1",
- "kaspa-p2p-mining 2.0.1",
- "kaspa-seq-commit 2.0.1",
- "kaspa-smt 2.0.1",
- "kaspa-utils 2.0.1",
- "kaspa-utils-tower 2.0.1",
+ "kaspa-addressmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-connectionmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-mining 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-muhash 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-p2p-lib 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-p2p-mining 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-seq-commit 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-smt 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "parking_lot",
  "rand 0.8.7",
@@ -5110,21 +5133,21 @@ dependencies = [
 
 [[package]]
 name = "kaspa-p2p-lib"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "borsh",
  "ctrlc",
  "futures",
  "h2",
  "itertools 0.13.0",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-math 1.2.0-toc.2",
- "kaspa-mining-errors 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
- "kaspa-utils-tower 1.2.0-toc.2",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-mining-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "parking_lot",
  "prost",
@@ -5143,20 +5166,20 @@ dependencies = [
 [[package]]
 name = "kaspa-p2p-lib"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "borsh",
  "ctrlc",
  "futures",
  "h2",
  "itertools 0.13.0",
- "kaspa-consensus-core 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-math 2.0.1",
- "kaspa-mining-errors 2.0.1",
- "kaspa-utils 2.0.1",
- "kaspa-utils-tower 2.0.1",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-mining-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "parking_lot",
  "prost",
@@ -5174,18 +5197,18 @@ dependencies = [
 
 [[package]]
 name = "kaspa-p2p-mining"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-consensusmanager 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-math 1.2.0-toc.2",
- "kaspa-mining-errors 1.2.0-toc.2",
- "kaspa-p2p-lib 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
- "kaspa-utils-tower 1.2.0-toc.2",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-mining-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-p2p-lib 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "tokio",
 ]
@@ -5193,27 +5216,27 @@ dependencies = [
 [[package]]
 name = "kaspa-p2p-mining"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
- "kaspa-consensus-core 2.0.1",
- "kaspa-consensusmanager 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-math 2.0.1",
- "kaspa-mining-errors 2.0.1",
- "kaspa-p2p-lib 2.0.1",
- "kaspa-utils 2.0.1",
- "kaspa-utils-tower 2.0.1",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-mining-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-p2p-lib 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "tokio",
 ]
 
 [[package]]
 name = "kaspa-perf-monitor"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
- "kaspa-core 1.2.0-toc.2",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "portable-atomic",
  "thiserror 2.0.20",
@@ -5224,9 +5247,9 @@ dependencies = [
 [[package]]
 name = "kaspa-perf-monitor"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
- "kaspa-core 2.0.1",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "portable-atomic",
  "thiserror 2.0.20",
@@ -5236,15 +5259,15 @@ dependencies = [
 
 [[package]]
 name = "kaspa-pow"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "js-sys",
- "kaspa-consensus-client 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-math 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-consensus-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "num",
  "wasm-bindgen",
  "workflow-wasm",
@@ -5253,14 +5276,14 @@ dependencies = [
 [[package]]
 name = "kaspa-pow"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "js-sys",
- "kaspa-consensus-client 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-math 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-consensus-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "num",
  "wasm-bindgen",
  "workflow-wasm",
@@ -5268,8 +5291,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-rpc-core"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
@@ -5280,20 +5303,20 @@ dependencies = [
  "faster-hex 0.9.0",
  "hex",
  "js-sys",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-consensus-client 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-consensus-notify 1.2.0-toc.2",
- "kaspa-consensus-wasm 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-index-core 1.2.0-toc.2",
- "kaspa-math 1.2.0-toc.2",
- "kaspa-mining-errors 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-rpc-macros 1.2.0-toc.2",
- "kaspa-txscript 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-wasm 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-index-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-mining-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-macros 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "paste",
  "rand 0.8.7",
@@ -5311,7 +5334,7 @@ dependencies = [
 [[package]]
 name = "kaspa-rpc-core"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
@@ -5322,20 +5345,20 @@ dependencies = [
  "faster-hex 0.9.0",
  "hex",
  "js-sys",
- "kaspa-addresses 2.0.1",
- "kaspa-consensus-client 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-consensus-notify 2.0.1",
- "kaspa-consensus-wasm 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-index-core 2.0.1",
- "kaspa-math 2.0.1",
- "kaspa-mining-errors 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-rpc-macros 2.0.1",
- "kaspa-txscript 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-wasm 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-index-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-mining-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-macros 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "paste",
  "rand 0.8.7",
@@ -5352,8 +5375,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-rpc-macros"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "convert_case 0.6.0",
  "proc-macro-error",
@@ -5366,7 +5389,7 @@ dependencies = [
 [[package]]
 name = "kaspa-rpc-macros"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "convert_case 0.6.0",
  "proc-macro-error",
@@ -5378,30 +5401,30 @@ dependencies = [
 
 [[package]]
 name = "kaspa-rpc-service"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "async-trait",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-consensus-notify 1.2.0-toc.2",
- "kaspa-consensusmanager 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-index-core 1.2.0-toc.2",
- "kaspa-math 1.2.0-toc.2",
- "kaspa-mining 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-p2p-flows 1.2.0-toc.2",
- "kaspa-p2p-lib 1.2.0-toc.2",
- "kaspa-p2p-mining 1.2.0-toc.2",
- "kaspa-perf-monitor 1.2.0-toc.2",
- "kaspa-rpc-core 1.2.0-toc.2",
- "kaspa-system-info 1.2.0-toc.2",
- "kaspa-txscript 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
- "kaspa-utils-tower 1.2.0-toc.2",
- "kaspa-utxoindex 1.2.0-toc.2",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-index-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-mining 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-p2p-flows 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-p2p-lib 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-p2p-mining 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-perf-monitor 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-system-info 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utxoindex 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "tokio",
  "triggered",
@@ -5411,29 +5434,29 @@ dependencies = [
 [[package]]
 name = "kaspa-rpc-service"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "async-trait",
- "kaspa-addresses 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-consensus-notify 2.0.1",
- "kaspa-consensusmanager 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-index-core 2.0.1",
- "kaspa-math 2.0.1",
- "kaspa-mining 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-p2p-flows 2.0.1",
- "kaspa-p2p-lib 2.0.1",
- "kaspa-p2p-mining 2.0.1",
- "kaspa-perf-monitor 2.0.1",
- "kaspa-rpc-core 2.0.1",
- "kaspa-system-info 2.0.1",
- "kaspa-txscript 2.0.1",
- "kaspa-utils 2.0.1",
- "kaspa-utils-tower 2.0.1",
- "kaspa-utxoindex 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-index-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-math 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-mining 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-p2p-flows 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-p2p-lib 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-p2p-mining 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-perf-monitor 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-system-info 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utxoindex 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "tokio",
  "triggered",
@@ -5442,33 +5465,33 @@ dependencies = [
 
 [[package]]
 name = "kaspa-seq-commit"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-merkle 1.2.0-toc.2",
- "kaspa-smt 1.2.0-toc.2",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-merkle 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-smt 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "kaspa-seq-commit"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
- "kaspa-hashes 2.0.1",
- "kaspa-merkle 2.0.1",
- "kaspa-smt 2.0.1",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-merkle 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-smt 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "kaspa-smt"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "blake3",
- "kaspa-hashes 1.2.0-toc.2",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "thiserror 2.0.20",
  "zerocopy",
 ]
@@ -5476,26 +5499,26 @@ dependencies = [
 [[package]]
 name = "kaspa-smt"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "blake3",
- "kaspa-hashes 2.0.1",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "thiserror 2.0.20",
  "zerocopy",
 ]
 
 [[package]]
 name = "kaspa-smt-store"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-database 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-seq-commit 1.2.0-toc.2",
- "kaspa-smt 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-database 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-seq-commit 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-smt 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "parking_lot",
  "rayon",
@@ -5507,15 +5530,15 @@ dependencies = [
 [[package]]
 name = "kaspa-smt-store"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
- "kaspa-consensus-core 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-database 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-seq-commit 2.0.1",
- "kaspa-smt 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-database 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-seq-commit 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-smt 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "parking_lot",
  "rayon",
@@ -5526,8 +5549,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-stratum-bridge"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5539,18 +5562,18 @@ dependencies = [
  "futures-util",
  "hex",
  "include_dir",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-alloc 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-grpc-client 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-pow 1.2.0-toc.2",
- "kaspa-rpc-core 1.2.0-toc.2",
- "kaspa-rpc-service 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
- "kaspad 1.2.0-toc.2",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-alloc 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-grpc-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-pow 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-service 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspad 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "mimalloc",
  "num-bigint",
  "num-traits",
@@ -5561,14 +5584,12 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "sysinfo 0.31.4",
  "thiserror 2.0.20",
  "tokio",
  "tracing",
  "tracing-appender",
  "tracing-log",
  "tracing-subscriber",
- "ureq 2.12.1",
  "uuid",
  "windows-sys 0.52.0",
 ]
@@ -5576,7 +5597,7 @@ dependencies = [
 [[package]]
 name = "kaspa-stratum-bridge"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -5588,18 +5609,18 @@ dependencies = [
  "futures-util",
  "hex",
  "include_dir",
- "kaspa-addresses 2.0.1",
- "kaspa-alloc 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-grpc-client 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-pow 2.0.1",
- "kaspa-rpc-core 2.0.1",
- "kaspa-rpc-service 2.0.1",
- "kaspa-utils 2.0.1",
- "kaspad 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-alloc 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-grpc-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-pow 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-service 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspad 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "mimalloc",
  "num-bigint",
  "num-traits",
@@ -5622,10 +5643,10 @@ dependencies = [
 
 [[package]]
 name = "kaspa-system-info"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "mac_address",
  "num_cpus",
  "sha2 0.10.9",
@@ -5635,9 +5656,9 @@ dependencies = [
 [[package]]
 name = "kaspa-system-info"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
- "kaspa-utils 2.0.1",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "mac_address",
  "num_cpus",
  "sha2 0.10.9",
@@ -5646,8 +5667,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-txscript"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "ark-bn254",
  "ark-ec",
@@ -5658,17 +5679,16 @@ dependencies = [
  "blake2b_simd",
  "blake3",
  "borsh",
- "cc",
  "cfg-if",
  "faster-hex 0.9.0",
  "hexplay",
  "indexmap 2.14.0",
  "itertools 0.13.0",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-txscript-errors 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-txscript-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "parking_lot",
  "rand 0.8.7",
@@ -5690,7 +5710,7 @@ dependencies = [
 [[package]]
 name = "kaspa-txscript"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "ark-bn254",
  "ark-ec",
@@ -5701,17 +5721,16 @@ dependencies = [
  "blake2b_simd",
  "blake3",
  "borsh",
- "cc",
  "cfg-if",
  "faster-hex 0.9.0",
  "hexplay",
  "indexmap 2.14.0",
  "itertools 0.13.0",
- "kaspa-addresses 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-txscript-errors 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-txscript-errors 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "parking_lot",
  "rand 0.8.7",
@@ -5719,6 +5738,7 @@ dependencies = [
  "risc0-circuit-recursion",
  "risc0-core",
  "risc0-zkp",
+ "risc0-zkvm-platform",
  "secp256k1",
  "serde",
  "serde-wasm-bindgen",
@@ -5732,11 +5752,11 @@ dependencies = [
 
 [[package]]
 name = "kaspa-txscript-errors"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "borsh",
- "kaspa-hashes 1.2.0-toc.2",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "secp256k1",
  "thiserror 2.0.20",
 ]
@@ -5744,18 +5764,18 @@ dependencies = [
 [[package]]
 name = "kaspa-txscript-errors"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "borsh",
- "kaspa-hashes 2.0.1",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "secp256k1",
  "thiserror 2.0.20",
 ]
 
 [[package]]
 name = "kaspa-utils"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "arc-swap",
  "async-channel 2.5.0",
@@ -5781,7 +5801,7 @@ dependencies = [
 [[package]]
 name = "kaspa-utils"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "arc-swap",
  "async-channel 2.5.0",
@@ -5806,8 +5826,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-utils-tower"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "bytes",
  "cfg-if",
@@ -5824,7 +5844,7 @@ dependencies = [
 [[package]]
 name = "kaspa-utils-tower"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "bytes",
  "cfg-if",
@@ -5840,17 +5860,17 @@ dependencies = [
 
 [[package]]
 name = "kaspa-utxoindex"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "futures",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-consensusmanager 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-database 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-index-core 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-database 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-index-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "parking_lot",
  "rocksdb",
@@ -5861,16 +5881,16 @@ dependencies = [
 [[package]]
 name = "kaspa-utxoindex"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "futures",
- "kaspa-consensus-core 2.0.1",
- "kaspa-consensusmanager 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-database 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-index-core 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-database 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-index-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "parking_lot",
  "rocksdb",
@@ -5880,8 +5900,8 @@ dependencies = [
 
 [[package]]
 name = "kaspa-wasm-core"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "faster-hex 0.9.0",
  "hexplay",
@@ -5893,7 +5913,7 @@ dependencies = [
 [[package]]
 name = "kaspa-wasm-core"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "faster-hex 0.9.0",
  "hexplay",
@@ -5904,20 +5924,20 @@ dependencies = [
 
 [[package]]
 name = "kaspa-wrpc-server"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "async-trait",
  "borsh",
  "futures",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-grpc-client 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-rpc-core 1.2.0-toc.2",
- "kaspa-rpc-macros 1.2.0-toc.2",
- "kaspa-rpc-service 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-grpc-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-macros 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-service 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "num_cpus",
  "paste",
@@ -5934,19 +5954,19 @@ dependencies = [
 [[package]]
 name = "kaspa-wrpc-server"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "async-trait",
  "borsh",
  "futures",
- "kaspa-consensus-core 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-grpc-client 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-rpc-core 2.0.1",
- "kaspa-rpc-macros 2.0.1",
- "kaspa-rpc-service 2.0.1",
- "kaspa-utils 2.0.1",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-grpc-client 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-macros 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-service 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "num_cpus",
  "paste",
@@ -5962,8 +5982,8 @@ dependencies = [
 
 [[package]]
 name = "kaspad"
-version = "1.2.0-toc.2"
-source = "git+https://github.com/LiveLaughLove13/rusty-kaspa.git?rev=eeb351ee911e2df906d21203dec8db3a195c6b33#eeb351ee911e2df906d21203dec8db3a195c6b33"
+version = "2.0.1"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957#98a4ccd8d200853787f227bd4536ac540cf34957"
 dependencies = [
  "async-channel 2.5.0",
  "cfg-if",
@@ -5971,33 +5991,33 @@ dependencies = [
  "dirs 5.0.1",
  "futures-util",
  "itertools 0.13.0",
- "kaspa-addresses 1.2.0-toc.2",
- "kaspa-addressmanager 1.2.0-toc.2",
- "kaspa-alloc 1.2.0-toc.2",
- "kaspa-build-info 1.2.0-toc.2",
- "kaspa-consensus 1.2.0-toc.2",
- "kaspa-consensus-core 1.2.0-toc.2",
- "kaspa-consensus-notify 1.2.0-toc.2",
- "kaspa-consensusmanager 1.2.0-toc.2",
- "kaspa-core 1.2.0-toc.2",
- "kaspa-database 1.2.0-toc.2",
- "kaspa-grpc-server 1.2.0-toc.2",
- "kaspa-hashes 1.2.0-toc.2",
- "kaspa-index-processor 1.2.0-toc.2",
- "kaspa-mining 1.2.0-toc.2",
- "kaspa-notify 1.2.0-toc.2",
- "kaspa-p2p-flows 1.2.0-toc.2",
- "kaspa-p2p-lib 1.2.0-toc.2",
- "kaspa-p2p-mining 1.2.0-toc.2",
- "kaspa-perf-monitor 1.2.0-toc.2",
- "kaspa-rpc-core 1.2.0-toc.2",
- "kaspa-rpc-service 1.2.0-toc.2",
- "kaspa-system-info 1.2.0-toc.2",
- "kaspa-txscript 1.2.0-toc.2",
- "kaspa-utils 1.2.0-toc.2",
- "kaspa-utils-tower 1.2.0-toc.2",
- "kaspa-utxoindex 1.2.0-toc.2",
- "kaspa-wrpc-server 1.2.0-toc.2",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-addressmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-alloc 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-build-info 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-database 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-grpc-server 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-index-processor 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-mining 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-p2p-flows 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-p2p-lib 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-p2p-mining 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-perf-monitor 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-rpc-service 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-system-info 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-utxoindex 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
+ "kaspa-wrpc-server 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=98a4ccd8d200853787f227bd4536ac540cf34957)",
  "log",
  "num_cpus",
  "rand 0.8.7",
@@ -6016,7 +6036,7 @@ dependencies = [
 [[package]]
 name = "kaspad"
 version = "2.0.1"
-source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=cfafeb4c093fa37a303f1b9f19c58f986b870ce3#cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+source = "git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40#ad45e241e6688a14901fd24dd8dc33c5c9a33f40"
 dependencies = [
  "async-channel 2.5.0",
  "cfg-if",
@@ -6024,33 +6044,33 @@ dependencies = [
  "dirs 5.0.1",
  "futures-util",
  "itertools 0.13.0",
- "kaspa-addresses 2.0.1",
- "kaspa-addressmanager 2.0.1",
- "kaspa-alloc 2.0.1",
- "kaspa-build-info 2.0.1",
- "kaspa-consensus 2.0.1",
- "kaspa-consensus-core 2.0.1",
- "kaspa-consensus-notify 2.0.1",
- "kaspa-consensusmanager 2.0.1",
- "kaspa-core 2.0.1",
- "kaspa-database 2.0.1",
- "kaspa-grpc-server 2.0.1",
- "kaspa-hashes 2.0.1",
- "kaspa-index-processor 2.0.1",
- "kaspa-mining 2.0.1",
- "kaspa-notify 2.0.1",
- "kaspa-p2p-flows 2.0.1",
- "kaspa-p2p-lib 2.0.1",
- "kaspa-p2p-mining 2.0.1",
- "kaspa-perf-monitor 2.0.1",
- "kaspa-rpc-core 2.0.1",
- "kaspa-rpc-service 2.0.1",
- "kaspa-system-info 2.0.1",
- "kaspa-txscript 2.0.1",
- "kaspa-utils 2.0.1",
- "kaspa-utils-tower 2.0.1",
- "kaspa-utxoindex 2.0.1",
- "kaspa-wrpc-server 2.0.1",
+ "kaspa-addresses 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-addressmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-alloc 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-build-info 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensus-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-consensusmanager 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-database 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-grpc-server 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-hashes 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-index-processor 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-mining 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-notify 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-p2p-flows 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-p2p-lib 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-p2p-mining 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-perf-monitor 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-core 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-rpc-service 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-system-info 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-txscript 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utils-tower 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-utxoindex 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
+ "kaspa-wrpc-server 2.0.1 (git+https://github.com/kaspanet/rusty-kaspa.git?rev=ad45e241e6688a14901fd24dd8dc33c5c9a33f40)",
  "log",
  "num_cpus",
  "rand 0.8.7",
@@ -6218,7 +6238,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tar",
- "ureq 3.4.2",
+ "ureq",
  "vcpkg",
  "zip 6.0.0",
 ]
@@ -6889,7 +6909,7 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "680998035259dcfcafe653688bf2aa6d3e2dc05e98be6ab46afb089dc84f1df8"
 dependencies = [
- "proc-macro-crate 3.5.0",
+ "proc-macro-crate 1.3.1",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -7209,7 +7229,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.45.0",
 ]
 
 [[package]]
@@ -7721,7 +7741,7 @@ version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03da047801ff44bb6a4d407d4860c05fd70bb81714e6b2f3812603d5b145b042"
 dependencies = [
- "heck 0.5.0",
+ "heck 0.4.1",
  "itertools 0.14.0",
  "log",
  "multimap",
@@ -8285,9 +8305,9 @@ dependencies = [
 
 [[package]]
 name = "risc0-zkvm-platform"
-version = "2.2.3"
+version = "2.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2eb37a97ff7e8e4ee1b2a1c43ec143b4887759883c343507af9e4787a57914cd"
+checksum = "4db893788c416287e2e1a87e6b8f5302511a04a45329e699d6a32a16874fd24f"
 dependencies = [
  "cfg-if",
  "num_enum",
@@ -10577,20 +10597,6 @@ name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
-
-[[package]]
-name = "ureq"
-version = "2.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02d1a66277ed75f640d608235660df48c8e3c19f3b4edb6a263315626cc3c01d"
-dependencies = [
- "base64 0.22.1",
- "log",
- "once_cell",
- "serde",
- "serde_json",
- "url",
-]
 
 [[package]]
 name = "ureq"

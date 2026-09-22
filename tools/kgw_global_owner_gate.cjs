@@ -294,7 +294,7 @@ const OWNER_REGISTRY = {
     requiredMarkers: [
       "kgw_apply_command_preview_overrides",
       "start_mainline_bridge_owner_thread",
-      "start_tn12_bridge_owner_thread",
+      "start_tn13_bridge_owner_thread",
       "try_run_kgw_self_worker_from_args"
     ],
     requiredFiles: [],

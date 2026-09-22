@@ -27,6 +27,19 @@ fn kgw_kgw_apply_node_settings_v1(
     bridge_structured_instances: Option<String>,
     experimental_network_opt_in: Option<bool>,
 ) -> Result<String, String> {
+    // Lifecycle fixtures pass typed settings; display previews are never executed.
+    let network_id =
+        kaspa_gateway_rk_node::KgwNetwork::parse(&network).map_err(|error| error.to_string())?;
+    let effective_node_settings = kaspa_gateway_rk_node::EffectiveNodeSettings {
+        rpc_listen: network_id.rpc_endpoint().to_string(),
+        async_threads: 2,
+        ram_scale: 0.1,
+        outbound_target: 0,
+        inbound_limit: 0,
+        disable_dns_seeding: true,
+        p2p_listen: Some("127.0.0.1:26111".to_string()),
+        ..Default::default()
+    };
     let effective_bridge_settings = (runtime_role.as_deref() == Some("bridge")).then(|| {
         let network = kaspa_gateway_rk_bridge::BridgeRuntimeNetwork::parse(&network).unwrap();
         let mut effective = kaspa_gateway_rk_bridge::EffectiveBridgeSettings::for_network(network);
@@ -44,9 +57,10 @@ fn kgw_kgw_apply_node_settings_v1(
         bridge_active_instance,
         bridge_active_instance_port,
         bridge_structured_instances,
-        None,
+        Some(effective_node_settings),
         effective_bridge_settings,
         experimental_network_opt_in,
+        None,
     )
 }
 
@@ -398,13 +412,13 @@ fn live_smoke_parent_accepts_only_valid_stable_network_runtime_settings() {
     );
     assert!(
         integrated_runtime_commands::kgw_validate_live_smoke_parent_settings_v1(
-            "testnet12",
+            "testnet13",
             &appdir,
-            "127.0.0.1:16310",
+            "127.0.0.1:16210",
             None,
         )
         .is_err(),
-        "the live smoke parent must never start experimental testnet12"
+        "the live smoke parent must never start experimental testnet13"
     );
     assert!(
         integrated_runtime_commands::kgw_validate_live_smoke_parent_settings_v1(
@@ -1364,7 +1378,15 @@ fn failed_stop_attestation_with_terminal_exit_removes_owner_truthfully() {
         Some("node".to_string()),
     )
     .expect("terminal failed worker must no longer be registered");
-    assert_contains_all(&status, &["node_running=false", "bridge_running=false"]);
+    assert_contains_all(
+        &status,
+        &[
+            "role=node",
+            "network=mainnet",
+            "running=false",
+            "message=no node worker status yet",
+        ],
+    );
 }
 
 #[test]
@@ -1548,18 +1570,75 @@ fn shutdown_all_uses_graceful_bridge_first_order() {
 }
 
 #[test]
+fn official_node_core_shutdown_budgets_are_ownership_aware() {
+    assert!(
+        integrated_runtime_commands::kgw_worker_owns_official_node_core_v1(
+            "node",
+            "integrated-inproc"
+        )
+    );
+    assert!(
+        integrated_runtime_commands::kgw_worker_owns_official_node_core_v1("bridge", "inprocess")
+    );
+    assert!(
+        integrated_runtime_commands::kgw_worker_owns_official_node_core_v1(
+            "bridge",
+            "official-inprocess-node"
+        )
+    );
+    assert!(
+        !integrated_runtime_commands::kgw_worker_owns_official_node_core_v1("bridge", "external")
+    );
+
+    assert_eq!(
+        integrated_runtime_commands::kgw_child_official_shutdown_budget_ms_v1(
+            "node",
+            "integrated-inproc"
+        ),
+        None
+    );
+    assert_eq!(
+        integrated_runtime_commands::kgw_parent_graceful_stop_timeout_ms_v1(
+            "node",
+            "integrated-inproc"
+        ),
+        None
+    );
+    assert_eq!(
+        integrated_runtime_commands::kgw_child_official_shutdown_budget_ms_v1(
+            "bridge",
+            "inprocess"
+        ),
+        None
+    );
+    assert_eq!(
+        integrated_runtime_commands::kgw_parent_graceful_stop_timeout_ms_v1("bridge", "inprocess"),
+        None
+    );
+    assert_eq!(
+        integrated_runtime_commands::kgw_child_official_shutdown_budget_ms_v1("bridge", "external"),
+        Some(45_000)
+    );
+    assert_eq!(
+        integrated_runtime_commands::kgw_parent_graceful_stop_timeout_ms_v1("bridge", "external"),
+        Some(55_000)
+    );
+}
+
+#[test]
 fn timeout_hierarchy_is_strict_and_race_free() {
     const {
         assert!(
             integrated_runtime_commands::KGW_PARENT_GRACEFUL_STOP_TIMEOUT_MS_V1
                 > integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1
         );
-        assert!(70_000 > integrated_runtime_commands::KGW_PARENT_GRACEFUL_STOP_TIMEOUT_MS_V1);
     }
     let node_js = include_str!("../../frontend/src/tabs/kaspa-node/kaspa-node.js");
     let bridge_js = include_str!("../../frontend/src/tabs/kaspa-bridge/kaspa-bridge.js");
-    assert!(node_js.contains("const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 70000"));
-    assert!(bridge_js.contains("const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS = 70000"));
+    assert!(node_js.contains("const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 0"));
+    assert!(bridge_js.contains("const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS = 0"));
+    assert!(node_js.contains("if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)"));
+    assert!(bridge_js.contains("if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)"));
 }
 
 #[test]
@@ -1572,7 +1651,7 @@ fn exact_kgw_controller_summary_mentions_event_flow() {
             "NodeSettings",
             "KaspadServiceEvents::from_node_settings",
             "controller event loop",
-            "testnet12 uses the opt-in experimental tn12 runtime",
+            "testnet13 uses the opt-in experimental tn13 runtime",
         ],
     );
 }
@@ -1598,9 +1677,9 @@ fn testnet10_uses_the_official_stable_runtime_family() {
 }
 
 #[test]
-fn testnet12_requires_explicit_experimental_opt_in() {
+fn testnet13_requires_explicit_experimental_opt_in() {
     let error = kgw_kgw_apply_node_settings_v1(
-        "testnet12".to_string(),
+        "testnet13".to_string(),
         "integrated-inproc".to_string(),
         "official-inprocess-node".to_string(),
         None,
@@ -1612,12 +1691,12 @@ fn testnet12_requires_explicit_experimental_opt_in() {
         None,
         None,
     )
-    .expect_err("testnet12 must be blocked without explicit opt-in");
+    .expect_err("testnet13 must be blocked without explicit opt-in");
 
     assert_contains_all(
         &error,
         &[
-            "network=testnet12",
+            "network=testnet13",
             "start_blocked=true",
             "experimental-network-opt-in-required",
         ],
@@ -1761,7 +1840,16 @@ fn typed_effective_node_settings_are_validated_and_keep_backend_owned_paths() {
     assert_eq!(settings.effective_node, effective);
     assert_eq!(settings.rpc_endpoint, "127.0.0.1:26110");
     assert_eq!(settings.p2p_listen.as_deref(), Some("127.0.0.1:26111"));
-    assert!(settings.app_dir_name.ends_with("mainnet"));
+    let expected_appdir = kaspa_gateway_config::default_user_data_dir()
+        .expect("test process must resolve its user data root")
+        .join("nodes")
+        .join("mainnet")
+        .to_string_lossy()
+        .to_string();
+    assert_eq!(
+        settings.app_dir_name, expected_appdir,
+        "managed node appdir must stay under the configured Kaspa Gateway data root",
+    );
 
     let mut invalid = effective;
     invalid.rpc_max_clients = 17;
@@ -1860,7 +1948,7 @@ fn typed_effective_bridge_settings_cross_the_ipc_boundary_without_preview_parsin
     };
 
     let settings = integrated_runtime_commands::kgw_apply_effective_bridge_settings_for_test_v1(
-        "testnet10",
+        "mainnet",
         "official-external-node",
         effective.clone(),
     )
@@ -1870,12 +1958,12 @@ fn typed_effective_bridge_settings_cross_the_ipc_boundary_without_preview_parsin
     assert_eq!(settings.stratum_listen, "127.0.0.1:25555");
 
     let inprocess = integrated_runtime_commands::kgw_apply_effective_bridge_settings_for_test_v1(
-        "testnet10",
+        "mainnet",
         "official-inprocess-node",
         effective,
     )
     .expect("typed Bridge settings should not replace the embedded Node RPC owner");
-    assert_eq!(inprocess.rpc_endpoint, "127.0.0.1:16210");
+    assert_eq!(inprocess.rpc_endpoint, "127.0.0.1:16110");
 }
 
 #[cfg(feature = "official-kaspa-runtime-mainline")]

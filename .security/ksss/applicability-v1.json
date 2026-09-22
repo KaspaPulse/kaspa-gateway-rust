@@ -1,0 +1,37 @@
+{
+  "schema": "kgw-ksss-applicability-v1",
+  "repository": "KaspaPulse/kaspa-gateway-rust",
+  "ksss_release": "v1.2.0",
+  "required_controls": [
+    "KSSS-L0-001",
+    "KSSS-L0-002",
+    "KSSS-L1-001",
+    "KSSS-L2-001",
+    "KSSS-L2-002",
+    "KSSS-L3-001",
+    "KSSS-L4-001",
+    "KSSS-L5-001",
+    "KSSS-L7-001",
+    "KSSS-L8-001",
+    "KSSS-L9-001",
+    "KSSS-L10-001",
+    "KSSS-L10-002",
+    "KSSS-L11-001",
+    "KSSS-L12-001",
+    "KSSS-L13-001",
+    "KSSS-L14-001",
+    "KSSS-L14-002"
+  ],
+  "conditional_controls": [
+    "KSSS-L6-001"
+  ],
+  "not_applicable_controls": [
+    "KSSS-L1-002"
+  ],
+  "rationale": {
+    "KSSS-L1-001": "Required before privileged, publishing or deployment operations; current authorization is repository-only.",
+    "KSSS-L1-002": "KGW consumes KSSS and does not own the central control plane.",
+    "KSSS-L6-001": "AI findings require independent evidence; this adoption does not start a new AI audit.",
+    "KSSS-L8-001": "Real Windows packaged runtime verification remains required for operational qualification. It is not executed by repository adoption."
+  }
+}

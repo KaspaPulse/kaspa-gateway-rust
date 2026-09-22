@@ -708,7 +708,7 @@ fn normalize_desktop_network(value: &str) -> String {
     match value.trim().to_ascii_lowercase().as_str() {
         "mainnet" => "mainnet".to_string(),
         "testnet" | "testnet10" | "testnet-10" => "testnet10".to_string(),
-        "testnet12" | "tn12" | "testnet-12" => "testnet12".to_string(),
+        "testnet13" | "tn13" | "testnet-13" => "testnet13".to_string(),
         "simnet" => "simnet".to_string(),
         "devnet" => "devnet".to_string(),
         _ => "mainnet".to_string(),
@@ -717,7 +717,7 @@ fn normalize_desktop_network(value: &str) -> String {
 
 fn branch_for_desktop_network(network: &str) -> &'static str {
     match normalize_desktop_network(network).as_str() {
-        "testnet12" => "tn12",
+        "testnet13" => "tn13",
         _ => "master",
     }
 }
@@ -739,9 +739,9 @@ fn build_node_settings_report(
             preview.push("--testnet".to_string());
             preview.push("--netsuffix=10".to_string());
         }
-        "testnet12" => {
+        "testnet13" => {
             preview.push("--testnet".to_string());
-            preview.push("--netsuffix=12".to_string());
+            preview.push("--netsuffix=13".to_string());
         }
         _ => {}
     }
@@ -765,7 +765,7 @@ fn build_node_settings_report(
 
 fn validate_node_settings(settings: &DesktopNodeSettings) -> Result<(), String> {
     match normalize_desktop_network(&settings.network).as_str() {
-        "mainnet" | "testnet10" | "testnet12" | "simnet" | "devnet" => {}
+        "mainnet" | "testnet10" | "testnet13" | "simnet" | "devnet" => {}
         other => return Err(format!("Unsupported network selected: {other}")),
     }
 

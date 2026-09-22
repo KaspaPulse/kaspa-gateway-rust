@@ -92,7 +92,7 @@ Never convert `NOT VERIFIED` into `PASS`. Push, merge, CI success, release publi
 ## Network Invariants
 
 - Mainnet and testnet10 are stable networks that may be enabled.
-- Testnet12 is experimental, disabled by default, and requires explicit opt-in before start or runtime ownership.
+- Testnet13 is experimental, disabled by default, and requires explicit opt-in before start or runtime ownership.
 - Keep database directories, ports, runtime state, logs, and operating-system processes isolated by network.
 - Maintain exactly one process owner per network. Do not create duplicate frontend, Tauri, self-worker, bridge, or node owners for the same runtime.
 - Keep RPC bound to loopback by default.
@@ -148,3 +148,22 @@ Apply [the interruption-safe execution supplement](docs/continuity/INTERRUPTION_
 Read [repository adoption](docs/continuity/REPOSITORY_ADOPTION.md), [resume procedure](docs/continuity/RESUME.md) and [checkpoint template](docs/continuity/CHECKPOINT_TEMPLATE.md).
 Persist material-operation intent before execution, then verify and record outcomes immediately afterward. Recover uncertain results before retries and preserve active work/ownership.
 Validate NEXT ACTION and reuse only source-bound evidence. Continue actual authorized work; no push, release or production authority is added.
+
+## KGW KSSS Consumer Contract
+
+Use .security/ksss/README.md and ADR-0012 for the approved v1.2.0 adoption.
+Run python -B tools/kgw_ksss_gate.py for local consumer validation.
+Use the signed runtime APIs; do not fork the resolver, classifier or knowledge engine.
+A profile cannot weaken risk/applicability requirements. AI suspicion alone is not
+blocking. Normal consumer evaluation is offline and needs no central checkout.
+Before diagnosis, look up existing knowledge with the actual context and change
+invalidators. Urgent production containment comes first. Do not replay valid
+historical evidence unless its identity, context or freshness has changed.
+Keep SERVICE_STATUS and LEARNING_STATUS separate. A repaired service is not
+closed learning without durable regression protection.
+Adoption PASS is not application/runtime PASS. Require reviewed, identity-bound
+packaged application evidence for node/bridge lifecycle and release qualification.
+For the current owner-authorized remediation task, use Server only and preserve
+older dirty lanes. Actual native application checks with isolated task data are
+authorized; Sandbox/VM/simulation is prohibited. Commit/checkpoint only to the
+local mirror. No real GitHub push, PR, release or deployment is authorized.

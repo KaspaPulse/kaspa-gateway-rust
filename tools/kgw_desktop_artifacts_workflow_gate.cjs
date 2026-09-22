@@ -16,6 +16,12 @@ const desktopManifest = readFileSync(desktopManifestPath, "utf8");
 const windowsConfig = JSON.parse(readFileSync(windowsConfigPath, "utf8"));
 const macosConfig = JSON.parse(readFileSync(macosConfigPath, "utf8"));
 const rustToolchain = readFileSync(rustToolchainPath, "utf8");
+const cargoConfig = readFileSync(".cargo/config.toml", "utf8");
+assert.match(
+  cargoConfig,
+  /\[target\.x86_64-pc-windows-msvc\]\s+rustflags\s*=\s*\["-C",\s*"target-feature=\+crt-static"\]/u,
+  "Windows desktop builds must statically link the MSVC runtime",
+);
 
 const canonicalRustMatch = rustToolchain.match(
   /^\s*channel\s*=\s*"([^"]+)"\s*$/mu,
@@ -75,6 +81,8 @@ const requiredWorkflowFragments = [
   "MACOS_NOTARIZATION=NOT_CONFIGURED",
   "MACOS_ARCHITECTURE_PROOF=UNIVERSAL_ARM64_X86_64",
   "Get-AuthenticodeSignature",
+  "kgw_verify_windows_runtime_dependencies.ps1 -Executable $rawExe",
+  "kgw_verify_windows_runtime_dependencies.ps1 -Executable $installedExecutables[0].FullName",
   'ArgumentList @("/S"',
   "KASPA_GATEWAY_DATA_DIR",
   "hdiutil attach",

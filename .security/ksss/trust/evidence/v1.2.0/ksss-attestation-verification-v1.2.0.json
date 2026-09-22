@@ -1,0 +1,15 @@
+{
+  "issuer": "https://token.actions.githubusercontent.com",
+  "policy_bundle_digest": "3c1c8b449d736aba5fec5cffd688496b06d81f287f55fff4c3f42e36c3b58ec6",
+  "release": "v1.2.0",
+  "schema": "ksss-trusted-release-verification-v1",
+  "sequence": 2,
+  "signature_or_attestation_verified": true,
+  "signer_or_workflow_identity": "https://github.com/KaspaPulse/security-governance/.github/workflows/ksss-trusted-release.yml@refs/heads/main",
+  "source_sha": "967ed5068947a39961d5d5cc483ef65d25a61059",
+  "status": "PASS",
+  "subject_sha256": "3c1c8b449d736aba5fec5cffd688496b06d81f287f55fff4c3f42e36c3b58ec6",
+  "trust_root_digest": "1507107b9fc2aad1938961472320478bef6ef5ebb0fa1261edd68734550cdafe",
+  "trust_root_version": "ksss-trust-root-1",
+  "verification_time": "2026-09-20T10:24:19+00:00"
+}
