@@ -1,0 +1,18 @@
+{
+  "schema": "kgw-learning-index-v1",
+  "knowledge_layers": [
+    "KSSS GLOBAL KNOWLEDGE",
+    "REPOSITORY LOCAL KNOWLEDGE"
+  ],
+  "known_failures": [
+    "learning/known-failures/KGW-IPC-ROCKSDB-CASING.json",
+    "learning/known-failures/KGW-OWNER-TERMINAL-PID.json",
+    "learning/known-failures/KGW-EVIDENCE-PORT-PROFILE.json"
+  ],
+  "known_good_paths": [
+    "learning/known-good-paths/KGW-STABLE-NETWORK-BASELINE-3414F9C.json"
+  ],
+  "historical_replay": "INDEX_EXISTING_EVIDENCE_WITHOUT_REEXECUTION",
+  "service_status": "NOT_VERIFIED",
+  "learning_status": "OPEN"
+}

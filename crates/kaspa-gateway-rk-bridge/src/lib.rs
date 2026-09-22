@@ -1,10 +1,12 @@
+pub mod observation;
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::thread::JoinHandle;
 #[cfg(any(
     test,
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 use std::time::Duration;
 use thiserror::Error;
@@ -13,7 +15,7 @@ use thiserror::Error;
 pub enum BridgeRuntimeNetwork {
     Mainnet,
     Testnet10,
-    Testnet12,
+    Testnet13,
 }
 
 impl BridgeRuntimeNetwork {
@@ -21,7 +23,7 @@ impl BridgeRuntimeNetwork {
         match value.trim().to_ascii_lowercase().as_str() {
             "mainnet" => Ok(Self::Mainnet),
             "testnet" | "testnet10" => Ok(Self::Testnet10),
-            "tn12" | "testnet12" => Ok(Self::Testnet12),
+            "tn13" | "testnet13" => Ok(Self::Testnet13),
             _ => Err(BridgeRuntimeError::UnsupportedNetwork(value.to_string())),
         }
     }
@@ -30,36 +32,40 @@ impl BridgeRuntimeNetwork {
         match self {
             Self::Mainnet => "mainnet",
             Self::Testnet10 => "testnet10",
-            Self::Testnet12 => "testnet12",
+            Self::Testnet13 => "testnet13",
         }
     }
 
     pub fn branch(self) -> &'static str {
         match self {
             Self::Mainnet | Self::Testnet10 => "stable",
-            Self::Testnet12 => "RKStratumTN12",
+            Self::Testnet13 => "dagknight",
         }
     }
 
     pub fn revision(self) -> &'static str {
         match self {
-            Self::Mainnet | Self::Testnet10 => "cfafeb4c093fa37a303f1b9f19c58f986b870ce3",
-            Self::Testnet12 => "eeb351ee911e2df906d21203dec8db3a195c6b33",
+            Self::Mainnet | Self::Testnet10 => "98a4ccd8d200853787f227bd4536ac540cf34957",
+            Self::Testnet13 => "ad45e241e6688a14901fd24dd8dc33c5c9a33f40",
         }
     }
 
     pub fn family(self) -> BridgeRuntimeFamily {
         match self {
             Self::Mainnet | Self::Testnet10 => BridgeRuntimeFamily::Mainline,
-            Self::Testnet12 => BridgeRuntimeFamily::Tn12,
+            Self::Testnet13 => BridgeRuntimeFamily::Tn13,
         }
+    }
+
+    pub fn cpu_only(self) -> bool {
+        matches!(self, Self::Testnet10 | Self::Testnet13)
     }
 
     pub fn default_rpc(self) -> &'static str {
         match self {
             Self::Mainnet => "127.0.0.1:16110",
             Self::Testnet10 => "127.0.0.1:16210",
-            Self::Testnet12 => "127.0.0.1:16310",
+            Self::Testnet13 => "127.0.0.1:16210",
         }
     }
 
@@ -67,7 +73,7 @@ impl BridgeRuntimeNetwork {
         match self {
             Self::Mainnet => "0.0.0.0:5555",
             Self::Testnet10 => "0.0.0.0:15555",
-            Self::Testnet12 => "0.0.0.0:25555",
+            Self::Testnet13 => "0.0.0.0:25555",
         }
     }
 
@@ -75,7 +81,7 @@ impl BridgeRuntimeNetwork {
         match self {
             Self::Mainnet => "127.0.0.1:2114",
             Self::Testnet10 => "127.0.0.1:12114",
-            Self::Testnet12 => "127.0.0.1:22114",
+            Self::Testnet13 => "127.0.0.1:22114",
         }
     }
 }
@@ -83,14 +89,14 @@ impl BridgeRuntimeNetwork {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BridgeRuntimeFamily {
     Mainline,
-    Tn12,
+    Tn13,
 }
 
 impl BridgeRuntimeFamily {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Mainline => "official-stable-v2.0.1",
-            Self::Tn12 => "tn12-only",
+            Self::Tn13 => "official-dagknight",
         }
     }
 }
@@ -180,12 +186,73 @@ impl BridgeRuntimeStep {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
 pub struct BridgeInternalCpuMinerSettings {
     pub enabled: bool,
     pub address: Option<String>,
     pub threads: Option<u16>,
     pub throttle_ms: Option<u64>,
     pub template_poll_ms: Option<u64>,
+}
+
+impl BridgeInternalCpuMinerSettings {
+    pub fn validate_for_network(
+        &self,
+        network: BridgeRuntimeNetwork,
+    ) -> Result<(), BridgeRuntimeError> {
+        if !self.enabled {
+            return Ok(());
+        }
+        let invalid =
+            |message: &str| BridgeRuntimeError::InvalidEffectiveBridgeSettings(message.to_string());
+        if !network.cpu_only() {
+            return Err(invalid(
+                "RKStratum internal CPU mining is supported only on Testnet10/Testnet13",
+            ));
+        }
+        if !cfg!(feature = "rkstratum_cpu_miner") {
+            return Err(BridgeRuntimeError::FeatureRequired(
+                "rkstratum_cpu_miner is not compiled".to_string(),
+            ));
+        }
+        let address =
+            kaspa_gateway_core::KaspaAddress::parse(self.address.as_deref().unwrap_or(""))
+                .map_err(|error| invalid(&format!("CPU reward address: {error}")))?;
+        if address.network() != kaspa_gateway_core::KaspaNetwork::Testnet {
+            return Err(invalid("CPU reward address must use the kaspatest network"));
+        }
+        let max_threads = std::thread::available_parallelism()
+            .map(usize::from)
+            .unwrap_or(1)
+            .min(256);
+        if self
+            .threads
+            .is_some_and(|value| value == 0 || usize::from(value) > max_threads)
+        {
+            return Err(invalid(&format!(
+                "CPU threads must be in 1..={max_threads}"
+            )));
+        }
+        if self.throttle_ms.is_some_and(|value| value > 60_000) {
+            return Err(invalid("CPU throttle must be in 0..=60000 milliseconds"));
+        }
+        if self
+            .template_poll_ms
+            .is_some_and(|value| value == 0 || value > 60_000)
+        {
+            return Err(invalid(
+                "Template poll interval must be in 1..=60000 milliseconds",
+            ));
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase", deny_unknown_fields)]
+pub struct BridgeStartOptions {
+    pub config_file: Option<String>,
+    pub internal_cpu_miner: BridgeInternalCpuMinerSettings,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -288,12 +355,16 @@ impl EffectiveBridgeSettings {
                 log_to_file: false,
                 ..EffectiveBridgeGlobalSettings::default()
             },
-            instances: vec![EffectiveBridgeInstanceSettings {
-                instance_id: format!("{}-bridge-1", network.as_str()),
-                stratum_listen: network.default_stratum().to_string(),
-                prometheus_listen: Some(network.default_prometheus().to_string()),
-                ..EffectiveBridgeInstanceSettings::default()
-            }],
+            instances: if network.cpu_only() {
+                Vec::new()
+            } else {
+                vec![EffectiveBridgeInstanceSettings {
+                    instance_id: format!("{}-bridge-1", network.as_str()),
+                    stratum_listen: network.default_stratum().to_string(),
+                    prometheus_listen: Some(network.default_prometheus().to_string()),
+                    ..EffectiveBridgeInstanceSettings::default()
+                }]
+            },
             ..Self::default()
         }
     }
@@ -307,7 +378,12 @@ impl EffectiveBridgeSettings {
                 "effective Bridge settings version must be 1".to_string(),
             ));
         }
-        if self.instances.is_empty() {
+        if network.cpu_only() && !self.instances.is_empty() {
+            return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+                "Testnet10/Testnet13 are RKStratum CPU-only; external Stratum instances are forbidden".to_string(),
+            ));
+        }
+        if !network.cpu_only() && self.instances.is_empty() {
             return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
                 "effective Bridge settings require at least one instance".to_string(),
             ));
@@ -331,9 +407,9 @@ impl EffectiveBridgeSettings {
         validate_optional_socket_listener(self.global.health_check_listen.as_deref())?;
         validate_optional_socket_listener(self.global.web_dashboard_listen.as_deref())?;
 
-        if network != BridgeRuntimeNetwork::Testnet12 && self.global.approximate_geo_lookup {
+        if self.global.approximate_geo_lookup {
             return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
-                "approximateGeoLookup is supported only by the pinned testnet12 runtime"
+                "approximateGeoLookup is not supported by the embedded official runtimes"
                     .to_string(),
             ));
         }
@@ -465,6 +541,15 @@ impl EffectiveBridgeSettings {
         }
         self.validate_for_network(network)?;
         self.reject_unowned_services()?;
+        internal_cpu_miner.validate_for_network(network)?;
+        if network.cpu_only() {
+            self.instances.push(EffectiveBridgeInstanceSettings {
+                instance_id: format!("{}-cpu", network.as_str()),
+                stratum_listen: String::new(),
+                prometheus_listen: None,
+                ..EffectiveBridgeInstanceSettings::default()
+            });
+        }
         let global = self.global;
         Ok(self
             .instances
@@ -657,12 +742,12 @@ pub struct BridgeStartupReadiness {
 
 impl BridgeStartupReadiness {
     pub fn listener_count(&self) -> usize {
-        1 + usize::from(self.prometheus_listener.is_some())
+        usize::from(!self.listener.is_empty()) + usize::from(self.prometheus_listener.is_some())
     }
 
     pub fn to_attestation(&self) -> String {
         format!(
-            "rpc_method=get_server_info;rpc_network={};rpc_endpoint={};listener={};prometheus_listener={};listeners_ready={}",
+            "rpc_method=get_server_info;rpc_network={};rpc_endpoint={};listener={};prometheus_listener={};listeners_ready={};mining_readiness=not_attested",
             self.rpc_network,
             self.rpc_endpoint,
             self.listener,
@@ -675,7 +760,7 @@ impl BridgeStartupReadiness {
 #[cfg(any(
     test,
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 enum BridgeOwnerStartupOutcome {
     Ready(BridgeStartupReadiness),
@@ -695,7 +780,7 @@ pub const KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS: u64 = KGW_BRIDGE_NODE_AT
     not(test),
     any(
         feature = "official-kaspa-runtime-mainline",
-        feature = "official-kaspa-runtime-tn12"
+        feature = "official-kaspa-runtime-tn13"
     )
 ))]
 const KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT: Duration =
@@ -704,26 +789,26 @@ const KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT: Duration =
     test,
     any(
         feature = "official-kaspa-runtime-mainline",
-        feature = "official-kaspa-runtime-tn12"
+        feature = "official-kaspa-runtime-tn13"
     )
 ))]
 const KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT: Duration = Duration::from_millis(750);
 #[cfg(any(
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 const KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT: Duration =
     Duration::from_millis(KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT_MS);
 #[cfg(any(
     test,
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 const KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT: Duration =
     Duration::from_millis(KGW_BRIDGE_LISTENER_ATTESTATION_TIMEOUT_MS);
 #[cfg(any(
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 const KGW_BRIDGE_PARENT_ATTESTATION_GRACE: Duration =
     Duration::from_millis(KGW_BRIDGE_PARENT_ATTESTATION_GRACE_MS);
@@ -760,19 +845,19 @@ impl BridgeOwnerRuntimeHandle {
 #[cfg(any(
     test,
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 fn expected_rpc_network_id(network: BridgeRuntimeNetwork) -> &'static str {
     match network {
         BridgeRuntimeNetwork::Mainnet => "mainnet",
         BridgeRuntimeNetwork::Testnet10 => "testnet-10",
-        BridgeRuntimeNetwork::Testnet12 => "testnet-12",
+        BridgeRuntimeNetwork::Testnet13 => "testnet-13",
     }
 }
 
 #[cfg(any(
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 fn grpc_endpoint(endpoint: &str) -> String {
     if endpoint.starts_with("grpc://") {
@@ -785,7 +870,7 @@ fn grpc_endpoint(endpoint: &str) -> String {
 #[cfg(any(
     test,
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 fn validate_rpc_network_identity(
     network: BridgeRuntimeNetwork,
@@ -807,7 +892,7 @@ fn validate_rpc_network_identity(
 #[cfg(any(
     test,
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 fn listener_probe_address(listener: &str) -> Result<String, String> {
     let listener = listener.trim();
@@ -873,7 +958,7 @@ async fn attest_listener_and_serve_with_probe<F, E, C, P>(
 #[cfg(any(
     test,
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 async fn attest_listener_and_serve_with_auxiliary_probe<F, E, C, P>(
     listen: F,
@@ -1139,13 +1224,13 @@ pub fn effective_bridge_settings_from_mainline_yaml_v1(
     Ok(settings)
 }
 
-#[cfg(feature = "official-kaspa-runtime-tn12")]
-pub fn effective_bridge_settings_from_tn12_yaml_v1(
+#[cfg(feature = "official-kaspa-runtime-tn13")]
+pub fn effective_bridge_settings_from_tn13_yaml_v1(
     content: &str,
 ) -> Result<EffectiveBridgeSettings, BridgeRuntimeError> {
-    let config = kaspa_stratum_bridge_tn12::BridgeConfig::from_yaml(content).map_err(|error| {
+    let config = kaspa_stratum_bridge_tn13::BridgeConfig::from_yaml(content).map_err(|error| {
         BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
-            "official testnet12 Bridge config parse failed: {error}"
+            "official testnet13 Bridge config parse failed: {error}"
         ))
     })?;
     let settings = EffectiveBridgeSettings {
@@ -1164,7 +1249,8 @@ pub fn effective_bridge_settings_from_tn12_yaml_v1(
             extranonce_size: config.global.extranonce_size,
             pow2_clamp: config.global.pow2_clamp,
             coinbase_tag_suffix: config.global.coinbase_tag_suffix,
-            approximate_geo_lookup: config.global.approximate_geo_lookup,
+            // Official DAGKnight has no embedded geolocation service.
+            approximate_geo_lookup: false,
         },
         instances: config
             .instances
@@ -1187,7 +1273,7 @@ pub fn effective_bridge_settings_from_tn12_yaml_v1(
             })
             .collect(),
     };
-    settings.validate_for_network(BridgeRuntimeNetwork::Testnet12)?;
+    settings.validate_for_network(BridgeRuntimeNetwork::Testnet13)?;
     Ok(settings)
 }
 
@@ -1212,16 +1298,16 @@ pub fn effective_bridge_settings_from_yaml_v1(
                 ))
             }
         }
-        BridgeRuntimeNetwork::Testnet12 => {
-            #[cfg(feature = "official-kaspa-runtime-tn12")]
+        BridgeRuntimeNetwork::Testnet13 => {
+            #[cfg(feature = "official-kaspa-runtime-tn13")]
             {
-                effective_bridge_settings_from_tn12_yaml_v1(content)
+                effective_bridge_settings_from_tn13_yaml_v1(content)
             }
-            #[cfg(not(feature = "official-kaspa-runtime-tn12"))]
+            #[cfg(not(feature = "official-kaspa-runtime-tn13"))]
             {
                 let _ = content;
                 Err(BridgeRuntimeError::FeatureRequired(
-                    "testnet12 Bridge config parsing requires official-kaspa-runtime-tn12"
+                    "testnet13 Bridge config parsing requires official-kaspa-runtime-tn13"
                         .to_string(),
                 ))
             }
@@ -1231,7 +1317,7 @@ pub fn effective_bridge_settings_from_yaml_v1(
 
 #[cfg(any(
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 fn nonempty_option(value: String) -> Option<String> {
     let value = value.trim().to_string();
@@ -1286,11 +1372,11 @@ fn mainline_stratum_config_from_event(
     }
 }
 
-#[cfg(feature = "official-kaspa-runtime-tn12")]
-fn tn12_stratum_config_from_event(
+#[cfg(feature = "official-kaspa-runtime-tn13")]
+fn tn13_stratum_config_from_event(
     event: &BridgeServiceEvent,
-) -> kaspa_stratum_bridge_tn12::StratumServerBridgeConfig {
-    kaspa_stratum_bridge_tn12::StratumServerBridgeConfig {
+) -> kaspa_stratum_bridge_tn13::StratumServerBridgeConfig {
+    kaspa_stratum_bridge_tn13::StratumServerBridgeConfig {
         instance_id: event.effective_instance.instance_id.clone(),
         stratum_port: event.effective_instance.stratum_listen.clone(),
         kaspad_address: event.effective_global.kaspa_rpc_endpoint.clone(),
@@ -1339,11 +1425,11 @@ pub fn effective_mainline_stratum_config_snapshot_v1(
     EffectiveStratumConfigSnapshot::from_mainline(mainline_stratum_config_from_event(event))
 }
 
-#[cfg(feature = "official-kaspa-runtime-tn12")]
-pub fn effective_tn12_stratum_config_snapshot_v1(
+#[cfg(feature = "official-kaspa-runtime-tn13")]
+pub fn effective_tn13_stratum_config_snapshot_v1(
     event: &BridgeServiceEvent,
 ) -> EffectiveStratumConfigSnapshot {
-    EffectiveStratumConfigSnapshot::from_tn12(tn12_stratum_config_from_event(event))
+    EffectiveStratumConfigSnapshot::from_tn13(tn13_stratum_config_from_event(event))
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1385,8 +1471,8 @@ impl EffectiveStratumConfigSnapshot {
         }
     }
 
-    #[cfg(feature = "official-kaspa-runtime-tn12")]
-    fn from_tn12(value: kaspa_stratum_bridge_tn12::StratumServerBridgeConfig) -> Self {
+    #[cfg(feature = "official-kaspa-runtime-tn13")]
+    fn from_tn13(value: kaspa_stratum_bridge_tn13::StratumServerBridgeConfig) -> Self {
         Self {
             instance_id: value.instance_id,
             stratum_listen: value.stratum_port,
@@ -1423,9 +1509,22 @@ pub fn bridge_service_event_from_settings_v1(
         .kaspa_rpc_endpoint
         .unwrap_or_else(|| network.default_rpc().to_string());
 
-    validate_listen(&stratum_listen)?;
-    validate_listen(&prometheus_listen)?;
-    validate_listen(&kaspa_rpc_endpoint)?;
+    if !network.cpu_only() {
+        validate_listen(&stratum_listen)?;
+        validate_listen(&prometheus_listen)?;
+    }
+    validate_rpc_endpoint(&kaspa_rpc_endpoint)?;
+    settings.internal_cpu_miner.validate_for_network(network)?;
+    let stratum_listen = if network.cpu_only() {
+        String::new()
+    } else {
+        stratum_listen
+    };
+    let prometheus_listen = if network.cpu_only() {
+        String::new()
+    } else {
+        prometheus_listen
+    };
 
     let kind = match settings.mode {
         BridgeRuntimeMode::Disabled => BridgeServiceEventKind::Stop,
@@ -1455,7 +1554,7 @@ pub fn bridge_service_event_from_settings_v1(
         effective_instance: EffectiveBridgeInstanceSettings {
             instance_id: format!("{}-bridge-1", network.as_str()),
             stratum_listen: stratum_listen.clone(),
-            prometheus_listen: Some(prometheus_listen.clone()),
+            prometheus_listen: (!prometheus_listen.is_empty()).then_some(prometheus_listen.clone()),
             ..EffectiveBridgeInstanceSettings::default()
         },
     })
@@ -1475,12 +1574,12 @@ pub fn official_bridge_plan_from_settings_v1(
 
     let feature_expected = match network.family() {
         BridgeRuntimeFamily::Mainline => "official-kaspa-runtime-mainline",
-        BridgeRuntimeFamily::Tn12 => "official-kaspa-runtime-tn12",
+        BridgeRuntimeFamily::Tn13 => "official-kaspa-runtime-tn13",
     };
 
     let feature_enabled = match network.family() {
         BridgeRuntimeFamily::Mainline => cfg!(feature = "official-kaspa-runtime-mainline"),
-        BridgeRuntimeFamily::Tn12 => cfg!(feature = "official-kaspa-runtime-tn12"),
+        BridgeRuntimeFamily::Tn13 => cfg!(feature = "official-kaspa-runtime-tn13"),
     };
 
     let starts_now =
@@ -1535,6 +1634,9 @@ pub fn official_bridge_plan_from_settings_v1(
 pub fn start_official_bridge_owner_thread_v1(
     event: BridgeServiceEvent,
 ) -> Result<BridgeOwnerRuntimeHandle, BridgeRuntimeError> {
+    event
+        .internal_cpu_miner
+        .validate_for_network(event.network)?;
     match event.kind {
         BridgeServiceEventKind::Stop
         | BridgeServiceEventKind::Stdout
@@ -1549,13 +1651,16 @@ pub fn start_official_bridge_owner_thread_v1(
 
     match event.family {
         BridgeRuntimeFamily::Mainline => start_mainline_bridge_owner_thread(event),
-        BridgeRuntimeFamily::Tn12 => start_tn12_bridge_owner_thread(event),
+        BridgeRuntimeFamily::Tn13 => start_tn13_bridge_owner_thread(event),
     }
 }
 
 pub fn start_official_bridge_owner_thread_ready_v1(
     event: BridgeServiceEvent,
 ) -> Result<(BridgeOwnerRuntimeHandle, BridgeStartupReadiness), BridgeRuntimeError> {
+    event
+        .internal_cpu_miner
+        .validate_for_network(event.network)?;
     match event.kind {
         BridgeServiceEventKind::Stop
         | BridgeServiceEventKind::Stdout
@@ -1570,7 +1675,7 @@ pub fn start_official_bridge_owner_thread_ready_v1(
 
     match event.family {
         BridgeRuntimeFamily::Mainline => start_mainline_bridge_owner_thread_ready(event),
-        BridgeRuntimeFamily::Tn12 => start_tn12_bridge_owner_thread_ready(event),
+        BridgeRuntimeFamily::Tn13 => start_tn13_bridge_owner_thread_ready(event),
     }
 }
 
@@ -1734,6 +1839,52 @@ fn start_mainline_bridge_owner_thread_ready(
                         .clone(),
                     rpc_network: rpc_info.network_id.to_string(),
                 };
+
+                if event_for_thread.network.cpu_only() {
+                    // Testnets retain RKStratum RPC/template/mining ownership, without
+                    // an external Stratum listener or ASIC sessions.
+                    #[cfg(feature = "rkstratum_cpu_miner")]
+                    if event_for_thread.internal_cpu_miner.enabled {
+                        let settings = &event_for_thread.internal_cpu_miner;
+                        let config = kaspa_stratum_bridge_mainline::InternalCpuMinerConfig {
+                            enabled: true,
+                            mining_address: settings.address.clone().unwrap_or_default(),
+                            threads: usize::from(settings.threads.unwrap_or(1)),
+                            throttle: settings.throttle_ms.map(Duration::from_millis),
+                            template_poll_interval: Duration::from_millis(settings.template_poll_ms.unwrap_or(50)),
+                        };
+                        kaspa_stratum_bridge_mainline::prom::set_internal_cpu_mining_address(config.mining_address.clone());
+                        match kaspa_stratum_bridge_mainline::spawn_internal_cpu_miner(
+                            std::sync::Arc::clone(&kaspa_api), config, thread_shutdown.clone()
+                        ) {
+                            Ok(metrics) => {
+                                let observed = std::sync::Arc::clone(&metrics);
+                                observation::set_cpu_reader(event_for_thread.network, std::sync::Arc::new(move || {
+                                    use std::sync::atomic::Ordering;
+                                    (observed.hashes_tried.load(Ordering::Relaxed),
+                                     observed.blocks_submitted.load(Ordering::Relaxed),
+                                     observed.blocks_accepted.load(Ordering::Relaxed))
+                                }));
+                                kaspa_stratum_bridge_mainline::set_rkstratum_cpu_miner_metrics(metrics);
+                            }
+                            Err(error) => {
+                                let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(format!("RKStratum CPU miner failed: {error}")));
+                                return;
+                            }
+                        }
+                    }
+                    let mut readiness = readiness;
+                    readiness.listener.clear();
+                    readiness.prometheus_listener = None;
+                    if startup_tx.send(BridgeOwnerStartupOutcome::Ready(readiness)).is_err() { return; }
+                    let mut stop = thread_shutdown;
+                    let _ = stop.wait_for(|value| *value).await;
+                    // Let upstream cancellation tasks observe their shared stop receiver.
+                    tokio::task::yield_now().await;
+                    tokio::time::sleep(Duration::from_millis(50)).await;
+                    return;
+                }
+
                 let prometheus_task = readiness.prometheus_listener.as_ref().map(|listen| {
                     let listen = listen.clone();
                     let instance_id = event_for_thread.effective_instance.instance_id.clone();
@@ -1823,18 +1974,18 @@ fn start_mainline_bridge_owner_thread(
     )))
 }
 
-#[cfg(feature = "official-kaspa-runtime-tn12")]
-fn start_tn12_bridge_owner_thread(
+#[cfg(feature = "official-kaspa-runtime-tn13")]
+fn start_tn13_bridge_owner_thread(
     event: BridgeServiceEvent,
 ) -> Result<BridgeOwnerRuntimeHandle, BridgeRuntimeError> {
-    start_tn12_bridge_owner_thread_ready(event).map(|(handle, _readiness)| handle)
+    start_tn13_bridge_owner_thread_ready(event).map(|(handle, _readiness)| handle)
 }
 
-#[cfg(feature = "official-kaspa-runtime-tn12")]
-fn start_tn12_bridge_owner_thread_ready(
+#[cfg(feature = "official-kaspa-runtime-tn13")]
+fn start_tn13_bridge_owner_thread_ready(
     event: BridgeServiceEvent,
 ) -> Result<(BridgeOwnerRuntimeHandle, BridgeStartupReadiness), BridgeRuntimeError> {
-    use kaspa_rpc_core_tn12::api::rpc::RpcApi;
+    use kaspa_rpc_core_tn13::api::rpc::RpcApi;
 
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
     let thread_shutdown = shutdown_rx.clone();
@@ -1867,7 +2018,7 @@ fn start_tn12_bridge_owner_thread_ready(
                 let endpoint = event_for_thread.kaspa_rpc_endpoint.clone();
                 let kaspa_api = match tokio::time::timeout(
                     KGW_BRIDGE_NODE_ATTACHMENT_TIMEOUT,
-                    kaspa_stratum_bridge_tn12::KaspaApi::new(
+                    kaspa_stratum_bridge_tn13::KaspaApi::new(
                         endpoint.clone(),
                         event_for_thread.effective_global.coinbase_tag_suffix.clone(),
                         thread_shutdown.clone(),
@@ -1896,7 +2047,7 @@ fn start_tn12_bridge_owner_thread_ready(
 
                 let rpc_info = match tokio::time::timeout(KGW_BRIDGE_RPC_ATTESTATION_TIMEOUT, async {
                     let client =
-                        kaspa_grpc_client_tn12::GrpcClient::connect(grpc_endpoint(&endpoint))
+                        kaspa_grpc_client_tn13::GrpcClient::connect(grpc_endpoint(&endpoint))
                             .await
                             .map_err(|error| error.to_string())?;
                     client
@@ -1948,57 +2099,63 @@ fn start_tn12_bridge_owner_thread_ready(
                     rpc_network: rpc_info.network_id.to_string(),
                 };
 
-                #[cfg(feature = "rkstratum_cpu_miner")]
-                if event_for_thread.internal_cpu_miner.enabled
-                    && let Some(mining_address) = event_for_thread
-                        .internal_cpu_miner
-                        .address
-                        .clone()
-                        .map(|value| value.trim().to_string())
-                        .filter(|value| !value.is_empty())
-                {
-                    let miner_config = kaspa_stratum_bridge_tn12::InternalCpuMinerConfig {
-                        enabled: true,
-                        mining_address,
-                        threads: usize::from(
-                            event_for_thread.internal_cpu_miner.threads.unwrap_or(1).max(1),
-                        ),
-                        throttle: event_for_thread
-                            .internal_cpu_miner
-                            .throttle_ms
-                            .map(Duration::from_millis),
-                        template_poll_interval: Duration::from_millis(
-                            event_for_thread
-                                .internal_cpu_miner
-                                .template_poll_ms
-                                .unwrap_or(50)
-                                .max(1),
-                        ),
-                    };
-                    kaspa_stratum_bridge_tn12::prom::set_internal_cpu_mining_address(
-                        miner_config.mining_address.clone(),
-                    );
 
-                    if let Ok(metrics) = kaspa_stratum_bridge_tn12::spawn_internal_cpu_miner(
-                        std::sync::Arc::clone(&kaspa_api),
-                        miner_config,
-                        thread_shutdown.clone(),
-                    ) {
-                        kaspa_stratum_bridge_tn12::set_rkstratum_cpu_miner_metrics(metrics);
+                if event_for_thread.network.cpu_only() {
+                    // Testnets retain RKStratum RPC/template/mining ownership, without
+                    // an external Stratum listener or ASIC sessions.
+                    #[cfg(feature = "rkstratum_cpu_miner")]
+                    if event_for_thread.internal_cpu_miner.enabled {
+                        let settings = &event_for_thread.internal_cpu_miner;
+                        let config = kaspa_stratum_bridge_tn13::InternalCpuMinerConfig {
+                            enabled: true,
+                            mining_address: settings.address.clone().unwrap_or_default(),
+                            threads: usize::from(settings.threads.unwrap_or(1)),
+                            throttle: settings.throttle_ms.map(Duration::from_millis),
+                            template_poll_interval: Duration::from_millis(settings.template_poll_ms.unwrap_or(50)),
+                        };
+                        kaspa_stratum_bridge_tn13::prom::set_internal_cpu_mining_address(config.mining_address.clone());
+                        match kaspa_stratum_bridge_tn13::spawn_internal_cpu_miner(
+                            std::sync::Arc::clone(&kaspa_api), config, thread_shutdown.clone()
+                        ) {
+                            Ok(metrics) => {
+                                let observed = std::sync::Arc::clone(&metrics);
+                                observation::set_cpu_reader(event_for_thread.network, std::sync::Arc::new(move || {
+                                    use std::sync::atomic::Ordering;
+                                    (observed.hashes_tried.load(Ordering::Relaxed),
+                                     observed.blocks_submitted.load(Ordering::Relaxed),
+                                     observed.blocks_accepted.load(Ordering::Relaxed))
+                                }));
+                                kaspa_stratum_bridge_tn13::set_rkstratum_cpu_miner_metrics(metrics);
+                            }
+                            Err(error) => {
+                                let _ = startup_tx.send(BridgeOwnerStartupOutcome::Failed(format!("RKStratum CPU miner failed: {error}")));
+                                return;
+                            }
+                        }
                     }
+                    let mut readiness = readiness;
+                    readiness.listener.clear();
+                    readiness.prometheus_listener = None;
+                    if startup_tx.send(BridgeOwnerStartupOutcome::Ready(readiness)).is_err() { return; }
+                    let mut stop = thread_shutdown;
+                    let _ = stop.wait_for(|value| *value).await;
+                    // Let upstream cancellation tasks observe their shared stop receiver.
+                    tokio::task::yield_now().await;
+                    tokio::time::sleep(Duration::from_millis(50)).await;
+                    return;
                 }
 
                 let prometheus_task = readiness.prometheus_listener.as_ref().map(|listen| {
                     let listen = listen.clone();
                     let instance_id = event_for_thread.effective_instance.instance_id.clone();
                     tokio::spawn(async move {
-                        kaspa_stratum_bridge_tn12::prom::start_prom_server(&listen, &instance_id)
+                        kaspa_stratum_bridge_tn13::prom::start_prom_server(&listen, &instance_id)
                             .await
                             .map_err(|error| error.to_string())
                     })
                 });
-                let bridge_config = tn12_stratum_config_from_event(&event_for_thread);
-                let listen = kaspa_stratum_bridge_tn12::listen_and_serve_with_shutdown(
+                let bridge_config = tn13_stratum_config_from_event(&event_for_thread);
+                let listen = kaspa_stratum_bridge_tn13::listen_and_serve_with_shutdown(
                     bridge_config,
                     std::sync::Arc::clone(&kaspa_api),
                     Some(std::sync::Arc::clone(&kaspa_api)),
@@ -2054,28 +2211,28 @@ fn start_tn12_bridge_owner_thread_ready(
     }
 }
 
-#[cfg(not(feature = "official-kaspa-runtime-tn12"))]
-fn start_tn12_bridge_owner_thread_ready(
+#[cfg(not(feature = "official-kaspa-runtime-tn13"))]
+fn start_tn13_bridge_owner_thread_ready(
     event: BridgeServiceEvent,
 ) -> Result<(BridgeOwnerRuntimeHandle, BridgeStartupReadiness), BridgeRuntimeError> {
     Err(BridgeRuntimeError::FeatureRequired(format!(
-        "{} requires official-kaspa-runtime-tn12",
+        "{} requires official-kaspa-runtime-tn13",
         event.network.as_str()
     )))
 }
 
-#[cfg(not(feature = "official-kaspa-runtime-tn12"))]
-fn start_tn12_bridge_owner_thread(
+#[cfg(not(feature = "official-kaspa-runtime-tn13"))]
+fn start_tn13_bridge_owner_thread(
     event: BridgeServiceEvent,
 ) -> Result<BridgeOwnerRuntimeHandle, BridgeRuntimeError> {
     Err(BridgeRuntimeError::FeatureRequired(format!(
-        "{} requires official-kaspa-runtime-tn12",
+        "{} requires official-kaspa-runtime-tn13",
         event.network.as_str()
     )))
 }
 
 pub fn all_parallel_bridge_plans_v1() -> Result<Vec<BridgeRuntimePlan>, BridgeRuntimeError> {
-    ["mainnet", "testnet10", "testnet12"]
+    ["mainnet", "testnet10", "testnet13"]
         .into_iter()
         .map(|network| {
             official_bridge_plan_from_settings_v1(
@@ -2092,7 +2249,7 @@ pub fn all_parallel_bridge_plans_v1() -> Result<Vec<BridgeRuntimePlan>, BridgeRu
 }
 
 pub fn official_kaspa_bridge_summary_v1() -> &'static str {
-    "Kaspa bridge follows the KGW service-event mechanism. mainnet/testnet10 use official rusty-kaspa v2.0.1; testnet12 remains an explicit experimental tn12 build. Bridge start uses KaspaApi and listen_and_serve_with_shutdown inside owner."
+    "Kaspa bridge follows the KGW service-event mechanism. mainnet/testnet10 use official rusty-kaspa v2.0.1; testnet13 remains an explicit experimental tn13 build. Bridge start uses KaspaApi and listen_and_serve_with_shutdown inside owner."
 }
 
 #[cfg(feature = "official-kaspa-runtime-mainline")]
@@ -2105,22 +2262,22 @@ pub fn official_bridge_mainline_dependency_marker_v1() -> &'static str {
     "official-kaspa-runtime-mainline feature disabled"
 }
 
-#[cfg(feature = "official-kaspa-runtime-tn12")]
-pub fn official_bridge_tn12_dependency_marker_v1() -> &'static str {
-    "official-kaspa-runtime-tn12 dependency selected"
+#[cfg(feature = "official-kaspa-runtime-tn13")]
+pub fn official_bridge_tn13_dependency_marker_v1() -> &'static str {
+    "official-kaspa-runtime-tn13 dependency selected"
 }
 
-#[cfg(not(feature = "official-kaspa-runtime-tn12"))]
-pub fn official_bridge_tn12_dependency_marker_v1() -> &'static str {
-    "official-kaspa-runtime-tn12 feature disabled"
+#[cfg(not(feature = "official-kaspa-runtime-tn13"))]
+pub fn official_bridge_tn13_dependency_marker_v1() -> &'static str {
+    "official-kaspa-runtime-tn13 feature disabled"
 }
 
 #[cfg(test)]
 mod runtime_binding_tests {
     use super::*;
 
-    const STABLE_REV: &str = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3";
-    const TN12_REV: &str = "eeb351ee911e2df906d21203dec8db3a195c6b33";
+    const STABLE_REV: &str = "98a4ccd8d200853787f227bd4536ac540cf34957";
+    const TN13_REV: &str = "ad45e241e6688a14901fd24dd8dc33c5c9a33f40";
 
     #[cfg(feature = "official-kaspa-runtime-mainline")]
     fn event_from_instance(
@@ -2225,21 +2382,21 @@ instances:
         assert!(inherited.pow2_clamp);
     }
 
-    #[cfg(feature = "official-kaspa-runtime-tn12")]
+    #[cfg(feature = "official-kaspa-runtime-tn13")]
     #[test]
-    fn official_tn12_yaml_preserves_experimental_geo_field() {
+    fn official_tn13_yaml_rejects_external_asic_instances() {
         let yaml = r#"
-kaspad_address: "127.0.0.1:16310"
+kaspad_address: "127.0.0.1:16210"
 log_to_file: false
 approximate_geo_lookup: true
 instances:
   - stratum_port: "127.0.0.1:5555"
     min_share_diff: 19
 "#;
-        let settings = effective_bridge_settings_from_tn12_yaml_v1(yaml).unwrap();
-        assert!(settings.global.approximate_geo_lookup);
-        let error = settings.reject_unowned_services().unwrap_err().to_string();
-        assert!(error.contains("approximateGeoLookup"));
+        let error = effective_bridge_settings_from_tn13_yaml_v1(yaml)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("CPU-only"), "{error}");
     }
 
     #[cfg(feature = "official-kaspa-runtime-mainline")]
@@ -2365,11 +2522,11 @@ instances:
     }
 
     #[test]
-    fn testnet12_remains_on_the_separate_experimental_runtime() {
-        let network = BridgeRuntimeNetwork::Testnet12;
-        assert_eq!(network.family(), BridgeRuntimeFamily::Tn12);
-        assert_eq!(network.branch(), "RKStratumTN12");
-        assert_eq!(network.revision(), TN12_REV);
+    fn testnet13_remains_on_the_separate_experimental_runtime() {
+        let network = BridgeRuntimeNetwork::Testnet13;
+        assert_eq!(network.family(), BridgeRuntimeFamily::Tn13);
+        assert_eq!(network.branch(), "dagknight");
+        assert_eq!(network.revision(), TN13_REV);
     }
 
     #[test]
@@ -2430,8 +2587,8 @@ instances:
             "testnet-10"
         );
         assert_eq!(
-            expected_rpc_network_id(BridgeRuntimeNetwork::Testnet12),
-            "testnet-12"
+            expected_rpc_network_id(BridgeRuntimeNetwork::Testnet13),
+            "testnet-13"
         );
     }
 

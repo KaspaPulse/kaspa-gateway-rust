@@ -1,6 +1,7 @@
 [package]
 name = "kaspa-gateway-desktop"
-version = "0.1.2"
+default-run = "kaspa-gateway-desktop"
+version = "0.1.3"
 description = "Kaspa Gateway Desktop Shell"
 edition.workspace = true
 rust-version.workspace = true
@@ -72,12 +73,12 @@ official-kaspa-runtime-mainline = [
     "kaspa-gateway-rk-bridge/official-kaspa-runtime-mainline"
 ]
 
-official-kaspa-runtime-tn12 = [
-    "kaspa-gateway-rk-node/official-kaspa-runtime-tn12",
-    "kaspa-gateway-rk-bridge/official-kaspa-runtime-tn12"
+official-kaspa-runtime-tn13 = [
+    "kaspa-gateway-rk-node/official-kaspa-runtime-tn13",
+    "kaspa-gateway-rk-bridge/official-kaspa-runtime-tn13"
 ]
 
 official-kaspa-runtime-all = [
     "official-kaspa-runtime-mainline",
-    "official-kaspa-runtime-tn12"
+    "official-kaspa-runtime-tn13"
 ]

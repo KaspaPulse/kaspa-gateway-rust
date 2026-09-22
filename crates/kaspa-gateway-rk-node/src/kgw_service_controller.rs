@@ -13,7 +13,7 @@ use crate::kgw_real_owner_runtime::KgwRealOwnerRuntime;
 pub enum KgwNetwork {
     Mainnet,
     Testnet10,
-    Testnet12,
+    Testnet13,
 }
 
 impl KgwNetwork {
@@ -21,7 +21,7 @@ impl KgwNetwork {
         match value.trim().to_ascii_lowercase().as_str() {
             "mainnet" => Ok(Self::Mainnet),
             "testnet" | "testnet10" => Ok(Self::Testnet10),
-            "testnet12" | "tn12" => Ok(Self::Testnet12),
+            "testnet13" | "tn13" => Ok(Self::Testnet13),
             _ => Err(KgwServiceError::UnsupportedNetwork(value.to_string())),
         }
     }
@@ -30,21 +30,21 @@ impl KgwNetwork {
         match self {
             Self::Mainnet => "mainnet",
             Self::Testnet10 => "testnet10",
-            Self::Testnet12 => "testnet12",
+            Self::Testnet13 => "testnet13",
         }
     }
 
     pub fn branch(self) -> &'static str {
         match self {
             Self::Mainnet | Self::Testnet10 => "stable",
-            Self::Testnet12 => "RKStratumTN12",
+            Self::Testnet13 => "dagknight",
         }
     }
 
     pub fn revision(self) -> &'static str {
         match self {
-            Self::Mainnet | Self::Testnet10 => "cfafeb4c093fa37a303f1b9f19c58f986b870ce3",
-            Self::Testnet12 => "eeb351ee911e2df906d21203dec8db3a195c6b33",
+            Self::Mainnet | Self::Testnet10 => "98a4ccd8d200853787f227bd4536ac540cf34957",
+            Self::Testnet13 => "ad45e241e6688a14901fd24dd8dc33c5c9a33f40",
         }
     }
 
@@ -52,7 +52,7 @@ impl KgwNetwork {
         match self {
             Self::Mainnet => "127.0.0.1:16110",
             Self::Testnet10 => "127.0.0.1:16210",
-            Self::Testnet12 => "127.0.0.1:16310",
+            Self::Testnet13 => "127.0.0.1:16210",
         }
     }
 
@@ -60,7 +60,7 @@ impl KgwNetwork {
         match self {
             Self::Mainnet => "0.0.0.0:5555",
             Self::Testnet10 => "0.0.0.0:15555",
-            Self::Testnet12 => "0.0.0.0:25555",
+            Self::Testnet13 => "0.0.0.0:25555",
         }
     }
 }
@@ -448,6 +448,34 @@ fn kgw_service_runtime_appdir_string(network: KgwNetwork) -> String {
             .to_string()
     }
 }
+// Display-only Windows command-line quoting. Execution uses structured settings.
+fn quote_display_argument(arg: &str) -> String {
+    if !arg.is_empty()
+        && arg
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-_./\\:=".contains(c))
+    {
+        return arg.to_string();
+    }
+    let mut quoted = String::from("\"");
+    let mut slashes = 0;
+    for ch in arg.chars() {
+        if ch == '\\' {
+            slashes += 1;
+            continue;
+        }
+        quoted.extend(std::iter::repeat_n(
+            '\\',
+            if ch == '"' { slashes * 2 + 1 } else { slashes },
+        ));
+        slashes = 0;
+        quoted.push(ch);
+    }
+    quoted.extend(std::iter::repeat_n('\\', slashes * 2));
+    quoted.push('"');
+    quoted
+}
+
 impl NodeSettings {
     pub fn from_strings(
         network: String,
@@ -486,8 +514,8 @@ impl NodeSettings {
         })
     }
 
-    pub fn command_preview(&self) -> String {
-        let mut parts = vec!["kaspad".to_string()];
+    pub fn command_arguments(&self) -> Vec<String> {
+        let mut parts = Vec::new();
 
         match self.network {
             KgwNetwork::Mainnet => {}
@@ -495,9 +523,9 @@ impl NodeSettings {
                 parts.push("--testnet".to_string());
                 parts.push("--netsuffix=10".to_string());
             }
-            KgwNetwork::Testnet12 => {
+            KgwNetwork::Testnet13 => {
                 parts.push("--testnet".to_string());
-                parts.push("--netsuffix=12".to_string());
+                parts.push("--netsuffix=13".to_string());
             }
         }
 
@@ -625,7 +653,18 @@ impl NodeSettings {
             parts.push(format!("--logdir={value}"));
         }
         parts.push(format!("--appdir={}", self.app_dir_name));
-        parts.join(" ")
+        parts
+    }
+
+    pub fn command_preview(&self) -> String {
+        std::iter::once("kaspad".to_string())
+            .chain(
+                self.command_arguments()
+                    .into_iter()
+                    .map(|arg| quote_display_argument(&arg)),
+            )
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 
     pub fn apply_effective_node_settings(
@@ -655,9 +694,14 @@ impl NodeSettings {
         if self.bridge_kind != BridgeNodeKind::OfficialInProcessNode {
             self.rpc_endpoint = effective.global.kaspa_rpc_endpoint.clone();
         }
-        if let Some(first) = effective.instances.first() {
-            self.stratum_listen = first.stratum_listen.clone();
-        }
+        effective
+            .reject_unowned_services()
+            .map_err(|error| KgwServiceError::InvalidEffectiveBridgeSettings(error.to_string()))?;
+        self.stratum_listen = effective
+            .instances
+            .first()
+            .map(|instance| instance.stratum_listen.clone())
+            .unwrap_or_default();
         self.effective_bridge = Some(effective);
         Ok(())
     }
@@ -918,7 +962,7 @@ impl ControllerState {
         for network in [
             KgwNetwork::Mainnet,
             KgwNetwork::Testnet10,
-            KgwNetwork::Testnet12,
+            KgwNetwork::Testnet13,
         ] {
             slots.insert(network, RuntimeSlotStatus::new(network));
         }
@@ -1043,7 +1087,7 @@ impl KgwServiceController {
         for network in [
             KgwNetwork::Mainnet,
             KgwNetwork::Testnet10,
-            KgwNetwork::Testnet12,
+            KgwNetwork::Testnet13,
         ] {
             let slot = state
                 .slots
@@ -1371,5 +1415,5 @@ fn timestamp_ms() -> u128 {
 }
 
 pub fn exact_kgw_service_controller_summary_v1() -> &'static str {
-    "Exact KGW controller flow: NodeSettings -> KaspadServiceEvents::from_node_settings -> service_events sender -> controller event loop -> handle_event lifecycle. mainnet/testnet10 use official stable v2.0.1; testnet12 uses the opt-in experimental tn12 runtime."
+    "Exact KGW controller flow: NodeSettings -> KaspadServiceEvents::from_node_settings -> service_events sender -> controller event loop -> handle_event lifecycle. mainnet/testnet10 use official stable v2.0.1; testnet13 uses the opt-in experimental tn13 runtime."
 }

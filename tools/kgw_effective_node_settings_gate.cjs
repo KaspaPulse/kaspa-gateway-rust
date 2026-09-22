@@ -53,7 +53,7 @@ assert.ok(bridge.includes("--configfile is unsupported"));
 assert.ok(node.includes("--override-params-file is not supported"));
 assert.ok(bridge.includes("In-process --override-params-file is unsupported"));
 assert.ok(node.includes("--logdir and --nologfiles cannot be used together"));
-assert.ok(node.includes('net.key === "testnet10" ? "16211" : "16311"'));
+assert.ok(node.includes('net.key === "testnet10" ? "16211" : "16711"'));
 assert.ok(node.includes('cardCheck(net.key, "disableUpnp", "--disable-upnp", true)'));
 assert.ok(node.includes('cardCheck(net.key, "rpcBorshEnabled", "--rpclisten-borsh", false)'));
 assert.ok(node.includes('cardCheck(net.key, "rpcJsonEnabled", "--rpclisten-json", false)'));
@@ -74,7 +74,7 @@ assert.ok(ipc.includes("kgw_worker_atomic_write_json_v1(&effective_node_settings
 assert.ok(worker.includes("serde_json::from_slice::<kaspa_gateway_rk_node::EffectiveNodeSettings>"));
 assert.ok(worker.includes("apply_effective_node_settings(effective_node_settings)"));
 assert.ok(owner.includes("fn build_mainline_args"));
-assert.ok(owner.includes("fn build_tn12_args"));
+assert.ok(owner.includes("fn build_tn13_args"));
 for (const rustField of [
   "log_level", "async_threads", "ram_scale", "connect_peers", "add_peers",
   "rpclisten_borsh", "rpclisten_json", "rpc_max_clients", "outbound_target",

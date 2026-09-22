@@ -1,3 +1,7 @@
+import { applyStatusTone, renderStatusSummary } from "../../status.js";
+import { NODE_ENDPOINTS, NODE_MANAGED, NODE_REQUIRED, NODE_OPTIONAL, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, endpoint, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
+import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
+
 // KGW_SETTINGS_OWNER_V19
 (function installKgwSettingsOwnerV19() {
   "use strict";
@@ -257,12 +261,12 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
       text.includes("set as defaults") ||
       text.includes("saved") ||
       text.includes("restored") ||
-      text.includes("تم الحفظ") ||
-      text.includes("تم الضبط") ||
-      text.includes("تمت الاستعادة") ||
-      text.includes("حفظ") ||
-      text.includes("استعادة") ||
-      text.includes("افتراض")
+      text.includes("طھظ… ط§ظ„ط­ظپط¸") ||
+      text.includes("طھظ… ط§ظ„ط¶ط¨ط·") ||
+      text.includes("طھظ…طھ ط§ظ„ط§ط³طھط¹ط§ط¯ط©") ||
+      text.includes("ط­ظپط¸") ||
+      text.includes("ط§ط³طھط¹ط§ط¯ط©") ||
+      text.includes("ط§ظپطھط±ط§ط¶")
     );
   }
 
@@ -284,7 +288,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
       const id = lower(current.id);
       const cls = lower(current.className);
 
-      if (id.includes("testnet12") || cls.includes("testnet12") || id.includes("tn12") || cls.includes("tn12")) return "testnet12";
+      if (id.includes("testnet13") || cls.includes("testnet13") || id.includes("tn13") || cls.includes("tn13")) return "testnet13";
       if (id.includes("testnet10") || cls.includes("testnet10") || id.includes("tn10") || cls.includes("tn10")) return "testnet10";
       if (id.includes("mainnet") || cls.includes("mainnet")) return "mainnet";
 
@@ -303,16 +307,16 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
         ""
     );
 
-    if (raw.includes("restore") || raw.includes("استعادة")) return "restore";
-    if (raw.includes("default") || raw.includes("افتراض") || raw.includes("ضبط")) return "defaults";
+    if (raw.includes("restore") || raw.includes("ط§ط³طھط¹ط§ط¯ط©")) return "restore";
+    if (raw.includes("default") || raw.includes("ط§ظپطھط±ط§ط¶") || raw.includes("ط¶ط¨ط·")) return "defaults";
     return "save";
   }
 
   function feedbackText(action) {
     if (isArabic()) {
-      if (action === "restore") return "تمت الاستعادة";
-      if (action === "defaults") return "تم الضبط";
-      return "تم الحفظ";
+      if (action === "restore") return "طھظ…طھ ط§ظ„ط§ط³طھط¹ط§ط¯ط©";
+      if (action === "defaults") return "طھظ… ط§ظ„ط¶ط¨ط·";
+      return "طھظ… ط§ظ„ط­ظپط¸";
     }
 
     if (action === "restore") return translate("settings.feedback.restored", "Restored");
@@ -354,18 +358,34 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
     return map;
   }
 
-  function setDisabled(root, network, disabled, reason) {
-    buttons(root, network || "all").forEach(function (button) {
-      button.disabled = !!disabled;
-      button.setAttribute("aria-disabled", disabled ? "true" : "false");
-      button.classList.toggle(DISABLED_CLASS, !!disabled);
-      button.dataset.kgwSettingsOwnerV19Disabled = disabled ? "true" : "false";
-    });
-
-    trace(root, disabled ? "v19-disabled" : "v19-enabled", {
-      network: network || "all",
-      reason: reason || "unspecified"
-    });
+  function setDisabled(root, network, _disabled, reason) {
+    const networks = network && network !== "all" ? [network] : kgwNodeR51Keys();
+    const canonical = value => Array.isArray(value) ? value.map(canonical) : value && typeof value === "object"
+      ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
+    const stable = value => JSON.stringify(canonical(value));
+    for (const net of networks) {
+      const current = kgwNodeR51ReadSettings(net);
+      const saved = kgwNodeR51Load("saved:" + net) || kgwNodeR51Load("factory:" + net) || current;
+      const personal = kgwNodeR51Load("default:" + net);
+      const defaults = personal || kgwNodeR51Load("factory:" + net) || current;
+      const sameSaved = stable(current) === stable(saved);
+      const sameDefaults = stable(current) === stable(defaults);
+      buttons(root, net).forEach(button => {
+        const action = actionName(button);
+        const disabled = kgwIsBridgeOwnedNodeLockedR65E(net) || (action === "save" ? sameSaved : sameDefaults);
+        button.disabled = disabled;
+        button.setAttribute("aria-disabled", String(disabled));
+        button.classList.toggle(DISABLED_CLASS, disabled);
+        button.dataset.kgwSettingsOwnerV19Disabled = String(disabled);
+        button.title = disabled
+          ? (action === "save" ? "No unsaved changes." : "Current settings already match the selected defaults.")
+          : (action === "restore" ? "Load " + (personal ? "your personal" : "KaspaGateway") + " defaults. Save to retain them."
+            : action === "defaults" ? "Use current settings as your personal defaults for this network." : "Save this network's settings.");
+      });
+      const helper = root.querySelector('[data-settings-defaults-context="' + net + '"]');
+      if (helper) helper.textContent = "Restore uses " + (personal ? "personal defaults" : "KaspaGateway defaults") + ". Settings apply on the next Start.";
+    }
+    trace(root, "settings-actions-reconciled", { network, reason });
   }
 
   function setDirty(root, network, dirty, reason) {
@@ -380,9 +400,9 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
       value === "restored" ||
       value === "set" ||
       value === "set as defaults" ||
-      value === "تم الحفظ" ||
-      value === "تم الضبط" ||
-      value === "تمت الاستعادة"
+      value === "طھظ… ط§ظ„ط­ظپط¸" ||
+      value === "طھظ… ط§ظ„ط¶ط¨ط·" ||
+      value === "طھظ…طھ ط§ظ„ط§ط³طھط¹ط§ط¯ط©"
     );
   }
 
@@ -398,6 +418,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
 
   function restoreLabel(button) {
     button.textContent = button.dataset.kgwSettingsOwnerV19OriginalLabel || fallbackText(actionName(button));
+    button.setAttribute("aria-label", button.textContent);
   }
 
   function restoreLabels(root, network) {
@@ -425,6 +446,7 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
 
   function startVisualFeedbackAfterOriginalClick(root, network, button, action) {
     window.setTimeout(function () {
+      if (button.dataset.kgwSettingsActionResult !== "success") return;
       clearFeedback(root, network, "new-feedback");
 
       dirtyMap(root).set(network, false);
@@ -580,6 +602,12 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
         return;
       }
 
+      if (action !== "restore" && Object.keys(kgwNodeValidateForm(network, true)).length) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+      button.dataset.kgwSettingsActionResult = "pending";
       startVisualFeedbackAfterOriginalClick(root, network, button, action);
     }, true);
 
@@ -772,6 +800,7 @@ function kgwNodeSetClipboardStatusV1(net, message, state = "info") {
 
   status.textContent = String(message || "");
   status.dataset.state = String(state || "info");
+  applyStatusTone(status, state);
   status.hidden = !status.textContent;
   return true;
 }
@@ -845,7 +874,7 @@ function kgwNodeTraceNetworkFromElementR1(element, root = document.getElementByI
     carrier?.className
   ].filter(Boolean).join(" ").toLowerCase();
 
-  if (raw.includes("testnet12") || raw.includes("tn12")) return "testnet12";
+  if (raw.includes("testnet13") || raw.includes("tn13")) return "testnet13";
   if (raw.includes("testnet10") || raw.includes("tn10")) return "testnet10";
   if (raw.includes("mainnet")) return "mainnet";
 
@@ -1080,32 +1109,12 @@ async function kgwNodeLoadEnvironmentPathHintsR5() {
   }
 }
 
-async function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsR5(net, options = {}) {
-  const force = options.force === true;
-  const pathHints = await kgwNodeLoadEnvironmentPathHintsR5();
-  const rustyRoot = kgwNodeRustyKaspaLocalAppDataRootR5(pathHints, net);
-
-  const values = {
-    appDir: rustyRoot,
-    logDir: "",
-    configFile: "",
-    rocksDbWalDir: "",
-    overrideParamsFile: ""
-  };
-
-  Object.entries(values).forEach(([name, value]) => {
-    const field = byId(id(net, name));
-    if (!field) return;
-    const current = String(field.value || "");
-    if (force || kgwNodeIsEmptyOrGeneratedPathR5(current)) {
-      field.value = value;
-      field.dispatchEvent(new Event("input", { bubbles: true }));
-      field.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-  });
-
+async function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsR5(net, _options = {}) {
+  const context = await kgwNodeBackendInvokeR5("kgw_settings_context_v1", {network: net});
+  const field = byId(id(net, "appDir"));
+  if (field) { field.value = context.appDir; field.title = context.appDir; }
   updateCommand(net);
-  return values;
+  return {appDir: context.appDir};
 }
 
 function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
@@ -1115,9 +1124,9 @@ function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
 }
 
 const NODE_NETWORKS = [
-  { key: "mainnet", label: "MAINNET", testnet: false, netsuffix: "", enabledByDefault: true, runtime: "Official stable v2.0.1" },
-  { key: "testnet10", label: "TESTNET10", testnet: true, netsuffix: "10", enabledByDefault: true, runtime: "Official stable v2.0.1" },
-  { key: "testnet12", label: "TESTNET12", testnet: true, netsuffix: "12", enabledByDefault: false, experimental: true, runtime: "Experimental TN12 build" }
+  { key: "mainnet", label: "Mainnet", testnet: false, netsuffix: "", enabledByDefault: true, runtime: "Official Rusty Kaspa" },
+  { key: "testnet10", label: "Testnet 10", testnet: true, netsuffix: "10", enabledByDefault: true, runtime: "Official Rusty Kaspa" },
+  { key: "testnet13", label: "Testnet 13", testnet: true, netsuffix: "13", enabledByDefault: false, experimental: true, runtime: "DAGKnight - Experimental" }
 ];
 
 function kgwNodeNetworkPolicyKey(net) {
@@ -1148,7 +1157,8 @@ function kgwNodeNetworkPolicyMessage(net) {
   const profile = kgwNodeNetworkProfile(net);
   if (!profile) return "";
   if (profile.experimental) {
-    return "Experimental network. Disabled by default and requires explicit opt-in.";
+    return "Experimental network. Disabled by default and requires explicit opt-in."
+      + (net === "testnet13" ? " This Testnet13 build has no DNS seeders. For public sync, set a trusted Testnet13 peer in Connect or Add Peer." : "");
   }
   return `${profile.runtime}. RPC remains loopback-only and data is isolated per network.`;
 }
@@ -1222,7 +1232,9 @@ function kgwNodeCommandInlineStateR7(net) {
 }
 
 function kgwNodeCommandOptionEnabledR7(net, name) {
+  if (Object.hasOwn(NODE_REQUIRED, name)) return true;
   const state = kgwNodeCommandInlineStateR7(net);
+  if (NODE_OPTIONAL.has(name)) return state[String(name)] === true;
   return state[String(name)] !== false;
 }
 
@@ -1230,10 +1242,14 @@ function kgwNodeCommandShouldIncludeR7(net, name) {
   return kgwNodeCommandOptionEnabledR7(net, name);
 }
 
+
 function kgwNodeCommandInlineToggleR7(net, name) {
+  if (NODE_MANAGED[name] || Object.hasOwn(NODE_REQUIRED, name) ||
+      NODE_ENDPOINTS.some(row => row[1] === name || row[2] === name)) return "";
   const enabled = kgwNodeCommandOptionEnabledR7(net, name);
-  const label = enabled ? "Included" : "Excluded";
-  return `<input type="checkbox" class="kgw-command-option-checkbox-r9" data-node-command-option-toggle-r7="${esc(String(name))}" data-net="${esc(String(net))}" ${enabled ? "checked" : ""} aria-label="${enabled ? "Included in command" : "Excluded from command"}" title="${enabled ? "Included in command" : "Excluded from command"}">`; // KGW_NODE_COMMAND_COMPOSER_CHECKBOX_ONLY_R9
+  return '<input type="checkbox" class="kgw-command-option-checkbox-r9" data-node-command-option-toggle-r7="' +
+    esc(name) + '" data-net="' + esc(net) + '" ' + (enabled ? "checked" : "") +
+    ' aria-label="Use ' + esc(name) + '" title="Enable this optional setting">';
 }
 
 function kgwNodeRefreshInlineCommandTogglesR7(net) {
@@ -1262,7 +1278,7 @@ function cardInput(net, name, label, value = "", placeholder = "", span2 = false
     <div class="node-v6-card${span2 ? " span2" : ""}">
       <span class="kgw-command-option-title-row-r8e">
         ${kgwNodeCommandInlineToggleR7(net, name)}
-        <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
+        <label for="${id(net, name)}" class="kgw-command-option-title-text-r8e">${esc(label)}</label>
       </span> <!-- KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->
       <input id="${id(net, name)}" data-testid="kgw-node-field-${esc(net)}-${esc(name)}" type="text" value="${esc(value)}" placeholder="${esc(placeholder)}">
     </div>`;
@@ -1278,7 +1294,7 @@ function cardSelect(net, name, label, options, value = "", span2 = false) {
     <div class="node-v6-card${span2 ? " span2" : ""}">
       <span class="kgw-command-option-title-row-r8e">
         ${kgwNodeCommandInlineToggleR7(net, name)}
-        <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
+        <label for="${id(net, name)}" class="kgw-command-option-title-text-r8e">${esc(label)}</label>
       </span> <!-- KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->
       <select id="${id(net, name)}" data-testid="kgw-node-field-${esc(net)}-${esc(name)}">${opts}</select>
     </div>`;
@@ -1534,7 +1550,7 @@ function renderRuntime(net) {
 
 
 function renderNetwork(net) {
-  const p2pPort = net.key === "mainnet" ? "16111" : net.key === "testnet10" ? "16211" : "16311";
+  const p2pPort = net.key === "mainnet" ? "16111" : net.key === "testnet10" ? "16211" : "16711";
   return `
     <div class="node-v6-grid">
       ${cardCheck(net.key, "listenEnabled", "--listen", false)}
@@ -1550,7 +1566,7 @@ function renderNetwork(net) {
 }
 
 function renderRpc(net) {
-  const base = net.key === "mainnet" ? 16110 : net.key === "testnet10" ? 16210 : 16310;
+  const base = net.key === "mainnet" ? 16110 : net.key === "testnet10" ? 16210 : 16210;
   return `
     <div class="node-v6-grid">
       ${cardCheck(net.key, "rpcListenEnabled", "--rpclisten", true)}
@@ -1614,61 +1630,40 @@ function renderPaths(net) {
     </div>`;
 }
 
-/* KGW_NODE_FLAT_SIX_COLUMN_OWNER_R101K
- * Existing Node settings owner refinement.
- * Flatten section bodies into one compact six-column field grid per tab.
- */
-function kgwNodeFlatSectionFieldsR101K(html) {
-  return String(html || "")
-    .replace(/^\s*<div\s+class=["']node-v6-grid["']>\s*/i, "")
-    .replace(/\s*<\/div>\s*$/i, "");
-}
-
-function kgwNodeFlatGroupBodyR101K(sections) {
-  return sections.map(([, body]) => kgwNodeFlatSectionFieldsR101K(body)).join("\n");
-}
-
 function renderSections(net) {
-  /* KGW_NODE_GROUPED_SETTINGS_TABS_OWNER_R101G */
-  /* KGW_NODE_FLAT_SIX_COLUMN_OWNER_R101K
-   * General and Advanced remain the only Node internal settings tabs.
-   * Each tab is rendered as one flat compact six-column field grid.
-   */
-  const groups = [
-    ["general", "General", [
-      ["runtime", renderRuntime(net)],
-      ["network", renderNetwork(net)],
-      ["rpc", renderRpc(net)]
-    ]],
-    ["advanced", "Advanced", [
-      ["peers", renderPeers(net)],
-      ["database", renderDatabase(net)],
-      ["rocksdb", renderRocksDb(net)],
-      ["paths", renderPaths(net)]
-    ]]
+  const template = document.createElement("template");
+  template.innerHTML = [renderRuntime(net), renderNetwork(net), renderRpc(net), renderPeers(net),
+    renderDatabase(net), renderRocksDb(net), renderPaths(net)].join("");
+  const cards = new Map();
+  template.content.querySelectorAll(".node-v6-card").forEach(card => {
+    const field = card.querySelector("[id]");
+    if (field) cards.set(field.id.slice(("node-" + net.key + "-").length), card.outerHTML);
+  });
+  const definitions = [
+    ["general", "basic", "Basic", "testnet netsuffix utxoIndex yes"],
+    ["general", "networking", "Networking", "listenEnabled listenHost listenPort externalIpEnabled externalIpHost externalIpPort disableUpnp noDnsSeed uaComment"],
+    ["general", "rpc", "RPC", "rpcListenEnabled rpcListenHost rpcListenPort"],
+    ["general", "performance", "Performance", "asyncThreads ramScale outPeers maxInPeers"],
+    ["general", "storage", "Storage", "appDir rocksDbPreset rocksDbCacheSize"],
+    ["general", "logging", "Logging", "logLevel noLogFiles logDir"],
+    ["advanced", "p2p", "P2P", "connectEnabled connectHost connectPort addPeerEnabled addPeerHost addPeerPort"],
+    ["advanced", "rpc-advanced", "RPC Advanced", "rpcBorshEnabled rpcBorshHost rpcBorshPort rpcJsonEnabled rpcJsonHost rpcJsonPort rpcMaxClients noGrpc"],
+    ["advanced", "database", "Database", "archival maxTrackedAddresses retentionDays rocksDbWalDir configFile sanity"],
+    ["advanced", "metrics", "Metrics", "perfMetrics perfMetricsInterval"],
+    ["advanced", "experimental", "Experimental", "overrideParamsFile"],
+    ["advanced", "dangerous", "Dangerous", "resetDb unsafeRpc enableUnsyncedMining"]
   ];
-
-  const tabs = groups.map(([key, label], index) =>
-    `<button type="button" class="node-v6-section-tab node-v6-section-tab--grouped${index === 0 ? " active" : ""}" data-net="${net.key}" data-node-section-tab="${key}">${label}</button>`
-  ).join("");
-
-  const panels = groups.map(([groupKey, , sections], groupIndex) => {
-    const fields = kgwNodeFlatGroupBodyR101K(sections);
-    return `
-    <section class="node-v6-section node-v6-section-group node-v6-section-group--flat${groupIndex === 0 ? " active" : ""}" data-net="${net.key}" data-node-section-panel="${groupKey}"${groupIndex === 0 ? "" : " hidden"}>
-      <div class="node-v6-flat-six-grid" data-node-flat-grid="${groupKey}">${fields}</div>
-    </section>`;
-  }).join("");
-
-  return `
-    <div class="node-v6-section-tabs node-v6-section-tabs--grouped">${tabs}</div>
-    <div class="node-v6-sections node-v6-sections--grouped node-v6-sections--flat">${panels}</div>`;
+  const groups = definitions.map(([section, key, label, names]) => {
+    const fields = names.split(" ").map(name => { const card = cards.get(name) || ""; cards.delete(name); return card; }).join("");
+    const note = key === "dangerous"
+      ? '<p class="kgw-danger-warning">Reset DB removes network data. Unsafe RPC can expose privileged methods. Unsynced mining bypasses synchronization. Existing confirmations and network restrictions still apply.</p>'
+      : key === "experimental" ? '<p class="kgw-settings-info">' + esc(kgwNodeNetworkPolicyMessage(net.key)) + "</p>" : "";
+    return [section, key, label, note + '<div class="kgw-settings-grid">' + fields + "</div>"];
+  });
+  if (cards.size) throw new Error("Ungrouped node settings: " + [...cards.keys()].join(", "));
+  return renderSettingsTabs("node", net.key, groups);
 }
 
-/* KGW_NODE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U
- * Default Node inner tab is Live Node Monitor.
- * Last selected inner tab is saved per network.
- */
 function kgwNodeInnerTabStorageKeyR101U(net) {
   return `kgw.node.innerTab.${String(net || "unknown")}`;
 }
@@ -1711,24 +1706,34 @@ function renderNetworkPanel(net, index) {
       </div>
 
       <div class="node-v6-inner-panel${settingsActive ? " active" : ""}" data-net="${net.key}" data-node-inner-panel="settings" data-node-settings-panel="${net.key}"${settingsActive ? "" : " hidden"}>
+        <div class="kgw-settings-scroll">
         <section class="kgw-network-policy${net.experimental ? " is-experimental" : ""}" data-net="${net.key}" data-testid="kgw-node-policy-${net.key}">
           <div>
-            <strong>${net.label}</strong>
+            <strong>${net.label}</strong>${net.experimental ? '<span class="kgw-experimental-badge">Experimental - opt-in required</span>' : ""}
             <span>${esc(kgwNodeNetworkPolicyMessage(net.key))}</span>
           </div>
           <div class="kgw-network-policy-controls">
             <span id="${id(net.key, "policyStatus")}" class="kgw-network-policy-status">Stopped</span>
             <label>
               <input type="checkbox" data-node-network-enabled="${net.key}" data-testid="kgw-node-policy-enabled-${net.key}" data-net="${net.key}"${kgwNodeNetworkEnabled(net.key) ? " checked" : ""}>
-              Enabled
+              Profile enabled
             </label>
           </div>
         </section>
 
-        <section class="node-v6-command">
-          <div class="node-v6-command-title">Command Preview</div>
-          <textarea id="${id(net.key, "commandPreview")}" readonly spellcheck="false" wrap="soft"></textarea>
-          <button type="button" class="node-v6-copy" data-node-action="copy-command" data-net="${net.key}" title="Copy command">⧉</button>
+        <section class="node-v6-command kgw-effective-preview">
+          <div class="kgw-preview-row">
+            <strong>Effective node settings</strong>
+            <button type="button" data-settings-preview-toggle aria-expanded="false" aria-controls="${id(net.key, "previewBody")}">Expand</button>
+            <button type="button" class="node-v6-copy" data-node-action="copy-command" data-net="${net.key}" title="Copy effective settings">Copy command</button>
+            <button type="button" data-node-action="copy-path" data-net="${net.key}">Copy data directory</button>
+          </div>
+          <p id="${id(net.key, "previewMessage")}" class="kgw-preview-message" role="status" aria-live="polite"></p>
+          <div class="kgw-preview-body" id="${id(net.key, "previewBody")}" hidden>
+            <p class="kgw-preview-help">The embedded node library consumes these equivalent arguments inside KaspaGateway self-workers.</p>
+            <textarea id="${id(net.key, "commandPreview")}" aria-label="Effective node settings preview" readonly spellcheck="false" wrap="soft"></textarea>
+            <details class="kgw-arguments"><summary>Argument list</summary><pre id="${id(net.key, "argumentList")}"></pre></details>
+          </div>
         </section>
 
         <section class="node-v6-toolbar">
@@ -1747,22 +1752,26 @@ function renderNetworkPanel(net, index) {
         </section>
 
         ${renderSections(net)}
+        </div>
 
         <div class="settings-bottom-actions node-settings-bottom-actions">
         <button type="button" data-node-action="save-settings" data-net="${net.key}">Save Settings</button>
         <button type="button" data-node-action="restore-defaults" data-net="${net.key}">Restore Defaults</button>
         <button type="button" data-node-action="set-defaults" data-net="${net.key}">Set as Defaults</button>
+        <p class="kgw-settings-help" data-settings-defaults-context="${net.key}">Restore uses KaspaGateway defaults. Settings apply on the next Start.</p>
         </div>
 
       </div>
 
       <div class="node-v6-inner-panel${logActive ? " active" : ""}" data-net="${net.key}" data-node-inner-panel="log" data-testid="kgw-node-live-panel-${net.key}"${logActive ? "" : " hidden"}>
+        <p id="${id(net.key, "monitorState")}" class="kgw-monitor-state" role="status">Node: Stopped</p>
         <div class="node-v6-log-toolbar">
-          <span class="node-v6-log-metadata" data-net="${net.key}">Network: ${net.label} · Source: self-worker · Streams: stdout/stderr</span>
+          <button type="button" data-node-action="monitor-start" data-net="${net.key}">Start Node</button>
+          <span class="node-v6-log-metadata" data-net="${net.key}">Network: ${net.label} | Source: self-worker | Streams: stdout/stderr</span>
           <button type="button" data-node-action="copy-log" data-testid="kgw-node-copy-log-${net.key}" data-net="${net.key}">Copy Log</button>
           <button type="button" data-node-action="clear-log" data-testid="kgw-node-clear-log-${net.key}" data-net="${net.key}">Clear Log</button>
         </div>
-        <div id="${id(net.key, "logEmpty")}" class="node-v6-log-empty" data-node-log-empty="${net.key}">No child stdout/stderr received yet.</div>
+        <div id="${id(net.key, "logEmpty")}" class="node-v6-log-empty" data-node-log-empty="${net.key}">Node is stopped. Start the node to view its logs.</div>
         <pre id="${id(net.key, "logOutput")}" class="node-v6-log" data-testid="kgw-node-log-output-${net.key}"></pre>
       </div>
 </div>`;
@@ -1772,6 +1781,7 @@ function renderAllNetworks(root) {
   const host = root.querySelector("#nodeNetworkPanels");
   if (!host) return;
   host.innerHTML = NODE_NETWORKS.map(renderNetworkPanel).join("");
+  installSettingsLayout(root);
 
 
   setTimeout(kgwInstallNodeLogAutoScrollControlsR27, 0);
@@ -1835,7 +1845,7 @@ function buildCommandLines(net) {
 }
 
 function kgwNodeEffectiveNumber(net, name, fallback, integer = false) {
-  if (!kgwNodeCommandShouldIncludeR7(net, name)) return fallback;
+  if (!kgwNodeSettingActive(net, name)) return fallback;
   const raw = v(net, name);
   if (!raw) return fallback;
   const value = Number(raw);
@@ -1849,16 +1859,18 @@ function kgwNodeEffectiveEndpoint(net, enabledName, hostName, portName, fallback
   if (!c(net, enabledName)) return null;
   const host = v(net, hostName);
   const port = v(net, portName);
-  if (!host && !port) return fallback;
+  if (!host && !port) throw new Error(enabledName + " requires a host and port.");
   if (!host || !/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
     throw new Error(`${enabledName} requires a host and a port between 1 and 65535.`);
   }
-  return `${host}:${port}`;
+  return endpoint(host, port);
 }
 
 function kgwNodeEffectiveNodeSettings(net) {
+  const errors = kgwNodeValidateForm(net);
+  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
   const profile = kgwNodeNetworkProfile(net);
-  const rpcBase = net === "mainnet" ? 16110 : net === "testnet10" ? 16210 : 16310;
+  const rpcBase = net === "mainnet" ? 16110 : net === "testnet10" ? 16210 : 16210;
   const grpc = kgwNodeEffectiveEndpoint(
     net,
     "rpcListenEnabled",
@@ -1874,7 +1886,7 @@ function kgwNodeEffectiveNodeSettings(net) {
   if (v(net, "overrideParamsFile")) {
     throw new Error("--override-params-file is not supported because the desktop owns the selected network identity.");
   }
-  if (c(net, "noLogFiles") && v(net, "logDir")) {
+  if (c(net, "noLogFiles") && kgwNodeSettingActive(net, "logDir") && v(net, "logDir")) {
     throw new Error("--logdir and --nologfiles cannot be used together.");
   }
   const connect = kgwNodeEffectiveEndpoint(net, "connectEnabled", "connectHost", "connectPort");
@@ -1914,12 +1926,12 @@ function kgwNodeEffectiveNodeSettings(net) {
       : null,
     perfMetricsIntervalSec: kgwNodeEffectiveNumber(net, "perfMetricsInterval", 10, true),
     rocksDbPreset: kgwNodeCommandShouldIncludeR7(net, "rocksDbPreset") ? v(net, "rocksDbPreset") || null : null,
-    rocksDbCacheSize: kgwNodeCommandShouldIncludeR7(net, "rocksDbCacheSize") && v(net, "rocksDbCacheSize")
+    rocksDbCacheSize: kgwNodeSettingActive(net, "rocksDbCacheSize") && v(net, "rocksDbCacheSize")
       ? kgwNodeEffectiveNumber(net, "rocksDbCacheSize", null, true)
       : null,
     rocksDbWalDir: kgwNodeCommandShouldIncludeR7(net, "rocksDbWalDir") ? v(net, "rocksDbWalDir") || null : null,
     overrideParamsFile: null,
-    logDir: kgwNodeCommandShouldIncludeR7(net, "logDir") ? v(net, "logDir") || null : null,
+    logDir: kgwNodeSettingActive(net, "logDir") ? v(net, "logDir") || null : null,
   };
 }
 
@@ -1959,16 +1971,53 @@ async function kgwLoadNodeOwnerCommandPreview(net, fallbackText) {
   }
 }
 
+const KGW_NODE_PREVIEWS = new Map();
 function updateCommand(net) {
   const preview = byId(id(net, "commandPreview"));
   if (!preview) return;
-
-  const lines = buildCommandLines(net);
-  const first = lines.shift() || "kaspad";
-  const fallbackText = lines.length ? `${first} ${lines.join(" ")}` : first;
-
-  preview.value = fallbackText;
-  preview.dataset.effectiveSettingsAuthority = "typed-ui-payload";
+  kgwNodeSyncDependencies(net);
+  const errors = kgwNodeValidateForm(net);
+  const state = KGW_NODE_PREVIEWS.get(net) || {sequence:0};
+  clearTimeout(state.timer); state.sequence++;
+  KGW_NODE_PREVIEWS.set(net,state);
+  const sequence = state.sequence;
+  preview.value = "";
+  preview.dataset.effectiveSettingsAuthority = "validating";
+  if (Object.keys(errors).length) {
+    kgwNodePreviewMessage(net, "Correct the highlighted fields before saving or starting.", true);
+    return;
+  }
+  kgwNodePreviewMessage(net, "Validating effective settings...");
+  state.timer = setTimeout(async () => {
+    try {
+      const effective = kgwNodeEffectiveNodeSettings(net);
+      const result = await kgwNodePreparePreview(net, effective);
+      if (state.sequence !== sequence) return;
+      preview.value = result.command;
+      preview.dataset.effectiveSettingsAuthority = "validated-backend-settings";
+      preview.dataset.arguments = JSON.stringify(result.arguments);
+      const path = byId(id(net, "appDir")); if (path) { path.value = result.appDir; path.title = result.appDir; }
+      const args = byId(id(net, "argumentList")); if (args) args.textContent = result.arguments.join("\n");
+      kgwNodePreviewMessage(net, "Embedded kaspad - " + result.availableCpuThreads + " CPU threads available - configured " +
+        effective.asyncThreads + " threads, RAM scale " + effective.ramScale + ". The managed data directory is included.");
+    } catch (error) {
+      if (state.sequence === sequence) kgwNodePreviewMessage(net, normalizeRuntimeError(error), true);
+    }
+  }, 160);
+}
+function kgwNodePreviewMessage(net, message, error = false) {
+  const el = byId(id(net, "previewMessage"));
+  if (el) {
+    el.textContent = message;
+    el.classList.toggle("kgw-field-error", error);
+    applyStatusTone(el, error ? "error" : message.startsWith("Validating") ? "validating" : "verified");
+  }
+}
+async function kgwNodePreparePreview(net, effective) {
+  const invoke = getTauriInvoke();
+  if (!invoke) throw new Error("Connect to the desktop backend to validate these settings.");
+  return invokeWithTimeout(invoke, "kgw_node_settings_preview_v1",
+    {network:net,effectiveNodeSettings:effective}, 10000);
 }
 
 function updateAllCommands() {
@@ -2013,7 +2062,7 @@ function kgwNodeExplicitTraceR27D(net, action, phase, details) {
 const KGW_NODE_LAST_NETWORK_KEY_R101W2 = "kgw.node.lastNetwork";
 function kgwNodeNormalizeNetworkR101W2(value) {
   const normalized = String(value || "").trim();
-  return normalized === "mainnet" || normalized === "testnet10" || normalized === "testnet12" ? normalized : "";
+  return normalized === "mainnet" || normalized === "testnet10" || normalized === "testnet13" ? normalized : "";
 }
 function kgwNodeReadLastNetworkR101W2() {
   try { return kgwNodeNormalizeNetworkR101W2(localStorage.getItem(KGW_NODE_LAST_NETWORK_KEY_R101W2)); } catch (_) { return ""; }
@@ -2124,6 +2173,7 @@ function installDelegatedTabs(root) {
 
       panel.querySelectorAll("[data-node-section-tab]").forEach((item) => {
         item.classList.toggle("active", item === sectionTab);
+        item.setAttribute("aria-selected", String(item === sectionTab));
       });
 
       panel.querySelectorAll("[data-node-section-panel]").forEach((item) => {
@@ -2139,7 +2189,7 @@ function installDelegatedTabs(root) {
 // The Node child contract is 90 seconds and the same-EXE parent is bounded at
 // 100 seconds. Keep the UI request strictly above both terminal-result boundaries.
 const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 110000;
-const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 70000;
+const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 0;
 const KGW_NODE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_node_runtime_flags_v1";
 
 function getTauriInvoke() {
@@ -2183,7 +2233,7 @@ function parseRuntimeFields(result) {
   return fields;
 }
 
-function kgwNodeSetRuntimeNotice(net, state, evidence = "", errorText = null) {
+function kgwNodeSetRuntimeNotice(net, state, evidence = "", errorText = null, errorSource = "") {
   const status = byId(id(net, "runtimeStatus"));
   const evidenceNode = byId(id(net, "runtimeEvidence"));
   const errorNode = byId(id(net, "runtimeError"));
@@ -2193,6 +2243,7 @@ function kgwNodeSetRuntimeNotice(net, state, evidence = "", errorText = null) {
   if (status) {
     status.textContent = normalizedState;
     status.dataset.state = stateKey;
+    applyStatusTone(status, stateKey);
   }
 
   if (evidenceNode) {
@@ -2203,6 +2254,8 @@ function kgwNodeSetRuntimeNotice(net, state, evidence = "", errorText = null) {
     const text = String(errorText || "").trim();
     errorNode.textContent = text;
     errorNode.hidden = !text;
+    errorNode.dataset.runtimeErrorSource = errorSource;
+    applyStatusTone(errorNode, "error");
   }
 }
 
@@ -2270,7 +2323,7 @@ function nodeRuntimeArgs(net, command) {
       bridgeCommandPreview: "",
       effectiveNodeSettings: kgwNodeEffectiveNodeSettings(net),
       runtimeRole: "node",
-      experimentalNetworkOptIn: net === "testnet12" && kgwNodeNetworkEnabled(net),
+      experimentalNetworkOptIn: net === "testnet13" && kgwNodeNetworkEnabled(net),
     };
   }
 
@@ -2285,6 +2338,10 @@ function nodeRuntimeArgs(net, command) {
   return { network: net };
 }
 function invokeWithTimeout(invoke, command, args, timeoutMs) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    return Promise.resolve().then(() => invoke(command, args));
+  }
+
   let timer = null;
 
   const timeout = new Promise((_, reject) => {
@@ -2321,6 +2378,10 @@ async function invokeNodeIntegratedRuntime(command, net) {
   }
 
   const args = nodeRuntimeArgs(net, command);
+  if (command === "kgw_kgw_apply_node_settings_v1") {
+    const prepared = await kgwNodePreparePreview(net, args.effectiveNodeSettings);
+    args.nodeCommandPreview = prepared.command;
+  }
   kgwStartTraceFrontendR1("frontend.invoke_dispatched", {
     network: net,
     action,
@@ -2406,6 +2467,11 @@ async function runNodeIntegratedAction(action, net) {
   });
 
   if (action === "start") {
+    if (Object.keys(kgwNodeValidateForm(net, true)).length) return true;
+    const dangerous = Object.entries(NODE_DANGEROUS).filter(([key]) => c(net, key));
+    if (dangerous.length && !await confirmUserAction("Start " + net + " with these settings?\n\n" +
+        dangerous.map(([key, warning]) => key + ": " + warning).join("\n") +
+        "\n\nData directory: " + v(net, "appDir"))) return true;
     const experimentalNetwork = Boolean(profile?.experimental);
     const explicitOptIn = experimentalNetwork && networkEnabled;
     kgwStartTraceFrontendR1("frontend.experimental_opt_in_evaluated", {
@@ -2538,7 +2604,7 @@ function kgwNodeR51Fields(net) {
     if (!field.id || !field.id.startsWith(`node-${net}-`)) return false;
     if (field.id.endsWith("-commandPreview")) return false;
     if (field.id.endsWith("-logOutput")) return false;
-    if (field.readOnly) return false;
+    if (field.closest(".node-v6-log-toolbar")) return false;
     return true;
   });
 }
@@ -2551,7 +2617,7 @@ function kgwNodeSettingsActionIsR6(action) {
 
 function kgwNodeNetFromSettingsEventR6(event, fallbackNet = "") {
   const target = event?.target;
-  const carrier = target?.closest?.("[data-net], [data-network], [data-node-settings-panel], [id*='mainnet' i], [id*='testnet10' i], [id*='testnet12' i]");
+  const carrier = target?.closest?.("[data-net], [data-network], [data-node-settings-panel], [id*='mainnet' i], [id*='testnet10' i], [id*='testnet13' i]");
 
   const raw = [
     target?.dataset?.net,
@@ -2564,7 +2630,7 @@ function kgwNodeNetFromSettingsEventR6(event, fallbackNet = "") {
     fallbackNet,
   ].filter(Boolean).join(" ").toLowerCase();
 
-  if (raw.includes("testnet12") || raw.includes("tn12")) return "testnet12";
+  if (raw.includes("testnet13") || raw.includes("tn13")) return "testnet13";
   if (raw.includes("testnet10") || raw.includes("tn10")) return "testnet10";
   if (raw.includes("mainnet")) return "mainnet";
   return fallbackNet || "";
@@ -2585,7 +2651,7 @@ function kgwNodeR51ReadSettings(net) {
   values[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C] = kgwNodeR51ReadCommandOptionsR38C(net);
 
   for (const field of kgwNodeR51Fields(net)) {
-    if (!field.id) continue;
+    if (!field.id || NODE_MANAGED[field.id.slice(("node-" + net + "-").length)]) continue;
 
     values[field.id] = field.type === "checkbox"
       ? { type: "checkbox", checked: Boolean(field.checked) }
@@ -2630,7 +2696,7 @@ function kgwNodeR51ApplyCommandOptionsR38C(net, values) {
     if (commandOptions && typeof commandOptions === "object") {
       const state = kgwNodeCommandInlineStateR7(net);
       for (const [name, enabled] of Object.entries(commandOptions)) {
-        state[String(name)] = Boolean(enabled);
+        state[String(name)] = Boolean(enabled) && (!NODE_OPTIONAL.has(name) || Boolean(v(net, name)));
       }
       kgwNodeRefreshInlineCommandTogglesR7(net);
       updateCommand(net);
@@ -2657,6 +2723,8 @@ function kgwNodeR51WriteSettings(net, values) {
   for (const field of kgwNodeR51Fields(net)) {
     if (!field.id) continue;
 
+    const name = field.id.slice(("node-" + net + "-").length);
+    if (NODE_MANAGED[name]) continue;
     const item = values[field.id];
     if (!item) continue;
 
@@ -2711,6 +2779,7 @@ function kgwNodeR51LoadSavedSettings() {
 
 
 function kgwNodeR51SaveSettings(net) {
+  kgwNodeRequireValidSettings(net);
   kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-begin", {
     patch: "R29B",
     owner: "node-r51-settings-owner"
@@ -2740,6 +2809,7 @@ function kgwNodeR51SaveSettings(net) {
 }
 
 function kgwNodeR51SetAsDefaults(net) {
+  kgwNodeRequireValidSettings(net);
   kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-begin", {
     patch: "R29B",
     owner: "node-r51-settings-owner"
@@ -2808,7 +2878,7 @@ function kgwNodeRuntimeErrorFromStatus(text) {
   return error && error.toLowerCase() !== "none" ? error : "";
 }
 
-function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false) {
+function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false, runtimeError = "", statusText = "") {
   const panel = kgwNodeR51Panel(net);
   if (!panel) return;
 
@@ -2824,26 +2894,35 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
   const stop = panel.querySelector('[data-node-action="stop"][data-net="' + net + '"]');
   const lockMessage = "This node is owned by Bridge in-process mode. Stop the bridge first.";
   const policyStatus = byId(id(net, "policyStatus"));
-  const runtimeState = !networkEnabled
-    ? "Disabled"
-    : starting
-      ? "Starting"
-      : stopping
-        ? "Stopping"
-        : running
-          ? "Running"
-          : "Stopped";
+  const presentation = runtimePresentation({enabled: networkEnabled, running, transition, error: runtimeError});
+  const runtimeState = presentation.process;
 
   if (policyStatus) {
-    policyStatus.textContent = runtimeState;
+    policyStatus.textContent = "Node: " + runtimeState;
     policyStatus.dataset.state = runtimeState.toLowerCase();
+    applyStatusTone(policyStatus, runtimeState);
+  }
+  const summary = byId(id(net, "monitorState"));
+  renderStatusSummary(summary, presentation.processLabel + " | Profile: " + presentation.profile +
+    " | Startup readiness: " + (running ? "Verified" : transition ? "Pending" : "Not ready") +
+    " | " + runtimeObservationSummary(parseRuntimeFields(statusText), running, false));
+  const empty = byId(id(net, "logEmpty"));
+  if (empty) empty.textContent = runtimeError ? "Node failed. Review the error in Settings and the logs below."
+    : transitionActive ? "Node is " + runtimeState.toLowerCase() + ". Waiting for runtime output."
+    : running ? "Node is running. Waiting for log output." : "Node is stopped. Start the node to view its logs.";
+  const settingsInvalid = Boolean(panel.querySelector('[aria-invalid="true"]') ||
+    byId(id(net, "previewStatus"))?.classList.contains("kgw-field-error"));
+  const monitorStart = panel.querySelector('[data-node-action="monitor-start"]');
+  if (monitorStart) {
+    monitorStart.hidden = running || transitionActive;
+    monitorStart.textContent = displayOnlyLocked ? "View Node Settings" : !networkEnabled ? "Enable Profile in Settings" : settingsInvalid ? "Review Settings" : "Start Node";
   }
 
   kgwNodeSetRuntimeNotice(
     net,
     runtimeState,
     running || starting ? "Self-worker process owner" : "No process owner",
-    ""
+    null
   );
 
   for (const field of kgwNodeR51Fields(net)) {
@@ -2852,6 +2931,7 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
     field.dataset.kgwBridgeInprocessLockedV7 = displayOnlyLocked ? "true" : "false";
     field.title = displayOnlyLocked ? lockMessage : "";
   }
+  kgwNodeSyncDependencies(net, displayOnlyLocked);
 
   const preview = byId(id(net, "commandPreview"));
   if (preview) {
@@ -2861,7 +2941,7 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
   }
 
   if (start) {
-    const startBlocked = Boolean(running || transitionActive || displayOnlyLocked || !networkEnabled);
+    const startBlocked = Boolean(running || transitionActive || displayOnlyLocked || !networkEnabled || settingsInvalid);
     start.disabled = startBlocked;
     start.style.opacity = startBlocked ? "0.45" : "";
     start.style.cursor = startBlocked ? "not-allowed" : "";
@@ -2899,7 +2979,7 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
   }
 }
 
-function kgwNodeR51SetRuntimeUnknown(net, message = "Runtime status is temporarily unavailable. Reconciling with the backend.") {
+function kgwNodeR51SetRuntimeUnknown(net, message = "Runtime status is temporarily unavailable. Reconciling with the backend.", errorSource = "") {
   const panel = kgwNodeR51Panel(net);
   if (!panel) return;
 
@@ -2907,6 +2987,9 @@ function kgwNodeR51SetRuntimeUnknown(net, message = "Runtime status is temporari
   if (policyStatus) {
     policyStatus.textContent = "Reconciling";
     policyStatus.dataset.state = "reconciling";
+    applyStatusTone(policyStatus, "reconciling");
+    const summary = byId(id(net, "monitorState"));
+    renderStatusSummary(summary, "Node: Reconciling | RPC/synchronization/mining: unknown");
   }
 
   const start = panel.querySelector('[data-node-action="start"][data-net="' + net + '"]');
@@ -2920,7 +3003,11 @@ function kgwNodeR51SetRuntimeUnknown(net, message = "Runtime status is temporari
     button.title = message;
   }
 
-  kgwNodeSetRuntimeNotice(net, "Reconciling", "Backend runtime state unavailable", message);
+  const currentError = byId(id(net, "runtimeError"));
+  const preserveActionError = errorSource === "status-refresh" && currentError?.textContent?.trim() &&
+    currentError.dataset.runtimeErrorSource !== "status-refresh";
+  kgwNodeSetRuntimeNotice(net, "Reconciling", "Backend runtime state unavailable",
+    preserveActionError ? null : message, errorSource);
 }
 
 function kgwNodeR51Delta(previous, current) {
@@ -3008,6 +3095,7 @@ function kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, locked, reason) {
     field.title = locked ? message : "";
   }
 
+  kgwNodeSyncDependencies(net, locked);
   const preview = byId(id(net, "commandPreview"));
   if (preview) {
     preview.readOnly = true;
@@ -3029,6 +3117,8 @@ function kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, locked, reason) {
     }
   });
 
+  window.KGW_NODE_SETTINGS_OWNER_V19?.setDisabled(document.getElementById("kaspa-node"), net, locked, "runtime-owner-reconcile");
+
   try {
     kgwNodeExplicitTraceR27D(net, "display-only", locked ? "r65e-node-display-only-enabled" : "r65e-node-display-only-cleared", {
       patch: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E",
@@ -3038,48 +3128,27 @@ function kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, locked, reason) {
 }
 
 async function kgwNodeR51BridgeInprocessLockedV7(net) {
-  if (kgwIsBridgeOwnedNodeLockedR65E(net)) {
-    return true;
-  }
-
+  const observedLock = kgwBridgeOwnedNodeLockStoreR65E()[net];
   try {
     const invoke = getTauriInvoke();
-    if (!invoke) return false;
-
+    if (!invoke) return kgwIsBridgeOwnedNodeLockedR65E(net);
     const result = stringifyRuntimeResult(await invokeWithTimeout(
-      invoke,
-      "kgw_runtime_owner_status_v1",
-      { network: net, runtimeRole: "bridge" },
-      KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS
+      invoke, "kgw_runtime_owner_status_v1",
+      { network: net, runtimeRole: "bridge" }, KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS
     ));
-
+    // A Start may have installed a newer owner while this status request was pending.
+    if (kgwBridgeOwnedNodeLockStoreR65E()[net] !== observedLock) return kgwIsBridgeOwnedNodeLockedR65E(net);
     const fields = parseRuntimeFields(result);
+    if (fields.role !== "bridge" || fields.network !== String(net) ||
+        !["true", "false"].includes(fields.running)) return kgwIsBridgeOwnedNodeLockedR65E(net);
     const nodeMode = String(fields.node_mode || fields.nodeMode || "").toLowerCase();
-    const role = String(fields.role || "").toLowerCase();
-    const statusNetwork = String(fields.network || net || "");
     const pid = String(fields.pid || "").trim();
-
-    const bridgeLooksAlive =
-      String(fields.readiness || "").toUpperCase() === "READY" &&
-      (fields.running === "true" ||
-        fields.bridge_running === "true" ||
-        fields.bridge_owner_active === "true" ||
-        /^[0-9]+$/.test(pid) ||
-        /running=true/i.test(result) ||
-        /pid=[0-9]+/i.test(result));
-
-    const sameNetwork = !statusNetwork || statusNetwork === String(net || "");
-    const locked = sameNetwork && role === "bridge" && nodeMode === "inprocess" && bridgeLooksAlive;
-
-    if (locked) {
-      kgwSetBridgeOwnedNodeLockR65E(net, true, {
-        source: "kgw_runtime_owner_status_v1",
-        role,
-        nodeMode,
-        pid
+    const locked = fields.running === "true" && nodeMode === "inprocess";
+    if (locked !== Boolean(observedLock?.locked) || (locked && observedLock?.details?.pid !== pid)) {
+      kgwSetBridgeOwnedNodeLockR65E(net, locked, {
+        source: "kgw_runtime_owner_status_v1", role: fields.role, nodeMode, pid
       });
     }
-
     return locked;
   } catch (_) {
     return kgwIsBridgeOwnedNodeLockedR65E(net);
@@ -3119,7 +3188,15 @@ async function kgwNodeR51RefreshOne(net, reason = "live") {
           const bridgeInprocessLocked = await kgwNodeR51BridgeInprocessLockedV7(net);
           const running = kgwNodeR51IsRunning(status);
           const runtimeError = kgwNodeRuntimeErrorFromStatus(status);
-          kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked);
+          const statusFields = parseRuntimeFields(status);
+          const errorNode = byId(id(net, "runtimeError"));
+          // A recovered poll must not leave its transient error or erase an action failure.
+          if (!runtimeError && statusFields.role === "node" && statusFields.network === String(net) &&
+              ["true", "false"].includes(statusFields.running) &&
+              errorNode?.dataset.runtimeErrorSource === "status-refresh") {
+            kgwNodeSetRuntimeNotice(net, running ? "Running" : "Stopped", "", "");
+          }
+          kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked, runtimeError, status);
           if (!running && runtimeError) {
             kgwNodeSetRuntimeNotice(
               net,
@@ -3132,7 +3209,7 @@ async function kgwNodeR51RefreshOne(net, reason = "live") {
           if (KGW_NODE_R51_LAST_STATUS[net] !== status) {
             KGW_NODE_R51_LAST_STATUS[net] = status;
             const authority = byId(id(net, "settingsAuthority"));
-            if (authority) {
+            if (authority && (!running || authority.dataset.restartRequired !== "true")) {
               authority.textContent = running
                 ? kgwI18nTextR41("runtime.effectiveSettingsActive", "Effective settings are active for this runtime")
                 : kgwI18nTextR41("runtime.effectiveSettingsNextStart", "Effective settings apply on next Start");
@@ -3141,7 +3218,7 @@ async function kgwNodeR51RefreshOne(net, reason = "live") {
           }
           kgwNodeR51MaybeActivityNotice(net, status);
         } catch (error) {
-          kgwNodeR51SetRuntimeUnknown(net, "Status refresh failed: " + normalizeRuntimeError(error));
+          kgwNodeR51SetRuntimeUnknown(net, "Status refresh failed: " + normalizeRuntimeError(error), "status-refresh");
         } finally {
           if (KGW_NODE_R51_STATUS_IN_FLIGHT.get(net) === statusTask) {
             KGW_NODE_R51_STATUS_IN_FLIGHT.delete(net);
@@ -3211,43 +3288,6 @@ function kgwNodeR51StartLiveRefresh() {
   }, 700);
 }
 
-function installKgwNodeR51BottomStyle() {
-  if (document.getElementById("kgw-node-r51-bottom-style")) return;
-
-  const style = document.createElement("style");
-  style.id = "kgw-node-r51-bottom-style";
-  style.textContent = `
-    [data-node-network-panel] {
-      position: relative;
-      min-height: 680px;
-      padding-bottom: 48px;
-    }
-
-    .node-settings-bottom-actions {
-      position: absolute;
-      right: 12px;
-      bottom: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 8px;
-      z-index: 2;
-    }
-
-    .node-settings-bottom-actions button {
-      min-width: 112px;
-      height: 28px;
-      padding: 4px 10px;
-      border: 1px solid rgba(148, 163, 184, 0.55);
-      background: rgba(80, 80, 80, 0.9);
-      color: #fff;
-      cursor: pointer;
-      font-size: 12px;
-      line-height: 1;
-    }
-  `;
-  document.head.appendChild(style);
-}
 
 /* KGW_NODE_SETTINGS_BUTTON_FEEDBACK_FIX_R1
  * Settings action buttons must confirm successful user actions immediately.
@@ -3596,7 +3636,7 @@ function installActions(root) {
 
   function normalizeNet(value) {
     const raw = String(value || "").toLowerCase();
-    if (raw.includes("testnet12") || raw.includes("tn12")) return "testnet12";
+    if (raw.includes("testnet13") || raw.includes("tn13")) return "testnet13";
     if (raw.includes("testnet10") || raw.includes("tn10")) return "testnet10";
     if (raw.includes("mainnet")) return "mainnet";
     return "";
@@ -3686,7 +3726,7 @@ function installActions(root) {
     scopedUpdate(net, event.isTrusted ? "trusted-input" : "programmatic-input");
   }, true);
 
-  root.addEventListener("change", (event) => {
+  root.addEventListener("change", async (event) => {
     const target = event.target;
     if (!target || !target.matches || !target.matches("input, select, textarea")) return;
     if (target.readOnly || target.disabled || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
@@ -3708,22 +3748,24 @@ function installActions(root) {
 
     if (target.matches("[data-node-network-enabled]")) {
       const profile = kgwNodeNetworkProfile(net);
+      const wasEnabled = kgwNodeNetworkEnabled(net);
       let enabled = Boolean(target.checked);
 
       if (enabled && profile?.experimental) {
-        const confirmed = window.confirm(
-          "Testnet 12 is experimental and uses a separate non-production runtime. Enable it only for isolated testing. Continue?"
-        );
-        if (!confirmed) {
+        target.checked = false;
+        target.disabled = true;
+        try {
+          enabled = (await confirmUserAction("Testnet 13 is experimental and uses a separate non-production runtime. Enable it only for isolated testing. Continue?")) === true;
+        } catch (error) {
           enabled = false;
-          target.checked = false;
-        }
+          kgwNodeSetRuntimeNotice(net, "Stopped", "Profile remains disabled", normalizeRuntimeError(error));
+        } finally { target.disabled = false; target.checked = enabled; }
       }
 
       kgwNodeSetNetworkEnabled(net, enabled);
       kgwNodeR51SetRuntimeButtons(net, false, kgwIsBridgeOwnedNodeLockedR65E(net));
 
-      if (!enabled) {
+      if (!enabled && wasEnabled) {
         void runNodeIntegratedAction("stop", net);
       }
     }
@@ -3763,19 +3805,37 @@ function installActions(root) {
     }
 
     if (action === "save-settings") {
-      if (typeof kgwNodeR51SaveSettings === "function") kgwNodeR51SaveSettings(net);
+      try {
+        kgwNodeR51SaveSettings(net);
+        button.dataset.kgwSettingsActionResult = "success";
+      } catch (error) {
+        button.dataset.kgwSettingsActionResult = "failed";
+        kgwNodeSetRuntimeNotice(net, "Settings error", "", normalizeRuntimeError(error));
+      }
       scopedUpdate(net, "save-settings");
       return;
     }
 
     if (action === "set-defaults") {
-      if (typeof kgwNodeR51SetAsDefaults === "function") kgwNodeR51SetAsDefaults(net);
+      try {
+        kgwNodeR51SetAsDefaults(net);
+        button.dataset.kgwSettingsActionResult = "success";
+      } catch (error) {
+        button.dataset.kgwSettingsActionResult = "failed";
+        kgwNodeSetRuntimeNotice(net, "Settings error", "", normalizeRuntimeError(error));
+      }
       scopedUpdate(net, "set-defaults");
       return;
     }
 
     if (action === "restore-defaults") {
-      if (typeof kgwNodeR51RestoreDefaults === "function") kgwNodeR51RestoreDefaults(net);
+      try {
+        kgwNodeR51RestoreDefaults(net);
+        button.dataset.kgwSettingsActionResult = "success";
+      } catch (error) {
+        button.dataset.kgwSettingsActionResult = "failed";
+        kgwNodeSetRuntimeNotice(net, "Settings error", "", normalizeRuntimeError(error));
+      }
       scopedUpdate(net, "restore-defaults");
       return;
     }
@@ -3793,11 +3853,25 @@ function installActions(root) {
       return;
     }
 
-    if (action === "copy-command") {
-      const preview = document.getElementById("node-" + net + "-commandPreview");
-      if (preview && navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(String(preview.value || preview.textContent || "")).catch(function () {});
-      }
+    if (action === "monitor-start") {
+      panelStartFromMonitor(net);
+      return;
+    }
+    if (action === "copy-command" || action === "copy-path") {
+      void (async () => {
+        let value = v(net, "appDir");
+        if (action === "copy-command") {
+          const errors = kgwNodeValidateForm(net);
+          if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
+          const sequence = KGW_NODE_PREVIEWS.get(net)?.sequence;
+          const result = await kgwNodePreparePreview(net, kgwNodeEffectiveNodeSettings(net));
+          if (KGW_NODE_PREVIEWS.get(net)?.sequence !== sequence) throw new Error("Settings changed while copying. Try again.");
+          value = result.command;
+        }
+        if (!value) throw new Error("There is no validated value to copy.");
+        await kgwNodeDispatchClipboardWriteV1(net, value, {characterCount: [...value].length, lineCount: value.split(/\r?\n/).length});
+        kgwNodePreviewMessage(net, action === "copy-path" ? "Data directory copied." : "Command copied.");
+      })().catch(error => kgwNodePreviewMessage(net, "Copy failed: " + normalizeRuntimeError(error), true));
       return;
     }
 
@@ -3843,7 +3917,6 @@ const nodeRoot = root || document.getElementById("kaspa-node");
   installActions(nodeRoot);
 updateAllCommands();
   NODE_NETWORKS.forEach((net) => kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net.key, { force: false })); /* KGW_NODE_DYNAMIC_PATHS_INIT_R3 */
-  installKgwNodeR51BottomStyle();
   kgwNodeR51StartLiveRefresh();
 
   setTimeout(kgwInstallNodeLogAutoScrollControlsR27, 0);
@@ -3859,7 +3932,7 @@ updateAllCommands();
   const TOOLBAR_SELECTOR = ".node-v6-log-toolbar";
   const ACTION_ATTR = "data-node-action";
   const PREFIX = "node";
-  const NETWORKS = ["mainnet", "testnet10", "testnet12"];
+  const NETWORKS = ["mainnet", "testnet10", "testnet13"];
   const MIN_SIZE = 10;
   const MAX_SIZE = 18;
   const DEFAULT_SIZE = 12;
@@ -4128,7 +4201,7 @@ window.kgwFinalIsolatedAdapterStopV1 = kgwFinalIsolatedAdapterStopV1;
 /* kgwV66FinalRuntimeIsolationV1
  * Final runtime feature isolation:
  * - mainnet/testnet10 require isolated-real-runtime-mainline build
- * - testnet12 requires isolated-real-runtime-tn12 build
+ * - testnet13 requires isolated-real-runtime-tn13 build
  * - one binary must not link both Rusty Kaspa owners.
  */
 async function kgwV66Invoke(command, payload) {
@@ -4231,3 +4304,75 @@ window.kgwV67RuntimeFeaturePolicy = kgwV67RuntimeFeaturePolicy;
 /* R35 settings persistence for existing Node tab. */
 /* R37 bottom placement for Node settings buttons. */
 /* R38 UI freeze protection for Node Start/Stop. */
+
+
+function kgwNodeForm(net) {
+  const values = {};
+  const panel = kgwNodeR51Panel(net);
+  panel?.querySelectorAll(".node-v6-card input[id], .node-v6-card select[id]").forEach(field => {
+    const name = field.id.slice(("node-" + net + "-").length);
+    values[name] = field.type === "checkbox" ? field.checked : field.value;
+  });
+  return values;
+}
+function kgwNodeSettingActive(net, name) {
+  return nodeFieldEnabled(name, kgwNodeForm(net), kgwNodeCommandInlineStateR7(net));
+}
+function kgwNodeValidateForm(net, focus = false) {
+  const errors = validateNodeForm(kgwNodeForm(net), kgwNodeCommandInlineStateR7(net), net);
+  const panel = kgwNodeR51Panel(net);
+  renderFieldErrors(panel, "node-" + net + "-", errors);
+  if (focus && Object.keys(errors).length) {
+    const field = byId(id(net, Object.keys(errors)[0]));
+    panel?.querySelector('[data-node-inner-tab="settings"]')?.click();
+    const section = field?.closest("[data-node-section-panel]");
+    panel?.querySelector('[data-node-section-tab="' + section?.dataset.nodeSectionPanel + '"]')?.click();
+    revealSettingsField(field);
+    field?.focus();
+  }
+  return errors;
+}
+function kgwNodeRequireValidSettings(net) {
+  const errors = kgwNodeValidateForm(net, true);
+  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
+  kgwNodeEffectiveNodeSettings(net);
+}
+function kgwNodeSyncDependencies(net, locked = kgwIsBridgeOwnedNodeLockedR65E(net)) {
+  const values = kgwNodeForm(net), options = kgwNodeCommandInlineStateR7(net);
+  const panel = kgwNodeR51Panel(net);
+  for (const [name] of Object.entries(values)) {
+    const field = byId(id(net, name));
+    const managed = NODE_MANAGED[name];
+    const experimentalOnly = name === "enableUnsyncedMining" && net === "mainnet";
+    const active = nodeFieldEnabled(name, values, options) && !experimentalOnly;
+    field.disabled = Boolean(locked || (!active && name !== "appDir"));
+    field.readOnly = Boolean(locked || managed);
+    field.title = locked ? "Stop the bridge that owns this node to edit settings."
+      : managed || (experimentalOnly ? "Available only on test networks." : !active ? "Enable the parent option to use this value." : field.value || "");
+    field.closest(".node-v6-card")?.classList.toggle("kgw-field-inactive", !active);
+    const state = managed ? (/unsupported/i.test(managed) ? "Unsupported" : "Managed")
+      : NODE_DANGEROUS[name] ? "Dangerous"
+      : Object.hasOwn(NODE_REQUIRED, name) ? (String(values[name]) === NODE_REQUIRED[name] ? "KGW default" : "Custom value")
+      : experimentalOnly ? "Test networks only"
+      : !active ? "Not active" : "";
+    setSettingFieldState(field, state);
+  }
+  panel?.querySelectorAll("[data-node-command-option-toggle-r7]").forEach(toggle => {
+    const name = toggle.dataset.nodeCommandOptionToggleR7;
+    toggle.disabled = Boolean(locked || (name === "logDir" && values.noLogFiles) ||
+      (name === "perfMetricsInterval" && !values.perfMetrics) ||
+      (name === "rocksDbCacheSize" && (!options.rocksDbPreset || values.rocksDbPreset !== "hdd")));
+  });
+  decorateSettingsFields(panel);
+}
+
+export { kgwNodeEffectiveNodeSettings, kgwNodeValidateForm };
+
+function panelStartFromMonitor(net) {
+  const panel = kgwNodeR51Panel(net);
+  const start = panel?.querySelector('[data-node-action="start"]');
+  if (start?.disabled) {
+    panel.querySelector('[data-node-inner-tab="settings"]')?.click();
+    kgwNodePreviewMessage(net, start.title || "Check the profile and settings before starting.", true);
+  } else start?.click();
+}

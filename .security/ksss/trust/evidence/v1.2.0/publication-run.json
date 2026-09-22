@@ -1,0 +1,13 @@
+{
+  "schema": "ksss-trusted-release-publication-run-v1",
+  "release": "v1.2.0",
+  "repository": "KaspaPulse/security-governance",
+  "controlPlaneSha": "3c3dec5042d0073e51027c878da2a90b22b18c18",
+  "workflowSha": "3c3dec5042d0073e51027c878da2a90b22b18c18",
+  "workflowIdentity": "https://github.com/KaspaPulse/security-governance/.github/workflows/ksss-trusted-release.yml@refs/heads/main",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "sigstoreTrustedRootSha256": "6494e21ea73fa7ee769f85f57d5a3e6a08725eae1e38c755fc3517c9e6bc0b66",
+  "consumerRuntime": true,
+  "runId": "35504962211",
+  "runAttempt": "1"
+}

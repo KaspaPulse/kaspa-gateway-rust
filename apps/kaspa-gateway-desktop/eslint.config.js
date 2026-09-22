@@ -30,4 +30,11 @@ export default defineConfig([
       ],
     },
   },
+  {
+    name: "kaspa-gateway/settings-contract-control-character-validation",
+    files: ["frontend/src/settings-contract.js"],
+    rules: {
+      "no-control-regex": "off",
+    },
+  },
 ]);

@@ -1,0 +1,43 @@
+/* One semantic palette for runtime, connection, validation and action feedback. */
+:root {
+  --kgw-status-positive: #86efac;
+  --kgw-status-negative: #fca5a5;
+  --kgw-status-ready: #93c5fd;
+  --kgw-status-warning: #fcd34d;
+  --kgw-status-neutral: #cbd5e1;
+}
+html[data-kgw-theme="light"] {
+  --kgw-status-positive: #166534;
+  --kgw-status-negative: #991b1b;
+  --kgw-status-ready: #1e40af;
+  --kgw-status-warning: #854d0e;
+  --kgw-status-neutral: #475569;
+}
+[data-status-tone="positive"] { --kgw-status-color: var(--kgw-status-positive); }
+[data-status-tone="negative"] { --kgw-status-color: var(--kgw-status-negative); }
+[data-status-tone="ready"] { --kgw-status-color: var(--kgw-status-ready); }
+[data-status-tone="warning"] { --kgw-status-color: var(--kgw-status-warning); }
+[data-status-tone="neutral"] { --kgw-status-color: var(--kgw-status-neutral); }
+/* Specific to status text; never recolor raw logs or disabled form values. */
+html body [data-status-tone] { color: var(--kgw-status-color) !important; }
+.kgw-status-item { display: inline-block; margin-block: 2px; }
+.kgw-status-value,
+.node-v6-runtime-status-pill,
+.kgw-network-policy-status {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-weight: 600;
+  line-height: 1.45;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+html body :is(.kgw-field-error, .node-v6-runtime-error, .bridge-v7-runtime-error) {
+  color: var(--kgw-status-negative);
+}
+html body :is(.warn, [data-restart-required="true"]) { color: var(--kgw-status-warning); }
+html body .danger { color: var(--kgw-status-negative); border-color: currentColor; }
+html body .good { color: var(--kgw-status-positive); background: color-mix(in srgb, var(--kgw-status-positive) 12%, var(--kgw-global-panel-2)); }
+html body .warn { border-color: var(--kgw-status-warning); }
+.kgw-network-policy.is-experimental { border-color: var(--kgw-status-warning); }
+html body #kgwShellReadyStatus[data-busy="true"] { color: var(--kgw-status-warning) !important; }

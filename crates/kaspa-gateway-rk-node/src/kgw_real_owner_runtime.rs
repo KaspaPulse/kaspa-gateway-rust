@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::JoinHandle;
 #[cfg(any(
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -47,9 +47,9 @@ impl KgwRuntimeFeatureStatus {
                 "official-kaspa-runtime-mainline",
                 cfg!(feature = "official-kaspa-runtime-mainline"),
             ),
-            KgwNetwork::Testnet12 => (
-                "official-kaspa-runtime-tn12",
-                cfg!(feature = "official-kaspa-runtime-tn12"),
+            KgwNetwork::Testnet13 => (
+                "official-kaspa-runtime-tn13",
+                cfg!(feature = "official-kaspa-runtime-tn13"),
             ),
         };
 
@@ -222,7 +222,7 @@ pub struct KgwRealOwnerRuntime {
     not(test),
     any(
         feature = "official-kaspa-runtime-mainline",
-        feature = "official-kaspa-runtime-tn12"
+        feature = "official-kaspa-runtime-tn13"
     )
 ))]
 const KGW_NODE_READINESS_TIMEOUT: Duration = Duration::from_secs(90);
@@ -230,13 +230,13 @@ const KGW_NODE_READINESS_TIMEOUT: Duration = Duration::from_secs(90);
     test,
     any(
         feature = "official-kaspa-runtime-mainline",
-        feature = "official-kaspa-runtime-tn12"
+        feature = "official-kaspa-runtime-tn13"
     )
 ))]
 const KGW_NODE_READINESS_TIMEOUT: Duration = Duration::from_millis(750);
 #[cfg(any(
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 const KGW_NODE_READINESS_RETRY_INTERVAL: Duration = Duration::from_millis(250);
 
@@ -253,7 +253,7 @@ impl KgwRealOwnerRuntime {
         for network in [
             KgwNetwork::Mainnet,
             KgwNetwork::Testnet10,
-            KgwNetwork::Testnet12,
+            KgwNetwork::Testnet13,
         ] {
             sessions.insert(network, RuntimeSession::new(network));
         }
@@ -350,8 +350,8 @@ impl KgwRealOwnerRuntime {
             KgwNetwork::Mainnet | KgwNetwork::Testnet10 => {
                 attest_mainline_node_rpc_readiness(settings, &mut core_terminal_outcome)
             }
-            KgwNetwork::Testnet12 => {
-                attest_tn12_node_rpc_readiness(settings, &mut core_terminal_outcome)
+            KgwNetwork::Testnet13 => {
+                attest_tn13_node_rpc_readiness(settings, &mut core_terminal_outcome)
             }
         };
 
@@ -679,19 +679,19 @@ fn refresh_core_terminal_status(session: &mut RuntimeSession) {
 #[cfg(any(
     test,
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 fn expected_rpc_network_id(network: KgwNetwork) -> &'static str {
     match network {
         KgwNetwork::Mainnet => "mainnet",
         KgwNetwork::Testnet10 => "testnet-10",
-        KgwNetwork::Testnet12 => "testnet-12",
+        KgwNetwork::Testnet13 => "testnet-13",
     }
 }
 
 #[cfg(any(
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 fn grpc_endpoint(endpoint: &str) -> String {
     if endpoint.starts_with("grpc://") {
@@ -704,7 +704,7 @@ fn grpc_endpoint(endpoint: &str) -> String {
 #[cfg(any(
     test,
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 fn validate_rpc_network_identity(
     network: KgwNetwork,
@@ -794,12 +794,12 @@ fn attest_mainline_node_rpc_readiness(
     )))
 }
 
-#[cfg(feature = "official-kaspa-runtime-tn12")]
-fn attest_tn12_node_rpc_readiness(
+#[cfg(feature = "official-kaspa-runtime-tn13")]
+fn attest_tn13_node_rpc_readiness(
     settings: &NodeSettings,
     core_terminal_outcome: &mut std::sync::mpsc::Receiver<Result<String, String>>,
 ) -> Result<String, KgwRealOwnerError> {
-    use kaspa_rpc_core_tn12::api::rpc::RpcApi;
+    use kaspa_rpc_core_tn13::api::rpc::RpcApi;
 
     let endpoint = settings.rpc_endpoint.clone();
     let runtime = tokio::runtime::Builder::new_current_thread()
@@ -825,7 +825,7 @@ fn attest_tn12_node_rpc_readiness(
             }
 
             let attempt = tokio::time::timeout(Duration::from_secs(3), async {
-                let client = kaspa_grpc_client_tn12::GrpcClient::connect(grpc_endpoint(&endpoint))
+                let client = kaspa_grpc_client_tn13::GrpcClient::connect(grpc_endpoint(&endpoint))
                     .await
                     .map_err(|error| error.to_string())?;
                 client
@@ -854,13 +854,13 @@ fn attest_tn12_node_rpc_readiness(
     })
 }
 
-#[cfg(not(feature = "official-kaspa-runtime-tn12"))]
-fn attest_tn12_node_rpc_readiness(
+#[cfg(not(feature = "official-kaspa-runtime-tn13"))]
+fn attest_tn13_node_rpc_readiness(
     settings: &NodeSettings,
     _core_terminal_outcome: &mut std::sync::mpsc::Receiver<Result<String, String>>,
 ) -> Result<String, KgwRealOwnerError> {
     Err(KgwRealOwnerError::FeatureRequired(format!(
-        "{} requires official-kaspa-runtime-tn12",
+        "{} requires official-kaspa-runtime-tn13",
         settings.network.as_str()
     )))
 }
@@ -868,7 +868,7 @@ fn attest_tn12_node_rpc_readiness(
 #[cfg(any(
     test,
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 fn fail_if_core_terminated(
     core_terminal_outcome: &mut std::sync::mpsc::Receiver<Result<String, String>>,
@@ -929,13 +929,13 @@ fn spawn_official_core_thread(
 ) -> Result<OfficialCoreOwnerThread, KgwRealOwnerError> {
     match settings.network {
         KgwNetwork::Mainnet | KgwNetwork::Testnet10 => spawn_mainline_core_thread(settings),
-        KgwNetwork::Testnet12 => spawn_tn12_core_thread(settings),
+        KgwNetwork::Testnet13 => spawn_tn13_core_thread(settings),
     }
 }
 
 #[cfg(any(
     feature = "official-kaspa-runtime-mainline",
-    feature = "official-kaspa-runtime-tn12"
+    feature = "official-kaspa-runtime-tn13"
 ))]
 fn validate_effective_node_settings(settings: &NodeSettings) -> Result<(), KgwRealOwnerError> {
     let effective = &settings.effective_node;
@@ -1144,12 +1144,12 @@ fn spawn_mainline_core_thread(
     )))
 }
 
-#[cfg(feature = "official-kaspa-runtime-tn12")]
-fn build_tn12_args(
+#[cfg(feature = "official-kaspa-runtime-tn13")]
+fn build_tn13_args(
     settings: &NodeSettings,
-) -> Result<kaspad_lib_tn12::args::Args, KgwRealOwnerError> {
+) -> Result<kaspad_lib_tn13::args::Args, KgwRealOwnerError> {
     validate_effective_node_settings(settings)?;
-    let mut args = kaspad_lib_tn12::args::Args {
+    let mut args = kaspad_lib_tn13::args::Args {
         appdir: Some(settings.app_dir_name.clone()),
         utxoindex: settings.enable_utxo_index,
         archival: settings.archival,
@@ -1164,7 +1164,7 @@ fn build_tn12_args(
             .iter()
             .map(|value| {
                 value
-                    .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
+                    .parse::<kaspa_utils_tn13::networking::ContextualNetAddress>()
                     .map_err(|error| {
                         KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
                             "invalid connect peer {value}: {error}"
@@ -1178,7 +1178,7 @@ fn build_tn12_args(
             .iter()
             .map(|value| {
                 value
-                    .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
+                    .parse::<kaspa_utils_tn13::networking::ContextualNetAddress>()
                     .map_err(|error| {
                         KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
                             "invalid add peer {value}: {error}"
@@ -1201,7 +1201,7 @@ fn build_tn12_args(
             .as_deref()
             .map(|value| {
                 value
-                    .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
+                    .parse::<kaspa_utils_tn13::networking::ContextualNetAddress>()
                     .map_err(|error| {
                         KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
                             "invalid external IP {value}: {error}"
@@ -1225,7 +1225,7 @@ fn build_tn12_args(
     args.testnet = true;
     args.testnet_suffix = match settings.network {
         KgwNetwork::Testnet10 => 10,
-        KgwNetwork::Testnet12 => 12,
+        KgwNetwork::Testnet13 => 13,
         KgwNetwork::Mainnet => args.testnet_suffix,
     };
 
@@ -1234,7 +1234,7 @@ fn build_tn12_args(
         .as_deref()
         .map(|listen| {
             listen
-                .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
+                .parse::<kaspa_utils_tn13::networking::ContextualNetAddress>()
                 .map_err(|error| KgwRealOwnerError::InvalidP2pListen(error.to_string()))
         })
         .transpose()?;
@@ -1242,7 +1242,7 @@ fn build_tn12_args(
     args.rpclisten = Some(
         settings
             .rpc_endpoint
-            .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
+            .parse::<kaspa_utils_tn13::networking::ContextualNetAddress>()
             .map_err(|error| KgwRealOwnerError::InvalidRpcEndpoint(error.to_string()))?,
     );
     args.rpclisten_borsh = settings
@@ -1251,7 +1251,7 @@ fn build_tn12_args(
         .as_deref()
         .map(|value| {
             value
-                .parse::<kaspa_wrpc_server_tn12::address::WrpcNetAddress>()
+                .parse::<kaspa_wrpc_server_tn13::address::WrpcNetAddress>()
                 .map_err(|error| {
                     KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
                         "invalid Borsh RPC listen {value}: {error}"
@@ -1265,7 +1265,7 @@ fn build_tn12_args(
         .as_deref()
         .map(|value| {
             value
-                .parse::<kaspa_wrpc_server_tn12::address::WrpcNetAddress>()
+                .parse::<kaspa_wrpc_server_tn13::address::WrpcNetAddress>()
                 .map_err(|error| {
                     KgwRealOwnerError::InvalidEffectiveNodeSettings(format!(
                         "invalid JSON RPC listen {value}: {error}"
@@ -1274,17 +1274,17 @@ fn build_tn12_args(
         })
         .transpose()?;
 
-    kgw_apply_embedded_fd_limits_tn12(&mut args);
+    kgw_apply_embedded_fd_limits_tn13(&mut args);
     Ok(args)
 }
 
-#[cfg(feature = "official-kaspa-runtime-tn12")]
-fn spawn_tn12_core_thread(
+#[cfg(feature = "official-kaspa-runtime-tn13")]
+fn spawn_tn13_core_thread(
     settings: NodeSettings,
 ) -> Result<OfficialCoreOwnerThread, KgwRealOwnerError> {
-    let args = build_tn12_args(&settings)?;
+    let args = build_tn13_args(&settings)?;
     let fd_total_budget = kgw_embedded_core_fd_budget(
-        kaspa_utils_tn12::fd_budget::limit(),
+        kaspa_utils_tn13::fd_budget::limit(),
         args.rpc_max_clients as i32,
         args.inbound_limit as i32,
         args.outbound_target as i32,
@@ -1299,7 +1299,7 @@ fn spawn_tn12_core_thread(
         .spawn(move || {
             let outcome = kgw_run_official_core_with_panic_boundary(network, move || {
                 let (core, rpc_core_service) =
-                    kaspad_lib_tn12::daemon::create_core(args, fd_total_budget);
+                    kaspad_lib_tn13::daemon::create_core(args, fd_total_budget);
                 let workers = core.start();
 
                 loop {
@@ -1318,7 +1318,7 @@ fn spawn_tn12_core_thread(
                     }
                 }
                 drop(rpc_core_service);
-                use kaspa_core_tn12::signals::Shutdown;
+                use kaspa_core_tn13::signals::Shutdown;
                 core.shutdown();
                 core.join(workers);
                 Ok(format!(
@@ -1333,12 +1333,12 @@ fn spawn_tn12_core_thread(
     Ok((owner_thread, shutdown_tx, terminal_rx))
 }
 
-#[cfg(not(feature = "official-kaspa-runtime-tn12"))]
-fn spawn_tn12_core_thread(
+#[cfg(not(feature = "official-kaspa-runtime-tn13"))]
+fn spawn_tn13_core_thread(
     settings: NodeSettings,
 ) -> Result<OfficialCoreOwnerThread, KgwRealOwnerError> {
     Err(KgwRealOwnerError::FeatureRequired(format!(
-        "{} requires official-kaspa-runtime-tn12",
+        "{} requires official-kaspa-runtime-tn13",
         settings.network.as_str()
     )))
 }
@@ -1369,8 +1369,8 @@ fn kgw_apply_embedded_fd_limits_mainline(args: &mut kaspad_lib_mainline::args::A
     args.outbound_target = args.outbound_target.min(8);
 }
 
-#[cfg(feature = "official-kaspa-runtime-tn12")]
-fn kgw_apply_embedded_fd_limits_tn12(args: &mut kaspad_lib_tn12::args::Args) {
+#[cfg(feature = "official-kaspa-runtime-tn13")]
+fn kgw_apply_embedded_fd_limits_tn13(args: &mut kaspad_lib_tn13::args::Args) {
     args.rpc_max_clients = args.rpc_max_clients.min(16);
     args.inbound_limit = args.inbound_limit.min(32);
     args.outbound_target = args.outbound_target.min(8);
@@ -1467,7 +1467,7 @@ fn default_prometheus_for_network(network: KgwNetwork) -> &'static str {
     match network {
         KgwNetwork::Mainnet => "127.0.0.1:2114",
         KgwNetwork::Testnet10 => "127.0.0.1:12114",
-        KgwNetwork::Testnet12 => "127.0.0.1:22114",
+        KgwNetwork::Testnet13 => "127.0.0.1:22114",
     }
 }
 
@@ -1598,7 +1598,7 @@ mod kgw_runtime_fd_budget_tests {
     fn rpc_readiness_requires_exact_network_identity() {
         assert_eq!(expected_rpc_network_id(KgwNetwork::Mainnet), "mainnet");
         assert_eq!(expected_rpc_network_id(KgwNetwork::Testnet10), "testnet-10");
-        assert_eq!(expected_rpc_network_id(KgwNetwork::Testnet12), "testnet-12");
+        assert_eq!(expected_rpc_network_id(KgwNetwork::Testnet13), "testnet-13");
     }
 
     #[cfg(feature = "official-kaspa-runtime-mainline")]
@@ -1695,35 +1695,35 @@ mod kgw_runtime_fd_budget_tests {
         assert_eq!(args.override_params_file, None);
     }
 
-    #[cfg(feature = "official-kaspa-runtime-tn12")]
+    #[cfg(feature = "official-kaspa-runtime-tn13")]
     #[test]
-    fn tn12_owner_args_honor_isolated_p2p_listener() {
+    fn tn13_owner_args_honor_isolated_p2p_listener() {
         let listen = "127.0.0.1:26311";
         let parsed = listen
-            .parse::<kaspa_utils_tn12::networking::ContextualNetAddress>()
+            .parse::<kaspa_utils_tn13::networking::ContextualNetAddress>()
             .unwrap();
         assert_eq!(parsed.to_string(), listen);
     }
 
-    #[cfg(feature = "official-kaspa-runtime-tn12")]
+    #[cfg(feature = "official-kaspa-runtime-tn13")]
     #[test]
-    fn tn12_effective_settings_cannot_override_experimental_network_identity() {
+    fn tn13_effective_settings_cannot_override_experimental_network_identity() {
         let mut settings = NodeSettings::from_strings(
-            "testnet12".to_string(),
+            "testnet13".to_string(),
             "integrated-inproc".to_string(),
             "disable".to_string(),
         )
         .unwrap();
         let mut effective = crate::EffectiveNodeSettings {
-            rpc_listen: KgwNetwork::Testnet12.rpc_endpoint().to_string(),
+            rpc_listen: KgwNetwork::Testnet13.rpc_endpoint().to_string(),
             ..Default::default()
         };
         effective.rpc_max_clients = 16;
         effective.inbound_limit = 32;
         settings.apply_effective_node_settings(effective).unwrap();
-        let args = build_tn12_args(&settings).unwrap();
+        let args = build_tn13_args(&settings).unwrap();
         assert!(args.testnet);
-        assert_eq!(args.testnet_suffix, 12);
+        assert_eq!(args.testnet_suffix, 13);
         assert!(!args.devnet);
         assert!(!args.simnet);
     }

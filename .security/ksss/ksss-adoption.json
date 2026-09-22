@@ -1,0 +1,12 @@
+{
+  "adopted_at": "2026-09-20T15:07:45.392459+00:00",
+  "applicability_digest": "c46d15eda03e28e393c8bc8a2abb0b640f5dc12d30b2649b80e7fbf70eb5fba3",
+  "ksss_release": "v1.2.0",
+  "ksss_source_sha": "967ed5068947a39961d5d5cc483ef65d25a61059",
+  "policy_bundle_digest": "3c1c8b449d736aba5fec5cffd688496b06d81f287f55fff4c3f42e36c3b58ec6",
+  "repository": "KaspaPulse/kaspa-gateway-rust",
+  "repository_profile": "medium",
+  "risk_classification_digest": "2ec8823a8ca3cd9d44956e0b9a3c19cbd1c9d1b31746b02383be9fbdb4c91ce6",
+  "schema_family": "ksss-adoption",
+  "schema_version": "1.0.0"
+}

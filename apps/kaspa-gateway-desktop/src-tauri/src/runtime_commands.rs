@@ -69,7 +69,7 @@ fn normalize_network(value: &str) -> String {
     match value.trim().to_ascii_lowercase().as_str() {
         "mainnet" => "mainnet".to_string(),
         "testnet" | "testnet10" | "testnet-10" => "testnet10".to_string(),
-        "testnet12" | "tn12" | "testnet-12" => "testnet12".to_string(),
+        "testnet13" | "tn13" | "testnet-13" => "testnet13".to_string(),
         "simnet" => "simnet".to_string(),
         "devnet" => "devnet".to_string(),
         _ => "mainnet".to_string(),
@@ -78,7 +78,7 @@ fn normalize_network(value: &str) -> String {
 
 fn branch_for_network(network: &str) -> &'static str {
     match normalize_network(network).as_str() {
-        "testnet12" => "tn12",
+        "testnet13" => "tn13",
         _ => "master",
     }
 }
@@ -87,7 +87,7 @@ fn rpc_for_network(network: &str) -> &'static str {
     match normalize_network(network).as_str() {
         "mainnet" => "127.0.0.1:16110",
         "testnet10" => "127.0.0.1:16210",
-        "testnet12" => "127.0.0.1:16310",
+        "testnet13" => "127.0.0.1:16210",
         "simnet" => "127.0.0.1:16410",
         "devnet" => "127.0.0.1:16510",
         _ => "127.0.0.1:16110",
@@ -98,7 +98,7 @@ fn stratum_for_network(network: &str) -> &'static str {
     match normalize_network(network).as_str() {
         "mainnet" => "0.0.0.0:5555",
         "testnet10" => "0.0.0.0:15555",
-        "testnet12" => "0.0.0.0:25555",
+        "testnet13" => "0.0.0.0:25555",
         "simnet" => "0.0.0.0:35555",
         "devnet" => "0.0.0.0:45555",
         _ => "0.0.0.0:5555",
@@ -107,8 +107,8 @@ fn stratum_for_network(network: &str) -> &'static str {
 
 fn validate_network(value: &str) -> Result<(), String> {
     match value.trim().to_ascii_lowercase().as_str() {
-        "mainnet" | "testnet" | "testnet10" | "testnet-10" | "testnet12" | "tn12"
-        | "testnet-12" | "simnet" | "devnet" => Ok(()),
+        "mainnet" | "testnet" | "testnet10" | "testnet-10" | "testnet13" | "tn13"
+        | "testnet-13" | "simnet" | "devnet" => Ok(()),
         other => Err(format!("Unsupported network: {other}")),
     }
 }
@@ -165,9 +165,9 @@ fn node_command_preview(settings: &RealNodeRuntimeSettings) -> String {
             parts.push("--testnet".to_string());
             parts.push("--netsuffix=10".to_string());
         }
-        "testnet12" => {
+        "testnet13" => {
             parts.push("--testnet".to_string());
-            parts.push("--netsuffix=12".to_string());
+            parts.push("--netsuffix=13".to_string());
         }
         _ => {}
     }

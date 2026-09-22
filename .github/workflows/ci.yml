@@ -19,7 +19,54 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
+  ksss-adoption:
+    name: KSSS v1.2.0 adoption
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install pinned Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: "v3.0.6"
+
+      - name: Verify KSSS release and runtime signatures
+        run: |
+          python3 -B .security/ksss/trust_acceptance.py verify \
+            --explicit-time "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --require-cryptographic --cosign cosign \
+            --output "${RUNNER_TEMP}/kgw-ksss-trust.json"
+
+      - name: Verify offline adoption and rejection contracts
+        run: python3 -B tools/kgw_ksss_gate.py
+
+      - name: Capture evaluated changes and freshness
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          base="$BASE_SHA"
+          if ! [[ "$base" =~ ^[0-9a-f]{40}$ ]] || [[ "$base" == 0000000000000000000000000000000000000000 ]]; then
+            base="$(git rev-parse HEAD^)"
+          fi
+          python3 -B .security/ksss/consumer.py evaluate --base "$base" \
+            --output "${RUNNER_TEMP}/kgw-ksss-evaluation.json"
+
+      - name: Retain KSSS evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kgw-ksss-adoption-evidence
+          path: ${{ runner.temp }}/kgw-ksss-*.json
+          if-no-files-found: error
+          retention-days: 14
+
   quality:
+    needs: ksss-adoption
     name: quality (rust + npm)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -163,6 +210,9 @@ jobs:
       - name: Verify runtime automation claims
         run: node tools/kgw_runtime_automation_claims_gate.cjs
 
+      - name: Verify desktop version contract
+        run: node tools/kgw_desktop_version_contract_gate.cjs
+
       - name: Verify desktop artifact workflow contract
         run: node tools/kgw_desktop_artifacts_workflow_gate.cjs
 
@@ -208,22 +258,42 @@ jobs:
           set +e
           status=0
 
-          cargo clippy --locked --workspace --lib --bins --examples --benches -- -D warnings 2>&1 | tee clippy-production.log
-          command_status=${PIPESTATUS[0]}
+          # Keep the original full-workspace production feature graph intact. Cap lints
+          # at warning only so Clippy completes the graph; the exact policy below restores
+          # fail-closed -D warnings semantics except for reviewed exact fingerprints.
+          cargo clippy --locked --workspace --lib --bins --examples --benches --message-format=json -- -D warnings --cap-lints warn > clippy-production.jsonl 2> clippy-production.stderr.log
+          command_status=$?
           if (( command_status != 0 )); then status=$command_status; fi
 
-          cargo clippy --locked --workspace --tests --exclude kaspa-gateway-desktop -- -D warnings 2>&1 | tee clippy-workspace-tests.log
-          command_status=${PIPESTATUS[0]}
+          python3 scripts/check-clippy-results.py clippy-production.jsonl | tee clippy-production-policy.log
+          policy_status=${PIPESTATUS[0]}
+          if (( policy_status != 0 )); then status=$policy_status; fi
+          cat clippy-production.stderr.log
+
+          cargo clippy --locked --workspace --tests --exclude kaspa-gateway-desktop --message-format=json -- -D warnings --cap-lints warn > clippy-workspace-tests.jsonl 2> clippy-workspace-tests.stderr.log
+          command_status=$?
           if (( command_status != 0 )); then status=$command_status; fi
+
+          python3 scripts/check-clippy-results.py clippy-workspace-tests.jsonl | tee clippy-workspace-tests-policy.log
+          policy_status=${PIPESTATUS[0]}
+          if (( policy_status != 0 )); then status=$policy_status; fi
+          cat clippy-workspace-tests.stderr.log
 
           # The desktop integration harness path-includes the runtime module and
           # intentionally exercises a selected subset of its private entry points.
-          # Production targets remain fully strict; only test-target dead-code is exempt.
-          cargo clippy --locked -p kaspa-gateway-desktop --tests -- -D warnings -A dead-code 2>&1 | tee clippy-desktop-tests.log
-          command_status=${PIPESTATUS[0]}
+          # Preserve the existing test-only dead-code exemption, but complete the
+          # test graph and fail closed on every other diagnostic except reviewed
+          # exact fingerprints.
+          cargo clippy --locked -p kaspa-gateway-desktop --tests --message-format=json -- -D warnings -A dead-code --cap-lints warn > clippy-desktop-tests.jsonl 2> clippy-desktop-tests.stderr.log
+          command_status=$?
           if (( command_status != 0 )); then status=$command_status; fi
 
-          cat clippy-production.log clippy-workspace-tests.log clippy-desktop-tests.log > clippy.log
+          python3 scripts/check-clippy-results.py clippy-desktop-tests.jsonl | tee clippy-desktop-tests-policy.log
+          policy_status=${PIPESTATUS[0]}
+          if (( policy_status != 0 )); then status=$policy_status; fi
+          cat clippy-desktop-tests.stderr.log
+
+          cat clippy-production.stderr.log clippy-production-policy.log clippy-workspace-tests.stderr.log clippy-workspace-tests-policy.log clippy-desktop-tests.stderr.log clippy-desktop-tests-policy.log > clippy.log
           exit "$status"
 
       - name: Upload clippy diagnostics
@@ -233,9 +303,15 @@ jobs:
           name: clippy-diagnostics
           path: |
             clippy.log
-            clippy-production.log
-            clippy-workspace-tests.log
-            clippy-desktop-tests.log
+            clippy-production.jsonl
+            clippy-production.stderr.log
+            clippy-production-policy.log
+            clippy-workspace-tests.jsonl
+            clippy-workspace-tests.stderr.log
+            clippy-workspace-tests-policy.log
+            clippy-desktop-tests.jsonl
+            clippy-desktop-tests.stderr.log
+            clippy-desktop-tests-policy.log
           retention-days: 3
 
       - name: Run Rust tests

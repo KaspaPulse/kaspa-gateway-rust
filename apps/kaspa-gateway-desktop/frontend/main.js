@@ -1,3 +1,4 @@
+import { applyStatusTone } from "./src/status.js";
 
 /* KGW_SHELL_EXPLORER_FETCH_BUSY_TAB_POLICY
    Shell owns top-tab navigation.
@@ -43,7 +44,7 @@
   }
 
   function isTopTabControl(element) {
-    if (!element) return false;
+    if (!element || element.closest?.("#kaspa-node,#kaspa-bridge")) return false;
 
     const key = keyOf(element);
     const name = tabNameOf(element);
@@ -168,6 +169,31 @@ function kgwStartTraceShellResolveInvokeR1() {
   }
 
   return { adapter: "missing", invoke: null };
+}
+
+async function kgwHydrateAppVersionV1() {
+  const title = document.getElementById("kgwAppVersionTitle");
+  if (!title) return;
+
+  title.textContent = "KaspaGateway";
+  delete title.dataset.versionSource;
+
+  const resolved = kgwStartTraceShellResolveInvokeR1();
+  if (typeof resolved.invoke !== "function") return;
+
+  try {
+    const version = String(await resolved.invoke("kgw_app_version_v1")).trim();
+    if (!/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$/u.test(version)) {
+      throw new Error("Desktop version IPC returned an invalid package version.");
+    }
+    title.textContent = `KaspaGateway V${version}`;
+    title.dataset.versionSource = "cargo-pkg-version";
+  } catch (error) {
+    console.warn(
+      "[KGW_APP_VERSION_HYDRATE_FAILED]",
+      error && error.message ? error.message : String(error)
+    );
+  }
 }
 
 function kgwStartTraceShellShapeR1(adapter) {
@@ -973,6 +999,7 @@ async function boot() {
   try {
     bindShellControls();
     bindNavigation();
+    await kgwHydrateAppVersionV1();
 
     const savedBeforeDisplayR102C = kgwShellSavedMainTabR102C();
     if (savedBeforeDisplayR102C) kgwShellPendingSavedMainTabR102C = savedBeforeDisplayR102C;
@@ -1039,7 +1066,7 @@ import("./src/core/header-live-metrics.js");
   }
 
   function kgwSaveAndSetDisabled(element, disabled) {
-    if (!element) return;
+    if (!element || element.closest?.("#kaspa-node,#kaspa-bridge")) return;
 
     const canDisable = "disabled" in element;
 
@@ -1207,6 +1234,7 @@ import("./src/core/header-live-metrics.js");
         node.textContent = (window.kgwT ? window.kgwT("runtime.ready") : "Ready");
       }
 
+      applyStatusTone(node, STATE.busy ? "loading" : "ready");
       console.log("[KGW Explorer][busy-ui] ready inline progress", {
         busy: STATE.busy,
         text: node.textContent || ""
@@ -1217,6 +1245,7 @@ import("./src/core/header-live-metrics.js");
 
     node.dataset.busy = STATE.busy ? "true" : "false";
     node.textContent = STATE.busy ? (STATE.lastText || "Fetching...") : "Ready";
+    applyStatusTone(node, STATE.busy ? "loading" : "ready");
   }
 
 
@@ -2872,6 +2901,8 @@ function applyTabs(selectedTabs) {
 
     for (const control of controls) {
       if (!(control instanceof Element)) continue;
+      // Runtime forms own their dependencies and ownership locks.
+      if (control.closest("#kaspa-node,#kaspa-bridge")) continue;
 
       control.disabled = false;
       control.style.pointerEvents = "auto";
@@ -2953,6 +2984,8 @@ function applyTabs(selectedTabs) {
 
     for (const control of controls) {
       if (!(control instanceof Element)) continue;
+      // Runtime forms own their dependencies and ownership locks.
+      if (control.closest("#kaspa-node,#kaspa-bridge")) continue;
 
       control.style.pointerEvents = "auto";
 

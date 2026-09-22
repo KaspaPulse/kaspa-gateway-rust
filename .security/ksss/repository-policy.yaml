@@ -1,0 +1,35 @@
+{
+  "ksss_version": "v1",
+  "schema_version": "1.0.0",
+  "repository": "KaspaPulse/kaspa-gateway-rust",
+  "risk": {
+    "exposure": "internet-facing",
+    "data": "sensitive",
+    "privilege": "standard",
+    "criticality": "high"
+  },
+  "audit_profile": "medium",
+  "controls": {
+    "risk_floor_enforcement": true,
+    "additional_required": [
+      "KSSS-L0-001",
+      "KSSS-L0-002",
+      "KSSS-L1-001",
+      "KSSS-L2-001",
+      "KSSS-L2-002",
+      "KSSS-L3-001",
+      "KSSS-L4-001",
+      "KSSS-L5-001",
+      "KSSS-L7-001",
+      "KSSS-L8-001",
+      "KSSS-L9-001",
+      "KSSS-L10-001",
+      "KSSS-L10-002",
+      "KSSS-L11-001",
+      "KSSS-L12-001",
+      "KSSS-L13-001",
+      "KSSS-L14-001",
+      "KSSS-L14-002"
+    ]
+  }
+}

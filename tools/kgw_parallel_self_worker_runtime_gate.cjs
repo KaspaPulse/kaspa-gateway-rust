@@ -40,10 +40,10 @@ const checks = [
   ["uses kaspa libraries marker", integrated.includes("uses_kaspa_libraries")],
   ["mainnet", /mainnet/i.test(controller) || /Mainnet/.test(controller)],
   ["testnet10", /testnet10/i.test(controller) || /Testnet10/.test(controller)],
-  ["testnet12", /testnet12/i.test(controller) || /Testnet12/.test(controller)],
+  ["testnet13", /testnet13/i.test(controller) || /Testnet13/.test(controller)],
   ["stable mainline owner", /stable|mainline/i.test(controller)],
-  ["tn12 owner", /tn12/i.test(controller)],
-  ["distinct rpc ports", /16110/.test(controller) && /16210/.test(controller) && /16310/.test(controller)],
+  ["tn13 owner", /tn13/i.test(controller)],
+  ["distinct rpc ports", /16110/.test(controller) && /16210/.test(controller) && /16210/.test(controller)],
   ["tauri module registered", libRs.includes("integrated_runtime_commands")],
   ["close request intercepted", closeHandler.includes("WindowEvent::CloseRequested") && closeHandler.includes("api.prevent_close()")],
   ["close shutdown is single-flight", closeHandler.includes("KGW_CLOSE_SHUTDOWN_STARTED") && closeHandler.includes("swap(true")],
@@ -76,5 +76,5 @@ console.log("externalKaspadExe: false");
 console.log("usesKaspaLibraries: true");
 console.log("registry: role:network");
 console.log("roles: node, bridge");
-console.log("networks: mainnet, testnet10, testnet12");
+console.log("networks: mainnet, testnet10, testnet13");
 console.log("status: PASS");

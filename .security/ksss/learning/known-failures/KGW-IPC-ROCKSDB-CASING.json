@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.0.0",
+  "invalidated_by": [
+    "CODE_ONLY_CHANGE",
+    "DEPENDENCY_CHANGE",
+    "RUNTIME_CONFIG_CHANGE",
+    "POLICY_CHANGE"
+  ],
+  "last_verified_at": "2026-09-20T15:17:23Z",
+  "superseded_by": null,
+  "schema_family": "known-failure",
+  "record_id": "KGW-IPC-ROCKSDB-CASING",
+  "failure_fingerprint": {
+    "component": "tauri-effective-node-settings",
+    "operation_class": "APPLY_NODE_SETTINGS",
+    "failure_class": "IPC_SCHEMA_REJECTION",
+    "resource_class": "typed-ipc-payload",
+    "runtime": "windows-tauri",
+    "architecture_generation": "same-exe-self-worker-v1",
+    "privilege_model": "standard-user",
+    "dependency_fingerprint": "git:Cargo.lock:96deee8bb36d2964c8083d94d84ba65c8745d633"
+  },
+  "applies_when": {
+    "repository": "KaspaPulse/kaspa-gateway-rust",
+    "platform": "windows",
+    "architecture_generation": "same-exe-self-worker-v1",
+    "component": "tauri-effective-node-settings"
+  },
+  "recommended_action": "Preserve explicit serde rename and legacy aliases; run the existing effective-settings regression before another live startup attempt.",
+  "rejected_remediations": [
+    "Do not disable deny_unknown_fields or rewrite command preview parsing."
+  ],
+  "evidence_refs": [
+    "repo:docs/project-memory/BUGS/BUG-0007-effective-node-settings-rocksdb-ipc-casing.md"
+  ]
+}

@@ -6,7 +6,7 @@ use thiserror::Error;
 pub enum KaspaRuntimeNetwork {
     Mainnet,
     Testnet10,
-    Testnet12,
+    Testnet13,
 }
 
 impl KaspaRuntimeNetwork {
@@ -14,7 +14,7 @@ impl KaspaRuntimeNetwork {
         match value.trim().to_ascii_lowercase().as_str() {
             "mainnet" => Ok(Self::Mainnet),
             "testnet" | "testnet10" => Ok(Self::Testnet10),
-            "testnet12" | "tn12" => Ok(Self::Testnet12),
+            "testnet13" | "tn13" => Ok(Self::Testnet13),
             _ => Err(KaspaRuntimeError::UnsupportedNetwork(value.to_string())),
         }
     }
@@ -23,28 +23,28 @@ impl KaspaRuntimeNetwork {
         match self {
             Self::Mainnet => "mainnet",
             Self::Testnet10 => "testnet10",
-            Self::Testnet12 => "testnet12",
+            Self::Testnet13 => "testnet13",
         }
     }
 
     pub fn branch(self) -> &'static str {
         match self {
             Self::Mainnet | Self::Testnet10 => "stable",
-            Self::Testnet12 => "RKStratumTN12",
+            Self::Testnet13 => "dagknight",
         }
     }
 
     pub fn revision(self) -> &'static str {
         match self {
-            Self::Mainnet | Self::Testnet10 => "cfafeb4c093fa37a303f1b9f19c58f986b870ce3",
-            Self::Testnet12 => "eeb351ee911e2df906d21203dec8db3a195c6b33",
+            Self::Mainnet | Self::Testnet10 => "98a4ccd8d200853787f227bd4536ac540cf34957",
+            Self::Testnet13 => "ad45e241e6688a14901fd24dd8dc33c5c9a33f40",
         }
     }
 
     pub fn family(self) -> KaspaRuntimeFamily {
         match self {
             Self::Mainnet | Self::Testnet10 => KaspaRuntimeFamily::Mainline,
-            Self::Testnet12 => KaspaRuntimeFamily::Tn12,
+            Self::Testnet13 => KaspaRuntimeFamily::Tn13,
         }
     }
 
@@ -52,7 +52,7 @@ impl KaspaRuntimeNetwork {
         match self {
             Self::Mainnet => "127.0.0.1:16110",
             Self::Testnet10 => "127.0.0.1:16210",
-            Self::Testnet12 => "127.0.0.1:16310",
+            Self::Testnet13 => "127.0.0.1:16210",
         }
     }
 
@@ -60,7 +60,7 @@ impl KaspaRuntimeNetwork {
         match self {
             Self::Mainnet => "0.0.0.0:5555",
             Self::Testnet10 => "0.0.0.0:15555",
-            Self::Testnet12 => "0.0.0.0:25555",
+            Self::Testnet13 => "0.0.0.0:25555",
         }
     }
 }
@@ -68,14 +68,14 @@ impl KaspaRuntimeNetwork {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum KaspaRuntimeFamily {
     Mainline,
-    Tn12,
+    Tn13,
 }
 
 impl KaspaRuntimeFamily {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Mainline => "official-stable-v2.0.1",
-            Self::Tn12 => "tn12-only",
+            Self::Tn13 => "official-dagknight",
         }
     }
 }
@@ -465,17 +465,17 @@ pub fn build_official_kaspa_runtime_plan_v1(
 
     let node_feature_expected = match network.family() {
         KaspaRuntimeFamily::Mainline => "official-kaspa-runtime-mainline",
-        KaspaRuntimeFamily::Tn12 => "official-kaspa-runtime-tn12",
+        KaspaRuntimeFamily::Tn13 => "official-kaspa-runtime-tn13",
     };
 
     let bridge_feature_expected = match network.family() {
         KaspaRuntimeFamily::Mainline => "official-kaspa-runtime-mainline",
-        KaspaRuntimeFamily::Tn12 => "official-kaspa-runtime-tn12",
+        KaspaRuntimeFamily::Tn13 => "official-kaspa-runtime-tn13",
     };
 
     let official_node_feature_enabled = match network.family() {
         KaspaRuntimeFamily::Mainline => cfg!(feature = "official-kaspa-runtime-mainline"),
-        KaspaRuntimeFamily::Tn12 => cfg!(feature = "official-kaspa-runtime-tn12"),
+        KaspaRuntimeFamily::Tn13 => cfg!(feature = "official-kaspa-runtime-tn13"),
     };
 
     let decision = if !settings.explicit_runtime_opt_in {
@@ -528,7 +528,7 @@ pub fn build_official_kaspa_runtime_plan_v1(
 }
 
 pub fn all_parallel_runtime_plans_v1() -> Result<Vec<KaspaRuntimePlan>, KaspaRuntimeError> {
-    ["mainnet", "testnet10", "testnet12"]
+    ["mainnet", "testnet10", "testnet13"]
         .into_iter()
         .map(|network| {
             build_official_kaspa_runtime_plan_v1(KaspaRuntimeSettings {
@@ -542,7 +542,7 @@ pub fn all_parallel_runtime_plans_v1() -> Result<Vec<KaspaRuntimePlan>, KaspaRun
 }
 
 pub fn official_kaspa_runtime_summary_v1() -> &'static str {
-    "KGW mechanism applied to all node networks and bridges in parallel: settings -> runtime decision -> service events -> owner plan/status. mainnet/testnet10 use official stable v2.0.1; testnet12 is an explicit experimental tn12 runtime. No local clone, no downloaded exe, no frontend-owned runtime start."
+    "KGW mechanism applied to all node networks and bridges in parallel: settings -> runtime decision -> service events -> owner plan/status. mainnet/testnet10 use official stable v2.0.1; testnet13 is an explicit experimental tn13 runtime. No local clone, no downloaded exe, no frontend-owned runtime start."
 }
 
 #[cfg(feature = "official-kaspa-runtime-mainline")]
@@ -555,14 +555,14 @@ pub fn official_node_mainline_dependency_marker_v1() -> &'static str {
     "official-kaspa-runtime-mainline feature disabled"
 }
 
-#[cfg(feature = "official-kaspa-runtime-tn12")]
-pub fn official_node_tn12_dependency_marker_v1() -> &'static str {
-    std::any::type_name::<kaspad_lib_tn12::args::Args>()
+#[cfg(feature = "official-kaspa-runtime-tn13")]
+pub fn official_node_tn13_dependency_marker_v1() -> &'static str {
+    std::any::type_name::<kaspad_lib_tn13::args::Args>()
 }
 
-#[cfg(not(feature = "official-kaspa-runtime-tn12"))]
-pub fn official_node_tn12_dependency_marker_v1() -> &'static str {
-    "official-kaspa-runtime-tn12 feature disabled"
+#[cfg(not(feature = "official-kaspa-runtime-tn13"))]
+pub fn official_node_tn13_dependency_marker_v1() -> &'static str {
+    "official-kaspa-runtime-tn13 feature disabled"
 }
 
 impl fmt::Display for KaspaNodeRuntimeMode {
@@ -575,8 +575,8 @@ impl fmt::Display for KaspaNodeRuntimeMode {
 mod runtime_binding_tests {
     use super::{KaspaRuntimeFamily, KaspaRuntimeNetwork};
 
-    const STABLE_REV: &str = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3";
-    const TN12_REV: &str = "eeb351ee911e2df906d21203dec8db3a195c6b33";
+    const STABLE_REV: &str = "98a4ccd8d200853787f227bd4536ac540cf34957";
+    const TN13_REV: &str = "ad45e241e6688a14901fd24dd8dc33c5c9a33f40";
 
     #[test]
     fn mainnet_and_testnet10_share_the_official_stable_runtime() {
@@ -588,10 +588,10 @@ mod runtime_binding_tests {
     }
 
     #[test]
-    fn testnet12_remains_on_the_separate_experimental_runtime() {
-        let network = KaspaRuntimeNetwork::Testnet12;
-        assert_eq!(network.family(), KaspaRuntimeFamily::Tn12);
-        assert_eq!(network.branch(), "RKStratumTN12");
-        assert_eq!(network.revision(), TN12_REV);
+    fn testnet13_remains_on_the_separate_experimental_runtime() {
+        let network = KaspaRuntimeNetwork::Testnet13;
+        assert_eq!(network.family(), KaspaRuntimeFamily::Tn13);
+        assert_eq!(network.branch(), "dagknight");
+        assert_eq!(network.revision(), TN13_REV);
     }
 }

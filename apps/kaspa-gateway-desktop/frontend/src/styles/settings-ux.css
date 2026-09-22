@@ -1,0 +1,239 @@
+/*
+ * Sole Node/Bridge settings geometry owner.
+ * V2 rule: six grid tracks mean six ACTUAL atomic settings on sufficiently wide panels.
+ * Each setting owns its label/help/control/state/error; semantic field kind controls span.
+ * Settings has exactly one scroll owner, .kgw-settings-scroll.
+ */
+:is(#kaspa-node, #kaspa-bridge) { height: 100%; min-height: 0; overflow: hidden; color: var(--kgw-global-text); font-size: 13px; line-height: 1.35; }
+:is(#kaspa-node, #kaspa-bridge) [hidden] { display: none; }
+:is(.node-v6-shell, .bridge-v7-shell) { height: 100%; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; padding: 8px 12px; overflow: hidden; }
+:is(.node-v6-network-panels, .bridge-v7-network-panels) { min-height: 0; overflow: hidden; }
+:is(.node-v6-network-panel, .bridge-v7-network-panel).active { height: 100%; min-height: 0; display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
+:is(.node-v6-inner-panel, .bridge-v7-inner-panel).active { display: flex; flex: 1; flex-direction: column; min-height: 0; gap: 6px; overflow: hidden; }
+:is(#kaspa-node, #kaspa-bridge) :is(.node-v6-network-tabs, .bridge-v7-network-tabs, .node-v6-inner-tabs, .bridge-v7-inner-tabs, .node-v6-section-tabs, .bridge-v7-section-tabs, .kgw-settings-subtabs, .bridge-v12d-node-tabs, .bridge-v7-instance-tabs) {
+  display: flex; flex-wrap: wrap; flex: 0 0 auto; align-items: center; gap: 4px; padding: 0 0 5px; border-bottom: 1px solid var(--kgw-global-border);
+}
+:is(#kaspa-node, #kaspa-bridge) button { min-height: 30px; padding: 4px 10px; border: 1px solid var(--kgw-global-border); border-radius: 5px; background: var(--kgw-global-button); color: inherit; font: inherit; line-height: 1.3; cursor: pointer; white-space: normal; }
+:is(#kaspa-node, #kaspa-bridge) button:is(.active, [aria-selected="true"]) { border-color: var(--kgw-global-accent); background: var(--kgw-global-panel-2); box-shadow: inset 0 -2px var(--kgw-global-accent); }
+:is(#kaspa-node, #kaspa-bridge) :is(button, input, select, textarea, [tabindex]):focus-visible { outline: 2px solid var(--kgw-global-accent); outline-offset: 2px; }
+:is(#kaspa-node, #kaspa-bridge) :is(button, input, select):disabled { opacity: .55; cursor: not-allowed; }
+:is(#kaspa-node, #kaspa-bridge) :is(input, select, textarea) { color: inherit; background: var(--kgw-global-panel-2); border: 1px solid var(--kgw-global-border); border-radius: 4px; font: inherit; }
+:is(#kaspa-node, #kaspa-bridge) input[type="checkbox"] { appearance: auto; width: 16px; height: 16px; flex: 0 0 16px; margin: 0; accent-color: var(--kgw-global-accent); }
+
+.kgw-settings-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; padding: 0 4px 8px 0; }
+.kgw-settings-sections { min-height: 0; margin-top: 5px; }
+.kgw-settings-subtabs { margin-bottom: 6px; }
+:is(.node-v6-section, .bridge-v7-section, [data-settings-panel], .bridge-v12d-node-panel) { min-width: 0; }
+
+/* Available panel width, not viewport width, owns responsive density. */
+:is(#kaspa-node, #kaspa-bridge) :is([data-settings-panel], [data-bridge-inprocess-node-panel]) {
+  container-type: inline-size;
+  container-name: kgw-settings-panel;
+}
+:is(#kaspa-node, #kaspa-bridge) :is(.kgw-settings-grid, .bridge-v7-grid, .bridge-v7-instance-panel.active) {
+  --kgw-setting-columns: 6;
+  display: grid;
+  grid-template-columns: repeat(var(--kgw-setting-columns), minmax(0, 1fr));
+  gap: 8px 12px;
+  align-content: start;
+  align-items: start;
+  padding: 4px 0;
+}
+
+/* Atomic Setting Unit: default is ONE actual grid cell, never two logical cells. */
+:is(#kaspa-node, #kaspa-bridge) :is(.node-v6-card, .bridge-v7-card).kgw-setting-field {
+  grid-column: span 1;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto auto auto auto;
+  align-content: start;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--kgw-global-border) 72%, transparent);
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--kgw-global-panel) 58%, transparent);
+  position: relative;
+}
+:is(#kaspa-node, #kaspa-bridge) [data-setting-span="2"] { grid-column: span 2; }
+:is(#kaspa-node, #kaspa-bridge) [data-setting-span="3"] { grid-column: span 3; }
+:is(#kaspa-node, #kaspa-bridge) [data-setting-span="full"] { grid-column: 1 / -1; }
+
+.kgw-setting-field-header,
+.kgw-global-field-header {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+.kgw-command-option-title-row-r8e { display: inline-flex; width: fit-content; max-width: 100%; align-items: center; gap: 4px; min-width: 0; }
+.kgw-command-option-title-text-r8e,
+.kgw-setting-field-header > label { min-width: 0; overflow-wrap: anywhere; }
+.kgw-setting-control { display: flex; min-width: 0; align-items: center; justify-content: flex-start; }
+
+:is(#kaspa-node, #kaspa-bridge) .kgw-setting-control > :is(input:not([type="checkbox"]), select, textarea) {
+  width: min(100%, var(--field-width, 84px));
+  max-width: 100%;
+  height: 28px;
+  min-width: 0;
+  padding: 3px 6px;
+}
+[data-setting-kind="port"] { --field-width: 84px; }
+[data-setting-kind="integer"] { --field-width: 72px; }
+[data-setting-kind="ram"] { --field-width: 76px; }
+[data-setting-kind="duration"] { --field-width: 104px; }
+[data-setting-kind="host"] { --field-width: 100%; }
+[data-setting-kind="enum"] { --field-width: 120px; }
+[data-setting-kind="log-level"] { --field-width: 104px; }
+[data-setting-kind="number"] { --field-width: 96px; }
+:is(#kaspa-node, #kaspa-bridge) [data-setting-kind="path"] .kgw-setting-control > :is(input, select, textarea),
+:is(#kaspa-node, #kaspa-bridge) [data-setting-kind="long"] .kgw-setting-control > :is(input, select, textarea),
+:is(#kaspa-node, #kaspa-bridge) [data-setting-kind="preview"] .kgw-setting-control > :is(input, select, textarea) { width: 100%; }
+
+:is(#kaspa-node, #kaspa-bridge) .kgw-setting-field.check {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    "control header"
+    "state state"
+    "error error";
+  align-items: center;
+  column-gap: 6px;
+}
+:is(#kaspa-node, #kaspa-bridge) .kgw-setting-field.check > .kgw-setting-control { grid-area: control; }
+:is(#kaspa-node, #kaspa-bridge) .kgw-setting-field.check > .kgw-setting-field-header { grid-area: header; }
+:is(#kaspa-node, #kaspa-bridge) .kgw-setting-field.check > .kgw-setting-state { grid-area: state; }
+:is(#kaspa-node, #kaspa-bridge) .kgw-setting-field.check > .kgw-field-error { grid-area: error; }
+
+.kgw-setting-state { min-width: 0; color: var(--kgw-global-muted); font-size: 11px; line-height: 1.25; overflow-wrap: anywhere; }
+.kgw-setting-state:empty { display: none; }
+.kgw-field-inactive { color: var(--kgw-global-muted); }
+
+:is(#kaspa-node, #kaspa-bridge, #settings) button.kgw-field-help-trigger {
+  flex: 0 0 18px;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  border: 1px solid var(--kgw-global-accent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--kgw-global-accent);
+  box-shadow: none;
+  font: 700 11px/16px system-ui, sans-serif;
+  text-align: center;
+  cursor: help;
+}
+:is(#kaspa-node, #kaspa-bridge, #settings) button.kgw-field-help-trigger[aria-expanded="true"] {
+  background: var(--kgw-global-accent);
+  color: var(--kgw-global-bg);
+}
+.kgw-field-help-popover {
+  position: absolute;
+  z-index: 40;
+  inset-inline-start: 0;
+  top: calc(100% + 3px);
+  width: min(320px, max(180px, 100%));
+  padding: 7px 9px;
+  border: 1px solid var(--kgw-global-border);
+  border-radius: 5px;
+  background: var(--kgw-global-panel-2);
+  color: var(--kgw-global-text);
+  box-shadow: 0 5px 16px rgba(0, 0, 0, .28);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.kgw-field-help-popover[hidden] { display: none; }
+
+:is(#kaspa-node, #kaspa-bridge) input[readonly] { background: transparent; border-style: dashed; color: var(--kgw-global-muted); }
+:is(#kaspa-node, #kaspa-bridge) [aria-invalid="true"] { border-color: #ff8b8b; outline: 1px solid #ff8b8b; }
+:is(#kaspa-node, #kaspa-bridge) .kgw-field-error { min-width: 0; font-size: 12px; color: #ffb7b7; overflow-wrap: anywhere; }
+:is(#kaspa-node, #kaspa-bridge) .kgw-setting-field:not(.check) > .kgw-field-error { grid-column: 1; }
+
+.kgw-danger-warning { border-inline-start: 3px solid #d6a15d; color: #ffd6a3; padding: 5px 10px; margin: 6px 0; font-size: 12px; }
+.kgw-settings-info { color: var(--kgw-global-muted); font-size: 12px; margin: 5px 0; }
+.kgw-network-policy { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 8px; margin-bottom: 6px; border: 1px solid var(--kgw-global-border); border-radius: 5px; background: var(--kgw-global-panel); }
+.kgw-network-policy > div:first-child { min-width: 0; }
+.kgw-network-policy > div:first-child > span:last-child { display: block; font-size: 12px; color: var(--kgw-global-muted); overflow-wrap: anywhere; }
+.kgw-network-policy-controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.kgw-network-policy-controls label { display: flex; align-items: center; gap: 5px; }
+.kgw-network-policy-status { padding: 2px 6px; border-radius: 4px; background: var(--kgw-global-panel-2); font-size: 12px; }
+.kgw-experimental-badge { display: inline-block; margin-inline-start: 8px; color: #ffd6a3; font-size: 12px; }
+
+.kgw-effective-preview { margin: 6px 0; padding: 5px 8px; border: 1px solid var(--kgw-global-border); border-radius: 5px; }
+.kgw-preview-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.kgw-preview-row strong { margin-inline-end: auto; font-size: 12px; }
+:is(#kaspa-node, #kaspa-bridge) .kgw-preview-row button { min-height: 26px; padding: 2px 8px; font-size: 12px; }
+:is(#kaspa-node, #kaspa-bridge) .kgw-preview-body textarea { display: block; width: 100%; min-height: 48px; field-sizing: content; margin-top: 5px; padding: 6px; resize: none; overflow: hidden; font: 12px/1.4 Consolas, monospace; }
+.kgw-preview-body pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.4 Consolas, monospace; margin: 4px 0; }
+:is(.kgw-preview-message, .kgw-preview-status, .kgw-preview-help, .kgw-settings-help) { font-size: 12px; line-height: 1.35; margin: 4px 0; overflow-wrap: anywhere; }
+:is(.kgw-preview-message, .kgw-preview-status):empty { display: none; }
+
+:is(.node-v6-toolbar, .bridge-v7-toolbar) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 5px 0; margin-bottom: 6px; }
+:is(.node-v6-buttons, .bridge-v7-buttons, .node-v6-status, .bridge-v7-status) { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+:is(.node-v6-runtime-evidence, .bridge-v7-runtime-status) { font-size: 12px; color: var(--kgw-global-muted); overflow-wrap: anywhere; }
+:is(.node-v6-runtime-status-pill, .kgw-network-policy-status) { font-size: 12px; }
+:is(.node-v6-runtime-error, .bridge-v7-runtime-error) { flex-basis: 100%; color: #ffb7b7; padding: 4px 8px; border-inline-start: 2px solid #ff8b8b; overflow-wrap: anywhere; }
+:is(#kaspa-node, #kaspa-bridge) .settings-bottom-actions { position: sticky; bottom: 0; z-index: 2; flex: 0 0 auto; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 6px 0 0; margin-top: auto; border-top: 1px solid var(--kgw-global-border); background: var(--kgw-global-bg); }
+.settings-bottom-actions .kgw-settings-help { margin-inline-start: auto; max-width: 48%; color: var(--kgw-global-muted); }
+
+.bridge-v12d-node-tabs, .bridge-v7-instance-tabs { margin: 5px 0; }
+.bridge-v7-instance-panel:not(.active) { display: none; }
+.kgw-instance-tab { display: inline-flex; gap: 3px; align-items: center; }
+.bridge-v12d-inprocess-inactive { opacity: .7; }
+
+:is(.node-v6-log-toolbar, .bridge-v7-log-toolbar) { display: flex; flex: 0 0 auto; flex-wrap: wrap; align-items: center; gap: 6px; }
+:is(.node-v6-log, .bridge-v7-log) { flex: 1; min-height: 0; margin: 0; padding: 8px; border: 1px solid var(--kgw-global-border); background: var(--kgw-global-panel); color: inherit; overflow: auto; white-space: pre; font: var(--kgw-log-font-size, 13px)/1.5 Consolas, monospace; }
+:is(.kgw-monitor-state, .node-v6-log-empty, .bridge-v7-log-empty) { margin: 0; flex: 0 0 auto; font-size: 12px; }
+.node-v6-log-metadata { flex: 1; min-width: 0; font-size: 12px; color: var(--kgw-global-muted); }
+.kgw-log-autoscroll-toggle, .kgw-log-font-size-controls { display: inline-flex; align-items: center; gap: 5px; }
+.kgw-log-autoscroll-toggle { margin-inline-start: auto; }
+:is(#kaspa-node, #kaspa-bridge) button.kgw-log-action-feedback { font-size: 0; }
+:is(#kaspa-node, #kaspa-bridge) button.kgw-log-action-feedback::after { content: attr(data-kgw-done-label); font-size: 13px; }
+
+/* Responsive density follows the containing settings panel. Thresholds preserve a usable atomic-card width. */
+@container kgw-settings-panel (max-width: 1179px) {
+  :is(.kgw-settings-grid, .bridge-v7-grid, .bridge-v7-instance-panel.active) { --kgw-setting-columns: 5; }
+}
+@container kgw-settings-panel (max-width: 999px) {
+  :is(.kgw-settings-grid, .bridge-v7-grid, .bridge-v7-instance-panel.active) { --kgw-setting-columns: 4; }
+}
+@container kgw-settings-panel (max-width: 819px) {
+  :is(.kgw-settings-grid, .bridge-v7-grid, .bridge-v7-instance-panel.active) { --kgw-setting-columns: 3; }
+}
+@container kgw-settings-panel (max-width: 619px) {
+  :is(.kgw-settings-grid, .bridge-v7-grid, .bridge-v7-instance-panel.active) { --kgw-setting-columns: 2; }
+  [data-setting-span="3"] { grid-column: span 2; }
+}
+@container kgw-settings-panel (max-width: 379px) {
+  :is(.kgw-settings-grid, .bridge-v7-grid, .bridge-v7-instance-panel.active) { --kgw-setting-columns: 1; }
+  [data-setting-span="2"], [data-setting-span="3"] { grid-column: 1 / -1; }
+}
+
+@media (max-width: 799px) {
+  .kgw-network-policy { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .settings-bottom-actions .kgw-settings-help { max-width: none; flex-basis: 100%; margin: 0; }
+}
+
+/* Global Settings keeps functional tables/editors/path grids; only field/help grouping is shared. */
+#settings .kgw-global-field-header { vertical-align: middle; }
+#settings .kgw-global-field-header > label { min-width: 0; overflow-wrap: anywhere; }
+#settings .kgw-global-field-header .kgw-field-help-popover { inset-inline-start: 0; top: calc(100% + 3px); }
+#settings .info-dot { display: none; }
+
+/* Existing application header presentation; independent of the settings owner. */
+html body .kgw-header { min-height: 72px !important; padding: 8px 16px !important; gap: 12px !important; }
+html body .kgw-header :is(.kgw-header-metric-label, .kgw-header-clock-date) { font-size: 12px !important; }
+html body .kgw-header :is(.kgw-header-metric-value, .kgw-header-clock-time) { font-size: 16px !important; }
+html body .kgw-header-metrics { gap: 16px !important; }
+html body .kgw-application-state { display: flex; align-items: center; gap: 5px; }
+html body .kgw-header .kgw-logo { width: 44px !important; height: 44px !important; }
+html body .kgw-header h1 { margin: 0 !important; font-size: 21px !important; line-height: 1.2; }
+html body .kgw-header .kgw-top-control { gap: 4px !important; }
+html body .kgw-header .kgw-top-control select { min-height: 30px; }
+html body .kgw-header .kgw-title-block { gap: 4px !important; }

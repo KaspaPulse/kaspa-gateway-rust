@@ -146,6 +146,8 @@ jobs:
             throw "Raw desktop executable was not produced at $rawExe."
           }
 
+          & ./tools/kgw_verify_windows_runtime_dependencies.ps1 -Executable $rawExe -ReportPath (Join-Path $artifactDir "raw-runtime-dependencies.json")
+
           $installer = Join-Path $artifactDir "KaspaGateway-windows-x64-nsis.exe"
           $rawArtifact = Join-Path $artifactDir "kaspa-gateway-desktop-windows-x64.exe"
           Copy-Item -LiteralPath $installers[0].FullName -Destination $installer
@@ -172,6 +174,7 @@ jobs:
           $env:KASPA_GATEWAY_DATA_DIR = $dataDir
           $application = $null
           try {
+            & ./tools/kgw_verify_windows_runtime_dependencies.ps1 -Executable $installedExecutables[0].FullName -ReportPath (Join-Path $artifactDir "installed-runtime-dependencies.json")
             $application = Start-Process -FilePath $installedExecutables[0].FullName -PassThru
             Start-Sleep -Seconds 15
             if ($application.HasExited) {
@@ -219,7 +222,7 @@ jobs:
             "WINDOWS_INSTALLER_SMOKE=PASS"
             "WINDOWS_LAUNCH_OBSERVATION_SECONDS=15"
             "WINDOWS_UNINSTALL_SMOKE=PASS"
-            "TESTNET12_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL"
+            "TESTNET13_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL"
           ) | Set-Content -LiteralPath (Join-Path $artifactDir "WINDOWS_INSTALLER_SMOKE.txt") -Encoding utf8NoBOM
 
       - name: Attest qualified Windows executable artifacts
@@ -452,7 +455,7 @@ jobs:
           MACOS_DMG_SMOKE=PASS
           MACOS_LAUNCH_OBSERVATION_SECONDS=15
           MACOS_INTERACTIVE_UI_VALIDATION=NOT_PERFORMED_HOSTED_RUNNER
-          TESTNET12_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL
+          TESTNET13_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL
           EOF
 
       - name: Attest qualified macOS release artifacts

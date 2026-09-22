@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+
+# The approved signed consumer runtime is part of the offline repository contract.
+!trust/evidence/v1.2.0/ksss-consumer-runtime-v1.2.0.tar.gz

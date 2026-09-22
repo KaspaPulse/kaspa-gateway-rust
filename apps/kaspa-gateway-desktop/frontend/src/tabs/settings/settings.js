@@ -1,3 +1,6 @@
+import { applyStatusTone } from "../../status.js";
+import { confirmUserAction } from "../../settings-contract.js";
+import { installGlobalSettingsLayout } from "../../settings-layout.js";
 const SETTINGS_STORAGE_KEY = "kgw-settings-python-exact-state";
 
 function kgwSettingsToWesternDigits(value) {
@@ -759,6 +762,7 @@ function kgwSettingsProfileSetStatus(message, kind = "info") {
   if (status) {
     status.textContent = String(message || "");
     status.dataset.kind = kind;
+    applyStatusTone(status, kind);
   }
 }
 
@@ -830,7 +834,7 @@ async function kgwSettingsRefreshBackendProfiles(reason = "refresh") {
 async function kgwSettingsRunProfileMutation(command, payload, successMessage) {
   if (KGW_SETTINGS_WORKFLOW_STATE.busy) return null;
   KGW_SETTINGS_WORKFLOW_STATE.busy = true;
-  kgwSettingsProfileSetStatus("Working...", "info");
+  kgwSettingsProfileSetStatus("Working...", "loading");
   try {
     const settings = await kgwSettingsBackendInvokeR4(command, payload);
     kgwSettingsApplyBackendProfiles(settings);
@@ -863,7 +867,7 @@ async function kgwSettingsProfileDeleteAction() {
   const select = q("#settingsApiProfile");
   const name = String(select?.value || "");
   if (!name) return kgwSettingsProfileSetStatus("Select an API profile first.", "error");
-  if (!window.confirm(`Delete API profile "${name}"?`)) return;
+  if (!await confirmUserAction(`Delete API profile "${name}"?`)) return;
   await kgwSettingsRunProfileMutation("settings_profile_delete", { name }, "API profile deleted and saved.");
 }
 
@@ -910,14 +914,14 @@ function kgwSettingsAddressIoStatus(report, action) {
   const skipped = Number(report?.skipped || 0);
   const count = action === "import" ? `${imported} imported, ${skipped} skipped` : `${exported} exported`;
   const warningText = warnings.length ? `; ${warnings.join(" | ")}` : "";
-  kgwSettingsAddressSetStatus(`Last Updated: ${count}${warningText}`);
+  kgwSettingsAddressSetStatus(`Last Updated: ${count}${warningText}`, warnings.length ? "warning" : "success");
 }
 
 async function kgwSettingsExportAddressesAction() {
   const dialog = kgwSettingsDialogApi();
   const invoke = kgwSettingsAddressInvoke();
   if (!dialog || typeof dialog.save !== "function" || !invoke) {
-    kgwSettingsAddressSetStatus("Last Updated: native save dialog is unavailable.");
+    kgwSettingsAddressSetStatus("Last Updated: native save dialog is unavailable.", "error");
     return;
   }
 
@@ -940,7 +944,7 @@ async function kgwSettingsExportAddressesAction() {
     const report = await invoke(command, { request: { path: String(selected), network: "mainnet" } });
     kgwSettingsAddressIoStatus(report, "export");
   } catch (error) {
-    kgwSettingsAddressSetStatus(`Last Updated: export failed - ${error?.message || error}`);
+    kgwSettingsAddressSetStatus(`Last Updated: export failed - ${error?.message || error}`, "error");
   }
 }
 
@@ -948,7 +952,7 @@ async function kgwSettingsImportAddressesAction() {
   const dialog = kgwSettingsDialogApi();
   const invoke = kgwSettingsAddressInvoke();
   if (!dialog || typeof dialog.open !== "function" || !invoke) {
-    kgwSettingsAddressSetStatus("Last Updated: native open dialog is unavailable.");
+    kgwSettingsAddressSetStatus("Last Updated: native open dialog is unavailable.", "error");
     return;
   }
 
@@ -972,7 +976,7 @@ async function kgwSettingsImportAddressesAction() {
     await kgwSettingsRefreshAddressesLocalOnly();
     kgwSettingsAddressIoStatus(report, "import");
   } catch (error) {
-    kgwSettingsAddressSetStatus(`Last Updated: import failed - ${error?.message || error}`);
+    kgwSettingsAddressSetStatus(`Last Updated: import failed - ${error?.message || error}`, "error");
   }
 }
 
@@ -1191,6 +1195,7 @@ function kgwSettingsPathStatus(targetId, message, state = "info") {
   }
   status.dataset.state = state;
   status.textContent = String(message || "");
+  applyStatusTone(status, state);
 }
 
 async function kgwSettingsBrowsePath(targetId) {
@@ -1755,9 +1760,10 @@ function kgwSettingsAddressElements() {
   };
 }
 
-function kgwSettingsAddressSetStatus(message) {
+function kgwSettingsAddressSetStatus(message, state = "info") {
   const { lastUpdated } = kgwSettingsAddressElements();
   if (lastUpdated) lastUpdated.textContent = message;
+  applyStatusTone(lastUpdated, state);
   console.log("[KGW Settings Addresses]", message);
 }
 
@@ -1977,19 +1983,19 @@ async function kgwRefreshSettingsAddresses() {
   const invoke = kgwSettingsAddressInvoke();
 
   if (!invoke) {
-    kgwSettingsAddressSetStatus("Last Updated: Tauri invoke API is not available.");
+    kgwSettingsAddressSetStatus("Last Updated: Tauri invoke API is not available.", "error");
     return [];
   }
 
   const restoreEpoch = KGW_SETTINGS_ADDRESS_STATE.restoreEpoch;
   KGW_SETTINGS_ADDRESS_STATE.loading = true;
-  kgwSettingsAddressSetStatus("Last Updated: loading...");
+  kgwSettingsAddressSetStatus("Last Updated: loading...", "loading");
 
   try {
     const records = await invoke("get_all_addresses");
     if (restoreEpoch !== KGW_SETTINGS_ADDRESS_STATE.restoreEpoch) return [];
     if (!await kgwRenderSettingsAddressRows(records, { restoreEpoch })) return [];
-    kgwSettingsAddressSetStatus(`Last Updated: ${kgwSettingsAddressNow()}`);
+    kgwSettingsAddressSetStatus(`Last Updated: ${kgwSettingsAddressNow()}`, "success");
 
     if (typeof window.kgwRefreshSavedAddresses === "function") {
       window.kgwRefreshSavedAddresses().catch(console.error);
@@ -1999,7 +2005,7 @@ async function kgwRefreshSettingsAddresses() {
   } catch (error) {
     if (restoreEpoch !== KGW_SETTINGS_ADDRESS_STATE.restoreEpoch) return [];
     await kgwRenderSettingsAddressRows([], { restoreEpoch });
-    kgwSettingsAddressSetStatus(`Last Updated: failed - ${error?.message || error}`);
+    kgwSettingsAddressSetStatus(`Last Updated: failed - ${error?.message || error}`, "error");
     return [];
   } finally {
     KGW_SETTINGS_ADDRESS_STATE.loading = false;
@@ -2017,7 +2023,7 @@ async function kgwSaveSettingsAddress() {
   const { name, address } = kgwSettingsAddressElements();
 
   if (!invoke) {
-    kgwSettingsAddressSetStatus("Last Updated: Tauri invoke API is not available.");
+    kgwSettingsAddressSetStatus("Last Updated: Tauri invoke API is not available.", "error");
     return;
   }
 
@@ -2025,11 +2031,11 @@ async function kgwSaveSettingsAddress() {
   const cleanName = String(name?.value || "").trim();
 
   if (!kgwSettingsIsKaspaAddress(cleanAddress)) {
-    kgwSettingsAddressSetStatus("Last Updated: invalid Kaspa address.");
+    kgwSettingsAddressSetStatus("Last Updated: invalid Kaspa address.", "error");
     return;
   }
 
-  kgwSettingsAddressSetStatus("Last Updated: saving...");
+  kgwSettingsAddressSetStatus("Last Updated: saving...", "loading");
 
   try {
     await invoke("save_address", {
@@ -2041,7 +2047,7 @@ async function kgwSaveSettingsAddress() {
     await kgwRefreshSettingsAddresses();
     kgwNotifySavedAddressesChanged();
   } catch (error) {
-    kgwSettingsAddressSetStatus(`Last Updated: save failed - ${error?.message || error}`);
+    kgwSettingsAddressSetStatus(`Last Updated: save failed - ${error?.message || error}`, "error");
   }
 }
 
@@ -2050,7 +2056,7 @@ async function kgwDeleteSettingsAddress() {
   const { address } = kgwSettingsAddressElements();
 
   if (!invoke) {
-    kgwSettingsAddressSetStatus("Last Updated: Tauri invoke API is not available.");
+    kgwSettingsAddressSetStatus("Last Updated: Tauri invoke API is not available.", "error");
     return;
   }
 
@@ -2061,7 +2067,7 @@ async function kgwDeleteSettingsAddress() {
     return;
   }
 
-  kgwSettingsAddressSetStatus("Last Updated: deleting...");
+  kgwSettingsAddressSetStatus("Last Updated: deleting...", "loading");
 
   try {
     await invoke("delete_saved_address", {
@@ -2077,7 +2083,7 @@ async function kgwDeleteSettingsAddress() {
     await kgwRefreshSettingsAddresses();
     kgwNotifySavedAddressesChanged();
   } catch (error) {
-    kgwSettingsAddressSetStatus(`Last Updated: delete failed - ${error?.message || error}`);
+    kgwSettingsAddressSetStatus(`Last Updated: delete failed - ${error?.message || error}`, "error");
   }
 }
 
@@ -2373,7 +2379,7 @@ async function kgwDeleteSettingsAddressTransactions() {
     return;
   }
 
-  const ok = window.confirm(
+  const ok = await confirmUserAction(
     `Clear all cached transactions for this address?\n\n${address}\n\nThe saved address will remain.`
   );
 
@@ -2396,7 +2402,7 @@ async function kgwDeleteSettingsAddressTransactions() {
     const deleted = await invoke("explorer_delete_transactions_for_address", { address });
 
     if (typeof kgwSettingsAddressSetStatus === "function") {
-      kgwSettingsAddressSetStatus(`Last Updated: cleared ${deleted} cached transactions`);
+      kgwSettingsAddressSetStatus(`Last Updated: cleared ${deleted} cached transactions`, "success");
     } else {
       alert(`Cleared ${deleted} cached transactions.`);
     }
@@ -2407,7 +2413,7 @@ async function kgwDeleteSettingsAddressTransactions() {
     const message = error?.message || String(error);
 
     if (typeof kgwSettingsAddressSetStatus === "function") {
-      kgwSettingsAddressSetStatus(`Last Updated: clear transactions failed - ${message}`);
+      kgwSettingsAddressSetStatus(`Last Updated: clear transactions failed - ${message}`, "error");
     } else {
       alert(`Clear transactions failed: ${message}`);
     }
@@ -2684,6 +2690,7 @@ function kgwSettingsRestoreStatus(message, state) {
   node.setAttribute("role", state === "error" ? "alert" : "status");
   node.dataset.state = state;
   node.textContent = String(message);
+  applyStatusTone(node, state);
   kgwSettingsDbStatus(message);
 }
 async function kgwSettingsRestoreLatest() {
@@ -2713,7 +2720,7 @@ async function kgwSettingsRestoreLatest() {
     const rendered = await kgwRenderSettingsAddressRows(records, { localOnly: true, restoreEpoch: KGW_SETTINGS_ADDRESS_STATE.restoreEpoch });
     if (!rendered) throw new Error("Restored address rows were not rendered.");
     kgwClearSettingsAddressFields();
-    kgwSettingsAddressSetStatus(`Last Updated: ${kgwSettingsAddressNow()}`);
+    kgwSettingsAddressSetStatus(`Last Updated: ${kgwSettingsAddressNow()}`, "success");
     kgwSettingsRestoreStatus(result.message, "success");
     return result;
   } catch (error) {
@@ -2802,3 +2809,9 @@ function kgwInstallSettingsDbMaintenanceActions() {
 
 window.kgwInstallSettingsDbMaintenanceActions = kgwInstallSettingsDbMaintenanceActions;
 kgwInstallSettingsDbMaintenanceActions();
+
+
+/* KGW_SETTING_FIELD_V2: presentation-only contextual help for Global Settings. */
+const kgwGlobalSettingsRootV2 = root();
+if (kgwGlobalSettingsRootV2) installGlobalSettingsLayout(kgwGlobalSettingsRootV2);
+else document.addEventListener("DOMContentLoaded", () => installGlobalSettingsLayout(root()), { once: true });

@@ -1,0 +1,10 @@
+{
+  "artifact_sha256": "38309d2ab8fa30096d99940f855e88173faa182e60db33f2a96b2d3408507430",
+  "ksss_release": "v1.2.0",
+  "ksss_source_sha": "967ed5068947a39961d5d5cc483ef65d25a61059",
+  "predicate_type": "https://github.com/KaspaPulse/security-governance/attestation/ksss-consumer-runtime/v1",
+  "runtime_files_digest": "b5c4061e621ae573f7671e40dba4bc699a3b4804534f9c717eaefa3b683f83ec",
+  "runtime_sequence": 2,
+  "schema": "ksss-consumer-runtime-statement-verification-v1",
+  "status": "PASS"
+}

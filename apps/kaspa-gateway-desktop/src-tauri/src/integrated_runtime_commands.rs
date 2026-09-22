@@ -26,8 +26,117 @@ const _: () = assert!(
 const _: () =
     assert!(KGW_PARENT_GRACEFUL_STOP_TIMEOUT_MS_V1 > KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1);
 
+pub(crate) fn kgw_worker_owns_official_node_core_v1(role: &str, node_mode: &str) -> bool {
+    role == "node"
+        || (role == "bridge"
+            && matches!(
+                node_mode.trim().to_ascii_lowercase().as_str(),
+                "inprocess" | "inproc" | "official-inprocess-node" | "inprocess-node"
+            ))
+}
+
+pub(crate) fn kgw_child_official_shutdown_budget_ms_v1(role: &str, node_mode: &str) -> Option<u64> {
+    if kgw_worker_owns_official_node_core_v1(role, node_mode) {
+        None
+    } else {
+        Some(KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1)
+    }
+}
+
+pub(crate) fn kgw_parent_graceful_stop_timeout_ms_v1(role: &str, node_mode: &str) -> Option<u64> {
+    if kgw_worker_owns_official_node_core_v1(role, node_mode) {
+        None
+    } else {
+        Some(KGW_PARENT_GRACEFUL_STOP_TIMEOUT_MS_V1)
+    }
+}
+
 fn controller() -> &'static Arc<kaspa_gateway_rk_node::KgwServiceController> {
     KGW_CONTROLLER.get_or_init(kaspa_gateway_rk_node::KgwServiceController::spawn)
+}
+
+type KgwObservationCacheV1 = HashMap<
+    String,
+    (
+        u32,
+        std::time::Instant,
+        kaspa_gateway_rk_bridge::observation::RuntimeObservation,
+    ),
+>;
+static KGW_OBSERVATIONS_V1: OnceLock<Mutex<KgwObservationCacheV1>> = OnceLock::new();
+fn kgw_capture_observation_v1(role: &str, network: &str, child_pid: u32, stream: &str, line: &str) {
+    use kaspa_gateway_rk_bridge::observation::{OBSERVATION_PREFIX, RuntimeObservation};
+    if stream != "stderr" || line.len() > 16384 {
+        return;
+    }
+    let Some(json) = line.strip_prefix(OBSERVATION_PREFIX) else {
+        return;
+    };
+    let Ok(value) = serde_json::from_str::<RuntimeObservation>(json) else {
+        return;
+    };
+    if value.version != 1
+        || value.role != role
+        || value.network != network
+        || value.worker_pid != child_pid
+    {
+        return;
+    }
+    if value
+        .cpu_hashrate_hs
+        .is_some_and(|rate| !rate.is_finite() || rate < 0.0)
+    {
+        return;
+    }
+    if let Ok(mut cache) = KGW_OBSERVATIONS_V1.get_or_init(Default::default).lock() {
+        cache.insert(
+            kgw_worker_key(role, network),
+            (child_pid, std::time::Instant::now(), value),
+        );
+    }
+}
+fn kgw_observation_fields_v1(worker: &KgwParallelSelfWorker, running: bool) -> String {
+    if !running {
+        return "observation_state=stopped;rpc_ready=unknown;synced=unknown".into();
+    }
+    let value = KGW_OBSERVATIONS_V1
+        .get()
+        .and_then(|cache| {
+            cache
+                .lock()
+                .ok()?
+                .get(&kgw_worker_key(&worker.role, &worker.network))
+                .cloned()
+        })
+        .filter(|(pid, at, _)| {
+            *pid == worker.spawned_pid && at.elapsed() < std::time::Duration::from_secs(10)
+        });
+    let Some((_, _, value)) = value else {
+        return "observation_state=unavailable;rpc_ready=unknown;synced=unknown".into();
+    };
+    let number = |n: Option<u64>| n.map(|v| v.to_string()).unwrap_or_else(|| "unknown".into());
+    format!(
+        "observation_state=fresh;rpc_ready={};synced={};virtual_daa_score={};cpu_enabled={};cpu_hashes_tried={};cpu_blocks_submitted={};cpu_blocks_confirmed_blue={};cpu_hashrate_hs={};observation_error={}",
+        value.rpc_ready,
+        value
+            .synced
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "unknown".into()),
+        number(value.virtual_daa_score),
+        value.cpu_enabled,
+        number(value.cpu_hashes_tried),
+        number(value.cpu_blocks_submitted),
+        number(value.cpu_blocks_confirmed_blue),
+        value
+            .cpu_hashrate_hs
+            .map(|v| format!("{v:.2}"))
+            .unwrap_or_else(|| "unknown".into()),
+        value
+            .error
+            .as_deref()
+            .map(kgw_worker_stop_field_v1)
+            .unwrap_or_else(|| "none".into())
+    )
 }
 
 #[derive(Debug)]
@@ -37,6 +146,8 @@ struct KgwParallelSelfWorker {
     appdir: String,
 
     node_mode: String,
+    node_kind: String,
+    bridge_kind: String,
     child: Child,
     spawned_pid: u32,
     worker_start_time: u64,
@@ -1295,8 +1406,8 @@ pub(crate) fn kgw_validate_live_smoke_parent_settings_v1(
         "disable".to_string(),
     )
     .map_err(|error| error.to_string())?;
-    if settings.network == kaspa_gateway_rk_node::KgwNetwork::Testnet12 {
-        return Err("live smoke parent does not start experimental testnet12".to_string());
+    if settings.network == kaspa_gateway_rk_node::KgwNetwork::Testnet13 {
+        return Err("live smoke parent does not start experimental testnet13".to_string());
     }
     let appdir_path = std::path::Path::new(appdir);
     if !appdir_path.is_absolute()
@@ -1760,12 +1871,17 @@ fn kgw_worker_spawn_reader<R>(
 where
     R: std::io::Read + Send + 'static,
 {
+    // Reset observations for the new owned pipe, independent of Clear Log.
+    if let Ok(mut cache) = KGW_OBSERVATIONS_V1.get_or_init(Default::default).lock() {
+        cache.remove(&kgw_worker_key(&role, &network));
+    }
     std::thread::spawn(move || {
         let buffered = BufReader::new(reader);
 
         for line in buffered.lines() {
             match line {
                 Ok(line) => {
+                    kgw_capture_observation_v1(&role, &network, child_pid, &stream, &line);
                     if kgw_start_trace_enabled_v1() {
                         let mirror = kgw_worker_format_child_mirror_line_v1(
                             &role,
@@ -2091,36 +2207,92 @@ pub(crate) fn kgw_worker_node_command_args_for_test_v1(
 fn kgw_worker_role_from_request(
     runtime_role: Option<&str>,
     settings: &kaspa_gateway_rk_node::NodeSettings,
-) -> String {
+) -> Result<String, String> {
     if let Some(role) = runtime_role {
         let role = role.trim().to_ascii_lowercase();
         if role == "node" || role == "bridge" {
-            return role;
+            return Ok(role);
         }
+        return Err("runtimeRole must be node or bridge".to_string());
     }
 
     if settings.bridge_kind != kaspa_gateway_rk_node::BridgeNodeKind::Disable
         && settings.node_kind == kaspa_gateway_rk_node::KaspadNodeKind::Remote
     {
-        return "bridge".to_string();
+        return Ok("bridge".to_string());
     }
 
-    "node".to_string()
+    Ok("node".to_string())
 }
 
 fn kgw_validate_network_start_policy(
     network: kaspa_gateway_rk_node::KgwNetwork,
     experimental_network_opt_in: Option<bool>,
 ) -> Result<(), String> {
-    if network == kaspa_gateway_rk_node::KgwNetwork::Testnet12
+    if network == kaspa_gateway_rk_node::KgwNetwork::Testnet13
         && experimental_network_opt_in != Some(true)
     {
         return Err(
-            "start_blocked=true;start_allowed=false;network=testnet12;block_reason=experimental-network-opt-in-required;message=Testnet 12 is experimental and disabled by default. Enable it explicitly in this network tab before starting."
+            "start_blocked=true;start_allowed=false;network=testnet13;block_reason=experimental-network-opt-in-required;message=Testnet 13 is experimental and disabled by default. Enable it explicitly in this network tab before starting."
                 .to_string(),
         );
     }
 
+    Ok(())
+}
+
+fn kgw_runtime_listener_preflight_v1(
+    role: &str,
+    settings: &kaspa_gateway_rk_node::NodeSettings,
+    bridge_node_mode: &str,
+) -> Result<(), String> {
+    let mut endpoints: Vec<(&str, String)> = Vec::new();
+    if role == "node" || (role == "bridge" && bridge_node_mode == "inprocess") {
+        endpoints.push(("gRPC", settings.rpc_endpoint.clone()));
+        if let Some(endpoint) = &settings.effective_node.rpc_listen_borsh {
+            endpoints.push(("Borsh RPC", endpoint.clone()));
+        }
+        if let Some(endpoint) = &settings.effective_node.rpc_listen_json {
+            endpoints.push(("JSON RPC", endpoint.clone()));
+        }
+        let port = match settings.network {
+            kaspa_gateway_rk_node::KgwNetwork::Mainnet => 16111,
+            kaspa_gateway_rk_node::KgwNetwork::Testnet10 => 16211,
+            kaspa_gateway_rk_node::KgwNetwork::Testnet13 => 16711,
+        };
+        endpoints.push((
+            "P2P",
+            settings
+                .p2p_listen
+                .clone()
+                .unwrap_or_else(|| format!("0.0.0.0:{port}")),
+        ));
+    }
+    if role == "bridge"
+        && let Some(bridge) = &settings.effective_bridge
+    {
+        for instance in &bridge.instances {
+            endpoints.push(("Stratum", instance.stratum_listen.clone()));
+            if let Some(endpoint) = &instance.prometheus_listen {
+                endpoints.push(("Prometheus", endpoint.clone()));
+            }
+        }
+    }
+    let mut reservations = Vec::new();
+    for (label, endpoint) in endpoints {
+        let endpoint = if endpoint.starts_with(':') {
+            format!("0.0.0.0{endpoint}")
+        } else {
+            endpoint
+        };
+        let listener = std::net::TcpListener::bind(&endpoint).map_err(|error| format!(
+            "start_blocked=true;block_reason=listener-unavailable;network={};runtime_role={role};listener={label};endpoint={endpoint};error={error};message=Choose nonconflicting listener endpoints or stop the owner using this port. TN10 and TN13 share the official default RPC ports.",
+            settings.network.as_str()
+        ))?;
+        reservations.push(listener);
+    }
+    // Native runtime binding/readiness remains authoritative after this early check.
+    drop(reservations);
     Ok(())
 }
 
@@ -2308,6 +2480,8 @@ fn kgw_worker_start(
             kgw_worker_finalize_ownership_v1(&mut stale);
         }
     }
+
+    kgw_runtime_listener_preflight_v1(&role, settings, bridge_node_mode)?;
 
     kgw_start_trace_emit_v1(
         "native",
@@ -2710,6 +2884,15 @@ fn kgw_worker_start(
             network: network.clone(),
             appdir: settings.app_dir_name.clone(),
             node_mode: stored_node_mode.clone(),
+            // The node facade runs the integrated core inside its self-worker.
+            node_kind: if role == "node" {
+                kaspa_gateway_rk_node::KaspadNodeKind::IntegratedInProc
+                    .as_str()
+                    .to_string()
+            } else {
+                settings.node_kind.as_str().to_string()
+            },
+            bridge_kind: settings.bridge_kind.as_str().to_string(),
             child,
             spawned_pid: pid,
             worker_start_time: worker_identity.start_time,
@@ -2834,7 +3017,8 @@ fn kgw_worker_stop(network: &str, runtime_role: Option<&str>) -> Result<Option<S
     Ok(Some(lines.join("\n")))
 }
 
-#[tauri::command]
+// Keep bounded child waits off the native window thread.
+#[tauri::command(async)]
 pub fn kgw_shutdown_all_runtime_workers_v1() -> Result<String, String> {
     let mut workers = kgw_parallel_self_workers()
         .lock()
@@ -2983,15 +3167,17 @@ fn kgw_worker_stop_one_v1(
     let timeout_ms = std::env::var("KGW_TEST_PARENT_GRACEFUL_STOP_TIMEOUT_MS")
         .ok()
         .and_then(|value| value.parse::<u64>().ok())
-        .unwrap_or(KGW_PARENT_GRACEFUL_STOP_TIMEOUT_MS_V1);
-    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms);
+        .map(Some)
+        .unwrap_or_else(|| kgw_parent_graceful_stop_timeout_ms_v1(&worker.role, &worker.node_mode));
+    let deadline = timeout_ms
+        .map(|timeout_ms| std::time::Instant::now() + std::time::Duration::from_millis(timeout_ms));
     let mut evidence = None;
     let mut attested = false;
     let mut failed_terminal_proof = false;
-    let mut terminal_control_outcome_received = false;
+    let mut terminal_control_outcome_received = graceful_failure.is_some() && timeout_ms.is_none();
 
     while (!terminal_control_outcome_received || attested || failed_terminal_proof)
-        && std::time::Instant::now() < deadline
+        && deadline.is_none_or(|deadline| std::time::Instant::now() < deadline)
     {
         if worker.stop_outcome_path.is_file() {
             let outcome =
@@ -3080,7 +3266,9 @@ fn kgw_worker_stop_one_v1(
         std::thread::sleep(std::time::Duration::from_millis(25));
     }
 
-    if graceful_failure.is_none() {
+    if graceful_failure.is_none()
+        && let Some(timeout_ms) = timeout_ms
+    {
         graceful_failure = Some(format!(
             "graceful stop timed out;timeout_ms={timeout_ms};attested={attested}"
         ));
@@ -3249,7 +3437,7 @@ fn kgw_worker_status(
         }
 
         lines.push(format!(
-            "parallel-owned-self-worker status;role={};network={};pid={};worker_pid={};worker_start_time={};worker_executable={};parent_pid={};parent_start_time={};parent_executable={};running={};readiness={};readiness_evidence={};runtime_error={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};p2p={};stratum={};started_ms={};node_mode={}",
+            "parallel-owned-self-worker status;role={};network={};pid={};worker_pid={};worker_start_time={};worker_executable={};parent_pid={};parent_start_time={};parent_executable={};running={};readiness={};readiness_evidence={};runtime_error={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};p2p={};stratum={};started_ms={};node_mode={};node_kind={};bridge_kind={};{}",
             worker.role,
             worker.network,
             worker.child.id(),
@@ -3280,7 +3468,10 @@ fn kgw_worker_status(
             worker.p2p_listen.as_deref().unwrap_or("official-default"),
             worker.stratum_listen,
             worker.started_ms,
-            worker.node_mode
+            worker.node_mode,
+            worker.node_kind,
+            worker.bridge_kind,
+            kgw_observation_fields_v1(worker, running)
         ));
     }
 
@@ -3469,7 +3660,8 @@ pub fn kgw_runtime_owner_status_v1(
         .as_deref()
         .map(|role| role.trim().to_ascii_lowercase());
 
-    if requested_role.as_deref() == Some("bridge") {
+    if matches!(requested_role.as_deref(), Some("node" | "bridge")) {
+        let role = requested_role.as_deref().unwrap_or("unknown");
         let network_label = network
             .as_deref()
             .map(|value| value.trim().to_ascii_lowercase())
@@ -3477,8 +3669,7 @@ pub fn kgw_runtime_owner_status_v1(
             .unwrap_or_else(|| "all".to_string());
 
         return Ok(format!(
-            "parallel-owned-self-worker status;role=bridge;network={};running=false;same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;node_mode=none;message=no bridge worker status yet",
-            network_label
+            "parallel-owned-self-worker status;role={role};network={network_label};running=false;same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;node_mode=none;message=no {role} worker status yet"
         ));
     }
 
@@ -3553,13 +3744,17 @@ pub fn kgw_kgw_runtime_clear_logs_v1(
 }
 
 fn kgw_safe_runtime_appdir_root() -> std::path::PathBuf {
-    if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
-        std::path::PathBuf::from(local_app_data)
-            .join("KaspaGateway")
-            .join("nodes")
-    } else {
-        std::env::temp_dir().join("KaspaGateway").join("nodes")
-    }
+    kaspa_gateway_config::default_user_data_dir()
+        .map(|root| root.join("nodes"))
+        .unwrap_or_else(|_| {
+            if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
+                std::path::PathBuf::from(local_app_data)
+                    .join("KaspaGateway")
+                    .join("nodes")
+            } else {
+                std::env::temp_dir().join("KaspaGateway").join("nodes")
+            }
+        })
 }
 
 fn kgw_network_runtime_appdir(network: kaspa_gateway_rk_node::KgwNetwork) -> String {
@@ -3569,6 +3764,7 @@ fn kgw_network_runtime_appdir(network: kaspa_gateway_rk_node::KgwNetwork) -> Str
         .to_string()
 }
 
+#[cfg(test)]
 fn kgw_safe_runtime_appdir(value: String) -> String {
     let trimmed = value.trim();
 
@@ -3592,6 +3788,7 @@ fn kgw_safe_runtime_appdir(value: String) -> String {
         .to_string_lossy()
         .to_string()
 }
+#[cfg(test)]
 fn kgw_command_preview_find_cli_value(command_preview: &str, flag: &str) -> Option<String> {
     let mut parts = command_preview.split_whitespace().peekable();
 
@@ -3616,23 +3813,27 @@ fn kgw_command_preview_find_cli_value(command_preview: &str, flag: &str) -> Opti
     None
 }
 
+#[cfg(test)]
 fn kgw_command_preview_has_cli_flag(command_preview: &str, flag: &str) -> bool {
     command_preview
         .split_whitespace()
         .any(|part| part == flag || part.starts_with(&format!("{flag}=")))
 }
 
+#[cfg(test)]
 fn kgw_bridge_preview_parse_u16(value: Option<String>) -> Option<u16> {
     value
         .and_then(|item| item.trim().parse::<u16>().ok())
         .filter(|item| *item > 0)
 }
 
+#[cfg(test)]
 fn kgw_bridge_preview_parse_u64(value: Option<String>) -> Option<u64> {
     value
         .and_then(|item| item.trim().parse::<u64>().ok())
         .filter(|item| *item > 0)
 }
+#[cfg(test)]
 fn kgw_command_preview_normalize_listen(value: String) -> String {
     let trimmed = value.trim().to_string();
 
@@ -3643,6 +3844,7 @@ fn kgw_command_preview_normalize_listen(value: String) -> String {
     }
 }
 
+#[cfg(test)]
 fn kgw_bridge_config_path_from_preview_r122(command_preview: Option<&str>) -> Option<String> {
     let preview = command_preview?.trim();
 
@@ -3720,6 +3922,7 @@ fn kgw_effective_bridge_settings_from_config_v1(
         .map_err(|error| error.to_string())
 }
 
+#[cfg(test)]
 fn kgw_apply_command_preview_overrides(
     settings: &mut kaspa_gateway_rk_node::NodeSettings,
     node_command_preview: Option<String>,
@@ -3820,6 +4023,184 @@ pub(crate) fn kgw_bridge_inprocess_preview_settings_for_test_v1(
     Ok(settings)
 }
 
+/// Validate and describe exactly the effective node settings without starting it.
+/// The same typed schema and managed directory resolver are used by Start.
+#[tauri::command]
+pub fn kgw_node_settings_preview_v1(
+    network: String,
+    effective_node_settings: kaspa_gateway_rk_node::EffectiveNodeSettings,
+) -> Result<serde_json::Value, String> {
+    let mut settings = kaspa_gateway_rk_node::NodeSettings::from_strings(
+        network,
+        "integrated-inproc".to_string(),
+        "disable".to_string(),
+    )
+    .map_err(|error| error.to_string())?;
+    settings
+        .apply_effective_node_settings(effective_node_settings)
+        .map_err(|error| error.to_string())?;
+    settings.app_dir_name = kgw_network_runtime_appdir(settings.network);
+    Ok(serde_json::json!({
+        "network": settings.network.as_str(),
+        "arguments": settings.command_arguments(),
+        "command": settings.command_preview(),
+        "effectiveSettings": settings.effective_node,
+        "appDir": settings.app_dir_name,
+        "availableCpuThreads": std::thread::available_parallelism().map(usize::from).unwrap_or(1),
+        "execution": "embedded-kaspad",
+    }))
+}
+
+#[tauri::command]
+pub fn kgw_settings_context_v1(network: String) -> Result<serde_json::Value, String> {
+    let network =
+        kaspa_gateway_rk_node::KgwNetwork::parse(&network).map_err(|error| error.to_string())?;
+    Ok(serde_json::json!({
+        "network": network.as_str(),
+        "appDir": kgw_network_runtime_appdir(network),
+        "availableCpuThreads": std::thread::available_parallelism().map(usize::from).unwrap_or(1),
+    }))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn kgw_resolve_effective_runtime_settings_v1(
+    settings: &mut kaspa_gateway_rk_node::NodeSettings,
+    node_command_preview: Option<String>,
+    bridge_command_preview: Option<String>,
+    runtime_role: Option<&str>,
+    effective_node_settings: Option<kaspa_gateway_rk_node::EffectiveNodeSettings>,
+    effective_bridge_settings: Option<kaspa_gateway_rk_bridge::EffectiveBridgeSettings>,
+    bridge_options: Option<kaspa_gateway_rk_bridge::BridgeStartOptions>,
+) -> Result<Option<String>, String> {
+    // Preview strings never configure runtime ownership, endpoints, files or CPU mining.
+    let _ = (node_command_preview, bridge_command_preview);
+    let options = bridge_options.unwrap_or_default();
+    let bridge_config_path_for_worker = options.config_file;
+    if let Some(path) = bridge_config_path_for_worker.as_deref() {
+        if path.trim().is_empty()
+            || !std::path::Path::new(path).is_absolute()
+            || path.contains(['\0', '\r', '\n'])
+        {
+            return Err("Bridge configFile must be a nonempty absolute path".to_string());
+        }
+    }
+    let role = kgw_worker_role_from_request(runtime_role, settings)?;
+    let owns_node = role == "node"
+        || settings.bridge_kind == kaspa_gateway_rk_node::BridgeNodeKind::OfficialInProcessNode;
+    if owns_node && effective_node_settings.is_none() {
+        return Err("effectiveNodeSettings is required; preview text is display-only".to_string());
+    }
+    let bridge_network =
+        kaspa_gateway_rk_bridge::BridgeRuntimeNetwork::parse(settings.network.as_str())
+            .map_err(|error| error.to_string())?;
+    let miner = if options.internal_cpu_miner.enabled {
+        options.internal_cpu_miner
+    } else {
+        kaspa_gateway_rk_bridge::BridgeInternalCpuMinerSettings::default()
+    };
+    miner
+        .validate_for_network(bridge_network)
+        .map_err(|error| error.to_string())?;
+    if settings.bridge_kind == kaspa_gateway_rk_node::BridgeNodeKind::Disable
+        && (miner.enabled || bridge_config_path_for_worker.is_some())
+    {
+        return Err("Bridge CPU/config options require an enabled Bridge runtime".to_string());
+    }
+    settings.bridge_internal_cpu_miner = miner.enabled;
+    settings.bridge_internal_cpu_miner_address = miner.address;
+    settings.bridge_internal_cpu_miner_threads = miner.threads;
+    settings.bridge_internal_cpu_miner_throttle_ms = miner.throttle_ms;
+    settings.bridge_internal_cpu_miner_template_poll_ms = miner.template_poll_ms;
+    if let Some(effective_node_settings) = effective_node_settings {
+        settings
+            .apply_effective_node_settings(effective_node_settings)
+            .map_err(|error| error.to_string())?;
+    }
+    let effective_bridge_settings = match (
+        bridge_config_path_for_worker.as_deref(),
+        effective_bridge_settings,
+    ) {
+        (Some(path), None) => {
+            let mut effective =
+                kgw_effective_bridge_settings_from_config_v1(settings.network, path)?;
+            if settings.bridge_kind == kaspa_gateway_rk_node::BridgeNodeKind::OfficialInProcessNode
+            {
+                effective.global.kaspa_rpc_endpoint = settings.rpc_endpoint.clone();
+            }
+            Some(effective)
+        }
+        (Some(_), Some(_)) => {
+            return Err(
+                "Bridge config-file mode and structured effectiveBridgeSettings are mutually exclusive"
+                    .to_string(),
+            );
+        }
+        (None, effective) => effective,
+    };
+    if let Some(effective_bridge_settings) = effective_bridge_settings {
+        settings
+            .apply_effective_bridge_settings(effective_bridge_settings)
+            .map_err(|error| error.to_string())?;
+    }
+    settings.app_dir_name = kgw_network_runtime_appdir(settings.network);
+
+    if role == "bridge" && settings.effective_bridge.is_none() {
+        return Err(
+            "effectiveBridgeSettings is required; command preview and structured instance text are display-only"
+                .to_string(),
+        );
+    }
+    Ok(bridge_config_path_for_worker)
+}
+
+#[allow(clippy::too_many_arguments)]
+#[tauri::command]
+pub fn kgw_runtime_settings_preview_v1(
+    network: String,
+    node_kind: String,
+    bridge_kind: String,
+    node_command_preview: Option<String>,
+    bridge_command_preview: Option<String>,
+    runtime_role: Option<String>,
+    effective_node_settings: Option<kaspa_gateway_rk_node::EffectiveNodeSettings>,
+    effective_bridge_settings: Option<kaspa_gateway_rk_bridge::EffectiveBridgeSettings>,
+    bridge_options: Option<kaspa_gateway_rk_bridge::BridgeStartOptions>,
+) -> Result<serde_json::Value, String> {
+    let mut settings =
+        kaspa_gateway_rk_node::NodeSettings::from_strings(network, node_kind, bridge_kind)
+            .map_err(|error| error.to_string())?;
+    let config_path = kgw_resolve_effective_runtime_settings_v1(
+        &mut settings,
+        node_command_preview,
+        bridge_command_preview,
+        runtime_role.as_deref(),
+        effective_node_settings,
+        effective_bridge_settings,
+        bridge_options,
+    )?;
+    let role = kgw_worker_role_from_request(runtime_role.as_deref(), &settings)?;
+    let owns_node = role == "node"
+        || settings.bridge_kind == kaspa_gateway_rk_node::BridgeNodeKind::OfficialInProcessNode;
+    Ok(serde_json::json!({
+        "network": settings.network.as_str(),
+        "runtimeRole": role,
+        "nodeKind": settings.node_kind.as_str(),
+        "bridgeKind": settings.bridge_kind.as_str(),
+        "appDir": settings.app_dir_name,
+        "configFile": config_path,
+        "effectiveNodeSettings": owns_node.then_some(&settings.effective_node),
+        "effectiveBridgeSettings": settings.effective_bridge,
+        "nodeArguments": if owns_node { settings.command_arguments() } else { Vec::new() },
+        "internalCpuMiner": {
+            "enabled": settings.bridge_internal_cpu_miner,
+            "address": settings.bridge_internal_cpu_miner_address,
+            "threads": settings.bridge_internal_cpu_miner_threads,
+            "throttleMs": settings.bridge_internal_cpu_miner_throttle_ms,
+            "templatePollMs": settings.bridge_internal_cpu_miner_template_poll_ms,
+        },
+    }))
+}
+
 #[allow(clippy::too_many_arguments)]
 fn kgw_apply_node_settings_impl_v1(
     network: String,
@@ -3835,6 +4216,7 @@ fn kgw_apply_node_settings_impl_v1(
     effective_node_settings: Option<kaspa_gateway_rk_node::EffectiveNodeSettings>,
     effective_bridge_settings: Option<kaspa_gateway_rk_bridge::EffectiveBridgeSettings>,
     experimental_network_opt_in: Option<bool>,
+    bridge_options: Option<kaspa_gateway_rk_bridge::BridgeStartOptions>,
 ) -> Result<String, String> {
     kgw_start_trace_emit_v1(
         "native",
@@ -3916,7 +4298,7 @@ fn kgw_apply_node_settings_impl_v1(
         )),
     );
 
-    let experimental_network = settings.network == kaspa_gateway_rk_node::KgwNetwork::Testnet12;
+    let experimental_network = settings.network == kaspa_gateway_rk_node::KgwNetwork::Testnet13;
     let experimental_allowed = !experimental_network || experimental_network_opt_in == Some(true);
     kgw_start_trace_emit_v1(
         "native",
@@ -3949,62 +4331,15 @@ fn kgw_apply_node_settings_impl_v1(
         return Err(error);
     }
 
-    let bridge_config_path_for_worker =
-        kgw_bridge_config_path_from_preview_r122(bridge_command_preview.as_deref());
-
-    let requires_effective_node_settings = node_command_preview
-        .as_deref()
-        .is_some_and(|preview| !preview.trim().is_empty())
-        || (settings.bridge_kind == kaspa_gateway_rk_node::BridgeNodeKind::OfficialInProcessNode
-            && bridge_command_preview
-                .as_deref()
-                .is_some_and(|preview| !preview.trim().is_empty()));
-    if effective_node_settings.is_none() && requires_effective_node_settings {
-        return Err(
-            "effectiveNodeSettings is required; command preview text is display-only and cannot configure the official runtime"
-                .to_string(),
-        );
-    }
-    kgw_apply_command_preview_overrides(&mut settings, None, bridge_command_preview);
-    if let Some(effective_node_settings) = effective_node_settings {
-        settings
-            .apply_effective_node_settings(effective_node_settings)
-            .map_err(|error| error.to_string())?;
-    }
-    let effective_bridge_settings = match (
-        bridge_config_path_for_worker.as_deref(),
+    let bridge_config_path_for_worker = kgw_resolve_effective_runtime_settings_v1(
+        &mut settings,
+        node_command_preview,
+        bridge_command_preview,
+        runtime_role.as_deref(),
+        effective_node_settings,
         effective_bridge_settings,
-    ) {
-        (Some(path), None) => {
-            let mut effective =
-                kgw_effective_bridge_settings_from_config_v1(settings.network, path)?;
-            if settings.bridge_kind == kaspa_gateway_rk_node::BridgeNodeKind::OfficialInProcessNode
-            {
-                effective.global.kaspa_rpc_endpoint = settings.rpc_endpoint.clone();
-            }
-            Some(effective)
-        }
-        (Some(_), Some(_)) => {
-            return Err(
-                "Bridge config-file mode and structured effectiveBridgeSettings are mutually exclusive"
-                    .to_string(),
-            );
-        }
-        (None, effective) => effective,
-    };
-    if let Some(effective_bridge_settings) = effective_bridge_settings {
-        settings
-            .apply_effective_bridge_settings(effective_bridge_settings)
-            .map_err(|error| error.to_string())?;
-    }
-    settings.app_dir_name = kgw_network_runtime_appdir(settings.network);
-
-    if runtime_role.as_deref() == Some("bridge") && settings.effective_bridge.is_none() {
-        return Err(
-            "effectiveBridgeSettings is required; command preview and structured instance text are display-only"
-                .to_string(),
-        );
-    }
+        bridge_options,
+    )?;
     let _ = (
         bridge_active_instance_id,
         bridge_active_instance,
@@ -4012,7 +4347,7 @@ fn kgw_apply_node_settings_impl_v1(
         bridge_structured_instances,
     );
 
-    let role = kgw_worker_role_from_request(runtime_role.as_deref(), &settings);
+    let role = kgw_worker_role_from_request(runtime_role.as_deref(), &settings)?;
 
     let result = kgw_worker_start(&role, &settings, None, bridge_config_path_for_worker);
 
@@ -4028,8 +4363,10 @@ fn kgw_apply_node_settings_impl_v1(
     result
 }
 
-#[allow(clippy::too_many_arguments)] // Stable Tauri IPC contract; grouping would break frontend argument names.
-#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+// Stable Tauri IPC contract; grouping would break frontend argument names.
+// Keep bounded child waits off the native window thread.
+#[tauri::command(async)]
 pub fn kgw_kgw_apply_node_settings_v1(
     network: String,
     node_kind: String,
@@ -4044,6 +4381,7 @@ pub fn kgw_kgw_apply_node_settings_v1(
     effective_node_settings: Option<kaspa_gateway_rk_node::EffectiveNodeSettings>,
     effective_bridge_settings: Option<kaspa_gateway_rk_bridge::EffectiveBridgeSettings>,
     experimental_network_opt_in: Option<bool>,
+    bridge_options: Option<kaspa_gateway_rk_bridge::BridgeStartOptions>,
 ) -> Result<String, String> {
     kgw_apply_node_settings_impl_v1(
         network,
@@ -4059,6 +4397,7 @@ pub fn kgw_kgw_apply_node_settings_v1(
         effective_node_settings,
         effective_bridge_settings,
         experimental_network_opt_in,
+        bridge_options,
     )
 }
 
@@ -4116,7 +4455,8 @@ pub(crate) fn kgw_effective_bridge_settings_from_config_for_test_v1(
     kgw_effective_bridge_settings_from_config_v1(network, config_path)
 }
 
-#[tauri::command]
+// Keep bounded child waits off the native window thread.
+#[tauri::command(async)]
 pub fn kgw_kgw_disable_network_v1(
     network: String,
     runtime_role: Option<String>,

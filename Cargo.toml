@@ -15,6 +15,48 @@ members = [
     "apps/kaspa-gateway-desktop/src-tauri"
 ]
 
+# Reduce native desktop debug-link memory without rebuilding dependency profiles.
+[profile.dev.package.kaspa-gateway-desktop]
+debug = 0
+incremental = false
+
+# Native IBD proof conversion is CPU-bound (BUG-0029). Keep its official
+# libraries optimized in tauri dev; retain debug assertions and stop deadlines.
+[profile.dev.package.kaspa-consensus-core]
+opt-level = 2
+
+[profile.dev.package.kaspa-hashes]
+opt-level = 2
+
+[profile.dev.package.kaspa-p2p-lib]
+opt-level = 2
+
+# BlockHash uses this non-generic compression backend.
+[profile.dev.package.blake2b_simd]
+opt-level = 2
+
+# Post-chain pruning-proof application computes PoW matrix ranks (BUG-0032).
+# Optimize this measured dev hot path without changing official code or stop budgets.
+[profile.dev.package.kaspa-pow]
+opt-level = 2
+
+# The remaining measured proof-application and hash-vector serialization hot path
+# is emitted by kaspa-consensus while shutdown waits for the Tokio blocking task.
+[profile.dev.package.kaspa-consensus]
+opt-level = 2
+
+# Header-store writes serialize every applied header through kaspa-database.
+[profile.dev.package.kaspa-database]
+opt-level = 2
+
+# The failing stack remains inside bincode serialization and byte-copy helpers.
+[profile.dev.package.bincode]
+opt-level = 2
+
+# Serde's core Serialize implementations are directly present in the stopping stack.
+[profile.dev.package.serde_core]
+opt-level = 2
+
 [workspace.package]
 edition = "2024"
 rust-version = "1.97.1"

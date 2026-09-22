@@ -1,0 +1,63 @@
+{
+  "schema": "kgw-ksss-threat-model-v1",
+  "version": "1.0.0",
+  "surfaces": ["Tauri IPC", "loopback RPC and metrics", "node P2P", "bridge Stratum", "local configuration and logs", "packaged executable"],
+  "repository": "KaspaPulse/kaspa-gateway-rust",
+  "architecture_generation": "tauri-same-exe-self-worker-v1",
+  "assets": [
+    "user configuration and address databases",
+    "per-network node data directories",
+    "official node and bridge processes",
+    "raw stdout/stderr",
+    "release executable and installer",
+    "repository and signing/provenance records"
+  ],
+  "trust_boundaries": [
+    {
+      "from": "WebView user controls",
+      "to": "Tauri IPC",
+      "requirements": [
+        "typed input validation",
+        "native diagnostic error preservation",
+        "no direct frontend process spawn"
+      ]
+    },
+    {
+      "from": "Tauri supervisor",
+      "to": "official node/bridge worker",
+      "requirements": [
+        "PID plus start time plus executable ownership",
+        "loopback RPC defaults",
+        "mainnet/testnet10 isolation",
+        "testnet13 explicit opt-in"
+      ]
+    },
+    {
+      "from": "worker output/status",
+      "to": "visible UI",
+      "requirements": [
+        "real stdout/stderr",
+        "READY proves owned process and bound endpoints",
+        "no diagnostic text substituted for raw process output"
+      ]
+    },
+    {
+      "from": "build artifact",
+      "to": "installed Windows application",
+      "requirements": [
+        "source and artifact digest binding",
+        "clean-install prerequisites",
+        "real packaged lifecycle proof"
+      ]
+    }
+  ],
+  "excluded_authority": [
+    "production mutation",
+    "deployment",
+    "GitHub push",
+    "Cloudflare or D1 changes",
+    "unrelated Kaspa service management"
+  ],
+  "working_host": "Server",
+  "operational_status": "NOT_VERIFIED"
+}

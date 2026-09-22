@@ -446,7 +446,7 @@ fn kgw_frontend_button_trace_v1(
 fn kgw_clipboard_normalize_network_v1(network: &str) -> Result<String, String> {
     let clean = network.trim().to_ascii_lowercase();
     match clean.as_str() {
-        "mainnet" | "testnet10" | "testnet12" => Ok(clean),
+        "mainnet" | "testnet10" | "testnet13" => Ok(clean),
         _ => Err(format!(
             "clipboard_write_failed=true;reason=unsupported-network;network={};message=Copy Log received an unsupported network.",
             kgw_clipboard_safe_field_v1(network, "unknown")
@@ -985,6 +985,9 @@ pub fn run() {
             integrated_runtime_commands::kgw_kgw_real_owner_summary_v1,
             integrated_runtime_commands::kgw_kgw_real_owner_feature_status_v1,
             integrated_runtime_commands::kgw_kgw_apply_node_settings_v1,
+            integrated_runtime_commands::kgw_node_settings_preview_v1,
+            integrated_runtime_commands::kgw_runtime_settings_preview_v1,
+            integrated_runtime_commands::kgw_settings_context_v1,
             integrated_runtime_commands::kgw_kgw_disable_network_v1,
             integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1,
             integrated_runtime_commands::kgw_kgw_smoke_start_network_v1,
@@ -1123,6 +1126,7 @@ pub fn run() {
             diagnostics::append_log,
             diagnostics::list_logs,
             diagnostics::clear_logs,
+            diagnostics::kgw_app_version_v1,
             diagnostics::diagnostics_report,
             settings::load_full_settings,
             settings::save_full_settings,
@@ -1576,15 +1580,19 @@ fn kgw_wait_for_shutdown_result_v1<T>(
     shutdown_rx: &std::sync::mpsc::Receiver<T>,
     parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
     mut parent_lost: bool,
-    budget: std::time::Duration,
+    budget: Option<std::time::Duration>,
 ) -> (Result<T, std::sync::mpsc::RecvTimeoutError>, bool) {
-    let deadline = std::time::Instant::now() + budget;
+    let deadline = budget.map(|budget| std::time::Instant::now() + budget);
     loop {
-        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
-        if remaining.is_zero() {
-            return (Err(std::sync::mpsc::RecvTimeoutError::Timeout), parent_lost);
-        }
-        let poll = remaining.min(std::time::Duration::from_millis(25));
+        let poll = if let Some(deadline) = deadline {
+            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+            if remaining.is_zero() {
+                return (Err(std::sync::mpsc::RecvTimeoutError::Timeout), parent_lost);
+            }
+            remaining.min(std::time::Duration::from_millis(25))
+        } else {
+            std::time::Duration::from_millis(25)
+        };
         match shutdown_rx.recv_timeout(poll) {
             Ok(result) => return (Ok(result), parent_lost),
             Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
@@ -1638,7 +1646,7 @@ fn kgw_execute_stop_request_with_budget_v1<F>(
     role: &str,
     network: &str,
     parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
-    budget: std::time::Duration,
+    budget: Option<std::time::Duration>,
     shutdown: F,
 ) -> KgwPostReadyStopOutcomeV1
 where
@@ -1747,6 +1755,16 @@ where
             std::process::exit(1);
         }
         Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+            let Some(budget) = budget else {
+                return kgw_publish_stop_failure_v1(
+                    stop_outcome_path,
+                    role,
+                    network,
+                    KgwOfficialShutdownFailureV1::not_proven(
+                        "unbounded official shutdown unexpectedly reported timeout",
+                    ),
+                );
+            };
             let error = format!(
                 "official shutdown exceeded child budget;timeout_ms={}",
                 budget.as_millis()
@@ -1799,6 +1817,7 @@ fn kgw_execute_stop_request_v1<F>(
     stop_outcome_path: &std::path::Path,
     role: &str,
     network: &str,
+    node_mode: &str,
     parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
     shutdown: F,
 ) -> KgwPostReadyStopOutcomeV1
@@ -1811,9 +1830,10 @@ where
         role,
         network,
         parent_identity,
-        std::time::Duration::from_millis(
-            crate::integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1,
-        ),
+        crate::integrated_runtime_commands::kgw_child_official_shutdown_budget_ms_v1(
+            role, node_mode,
+        )
+        .map(std::time::Duration::from_millis),
         shutdown,
     )
 }
@@ -1823,6 +1843,7 @@ fn kgw_execute_supervised_stop_request_v1<F, S>(
     stop_outcome_path: &std::path::Path,
     role: &str,
     network: &str,
+    node_mode: &str,
     parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
     runtime_failure: F,
     shutdown: S,
@@ -1851,6 +1872,7 @@ where
             stop_outcome_path,
             role,
             network,
+            node_mode,
             parent_identity,
             shutdown,
         ),
@@ -1859,6 +1881,7 @@ where
             stop_outcome_path,
             role,
             network,
+            node_mode,
             parent_identity,
             shutdown,
         ),
@@ -1890,9 +1913,10 @@ where
                 &shutdown_rx,
                 parent_identity,
                 false,
-                std::time::Duration::from_millis(
-                    crate::integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1,
-                ),
+                crate::integrated_runtime_commands::kgw_child_official_shutdown_budget_ms_v1(
+                    role, node_mode,
+                )
+                .map(std::time::Duration::from_millis),
             );
             let mut failure = match shutdown_result {
                 Ok(Ok(evidence)) => match shutdown_thread.join() {
@@ -2242,7 +2266,7 @@ fn kgw_self_worker_arg_value(args: &[String], key: &str) -> Option<String> {
 fn kgw_self_worker_default_appdir(network: &str) -> String {
     let network = match network.trim().to_ascii_lowercase().as_str() {
         "testnet" | "testnet10" => "testnet10",
-        "testnet12" | "tn12" => "testnet12",
+        "testnet13" | "tn13" => "testnet13",
         _ => "mainnet",
     };
 
@@ -2266,7 +2290,7 @@ fn kgw_self_worker_default_appdir(network: &str) -> String {
 fn kgw_self_worker_default_rpc(network: &str) -> &'static str {
     match network.trim().to_ascii_lowercase().as_str() {
         "testnet10" | "testnet" => "127.0.0.1:16210",
-        "testnet12" | "tn12" => "127.0.0.1:16310",
+        "testnet13" | "tn13" => "127.0.0.1:16210",
         _ => "127.0.0.1:16110",
     }
 }
@@ -2274,7 +2298,7 @@ fn kgw_self_worker_default_rpc(network: &str) -> &'static str {
 fn kgw_self_worker_default_stratum(network: &str) -> &'static str {
     match network.trim().to_ascii_lowercase().as_str() {
         "testnet10" | "testnet" => "0.0.0.0:15555",
-        "testnet12" | "tn12" => "0.0.0.0:25555",
+        "testnet13" | "tn13" => "0.0.0.0:25555",
         _ => "0.0.0.0:5555",
     }
 }
@@ -2342,6 +2366,12 @@ fn kgw_run_node_self_worker(
         stop_request_path.ok_or_else(|| "stop request path is missing or invalid".to_string())?;
     let stop_outcome_path =
         stop_outcome_path.ok_or_else(|| "stop outcome path is missing or invalid".to_string())?;
+    let _observation = kaspa_gateway_rk_bridge::observation::start_runtime_observer(
+        kaspa_gateway_rk_bridge::BridgeRuntimeNetwork::parse(network)
+            .map_err(|error| error.to_string())?,
+        "node",
+        rpc,
+    )?;
     let monitor_runtime = runtime.clone();
     let monitor_network = settings.network;
     Ok(kgw_execute_supervised_stop_request_v1(
@@ -2349,6 +2379,7 @@ fn kgw_run_node_self_worker(
         stop_outcome_path,
         "node",
         settings.network.as_str(),
+        "integrated-inproc",
         parent_identity,
         move || {
             monitor_runtime
@@ -2482,6 +2513,10 @@ fn kgw_run_bridge_self_worker(
     let (handles, readiness) =
         kaspa_gateway_rk_bridge::start_official_bridge_owners_ready_v1(events)
             .map_err(|error| error.to_string())?;
+    let listener_count: usize = readiness
+        .iter()
+        .map(kaspa_gateway_rk_bridge::BridgeStartupReadiness::listener_count)
+        .sum();
     let readiness_evidence = readiness
         .iter()
         .map(kaspa_gateway_rk_bridge::BridgeStartupReadiness::to_attestation)
@@ -2489,8 +2524,8 @@ fn kgw_run_bridge_self_worker(
 
     let readiness = format!(
         "node_attachment=ready;listener_count={};listeners_ready={};{}",
-        handles.len(),
-        handles.len(),
+        listener_count,
+        listener_count,
         readiness_evidence.join("|")
     );
     kgw_write_startup_control_v1(
@@ -2506,17 +2541,24 @@ fn kgw_run_bridge_self_worker(
         stop_request_path.ok_or_else(|| "stop request path is missing or invalid".to_string())?;
     let stop_outcome_path =
         stop_outcome_path.ok_or_else(|| "stop outcome path is missing or invalid".to_string())?;
+    let _observation = kaspa_gateway_rk_bridge::observation::start_runtime_observer(
+        bridge_network,
+        "bridge",
+        &bridge_rpc,
+    )?;
     let shutdown_network = network.to_string();
     let monitor_network = shutdown_network.clone();
     let monitor_node_runtime = inprocess_node_runtime.clone();
     let shared_handles = std::sync::Arc::new(std::sync::Mutex::new(Some(handles)));
     let monitor_handles = std::sync::Arc::clone(&shared_handles);
     let shutdown_handles = std::sync::Arc::clone(&shared_handles);
+    let stop_node_mode = bridge_node_mode.clone();
     Ok(kgw_execute_supervised_stop_request_v1(
         stop_request_path,
         stop_outcome_path,
         "bridge",
         network,
+        stop_node_mode.as_str(),
         parent_identity,
         move || {
             if let Some(runtime) = monitor_node_runtime.as_ref() {
@@ -2677,7 +2719,7 @@ mod kgw_graceful_stop_failure_path_tests {
             "node",
             "mainnet",
             &parent_identity,
-            std::time::Duration::from_millis(5),
+            Some(std::time::Duration::from_millis(5)),
             || {
                 std::thread::sleep(std::time::Duration::from_millis(100));
                 Ok("late terminal result".to_string())
@@ -2757,6 +2799,7 @@ mod kgw_graceful_stop_failure_path_tests {
             &outcome_path,
             "node",
             "mainnet",
+            "integrated-inproc",
             &parent_identity,
             || Ok(Some("official core fixture exited".to_string())),
             || Ok("remaining owned components joined".to_string()),
@@ -2794,6 +2837,7 @@ mod kgw_graceful_stop_failure_path_tests {
             &outcome_path,
             "node",
             "mainnet",
+            "integrated-inproc",
             &parent_identity,
             || Ok(None),
             || Ok("official node shutdown joined".to_string()),

@@ -1,0 +1,14 @@
+{
+  "control_catalog_digest": "427e1c7def0ef867207be2bd01cc3d01d434cbb0c4152d5fcbca8d600f209641",
+  "external_ksss_checkout_required": false,
+  "file_count": 34,
+  "ksss_release": "v1.2.0",
+  "ksss_source_sha": "967ed5068947a39961d5d5cc483ef65d25a61059",
+  "network_required_for_execution": false,
+  "policy_bundle_digest": "3c1c8b449d736aba5fec5cffd688496b06d81f287f55fff4c3f42e36c3b58ec6",
+  "runtime_files_digest": "b5c4061e621ae573f7671e40dba4bc699a3b4804534f9c717eaefa3b683f83ec",
+  "runtime_sequence": 2,
+  "schema": "ksss-consumer-runtime-verification-v1",
+  "schema_digest": "815379b5e5475fccae47be16e85a0939fb17d86d075b485a8b5589a4e8204ffb",
+  "status": "PASS"
+}

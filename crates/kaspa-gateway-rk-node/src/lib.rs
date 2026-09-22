@@ -16,7 +16,7 @@ pub use official_kaspa_runtime::{
     KaspaRuntimeNetwork, KaspaRuntimePlan, KaspaRuntimeServiceEvent, KaspaRuntimeServiceEventKind,
     KaspaRuntimeSettings, KaspaRuntimeStep, all_parallel_runtime_plans_v1,
     build_official_kaspa_runtime_plan_v1, official_kaspa_runtime_summary_v1,
-    official_node_mainline_dependency_marker_v1, official_node_tn12_dependency_marker_v1,
+    official_node_mainline_dependency_marker_v1, official_node_tn13_dependency_marker_v1,
     runtime_service_events_from_settings_v1,
 };
 
@@ -25,7 +25,7 @@ pub const KGW_RUNTIME_OWNER_MODEL: &str = "kgw-parallel-node-bridge-service-even
 pub const KGW_RUNTIME_THREAD_NAME: &str = "kaspad";
 pub const KGW_OFFICIAL_KASPA_REPOSITORY: &str = "https://github.com/kaspanet/rusty-kaspa.git";
 pub const KGW_MAINLINE_BRANCH: &str = "master";
-pub const KGW_TN12_BRANCH: &str = "tn12";
+pub const KGW_TN13_BRANCH: &str = "tn13";
 
 pub fn runtime_owner_summary_v1() -> &'static str {
     official_kaspa_runtime_summary_v1()

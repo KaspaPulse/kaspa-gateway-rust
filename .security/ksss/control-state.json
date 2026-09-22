@@ -1,0 +1,195 @@
+{
+  "schema": "kgw-ksss-control-state-v1",
+  "repository": "KaspaPulse/kaspa-gateway-rust",
+  "assessment_scope": "REPOSITORY_ADOPTION_ONLY",
+  "controls": {
+    "KSSS-L0-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "THREAT_MODEL_CHANGE",
+        "RUNTIME_CONFIG_CHANGE"
+      ]
+    },
+    "KSSS-L0-002": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "THREAT_MODEL_CHANGE",
+        "CODE_ONLY_CHANGE",
+        "RUNTIME_CONFIG_CHANGE"
+      ]
+    },
+    "KSSS-L1-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "AUTHORIZATION_CHANGE"
+      ]
+    },
+    "KSSS-L1-002": {
+      "status": "NOT_APPLICABLE",
+      "reason": "Consumer repository; central-plane control does not apply.",
+      "invalidated_by": [
+        "CODE_ONLY_CHANGE",
+        "WORKFLOW_CHANGE",
+        "POLICY_CHANGE"
+      ]
+    },
+    "KSSS-L2-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "POLICY_CHANGE",
+        "AUTHORIZATION_CHANGE"
+      ]
+    },
+    "KSSS-L2-002": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "WORKFLOW_CHANGE",
+        "POLICY_CHANGE"
+      ]
+    },
+    "KSSS-L3-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "CODE_ONLY_CHANGE",
+        "WORKFLOW_CHANGE"
+      ]
+    },
+    "KSSS-L4-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "DEPENDENCY_CHANGE",
+        "POLICY_CHANGE"
+      ]
+    },
+    "KSSS-L5-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "CODE_ONLY_CHANGE",
+        "DEPENDENCY_CHANGE",
+        "WORKFLOW_CHANGE",
+        "POLICY_CHANGE"
+      ]
+    },
+    "KSSS-L6-001": {
+      "status": "NOT_TRIGGERED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "CODE_ONLY_CHANGE",
+        "DEPENDENCY_CHANGE",
+        "WORKFLOW_CHANGE",
+        "THREAT_MODEL_CHANGE",
+        "POLICY_CHANGE"
+      ]
+    },
+    "KSSS-L7-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "CODE_ONLY_CHANGE",
+        "DEPENDENCY_CHANGE",
+        "THREAT_MODEL_CHANGE",
+        "POLICY_CHANGE"
+      ]
+    },
+    "KSSS-L8-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "AUTHORIZATION_CHANGE",
+        "THREAT_MODEL_CHANGE",
+        "RUNTIME_CONFIG_CHANGE",
+        "POLICY_CHANGE"
+      ]
+    },
+    "KSSS-L9-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "WORKFLOW_CHANGE",
+        "DEPENDENCY_CHANGE",
+        "POLICY_CHANGE",
+        "ARTIFACT_CHANGE"
+      ]
+    },
+    "KSSS-L10-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "DEPENDENCY_CHANGE",
+        "ARTIFACT_CHANGE",
+        "WORKFLOW_CHANGE"
+      ]
+    },
+    "KSSS-L10-002": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "CODE_ONLY_CHANGE",
+        "DEPENDENCY_CHANGE",
+        "WORKFLOW_CHANGE",
+        "ARTIFACT_CHANGE"
+      ]
+    },
+    "KSSS-L11-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "ARTIFACT_CHANGE",
+        "WORKFLOW_CHANGE",
+        "POLICY_CHANGE"
+      ]
+    },
+    "KSSS-L12-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "ARTIFACT_CHANGE",
+        "AUTHORIZATION_CHANGE",
+        "RUNTIME_CONFIG_CHANGE"
+      ]
+    },
+    "KSSS-L13-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "ARTIFACT_CHANGE",
+        "RUNTIME_CONFIG_CHANGE",
+        "AUTHORIZATION_CHANGE"
+      ]
+    },
+    "KSSS-L14-001": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "CODE_ONLY_CHANGE",
+        "DEPENDENCY_CHANGE",
+        "WORKFLOW_CHANGE",
+        "POLICY_CHANGE",
+        "ARTIFACT_CHANGE",
+        "THREAT_MODEL_CHANGE",
+        "AUTHORIZATION_CHANGE",
+        "RUNTIME_CONFIG_CHANGE"
+      ]
+    },
+    "KSSS-L14-002": {
+      "status": "NOT_VERIFIED",
+      "reason": "Existing evidence must be assessed for the exact operation, source, environment and artifact before claiming this control passes.",
+      "invalidated_by": [
+        "CODE_ONLY_CHANGE",
+        "DEPENDENCY_CHANGE",
+        "WORKFLOW_CHANGE",
+        "POLICY_CHANGE"
+      ]
+    }
+  },
+  "application_runtime_status": "NOT_VERIFIED",
+  "production_status": "NOT_VERIFIED"
+}

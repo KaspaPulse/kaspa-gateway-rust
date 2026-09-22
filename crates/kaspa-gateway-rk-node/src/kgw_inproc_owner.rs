@@ -95,7 +95,7 @@ impl KgwInprocStartRequest {
 
     pub fn validate(&self) -> Result<(), KgwInprocError> {
         match self.normalized_network().as_str() {
-            "mainnet" | "testnet" | "testnet10" | "testnet12" => {}
+            "mainnet" | "testnet" | "testnet10" | "testnet13" => {}
             _ => return Err(KgwInprocError::UnsupportedNetwork),
         }
 
@@ -283,7 +283,7 @@ mod tests {
 
     #[test]
     fn supports_all_gateway_node_networks() {
-        for network in ["mainnet", "testnet", "testnet10", "testnet12"] {
+        for network in ["mainnet", "testnet", "testnet10", "testnet13"] {
             let request = KgwInprocStartRequest {
                 network: network.to_string(),
                 ..KgwInprocStartRequest::default()
