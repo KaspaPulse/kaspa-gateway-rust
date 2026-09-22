@@ -493,7 +493,7 @@ fn ready_worker_publishes_and_normal_stop_removes_exact_owner_lease() {
         "network=mainnet",
         "appdir=",
         "rpc=127.0.0.1:16110",
-        "p2p=official-default",
+        "p2p=127.0.0.1:26111",
         "stratum=0.0.0.0:5555",
     ] {
         assert!(
