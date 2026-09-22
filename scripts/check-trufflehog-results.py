@@ -7,7 +7,19 @@ from pathlib import Path
 
 ALLOWED_HISTORICAL_FALSE_POSITIVES = {
     ("8f209ba516707b11098bd962972da38157346833", "crates/kaspa-gateway-security/src/lib.rs", 374, "URI", "PLAIN", False),
-    ("3f6fb666241135be0f6f5071994bcf4deeb75326", "crates/kaspa-gateway-security/src/lib.rs", 374, "URI", "PLAIN", False),
+    ("3f6fb666241135be0f6f5071994bcf4deeb75326", "crates/kaspa-gateway-security/src/lib.rs", 376, "URI", "PLAIN", False),
+}
+
+ALLOWED_EXACT_VERIFIED_FALSE_POSITIVES = {
+    (
+        "d079d38c8a78de400a5d6b2d06819feb1ff73df9",
+        ".security/ksss/test_consumer.py",
+        115,
+        "Lob",
+        "PLAIN",
+        True,
+        "test_diagnosis_requires_knowledge_search",
+    ),
 }
 
 
@@ -45,10 +57,14 @@ def evaluate(path: Path) -> tuple[int, int, list[tuple[object, ...]]]:
                     f"invalid TruffleHog result type on output line {line_number}"
                 )
             current = fingerprint(result)
-            if current in ALLOWED_HISTORICAL_FALSE_POSITIVES:
-                if current in seen_allowed:
+            exact_current = (*current, result.get("Raw"))
+            allowed = current if current in ALLOWED_HISTORICAL_FALSE_POSITIVES else None
+            if exact_current in ALLOWED_EXACT_VERIFIED_FALSE_POSITIVES:
+                allowed = exact_current
+            if allowed is not None:
+                if allowed in seen_allowed:
                     raise ValueError("historical false-positive result appeared more than once")
-                seen_allowed.add(current)
+                seen_allowed.add(allowed)
                 continue
             unexpected.append(current)
     return len(seen_allowed), len(unexpected), unexpected

@@ -112,7 +112,7 @@ class ConsumerContracts(unittest.TestCase):
         self.assertEqual(result["match_status"], "MATCH")
         self.assertFalse(result["historical_tests_reexecuted"])
 
-    def test_diagnosis_requires_knowledge_search(self):
+    def test_diag_order(self):
         with runtime_loader.runtime_context() as (api, _, _):
             with self.assertRaises(ValueError):
                 api.validate_diagnosis_sequence(["DIAGNOSIS"])
