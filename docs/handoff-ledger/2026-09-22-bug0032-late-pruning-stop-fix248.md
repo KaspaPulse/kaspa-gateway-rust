@@ -56,3 +56,35 @@ LEARNING_STATUS=CLOSED.
 
 ## NEXT ACTION
 The scoped local BUG-0032 checkpoint commit now contains this closure evidence and the qualified candidate; verify the actual HEAD/tree with Git rather than self-embedded prose. No further BUG-0032 source, build, or runtime action is required unless a relevant validity predicate changes or a new defect is observed. Do not repeat RUN254, BUILD253, or the qualified source tests without such invalidation.
+
+
+Timestamp: 2026-09-22T14:08:00Z.
+
+## COMPLETED / VERIFIED
+
+BUG-0032 remains CLOSED_LOCAL_QUALIFIED. External-delivery rebaseline on GitHub main `25cc011943805aefa7045d34c21a5d67134dd640` resolved the dependency graph without rolling back PR #94. The current affected product/runtime source bytes remain identical to the locally qualified FIX248 source.
+
+A new native artifact was built after the governed lock resolution:
+- SHA256: `FAECC4FFD052B4BC482C362EAA6F55418F313647B34C5EEB3A36190958AE4E45`.
+- Dependency qualification: PASS.
+- Targeted FIX248 Rust tests: PASS 5/5.
+- The one invalidated runtime phase was requalified on Testnet10 at `AFTER_PRUNING_CHAIN_DOWNLOAD`.
+- Result: `forcedStop=false`, `coreJoined=true`, `gracefulClassification=VERIFIED_GRACEFUL`, `proofReceived=true`.
+- Runtime cleanup and exact original settings restoration completed successfully.
+- No full runtime matrix, live TN13, release, deployment, or production claim is implied.
+
+## EVIDENCE / TESTS
+
+Primary evidence remains the canonical external audit/checkpoint surface under
+`C:/KGW-Local-Validation/audits/desktop-v0.1.3-p0-runtime-ui-20260916`.
+
+Current external-delivery evidence includes:
+- `BUG0032_EXTERNAL_DELIVERY_25CC_LOCK_RESOLUTION_FINAL.json`.
+- Final staged candidate tree before delivery commit: `e7e4ae86b37fb86afeee9f2b87218c087fd11696`.
+- Resolved Cargo.lock blob: `6031ba5c58f250a2808a1cb2e0be428da6d8cbee`.
+- Final 25CC manifest SHA256: `ff33d2972bc0362d8519578749a9e17d1f0d3ca960c388477deaecbd90786cbd`.
+- Affected-phase runtime receipt SHA256: `BA53A11B24FE74E90FBCD2E61CD66B899481777532F9B37DCA5D28C51B8706D2`.
+
+## DO NOT REPEAT
+
+Do not repeat RUN254, the 25CC affected-phase replay, dependency qualification, targeted FIX248 Rust tests, frontend qualification, Graphify, KSSS, or the native build while their source/artifact/environment validity predicates remain unchanged. Reuse the evidence above and rerun only an invalidated surface.

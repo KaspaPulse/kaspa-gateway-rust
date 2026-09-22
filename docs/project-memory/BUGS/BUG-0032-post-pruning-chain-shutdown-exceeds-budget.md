@@ -40,3 +40,30 @@ Regression protection: official Node-core ownership maps to no automatic shutdow
 Scope boundary: this closes BUG-0032 for the reproduced Testnet10 late-pruning Stop phase on the locally qualified 0.1.3 candidate. It does not qualify full synchronization, accepted mining, TN13 public operation, packaging, clean-machine installation, cross-platform behavior, remote CI, release, deployment, or production.
 
 SERVICE_STATUS=RESOLVED; LEARNING_STATUS=CLOSED.
+
+
+## Evidence
+
+The final locally qualified FIX248 source remains byte-identical in the 25CC external-delivery candidate. Governed dependency re-resolution produced Cargo.lock blob `6031ba5c58f250a2808a1cb2e0be428da6d8cbee` while preserving PR #94 direct dependency intent and the qualified runtime revisions `98a4ccd8d200853787f227bd4536ac540cf34957` / `ad45e241e6688a14901fd24dd8dc33c5c9a33f40`.
+
+The replacement native artifact for the changed dependency baseline is `FAECC4FFD052B4BC482C362EAA6F55418F313647B34C5EEB3A36190958AE4E45`. The one invalidated Testnet10 phase was requalified at `AFTER_PRUNING_CHAIN_DOWNLOAD` with `forcedStop=false`, `coreJoined=true`, `VERIFIED_GRACEFUL`, no runtime/cleanup error, and exact profile restoration.
+
+## Root Cause
+
+The proved defect was KGW imposing an outer wall-clock cutoff on a same-EXE worker that owns the official Node core. Rusty Kaspa had accepted shutdown and could still be completing a non-cancellable pruning-proof blocking task before the core join completed. The old cutoff therefore converted slow-but-progressing official shutdown into exact-child forced termination.
+
+## Verification
+
+FIX248 source qualification passed, including the targeted Rust set 5/5. The original BUILD253/RUN254 evidence closed the reproduced late-pruning phase for its source/artifact baseline. After the 25CC dependency baseline changed, dependency qualification passed again and a new artifact was built. Because its SHA differed from BUILD253, only the affected Testnet10 `AFTER_PRUNING_CHAIN_DOWNLOAD` phase was replayed; it passed with natural terminal shutdown, `forcedStop=false`, `coreJoined=true`, `gracefulClassification=VERIFIED_GRACEFUL`, and responsive Stop UI.
+
+## Regression Protection
+
+Official Node-core owners have no automatic shutdown wall-clock deadline; standard workers retain bounded fallback. Typed terminal outcomes, exact parent/child identity checks, explicit timeout coverage for bounded paths, and asynchronous frontend Stop ownership remain enforced. Runtime evidence is reused only while its source/artifact/environment predicates remain valid.
+
+## NEXT ACTION
+
+BUG-0032 itself remains closed. Continue only the external-delivery/release lifecycle on the exact qualified delivery content. Do not reopen BUG-0032 merely because CI, merge, artifacts, or release preparation remain pending.
+
+## DO NOT REPEAT
+
+Do not repeat RUN254 or the 25CC affected-phase runtime replay, the qualified native build, targeted FIX248 Rust tests, Graphify, frontend qualification, or KSSS unless a relevant validity predicate changes. Preserve failed historical runs as learning evidence and never relabel them as passes.
