@@ -7,6 +7,7 @@ from pathlib import Path
 
 ALLOWED_HISTORICAL_FALSE_POSITIVES = {
     ("8f209ba516707b11098bd962972da38157346833", "crates/kaspa-gateway-security/src/lib.rs", 374, "URI", "PLAIN", False),
+    ("3f6fb666241135be0f6f5071994bcf4deeb75326", "crates/kaspa-gateway-security/src/lib.rs", 374, "URI", "PLAIN", False),
     ("3f6fb666241135be0f6f5071994bcf4deeb75326", "crates/kaspa-gateway-security/src/lib.rs", 376, "URI", "PLAIN", False),
 }
 

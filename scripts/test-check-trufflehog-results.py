@@ -88,7 +88,8 @@ def expect_exit(expected: int, result: subprocess.CompletedProcess[str], label: 
 
 
 def main() -> int:
-    squash = changed(git_commit="3f6fb666241135be0f6f5071994bcf4deeb75326", git_line=376)
+    squash_374 = changed(git_commit="3f6fb666241135be0f6f5071994bcf4deeb75326", git_line=374)
+    squash_376 = changed(git_commit="3f6fb666241135be0f6f5071994bcf4deeb75326", git_line=376)
     policy_lob = lob_changed(
         git_commit="c83ff593056749b1f0ffcbffc9bd6c0f2bf5c556",
         git_file="scripts/check-trufflehog-results.py",
@@ -101,13 +102,15 @@ def main() -> int:
     )
     expect_exit(0, run([]), "empty result set")
     expect_exit(0, run([BASE]), "exact original historical false positive")
-    expect_exit(0, run([squash]), "exact squash historical false positive")
+    expect_exit(0, run([squash_374]), "exact squash line374 historical false positive")
+    expect_exit(0, run([squash_376]), "exact squash line376 historical false positive")
     expect_exit(0, run([LOB_FALSE_POSITIVE]), "exact raw-bound Lob false positive")
     expect_exit(0, run([policy_lob]), "exact policy-source Lob false positive")
     expect_exit(0, run([policy_test_lob]), "exact policy-test Lob false positive")
-    expect_exit(0, run([BASE, squash, LOB_FALSE_POSITIVE, policy_lob, policy_test_lob]), "all exact historical false positives")
+    expect_exit(0, run([BASE, squash_374, squash_376, LOB_FALSE_POSITIVE, policy_lob, policy_test_lob]), "all exact historical false positives")
     expect_exit(1, run([BASE, BASE]), "duplicate original historical exception")
-    expect_exit(1, run([squash, squash]), "duplicate squash historical exception")
+    expect_exit(1, run([squash_374, squash_374]), "duplicate squash line374 historical exception")
+    expect_exit(1, run([squash_376, squash_376]), "duplicate squash line376 historical exception")
     expect_exit(1, run([LOB_FALSE_POSITIVE, LOB_FALSE_POSITIVE]), "duplicate Lob historical exception")
     expect_exit(1, run([changed(git_commit="deadbeef")]), "commit drift")
     expect_exit(1, run([changed(git_file="other.rs")]), "path drift")
