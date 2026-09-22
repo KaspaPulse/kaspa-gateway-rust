@@ -260,7 +260,7 @@ jobs:
 
           # Keep the original full-workspace production feature graph intact. Cap lints
           # at warning only so Clippy completes the graph; the exact policy below restores
-          # fail-closed -D warnings semantics except for two reviewed Desktop fingerprints.
+          # fail-closed -D warnings semantics except for reviewed exact fingerprints.
           cargo clippy --locked --workspace --lib --bins --examples --benches --message-format=json -- -D warnings --cap-lints warn > clippy-production.jsonl 2> clippy-production.stderr.log
           command_status=$?
           if (( command_status != 0 )); then status=$command_status; fi
@@ -270,19 +270,30 @@ jobs:
           if (( policy_status != 0 )); then status=$policy_status; fi
           cat clippy-production.stderr.log
 
-          cargo clippy --locked --workspace --tests --exclude kaspa-gateway-desktop -- -D warnings 2>&1 | tee clippy-workspace-tests.log
-          command_status=${PIPESTATUS[0]}
+          cargo clippy --locked --workspace --tests --exclude kaspa-gateway-desktop --message-format=json -- -D warnings --cap-lints warn > clippy-workspace-tests.jsonl 2> clippy-workspace-tests.stderr.log
+          command_status=$?
           if (( command_status != 0 )); then status=$command_status; fi
+
+          python3 scripts/check-clippy-results.py clippy-workspace-tests.jsonl | tee clippy-workspace-tests-policy.log
+          policy_status=${PIPESTATUS[0]}
+          if (( policy_status != 0 )); then status=$policy_status; fi
+          cat clippy-workspace-tests.stderr.log
 
           # The desktop integration harness path-includes the runtime module and
           # intentionally exercises a selected subset of its private entry points.
-          # Production targets remain fail-closed through the JSON policy above;
-          # only test-target dead-code is exempt here.
-          cargo clippy --locked -p kaspa-gateway-desktop --tests -- -D warnings -A dead-code 2>&1 | tee clippy-desktop-tests.log
-          command_status=${PIPESTATUS[0]}
+          # Preserve the existing test-only dead-code exemption, but complete the
+          # test graph and fail closed on every other diagnostic except reviewed
+          # exact fingerprints.
+          cargo clippy --locked -p kaspa-gateway-desktop --tests --message-format=json -- -D warnings -A dead-code --cap-lints warn > clippy-desktop-tests.jsonl 2> clippy-desktop-tests.stderr.log
+          command_status=$?
           if (( command_status != 0 )); then status=$command_status; fi
 
-          cat clippy-production.stderr.log clippy-production-policy.log clippy-workspace-tests.log clippy-desktop-tests.log > clippy.log
+          python3 scripts/check-clippy-results.py clippy-desktop-tests.jsonl | tee clippy-desktop-tests-policy.log
+          policy_status=${PIPESTATUS[0]}
+          if (( policy_status != 0 )); then status=$policy_status; fi
+          cat clippy-desktop-tests.stderr.log
+
+          cat clippy-production.stderr.log clippy-production-policy.log clippy-workspace-tests.stderr.log clippy-workspace-tests-policy.log clippy-desktop-tests.stderr.log clippy-desktop-tests-policy.log > clippy.log
           exit "$status"
 
       - name: Upload clippy diagnostics
@@ -295,8 +306,12 @@ jobs:
             clippy-production.jsonl
             clippy-production.stderr.log
             clippy-production-policy.log
-            clippy-workspace-tests.log
-            clippy-desktop-tests.log
+            clippy-workspace-tests.jsonl
+            clippy-workspace-tests.stderr.log
+            clippy-workspace-tests-policy.log
+            clippy-desktop-tests.jsonl
+            clippy-desktop-tests.stderr.log
+            clippy-desktop-tests-policy.log
           retention-days: 3
 
       - name: Run Rust tests

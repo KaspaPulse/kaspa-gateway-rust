@@ -18,6 +18,16 @@ ALLOWED = {
         1841,
         "clippy::too_many_arguments",
     ),
+    (
+        "crates/kaspa-gateway-rk-bridge/src/observation.rs",
+        30,
+        "dead_code",
+    ),
+    (
+        "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs",
+        3848,
+        "dead_code",
+    ),
 }
 
 

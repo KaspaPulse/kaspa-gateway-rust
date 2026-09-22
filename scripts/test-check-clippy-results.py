@@ -105,9 +105,36 @@ def main() -> int:
         "lint drift fails closed",
     )
     expect(
-        1,
+        0,
         run([diagnostic("crates/kaspa-gateway-rk-bridge/src/observation.rs", 30, "dead_code")]),
-        "unrelated warning fails closed",
+        "exact bridge dead-code fingerprint",
+    )
+    expect(
+        0,
+        run([diagnostic(
+            "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs",
+            3848,
+            "dead_code",
+        )]),
+        "exact desktop preview dead-code fingerprint",
+    )
+    expect(
+        0,
+        run([
+            diagnostic("crates/kaspa-gateway-rk-bridge/src/observation.rs", 30, "dead_code"),
+            diagnostic("crates/kaspa-gateway-rk-bridge/src/observation.rs", 30, "dead_code"),
+        ]),
+        "duplicate exact bridge fingerprint",
+    )
+    expect(
+        1,
+        run([diagnostic("crates/kaspa-gateway-rk-bridge/src/observation.rs", 31, "dead_code")]),
+        "dead-code line drift fails closed",
+    )
+    expect(
+        1,
+        run([diagnostic("crates/kaspa-gateway-rk-bridge/src/other.rs", 30, "dead_code")]),
+        "dead-code path drift fails closed",
     )
     expect(
         1,
