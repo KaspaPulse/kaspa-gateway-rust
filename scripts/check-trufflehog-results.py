@@ -10,6 +10,8 @@ ALLOWED_HISTORICAL_FALSE_POSITIVES = {
     ("3f6fb666241135be0f6f5071994bcf4deeb75326", "crates/kaspa-gateway-security/src/lib.rs", 376, "URI", "PLAIN", False),
 }
 
+LOB_UNITTEST_FALSE_POSITIVE_RAW = "test_" + "diagnosis_requires_knowledge_search"
+
 ALLOWED_EXACT_VERIFIED_FALSE_POSITIVES = {
     (
         "d079d38c8a78de400a5d6b2d06819feb1ff73df9",
@@ -18,7 +20,25 @@ ALLOWED_EXACT_VERIFIED_FALSE_POSITIVES = {
         "Lob",
         "PLAIN",
         True,
-        "test_diagnosis_requires_knowledge_search",
+        LOB_UNITTEST_FALSE_POSITIVE_RAW,
+    ),
+    (
+        "c83ff593056749b1f0ffcbffc9bd6c0f2bf5c556",
+        "scripts/check-trufflehog-results.py",
+        21,
+        "Lob",
+        "PLAIN",
+        True,
+        LOB_UNITTEST_FALSE_POSITIVE_RAW,
+    ),
+    (
+        "c83ff593056749b1f0ffcbffc9bd6c0f2bf5c556",
+        "scripts/test-check-trufflehog-results.py",
+        38,
+        "Lob",
+        "PLAIN",
+        True,
+        LOB_UNITTEST_FALSE_POSITIVE_RAW,
     ),
 }
 
