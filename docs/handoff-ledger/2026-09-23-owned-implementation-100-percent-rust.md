@@ -1,17 +1,18 @@
 # Checkpoint — 100% Rust owned implementation migration
 
 Status: IN PROGRESS
-Timestamp: 2026-09-23T19:51:01Z
+Timestamp: 2026-09-23T19:54:59Z
 Task ID: KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923
 Branch: feat/owned-implementation-100-percent-rust-20260923
-Last local checkpoint commit: 33461f6511c69b457c5f3dd069b54322d9a236a0 / tree e355550c6fa311fdfb4dd54a8cd29c4b45f0c583
+Last local checkpoint commit: d5f274dcc6d9a423dd9783d21605591efdd05e65 / tree 91b5a680ecd72241a1d02332ce1f2fa19acda3f9
 Historical main baseline: aaf2c635672c0fd35a5705579610be8de188b031 / tree 0d19e16d115dc093a3f47967ec57b0cc3e81bfa1
 
 ## LAST CONFIRMED STATE
-Phase 1 is committed. Phase 2 has locally verified Rust replacements for five Python CI/security policy scripts plus the ClusterFuzz build logic. The old Python files are deleted in the worktree; the ClusterFuzz platform-required `build.sh` remains only as a thin Rust launcher. No GitHub, Production, DNS, Cloudflare, live-runtime, credential, old-worktree, or protected-checkpoint mutation occurred.
+Phase 1 and the first tooling debt-reduction batch are committed locally. Commit `d5f274dcc6d9a423dd9783d21605591efdd05e65` / tree `91b5a680ecd72241a1d02332ce1f2fa19acda3f9` was verified with a clean worktree immediately after commit. Current dirty state is continuity-only preparation for the next KSSS batch; no KSSS implementation mutation has started. No GitHub, Production, DNS, Cloudflare, live-runtime, credential, old-worktree, or protected-checkpoint mutation occurred.
 
 ## COMPLETED / VERIFIED
 - Phase 1 foundation commit: `33461f6511c69b457c5f3dd069b54322d9a236a0`.
+- Generic Python CI/security + ClusterFuzz Rust migration commit: `d5f274dcc6d9a423dd9783d21605591efdd05e65`.
 - Python/Rust parity: legacy Clippy regression PASS; legacy TruffleHog regression PASS; legacy and Rust advisory checks match and PASS.
 - Rust `xtask` tests: 23/23 PASS on stable and 23/23 PASS on MSRV 1.97.1.
 - Rust 1.97.1 `cargo check --locked -p xtask`: PASS.
@@ -28,10 +29,10 @@ Phase 1 is committed. Phase 2 has locally verified Rust replacements for five Py
 - Workflow actionlint and integrated secret-scan/security workflow execution are NOT VERIFIED locally and remain exact-head CI requirements.
 
 ## BLOCKERS / REMAINING WORK
-No local engineering blocker for this batch. Remaining debt is 116 owned non-Rust source files plus 14 execution-wiring files. KSSS Python is intentionally deferred to the next isolated security-governance batch. Node/CJS, PowerShell, E2E, and frontend remain later phases.
+No local engineering blocker. Remaining debt is 116 owned non-Rust source files plus 14 execution-wiring files and one proven platform-required thin-adapter exception. KSSS Python is now the active isolated security-governance batch. Node/CJS, PowerShell, E2E, and frontend remain later phases.
 
 ## NEXT ACTION
-Run continuity gate/regression tests and final affected local checks. If green, create the local checkpoint commit for this batch. Then inspect KSSS Python contracts/fixtures and design a Rust replacement without weakening signed-runtime, trust-acceptance, rollback-floor, knowledge, or release-check semantics.
+Read the full KSSS README/ADR/CI/trust artifacts and all five remaining KSSS Python source files, query Graphify on the unchanged KSSS execution paths, and persist a bounded Rust replacement plan. Do not modify signed trust/runtime bytes. Implement only after the contract is fully reconciled, then parity-test before deleting Python.
 
 ## DO NOT REPEAT
 Do not rerun broad Desktop qualification while product/runtime predicates are unchanged. Do not restore the deleted Python helpers, hide workflow shell debt, weaken secret/advisory exactness, touch unrelated worktrees, or mutate the protected checkpoint.

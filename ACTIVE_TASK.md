@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 2 — burn down bounded non-Rust tooling debt after the committed Rust language-policy foundation.
+PHASE 3 — migrate the KSSS Python consumer/gate surface to Rust as an isolated security-governance batch after the committed generic tooling migration.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -34,13 +34,13 @@ PHASE 2 — burn down bounded non-Rust tooling debt after the committed Rust lan
 No local engineering blocker for this batch. Local `actionlint` is unavailable, so changed workflow syntax/lint and end-to-end TruffleHog integration remain NOT VERIFIED until GitHub CI or equivalent validated tooling runs.
 
 ## Last Completed Action
-Strengthened the language guard for workflow shell blocks, reconciled the single proven baseline omission, and qualified the Rust tooling replacement on stable/MSRV/Clippy/FMT.
+Committed the verified generic Python CI/security + ClusterFuzz Rust migration as `d5f274dcc6d9a423dd9783d21605591efdd05e65`, tree `91b5a680ecd72241a1d02332ce1f2fa19acda3f9`; worktree was clean immediately after commit.
 
 ## Current Action
-Reconcile continuity to the verified batch state, run continuity/diff/affected validation, then checkpoint the batch in a local commit.
+Read and reconcile the KSSS README, ADR, CI call sites, signed/runtime trust inputs, Python consumer/loader/trust-acceptance/test/gate code, and Graphify execution paths before any KSSS mutation.
 
 ## Next Action
-After the batch commit, inspect and migrate the KSSS Python consumer/gate surface as a separate security-sensitive batch without weakening signed-runtime/trust/rollback semantics.
+Design the minimum Rust KSSS adapter/consumer surface that preserves signed runtime verification, rollback floor, reference parity, risk/applicability behavior, knowledge lookup, change invalidation, and release-check contracts; only then implement and parity-test it before deleting Python.
 
 ## Verification Required
 - `cargo run --locked -p xtask -- language-policy check` = PASS with 116 source debt / 14 execution debt / 1 exception / zero unapproved.
