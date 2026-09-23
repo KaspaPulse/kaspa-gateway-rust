@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 6 — Node/CJS repository-gate migration is IN PROGRESS. Network-generation is COMMITTED; runtime-automation-claims is VERIFIED_LOCAL_PENDING_COMMIT.
+PHASE 6 — Node/CJS repository-gate migration is IN PROGRESS. Network-generation and runtime-automation-claims are COMMITTED; effective-node-settings gate is the next isolated direct-CI family.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -39,13 +39,13 @@ PHASE 6 — Node/CJS repository-gate migration is IN PROGRESS. Network-generatio
 No local engineering blocker. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` are unavailable, so workflow/supply-chain qualification for the changed dependency/workflow surface remains NOT VERIFIED until exact-head GitHub CI.
 
 ## Last Completed Action
-Verified the runtime-automation-claims CJS-to-Rust family locally with debt reduced 109→108; all affected checks and focused Graphify are green.
+Committed the verified runtime-automation-claims Rust family as `02c75b87060da96efe8b843deefccdf8363ff459`, tree `21d61d96672c2d0eaf7a9c5d6a86f41a2f79eb38`; source debt is 108 and the worktree was clean immediately after commit.
 
 ## Current Action
-Reconcile continuity for the verified runtime-automation-claims Rust port, review/stage exact scope, and create one local checkpoint commit.
+Port `tools/kgw_effective_node_settings_gate.cjs` to Rust as a read-only contract gate over the unchanged Node/Bridge/Rust source inputs, with explicit regression tests before retiring CJS.
 
 ## Next Action
-After the runtime-automation checkpoint commit, select the next smallest independent Node/CJS gate family and repeat parity-first Rust migration without replaying valid prior evidence.
+After effective-node-settings parity passes, switch its CI callsite, retire only that CJS file, qualify the affected Rust tooling surface, Graphify it, and checkpoint-commit before choosing another family.
 
 ## Verification Required
 - `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 85 / source debt 108 / execution debt 14 / exception 1 / zero unapproved.

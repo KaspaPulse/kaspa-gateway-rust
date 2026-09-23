@@ -3,9 +3,9 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified network-generation checkpoint is `5494f580c9426155c5a848289595175f02d3d7d7`, tree `de118b193a861bd611fe337e96955ce163cb6d29`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified runtime-automation checkpoint is `02c75b87060da96efe8b843deefccdf8363ff459`, tree `21d61d96672c2d0eaf7a9c5d6a86f41a2f79eb38`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **DIRTY** with only the intentional runtime-automation-claims Rust migration batch plus continuity updates; product source inputs are unchanged.
+- Working tree: **NOT VERIFIED** after this state-document update; verify dynamically before effective-node-settings source mutation. Commit `02c75b8...` was verified clean.
 - Current Rust source inventory: 85.
 - Current owned non-Rust programming source debt: 108.
 - Current non-Rust execution-wiring debt: 14.
@@ -23,7 +23,7 @@
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Run continuity/diff check for the verified runtime-automation batch, stage/review exact scope, create one local checkpoint commit, then select the next independent Node/CJS gate family. Do not replay KSSS/network-generation/runtime-automation qualification without predicate invalidation.
+Port `tools/kgw_effective_node_settings_gate.cjs` to Rust with parity-first regression coverage over unchanged product source. Do not replay KSSS/network-generation/runtime-automation qualification without predicate invalidation.
 
 ## DO NOT REPEAT
 Do not replay Desktop runtime/native/E2E/release qualification without predicate invalidation. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted Python adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.
