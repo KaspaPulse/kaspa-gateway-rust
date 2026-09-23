@@ -8,6 +8,7 @@ mod fuzz_build;
 mod ksss;
 mod language_policy;
 mod network_generation;
+mod npm_dependency_policy;
 mod runtime_automation_claims;
 mod security_advisories;
 mod trufflehog_policy;
@@ -49,6 +50,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- desktop-version-contract-gate
   cargo run -p xtask -- effective-node-settings-gate
   cargo run -p xtask -- network-generation-gate
+  cargo run -p xtask -- npm-dependency-policy-gate --workspace <desktop|e2e> --ci-log <path>
   cargo run -p xtask -- runtime-automation-claims-gate
   cargo run -p xtask -- fuzz-build
   cargo run -p xtask --features ksss -- ksss <check|trust-verify|evaluate|knowledge|release-check|materialize> [options]"
@@ -149,6 +151,16 @@ fn run() -> Result<(), CliError> {
             let message = network_generation::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
+        }
+        "npm-dependency-policy-gate" => {
+            match npm_dependency_policy::run_cli(&mut args, &repo_root()?) {
+                Ok(message) => {
+                    println!("{message}");
+                    Ok(())
+                }
+                Err(error) if error.code == 2 => Err(CliError::usage(error.message)),
+                Err(error) => Err(CliError::failure(error.message)),
+            }
         }
         "runtime-automation-claims-gate" => {
             if args.next().is_some() {

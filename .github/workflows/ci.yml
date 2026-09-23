@@ -233,7 +233,7 @@ jobs:
       - name: Verify desktop npm dependency policy
         id: desktop-npm-policy
         run: >-
-          node tools/kgw_npm_dependency_policy_gate.cjs
+          cargo run --locked -p xtask -- npm-dependency-policy-gate
           --workspace desktop
           --ci-log apps/kaspa-gateway-desktop/npm-ci.log
 
@@ -250,7 +250,7 @@ jobs:
       - name: Verify E2E npm dependency policy
         id: e2e-npm-policy
         run: >-
-          node tools/kgw_npm_dependency_policy_gate.cjs
+          cargo run --locked -p xtask -- npm-dependency-policy-gate
           --workspace e2e
           --ci-log e2e/npm-ci.log
 
@@ -265,7 +265,7 @@ jobs:
           retention-days: 3
 
       - name: Verify npm dependency policy gate regression tests
-        run: node tools/kgw_npm_dependency_policy_gate_tests.cjs
+        run: cargo test --locked -p xtask npm_dependency_policy::tests
 
       - name: Lint desktop JavaScript
         working-directory: apps/kaspa-gateway-desktop
