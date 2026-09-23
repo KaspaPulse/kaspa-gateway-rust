@@ -13,6 +13,7 @@ mod project_continuity;
 mod runtime_automation_claims;
 mod runtime_repository_binding;
 mod security_advisories;
+mod static_contracts;
 mod trufflehog_policy;
 
 use language_policy::{Mode, run_language_policy};
@@ -56,6 +57,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- project-continuity-gate
   cargo run -p xtask -- runtime-automation-claims-gate
   cargo run -p xtask -- runtime-repository-binding-gate [--strict] [--online|--fresh] [--offline] [--json]
+  cargo run -p xtask -- static-contract-regressions
   cargo run -p xtask -- fuzz-build
   cargo run -p xtask --features ksss -- ksss <check|trust-verify|evaluate|knowledge|release-check|materialize> [options]"
 }
@@ -201,6 +203,17 @@ fn run() -> Result<(), CliError> {
                     message: String::new(),
                 })
             }
+        }
+        "static-contract-regressions" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "static-contract-regressions takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = static_contracts::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
         }
         "fuzz-build" => {
             if args.next().is_some() {
