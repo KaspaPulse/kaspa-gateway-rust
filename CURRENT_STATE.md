@@ -3,11 +3,11 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified runtime-automation checkpoint is `02c75b87060da96efe8b843deefccdf8363ff459`, tree `21d61d96672c2d0eaf7a9c5d6a86f41a2f79eb38`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified effective-node-settings checkpoint is `8798af0557384c83cbb8c1b075678a7a01266647`, tree `4d3efb911c707f6f07362609ff2425d2be1a8d14`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **NOT VERIFIED** after this state-document update; verify dynamically before effective-node-settings source mutation. Commit `02c75b8...` was verified clean.
-- Current Rust source inventory: 85.
-- Current owned non-Rust programming source debt: 108.
+- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before effective-bridge-settings source mutation. Commit `8798af0...` was verified clean.
+- Current Rust source inventory: 86.
+- Current owned non-Rust programming source debt: 107.
 - Current non-Rust execution-wiring debt: 14.
 - Rust language guard: PASS; unapproved source=0; unapproved execution=0.
 - Technical exceptions: 1 — required ClusterFuzzLite `build.sh` thin adapter delegating project logic to Rust.
@@ -23,7 +23,7 @@
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Port `tools/kgw_effective_node_settings_gate.cjs` to Rust with parity-first regression coverage over unchanged product source. Do not replay KSSS/network-generation/runtime-automation qualification without predicate invalidation.
+Reconcile this effective-node-settings checkpoint, then port `tools/kgw_effective_bridge_settings_gate.cjs` to Rust with parity-first regression coverage over unchanged product source. Do not replay KSSS/network-generation/runtime-automation/effective-node qualification without predicate invalidation.
 
 ## DO NOT REPEAT
 Do not replay Desktop runtime/native/E2E/release qualification without predicate invalidation. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted Python adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.
