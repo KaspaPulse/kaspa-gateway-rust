@@ -3,11 +3,11 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified project-continuity checkpoint is `d23d656838397d36c4b0ebc18d96631b8210155a`, tree `2018a18baabb3b66cb6c3fe62cc0714a77bc5909`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified static-contract regression checkpoint is `cce6059c6efb9f0bc37e22ad4303c6edd7179895`, tree `240ff2da6ce155543336fa46fddb2e12c1ed76f7`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next non-direct-CI tooling mutation. Commit `d23d656...` was verified clean.
-- Current Rust source inventory: 92.
-- Current owned non-Rust programming source debt: 96.
+- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next non-direct-CI tooling mutation. Commit `cce6059...` was verified clean.
+- Current Rust source inventory: 93.
+- Current owned non-Rust programming source debt: 90.
 - Current non-Rust execution-wiring debt: 14.
 - Rust language guard: PASS; unapproved source=0; unapproved execution=0.
 - Technical exceptions: 1 — required ClusterFuzzLite `build.sh` thin adapter delegating project logic to Rust.
@@ -23,7 +23,7 @@
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Reconcile this project-continuity checkpoint, then inventory remaining non-direct-CI Node/CJS tools and choose the smallest independent Rust-portable family. `kgw_effective_bridge_settings_gate.cjs` remains deferred to frontend migration because it executes live JS behavior. Do not replay prior verified gate/KSSS qualification without predicate invalidation.
+Reconcile this static-contract checkpoint, then inventory remaining standalone/non-direct-CI Node/CJS tools and choose the next smallest independent Rust-portable family. `kgw_effective_bridge_settings_gate.cjs` remains deferred to frontend migration because it executes live JS behavior. Do not replay prior verified gate/KSSS qualification without predicate invalidation.
 
 ## DO NOT REPEAT
 Do not replay Desktop runtime/native/E2E/release qualification without predicate invalidation. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted Python adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.
