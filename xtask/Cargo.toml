@@ -6,6 +6,15 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+default = []
+ksss = ["dep:flate2", "dep:pyo3", "dep:sha2", "dep:tar", "dep:tempfile", "time/parsing"]
+
 [dependencies]
 serde_json.workspace = true
 time.workspace = true
+flate2 = { workspace = true, optional = true }
+pyo3 = { workspace = true, optional = true }
+sha2 = { workspace = true, optional = true }
+tar = { workspace = true, optional = true }
+tempfile = { workspace = true, optional = true }

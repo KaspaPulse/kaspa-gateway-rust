@@ -19,7 +19,7 @@ Replace all project-owned programming implementation outside Rust with Rust whil
 2. Isolated Server branch + durable continuity — **VERIFIED_SUCCESS**.
 3. Rust `xtask` + fail-closed language policy/inventory + CI enforcement — **VERIFIED_LOCAL / COMMITTED** at `33461f6511c69b457c5f3dd069b54322d9a236a0`.
 4. Generic Python/Shell security and CI helper migration — **VERIFIED_LOCAL / COMMITTED** at `d5f274dcc6d9a423dd9783d21605591efdd05e65`; five generic Python scripts removed after Rust parity and ClusterFuzz build logic moved to Rust.
-5. KSSS Python consumer/gate migration to Rust — **IN ANALYSIS**; signed runtime/trust/rollback/reference-parity/release-check semantics must be preserved before deletion.
+5. KSSS Python consumer/gate migration to Rust — **VERIFIED_LOCAL / COMMIT PENDING**; five owned Python files retired after 24-contract and command/crypto parity, with signed central runtime bytes unchanged.
 6. Node/CJS repository gate migration to Rust — **PENDING**.
 7. PowerShell helper migration to Rust with Windows behavior preserved — **PENDING**.
 8. WebdriverIO/Node E2E replacement with Rust-native desktop/WebDriver harness — **PENDING**.
@@ -29,7 +29,7 @@ Replace all project-owned programming implementation outside Rust with Rust whil
 12. GitHub PR exact-head CI, squash merge, exact-main qualification, durable closeout — **PENDING**.
 
 ## Progress
-The guard now reports Rust source inventory 81, owned non-Rust source debt 116, execution-wiring debt 14, unapproved debt 0, and one platform-required thin adapter exception. Rust tooling tests are 23/23 PASS on both stable and MSRV; MSRV check, stable Clippy/FMT, advisory policy, and ClusterFuzz adapter syntax pass. Workflow lint/integrated CI remains remote qualification work.
+The guard now reports Rust source inventory 83, owned non-Rust source debt 111, execution-wiring debt 14, unapproved debt 0/0, and one platform-required thin adapter exception. KSSS Rust contracts are 24/24 PASS and the full xtask suite is 47/47 PASS on stable and MSRV 1.97.1; stable check/Clippy/FMT and MSRV feature check/test pass. Old/new KSSS command outputs match semantically, including Sigstore verification with pinned Cosign v3.0.6. Workflow lint and cargo audit/deny/machete remain exact-head CI qualification work.
 
 ## Completion Criteria
 The plan closes only when strict language policy proves zero owned non-Rust implementation debt, all affected/final checks pass on supported platforms, KSSS/supply-chain controls remain intact, protected checkpoint is unchanged, final PR is squash-merged under repository rules, exact-main CI passes, and durable closeout records final SHA/tree/inventories/results.
@@ -38,4 +38,4 @@ The plan closes only when strict language policy proves zero owned non-Rust impl
 Keep Tauri/Rust backend boundaries unless evidence requires change. Prefer Tauri-supported Rust/WASM frontend with generated output clearly classified. Keep dependencies minimal/workspace-inherited. Workflow YAML stays declarative and should invoke Rust binaries instead of embedding owned scripting logic. Never auto-baseline new debt.
 
 ## NEXT ACTION
-Perform the KSSS security-governance recovery/contract analysis first; then implement a bounded Rust replacement with parity tests before retiring any KSSS Python source.
+Validate continuity/diff and commit the locally verified KSSS Rust batch. Then migrate the smallest independent Node/CJS repository-gate family to Rust, preserving exact contract behavior and shrinking debt only after affected parity passes.

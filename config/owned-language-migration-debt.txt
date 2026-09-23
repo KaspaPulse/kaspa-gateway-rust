@@ -1,10 +1,6 @@
 # Exact owned non-Rust programming source debt captured from baseline aaf2c635672c0fd35a5705579610be8de188b031.
 # One repository-relative path per line. This list may only shrink during the migration.
 # New non-Rust source is never auto-baselined and fails the Rust language policy guard.
-.security/ksss/consumer.py
-.security/ksss/runtime_loader.py
-.security/ksss/test_consumer.py
-.security/ksss/trust_acceptance.py
 apps/kaspa-gateway-desktop/eslint.config.js
 apps/kaspa-gateway-desktop/frontend/main.js
 apps/kaspa-gateway-desktop/frontend/src/app.js
@@ -83,7 +79,6 @@ tools/kgw_functional_ui_repair_tests.cjs
 tools/kgw_global_owner_gate.cjs
 tools/kgw_i18n_contract_gate.cjs
 tools/kgw_i18n_locale_coverage_gate.cjs
-tools/kgw_ksss_gate.py
 tools/kgw_live_network_smoke.ps1
 tools/kgw_live_raw_log_matrix.ps1
 tools/kgw_log_ui_tests.cjs

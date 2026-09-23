@@ -1,5 +1,7 @@
 mod clippy_policy;
 mod fuzz_build;
+#[cfg(feature = "ksss")]
+mod ksss;
 mod language_policy;
 mod security_advisories;
 mod trufflehog_policy;
@@ -36,7 +38,8 @@ fn usage() -> &'static str {
   cargo run -p xtask -- check-clippy-results <cargo-clippy-jsonl>
   cargo run -p xtask -- check-security-advisories [--max-age-days N]
   cargo run -p xtask -- check-trufflehog-results <jsonl>
-  cargo run -p xtask -- fuzz-build"
+  cargo run -p xtask -- fuzz-build
+  cargo run -p xtask --features ksss -- ksss <check|trust-verify|evaluate|knowledge|release-check|materialize> [options]"
 }
 fn repo_root() -> Result<PathBuf, CliError> {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -91,11 +94,24 @@ fn run() -> Result<(), CliError> {
             println!("{message}");
             Ok(())
         }
+        "ksss" => run_ksss(&mut args),
         _ => Err(CliError::usage(format!(
             "unknown xtask command: {command}\n{}",
             usage()
         ))),
     }
+}
+
+#[cfg(feature = "ksss")]
+fn run_ksss(args: &mut impl Iterator<Item = String>) -> Result<(), CliError> {
+    ksss::run_cli(args, &repo_root()?).map_err(CliError::failure)
+}
+
+#[cfg(not(feature = "ksss"))]
+fn run_ksss(_args: &mut impl Iterator<Item = String>) -> Result<(), CliError> {
+    Err(CliError::usage(
+        "KSSS commands require --features ksss\n".to_owned() + usage(),
+    ))
 }
 
 fn run_language_policy_command(args: &mut impl Iterator<Item = String>) -> Result<(), CliError> {

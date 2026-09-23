@@ -14,10 +14,14 @@
 - Prior Desktop 0.1.3 qualification is reused only for unchanged validity predicates. Any migrated surface is requalified proportionally; prior PASS is never transferred to changed code.
 - Graphify architecture extraction succeeded on an exact-baseline analysis-only clone on `kas` after the Server/Python 3.13 Graphify process crashed; development Git remains on Server.
 - Phase 1 Rust-native `xtask`/language-policy foundation is committed locally as `33461f6511c69b457c5f3dd069b54322d9a236a0`; the first tooling debt-reduction batch is committed as `d5f274dcc6d9a423dd9783d21605591efdd05e65`, tree `91b5a680ecd72241a1d02332ce1f2fa19acda3f9`.
-- Current measured state after the committed tooling batch: Rust source inventory 81; owned non-Rust source debt 116; non-Rust execution-wiring debt 14; unapproved debt 0/0; one platform-required ClusterFuzzLite thin-adapter exception.
-- Current phase: security-sensitive KSSS Python consumer/gate migration analysis and bounded Rust replacement.
-- NEXT ACTION: read the complete KSSS consumer/trust/rollback/release-check contract and relevant ADR/CI/trust artifacts, then design the smallest Rust replacement without changing signed trust material or weakening governance.
-- DO NOT REPEAT: broad previous release qualification without predicate invalidation; do not touch old dirty worktrees, protected checkpoint, or use Linguist suppression as a substitute for migration.
+- KSSS phase-boundary continuity is committed locally as `33f1f5e15a72bca5bb313d577b36b57890b39619`, tree `057de701d9b9aa20c7c3d71f6dd4ddbe1b2f789e`.
+- Current measured state after the locally verified KSSS Rust migration: Rust source inventory 83; owned non-Rust source debt 111; non-Rust execution-wiring debt 14; unapproved debt 0/0; one platform-required ClusterFuzzLite thin-adapter exception.
+- The KGW-owned KSSS adapter is Rust/PyO3. Five Python adapter/gate files were retired only after 24 focused Rust contracts and old/new command parity, including Sigstore verification. The signed central Python runtime remains unchanged inside its verified archive.
+- KSSS affected qualification PASS: full xtask 47/47 on stable and MSRV 1.97.1; stable check/Clippy/FMT; MSRV feature check/test; signed runtime SHA-256 unchanged.
+- Local actionlint/cargo-audit/cargo-deny/cargo-machete are unavailable, so those dependency/workflow predicates remain NOT VERIFIED until exact-head GitHub CI.
+- Current phase: reconcile and commit the verified KSSS Rust batch, then begin bounded Node/CJS repository-gate migration.
+- NEXT ACTION: run continuity/diff validation, checkpoint the KSSS batch locally, then select the smallest independent Node/CJS gate family and migrate it to Rust with affected parity.
+- DO NOT REPEAT: broad previous release qualification or verified KSSS parity/tests without predicate invalidation; do not touch old dirty worktrees/protected checkpoint or use Linguist suppression as a substitute for migration.
 
 ## Previous closed-task reconciliation — 2026-09-23
 

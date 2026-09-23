@@ -3,25 +3,27 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified local checkpoint commit is `d5f274dcc6d9a423dd9783d21605591efdd05e65`, tree `91b5a680ecd72241a1d02332ce1f2fa19acda3f9`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last committed KSSS phase boundary is `33f1f5e15a72bca5bb313d577b36b57890b39619`, tree `057de701d9b9aa20c7c3d71f6dd4ddbe1b2f789e`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **DIRTY** only because continuity is being advanced to the KSSS batch after the verified clean `d5f274d...` checkpoint; no KSSS implementation mutation has started yet.
-- Current Rust source inventory: 81.
-- Current owned non-Rust programming source debt: 116.
+- Working tree: **DIRTY** with the intentional, locally verified KSSS Rust-adapter migration batch; no unrelated files are part of this worktree.
+- Current Rust source inventory: 83.
+- Current owned non-Rust programming source debt: 111.
 - Current non-Rust execution-wiring debt: 14.
 - Rust language guard: PASS; unapproved source=0; unapproved execution=0.
-- Technical exceptions: 1 — required ClusterFuzzLite `build.sh` thin adapter delegating all project logic to Rust.
-- Strict Rust guard: expected FAIL while migration debt remains.
-- Rust replacement tests: 23/23 PASS on stable and 23/23 PASS on MSRV 1.97.1.
-- MSRV check PASS; stable Clippy `-D warnings` PASS; workspace FMT PASS; advisory policy PASS; ClusterFuzz adapter syntax PASS.
+- Technical exceptions: 1 — required ClusterFuzzLite `build.sh` thin adapter delegating project logic to Rust.
+- KSSS owned adapter: Rust/PyO3; five superseded KGW-owned Python adapter/gate files removed after parity.
+- Signed KSSS central runtime: unchanged third-party archive; SHA-256 `38309d2ab8fa30096d99940f855e88173faa182e60db33f2a96b2d3408507430`.
+- KSSS Rust regressions: 24/24 PASS; full xtask tests: 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
+- Stable check/Clippy `-D warnings`/FMT PASS; MSRV feature check/test PASS.
+- Old/new KSSS semantic parity: PASS for check/evaluate/knowledge/release-check/trust, including cryptographic verification with pinned Cosign v3.0.6.
 - Continuity validation after this state update: **NOT VERIFIED** until rerun.
-- Workflow actionlint/integrated GitHub jobs: **NOT VERIFIED** locally; exact-head CI required.
+- Local actionlint/cargo-audit/cargo-deny/cargo-machete: **NOT VERIFIED / unavailable locally**; exact-head GitHub CI is required.
 - Production/DNS/Cloudflare/live runtime mutation: NO.
 - Protected historical checkpoint mutation: NO.
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Read the complete KSSS consumer/trust/rollback/release-check contract and authoritative ADR/CI/trust artifacts, run Graphify queries on the unchanged KSSS surface, classify exact replacement boundaries, and persist a write-ahead KSSS implementation plan before any source mutation.
+Run the project continuity gate/regression tests and diff check on this reconciled KSSS state. If green, review/stage and create the KSSS local checkpoint commit. Then start bounded Node/CJS repository-gate migration; do not replay KSSS parity/tests unless their source or dependency predicates change.
 
 ## DO NOT REPEAT
-Do not replay previous Desktop runtime/native/E2E/release qualification without predicate invalidation. Do not touch unrelated worktrees, weaken fingerprint/security policies, or reintroduce the deleted Python helpers.
+Do not replay Desktop runtime/native/E2E/release qualification without predicate invalidation. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted Python adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.

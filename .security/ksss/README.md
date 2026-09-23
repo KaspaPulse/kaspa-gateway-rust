@@ -13,8 +13,12 @@ Application runtime, release qualification and production remain NOT VERIFIED.
   03ed150c4af0fb8b1cd353720e8c9972db4551b6, .security/ksss/.
 - Maki and Gov Forms establish the consumer pattern; KGW keeps its own Tauri,
   node, bridge and Windows process boundaries.
-- runtime_loader.py adds Windows environment support and a rollback floor.
-  trust_acceptance.py changes only the repository label.
+- The KGW-owned adapter now lives in Rust under `xtask/src/ksss.rs`. It verifies
+  the pinned runtime/trust material, enforces the rollback floor, and embeds the
+  verified central runtime through PyO3; no KGW-owned Python glue remains.
+- Python 3.12+ is a runtime dependency only for the signed central KSSS artifact.
+  The resolver, classifier, schema registry, and knowledge engine remain byte-bound
+  third-party runtime code inside the verified archive.
 - reference-parity.json retains its original Gov Forms schema/provenance.
   Its 34 source comparisons are reused only while their hashes match the
   identical signed runtime. The KGW gate checks that binding on every run.
@@ -24,12 +28,14 @@ Application runtime, release qualification and production remain NOT VERIFIED.
 
 ## Local commands
 
-Use Python 3.12 or newer from the repository root:
+Use the Rust adapter from the repository root. Python 3.12+ must remain available
+for the embedded signed central runtime:
 
 ```text
-python -B tools/kgw_ksss_gate.py
-python -B .security/ksss/consumer.py evaluate --base <exact-base-sha> --output <outside-repository.json>
-python -B .security/ksss/consumer.py knowledge --context <query.json>
+cargo run --locked -p xtask --features ksss -- ksss check
+cargo test --locked -p xtask --features ksss ksss::tests
+cargo run --locked -p xtask --features ksss -- ksss evaluate --base <exact-base-sha> --output <outside-repository.json>
+cargo run --locked -p xtask --features ksss -- ksss knowledge --context <query.json>
 ```
 
 Normal evaluation is offline and needs no external KSSS checkout.
@@ -37,12 +43,13 @@ For adoption/update, verify release and runtime signatures using pinned Cosign
 v3.0.6 and the pinned trusted roots before accepting changed trust material:
 
 ```text
-python -B .security/ksss/trust_acceptance.py verify --explicit-time <UTC-time> --require-cryptographic --cosign <cosign-path> --output <trust-result.json>
+cargo run --locked -p xtask --features ksss -- ksss trust-verify --explicit-time <UTC-time> --require-cryptographic --cosign <cosign-path> --output <trust-result.json>
 ```
 
-CI runs cryptographic acceptance, the offline gate and an exact-base change
-evaluation before the existing quality job. No CI workflow was run remotely
-during this local-only adoption task. Existing Rust/npm checks are preserved.
+CI runs cryptographic acceptance, the Rust rejection-contract suite, offline
+adoption, and change/freshness evaluation before the existing quality job.
+The historical 2026-09-20 adoption task did not run remote CI; current integration
+status and authorization are owned by ACTIVE_TASK.md/CURRENT_STATE.md.
 
 ## Evidence and learning
 
@@ -69,12 +76,13 @@ Each includes actual IPC, settings, owned process/endpoints, raw output, UI stat
 stop/restart, crash and close/relaunch proof. Testnet13 stays explicitly opt-in.
 
 ```text
-python -B .security/ksss/consumer.py release-check --receipt <receipt.json> --artifact <candidate.exe> --evidence-root <directory> --environment-fingerprint <expected-64-hex>
+cargo run --locked -p xtask --features ksss -- ksss release-check --receipt <receipt.json> --artifact <candidate.exe> --evidence-root <directory> --environment-fingerprint <expected-64-hex>
 ```
 
 This validates a supplied receipt and evidence-file hashes; it does not execute
 the application or establish the truth of a test operator's observations.
 A reviewer must independently confirm the real packaged application evidence.
 Synthetic unit fixtures are never runtime qualification. This command is not a
-publisher or deployment workflow. Current task authority ends at a local commit
-and local mirror checkpoint; GitHub push, app launch and deployment are excluded.
+publisher or deployment workflow and grants no external-action authority. The active
+task may authorize governed GitHub integration separately; Production, DNS, Cloudflare,
+live-runtime credentials, and unrelated deployment mutation remain outside this contract.

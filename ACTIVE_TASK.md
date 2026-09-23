@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 3 — migrate the KSSS Python consumer/gate surface to Rust as an isolated security-governance batch after the committed generic tooling migration.
+PHASE 4 — the KSSS Rust adapter migration is VERIFIED_LOCAL; reconcile and commit this security-governance batch, then begin bounded Node/CJS repository-gate migration.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -24,34 +24,38 @@ PHASE 3 — migrate the KSSS Python consumer/gate surface to Rust as an isolated
 - The strengthened guard now classifies inline GitHub Actions shell logic; one omitted pre-existing workflow debt path was reconciled only after proving exact baseline blob identity.
 - Five owned Python CI/security policy scripts were ported to Rust `xtask`, parity-tested, and removed.
 - ClusterFuzzLite build logic moved to Rust `xtask`; required `.clusterfuzzlite/build.sh` is now a six-line platform adapter only.
-- Current guard: Rust source inventory 81; owned non-Rust source debt 116; execution-wiring debt 14; unapproved source 0; unapproved execution 0; technical exceptions 1; migration guard PASS.
-- Rust replacement tests: 23/23 PASS on stable and 23/23 PASS on MSRV 1.97.1.
-- MSRV 1.97.1 `cargo check --locked -p xtask` PASS; stable Clippy `-D warnings` PASS; workspace FMT PASS.
-- Advisory policy Rust command PASS and matches the prior Python result. ClusterFuzz adapter `bash -n` PASS.
-- Previous Desktop runtime/native/E2E/release evidence remains reusable because this batch changes repository tooling/workflows only, not application runtime/product source.
+- Generic tooling guard baseline before KSSS was Rust 81 / source debt 116 / execution debt 14 / exception 1.
+- The KGW-owned KSSS adapter is now Rust under `xtask`; five superseded KSSS Python adapter/gate files are removed only after parity.
+- Signed central KSSS Python runtime remains unchanged inside the verified archive; its SHA-256 is still `38309d2ab8fa30096d99940f855e88173faa182e60db33f2a96b2d3408507430`.
+- Rust KSSS rejection contracts are 24/24 PASS; the complete xtask suite is 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
+- Old Python and new Rust adapters produced identical semantic JSON for check/evaluate/knowledge/release-check/structural trust, and cryptographic trust parity PASS with verified Cosign v3.0.6.
+- Stable check/Clippy `-D warnings`/FMT PASS; MSRV KSSS check/test PASS.
+- Current language guard: Rust source 83; owned non-Rust source debt 111; execution debt 14; unapproved 0/0; technical exception 1; PASS.
+- Previous Desktop runtime/native/E2E/release evidence remains reusable because application runtime/product source is untouched.
 
 ## Current Blocker
-No local engineering blocker for this batch. Local `actionlint` is unavailable, so changed workflow syntax/lint and end-to-end TruffleHog integration remain NOT VERIFIED until GitHub CI or equivalent validated tooling runs.
+No local engineering blocker. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` are unavailable, so workflow/supply-chain qualification for the changed dependency/workflow surface remains NOT VERIFIED until exact-head GitHub CI.
 
 ## Last Completed Action
-Committed the verified generic Python CI/security + ClusterFuzz Rust migration as `d5f274dcc6d9a423dd9783d21605591efdd05e65`, tree `91b5a680ecd72241a1d02332ce1f2fa19acda3f9`; worktree was clean immediately after commit.
+Completed local KSSS Rust migration qualification: 24/24 focused KSSS tests and 47/47 full xtask tests PASS on stable/MSRV, cryptographic old/new parity PASS, language guard PASS at source debt 111, and signed trust/runtime bytes unchanged.
 
 ## Current Action
-Read and reconcile the KSSS README, ADR, CI call sites, signed/runtime trust inputs, Python consumer/loader/trust-acceptance/test/gate code, and Graphify execution paths before any KSSS mutation.
+Reconcile continuity and stage/review the locally verified KSSS Rust batch for one checkpoint commit.
 
 ## Next Action
-Design the minimum Rust KSSS adapter/consumer surface that preserves signed runtime verification, rollback floor, reference parity, risk/applicability behavior, knowledge lookup, change invalidation, and release-check contracts; only then implement and parity-test it before deleting Python.
+After the KSSS checkpoint commit, use the valid Graphify baseline plus current source to inventory Node/CJS repository gates, choose the smallest independent gate family, and migrate it to Rust with affected-surface parity before shrinking debt again.
 
 ## Verification Required
-- `cargo run --locked -p xtask -- language-policy check` = PASS with 116 source debt / 14 execution debt / 1 exception / zero unapproved.
-- `cargo test --locked -p xtask` = 23/23 PASS.
-- Rust 1.97.1 check/test for `xtask` = PASS.
-- Stable `cargo clippy --locked -p xtask --all-targets -- -D warnings` = PASS.
+- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 83 / source debt 111 / execution debt 14 / exception 1 / zero unapproved.
+- `cargo test --locked -p xtask --features ksss` = 47/47 PASS on stable.
+- Rust 1.97.1 `cargo check/test --locked -p xtask --features ksss` = PASS / 47/47.
+- Stable `cargo clippy --locked -p xtask --all-targets --features ksss -- -D warnings` = PASS.
 - `cargo fmt --all -- --check` = PASS.
-- `bash -n .clusterfuzzlite/build.sh` = PASS.
-- Project continuity gate and regression tests = PASS after this state update.
-- `git diff --check` = PASS.
-- Changed workflow lint and integrated secret-scan/security jobs remain required in exact-head CI.
+- KSSS old/new semantic parity = PASS for check/evaluate/knowledge/release-check/trust, including cryptographic Sigstore verification.
+- Signed KSSS runtime/trust evidence bytes = unchanged.
+- Project continuity gate and regression tests must PASS after this state update.
+- `git diff --check` must PASS.
+- Workflow lint, cargo-audit, cargo-deny, cargo-machete, and integrated GitHub security jobs remain required in exact-head CI.
 
 ## Completion Criteria
 - `OWNED_PROGRAMMING_IMPLEMENTATION=100_PERCENT_RUST`.

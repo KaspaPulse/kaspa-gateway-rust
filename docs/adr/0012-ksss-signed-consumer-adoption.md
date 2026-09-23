@@ -12,11 +12,13 @@ must not substitute for proof of actual packaged application behavior.
 
 ## Decision
 Consume the signed v1.2.0 runtime pinned to central source
-967ed5068947a39961d5d5cc483ef65d25a61059 using a thin KGW adapter.
+967ed5068947a39961d5d5cc483ef65d25a61059 using a thin Rust-owned KGW adapter.
 Reuse Gov Forms' exact trust material and source comparison evidence where the
 signed bytes are identical; reverify cryptographic acceptance locally.
 Run the existing central resolver, classifier, schemas and knowledge logic from
-the verified archive. Normal evaluation remains offline.
+the verified archive. The signed central runtime remains third-party Python and
+is embedded through PyO3; KGW must not copy or reimplement that policy engine.
+Normal evaluation remains offline.
 Keep KGW-specific applicability, threat boundaries and runtime receipt contract.
 Risk floors survive profile selection. Source/tree/artifact/environment changes
 invalidate evidence. Learning is separate from service restoration.
@@ -36,8 +38,13 @@ Governance PASS does not certify application health or authorize publication.
 ## Validation and related records
 See .security/ksss/README.md, its contract tests, trust/evidence/v1.2.0/,
 and docs/handoff-ledger/2026-09-20-kgw-ksss-v1.2-adoption.md.
-Local cryptographic acceptance and 24 focused tests pass. No live runtime claim.
-No GitHub PR or deployment is part of this decision.
+The Rust adapter preserves local cryptographic acceptance and the 24 focused
+rejection contracts, with command-level semantic parity verified against the
+superseded Python adapter before retirement. No live runtime claim follows from
+KSSS adoption or adapter parity.
 
 ## Change history
 2026-09-20: recorded owner-directed local repository adoption.
+2026-09-23: migrated the KGW-owned adapter from Python to feature-gated Rust while
+preserving the signed central runtime, trust roots, rollback floor, reference parity,
+24 rejection contracts, and the application/runtime claim boundary.
