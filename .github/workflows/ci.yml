@@ -293,7 +293,7 @@ jobs:
         run: cargo run --locked -p xtask -- runtime-automation-claims-gate
 
       - name: Verify desktop version contract
-        run: node tools/kgw_desktop_version_contract_gate.cjs
+        run: cargo run --locked -p xtask -- desktop-version-contract-gate
 
       - name: Verify desktop artifact workflow contract
         run: node tools/kgw_desktop_artifacts_workflow_gate.cjs

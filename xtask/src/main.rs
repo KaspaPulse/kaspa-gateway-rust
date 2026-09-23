@@ -1,4 +1,5 @@
 mod clippy_policy;
+mod desktop_version;
 mod effective_node_settings;
 mod fuzz_build;
 #[cfg(feature = "ksss")]
@@ -41,6 +42,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- check-clippy-results <cargo-clippy-jsonl>
   cargo run -p xtask -- check-security-advisories [--max-age-days N]
   cargo run -p xtask -- check-trufflehog-results <jsonl>
+  cargo run -p xtask -- desktop-version-contract-gate
   cargo run -p xtask -- effective-node-settings-gate
   cargo run -p xtask -- network-generation-gate
   cargo run -p xtask -- runtime-automation-claims-gate
@@ -86,6 +88,17 @@ fn run() -> Result<(), CliError> {
             let path = exactly_one(&mut args, "TruffleHog JSONL path")?;
             let message =
                 trufflehog_policy::check_file(Path::new(&path)).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "desktop-version-contract-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "desktop-version-contract-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = desktop_version::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
