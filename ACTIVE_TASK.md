@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 6 — Node/CJS repository-gate migration is IN PROGRESS. The first independent family, network-generation gate + regression tests, is VERIFIED_LOCAL_PENDING_COMMIT.
+PHASE 6 — Node/CJS repository-gate migration is IN PROGRESS. Network-generation is COMMITTED; runtime-automation-claims is VERIFIED_LOCAL_PENDING_COMMIT.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -30,25 +30,27 @@ PHASE 6 — Node/CJS repository-gate migration is IN PROGRESS. The first indepen
 - Rust KSSS rejection contracts are 24/24 PASS; the complete xtask suite is 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
 - Old Python and new Rust adapters produced identical semantic JSON for check/evaluate/knowledge/release-check/structural trust, and cryptographic trust parity PASS with verified Cosign v3.0.6.
 - Stable check/Clippy `-D warnings`/FMT PASS; MSRV KSSS check/test PASS.
-- Current language guard after the network-generation port: Rust source 84; owned non-Rust source debt 109; execution debt 14; unapproved 0/0; technical exception 1; PASS.
-- Network-generation Node/CJS family is ported to Rust `xtask`; legacy Node gate/tests passed before deletion, Rust gate PASS, six Rust regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, and focused Graphify post-change refresh/query PASS.
+- Current language guard after the runtime-automation-claims port: Rust source 85; owned non-Rust source debt 108; execution debt 14; unapproved 0/0; technical exception 1; PASS.
+- Network-generation Node/CJS family is committed as `5494f580c9426155c5a848289595175f02d3d7d7`.
+- Runtime-automation-claims gate is ported to Rust `xtask`; legacy gate PASS before deletion, Rust gate PASS, four regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, and focused Graphify post-change refresh/query PASS.
 - Previous Desktop runtime/native/E2E/release evidence remains reusable because application runtime/product source is untouched.
 
 ## Current Blocker
 No local engineering blocker. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` are unavailable, so workflow/supply-chain qualification for the changed dependency/workflow surface remains NOT VERIFIED until exact-head GitHub CI.
 
 ## Last Completed Action
-Verified the first Node/CJS migration family locally: `kgw_network_generation_gate.cjs` and its CJS tests are superseded by Rust `xtask`, with debt reduced 111→109 and all affected local checks green.
+Verified the runtime-automation-claims CJS-to-Rust family locally with debt reduced 109→108; all affected checks and focused Graphify are green.
 
 ## Current Action
-Reconcile continuity for the verified network-generation Rust port, review/stage its exact scope, and create one local checkpoint commit.
+Reconcile continuity for the verified runtime-automation-claims Rust port, review/stage exact scope, and create one local checkpoint commit.
 
 ## Next Action
-After the network-generation checkpoint commit, select the next smallest independent Node/CJS gate family and repeat parity-first Rust migration without replaying valid KSSS/network-generation evidence.
+After the runtime-automation checkpoint commit, select the next smallest independent Node/CJS gate family and repeat parity-first Rust migration without replaying valid prior evidence.
 
 ## Verification Required
-- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 84 / source debt 109 / execution debt 14 / exception 1 / zero unapproved.
-- Network-generation Rust gate = PASS; network-generation regressions = 6/6 PASS on stable and MSRV 1.97.1; focused Graphify update/query = PASS.
+- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 85 / source debt 108 / execution debt 14 / exception 1 / zero unapproved.
+- Network-generation evidence remains reusable from commit `5494f58...`.
+- Runtime-automation Rust gate = PASS; regressions = 4/4 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - `cargo test --locked -p xtask --features ksss` = 47/47 PASS on stable.
 - Rust 1.97.1 `cargo check/test --locked -p xtask --features ksss` = PASS / 47/47.
 - Stable `cargo clippy --locked -p xtask --all-targets --features ksss -- -D warnings` = PASS.

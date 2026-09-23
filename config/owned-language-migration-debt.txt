@@ -92,7 +92,6 @@ tools/kgw_project_continuity_gate_tests.cjs
 tools/kgw_raw_log_clipboard_capture.ps1
 tools/kgw_raw_log_provenance_gate.cjs
 tools/kgw_restore_latest_frontend_tests.cjs
-tools/kgw_runtime_automation_claims_gate.cjs
 tools/kgw_runtime_repository_binding_apply.ps1
 tools/kgw_runtime_repository_binding_audit.cjs
 tools/kgw_runtime_repository_binding_audit.ps1

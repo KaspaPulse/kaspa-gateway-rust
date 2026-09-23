@@ -290,7 +290,7 @@ jobs:
         run: node tools/kgw_runtime_repository_binding_gate_tests.cjs
 
       - name: Verify runtime automation claims
-        run: node tools/kgw_runtime_automation_claims_gate.cjs
+        run: cargo run --locked -p xtask -- runtime-automation-claims-gate
 
       - name: Verify desktop version contract
         run: node tools/kgw_desktop_version_contract_gate.cjs

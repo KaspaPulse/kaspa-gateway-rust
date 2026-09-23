@@ -4,6 +4,7 @@ mod fuzz_build;
 mod ksss;
 mod language_policy;
 mod network_generation;
+mod runtime_automation_claims;
 mod security_advisories;
 mod trufflehog_policy;
 
@@ -40,6 +41,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- check-security-advisories [--max-age-days N]
   cargo run -p xtask -- check-trufflehog-results <jsonl>
   cargo run -p xtask -- network-generation-gate
+  cargo run -p xtask -- runtime-automation-claims-gate
   cargo run -p xtask -- fuzz-build
   cargo run -p xtask --features ksss -- ksss <check|trust-verify|evaluate|knowledge|release-check|materialize> [options]"
 }
@@ -93,6 +95,18 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = network_generation::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "runtime-automation-claims-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "runtime-automation-claims-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message =
+                runtime_automation_claims::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
