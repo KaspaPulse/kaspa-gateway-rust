@@ -296,7 +296,7 @@ jobs:
         run: cargo run --locked -p xtask -- desktop-version-contract-gate
 
       - name: Verify desktop artifact workflow contract
-        run: node tools/kgw_desktop_artifacts_workflow_gate.cjs
+        run: cargo run --locked -p xtask -- desktop-artifacts-workflow-gate
 
       - name: Verify desktop release draft workflow contract
         run: cargo run --locked -p xtask -- desktop-release-draft-workflow-gate
