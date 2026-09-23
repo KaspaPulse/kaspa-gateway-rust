@@ -10,6 +10,7 @@ mod language_policy;
 mod network_generation;
 mod npm_dependency_policy;
 mod runtime_automation_claims;
+mod runtime_repository_binding;
 mod security_advisories;
 mod trufflehog_policy;
 
@@ -52,6 +53,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- network-generation-gate
   cargo run -p xtask -- npm-dependency-policy-gate --workspace <desktop|e2e> --ci-log <path>
   cargo run -p xtask -- runtime-automation-claims-gate
+  cargo run -p xtask -- runtime-repository-binding-gate [--strict] [--online|--fresh] [--offline] [--json]
   cargo run -p xtask -- fuzz-build
   cargo run -p xtask --features ksss -- ksss <check|trust-verify|evaluate|knowledge|release-check|materialize> [options]"
 }
@@ -173,6 +175,19 @@ fn run() -> Result<(), CliError> {
                 runtime_automation_claims::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
+        }
+        "runtime-repository-binding-gate" => {
+            let result = runtime_repository_binding::run_cli(&mut args, &repo_root()?)
+                .map_err(CliError::failure)?;
+            println!("{}", result.output);
+            if result.code == 0 {
+                Ok(())
+            } else {
+                Err(CliError {
+                    code: result.code,
+                    message: String::new(),
+                })
+            }
         }
         "fuzz-build" => {
             if args.next().is_some() {

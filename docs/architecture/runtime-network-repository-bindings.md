@@ -86,15 +86,14 @@ testnet13         -> dagknight / Tn13 (explicit opt-in)
 
 Run:
 
-```powershell
-node tools\kgw_runtime_repository_binding_audit.cjs
+```text
+cargo run --locked -p xtask -- runtime-repository-binding-gate --strict --online
 ```
 
 Expected result:
 
 ```text
-network=mainnet;family=mainline;branch=stable;node_repo=https://github.com/kaspanet/rusty-kaspa.git;bridge_repo=https://github.com/kaspanet/rusty-kaspa.git
-network=testnet10;family=mainline;branch=stable;node_repo=https://github.com/kaspanet/rusty-kaspa.git;bridge_repo=https://github.com/kaspanet/rusty-kaspa.git
-network=testnet13;family=tn13;branch=dagknight;node_repo=https://github.com/kaspanet/rusty-kaspa.git;bridge_repo=https://github.com/kaspanet/rusty-kaspa.git
-status=PASS
+KGW_RUNTIME_REPOSITORY_BINDING_GATE_R21C_PASSED
+errors: 0
+warnings: 0
 ```

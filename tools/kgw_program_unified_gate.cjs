@@ -176,7 +176,6 @@ const syntaxTargets = [
   "tools/kgw_global_owner_gate.cjs",
   "tools/kgw_i18n_contract_gate.cjs",
   "tools/kgw_i18n_locale_coverage_gate.cjs",
-  "tools/kgw_runtime_repository_binding_gate.cjs",
   "tools/kgw_bridge_node_mode_routing_audit_v1.cjs",
   "tools/kgw_runtime_trace_owner_audit_v20.cjs",
   "tools/kgw_parallel_self_worker_runtime_gate.cjs",
@@ -195,15 +194,15 @@ runStep("i18n_locale_coverage_gate", nodeExe, ["tools/kgw_i18n_locale_coverage_g
 
 runStep(
   "runtime_repository_binding_gate_offline",
-  nodeExe,
-  ["tools/kgw_runtime_repository_binding_gate.cjs", "--strict", "--offline", "--json"]
+  "cargo",
+  ["run", "--locked", "-p", "xtask", "--", "runtime-repository-binding-gate", "--strict", "--offline", "--json"]
 );
 
 if (!skipOnline) {
   runStep(
     "runtime_repository_binding_gate_online_latest",
-    nodeExe,
-    ["tools/kgw_runtime_repository_binding_gate.cjs", "--strict", "--json"]
+    "cargo",
+    ["run", "--locked", "-p", "xtask", "--", "runtime-repository-binding-gate", "--strict", "--json"]
   );
 }
 

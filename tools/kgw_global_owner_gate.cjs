@@ -31,10 +31,8 @@ const KGW_R54D3_OWNER_REGISTRY = Object.freeze({
 // KGW_RUNTIME_REPOSITORY_BINDING_UNIFIED_GATE_R21C
 // The runtime repository binding gate is intentionally read-only.
 // Canonical command:
-//   node tools/kgw_runtime_repository_binding_gate.cjs --strict --online --json
-// Compatibility wrappers:
-//   node tools/kgw_runtime_repository_binding_audit.cjs
-//   powershell -NoProfile -ExecutionPolicy Bypass -File tools/kgw_runtime_repository_binding_audit.ps1
+//   cargo run --locked -p xtask -- runtime-repository-binding-gate --strict --online --json
+// Legacy Node/PowerShell compatibility wrappers were retired after Rust parity.
 
 /*
  * KGW_CANONICAL_GLOBAL_OWNER_GATE_R3C_REGISTRY_REFINEMENT

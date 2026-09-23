@@ -284,10 +284,10 @@ jobs:
         run: cargo test --locked -p xtask network_generation::tests
 
       - name: Verify runtime repository binding contract
-        run: node tools/kgw_runtime_repository_binding_gate.cjs --offline --strict
+        run: cargo run --locked -p xtask -- runtime-repository-binding-gate --offline --strict
 
       - name: Verify runtime repository binding gate regression tests
-        run: node tools/kgw_runtime_repository_binding_gate_tests.cjs
+        run: cargo test --locked -p xtask runtime_repository_binding::tests
 
       - name: Verify runtime automation claims
         run: cargo run --locked -p xtask -- runtime-automation-claims-gate
