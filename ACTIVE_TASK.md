@@ -30,7 +30,7 @@ PHASE 7 — direct-CI static Node/CJS gate migration is VERIFIED_LOCAL / COMMITT
 - Rust KSSS rejection contracts are 24/24 PASS; the complete xtask suite is 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
 - Old Python and new Rust adapters produced identical semantic JSON for check/evaluate/knowledge/release-check/structural trust, and cryptographic trust parity PASS with verified Cosign v3.0.6.
 - Stable check/Clippy `-D warnings`/FMT PASS; MSRV KSSS check/test PASS.
-- Current language guard after the standalone static-contract regression batch: Rust source 93; owned non-Rust source debt 90; execution debt 14; unapproved 0/0; technical exception 1; PASS.
+- Current language guard after the parallel-self-worker Rust migration: Rust source 94; owned non-Rust source debt 89; execution debt 14; unapproved 0/0; technical exception 1; PASS.
 - Network-generation Node/CJS family is committed as `5494f580c9426155c5a848289595175f02d3d7d7`.
 - Runtime-automation-claims gate is ported to Rust `xtask`; legacy gate PASS before deletion, Rust gate PASS, four regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, and focused Graphify post-change refresh/query PASS.
 - Effective-node-settings gate is ported to Rust `xtask` and committed as `8798af0557384c83cbb8c1b075678a7a01266647`; legacy gate PASS before deletion, Rust gate PASS, five regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, language guard PASS, and focused Graphify PASS.
@@ -41,6 +41,7 @@ PHASE 7 — direct-CI static Node/CJS gate migration is VERIFIED_LOCAL / COMMITT
 - Runtime-repository-binding canonical gate/tests and legacy audit wrappers are ported/retired in commit `a296932742847b232844603ab5d38e1417fae9f1`; legacy/Rust offline+online PASS, 11 regressions PASS stable/MSRV, Clippy/FMT/check PASS, focused Graphify PASS, and the mutating `apply.ps1` remains unchanged for the later PowerShell phase.
 - Project-continuity gate/tests are ported to Rust and committed as `d23d656838397d36c4b0ebc18d96631b8210155a`; the real Rust gate PASS, 9/9 positive/fail-closed regressions PASS on stable/MSRV, Clippy/FMT/check PASS, and focused Graphify PASS.
 - Six standalone static contract regressions (analysis, Explorer lint, functional UI, Settings workflow, AUD-010 Tauri seam, and programmatic restore) are consolidated in Rust `xtask` and committed as `cce6059c6efb9f0bc37e22ad4303c6edd7179895`; legacy six PASS before retirement, Rust aggregate PASS, 12/12 regressions PASS stable/MSRV, Clippy/FMT/check PASS, and focused Graphify PASS.
+- Parallel-self-worker runtime contract gate is ported to Rust and committed as `dd1dbe88562bc4a22f173b53c7a6fd7f35014376`; the legacy CRLF-sensitive extractor was corrected before retirement, both legacy/Rust real gates PASS, 5/5 regressions PASS stable/MSRV, and focused Graphify PASS.
 - `kgw_effective_bridge_settings_gate.cjs` remains intentionally deferred because it executes live frontend JavaScript via Node `vm`; replacing it now without a JS engine would weaken coverage, while adding an engine only for transitional tooling would increase supply-chain surface.
 - Previous Desktop runtime/native/E2E/release evidence remains reusable because application runtime/product source is untouched.
 
@@ -48,16 +49,16 @@ PHASE 7 — direct-CI static Node/CJS gate migration is VERIFIED_LOCAL / COMMITT
 No local engineering blocker. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` are unavailable, so workflow/supply-chain qualification for the changed dependency/workflow surface remains NOT VERIFIED until exact-head GitHub CI.
 
 ## Last Completed Action
-Committed the verified standalone static-contract Rust regression family as `cce6059c6efb9f0bc37e22ad4303c6edd7179895`, tree `240ff2da6ce155543336fa46fddb2e12c1ed76f7`; source debt is 90 and the worktree was clean immediately after commit.
+Committed the verified parallel-self-worker Rust gate as `dd1dbe88562bc4a22f173b53c7a6fd7f35014376`, tree `4b58ca2f27865580001bb7a9852001772b8ac614`; source debt is 89 and the worktree was clean immediately after commit.
 
 ## Current Action
-Reconcile continuity to the committed static-contract boundary, then inventory the remaining standalone/non-direct-CI Node/CJS tooling and choose the next smallest independent family that can be ported to Rust without touching frontend/runtime behavior.
+Reconcile continuity to the committed parallel-self-worker boundary, then port the i18n locale-coverage + i18n contract static gate family to Rust. Their current CJS failures/successes must be captured explicitly before retirement.
 
 ## Next Action
-Port the next smallest independent non-direct-CI Node/CJS tooling family with parity-first validation, favoring standalone static/read-only contracts before dynamic frontend harnesses. Keep dynamic effective-bridge coverage until frontend Rust/WASM replacement.
+Port the i18n static gate family with parity-first validation, preserving all reference extraction, dictionary flattening, locale coverage, unbound-text/dynamic-literal/quote-risk, and runtime-marker checks. Keep dynamic effective-bridge coverage until frontend Rust/WASM replacement.
 
 ## Verification Required
-- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 93 / source debt 90 / execution debt 14 / exception 1 / zero unapproved.
+- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 94 / source debt 89 / execution debt 14 / exception 1 / zero unapproved.
 - Network-generation evidence remains reusable from commit `5494f58...`.
 - Runtime-automation Rust gate = PASS; regressions = 4/4 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Effective-node-settings Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
@@ -68,6 +69,7 @@ Port the next smallest independent non-direct-CI Node/CJS tooling family with pa
 - Runtime-repository-binding Rust gate = PASS offline/online; regressions = 11/11 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Project-continuity Rust gate = PASS; regressions = 9/9 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Static-contract Rust aggregate = PASS; regressions = 12/12 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
+- Parallel-self-worker Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - `cargo test --locked -p xtask --features ksss` = 47/47 PASS on stable.
 - Rust 1.97.1 `cargo check/test --locked -p xtask --features ksss` = PASS / 47/47.
 - Stable `cargo clippy --locked -p xtask --all-targets --features ksss -- -D warnings` = PASS.
