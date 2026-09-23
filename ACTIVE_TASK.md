@@ -1,41 +1,52 @@
 # ACTIVE TASK
 
 ## Status
-IN PROGRESS — P0 RUNTIME LIFECYCLE & RAW LOGGING RELIABILITY
+IN PROGRESS — KASPA V2.1.0 MAINLINE UPGRADE LOCAL CHECKPOINT
 
 ## Objective
-Make network and bridge lifecycle trustworthy end-to-end: UI state must reflect real runtime ownership/readiness, Start/Stop/Restart/recovery/reconciliation must be deterministic, and Raw Log panes must contain ordered native stdout/stderr only.
+Preserve the fully qualified local Kaspa Gateway v2.1.0 upgrade candidate for stable Mainnet and Testnet10 as a source-bound, interruption-safe local checkpoint, while keeping Testnet13 explicit experimental opt-in and avoiding any remote publication/deployment.
 
 ## Scope
-- Audit UI → Tauri IPC → supervisor/runtime → managed node/bridge → stdout/stderr → reconciliation → UI.
-- Repair network and bridge lifecycle without replacing the accepted same-EXE self-worker architecture.
-- Verify ownership identity, readiness, graceful/bounded stop, restart, crash recovery, orphan/stale-state reconciliation, network isolation, bridge attachment/listener readiness, and raw-log provenance/order/identity.
-- Use the LOCAL bare Git remote for every intermediate commit/checkpoint; real GitHub push is blocked until the final local release gate passes.
-- Validate real Windows runtime on `Server`; mocks alone are insufficient.
+- Use only the authorized Windows `Server` worktree `feat/kaspa-v2.1.0-runtime-rebaseline-20260922`.
+- Preserve the accepted same-EXE self-worker runtime and official Kaspa runtime bindings.
+- Reuse qualified BUILD-014 and native runtime evidence unless product/runtime bytes change.
+- Keep Testnet10 Bridge CPU-only: no external ASIC Stratum or Prometheus listener is expected.
+- Preserve the qualified E2E CPU-only automation repair without rebuilding the product.
+- Commit/checkpoint only to the local bare mirror. No real GitHub push, PR, merge, tag, release, deployment, or Production action is authorized.
 
 ## Current Phase
-Local remediation is complete through `BUG-0010`; focused Windows recovery/in-process/close-relaunch harnesses are checkpointed locally. Baseline Windows zero-touch is VERIFIED PASS. The first focused recovery run on `f7a82e7...` proved runtime crash reconciliation is correct but exposed `BUG-0011` in the E2E stopped-state classifier. Desktop `0.1.2` remains local-only and immutable `0.1.1` remains untouched.
+Product/runtime qualification, the planned four-case native matrix, the Testnet10 CPU-only E2E repair, affected npm/static validation, Graphify refresh, and repository continuity verification are complete. The remaining authorized boundary is exact-manifest review and local checkpoint persistence.
 
 ## Confirmed Progress
-`local` remains the only push target for intermediate work and `origin` push remains disabled. Frontend raw logs/status truth, backend cross-network status responsiveness, and STARTING control semantics are repaired. READY status now retains and reports exact worker/parent identity plus runtime endpoint semantics without changing ownership behavior.
+- BUILD-014-A4 is VERIFIED_SUCCESS for artifact SHA-256 `39A7E1D923414677F8510DCEC2B6EACA4F01317D7A1E1868E3F2821BCA12F3A2`.
+- Native Node Mainnet and Node Testnet10 are VERIFIED_SUCCESS.
+- Native External Bridge Mainnet is VERIFIED_SUCCESS.
+- Native External Bridge Testnet10 is VERIFIED_SUCCESS_CPU_ONLY with `listener_count=0`, no ASIC/Prometheus listener, and progressing CPU hash samples `1,1,21`.
+- E2E CPU-only remediation touches five E2E files only; targeted syntax, npm check, npm lint, deepmerge security smoke, runtime-port smoke, bridge-locator smoke, recovery-harness smoke, network-generation gate/regressions, diff-check, and Graphify refresh/query are PASS.
+- Project continuity gate and continuity regression tests are PASS after current-state reconciliation.
+- Historical build manifest and all external evidence receipts remain preserved. Final checkpoint identity is owned by the external operation journal plus the most recent manifest generated immediately before staging; do not rely on an older embedded manifest hash as forever-current.
 
 ## Current Blocker
-BUG-0011 LOCAL FIX VERIFIED; focused Windows rerun pending. Runtime already reports `running=false;readiness=FAILED` after exact-owner crash while retaining PID identity as terminal evidence; the E2E helper incorrectly treated retained PID as liveness.
+`FAIL-0004`: exact native parent PID 4404 remains idle after `CloseMainWindow` and Tauri normal close attempts. All runtime owner statuses are stopped, child runtime workers are absent, and task runtime ports are free. Tauri `Window.destroy()` is blocked by capability policy and OS force-kill is not authorized. This blocker does not invalidate the four-case native runtime evidence; it blocks only the clean single-parent no-file-trace A/B close-root-cause experiment.
 
 ## Last Completed Action
-Workspace Rust tests pass, the Desktop E2E-feature cargo check passes, and the full local gate advanced through raw-log checks. `BUG-0006` frontend regression and `kgw_true_raw_log_gate.ps1` now pass after preserving typed child rawText while rejecting only untyped transport envelopes.
+Repository-native continuity reconciliation is verified: project continuity gate PASS, positive plus seven fail-closed regression cases PASS, and `git diff --check` PASS. A source-bound candidate manifest was also verified before this final checkpoint-wording update.
 
 ## Current Action
-Checkpoint BUG-0011 locally, transfer exact HEAD to `Server`, and rerun only the focused node lifecycle recovery spec. Then continue with the already-checkpointed in-process Bridge and native close/relaunch focused tests.
+This file is part of the local checkpoint boundary. Before creating or updating that checkpoint, regenerate the final manifest for the exact current Git changed/untracked path set, require zero mismatch and zero path delta, stage only those manifest-bound files, and verify the cached diff.
 
 ## Next Action
-Verify BUG-0011 on Windows with only `lifecycle-recovery.e2e.js`; if green, run the focused in-process Bridge and native close/relaunch coverage without repeating the baseline matrix. No real GitHub push is allowed yet.
+Derive the checkpoint state dynamically. If the current branch has not yet been persisted to the `local` bare mirror, finish the verified manifest/cached-diff review, create one local `[skip ci]` checkpoint commit, and push only that branch to `local` without force. If the local mirror already resolves to that checkpoint, no further runtime action is authorized while `FAIL-0004` remains; proceed to owner review or wait for a separately authorized safe close capability.
 
 ## Verification Required
-Focused regression per defect; full runtime IPC suite; frontend lifecycle/raw-log gates; workspace tests/security gates; production desktop build/artifact; real Windows lifecycle sequences for mainnet/testnet10 and supported bridge modes; no orphan/stale/false READY; final local audit.
+- Final path/hash manifest immediately before staging with zero mismatches and zero path delta.
+- Cached path set exactly equal to the final manifest.
+- `git diff --cached --check` and cached diff/file classification.
+- Local commit tree identity and local bare-mirror ref identity.
+- No additional product build, Cargo tests, native runtime cases, npm checks, or Graphify unless relevant inputs change.
 
 ## Completion Criteria
-All local release-gate items pass; no known P0/P1 lifecycle/raw-log issue remains; final release commit/artifact/evidence is locally verified; only then one final push to real GitHub followed by exact-commit deployment and production verification.
+A durable local checkpoint commit exists on the task branch and local bare mirror with source-bound evidence/state reconciliation; all already-qualified product/runtime/E2E evidence remains correctly scoped; `FAIL-0004` remains explicitly BLOCKED rather than misreported as fixed; no real GitHub/release/deployment action occurs.
 
 ## DO NOT REPEAT
-Do not push intermediate work to GitHub, weaken ownership/READY/stop contracts, replace raw stdout/stderr with diagnostics, kill unrelated Kaspa processes, rewrite accepted runtime topology, or treat mocks/CI as real Windows runtime proof.
+Do not rerun BUILD-014, the four planned native cases, the already-passed E2E/static/npm checks, continuity tests, or Graphify unless their validity predicates change. Do not force-kill PID 4404, start a second desktop parent, enable Testnet13, weaken Mainnet Stratum assertions, overwrite historical evidence, reset/stash/restore user work, or perform any real GitHub/release/deployment action.

@@ -37,9 +37,9 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["net", "rt-multi-thread", "sync", "time"] }
 
-kaspa-grpc-client-mainline = { package = "kaspa-grpc-client", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "98a4ccd8d200853787f227bd4536ac540cf34957", optional = true }
-kaspa-rpc-core-mainline = { package = "kaspa-rpc-core", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "98a4ccd8d200853787f227bd4536ac540cf34957", optional = true }
-kaspa-stratum-bridge-mainline = { package = "kaspa-stratum-bridge", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "98a4ccd8d200853787f227bd4536ac540cf34957", optional = true }
+kaspa-grpc-client-mainline = { package = "kaspa-grpc-client", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "01b532e8b553523216471682649693af92f0fd16", optional = true }
+kaspa-rpc-core-mainline = { package = "kaspa-rpc-core", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "01b532e8b553523216471682649693af92f0fd16", optional = true }
+kaspa-stratum-bridge-mainline = { package = "kaspa-stratum-bridge", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "01b532e8b553523216471682649693af92f0fd16", optional = true }
 kaspa-grpc-client-tn13 = { package = "kaspa-grpc-client", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "ad45e241e6688a14901fd24dd8dc33c5c9a33f40", optional = true }
 kaspa-rpc-core-tn13 = { package = "kaspa-rpc-core", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "ad45e241e6688a14901fd24dd8dc33c5c9a33f40", optional = true }
 kaspa-stratum-bridge-tn13 = { package = "kaspa-stratum-bridge", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "ad45e241e6688a14901fd24dd8dc33c5c9a33f40", optional = true }

@@ -30,7 +30,7 @@ Clone the canonical effective settings, apply the custom loopback RPC/P2P values
 - Unrelated PID `35540` retained ports `16110/16111` with unchanged process start time throughout.
 
 ## Regression Protection
-`live_smoke_parent_accepts_only_valid_stable_network_runtime_settings` uses non-default isolated ports and asserts top-level/effective RPC and P2P equality. Existing tests continue to reject testnet12 and non-loopback smoke endpoints.
+`live_smoke_parent_accepts_only_valid_stable_network_runtime_settings` uses non-default isolated ports and asserts top-level/effective RPC and P2P equality. Existing tests continue to reject testnet13 and non-loopback smoke endpoints.
 
 ## Remaining Risk
 Short smoke does not prove full initial block download or long-duration production capacity. Both smoke runs reported `IsSynced=false`; the Windows smoke drive had about 570 GB free, below the runbook's 640 GB production-disk guideline.
@@ -39,4 +39,4 @@ Short smoke does not prove full initial block download or long-duration producti
 No further action for `REG-0002`. Any future full-sync production-readiness exercise must use a host/storage profile that meets the documented requirements.
 
 ## DO NOT REPEAT
-Do not stop unrelated PID `35540`, bypass the effective-settings equality check, invoke the self-worker directly as a smoke substitute, start testnet12 without explicit experimental scope, or claim full production readiness from short-smoke peer connectivity.
+Do not stop unrelated PID `35540`, bypass the effective-settings equality check, invoke the self-worker directly as a smoke substitute, start testnet13 without explicit experimental scope, or claim full production readiness from short-smoke peer connectivity.

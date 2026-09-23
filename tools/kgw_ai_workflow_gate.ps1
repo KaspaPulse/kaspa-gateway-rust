@@ -78,7 +78,7 @@ if ($AgentsText) {
     Require-AgentsPattern $AgentsText "(?is)local-first workflow.*build, test, and run locally" "local-first build/test/run rule"
     Require-AgentsPattern $AgentsText "(?is)display the real native process stdout and stderr" "raw stdout and stderr display rule"
     Require-AgentsPattern $AgentsText "(?is)database directories, ports, runtime state, logs, and operating-system processes isolated by network" "network isolation rule"
-    Require-AgentsPattern $AgentsText "(?is)testnet12.*experimental.*disabled by default.*explicit opt-in" "testnet12 explicit opt-in rule"
+    Require-AgentsPattern $AgentsText "(?is)testnet13.*experimental.*disabled by default.*explicit opt-in" "testnet13 explicit opt-in rule"
     Require-AgentsPattern $AgentsText "(?is)definition of done.*formatting.*javascript.*rust.*graphify" "definition-of-done test rules"
     Require-AgentsPattern $AgentsText "(?is)do not push" "no-push rule"
 }

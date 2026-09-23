@@ -225,12 +225,12 @@ jobs:
           grep -F "REQUESTED_COMMIT_SHA=$REQUESTED_COMMIT_SHA" "$win_smoke" >/dev/null
           grep -F "WINDOWS_INSTALLER_SMOKE=PASS" "$win_smoke" >/dev/null
           grep -F "WINDOWS_UNINSTALL_SMOKE=PASS" "$win_smoke" >/dev/null
-          grep -F "TESTNET12_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL" "$win_smoke" >/dev/null
+          grep -F "TESTNET13_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL" "$win_smoke" >/dev/null
 
           grep -F "REQUESTED_COMMIT_SHA=$REQUESTED_COMMIT_SHA" "$mac_smoke" >/dev/null
           grep -F "MACOS_DMG_SMOKE=PASS" "$mac_smoke" >/dev/null
           grep -F "MACOS_ARCHITECTURE_PROOF=UNIVERSAL_ARM64_X86_64" "$mac_smoke" >/dev/null
-          grep -F "TESTNET12_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL" "$mac_smoke" >/dev/null
+          grep -F "TESTNET13_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL" "$mac_smoke" >/dev/null
 
           verify_artifact() {
             local subject="$1"

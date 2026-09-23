@@ -1,8 +1,32 @@
 # PROJECT STATE
 
+## Current Authoritative Reconciliation — 2026-09-23
+
+- Current task: **KASPA V2.1.0 MAINLINE UPGRADE LOCAL QUALIFICATION**.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git before any decision.
+- Historical task-base observation for this reconciliation: `3bcf8d8aaa94bc303aba558788f101edef48b5b2`.
+- Current remote main: **VERIFY DYNAMICALLY** before any integration decision.
+- Historical GitHub-main observation during this reconciliation: `bb183816e5c315107c64411c1793c89d8ec74e8e`; its one-commit drift is workflow-only and has no product-source overlap.
+- State-document commit: derive dynamically from Git when needed; do not embed the future state commit as a forever-current identity.
+- Working tree: **DIRTY** — intentional local v2.1.0 candidate plus continuity-only reconciliation.
+- Verified code baseline for the current local task: `3bcf8d8aaa94bc303aba558788f101edef48b5b2`; current candidate identity is additionally bound by external path/hash manifests.
+- BUILD-014-A4 desktop artifact SHA-256: `39A7E1D923414677F8510DCEC2B6EACA4F01317D7A1E1868E3F2821BCA12F3A2`.
+- Planned native Windows matrix is **VERIFIED_SUCCESS 4/4**: Node Mainnet, Node Testnet10, External Bridge Mainnet, and External Bridge Testnet10 CPU-only.
+- Testnet10 External Bridge is correctly CPU-only: stable v2.1.0, `rpc_network=testnet-10`, `listener_count=0`, no external Stratum/Prometheus listener, `cpu_enabled=true`, and CPU hash samples progressed `1,1,21`.
+- The five-file E2E CPU-only automation delta is qualified by changed-file syntax, npm check/lint, deepmerge security smoke, runtime-port smoke, bridge-locator smoke, recovery-harness smoke, network-generation gate/regressions, `git diff --check`, and Graphify 0.9.57 incremental/query evidence.
+- Historical build manifest remains preserved at SHA-256 `29E91A73FF43E206143BAFE8323B22438E0B9356310D5528F55D96B4F2469FB1`.
+- Candidate manifests are external evidence and historical snapshots. Immediately before staging, regenerate and verify the final manifest against the exact current Git changed/untracked path set; read the latest manifest identity from the operation journal rather than treating an older embedded hash as forever-current.
+- Post-build E2E delta receipt SHA-256: `74913534B068582900650C10B6C52F5BE3442402C5953D693FCA2C0779ACD8B1`.
+- Current blocker: **FAIL-0004 / BLOCKED**. Exact idle parent PID 4404 did not exit through authorized normal close paths. Runtime workers are zero and task ports are free. Tauri destroy is capability-blocked; force termination was not authorized or used. Close root cause remains **NOT VERIFIED**.
+- Real GitHub push, PR, merge, tag, release, deployment, staging mutation, and Production mutation are **NOT AUTHORIZED** for this task. Authorized Git boundary is local commit/checkpoint and local bare mirror only.
+- Current checkpoint boundary: continuity gates are verified. Derive Git/local-mirror state dynamically; if the checkpoint is not yet persisted, regenerate the exact final manifest, stage only reviewed manifest-bound task files, verify cached path/hash equality and diff, create one local `[skip ci]` checkpoint commit, and mirror it only to `local`. If already checkpointed and clean, stop local execution and carry `FAIL-0004` forward.
+- DO NOT REPEAT: BUILD-014, the four native cases, already-passed E2E/npm/static checks, or Graphify unless relevant validity predicates change. Preserve PID 4404; do not start a second desktop parent or force-kill it.
+
+Historical project state remains below for context. When it conflicts with this section, verified Git/runtime/evidence and this 2026-09-23 reconciliation take precedence.
+
 ## Metadata
 
-- Last state update: 2026-09-11 during P0 Runtime Lifecycle & Raw Logging Reliability remediation after verified BUG-0002 through BUG-0005 checkpoints and local close/relaunch contract validation.
+- Last state update: 2026-09-23 during local-only Kaspa v2.1.0 mainline upgrade qualification and continuity reconciliation.
 - State author/agent: Remote Desktop Commander continuity reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
@@ -50,7 +74,7 @@
 
 - Preserve official Kaspa runtime ownership and official runtime bindings; do not reimplement official runtime behavior.
 - Preserve the zero-fake-log invariant: raw runtime panes show real official stdout/stderr only.
-- Keep `mainnet` and `testnet10` stable/supported; keep `testnet12` experimental and explicit opt-in.
+- Keep `mainnet` and `testnet10` stable/supported; keep `testnet13` experimental and explicit opt-in.
 - Keep immutable Desktop `0.1.1` bound to source `b911eb44619f8eab706bc2fe786d1c84ac958f1d` with its verified six-asset release set unchanged.
 - Preserve repaired draft-release semantics: draft-inclusive discovery, unique draft resolution by tag/target, numeric release-ID propagation, and ID-based post-create verification.
 - Keep `AGENTS.md` stable policy, `PROJECT_STATE.md` current state, ADRs durable decisions, runbooks repeatable operations, and `PLANS.md` active only for genuine multi-stage work.
@@ -111,7 +135,7 @@
 
 - Live Kaspa node/bridge runtime state: **NOT VERIFIED**. Dependency CI and release metadata are not runtime-health evidence.
 - No claim of mainnet/testnet runtime success is made from #52 tests.
-- `testnet12` live smoke was not run and remains explicit opt-in.
+- `testnet13` live smoke was not run and remains explicit opt-in.
 
 ### External Dependencies
 
@@ -264,7 +288,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 - Preserve official runtime ownership and official runtime bindings.
 - Preserve zero-fake-log policy.
-- `mainnet` and `testnet10` remain stable; `testnet12` remains experimental explicit opt-in.
+- `mainnet` and `testnet10` remain stable; `testnet13` remains experimental explicit opt-in.
 - Do not use destructive Git cleanup or discard user work.
 - Use PR-based integration and exact-head qualification for material repository changes.
 - Do not mutate immutable `desktop-v0.1.0` or `desktop-v0.1.1`.
@@ -332,7 +356,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - Workspace test qualification required an isolated `KASPA_GATEWAY_DATA_DIR`: the unisolated Server run was contaminated by preserved historical live-smoke ownership metadata under the real user data root. The external lease remains byte-identical and must not be deleted or modified.
 - With isolated data, Desktop library reached 77/77 PASS and integrated runtime IPC reached 55/55 PASS. A subsequent rk-bridge test exposed only a Windows-vs-Unix bind-diagnostic expectation; production correctly returned FAILED and never READY. The assertion was patched test-only, but the exact corrected test execution was TOOL_BLOCKED before start, so final workspace/all-targets PASS is NOT VERIFIED after that last test-only patch.
 - No production runtime source change was made for either final test-compatibility repair. Application/package qualification remains source-relevant because the later changes are confined to `#[cfg(test)]`/integration-test code.
-- No staging, commit, push, PR, merge, tag, release, deployment, Production, DNS, Testnet12, real-user database, shared credential, or live-provider qualification was performed. Unrelated kaspad PID 33436 / ports 16110 and 16111 remain excluded.
+- No staging, commit, push, PR, merge, tag, release, deployment, Production, DNS, Testnet13, real-user database, shared credential, or live-provider qualification was performed. Unrelated kaspad PID 33436 / ports 16110 and 16111 remain excluded.
 - Canonical detailed remediation checkpoint/evidence: `C:/KGW-Local-Validation/audits/functional-surface-ee92134/CURRENT.md` and `assessment-20260913T210623Z/continuation-20260914/remediation-all-20260914` below that audit root.
 - NEXT SAFE ACTION: owner review. If the tool block is later removed without source drift, execute only the exact corrected rk-bridge bind-diagnostic test and then the isolated workspace/all-targets gate; do not repeat green UI, package, Graphify, lifecycle, CLI, Explorer, or stable-network matrices without relevant source/environment changes.
 

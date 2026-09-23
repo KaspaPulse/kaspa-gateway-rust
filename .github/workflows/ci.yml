@@ -207,6 +207,18 @@ jobs:
       - name: Verify effective Bridge settings contract
         run: node tools/kgw_effective_bridge_settings_gate.cjs
 
+      - name: Verify active network generation contract
+        run: node tools/kgw_network_generation_gate.cjs
+
+      - name: Verify active network generation gate regression tests
+        run: node tools/kgw_network_generation_gate_tests.cjs
+
+      - name: Verify runtime repository binding contract
+        run: node tools/kgw_runtime_repository_binding_gate.cjs --offline --strict
+
+      - name: Verify runtime repository binding gate regression tests
+        run: node tools/kgw_runtime_repository_binding_gate_tests.cjs
+
       - name: Verify runtime automation claims
         run: node tools/kgw_runtime_automation_claims_gate.cjs
 

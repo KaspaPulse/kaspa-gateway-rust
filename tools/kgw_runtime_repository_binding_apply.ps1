@@ -21,18 +21,36 @@ function Cargo-Line([string]$alias, [string]$package, [object]$binding) {
   return "$alias = { package = ""$package"", git = ""$($binding.repo)"", $($spec.Key) = ""$($spec.Value)"", optional = true }"
 }
 
-function Replace-Cargo-Line([string]$path, [string]$alias, [string]$line) {
-  $lines = Get-Content $path
-  $found = $false
-  for ($i = 0; $i -lt $lines.Count; $i++) {
-    if ($lines[$i].TrimStart().StartsWith("$alias = {")) {
-      $lines[$i] = $line
-      $found = $true
-      break
-    }
+function Simple-Cargo-Line([string]$alias, [object]$binding) {
+  $spec = Get-Spec $binding
+  return "$alias = { git = ""$($binding.repo)"", $($spec.Key) = ""$($spec.Value)"" }"
+}
+
+$Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+
+function Read-Text([string]$path) {
+  return [System.IO.File]::ReadAllText((Resolve-Path $path))
+}
+
+function Source-Newline([string]$text) {
+  if ($text.Contains("`r`n")) { return "`r`n" }
+  return "`n"
+}
+
+function Write-Text-If-Changed([string]$path, [string]$before, [string]$after) {
+  if ($after -ne $before) {
+    [System.IO.File]::WriteAllText((Resolve-Path $path), $after, $Utf8NoBom)
   }
-  if (-not $found) { throw "Missing Cargo alias: $alias in $path" }
-  Set-Content $path $lines -Encoding UTF8
+}
+
+function Replace-Cargo-Line([string]$path, [string]$alias, [string]$line) {
+  $text = Read-Text $path
+  $pattern = "(?m)^(?<indent>[ \t]*)" + [regex]::Escape($alias) + "[ \t]*=[ \t]*\{[^\r\n]*\}[ \t]*(?=\r?$)"
+  $match = [regex]::Match($text, $pattern)
+  if (-not $match.Success) { throw "Missing Cargo alias: $alias in $path" }
+  $replacement = $match.Groups["indent"].Value + $line
+  $next = $text.Substring(0, $match.Index) + $replacement + $text.Substring($match.Index + $match.Length)
+  Write-Text-If-Changed $path $text $next
 }
 
 function Get-Family-Groups {
@@ -51,7 +69,7 @@ function Get-Family-Groups {
 }
 
 function Network-Arm([string[]]$networks, [string]$value) {
-  $map = @{ mainnet = "Self::Mainnet"; testnet10 = "Self::Testnet10"; testnet12 = "Self::Testnet12" }
+  $map = @{ mainnet = "Self::Mainnet"; testnet10 = "Self::Testnet10"; testnet13 = "Self::Testnet13" }
   $left = ($networks | ForEach-Object { $map[$_] }) -join " | "
   return "            $left => $value,"
 }
@@ -80,7 +98,7 @@ function Node-Family-Function {
   $groups = Get-Family-Groups
   $arms = @()
   foreach ($key in $groups.Keys) {
-    $enum = if ($key -eq "mainline") { "KaspaRuntimeFamily::Mainline" } elseif ($key -eq "tn12") { "KaspaRuntimeFamily::Tn12" } else { throw "Unsupported node family: $key" }
+    $enum = if ($key -eq "mainline") { "KaspaRuntimeFamily::Mainline" } elseif ($key -eq "tn13") { "KaspaRuntimeFamily::Tn13" } else { throw "Unsupported node family: $key" }
     $arms += Network-Arm $groups[$key].Networks $enum
   }
   return @("    pub fn family(self) -> KaspaRuntimeFamily {", "        match self {") + $arms + @("        }", "    }") -join "`n"
@@ -90,16 +108,18 @@ function Bridge-Family-Function {
   $groups = Get-Family-Groups
   $arms = @()
   foreach ($key in $groups.Keys) {
-    $enum = if ($key -eq "mainline") { "BridgeRuntimeFamily::Mainline" } elseif ($key -eq "tn12") { "BridgeRuntimeFamily::Tn12" } else { throw "Unsupported bridge family: $key" }
+    $enum = if ($key -eq "mainline") { "BridgeRuntimeFamily::Mainline" } elseif ($key -eq "tn13") { "BridgeRuntimeFamily::Tn13" } else { throw "Unsupported bridge family: $key" }
     $arms += Network-Arm $groups[$key].Networks $enum
   }
   return @("    pub fn family(self) -> BridgeRuntimeFamily {", "        match self {") + $arms + @("        }", "    }") -join "`n"
 }
 
 function Replace-Rust-Function([string]$path, [string]$signature, [string]$replacement) {
-  $text = Get-Content $path -Raw
+  $text = Read-Text $path
   $start = $text.IndexOf($signature)
   if ($start -lt 0) { throw "Missing Rust function signature: $signature in $path" }
+  $lineStart = $text.LastIndexOf("`n", $start)
+  if ($lineStart -lt 0) { $lineStart = 0 } else { $lineStart++ }
   $braceStart = $text.IndexOf("{", $start)
   if ($braceStart -lt 0) { throw "Missing Rust function body: $signature in $path" }
   $depth = 0
@@ -107,8 +127,10 @@ function Replace-Rust-Function([string]$path, [string]$signature, [string]$repla
     if ($text[$i] -eq "{") { $depth++ }
     if ($text[$i] -eq "}") { $depth-- }
     if ($depth -eq 0) {
-      $next = $text.Substring(0, $start) + $replacement + $text.Substring($i + 1)
-      Set-Content $path $next -Encoding UTF8
+      $newline = Source-Newline $text
+      $stableReplacement = $replacement.Replace("`r`n", "`n").Replace("`n", $newline)
+      $next = $text.Substring(0, $lineStart) + $stableReplacement + $text.Substring($i + 1)
+      Write-Text-If-Changed $path $text $next
       return
     }
   }
@@ -116,21 +138,40 @@ function Replace-Rust-Function([string]$path, [string]$signature, [string]$repla
 }
 
 $mainline = Get-BindingByFamily "mainline"
-$tn12 = Get-BindingByFamily "tn12"
+$tn13 = Get-BindingByFamily "tn13"
 
 $NodeCargo = "crates\kaspa-gateway-rk-node\Cargo.toml"
 $BridgeCargo = "crates\kaspa-gateway-rk-bridge\Cargo.toml"
+$CliCargo = "apps\kaspa-gateway-cli\Cargo.toml"
+$CoreCargo = "crates\kaspa-gateway-core\Cargo.toml"
 $ServiceController = "crates\kaspa-gateway-rk-node\src\kgw_service_controller.rs"
 $OfficialRuntime = "crates\kaspa-gateway-rk-node\src\official_kaspa_runtime.rs"
 $BridgeRuntime = "crates\kaspa-gateway-rk-bridge\src\lib.rs"
 
-Replace-Cargo-Line $NodeCargo "kaspad-lib-mainline" (Cargo-Line "kaspad-lib-mainline" "kaspad" $mainline)
-Replace-Cargo-Line $NodeCargo "kaspa-utils-mainline" (Cargo-Line "kaspa-utils-mainline" "kaspa-utils" $mainline)
-Replace-Cargo-Line $NodeCargo "kaspad-lib-tn12" (Cargo-Line "kaspad-lib-tn12" "kaspad" $tn12)
-Replace-Cargo-Line $NodeCargo "kaspa-utils-tn12" (Cargo-Line "kaspa-utils-tn12" "kaspa-utils" $tn12)
+foreach ($family in @("mainline", "tn13")) {
+  $binding = Get-BindingByFamily $family
+  $nodeAliases = @($binding.nodeAliases)
+  $nodePackages = @($binding.packages.node)
+  if ($nodeAliases.Count -ne $nodePackages.Count) {
+    throw "Node alias/package count mismatch for family: $family"
+  }
+  for ($i = 0; $i -lt $nodeAliases.Count; $i++) {
+    Replace-Cargo-Line $NodeCargo $nodeAliases[$i] (Cargo-Line $nodeAliases[$i] $nodePackages[$i] $binding)
+  }
 
-Replace-Cargo-Line $BridgeCargo "kaspa-stratum-bridge-mainline" (Cargo-Line "kaspa-stratum-bridge-mainline" "kaspa-stratum-bridge" $mainline)
-Replace-Cargo-Line $BridgeCargo "kaspa-stratum-bridge-tn12" (Cargo-Line "kaspa-stratum-bridge-tn12" "kaspa-stratum-bridge" $tn12)
+  $bridgeAliases = @($binding.bridgeAliases)
+  $bridgePackages = @($binding.packages.bridge)
+  if ($bridgeAliases.Count -ne $bridgePackages.Count) {
+    throw "Bridge alias/package count mismatch for family: $family"
+  }
+  for ($i = 0; $i -lt $bridgeAliases.Count; $i++) {
+    Replace-Cargo-Line $BridgeCargo $bridgeAliases[$i] (Cargo-Line $bridgeAliases[$i] $bridgePackages[$i] $binding)
+  }
+}
+
+Replace-Cargo-Line $CliCargo "kaspa-grpc-client-live" (Cargo-Line "kaspa-grpc-client-live" "kaspa-grpc-client" $mainline)
+Replace-Cargo-Line $CliCargo "kaspa-rpc-core-live" (Cargo-Line "kaspa-rpc-core-live" "kaspa-rpc-core" $mainline)
+Replace-Cargo-Line $CoreCargo "kaspa-addresses" (Simple-Cargo-Line "kaspa-addresses" $mainline)
 
 Replace-Rust-Function $ServiceController "pub fn branch(self) -> &'static str" (Branch-Function)
 Replace-Rust-Function $ServiceController "pub fn revision(self) -> &'static str" (Revision-Function)

@@ -2,7 +2,7 @@
 
 ## Scope
 
-This runbook covers qualification, recovery verification, publication, and post-publication verification for Kaspa Gateway Desktop GitHub Releases. It does not start/stop Kaspa node or bridge runtimes and does not authorize `testnet12` live smoke.
+This runbook covers qualification, recovery verification, publication, and post-publication verification for Kaspa Gateway Desktop GitHub Releases. It does not start/stop Kaspa node or bridge runtimes and does not authorize `testnet13` live smoke.
 
 The active release-candidate-specific state belongs in `PROJECT_STATE.md`/`PLANS.md`; this runbook is the durable procedure. Published immutable release history remains historical evidence, not a reusable version identity.
 
@@ -14,7 +14,7 @@ Before any release mutation:
 2. Verify `main`, open PRs, the main ruleset, exact release source SHA, qualified Desktop Artifacts run, current latest public release, and any existing draft release.
 3. Verify the exact artifact build run is successful on the intended source SHA.
 4. Confirm Windows/macOS qualification evidence and provenance exist.
-5. Confirm `testnet12` live smoke is not being inferred or silently run.
+5. Confirm `testnet13` live smoke is not being inferred or silently run.
 6. Ensure the intended release version matches the desktop package metadata.
 7. Ensure no competing draft/release for the same version exists.
 

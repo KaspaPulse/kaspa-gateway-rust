@@ -29,7 +29,7 @@ kaspa-gateway-node = { path = "../../crates/kaspa-gateway-node" }
 kaspa-gateway-runtime = { path = "../../crates/kaspa-gateway-runtime" }
 kaspa-gateway-security = { path = "../../crates/kaspa-gateway-security" }
 
-kaspa-grpc-client-live = { package = "kaspa-grpc-client", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "98a4ccd8d200853787f227bd4536ac540cf34957", optional = true }
-kaspa-rpc-core-live = { package = "kaspa-rpc-core", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "98a4ccd8d200853787f227bd4536ac540cf34957", optional = true }
+kaspa-grpc-client-live = { package = "kaspa-grpc-client", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "01b532e8b553523216471682649693af92f0fd16", optional = true }
+kaspa-rpc-core-live = { package = "kaspa-rpc-core", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "01b532e8b553523216471682649693af92f0fd16", optional = true }
 serde_json = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"], optional = true }

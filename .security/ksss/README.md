@@ -66,7 +66,7 @@ learning without durable protection. Urgent production containment takes priorit
 
 runtime-contract.json requires six mainnet/testnet10 node and bridge cases.
 Each includes actual IPC, settings, owned process/endpoints, raw output, UI state,
-stop/restart, crash and close/relaunch proof. Testnet12 stays explicitly opt-in.
+stop/restart, crash and close/relaunch proof. Testnet13 stays explicitly opt-in.
 
 ```text
 python -B .security/ksss/consumer.py release-check --receipt <receipt.json> --artifact <candidate.exe> --evidence-root <directory> --environment-fingerprint <expected-64-hex>

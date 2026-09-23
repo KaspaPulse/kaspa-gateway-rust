@@ -1,33 +1,28 @@
 # CURRENT STATE
 
-- Verified at: 2026-09-12 during Milestone 7 local validation for P0 Runtime Lifecycle & Raw Logging Reliability remediation.
+- Verified at: 2026-09-23 during local-only Kaspa v2.1.0 mainline upgrade qualification and checkpoint reconciliation.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
-- Current HEAD: **VERIFY DYNAMICALLY**; latest committed local recovery-harness checkpoint before BUG-0011 is `587a3ebf6e57b602c5492d3160f29c23684fedbc`.
-- Current branch: `fix/runtime-lifecycle-raw-logging-reliability-20260911`.
-- Current remote main: **VERIFY DYNAMICALLY** before final integration; task baseline observation is `b88cc2571cb65ca30c1361ee3aa9b21eb551ea7c`.
-- Working tree: **CLEAN** at the exact `3414f9ca...` Windows zero-touch verification boundary before this evidence-only state update; classify dynamically on resume.
-- Local development remote: `/home/kas/kaspa-gateway-dev/local-git/kaspa-gateway-rust.git` (`local`) and current task branch tracks `local/...` only.
-- Real GitHub fetch remote: `origin=https://github.com/KaspaPulse/kaspa-gateway-rust.git`.
-- Real GitHub push path: **DISABLED LOCALLY** during remediation (`local-first-push-disabled://...`).
-- Local checkpoints already verified on `local`: `e2b00ef` task open, `147b57e` BUG-0002, `dc41641` BUG-0003, `1f1abe6` BUG-0004, `b948849` BUG-0005, `2e1c545` close/relaunch protection, `5242804` strict-Clippy cleanup, `8bdaff4` BUG-0006, `4cbf127` Desktop 0.1.2 candidate metadata, `583ac62` Windows E2E isolated-port profile, `4f6cf39` BUG-0007.
-- `BUG-0002`: raw logs/status polling decoupled; IPC uncertainty remains Reconciling instead of false STOPPED.
-- `BUG-0003`: status no longer blocks behind another network lifecycle transition; registry contention returns reconciliation evidence.
-- `BUG-0004`: Stop is not advertised before READY ownership exists.
-- `BUG-0005`: READY status exposes exact worker/parent process identity and endpoint semantics; checkpointed locally at `b948849` with targeted PASS and runtime IPC PASS 53/53.
-- `BUG-0006`: untyped top-level transport envelopes are explicitly rejected before typed raw-log ingestion, while typed official child `rawText` remains verbatim; frontend regression PASS and true-raw-log gate PASS.
-- `BUG-0007`: real Windows Mainnet Start exposed `rocksDb*` vs serde `rocksdb*` IPC casing drift; explicit serde rename+legacy aliases are locally verified and runtime IPC PASS 56/56; exact Windows rerun pending.
-- `BUG-0008`: **WINDOWS VERIFIED**. Isolated P2P now enables the real `--listen` UI toggle; Mainnet ran on 16120/16121 and Testnet10 on 16210/16211 without touching the foreign 16110/16111 service.
-- Release candidate: **Desktop 0.1.2 LOCAL ONLY**; package/Cargo/Tauri/lock metadata are consistent and `cargo check --locked -p kaspa-gateway-desktop` passes. Published immutable Desktop 0.1.1 is unchanged.
-- Existing IPC coverage re-verifies terminal Stop→reacquire, post-READY crash recovery/restart, parent-loss cleanup, shutdown ordering, and mainnet/testnet10 isolation.
-- Architecture: accepted same-EXE self-worker runtime (`role:network` ownership); do not rewrite unnecessarily.
-- Real Windows validation host: `Server`; mocks/Linux integration tests are not final Windows proof.
-- Close/relaunch contract: **VERIFIED LOCALLY** — CloseRequested is guarded by prevent-close/single-flight/shutdown-all/success-only exit; shutdown-all during STARTING waits for the owned transition; STARTING parent-loss relaunch reconciliation clears exact stale ownership. Runtime IPC PASS 55/55.
-- `BUG-0011`: Windows exact-owner crash proved runtime correctly reaches `running=false;readiness=FAILED` while preserving terminal PID identity; the E2E helper misclassified retained PID as live ownership. Local predicate fix is green; focused Windows rerun pending.
-- Current P0 runtime lifecycle/raw-log correctness: **NOT VERIFIED** for release until focused Windows recovery/mode tests, full local release gates, packaged Windows lifecycle matrix, and artifact validation complete.
-- Live unrelated Kaspa service on `Server` is outside this remediation and must not be killed or adopted accidentally.
+- Current HEAD: **VERIFY DYNAMICALLY** before any decision.
+- Historical task-base observation: `3bcf8d8aaa94bc303aba558788f101edef48b5b2`.
+- Current branch: `feat/kaspa-v2.1.0-runtime-rebaseline-20260922`.
+- Current remote main: **VERIFY DYNAMICALLY** before any integration decision.
+- Historical GitHub-main observation: `bb183816e5c315107c64411c1793c89d8ec74e8e`, one workflow-only commit ahead of the task base with no product-source overlap.
+- Working tree: **NOT VERIFIED** until derived dynamically. Before the local checkpoint it is intentionally DIRTY with the reviewed v2.1.0 candidate; after checkpoint it should be CLEAN and the `local` bare-mirror ref should match HEAD.
+- Push target for authorized checkpoint work: local bare remote `local`. Real GitHub push/PR/merge/tag/release/deployment/Production actions are **NOT VERIFIED / NOT AUTHORIZED** for this task.
+- BUILD-014-A4 artifact SHA-256: `39A7E1D923414677F8510DCEC2B6EACA4F01317D7A1E1868E3F2821BCA12F3A2`.
+- Four planned native cases are VERIFIED_SUCCESS: Node Mainnet, Node Testnet10, External Bridge Mainnet, External Bridge Testnet10 CPU-only.
+- Testnet10 External Bridge runtime evidence: stable v2.1.0, `rpc_network=testnet-10`, `node_mode=external`, `node_kind=remote`, `bridge_kind=official-external-node`, `listener_count=0`, no Stratum/Prometheus listener, `cpu_enabled=true`, CPU hash samples `1,1,21`.
+- All four native task cases are DO-NOT-REPEAT unless product/runtime bytes or applicable runtime policy change.
+- E2E CPU-only remediation changed five E2E files. Syntax, npm check, npm lint, deepmerge-security, runtime-port, bridge-locator, recovery-harness, network-generation gate/regressions, diff-check, and Graphify incremental/query are PASS.
+- Project continuity gate and continuity regression tests are PASS after current reconciliation.
+- Historical build manifest remains preserved at SHA-256 `29E91A73FF43E206143BAFE8323B22438E0B9356310D5528F55D96B4F2469FB1`.
+- Post-build E2E delta receipt SHA-256: `74913534B068582900650C10B6C52F5BE3442402C5953D693FCA2C0779ACD8B1`.
+- Final checkpoint manifest identity is external and must be regenerated/verified against the exact current Git path set immediately before staging; use the operation journal rather than an older embedded candidate-manifest hash.
+- `FAIL-0004` is BLOCKED: idle exact parent PID 4404 does not exit through authorized normal close paths. Runtime workers are zero and task runtime ports are free. Force termination was not authorized or used. Close root cause remains **NOT VERIFIED**.
+- Existing parent 4404 must remain preserved; do not start a second desktop parent.
 
 ## NEXT ACTION
-Checkpoint BUG-0011 locally and rerun only the focused Windows node recovery spec; then execute the already-checkpointed in-process Bridge and native close/relaunch focused coverage. Do not repeat the passed baseline matrix.
+Derive Git/local-mirror state first. If the checkpoint does not yet exist on `local`, regenerate the final manifest, require exact path/hash equality, stage only those files, verify the cached diff, create one local `[skip ci]` commit, and mirror it only to `local`. If the local ref already matches the checkpoint HEAD and the worktree is clean, stop local execution and carry forward `FAIL-0004` for owner review or a separately authorized safe-close follow-up.
 
 ## DO NOT REPEAT
-Do not push intermediate commits to real GitHub, redo already-green restart/crash/isolation tests without a relevant code change, reduce ownership identity to PID-only evidence, or fabricate an explicit P2P endpoint when upstream owns the official default.
+Do not repeat BUILD-014, Node Mainnet, Node Testnet10, External Bridge Mainnet, External Bridge Testnet10, E2E npm/static checks, continuity gates, Graphify refresh, or historical evidence verification unless relevant inputs change. Do not force-kill PID 4404, start a second parent, touch the preserved production lease, enable Testnet13, or perform real GitHub/release/deployment actions.

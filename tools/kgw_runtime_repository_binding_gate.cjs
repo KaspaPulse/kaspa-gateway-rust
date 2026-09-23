@@ -111,6 +111,8 @@ const files = {
   manifest: "config/runtime-repository-bindings.json",
   nodeCargo: "crates/kaspa-gateway-rk-node/Cargo.toml",
   bridgeCargo: "crates/kaspa-gateway-rk-bridge/Cargo.toml",
+  cliCargo: "apps/kaspa-gateway-cli/Cargo.toml",
+  coreCargo: "crates/kaspa-gateway-core/Cargo.toml",
   serviceController: "crates/kaspa-gateway-rk-node/src/kgw_service_controller.rs",
   officialRuntime: "crates/kaspa-gateway-rk-node/src/official_kaspa_runtime.rs",
   bridgeRuntime: "crates/kaspa-gateway-rk-bridge/src/lib.rs",
@@ -123,9 +125,12 @@ const requiredFiles = [
   files.manifest,
   files.nodeCargo,
   files.bridgeCargo,
+  files.cliCargo,
+  files.coreCargo,
   files.serviceController,
   files.officialRuntime,
-  files.bridgeRuntime
+  files.bridgeRuntime,
+  files.applyScript
 ];
 
 for (const rel of requiredFiles) {
@@ -225,6 +230,9 @@ let remoteChecks = [];
 if (!findings.some((x) => x.level === "error")) {
   const nodeCargo = read(files.nodeCargo);
   const bridgeCargo = read(files.bridgeCargo);
+  const cliCargo = read(files.cliCargo);
+  const coreCargo = read(files.coreCargo);
+  const applyScript = read(files.applyScript);
 
   // Check every runtime alias; checking only kaspad/bridge misses RPC type drift.
   const aliases = [];
@@ -237,6 +245,8 @@ if (!findings.some((x) => x.level === "error")) {
     for (const pkg of ["kaspa-grpc-client", "kaspa-rpc-core", "kaspa-stratum-bridge"])
       aliases.push(["bridge", pkg + "-" + family, pkg, network, bridgeCargo]);
   }
+  aliases.push(["cli", "kaspa-grpc-client-live", "kaspa-grpc-client", "mainnet", cliCargo]);
+  aliases.push(["cli", "kaspa-rpc-core-live", "kaspa-rpc-core", "mainnet", cliCargo]);
 
   for (const [scope, alias, expectedPackage, network, source] of aliases) {
     const parsed = parseCargoAlias(source, alias);
@@ -268,6 +278,51 @@ if (!findings.some((x) => x.level === "error")) {
 
     if (!parsed.optional) {
       addFinding(findings, "error", "cargo-alias-must-be-optional", { scope, alias });
+    }
+  }
+
+  const coreAddress = parseCargoAlias(coreCargo, "kaspa-addresses");
+  cargoAliases.push({
+    scope: "core",
+    alias: "kaspa-addresses",
+    expectedPackage: "kaspa-addresses",
+    network: "mainnet",
+    parsed: coreAddress
+  });
+  if (!coreAddress) {
+    addFinding(findings, "error", "missing-cargo-alias", { scope: "core", alias: "kaspa-addresses" });
+  } else if (networks.mainnet) {
+    if (coreAddress.git !== networks.mainnet.repo) {
+      addFinding(findings, "error", "cargo-repo-mismatch", {
+        scope: "core", alias: "kaspa-addresses", expected: networks.mainnet.repo, actual: coreAddress.git
+      });
+    }
+    if (coreAddress.rev !== networks.mainnet.rev) {
+      addFinding(findings, "error", "cargo-rev-mismatch", {
+        scope: "core", alias: "kaspa-addresses", expected: networks.mainnet.rev, actual: coreAddress.rev
+      });
+    }
+    if (coreAddress.branch) {
+      addFinding(findings, "error", "cargo-branch-field-forbidden-use-rev-only", {
+        scope: "core", alias: "kaspa-addresses", branch: coreAddress.branch
+      });
+    }
+  }
+
+  const applyRequirements = [
+    "nodeAliases",
+    "packages.node",
+    "bridgeAliases",
+    "packages.bridge",
+    "kaspa-grpc-client-live",
+    "kaspa-rpc-core-live",
+    "kaspa-addresses",
+    "testnet13",
+    "Get-BindingByFamily \"tn13\""
+  ];
+  for (const needle of applyRequirements) {
+    if (!applyScript.includes(needle)) {
+      addFinding(findings, "error", "apply-script-missing-manifest-driven-coverage", { needle });
     }
   }
 

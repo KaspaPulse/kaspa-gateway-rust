@@ -63,7 +63,7 @@ In-process mode:
 
 - bridge flags before --
 - kaspad flags after --
-- testnet10/testnet12 may use -- --testnet --netsuffix=10/12 after --
+- testnet10/testnet13 may use -- --testnet --netsuffix=10/13 after --
 - mainnet must not use --testnet or --netsuffix
 
 ## Instance contract

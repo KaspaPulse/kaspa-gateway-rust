@@ -45,6 +45,5 @@ unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = [
   "https://github.com/kaspanet/rusty-kaspa",
-  "https://github.com/LiveLaughLove13/rusty-kaspa",
   "https://github.com/kaspanet/workflow-perf-monitor-rs",
 ]

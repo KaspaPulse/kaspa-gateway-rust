@@ -43,7 +43,7 @@ impl KgwNetwork {
 
     pub fn revision(self) -> &'static str {
         match self {
-            Self::Mainnet | Self::Testnet10 => "98a4ccd8d200853787f227bd4536ac540cf34957",
+            Self::Mainnet | Self::Testnet10 => "01b532e8b553523216471682649693af92f0fd16",
             Self::Testnet13 => "ad45e241e6688a14901fd24dd8dc33c5c9a33f40",
         }
     }
@@ -1415,5 +1415,5 @@ fn timestamp_ms() -> u128 {
 }
 
 pub fn exact_kgw_service_controller_summary_v1() -> &'static str {
-    "Exact KGW controller flow: NodeSettings -> KaspadServiceEvents::from_node_settings -> service_events sender -> controller event loop -> handle_event lifecycle. mainnet/testnet10 use official stable v2.0.1; testnet13 uses the opt-in experimental tn13 runtime."
+    "Exact KGW controller flow: NodeSettings -> KaspadServiceEvents::from_node_settings -> service_events sender -> controller event loop -> handle_event lifecycle. mainnet/testnet10 use official stable v2.1.0; testnet13 uses the opt-in experimental tn13 runtime."
 }
