@@ -1,52 +1,52 @@
 # ACTIVE TASK
 
 ## Status
-IN PROGRESS — KASPA V2.1.0 MAINLINE UPGRADE LOCAL CHECKPOINT
+IN PROGRESS — KASPA V2.1.0 GITHUB PUBLICATION AND DESKTOP 0.1.3 RELEASE
 
 ## Objective
-Preserve the fully qualified local Kaspa Gateway v2.1.0 upgrade candidate for stable Mainnet and Testnet10 as a source-bound, interruption-safe local checkpoint, while keeping Testnet13 explicit experimental opt-in and avoiding any remote publication/deployment.
+Publish the fully qualified Rusty Kaspa v2.1.0 candidate through protected GitHub integration, exact-head CI, trusted Windows/macOS artifact qualification, provenance plus SPDX SBOM attestations, and an immutable Desktop 0.1.3 release while preserving the protected local qualification checkpoint.
 
 ## Scope
-- Use only the authorized Windows `Server` worktree `feat/kaspa-v2.1.0-runtime-rebaseline-20260922`.
-- Preserve the accepted same-EXE self-worker runtime and official Kaspa runtime bindings.
-- Reuse qualified BUILD-014 and native runtime evidence unless product/runtime bytes change.
-- Keep Testnet10 Bridge CPU-only: no external ASIC Stratum or Prometheus listener is expected.
-- Preserve the qualified E2E CPU-only automation repair without rebuilding the product.
-- Commit/checkpoint only to the local bare mirror. No real GitHub push, PR, merge, tag, release, deployment, or Production action is authorized.
+- Use the authorized Windows `Server` worktree `feat/kaspa-v2.1.0-runtime-rebaseline-20260922`.
+- Protected qualification identity remains `7d670bb00682a7ceec6d40046798cdbe645121d8` / tree `1668bd42e7dc4e0e2fb778638450bdebf3143945`.
+- Protected ref `refs/checkpoints/kaspa-v2.1.0-runtime-rebaseline-20260923` is write-once receive protected and must not be changed or deleted.
+- Owner authorization now includes integration/rebase, GitHub push/PR/CI fixes, squash merge, exact-main qualification, trusted artifact workflows, provenance, SBOM, and final GitHub Release.
+- Reuse BUILD-014, native 4/4, and E2E evidence unless their actual validity predicates change.
+- Preserve Testnet13 as experimental explicit opt-in and preserve `FAIL-0004` without force-killing PID 4404.
 
 ## Current Phase
-Product/runtime qualification, the planned four-case native matrix, the Testnet10 CPU-only E2E repair, affected npm/static validation, Graphify refresh, and repository continuity verification are complete. The remaining authorized boundary is exact-manifest review and local checkpoint persistence.
+Fresh GitHub reconciliation is complete. The candidate was cleanly rebased onto observed main `bb183816e5c315107c64411c1793c89d8ec74e8e` without conflicts. The post-rebase publication head before current uncommitted hardening is `1a464f87926deace3f1d87b7edc013947085b72f`. Product/runtime, Git Cargo.lock blob, build-feature, native-harness, network-config, E2E, and artifact predicates remain unchanged, so prior product qualification is reusable.
 
 ## Confirmed Progress
-- BUILD-014-A4 is VERIFIED_SUCCESS for artifact SHA-256 `39A7E1D923414677F8510DCEC2B6EACA4F01317D7A1E1868E3F2821BCA12F3A2`.
-- Native Node Mainnet and Node Testnet10 are VERIFIED_SUCCESS.
-- Native External Bridge Mainnet is VERIFIED_SUCCESS.
-- Native External Bridge Testnet10 is VERIFIED_SUCCESS_CPU_ONLY with `listener_count=0`, no ASIC/Prometheus listener, and progressing CPU hash samples `1,1,21`.
-- E2E CPU-only remediation touches five E2E files only; targeted syntax, npm check, npm lint, deepmerge security smoke, runtime-port smoke, bridge-locator smoke, recovery-harness smoke, network-generation gate/regressions, diff-check, and Graphify refresh/query are PASS.
-- Project continuity gate and continuity regression tests are PASS after current-state reconciliation.
-- Historical build manifest and all external evidence receipts remain preserved. Final checkpoint identity is owned by the external operation journal plus the most recent manifest generated immediately before staging; do not rely on an older embedded manifest hash as forever-current.
+- Local qualification and checkpoint-ref protection are CLOSED / VERIFIED_SUCCESS.
+- Protected checkpoint target/tree remain exact; protection receipt SHA-256 is `E78DF5070D227C75BD014149517C37D11F9E60C1A6A48315AA9E4F230DE2AC46`.
+- Fresh reconciliation found current main one workflow-only commit ahead of the historical candidate base, with zero product/runtime/Cargo.lock/harness/network overlap.
+- Rebase onto exact observed main completed cleanly; protected checkpoint was unchanged.
+- Cargo.lock Git blob is identical before/after rebase (`02b33e18a89d2ae2848cc2056aac807952207f7f`); a raw worktree SHA difference was line-ending-only and did not invalidate dependency evidence.
+- Current scoped hardening separates MSRV Rust 1.97.1 from stable quality/security Rust 1.98.1 and adds pinned Syft 1.52.0 SPDX 2.3 SBOM generation/attestation/verification to trusted release workflows.
+- Affected workflow contract gates, JavaScript syntax, full-SHA external Action audit, and `git diff --check` are PASS.
 
 ## Current Blocker
-`FAIL-0004`: exact native parent PID 4404 remains idle after `CloseMainWindow` and Tauri normal close attempts. All runtime owner statuses are stopped, child runtime workers are absent, and task runtime ports are free. Tauri `Window.destroy()` is blocked by capability policy and OS force-kill is not authorized. This blocker does not invalidate the four-case native runtime evidence; it blocks only the clean single-parent no-file-trace A/B close-root-cause experiment.
+`FAIL-0004` remains `BLOCKED_NON_QUALIFICATION`: PID 4404 is preserved, force-kill is forbidden, and this does not block GitHub publication/release.
 
 ## Last Completed Action
-Repository-native continuity reconciliation is verified: project continuity gate PASS, positive plus seven fail-closed regression cases PASS, and `git diff --check` PASS. A source-bound candidate manifest was also verified before this final checkpoint-wording update.
+The publication candidate was cleanly rebased onto the freshly observed GitHub main without conflicts. Post-rebase validity predicates were reconciled to REUSE after proving Cargo.lock Git blob identity; scoped Rust CI/SBOM hardening was implemented and its affected workflow contract checks passed.
 
 ## Current Action
-This file is part of the local checkpoint boundary. Before creating or updating that checkpoint, regenerate the final manifest for the exact current Git changed/untracked path set, require zero mismatch and zero path delta, stage only those manifest-bound files, and verify the cached diff.
+Reconcile continuity for the newly authorized publication/release phase, run affected continuity/Graphify verification, review/stage/commit the scoped hardening, then re-observe GitHub main immediately before publication push.
 
 ## Next Action
-Derive the checkpoint state dynamically. If the current branch has not yet been persisted to the `local` bare mirror, finish the verified manifest/cached-diff review, create one local `[skip ci]` checkpoint commit, and push only that branch to `local` without force. If the local mirror already resolves to that checkpoint, no further runtime action is authorized while `FAIL-0004` remains; proceed to owner review or wait for a separately authorized safe close capability.
+If fresh main still matches the integrated base, push the publication branch normally, open a PR to `main`, capture exact PR head/tree/base, make the MSRV check required while preserving all existing protections, and drive exact-head CI/review to PASS before squash merge.
 
 ## Verification Required
-- Final path/hash manifest immediately before staging with zero mismatches and zero path delta.
-- Cached path set exactly equal to the final manifest.
-- `git diff --cached --check` and cached diff/file classification.
-- Local commit tree identity and local bare-mirror ref identity.
-- No additional product build, Cargo tests, native runtime cases, npm checks, or Graphify unless relevant inputs change.
+- Project continuity gate and its fail-closed regression tests must pass on the reconciled publication state.
+- Graphify must be incrementally refreshed once for changed tooling/docs and queried on the affected workflow-contract path.
+- Final staged paths/diff must be reviewed and pass `git diff --cached --check`.
+- Immediately before GitHub push, re-observe `main` and remote candidate state; after PR creation require exact-final-head protected CI, reviews/threads, mergeability, and rulesets.
+- After merge require exact-main CI, trusted artifact qualification, provenance verification, SPDX SBOM verification, immutable-release gate, and post-publication identity/digest checks.
 
 ## Completion Criteria
-A durable local checkpoint commit exists on the task branch and local bare mirror with source-bound evidence/state reconciliation; all already-qualified product/runtime/E2E evidence remains correctly scoped; `FAIL-0004` remains explicitly BLOCKED rather than misreported as fixed; no real GitHub/release/deployment action occurs.
+The task is complete only after the candidate is integrated, pushed, reviewed and squash-merged under rulesets; exact-main CI passes; trusted Windows/macOS Desktop 0.1.3 artifacts pass their smoke/qualification workflows; provenance and SBOM attestations are verified; the existing verified release draft is published under the repository immutable-release policy; the protected local checkpoint remains unchanged; and final continuity evidence is reconciled.
 
 ## DO NOT REPEAT
-Do not rerun BUILD-014, the four planned native cases, the already-passed E2E/static/npm checks, continuity tests, or Graphify unless their validity predicates change. Do not force-kill PID 4404, start a second desktop parent, enable Testnet13, weaken Mainnet Stratum assertions, overwrite historical evidence, reset/stash/restore user work, or perform any real GitHub/release/deployment action.
+Do not rerun BUILD-014, native 4/4, E2E qualification, or broad product testing while their validity predicates remain unchanged. Do not mutate the protected checkpoint, force-kill PID 4404, enable Testnet13, bypass required checks, rewrite historical receipts, or publish an unverified artifact.

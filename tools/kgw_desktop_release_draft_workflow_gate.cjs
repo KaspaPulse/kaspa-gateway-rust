@@ -61,6 +61,22 @@ assert.ok(
   "draft release checksum manifest must cover the raw Windows executable",
 );
 
+for (const fragment of [
+  "WINDOWS_SBOM.spdx.json",
+  "MACOS_SBOM.spdx.json",
+  "WINDOWS_SBOM_ATTESTATION.sigstore.json",
+  "MACOS_SBOM_ATTESTATION.sigstore.json",
+  "https://spdx.dev/Document/v2.3",
+  "verify_sbom",
+  "KASPA_GATEWAY_WINDOWS_SBOM_",
+  "KASPA_GATEWAY_MACOS_SBOM_",
+]) {
+  assert.ok(
+    workflow.includes(fragment),
+    `draft release workflow must preserve and verify SBOM evidence: ${fragment}`,
+  );
+}
+
 const tagRefOccurrences = (
   workflow.match(/git\/ref\/tags\/\$tag/gu) ?? []
 ).length;

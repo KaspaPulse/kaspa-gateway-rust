@@ -200,14 +200,18 @@ jobs:
           win_installer="$win/KaspaGateway-windows-x64-nsis.exe"
           win_raw="$win/kaspa-gateway-desktop-windows-x64.exe"
           win_bundle="$win/WINDOWS_BUILD_PROVENANCE.sigstore.json"
+          win_sbom="$win/WINDOWS_SBOM.spdx.json"
+          win_sbom_bundle="$win/WINDOWS_SBOM_ATTESTATION.sigstore.json"
           win_smoke="$win/WINDOWS_INSTALLER_SMOKE.txt"
 
           mac_dmg="$mac/KaspaGateway-macos-universal.dmg"
           mac_zip="$mac/KaspaGateway-macos-universal-app.zip"
           mac_bundle="$mac/MACOS_BUILD_PROVENANCE.sigstore.json"
+          mac_sbom="$mac/MACOS_SBOM.spdx.json"
+          mac_sbom_bundle="$mac/MACOS_SBOM_ATTESTATION.sigstore.json"
           mac_smoke="$mac/MACOS_DMG_SMOKE.txt"
 
-          for file in             "$win_installer" "$win_raw" "$win_bundle" "$win_smoke" "$win/SHA256SUMS"             "$mac_dmg" "$mac_zip" "$mac_bundle" "$mac_smoke" "$mac/SHA256SUMS"
+          for file in             "$win_installer" "$win_raw" "$win_bundle" "$win_sbom" "$win_sbom_bundle" "$win_smoke" "$win/SHA256SUMS"             "$mac_dmg" "$mac_zip" "$mac_bundle" "$mac_sbom" "$mac_sbom_bundle" "$mac_smoke" "$mac/SHA256SUMS"
           do
             test -s "$file"
           done
@@ -232,6 +236,9 @@ jobs:
           grep -F "MACOS_ARCHITECTURE_PROOF=UNIVERSAL_ARM64_X86_64" "$mac_smoke" >/dev/null
           grep -F "TESTNET13_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL" "$mac_smoke" >/dev/null
 
+          test "$(jq -r .spdxVersion "$win_sbom")" = "SPDX-2.3"
+          test "$(jq -r .spdxVersion "$mac_sbom")" = "SPDX-2.3"
+
           verify_artifact() {
             local subject="$1"
             local bundle="$2"
@@ -241,10 +248,24 @@ jobs:
             gh attestation verify "$subject"               -R "$GITHUB_REPOSITORY"               --signer-workflow "$SIGNER_WORKFLOW"               --source-digest "$REQUESTED_COMMIT_SHA"               --source-ref refs/heads/main               --predicate-type https://slsa.dev/provenance/v1               --deny-self-hosted-runners >/dev/null
           }
 
+          verify_sbom() {
+            local subject="$1"
+            local bundle="$2"
+
+            gh attestation verify "$subject"               -R "$GITHUB_REPOSITORY"               --bundle "$bundle"               --signer-workflow "$SIGNER_WORKFLOW"               --source-digest "$REQUESTED_COMMIT_SHA"               --source-ref refs/heads/main               --predicate-type https://spdx.dev/Document/v2.3               --deny-self-hosted-runners >/dev/null
+
+            gh attestation verify "$subject"               -R "$GITHUB_REPOSITORY"               --signer-workflow "$SIGNER_WORKFLOW"               --source-digest "$REQUESTED_COMMIT_SHA"               --source-ref refs/heads/main               --predicate-type https://spdx.dev/Document/v2.3               --deny-self-hosted-runners >/dev/null
+          }
+
           verify_artifact "$win_installer" "$win_bundle"
           verify_artifact "$win_raw" "$win_bundle"
           verify_artifact "$mac_dmg" "$mac_bundle"
           verify_artifact "$mac_zip" "$mac_bundle"
+
+          verify_sbom "$win_installer" "$win_sbom_bundle"
+          verify_sbom "$win_raw" "$win_sbom_bundle"
+          verify_sbom "$mac_dmg" "$mac_sbom_bundle"
+          verify_sbom "$mac_zip" "$mac_sbom_bundle"
 
       - name: Assemble immutable-ready release assets
         shell: bash
@@ -266,12 +287,16 @@ jobs:
           cp "$root/macos/KaspaGateway-macos-universal-app.zip"             "$stage/KASPA_GATEWAY_MACOS_UNIVERSAL_APP_${REQUESTED_VERSION}_${short}.zip"
 
           cp "$root/windows/WINDOWS_BUILD_PROVENANCE.sigstore.json"             "$stage/KASPA_GATEWAY_WINDOWS_BUILD_PROVENANCE_${REQUESTED_VERSION}_${short}.sigstore.json"
+          cp "$root/windows/WINDOWS_SBOM.spdx.json"             "$stage/KASPA_GATEWAY_WINDOWS_SBOM_${REQUESTED_VERSION}_${short}.spdx.json"
+          cp "$root/windows/WINDOWS_SBOM_ATTESTATION.sigstore.json"             "$stage/KASPA_GATEWAY_WINDOWS_SBOM_ATTESTATION_${REQUESTED_VERSION}_${short}.sigstore.json"
 
           cp "$root/macos/MACOS_BUILD_PROVENANCE.sigstore.json"             "$stage/KASPA_GATEWAY_MACOS_BUILD_PROVENANCE_${REQUESTED_VERSION}_${short}.sigstore.json"
+          cp "$root/macos/MACOS_SBOM.spdx.json"             "$stage/KASPA_GATEWAY_MACOS_SBOM_${REQUESTED_VERSION}_${short}.spdx.json"
+          cp "$root/macos/MACOS_SBOM_ATTESTATION.sigstore.json"             "$stage/KASPA_GATEWAY_MACOS_SBOM_ATTESTATION_${REQUESTED_VERSION}_${short}.sigstore.json"
 
           (
             cd "$stage"
-            sha256sum               KASPA_GATEWAY_WINDOWS_X64_NSIS_*.exe               KASPA_GATEWAY_WINDOWS_X64_RAW_*.exe               KASPA_GATEWAY_MACOS_UNIVERSAL_DMG_*.dmg               KASPA_GATEWAY_MACOS_UNIVERSAL_APP_*.zip               KASPA_GATEWAY_WINDOWS_BUILD_PROVENANCE_*.sigstore.json               KASPA_GATEWAY_MACOS_BUILD_PROVENANCE_*.sigstore.json               > SHA256SUMS.txt
+            sha256sum               KASPA_GATEWAY_WINDOWS_X64_NSIS_*.exe               KASPA_GATEWAY_WINDOWS_X64_RAW_*.exe               KASPA_GATEWAY_MACOS_UNIVERSAL_DMG_*.dmg               KASPA_GATEWAY_MACOS_UNIVERSAL_APP_*.zip               KASPA_GATEWAY_WINDOWS_BUILD_PROVENANCE_*.sigstore.json               KASPA_GATEWAY_MACOS_BUILD_PROVENANCE_*.sigstore.json               KASPA_GATEWAY_WINDOWS_SBOM_*.spdx.json               KASPA_GATEWAY_MACOS_SBOM_*.spdx.json               KASPA_GATEWAY_WINDOWS_SBOM_ATTESTATION_*.sigstore.json               KASPA_GATEWAY_MACOS_SBOM_ATTESTATION_*.sigstore.json               > SHA256SUMS.txt
           )
 
       - name: Create draft release with all qualified assets
@@ -285,7 +310,7 @@ jobs:
 
           notes="$(
             cat <<NOTES
-          Build provenance for the Windows and macOS release artifacts is attached as Sigstore bundles.
+          Build provenance and SPDX 2.3 SBOM attestations for the Windows and macOS release artifacts are attached as Sigstore bundles.
 
           Source commit: $REQUESTED_COMMIT_SHA
           Qualified Desktop Artifacts run: $ARTIFACT_RUN_ID

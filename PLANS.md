@@ -1,40 +1,43 @@
 # EXECUTION PLAN
 
 ## Status
-**ACTIVE — LOCAL CHECKPOINT BOUNDARY; FAIL-0004 DEFERRED**
+**ACTIVE — GITHUB PUBLICATION / DESKTOP 0.1.3 RELEASE**
 
 ## Objective
-Persist the fully qualified local v2.1.0 upgrade candidate with source-bound evidence for official stable Mainnet/Testnet10 runtimes, truthful Testnet10 CPU-only Bridge automation, durable continuity state, and one local checkpoint. Remote integration/publication is outside the current authorization.
+Publish the protected, qualified v2.1.0 candidate through current-main integration, exact-head protected CI, squash-only merge, exact-main qualification, trusted Windows/macOS artifacts, verified provenance plus SPDX SBOM attestations, and the final Desktop 0.1.3 GitHub Release.
 
 ## Success Criteria
-- Official stable Mainnet and Testnet10 runtime bindings remain on Rusty Kaspa v2.1.0; Testnet13 stays separate experimental opt-in.
-- BUILD-014 artifact identity is preserved and qualified without redundant rebuilds.
-- Planned native matrix passes for Node Mainnet, Node Testnet10, External Bridge Mainnet, and CPU-only External Bridge Testnet10.
-- Testnet10 automation does not fabricate Bridge instances, Stratum, or Prometheus listeners.
-- E2E/static/npm/Graphify and continuity checks for the current candidate pass.
-- Final repository state, handoff, known blocker, and source manifest are durable and resumable.
-- One reviewed checkpoint commit is mirrored only to the local bare remote.
+- Preserve protected checkpoint `7d670bb00682a7ceec6d40046798cdbe645121d8` / tree `1668bd42e7dc4e0e2fb778638450bdebf3143945`.
+- Reuse BUILD-014/native 4-of-4/E2E evidence while their bound predicates stay unchanged.
+- Keep `rust-version = "1.97.1"` as MSRV, test MSRV explicitly, and run supported stable quality/security on Rust 1.98.1.
+- Keep all external Actions pinned to full commit SHAs.
+- Produce trusted Windows/macOS artifacts from final merged main with provenance and SPDX 2.3 SBOM attestations, verify both, then publish Desktop 0.1.3 only after all release gates pass.
+- Preserve `FAIL-0004` as a non-qualification blocker; never force-kill PID 4404.
 
 ## Milestones
-1. Rebaseline official Kaspa stable runtime inputs to v2.1.0 and preserve Testnet13 separation — **COMPLETE LOCALLY**.
-2. Run affected compile/tests/static gates and repair only invalidated surfaces — **COMPLETE / REUSED VALID EVIDENCE**.
-3. Produce BUILD-014-A4 exact desktop artifact — **VERIFIED_SUCCESS**.
-4. Qualify planned native runtime matrix on Windows `Server` — **VERIFIED_SUCCESS 4/4**.
-5. Reconcile Testnet10 Bridge automation to CPU-only semantics — **VERIFIED_SUCCESS**.
-6. Restore exact E2E dependencies and close affected npm/static checks — **VERIFIED_SUCCESS**.
-7. Refresh Graphify and produce post-build E2E/source-bound evidence — **VERIFIED_SUCCESS**.
-8. Reconcile continuity state and `FAIL-0004`; continuity gate/regressions — **VERIFIED_SUCCESS**.
-9. Final manifest/cached-diff review and local checkpoint persistence — **READY; DERIVE COMPLETION DYNAMICALLY FROM GIT/LOCAL MIRROR**.
-10. Real GitHub push/PR/merge/tag/release/deployment/Production — **NOT AUTHORIZED IN CURRENT TASK**.
+1. Local v2.1.0 qualification — **VERIFIED_SUCCESS / CLOSED**.
+2. Protected write-once receive checkpoint — **VERIFIED_SUCCESS / CLOSED**.
+3. Fresh GitHub reconciliation — **VERIFIED_SUCCESS**; observed main `bb183816...`, one workflow-only drift commit, PR #95 open/behind, candidate absent remotely.
+4. Candidate integration/rebase — **VERIFIED_SUCCESS**; clean rebase, no conflicts, protected checkpoint unchanged.
+5. Validity-predicate evaluation — **VERIFIED_SUCCESS / REUSE**; Cargo.lock blob and all product/runtime/native/E2E predicates unchanged.
+6. Rust CI + release supply-chain hardening — **IN PROGRESS**; MSRV/Stable split and SPDX SBOM workflow changes implemented locally, affected contract checks PASS.
+7. Continuity + Graphify affected verification — **IN PROGRESS**.
+8. Publication branch push + PR — **PENDING**.
+9. Exact-final-PR-head required CI/reviews/rulesets — **PENDING**.
+10. Squash merge + exact-main CI — **PENDING**.
+11. Trusted Desktop Artifacts Windows/macOS — **PENDING**.
+12. Provenance + SBOM attestation verification — **PENDING**.
+13. Desktop 0.1.3 draft/release immutability gate/publication — **PENDING**.
+14. Final continuity receipt — **PENDING**.
 
 ## Progress
-The product artifact and all four planned native cases are qualified. Testnet10 External Bridge is correctly CPU-only with no external ASIC listener and observed CPU hash progression. The five-file E2E harness delta is statically green and Graphify-refreshed. Continuity gate and regression tests are green. The remaining authorized action is the source-bound local checkpoint. The only runtime-side blocker is `FAIL-0004`: the exact idle desktop parent does not terminate through normal close paths, while runtime workers and task ports are already clean.
+Local qualification, checkpoint protection, fresh GitHub reconciliation, clean rebase, and validity-predicate reuse are complete. Publication hardening is implemented locally and its workflow contracts/full-SHA audit/diff-check are green. Continuity reconciliation is being validated now; publication branch push/PR and every remote release gate remain pending until their exact evidence exists.
 
 ## Completion Criteria
-Immediately before checkpoint persistence, a final manifest must exactly equal the current Git changed/untracked path set and all hashes must match. The cached diff must equal that manifest and pass `git diff --cached --check`. The resulting commit tree and `local` bare-mirror ref must match. `FAIL-0004` remains documented and unbypassed. No remote publication is part of completion.
+Completion requires: publication branch pushed; PR created; exact-final-head required CI including MSRV PASS; review threads resolved; squash merge under current rulesets; exact-main CI PASS; trusted Windows/macOS artifact workflow PASS on final main; provenance and SPDX SBOM attestations generated and independently verified; Desktop 0.1.3 draft uniquely bound to final main and qualified artifact run; immutable-release administration gate PASS; release published and post-publication tag/assets/digests/immutability verified; protected checkpoint preserved; final continuity receipt verified.
 
 ## Constraints
-No force-kill, no duplicate desktop parent, no Testnet13 runtime start, no product rebuild or native-matrix replay without invalidation, no reset/stash/restore of existing work, no weakening of runtime/evidence assertions, and no real GitHub/release/deployment operation.
+No protected-checkpoint mutation; no force-kill PID 4404; no Testnet13 live start; no broad product retest without predicate invalidation; no blind force push; no main protection weakening; no bypass of required CI; no historical receipt rewrite; no unverified release artifact.
 
 ## NEXT ACTION
-Derive the branch/local-mirror state. If not yet checkpointed, generate the final manifest from the exact current Git path set, stage/review only those files, create one local `[skip ci]` checkpoint commit, and push only to `local` without force. If already checkpointed and clean, stop; the next unresolved item is `FAIL-0004`, which requires a separately authorized safe close capability or natural parent exit before any no-file-trace A/B.
+Finish continuity and Graphify verification for current workflow/tooling changes, then commit reviewed scope. Immediately re-observe `main`; if unchanged, push candidate normally, open PR, update required-check governance safely to include the new MSRV context while removing duplicate baseline status-check ownership without reducing protection, then drive exact-head CI to PASS.
