@@ -3,11 +3,11 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified desktop-release-draft checkpoint is `0031541d5fe833ce7cb8fdd8b265fe5b95657ae7`, tree `72f29adf5647a10299e73f40ca1066f2c32247c5`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified desktop-artifacts checkpoint is `efc5885d9d1959271a91c49d1d27ef776452a180`, tree `76d3dd4c98f62cc063a2e756521fb60841b5dedd`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before desktop-artifacts gate source mutation. Commit `0031541...` was verified clean.
-- Current Rust source inventory: 88.
-- Current owned non-Rust programming source debt: 105.
+- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before npm dependency policy source mutation. Commit `efc5885...` was verified clean.
+- Current Rust source inventory: 89.
+- Current owned non-Rust programming source debt: 104.
 - Current non-Rust execution-wiring debt: 14.
 - Rust language guard: PASS; unapproved source=0; unapproved execution=0.
 - Technical exceptions: 1 — required ClusterFuzzLite `build.sh` thin adapter delegating project logic to Rust.
@@ -23,7 +23,7 @@
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Reconcile this desktop-release-draft checkpoint, then port `tools/kgw_desktop_artifacts_workflow_gate.cjs` to Rust with parity-first regression coverage. `kgw_effective_bridge_settings_gate.cjs` remains deferred to frontend migration because it executes live JS behavior. Do not replay prior verified gate/KSSS qualification without predicate invalidation.
+Reconcile this desktop-artifacts checkpoint, then port `tools/kgw_npm_dependency_policy_gate.cjs` plus its regression tests to Rust with parity-first coverage. `kgw_effective_bridge_settings_gate.cjs` remains deferred to frontend migration because it executes live JS behavior. Do not replay prior verified gate/KSSS qualification without predicate invalidation.
 
 ## DO NOT REPEAT
 Do not replay Desktop runtime/native/E2E/release qualification without predicate invalidation. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted Python adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.
