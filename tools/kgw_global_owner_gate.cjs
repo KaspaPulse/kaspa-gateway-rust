@@ -286,7 +286,7 @@ const OWNER_REGISTRY = {
       "apps/kaspa-gateway-desktop/src-tauri/src/bin/kgw-provenance-smoke.rs",
       "tools/kgw_bridge_node_mode_routing_audit_v1.cjs",
       "tools/kgw_runtime_trace_owner_audit_v20.cjs",
-      "tools/kgw_parallel_self_worker_runtime_gate.cjs",
+      "xtask/src/parallel_self_worker.rs",
       "tools/kgw_raw_log_provenance_gate.cjs"
     ],
     requiredMarkers: [
@@ -828,7 +828,7 @@ const OWNER_AUDIT_TOOL_FILES = new Set([
   "tools/kgw_runtime_trace_owner_audit_v20.cjs",
   "tools/kgw_i18n_contract_gate.cjs",
   "tools/kgw_i18n_locale_coverage_gate.cjs",
-  "tools/kgw_parallel_self_worker_runtime_gate.cjs",
+  "xtask/src/parallel_self_worker.rs",
   "tools/kgw_bridge_node_mode_routing_audit_v1.cjs"
 ]);
 

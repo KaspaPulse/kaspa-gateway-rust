@@ -9,6 +9,7 @@ mod ksss;
 mod language_policy;
 mod network_generation;
 mod npm_dependency_policy;
+mod parallel_self_worker;
 mod project_continuity;
 mod runtime_automation_claims;
 mod runtime_repository_binding;
@@ -54,6 +55,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- effective-node-settings-gate
   cargo run -p xtask -- network-generation-gate
   cargo run -p xtask -- npm-dependency-policy-gate --workspace <desktop|e2e> --ci-log <path>
+  cargo run -p xtask -- parallel-self-worker-runtime-gate
   cargo run -p xtask -- project-continuity-gate
   cargo run -p xtask -- runtime-automation-claims-gate
   cargo run -p xtask -- runtime-repository-binding-gate [--strict] [--online|--fresh] [--offline] [--json]
@@ -167,6 +169,17 @@ fn run() -> Result<(), CliError> {
                 Err(error) if error.code == 2 => Err(CliError::usage(error.message)),
                 Err(error) => Err(CliError::failure(error.message)),
             }
+        }
+        "parallel-self-worker-runtime-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "parallel-self-worker-runtime-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = parallel_self_worker::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
         }
         "project-continuity-gate" => {
             if args.next().is_some() {

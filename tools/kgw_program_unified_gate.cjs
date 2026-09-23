@@ -178,7 +178,6 @@ const syntaxTargets = [
   "tools/kgw_i18n_locale_coverage_gate.cjs",
   "tools/kgw_bridge_node_mode_routing_audit_v1.cjs",
   "tools/kgw_runtime_trace_owner_audit_v20.cjs",
-  "tools/kgw_parallel_self_worker_runtime_gate.cjs",
   "tools/kgw_raw_log_provenance_gate.cjs",
   "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
   "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js"
@@ -229,8 +228,8 @@ if (!skipTrace) {
 if (!skipRuntime) {
   runStep(
     "parallel_self_worker_runtime_gate",
-    nodeExe,
-    ["tools/kgw_parallel_self_worker_runtime_gate.cjs"]
+    "cargo",
+    ["run", "--locked", "-p", "xtask", "--", "parallel-self-worker-runtime-gate"]
   );
   runStep(
     "raw_log_provenance_gate",
