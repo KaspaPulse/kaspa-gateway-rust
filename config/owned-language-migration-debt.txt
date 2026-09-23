@@ -72,7 +72,6 @@ tools/kgw_desktop_diagnostic_launch.ps1
 tools/kgw_desktop_release_draft_workflow_gate.cjs
 tools/kgw_desktop_version_contract_gate.cjs
 tools/kgw_effective_bridge_settings_gate.cjs
-tools/kgw_effective_node_settings_gate.cjs
 tools/kgw_explorer_lint_contract_tests.cjs
 tools/kgw_full_local_gate.ps1
 tools/kgw_functional_ui_repair_tests.cjs

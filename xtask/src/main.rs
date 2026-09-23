@@ -1,4 +1,5 @@
 mod clippy_policy;
+mod effective_node_settings;
 mod fuzz_build;
 #[cfg(feature = "ksss")]
 mod ksss;
@@ -40,6 +41,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- check-clippy-results <cargo-clippy-jsonl>
   cargo run -p xtask -- check-security-advisories [--max-age-days N]
   cargo run -p xtask -- check-trufflehog-results <jsonl>
+  cargo run -p xtask -- effective-node-settings-gate
   cargo run -p xtask -- network-generation-gate
   cargo run -p xtask -- runtime-automation-claims-gate
   cargo run -p xtask -- fuzz-build
@@ -84,6 +86,17 @@ fn run() -> Result<(), CliError> {
             let path = exactly_one(&mut args, "TruffleHog JSONL path")?;
             let message =
                 trufflehog_policy::check_file(Path::new(&path)).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "effective-node-settings-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "effective-node-settings-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = effective_node_settings::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

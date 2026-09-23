@@ -272,7 +272,7 @@ jobs:
         run: npm run lint
 
       - name: Verify effective Node settings contract
-        run: node tools/kgw_effective_node_settings_gate.cjs
+        run: cargo run --locked -p xtask -- effective-node-settings-gate
 
       - name: Verify effective Bridge settings contract
         run: node tools/kgw_effective_bridge_settings_gate.cjs
