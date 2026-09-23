@@ -15,14 +15,14 @@
 - Graphify architecture extraction succeeded on an exact-baseline analysis-only clone on `kas` after the Server/Python 3.13 Graphify process crashed; development Git remains on Server.
 - Phase 1 Rust-native `xtask`/language-policy foundation is committed locally as `33461f6511c69b457c5f3dd069b54322d9a236a0`; the first tooling debt-reduction batch is committed as `d5f274dcc6d9a423dd9783d21605591efdd05e65`, tree `91b5a680ecd72241a1d02332ce1f2fa19acda3f9`.
 - KSSS phase-boundary continuity is committed locally as `33f1f5e15a72bca5bb313d577b36b57890b39619`, tree `057de701d9b9aa20c7c3d71f6dd4ddbe1b2f789e`.
-- Current measured state after the committed effective-node-settings Rust gate migration: Rust source inventory 86; owned non-Rust source debt 107; non-Rust execution-wiring debt 14; unapproved debt 0/0; one platform-required ClusterFuzzLite thin-adapter exception.
+- Current measured state after the committed desktop-version Rust gate migration: Rust source inventory 87; owned non-Rust source debt 106; non-Rust execution-wiring debt 14; unapproved debt 0/0; one platform-required ClusterFuzzLite thin-adapter exception.
 - The KGW-owned KSSS adapter is Rust/PyO3. Five Python adapter/gate files were retired only after 24 focused Rust contracts and old/new command parity, including Sigstore verification. The signed central Python runtime remains unchanged inside its verified archive.
 - KSSS affected qualification PASS: full xtask 47/47 on stable and MSRV 1.97.1; stable check/Clippy/FMT; MSRV feature check/test; signed runtime SHA-256 unchanged.
 - The verified KSSS Rust migration is committed locally as `55727c4eb53d34a2cd91c8e857850d543ec177e4`, tree `6cdea78414ba4956f86040b6b9870a246843407f`.
-- Network-generation Rust gate is committed as `5494f580c9426155c5a848289595175f02d3d7d7`; runtime-automation-claims as `02c75b87060da96efe8b843deefccdf8363ff459`; effective-node-settings as `8798af0557384c83cbb8c1b075678a7a01266647`.
+- Network-generation Rust gate is committed as `5494f580c9426155c5a848289595175f02d3d7d7`; runtime-automation-claims as `02c75b87060da96efe8b843deefccdf8363ff459`; effective-node-settings as `8798af0557384c83cbb8c1b075678a7a01266647`; desktop-version as `52dcccbc65cff9c23bd6fadf1f9c03de5484ab23`.
 - Local actionlint/cargo-audit/cargo-deny/cargo-machete are unavailable, so those dependency/workflow predicates remain NOT VERIFIED until exact-head GitHub CI.
-- Current phase: bounded Node/CJS repository-gate migration; effective-node-settings is committed and effective-bridge-settings is the next related direct-CI family.
-- NEXT ACTION: validate/checkpoint this effective-node-settings reconciliation, then port `tools/kgw_effective_bridge_settings_gate.cjs` to Rust with affected parity before shrinking debt again.
+- Current phase: bounded Node/CJS repository-gate migration; desktop-version is committed. Dynamic effective-bridge JS gate is deferred to frontend migration; desktop-release-draft workflow contract is next.
+- NEXT ACTION: validate/checkpoint this desktop-version reconciliation, then port `tools/kgw_desktop_release_draft_workflow_gate.cjs` to Rust with affected parity before shrinking debt again.
 - DO NOT REPEAT: broad previous release qualification or verified KSSS parity/tests without predicate invalidation; do not touch old dirty worktrees/protected checkpoint or use Linguist suppression as a substitute for migration.
 
 ## Previous closed-task reconciliation — 2026-09-23
