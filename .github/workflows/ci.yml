@@ -302,10 +302,10 @@ jobs:
         run: cargo run --locked -p xtask -- desktop-release-draft-workflow-gate
 
       - name: Verify project continuity contract
-        run: node tools/kgw_project_continuity_gate.cjs
+        run: cargo run --locked -p xtask -- project-continuity-gate
 
       - name: Verify project continuity gate regression tests
-        run: node tools/kgw_project_continuity_gate_tests.cjs
+        run: cargo test --locked -p xtask project_continuity::tests
 
       - name: Lint and syntax-check E2E JavaScript
         working-directory: e2e

@@ -9,6 +9,7 @@ mod ksss;
 mod language_policy;
 mod network_generation;
 mod npm_dependency_policy;
+mod project_continuity;
 mod runtime_automation_claims;
 mod runtime_repository_binding;
 mod security_advisories;
@@ -52,6 +53,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- effective-node-settings-gate
   cargo run -p xtask -- network-generation-gate
   cargo run -p xtask -- npm-dependency-policy-gate --workspace <desktop|e2e> --ci-log <path>
+  cargo run -p xtask -- project-continuity-gate
   cargo run -p xtask -- runtime-automation-claims-gate
   cargo run -p xtask -- runtime-repository-binding-gate [--strict] [--online|--fresh] [--offline] [--json]
   cargo run -p xtask -- fuzz-build
@@ -163,6 +165,17 @@ fn run() -> Result<(), CliError> {
                 Err(error) if error.code == 2 => Err(CliError::usage(error.message)),
                 Err(error) => Err(CliError::failure(error.message)),
             }
+        }
+        "project-continuity-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "project-continuity-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = project_continuity::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
         }
         "runtime-automation-claims-gate" => {
             if args.next().is_some() {

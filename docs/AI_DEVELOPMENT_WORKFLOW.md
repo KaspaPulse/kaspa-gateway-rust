@@ -76,14 +76,14 @@ Before editing workflow or continuity files, verify:
 The local gate `tools/kgw_ai_workflow_gate.ps1` checks the permanent Graphify/instruction surface. The cross-session continuity contract is checked by:
 
 ```bash
-node tools/kgw_project_continuity_gate.cjs
+cargo run --locked -p xtask -- project-continuity-gate
 ```
 
 ## Test Selection
 
 Use the narrowest test set that covers the change:
 
-- Continuity documentation: run `node --check tools/kgw_project_continuity_gate.cjs` and `node tools/kgw_project_continuity_gate.cjs`.
+- Continuity documentation: run `cargo run --locked -p xtask -- project-continuity-gate` and `cargo test --locked -p xtask project_continuity::tests`.
 - Workflow and PowerShell changes: run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/kgw_ai_workflow_gate.ps1` when PowerShell 7 is available, plus `actionlint` for workflow YAML.
 - JavaScript tools: run `node --check <file>` and any relevant `tools/*.cjs` gate.
 - Frontend behavior: run syntax checks for touched modules and the existing owner/i18n gates that cover the affected surface.

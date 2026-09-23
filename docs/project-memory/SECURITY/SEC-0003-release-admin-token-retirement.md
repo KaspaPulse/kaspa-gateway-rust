@@ -25,7 +25,7 @@ Remove the unused repository Actions secret after proving current tracked workfl
 - Continuity/security gate regression test injects the retired name into a workflow fixture and must fail closed.
 
 ## Regression Protection
-`tools/kgw_project_continuity_gate.cjs` scans tracked GitHub Actions workflow YAML and fails if the retired name is referenced. `tools/kgw_project_continuity_gate_tests.cjs` includes a negative fixture proving that behavior. This protects repository code from silently reintroducing dependency on a credential intentionally removed from GitHub settings.
+The Rust `project-continuity-gate` in `xtask/src/project_continuity.rs` scans tracked GitHub Actions workflow YAML and fails if the retired name is referenced. Its Rust regression suite includes a negative fixture proving that behavior. This protects repository code from silently reintroducing dependency on a credential intentionally removed from GitHub settings.
 
 ## Remaining Risk
 The repository-scoped secret is retired. Account-level revocation/deletion of the historical fine-grained PAT remains NOT VERIFIED because this repository stores neither its value nor an account-level token identifier and the current authorized tooling does not expose a safe revocation target.

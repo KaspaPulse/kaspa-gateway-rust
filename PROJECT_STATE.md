@@ -187,7 +187,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - `docs/project-memory/` — stable-ID durable bugs, regressions, security findings, incidents, decisions, and known failures.
 - `docs/adr/0011-repository-native-project-continuity.md` — accepted continuity/source-of-truth decision.
 - `docs/runbooks/desktop-release.md` — release qualification/recovery/publication procedure.
-- `tools/kgw_project_continuity_gate.cjs` — blocking continuity contract.
+- `xtask/src/project_continuity.rs` — blocking Rust continuity contract, invoked with `cargo run --locked -p xtask -- project-continuity-gate`.
 - `config/runtime-repository-bindings.json` — official runtime bindings.
 
 ## Completed and Verified
