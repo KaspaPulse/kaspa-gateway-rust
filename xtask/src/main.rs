@@ -4,6 +4,7 @@ mod desktop_release_draft;
 mod desktop_version;
 mod effective_node_settings;
 mod fuzz_build;
+mod i18n_contracts;
 #[cfg(feature = "ksss")]
 mod ksss;
 mod language_policy;
@@ -53,6 +54,8 @@ fn usage() -> &'static str {
   cargo run -p xtask -- desktop-release-draft-workflow-gate
   cargo run -p xtask -- desktop-version-contract-gate
   cargo run -p xtask -- effective-node-settings-gate
+  cargo run -p xtask -- i18n-contract-gate
+  cargo run -p xtask -- i18n-locale-coverage-gate
   cargo run -p xtask -- network-generation-gate
   cargo run -p xtask -- npm-dependency-policy-gate --workspace <desktop|e2e> --ci-log <path>
   cargo run -p xtask -- parallel-self-worker-runtime-gate
@@ -146,6 +149,29 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = effective_node_settings::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "i18n-contract-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "i18n-contract-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = i18n_contracts::contract(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "i18n-locale-coverage-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "i18n-locale-coverage-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message =
+                i18n_contracts::locale_coverage(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

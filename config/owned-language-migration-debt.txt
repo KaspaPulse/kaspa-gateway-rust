@@ -69,8 +69,6 @@ tools/kgw_desktop_diagnostic_launch.ps1
 tools/kgw_effective_bridge_settings_gate.cjs
 tools/kgw_full_local_gate.ps1
 tools/kgw_global_owner_gate.cjs
-tools/kgw_i18n_contract_gate.cjs
-tools/kgw_i18n_locale_coverage_gate.cjs
 tools/kgw_live_network_smoke.ps1
 tools/kgw_live_raw_log_matrix.ps1
 tools/kgw_log_ui_tests.cjs

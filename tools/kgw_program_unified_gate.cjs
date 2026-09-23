@@ -174,8 +174,6 @@ function nodeCheck(rel) {
 const syntaxTargets = [
   "tools/kgw_program_unified_gate.cjs",
   "tools/kgw_global_owner_gate.cjs",
-  "tools/kgw_i18n_contract_gate.cjs",
-  "tools/kgw_i18n_locale_coverage_gate.cjs",
   "tools/kgw_bridge_node_mode_routing_audit_v1.cjs",
   "tools/kgw_runtime_trace_owner_audit_v20.cjs",
   "tools/kgw_raw_log_provenance_gate.cjs",
@@ -188,8 +186,12 @@ for (const target of syntaxTargets) {
 }
 
 runStep("global_owner_gate_strict", nodeExe, ["tools/kgw_global_owner_gate.cjs", "--strict"]);
-runStep("i18n_contract_gate", nodeExe, ["tools/kgw_i18n_contract_gate.cjs"]);
-runStep("i18n_locale_coverage_gate", nodeExe, ["tools/kgw_i18n_locale_coverage_gate.cjs"]);
+runStep("i18n_contract_gate", "cargo", [
+  "run", "--locked", "-p", "xtask", "--", "i18n-contract-gate"
+]);
+runStep("i18n_locale_coverage_gate", "cargo", [
+  "run", "--locked", "-p", "xtask", "--", "i18n-locale-coverage-gate"
+]);
 
 runStep(
   "runtime_repository_binding_gate_offline",

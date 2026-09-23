@@ -313,8 +313,7 @@ const OWNER_REGISTRY = {
     ownerId: "KGW_I18N_OWNER",
     description: "Frontend i18n API, contract gate, locale coverage, and translation safety.",
     activeFiles: [
-      "tools/kgw_i18n_contract_gate.cjs",
-      "tools/kgw_i18n_locale_coverage_gate.cjs",
+      "xtask/src/i18n_contracts.rs",
       "apps/kaspa-gateway-desktop/frontend/main.js",
       "apps/kaspa-gateway-desktop/frontend/i18n/ar.json",
       "apps/kaspa-gateway-desktop/frontend/i18n/de.json",
@@ -332,8 +331,7 @@ const OWNER_REGISTRY = {
     referenceFiles: [],
     requiredMarkers: [],
     requiredFiles: [
-      "tools/kgw_i18n_contract_gate.cjs",
-      "tools/kgw_i18n_locale_coverage_gate.cjs"
+      "xtask/src/i18n_contracts.rs"
     ],
     forbiddenMarkers: [
       "textContent = \"Close\"",
@@ -826,8 +824,7 @@ const SCAN_EXTS = [".js", ".css", ".rs", ".json", ".toml", ".md", ".html", ".cjs
 const OWNER_AUDIT_TOOL_FILES = new Set([
   "tools/kgw_global_owner_gate.cjs",
   "tools/kgw_runtime_trace_owner_audit_v20.cjs",
-  "tools/kgw_i18n_contract_gate.cjs",
-  "tools/kgw_i18n_locale_coverage_gate.cjs",
+  "xtask/src/i18n_contracts.rs",
   "xtask/src/parallel_self_worker.rs",
   "tools/kgw_bridge_node_mode_routing_audit_v1.cjs"
 ]);
