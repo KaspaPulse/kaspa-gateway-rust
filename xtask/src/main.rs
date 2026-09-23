@@ -3,6 +3,7 @@ mod fuzz_build;
 #[cfg(feature = "ksss")]
 mod ksss;
 mod language_policy;
+mod network_generation;
 mod security_advisories;
 mod trufflehog_policy;
 
@@ -38,6 +39,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- check-clippy-results <cargo-clippy-jsonl>
   cargo run -p xtask -- check-security-advisories [--max-age-days N]
   cargo run -p xtask -- check-trufflehog-results <jsonl>
+  cargo run -p xtask -- network-generation-gate
   cargo run -p xtask -- fuzz-build
   cargo run -p xtask --features ksss -- ksss <check|trust-verify|evaluate|knowledge|release-check|materialize> [options]"
 }
@@ -80,6 +82,17 @@ fn run() -> Result<(), CliError> {
             let path = exactly_one(&mut args, "TruffleHog JSONL path")?;
             let message =
                 trufflehog_policy::check_file(Path::new(&path)).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "network-generation-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "network-generation-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = network_generation::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

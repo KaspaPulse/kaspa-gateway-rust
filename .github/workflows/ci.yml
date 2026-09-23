@@ -278,10 +278,10 @@ jobs:
         run: node tools/kgw_effective_bridge_settings_gate.cjs
 
       - name: Verify active network generation contract
-        run: node tools/kgw_network_generation_gate.cjs
+        run: cargo run --locked -p xtask -- network-generation-gate
 
       - name: Verify active network generation gate regression tests
-        run: node tools/kgw_network_generation_gate_tests.cjs
+        run: cargo test --locked -p xtask network_generation::tests
 
       - name: Verify runtime repository binding contract
         run: node tools/kgw_runtime_repository_binding_gate.cjs --offline --strict

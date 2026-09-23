@@ -3,11 +3,11 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified KSSS migration checkpoint is `55727c4eb53d34a2cd91c8e857850d543ec177e4`, tree `6cdea78414ba4956f86040b6b9870a246843407f`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified continuity checkpoint is `07dbc731ed07195be936885b659b67f1efcac2b0`, tree `14ba0109a065c092e5679d1bd77aa7d186d42567`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before Node/CJS source mutation. The last verified source checkpoint `55727c4...` was clean.
-- Current Rust source inventory: 83.
-- Current owned non-Rust programming source debt: 111.
+- Working tree: **DIRTY** with only the intentional network-generation Rust migration batch plus this continuity reconciliation; no unrelated source is in scope.
+- Current Rust source inventory: 84.
+- Current owned non-Rust programming source debt: 109.
 - Current non-Rust execution-wiring debt: 14.
 - Rust language guard: PASS; unapproved source=0; unapproved execution=0.
 - Technical exceptions: 1 — required ClusterFuzzLite `build.sh` thin adapter delegating project logic to Rust.
@@ -23,7 +23,7 @@
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Validate this post-commit continuity reconciliation, checkpoint it, then inventory Node/CJS repository gates and choose the smallest independent family for Rust migration. Do not replay KSSS parity/tests unless their source or dependency predicates change.
+Validate continuity/diff for the network-generation batch, stage/review exact files, create one local checkpoint commit, then select the next independent Node/CJS gate family. Do not replay KSSS or network-generation qualification unless relevant predicates change.
 
 ## DO NOT REPEAT
 Do not replay Desktop runtime/native/E2E/release qualification without predicate invalidation. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted Python adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.
