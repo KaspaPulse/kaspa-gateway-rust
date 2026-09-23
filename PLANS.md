@@ -19,7 +19,7 @@ Replace all project-owned programming implementation outside Rust with Rust whil
 2. Isolated Server branch + durable continuity — **VERIFIED_SUCCESS**.
 3. Rust `xtask` + fail-closed language policy/inventory + CI enforcement — **VERIFIED_LOCAL / COMMITTED** at `33461f6511c69b457c5f3dd069b54322d9a236a0`.
 4. Generic Python/Shell security and CI helper migration — **VERIFIED_LOCAL / COMMITTED** at `d5f274dcc6d9a423dd9783d21605591efdd05e65`; five generic Python scripts removed after Rust parity and ClusterFuzz build logic moved to Rust.
-5. KSSS Python consumer/gate migration to Rust — **VERIFIED_LOCAL / COMMIT PENDING**; five owned Python files retired after 24-contract and command/crypto parity, with signed central runtime bytes unchanged.
+5. KSSS Python consumer/gate migration to Rust — **VERIFIED_LOCAL / COMMITTED** at `55727c4eb53d34a2cd91c8e857850d543ec177e4`; five owned Python files retired after 24-contract and command/crypto parity, with signed central runtime bytes unchanged.
 6. Node/CJS repository gate migration to Rust — **PENDING**.
 7. PowerShell helper migration to Rust with Windows behavior preserved — **PENDING**.
 8. WebdriverIO/Node E2E replacement with Rust-native desktop/WebDriver harness — **PENDING**.
@@ -38,4 +38,4 @@ The plan closes only when strict language policy proves zero owned non-Rust impl
 Keep Tauri/Rust backend boundaries unless evidence requires change. Prefer Tauri-supported Rust/WASM frontend with generated output clearly classified. Keep dependencies minimal/workspace-inherited. Workflow YAML stays declarative and should invoke Rust binaries instead of embedding owned scripting logic. Never auto-baseline new debt.
 
 ## NEXT ACTION
-Validate continuity/diff and commit the locally verified KSSS Rust batch. Then migrate the smallest independent Node/CJS repository-gate family to Rust, preserving exact contract behavior and shrinking debt only after affected parity passes.
+Checkpoint the post-KSSS continuity reconciliation, then inventory Node/CJS repository gates and migrate the smallest independent family to Rust, preserving exact contract behavior and shrinking debt only after affected parity passes.

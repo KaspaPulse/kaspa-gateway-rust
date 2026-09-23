@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 4 — the KSSS Rust adapter migration is VERIFIED_LOCAL; reconcile and commit this security-governance batch, then begin bounded Node/CJS repository-gate migration.
+PHASE 5 — KSSS Rust adapter migration is VERIFIED_LOCAL / COMMITTED; begin bounded Node/CJS repository-gate migration from the committed clean boundary.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -37,13 +37,13 @@ PHASE 4 — the KSSS Rust adapter migration is VERIFIED_LOCAL; reconcile and com
 No local engineering blocker. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` are unavailable, so workflow/supply-chain qualification for the changed dependency/workflow surface remains NOT VERIFIED until exact-head GitHub CI.
 
 ## Last Completed Action
-Completed local KSSS Rust migration qualification: 24/24 focused KSSS tests and 47/47 full xtask tests PASS on stable/MSRV, cryptographic old/new parity PASS, language guard PASS at source debt 111, and signed trust/runtime bytes unchanged.
+Committed the verified KSSS Rust adapter migration as `55727c4eb53d34a2cd91c8e857850d543ec177e4`, tree `6cdea78414ba4956f86040b6b9870a246843407f`; worktree was clean immediately after commit.
 
 ## Current Action
-Reconcile continuity and stage/review the locally verified KSSS Rust batch for one checkpoint commit.
+Reconcile continuity to the committed KSSS boundary, then use the valid Graphify baseline plus current source to inventory Node/CJS repository gates and their workflow/test call sites.
 
 ## Next Action
-After the KSSS checkpoint commit, use the valid Graphify baseline plus current source to inventory Node/CJS repository gates, choose the smallest independent gate family, and migrate it to Rust with affected-surface parity before shrinking debt again.
+Select the smallest independent Node/CJS gate family, persist a write-ahead migration plan, port it to Rust with parity/regression tests, then shrink exact debt only after affected validation passes.
 
 ## Verification Required
 - `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 83 / source debt 111 / execution debt 14 / exception 1 / zero unapproved.

@@ -3,9 +3,9 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last committed KSSS phase boundary is `33f1f5e15a72bca5bb313d577b36b57890b39619`, tree `057de701d9b9aa20c7c3d71f6dd4ddbe1b2f789e`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified KSSS migration checkpoint is `55727c4eb53d34a2cd91c8e857850d543ec177e4`, tree `6cdea78414ba4956f86040b6b9870a246843407f`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **DIRTY** with the intentional, locally verified KSSS Rust-adapter migration batch; no unrelated files are part of this worktree.
+- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before Node/CJS source mutation. The last verified source checkpoint `55727c4...` was clean.
 - Current Rust source inventory: 83.
 - Current owned non-Rust programming source debt: 111.
 - Current non-Rust execution-wiring debt: 14.
@@ -23,7 +23,7 @@
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Run the project continuity gate/regression tests and diff check on this reconciled KSSS state. If green, review/stage and create the KSSS local checkpoint commit. Then start bounded Node/CJS repository-gate migration; do not replay KSSS parity/tests unless their source or dependency predicates change.
+Validate this post-commit continuity reconciliation, checkpoint it, then inventory Node/CJS repository gates and choose the smallest independent family for Rust migration. Do not replay KSSS parity/tests unless their source or dependency predicates change.
 
 ## DO NOT REPEAT
 Do not replay Desktop runtime/native/E2E/release qualification without predicate invalidation. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted Python adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.

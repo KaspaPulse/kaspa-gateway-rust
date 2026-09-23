@@ -18,9 +18,10 @@
 - Current measured state after the locally verified KSSS Rust migration: Rust source inventory 83; owned non-Rust source debt 111; non-Rust execution-wiring debt 14; unapproved debt 0/0; one platform-required ClusterFuzzLite thin-adapter exception.
 - The KGW-owned KSSS adapter is Rust/PyO3. Five Python adapter/gate files were retired only after 24 focused Rust contracts and old/new command parity, including Sigstore verification. The signed central Python runtime remains unchanged inside its verified archive.
 - KSSS affected qualification PASS: full xtask 47/47 on stable and MSRV 1.97.1; stable check/Clippy/FMT; MSRV feature check/test; signed runtime SHA-256 unchanged.
+- The verified KSSS Rust migration is committed locally as `55727c4eb53d34a2cd91c8e857850d543ec177e4`, tree `6cdea78414ba4956f86040b6b9870a246843407f`.
 - Local actionlint/cargo-audit/cargo-deny/cargo-machete are unavailable, so those dependency/workflow predicates remain NOT VERIFIED until exact-head GitHub CI.
-- Current phase: reconcile and commit the verified KSSS Rust batch, then begin bounded Node/CJS repository-gate migration.
-- NEXT ACTION: run continuity/diff validation, checkpoint the KSSS batch locally, then select the smallest independent Node/CJS gate family and migrate it to Rust with affected parity.
+- Current phase: post-KSSS continuity checkpoint, then bounded Node/CJS repository-gate migration.
+- NEXT ACTION: checkpoint this post-commit reconciliation, inventory Node/CJS gate families/call sites, and migrate the smallest independent family to Rust with affected parity.
 - DO NOT REPEAT: broad previous release qualification or verified KSSS parity/tests without predicate invalidation; do not touch old dirty worktrees/protected checkpoint or use Linguist suppression as a substitute for migration.
 
 ## Previous closed-task reconciliation — 2026-09-23
