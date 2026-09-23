@@ -22,7 +22,7 @@ $summaryFile = Join-Path $diagnosticDirectory "summary.json"
 $zipFile = "$diagnosticDirectory.zip"
 $executable = Join-Path $Repository "target\debug\kaspa-gateway-desktop.exe"
 $buildLog = Join-Path $diagnosticDirectory "build.log"
-$expectedNodePorts = @(16110, 16210, 16310)
+$expectedNodePorts = @(16110, 16210)
 
 New-Item -ItemType Directory -Path $diagnosticDirectory -Force | Out-Null
 New-Item -ItemType File -Path $stdoutLog -Force | Out-Null

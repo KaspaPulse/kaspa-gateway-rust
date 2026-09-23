@@ -34,7 +34,7 @@ After protected merge, update the isolated Windows clone to the exact merged SHA
 Protected repair merged green; post-merge `main` green; exact merged Windows binary passes both stable-network short smokes; unrelated service preserved; durable state distinguishes short smoke from full synchronization/production capacity.
 
 ## DO NOT REPEAT
-Do not kill PID `35540` or repurpose its appdir, do not bypass the effective-settings equality check, do not invoke the self-worker directly as a substitute for the parent contract, do not start testnet12, and do not claim production readiness from a short smoke.
+Do not kill PID `35540` or repurpose its appdir, do not bypass the effective-settings equality check, do not invoke the self-worker directly as a substitute for the parent contract, do not start testnet13, and do not claim production readiness from a short smoke.
 ## FINAL PROTECTED INTEGRATION / LIVE VERIFICATION
 - PR #82 merged through protected squash at `fb16b9a18b7e17621dfb1c280fef7951c8b819a7`; no admin bypass.
 - Exact-head checks passed: quality, policy/audit/deny/machete, dependency review, Rust security-extended, Secret Scan, actionlint, Rust address fuzzing, and CodeQL.

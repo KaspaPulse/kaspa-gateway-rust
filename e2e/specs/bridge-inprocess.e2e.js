@@ -58,13 +58,18 @@ async function configureAndStartInprocessBridge(network, outputDirectory) {
   await setControlValueById(`bridge-${network}-inprocessListen`, `127.0.0.1:${profile.p2pPort}`);
 
   let selection = await readBridgeRuntimeSelection(network);
-  assert.ok(selection.bridgeInstanceId, "bridge instance id is missing");
-  await setControlValueById(
-    `bridge-${network}-instancePort-${selection.bridgeInstanceId}`,
-    String(profile.bridgePort),
-  );
-  selection = await readBridgeRuntimeSelection(network);
-  assert.equal(selection.bridgePort, profile.bridgePort, "bridge instance port did not retain isolated value");
+  if (profile.externalBridgeListeners) {
+    assert.ok(selection.bridgeInstanceId, "listener-enabled Bridge instance id is missing");
+    await setControlValueById(
+      `bridge-${network}-instancePort-${selection.bridgeInstanceId}`,
+      String(profile.bridgePort),
+    );
+    selection = await readBridgeRuntimeSelection(network);
+    assert.equal(selection.bridgePort, profile.bridgePort, "bridge instance port did not retain isolated value");
+  } else {
+    assert.equal(selection.bridgeInstanceId, null, "CPU-only Bridge must not expose ASIC instances");
+    assert.equal(selection.bridgePort, null, "CPU-only Bridge must not expose a Stratum listener port");
+  }
 
   await clickTestId(`kgw-bridge-start-${network}`);
   const status = await waitForOwnerStatus({ network, runtimeRole: "bridge", timeoutMs: 180000 });
@@ -80,14 +85,21 @@ async function configureAndStartInprocessBridge(network, outputDirectory) {
   assert.equal(Number(fields.worker_pid || 0), Number(status.pid));
   assert.ok(Number(fields.worker_start_time || 0) > 0, "worker start time is missing");
   assert.ok(String(fields.worker_executable || "").trim(), "worker executable is missing");
+  if (!profile.externalBridgeListeners) {
+    assert.equal(String(fields.listener || ""), "", "CPU-only Bridge must not report a Stratum listener");
+    assert.equal(String(fields.prometheus_listener || ""), "", "CPU-only Bridge must not report a Prometheus listener");
+    assert.equal(String(fields.listener_count || "0"), "0", "CPU-only Bridge listener count must stay zero");
+  }
 
   await waitForPort("127.0.0.1", profile.rpcPort, 180000);
   await waitForPort("127.0.0.1", profile.p2pPort, 180000);
-  await waitForPort("127.0.0.1", profile.bridgePort, 180000);
+  if (profile.externalBridgeListeners) {
+    await waitForPort("127.0.0.1", profile.bridgePort, 180000);
+  }
   await writeJson(path.join(outputDirectory, "ports-ready.json"), {
     rpc: profile.rpcPort,
     p2p: profile.p2pPort,
-    stratum: profile.bridgePort,
+    stratum: profile.externalBridgeListeners ? profile.bridgePort : null,
   });
   return status;
 }
@@ -95,7 +107,9 @@ async function stopAndVerifyInprocessBridge(network, outputDirectory) {
   const profile = profileFor(network);
   await stopRuntime(network, "bridge");
   const stopped = await waitForStopped({ network, runtimeRole: "bridge", timeoutMs: 60000 });
-  await waitForPortFree("127.0.0.1", profile.bridgePort, 60000);
+  if (profile.externalBridgeListeners) {
+    await waitForPortFree("127.0.0.1", profile.bridgePort, 60000);
+  }
   await waitForPortFree("127.0.0.1", profile.rpcPort, 60000);
   await waitForPortFree("127.0.0.1", profile.p2pPort, 60000);
   await writeJson(path.join(outputDirectory, "stopped.json"), { stopped });

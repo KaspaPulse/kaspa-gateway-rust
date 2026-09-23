@@ -105,11 +105,13 @@ export async function readBridgeRuntimeSelection(network) {
     const panel = document.querySelector(`[data-testid="kgw-bridge-panel-${net}"]`);
     const active = panel?.querySelector?.('[data-bridge-action="select-instance"].active') ||
       panel?.querySelector?.('[data-bridge-action="select-instance"]');
-    const bridgeInstanceId = String(active?.dataset?.instanceId || "1");
-    const input = panel?.querySelector?.(`#bridge-${net}-instancePort-${bridgeInstanceId}`) ||
-      panel?.querySelector?.(`[data-testid="kgw-bridge-instance-field-${net}-${bridgeInstanceId}-instancePort"]`);
+    const bridgeInstanceId = active?.dataset?.instanceId ? String(active.dataset.instanceId) : null;
+    const input = bridgeInstanceId
+      ? panel?.querySelector?.(`#bridge-${net}-instancePort-${bridgeInstanceId}`) ||
+        panel?.querySelector?.(`[data-testid="kgw-bridge-instance-field-${net}-${bridgeInstanceId}-instancePort"]`)
+      : null;
     const bridgeLevel = panel?.querySelector?.(`[data-testid="kgw-bridge-field-${net}-stratumPort"]`);
-    const rawPort = String(input?.value || input?.placeholder || bridgeLevel?.value || "").trim().replace(/^:/, "");
+    const rawPort = String(input?.value || input?.placeholder || "").trim().replace(/^:/, "");
     const port = Number(rawPort);
     return {
       bridgeInstanceId,
@@ -328,8 +330,8 @@ export async function saveDomState(outputDirectory, label) {
       htmlDir: document.documentElement?.dir || "",
       language: document.documentElement?.lang || "",
       activeTab: document.querySelector("[data-tab].active")?.getAttribute("data-tab") || "",
-      node: ["mainnet", "testnet10", "testnet12"].map((net) => read(`[data-testid="kgw-node-panel-${net}"]`)),
-      bridge: ["mainnet", "testnet10", "testnet12"].map((net) => read(`[data-testid="kgw-bridge-panel-${net}"]`)),
+      node: ["mainnet", "testnet10", "testnet13"].map((net) => read(`[data-testid="kgw-node-panel-${net}"]`)),
+      bridge: ["mainnet", "testnet10", "testnet13"].map((net) => read(`[data-testid="kgw-bridge-panel-${net}"]`)),
     };
   });
   await writeJson(path.join(outputDirectory, `${label}-dom-state.json`), state);

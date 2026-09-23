@@ -64,7 +64,7 @@ const nodeCases = {
     slug: "mainnet-node",
     rpcPort: runtimePorts.mainnet.rpcPort,
     p2pPort: runtimePorts.mainnet.p2pPort,
-    mustNot: [/testnet10/i, /testnet12/i, /nodes[\\/]+testnet10/i, /nodes[\\/]+testnet12/i],
+    mustNot: [/testnet10/i, /testnet13/i, /nodes[\\/]+testnet10/i, /nodes[\\/]+testnet13/i],
   },
   testnet10: {
     slug: "testnet10-node",
@@ -79,12 +79,14 @@ const bridgeCases = {
     slug: "mainnet-bridge",
     nodeRpcPort: runtimePorts.mainnet.rpcPort,
     bridgePort: runtimePorts.mainnet.bridgePort,
-    mustNot: [/runtimeRole\s*=\s*node/i, /runtime_role\s*=\s*node/i, /node output/i, /testnet10/i, /testnet12/i],
+    externalBridgeListeners: runtimePorts.mainnet.externalBridgeListeners,
+    mustNot: [/runtimeRole\s*=\s*node/i, /runtime_role\s*=\s*node/i, /node output/i, /testnet10/i, /testnet13/i],
   },
   testnet10: {
     slug: "testnet10-bridge",
     nodeRpcPort: runtimePorts.testnet10.rpcPort,
     bridgePort: runtimePorts.testnet10.bridgePort,
+    externalBridgeListeners: runtimePorts.testnet10.externalBridgeListeners,
     mustNot: [/runtimeRole\s*=\s*node/i, /runtime_role\s*=\s*node/i, /node output/i, /mainnet/i, new RegExp(`127\\.0\\.0\\.1:${runtimePorts.mainnet.rpcPort}`)],
   },
 };
@@ -211,27 +213,43 @@ async function startBridgeFromSettings(network, settings) {
   await openBridgeSettings(network);
   await setControlValueByTestId(`kgw-bridge-field-${network}-kaspadAddress`, `127.0.0.1:${settings.nodeRpcPort}`);
   let selection = await readBridgeRuntimeSelection(network);
-  const bridgePort = settings.bridgePort || selection.bridgePort || null;
-  if (bridgePort && selection.bridgeInstanceId) {
+  const externalBridgeListeners = Boolean(settings.externalBridgeListeners);
+  const bridgePort = externalBridgeListeners ? settings.bridgePort || selection.bridgePort || null : null;
+  if (externalBridgeListeners) {
+    assert.ok(selection.bridgeInstanceId, `${network} Bridge listener mode requires an active instance`);
+    assert.ok(bridgePort, `${network} Bridge listener mode requires an isolated Stratum port`);
     await setControlValueById(
       `bridge-${network}-instancePort-${selection.bridgeInstanceId}`,
       String(bridgePort),
     );
     selection = await readBridgeRuntimeSelection(network);
+    assert.equal(selection.bridgePort, bridgePort, `${network} Bridge instance port did not retain isolated value`);
+  } else {
+    assert.equal(selection.bridgeInstanceId, null, `${network} CPU-only Bridge must not expose ASIC instances`);
+    assert.equal(selection.bridgePort, null, `${network} CPU-only Bridge must not expose a Stratum listener port`);
   }
   const selectedInstancePort = selection.bridgePort || null;
   await writeJson(path.join(settings.outputDirectory, "bridge-runtime-selection.json"), {
     ...selection,
+    externalBridgeListeners,
     selectedInstancePort,
     runtimeBridgePort: bridgePort,
+    profileBridgePort: settings.bridgePort || null,
   });
   await clickTestId(`kgw-bridge-start-${network}`);
   const status = await waitForOwnerStatus({ network, runtimeRole: "bridge", timeoutMs: 180000 });
   recordPid(network, "bridge", status.pid);
   await writeJson(path.join(settings.outputDirectory, "bridge-owner-status.json"), status);
-  await waitForPort("127.0.0.1", bridgePort, 180000);
-  recordPort(network, "bridge", bridgePort, "stratum");
-  return { ...status, bridgePort, bridgeInstanceId: selection.bridgeInstanceId || "1" };
+  if (externalBridgeListeners) {
+    await waitForPort("127.0.0.1", bridgePort, 180000);
+    recordPort(network, "bridge", bridgePort, "stratum");
+  } else {
+    const fields = status?.fields || {};
+    assert.equal(String(fields.listener || ""), "", `${network} CPU-only Bridge must not report a Stratum listener`);
+    assert.equal(String(fields.prometheus_listener || ""), "", `${network} CPU-only Bridge must not report a Prometheus listener`);
+    assert.equal(String(fields.listener_count || "0"), "0", `${network} CPU-only Bridge listener count must stay zero`);
+  }
+  return { ...status, externalBridgeListeners, bridgePort, bridgeInstanceId: selection.bridgeInstanceId };
 }
 
 async function copyAndVerify({ outputDirectory, network, runtimeRole, bridgeInstanceId = "", testId, visibleTestId, mustMatch = [], mustNotMatch = [] }) {
@@ -389,6 +407,7 @@ async function exerciseBridge(network) {
       outputDirectory,
       nodeRpcPort: config.nodeRpcPort,
       bridgePort: config.bridgePort,
+      externalBridgeListeners: config.externalBridgeListeners,
     });
     assert.match(status.status, new RegExp(`network=${network}`, "i"), "bridge status must identify the selected network");
     assert.match(status.status, /role=bridge/i, "bridge status must identify bridge role");
@@ -400,12 +419,14 @@ async function exerciseBridge(network) {
     try {
       report = await waitForRuntimeLogs({ network, runtimeRole: "bridge", timeoutMs: 15000 });
     } catch (_) {
-      await probeLocalStratum({
-        host: "127.0.0.1",
-        port: status.bridgePort,
-        outputDirectory,
-        label: `${network}-bridge`,
-      });
+      if (status.externalBridgeListeners) {
+        await probeLocalStratum({
+          host: "127.0.0.1",
+          port: status.bridgePort,
+          outputDirectory,
+          label: `${network}-bridge`,
+        });
+      }
       report = await waitForRuntimeLogs({ network, runtimeRole: "bridge", timeoutMs: 90000 });
     }
 
@@ -436,7 +457,11 @@ async function exerciseBridge(network) {
       ],
     });
   } finally {
-    await writeCaseEvidence(config.slug, [config.nodeRpcPort, config.bridgePort, config.bridgePort + 1, nodeCases[network].p2pPort]).catch((error) => {
+    const evidencePorts = [config.nodeRpcPort, nodeCases[network].p2pPort];
+    if (config.externalBridgeListeners) {
+      evidencePorts.push(config.bridgePort, config.bridgePort + 1);
+    }
+    await writeCaseEvidence(config.slug, evidencePorts).catch((error) => {
       observed.warnings.push(`bridge ${network} evidence capture failed: ${error.message || error}`);
     });
     await stopRuntime(network, "bridge");
@@ -450,28 +475,28 @@ async function exerciseBridge(network) {
   }
 }
 
-async function exerciseTestnet12Policy() {
-  const slug = "testnet12-policy";
+async function exerciseTestnet13Policy() {
+  const slug = "testnet13-policy";
   const outputDirectory = await ensureDir(caseDir(slug));
-  observed.cases.push({ slug, network: "testnet12", runtimeRole: "policy", outputDirectory });
-  await writeClipboardSentinel(`kgw-zero-touch-policy-testnet12-${Date.now()}`);
+  observed.cases.push({ slug, network: "testnet13", runtimeRole: "policy", outputDirectory });
+  await writeClipboardSentinel(`kgw-zero-touch-policy-testnet13-${Date.now()}`);
 
-  await openNodeSettings("testnet12");
+  await openNodeSettings("testnet13");
   const nodeEnabled = await browser.execute(() => {
-    const checkbox = document.querySelector('[data-testid="kgw-node-policy-enabled-testnet12"]');
+    const checkbox = document.querySelector('[data-testid="kgw-node-policy-enabled-testnet13"]');
     return Boolean(checkbox?.checked);
   });
-  assert.equal(nodeEnabled, false, "Testnet12 node must be disabled by default");
+  assert.equal(nodeEnabled, false, "Testnet13 node must be disabled by default");
 
-  await openBridgeSettings("testnet12");
+  await openBridgeSettings("testnet13");
   const bridgeEnabled = await browser.execute(() => {
-    const checkbox = document.querySelector('[data-testid="kgw-bridge-policy-enabled-testnet12"]');
+    const checkbox = document.querySelector('[data-testid="kgw-bridge-policy-enabled-testnet13"]');
     return Boolean(checkbox?.checked);
   });
-  assert.equal(bridgeEnabled, false, "Testnet12 bridge must be disabled by default");
+  assert.equal(bridgeEnabled, false, "Testnet13 bridge must be disabled by default");
 
   const startBlocked = await invoke("kgw_kgw_apply_node_settings_v1", {
-    network: "testnet12",
+    network: "testnet13",
     nodeKind: "integrated-as-daemon",
     bridgeKind: "disable",
     nodeCommandPreview: "",
@@ -483,24 +508,24 @@ async function exerciseTestnet12Policy() {
     (error) => ({ ok: false, error: String(error?.message || error) }),
   );
 
-  assert.equal(startBlocked.ok, false, "Testnet12 start without opt-in must be blocked");
-  assert.match(startBlocked.error, /experimental|opt-in|disabled|policy/i, "Testnet12 block reason must mention policy");
+  assert.equal(startBlocked.ok, false, "Testnet13 start without opt-in must be blocked");
+  assert.match(startBlocked.error, /experimental|opt-in|disabled|policy/i, "Testnet13 block reason must mention policy");
 
   const status = String(await invoke("kgw_runtime_owner_status_v1", {
-    network: "testnet12",
+    network: "testnet13",
     runtimeRole: "node",
   }));
   const fields = parseKeyValueLine(status);
-  assert.doesNotMatch(status, /pid=\d+/i, "zero-touch policy case must not launch Testnet12");
-  assert.notEqual(fields.running, "true", "Testnet12 must not be running after policy check");
+  assert.doesNotMatch(status, /pid=\d+/i, "zero-touch policy case must not launch Testnet13");
+  assert.notEqual(fields.running, "true", "Testnet13 must not be running after policy check");
 
-  await writeJson(path.join(outputDirectory, "testnet12-policy.json"), {
+  await writeJson(path.join(outputDirectory, "testnet13-policy.json"), {
     nodeEnabled,
     bridgeEnabled,
     startBlocked,
     status,
   });
-  await writeCaseEvidence(slug, [16310, 16311, 5755]);
+  await writeCaseEvidence(slug, [16210, 16711, 5755]);
 }
 
 describe("Kaspa Gateway zero-touch live raw-log E2E", function () {
@@ -556,7 +581,7 @@ describe("Kaspa Gateway zero-touch live raw-log E2E", function () {
     await exerciseBridge("testnet10");
   });
 
-  it("Testnet12 stays disabled by default and policy blocks zero-touch launch", async () => {
-    await exerciseTestnet12Policy();
+  it("Testnet13 stays disabled by default and policy blocks zero-touch launch", async () => {
+    await exerciseTestnet13Policy();
   });
 });

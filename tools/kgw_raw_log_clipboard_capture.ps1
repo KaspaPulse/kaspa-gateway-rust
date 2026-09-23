@@ -441,7 +441,7 @@ function Test-KgwRawLogPayloadAcceptanceV1 {
         if ($Text -match "(?i)mainnet.*(kaspad|kaspa-gateway|appdata|data|db)|kaspa-gateway-mainnet|\\mainnet\\|/mainnet/") {
             $errors.Add("Testnet10 Node raw payload contains Mainnet node path evidence.")
         }
-        if ($Text -notmatch "(?i)\brpc\b|\bp2p\b|listen|port|16210|16211|16310") {
+        if ($Text -notmatch "(?i)\brpc\b|\bp2p\b|listen|port|16210|16211") {
             $warnings.Add("Testnet10 Node raw payload did not expose RPC or P2P evidence in the captured lines.")
         }
     }

@@ -115,17 +115,17 @@ fn launch_plan_is_built_without_shell_execution() {
 }
 
 #[test]
-fn testnet_launch_plan_is_normalized() {
+fn testnet13_launch_plan_is_normalized() {
     let config = NodeManagerConfig {
-        network: "testnet-12".to_string(),
+        network: "testnet-13".to_string(),
         ..NodeManagerConfig::default()
     };
 
     let plan = NodeCapabilityManager::build_launch_plan(&config).expect("plan must build");
 
-    assert_eq!(plan.network, "testnet12");
+    assert_eq!(plan.network, "testnet13");
     assert!(plan.args.iter().any(|arg| arg == "--testnet"));
-    assert!(plan.args.iter().any(|arg| arg == "--netsuffix=12"));
+    assert!(plan.args.iter().any(|arg| arg == "--netsuffix=13"));
 }
 
 #[test]

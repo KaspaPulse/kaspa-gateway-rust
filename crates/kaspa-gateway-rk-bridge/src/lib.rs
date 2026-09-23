@@ -45,7 +45,7 @@ impl BridgeRuntimeNetwork {
 
     pub fn revision(self) -> &'static str {
         match self {
-            Self::Mainnet | Self::Testnet10 => "98a4ccd8d200853787f227bd4536ac540cf34957",
+            Self::Mainnet | Self::Testnet10 => "01b532e8b553523216471682649693af92f0fd16",
             Self::Testnet13 => "ad45e241e6688a14901fd24dd8dc33c5c9a33f40",
         }
     }
@@ -95,7 +95,7 @@ pub enum BridgeRuntimeFamily {
 impl BridgeRuntimeFamily {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::Mainline => "official-stable-v2.0.1",
+            Self::Mainline => "official-stable-v2.1.0",
             Self::Tn13 => "official-dagknight",
         }
     }
@@ -2249,7 +2249,7 @@ pub fn all_parallel_bridge_plans_v1() -> Result<Vec<BridgeRuntimePlan>, BridgeRu
 }
 
 pub fn official_kaspa_bridge_summary_v1() -> &'static str {
-    "Kaspa bridge follows the KGW service-event mechanism. mainnet/testnet10 use official rusty-kaspa v2.0.1; testnet13 remains an explicit experimental tn13 build. Bridge start uses KaspaApi and listen_and_serve_with_shutdown inside owner."
+    "Kaspa bridge follows the KGW service-event mechanism. mainnet/testnet10 use official rusty-kaspa v2.1.0; testnet13 remains an explicit experimental tn13 build. Bridge start uses KaspaApi and listen_and_serve_with_shutdown inside owner."
 }
 
 #[cfg(feature = "official-kaspa-runtime-mainline")]
@@ -2276,7 +2276,7 @@ pub fn official_bridge_tn13_dependency_marker_v1() -> &'static str {
 mod runtime_binding_tests {
     use super::*;
 
-    const STABLE_REV: &str = "98a4ccd8d200853787f227bd4536ac540cf34957";
+    const STABLE_REV: &str = "01b532e8b553523216471682649693af92f0fd16";
     const TN13_REV: &str = "ad45e241e6688a14901fd24dd8dc33c5c9a33f40";
 
     #[cfg(feature = "official-kaspa-runtime-mainline")]

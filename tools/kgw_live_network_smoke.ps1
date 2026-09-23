@@ -62,10 +62,10 @@ $requiredRust = [version]"1.91.0"
 $rustVersionText = ((& rustc --version) -split "\s+")[1]
 if ([version]$rustVersionText -lt $requiredRust) {
     if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
-        throw "Rust $requiredRust or newer is required by rusty-kaspa v2.0.1."
+        throw "Rust $requiredRust or newer is required by rusty-kaspa v2.1.0."
     }
 
-    Write-Host "Updating Rust because rusty-kaspa v2.0.1 requires Rust $requiredRust or newer..." -ForegroundColor Yellow
+    Write-Host "Updating Rust because rusty-kaspa v2.1.0 requires Rust $requiredRust or newer..." -ForegroundColor Yellow
     rustup update stable
     if ($LASTEXITCODE -ne 0) {
         throw "rustup could not update the stable Rust toolchain."
@@ -386,10 +386,10 @@ $report = [ordered]@{
     SchemaVersion = 1
     GeneratedAt = (Get-Date).ToString("o")
     TestKind = "short-live-network-smoke"
-    StableRuntime = "rusty-kaspa v2.0.1"
-    StableRuntimeCommit = "cfafeb4c093fa37a303f1b9f19c58f986b870ce3"
+    StableRuntime = "rusty-kaspa v2.1.0"
+    StableRuntimeCommit = "01b532e8b553523216471682649693af92f0fd16"
     TestedNetworks = $Networks
-    ExperimentalTestnet12Started = $false
+    ExperimentalTestnet13Started = $false
     Preflight = $preflight
     Results = $results
     Passed = -not ($results | Where-Object { -not $_.Success })

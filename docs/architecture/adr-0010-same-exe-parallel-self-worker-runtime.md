@@ -25,10 +25,10 @@ Required supported workers:
 ```text
 node:mainnet
 node:testnet10
-node:testnet12
+node:testnet13
 bridge:mainnet
 bridge:testnet10
-bridge:testnet12
+bridge:testnet13
 ```
 
 ## Rationale
@@ -65,11 +65,11 @@ crates/kaspa-gateway-rk-node/src/kgw_service_controller.rs
 
 Responsibilities:
 
-- Own mainnet/testnet10/testnet12 metadata.
+- Own mainnet/testnet10/testnet13 metadata.
 - Preserve distinct network ports.
 - Preserve the correct source owner:
   - mainnet/testnet10: mainline/master owner.
-  - testnet12: tn12 owner.
+  - testnet13: tn13 owner.
 
 ### Frontend role
 

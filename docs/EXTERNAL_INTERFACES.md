@@ -11,7 +11,7 @@ Kaspa Gateway itself does **not** expose a stable KGW-owned public HTTP API. The
 **ENTRYPOINT:** `kaspa-gateway-desktop` / installed desktop application.
 **INPUTS:** User selections, addresses/search values, runtime settings, paths, network choices, start/stop actions, supported import/export actions.
 **OUTPUTS:** Rendered network/data views, runtime ownership/status/readiness, application diagnostics, official Node/Bridge stdout/stderr in raw-log surfaces, and supported exported files.
-**DEFAULTS:** `mainnet` and `testnet10` are enabled stable networks; `testnet12` is experimental and disabled by default. Network/runtime defaults are described below.
+**DEFAULTS:** `mainnet` and `testnet10` are enabled stable networks; `testnet13` is experimental and disabled by default. Network/runtime defaults are described below.
 **AUTHENTICATION_IF_ANY:** No KGW application login. Access is the current operating-system user session.
 **NETWORK_EXPOSURE:** The GUI itself is local. Actions in Node/Bridge can create managed runtime listeners; network exposure depends on those runtime settings.
 **FAILURE_BEHAVIOR:** Backend/runtime errors are surfaced to status/diagnostic paths; a requested action is not sufficient evidence of runtime success. Application close is prevented when graceful shutdown fails.
@@ -89,7 +89,7 @@ Kaspa Gateway itself does **not** expose a stable KGW-owned public HTTP API. The
 **ENTRYPOINT:** Desktop `kaspa-node` surface; CLI `node-plan` provides a development preview of the managed launch plan.
 **INPUTS:** Network, RPC endpoint, P2P/listener configuration, data/runtime paths, and supported additional runtime arguments.
 **OUTPUTS:** Managed runtime process, ownership/status/readiness, RPC/P2P endpoints according to runtime settings, and official stdout/stderr in the raw node log.
-**DEFAULTS:** Desktop network profiles use RPC/P2P ports `16110/16111` (`mainnet`), `16210/16211` (`testnet10`), and `16310/16311` (`testnet12`). CLI `node-plan` defaults to `mainnet`, `127.0.0.1`, `16110`.
+**DEFAULTS:** Desktop network profiles use RPC/P2P ports `16110/16111` (`mainnet`), `16210/16211` (`testnet10`), and `16210/16711` (`testnet13`). CLI `node-plan` defaults to `mainnet`, `127.0.0.1`, `16110`.
 **AUTHENTICATION_IF_ANY:** KGW does not add an authentication layer to the official node protocol endpoint; any endpoint authentication/security is owned by the underlying runtime/configuration.
 **NETWORK_EXPOSURE:** RPC should remain loopback for local-only use. P2P or other listener exposure depends on the selected runtime settings and bind interface.
 **FAILURE_BEHAVIOR:** Spawn/readiness/runtime failures remain failures and are surfaced in status/diagnostic/raw-log evidence; KGW must not fabricate READY/success.
@@ -102,7 +102,7 @@ Kaspa Gateway itself does **not** expose a stable KGW-owned public HTTP API. The
 **ENTRYPOINT:** Desktop `kaspa-bridge` surface.
 **INPUTS:** Network, Kaspa RPC endpoint, bridge instance/listener settings, Stratum/Prometheus/dashboard ports, and supported bridge runtime options.
 **OUTPUTS:** Managed bridge process(es), readiness/listener status, network listeners, and official stdout/stderr in the raw bridge log.
-**DEFAULTS:** See the profile table below; `testnet12` is experimental and disabled by default.
+**DEFAULTS:** See the profile table below; `testnet13` is experimental and disabled by default.
 **AUTHENTICATION_IF_ANY:** KGW does not add a separate authentication layer to bridge listeners; protocol/runtime security is delegated to the bridge/runtime configuration.
 **NETWORK_EXPOSURE:** Listener values can expose services beyond loopback. Restrict bind interfaces/firewalls to the access required.
 **FAILURE_BEHAVIOR:** Port conflicts, invalid settings, spawn failures, or listener/readiness failures are surfaced as failures; the UI includes supported port-conflict validation/repair helpers.
@@ -112,7 +112,7 @@ Kaspa Gateway itself does **not** expose a stable KGW-owned public HTTP API. The
 |---|---:|---:|---:|---:|---|
 | `mainnet` | `16110` | `:5555` | `:2112` | `3030` | enabled/stable |
 | `testnet10` | `16210` | `:5655` | `:2212` | `3130` | enabled/stable |
-| `testnet12` | `16310` | `:5755` | `:2312` | `3230` | disabled/experimental |
+| `testnet13` | `16210` | `:5755` | `:2312` | `3230` | disabled/experimental |
 
 These are defaults only. The desktop accepts other valid unused ports according to its validation rules.
 

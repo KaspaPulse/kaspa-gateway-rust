@@ -73,6 +73,12 @@ jobs:
           cache-dependency-path: apps/kaspa-gateway-desktop/package-lock.json
           package-manager-cache: true
 
+      - name: Install pinned Syft 1.52.0
+        uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3 # v2.87.16
+        with:
+          tool: syft@1.52.0
+          fallback: none
+
       - name: Install verified protoc 35.1
         shell: pwsh
         run: |
@@ -225,6 +231,52 @@ jobs:
             "TESTNET13_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL"
           ) | Set-Content -LiteralPath (Join-Path $artifactDir "WINDOWS_INSTALLER_SMOKE.txt") -Encoding utf8NoBOM
 
+      - name: Generate Windows SPDX SBOM
+        shell: pwsh
+        run: |
+          $artifactDir = Join-Path $env:RUNNER_TEMP "kaspa-gateway-windows-artifact"
+          $sbom = Join-Path $artifactDir "WINDOWS_SBOM.spdx.json"
+          Push-Location $env:GITHUB_WORKSPACE
+          try {
+            & syft scan "dir:." --exclude "./target/**" --exclude "./apps/kaspa-gateway-desktop/node_modules/**" -o "spdx-json=$sbom"
+            if ($LASTEXITCODE -ne 0) {
+              throw "Syft Windows SBOM generation failed."
+            }
+          }
+          finally {
+            Pop-Location
+          }
+          if (-not (Test-Path -LiteralPath $sbom -PathType Leaf) -or (Get-Item -LiteralPath $sbom).Length -le 0) {
+            throw "Windows SPDX SBOM was not produced."
+          }
+          $document = Get-Content -LiteralPath $sbom -Raw | ConvertFrom-Json
+          if ($document.spdxVersion -cne "SPDX-2.3") {
+            throw "Windows SBOM must be SPDX-2.3."
+          }
+
+      - name: Attest Windows SPDX SBOM
+        id: attest-windows-sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            ${{ runner.temp }}/kaspa-gateway-windows-artifact/KaspaGateway-windows-x64-nsis.exe
+            ${{ runner.temp }}/kaspa-gateway-windows-artifact/kaspa-gateway-desktop-windows-x64.exe
+          sbom-path: ${{ runner.temp }}/kaspa-gateway-windows-artifact/WINDOWS_SBOM.spdx.json
+
+      - name: Preserve Windows SBOM attestation bundle
+        shell: pwsh
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest-windows-sbom.outputs.bundle-path }}
+        run: |
+          if (-not (Test-Path -LiteralPath $env:ATTESTATION_BUNDLE -PathType Leaf)) {
+            throw "Windows SBOM attestation bundle was not produced."
+          }
+          $destination = Join-Path $env:RUNNER_TEMP "kaspa-gateway-windows-artifact\WINDOWS_SBOM_ATTESTATION.sigstore.json"
+          Copy-Item -LiteralPath $env:ATTESTATION_BUNDLE -Destination $destination
+          if ((Get-Item -LiteralPath $destination).Length -le 0) {
+            throw "Windows SBOM attestation bundle is empty."
+          }
+
       - name: Attest qualified Windows executable artifacts
         id: attest-qualified-windows
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
@@ -311,6 +363,12 @@ jobs:
           cache: npm
           cache-dependency-path: apps/kaspa-gateway-desktop/package-lock.json
           package-manager-cache: true
+
+      - name: Install pinned Syft 1.52.0
+        uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3 # v2.87.16
+        with:
+          tool: syft@1.52.0
+          fallback: none
 
       - name: Install verified protoc 35.1
         shell: bash
@@ -457,6 +515,40 @@ jobs:
           MACOS_INTERACTIVE_UI_VALIDATION=NOT_PERFORMED_HOSTED_RUNNER
           TESTNET13_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL
           EOF
+
+      - name: Generate macOS SPDX SBOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_dir="$RUNNER_TEMP/kaspa-gateway-macos-artifact"
+          sbom="$artifact_dir/MACOS_SBOM.spdx.json"
+          cd "$GITHUB_WORKSPACE"
+          syft scan dir:. \
+            --exclude './target/**' \
+            --exclude './apps/kaspa-gateway-desktop/node_modules/**' \
+            -o "spdx-json=$sbom"
+          test -s "$sbom"
+          python3 -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); assert d.get("spdxVersion") == "SPDX-2.3"' "$sbom"
+
+      - name: Attest macOS SPDX SBOM
+        id: attest-macos-sbom
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            ${{ runner.temp }}/kaspa-gateway-macos-artifact/KaspaGateway-macos-universal.dmg
+            ${{ runner.temp }}/kaspa-gateway-macos-artifact/KaspaGateway-macos-universal-app.zip
+          sbom-path: ${{ runner.temp }}/kaspa-gateway-macos-artifact/MACOS_SBOM.spdx.json
+
+      - name: Preserve macOS SBOM attestation bundle
+        shell: bash
+        env:
+          ATTESTATION_BUNDLE: ${{ steps.attest-macos-sbom.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          test -s "$ATTESTATION_BUNDLE"
+          destination="$RUNNER_TEMP/kaspa-gateway-macos-artifact/MACOS_SBOM_ATTESTATION.sigstore.json"
+          cp "$ATTESTATION_BUNDLE" "$destination"
+          test -s "$destination"
 
       - name: Attest qualified macOS release artifacts
         id: attest-qualified-macos

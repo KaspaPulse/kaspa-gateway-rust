@@ -6,13 +6,13 @@
 |---|---|---|---|---|
 | mainnet | mainline | https://github.com/kaspanet/rusty-kaspa.git | stable | official-kaspa-runtime-mainline |
 | testnet10 | mainline | https://github.com/kaspanet/rusty-kaspa.git | stable | official-kaspa-runtime-mainline |
-| testnet12 | tn12 (experimental) | https://github.com/LiveLaughLove13/rusty-kaspa.git | RKStratumTN12 | official-kaspa-runtime-tn12 |
+| testnet13 | tn13 (experimental) | https://github.com/kaspanet/rusty-kaspa.git | dagknight | official-kaspa-runtime-tn13 |
 
 ## Decision
 
-Mainnet and Testnet10 are pinned to the official kaspanet/rusty-kaspa stable v2.0.1 revision.
+Mainnet and Testnet10 are pinned to the official kaspanet/rusty-kaspa stable v2.1.0 revision.
 
-Testnet12 remains a separate experimental binding, is disabled by default, and requires explicit runtime opt-in.
+Testnet13 remains a separate experimental binding, is disabled by default, and requires explicit runtime opt-in.
 
 ## Important rule
 
@@ -41,12 +41,12 @@ kaspa-core-mainline
 kaspa-utils-mainline
 ```
 
-TN12 aliases, used only by experimental testnet12:
+TN13 aliases, used only by experimental testnet13:
 
 ```text
-kaspad-lib-tn12
-kaspa-core-tn12
-kaspa-utils-tn12
+kaspad-lib-tn13
+kaspa-core-tn13
+kaspa-utils-tn13
 ```
 
 ### Bridge Cargo dependencies
@@ -61,10 +61,10 @@ Mainline alias, used by mainnet and testnet10:
 kaspa-stratum-bridge-mainline
 ```
 
-TN12 alias, used only by experimental testnet12:
+TN13 alias, used only by experimental testnet13:
 
 ```text
-kaspa-stratum-bridge-tn12
+kaspa-stratum-bridge-tn13
 ```
 
 ### Runtime network mapping
@@ -78,8 +78,8 @@ crates/kaspa-gateway-rk-bridge/src/lib.rs
 Current mapping:
 
 ```text
-mainnet/testnet10 -> stable v2.0.1 / Mainline
-testnet12         -> RKStratumTN12 / Tn12 (explicit opt-in)
+mainnet/testnet10 -> stable v2.1.0 / Mainline
+testnet13         -> dagknight / Tn13 (explicit opt-in)
 ```
 
 ## Permanent audit
@@ -95,6 +95,6 @@ Expected result:
 ```text
 network=mainnet;family=mainline;branch=stable;node_repo=https://github.com/kaspanet/rusty-kaspa.git;bridge_repo=https://github.com/kaspanet/rusty-kaspa.git
 network=testnet10;family=mainline;branch=stable;node_repo=https://github.com/kaspanet/rusty-kaspa.git;bridge_repo=https://github.com/kaspanet/rusty-kaspa.git
-network=testnet12;family=tn12;branch=RKStratumTN12;node_repo=https://github.com/LiveLaughLove13/rusty-kaspa.git;bridge_repo=https://github.com/LiveLaughLove13/rusty-kaspa.git
+network=testnet13;family=tn13;branch=dagknight;node_repo=https://github.com/kaspanet/rusty-kaspa.git;bridge_repo=https://github.com/kaspanet/rusty-kaspa.git
 status=PASS
 ```

@@ -2,7 +2,7 @@
 
 Local-first Rust/Tauri desktop control plane for official Kaspa node and Stratum bridge runtimes.
 
-Kaspa Gateway manages **runtime configuration, process ownership, status, and observability** for `mainnet`, `testnet10`, and experimental opt-in `testnet12`. It does **not** reimplement Kaspa consensus, `kaspad`, or Stratum bridge behavior.
+Kaspa Gateway manages **runtime configuration, process ownership, status, and observability** for `mainnet`, `testnet10`, and experimental opt-in `testnet13`. It does **not** reimplement Kaspa consensus, `kaspad`, or Stratum bridge behavior.
 
 ## Download
 
@@ -45,7 +45,7 @@ ba5150b92860ca316e85e5fa90d27c60f2e15b0a7f0c6beed8ac970eb18b6387  KASPA_GATEWAY_
 |---|---|---|
 | `mainnet` | Stable / production behavior | Official mainline Rusty Kaspa |
 | `testnet10` | Stable supported testnet | Official mainline Rusty Kaspa |
-| `testnet12` | **Experimental, explicit opt-in** | Dedicated TN12 binding |
+| `testnet13` | **Experimental, explicit opt-in** | Dedicated TN13 binding |
 
 Runtime repository bindings and pinned revisions are defined in [`config/runtime-repository-bindings.json`](config/runtime-repository-bindings.json).
 

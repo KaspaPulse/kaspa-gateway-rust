@@ -8,9 +8,9 @@ full initial block download.
 
 | Network | Default | Runtime | Data directory |
 |---|---|---|---|
-| mainnet | enabled | official stable v2.0.1 | `%LOCALAPPDATA%\KaspaGateway\nodes\mainnet` |
-| testnet10 | enabled | official stable v2.0.1 | `%LOCALAPPDATA%\KaspaGateway\nodes\testnet10` |
-| testnet12 | disabled | experimental TN12 build | `%LOCALAPPDATA%\KaspaGateway\nodes\testnet12` |
+| mainnet | enabled | official stable v2.1.0 | `%LOCALAPPDATA%\KaspaGateway\nodes\mainnet` |
+| testnet10 | enabled | official stable v2.1.0 | `%LOCALAPPDATA%\KaspaGateway\nodes\testnet10` |
+| testnet13 | disabled | experimental TN13 build | `%LOCALAPPDATA%\KaspaGateway\nodes\testnet13` |
 
 RPC listeners are bound to loopback. Bridge Stratum listeners may bind to the
 LAN only when the operator intentionally exposes the selected port and applies
@@ -38,7 +38,7 @@ The script:
 
 The smoke launcher uses the desktop's dedicated same-executable parent mode. After RPC readiness it terminates that task-owned parent, proves the worker releases the RPC listener, and relaunches the same network to verify durable ownership reconciliation. Direct `--kgw-self-worker` invocation is intentionally unsupported because production workers require an exact desktop parent identity.
 
-Testnet 12 is never started by this script. Its UI toggle requires an explicit
+Testnet 13 is never started by this script. Its UI toggle requires an explicit
 warning confirmation and the backend independently rejects starts without the
 experimental opt-in flag.
 

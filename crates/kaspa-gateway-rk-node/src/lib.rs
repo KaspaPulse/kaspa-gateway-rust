@@ -24,8 +24,8 @@ pub const KGW_RUNTIME_OWNER_CRATE: &str = "kaspa-gateway-rk-node";
 pub const KGW_RUNTIME_OWNER_MODEL: &str = "kgw-parallel-node-bridge-service-event-owner";
 pub const KGW_RUNTIME_THREAD_NAME: &str = "kaspad";
 pub const KGW_OFFICIAL_KASPA_REPOSITORY: &str = "https://github.com/kaspanet/rusty-kaspa.git";
-pub const KGW_MAINLINE_BRANCH: &str = "master";
-pub const KGW_TN13_BRANCH: &str = "tn13";
+pub const KGW_MAINLINE_BRANCH: &str = "stable";
+pub const KGW_TN13_BRANCH: &str = "dagknight";
 
 pub fn runtime_owner_summary_v1() -> &'static str {
     official_kaspa_runtime_summary_v1()

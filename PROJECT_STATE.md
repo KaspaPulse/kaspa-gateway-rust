@@ -1,8 +1,26 @@
 # PROJECT STATE
 
+## Current Authoritative Reconciliation — 2026-09-23
+
+- Current task: **KASPA V2.1.0 GITHUB PUBLICATION AND DESKTOP 0.1.3 RELEASE**.
+- Current HEAD/tree/status: **VERIFY DYNAMICALLY** from Git before any decision; the committed post-rebase publication head before current hardening edits was `1a464f87926deace3f1d87b7edc013947085b72f`, tree `860fc07c0ef9054abbc4e1abf99aa28bb2d345ca`.
+- Protected qualification checkpoint is `7d670bb00682a7ceec6d40046798cdbe645121d8`, tree `1668bd42e7dc4e0e2fb778638450bdebf3143945`, retained at `refs/checkpoints/kaspa-v2.1.0-runtime-rebaseline-20260923`. Checkpoint receive protection is **VERIFIED_SUCCESS** and the ref must not be updated or deleted.
+- Fresh GitHub reconciliation observed `main=bb183816e5c315107c64411c1793c89d8ec74e8e`, tree `9f0c7e8219005132eb8684b3129a1ec5f77d0478`; it was one workflow-only commit ahead of the historical candidate base. PR #95 was the only open PR and was behind main; the publication candidate branch was absent remotely.
+- Candidate integration/rebase onto that exact main is **VERIFIED_SUCCESS** with no conflicts. Re-observe main immediately before publication push; do not treat the timestamped observation as forever-current.
+- Post-rebase validity evaluation is **REUSE**: product/runtime hash set, Cargo.lock Git blob `02b33e18a89d2ae2848cc2056aac807952207f7f`, build-feature set, native harness, network config, E2E relevant set, and qualified artifact are unchanged. BUILD-014, native 4/4, and E2E qualification must not be replayed without predicate invalidation.
+- BUILD-014-A4 artifact remains SHA-256 `39A7E1D923414677F8510DCEC2B6EACA4F01317D7A1E1868E3F2821BCA12F3A2`.
+- Current publication hardening is intentionally workflow/tooling/continuity only: explicit MSRV Rust 1.97.1 check/test gate; stable quality/security Rust 1.98.1; pinned Syft 1.52.0 SPDX 2.3 SBOM generation and `actions/attest` SBOM attestations for trusted Windows/macOS artifacts; draft-release SBOM/provenance verification.
+- Affected local verification already PASS: workflow contract gates, gate syntax, full-SHA external Action audit, and `git diff --check`. Continuity and Graphify affected verification remain required before staging.
+- Owner authorization now includes GitHub branch publication, PR/CI repair, squash merge, exact-main qualification, trusted artifacts, provenance and SBOM verification, and final GitHub Release, subject to existing repository rules and immutable-release gates.
+- Current blocker remains **FAIL-0004 / BLOCKED_NON_QUALIFICATION**. PID 4404 is preserved; force-kill and repeated close experiments remain forbidden. Qualification impact remains NONE.
+- Current next boundary: complete continuity/Graphify verification, commit only reviewed publication-hardening/continuity changes, fresh-observe main, push candidate normally if base is unchanged, open PR, make the new MSRV context required without weakening existing checks, drive exact-head CI/reviews to PASS, then squash merge and continue through trusted artifact/release gates.
+- DO NOT REPEAT: qualified build/native/E2E work while validity predicates remain unchanged. Do not mutate the protected checkpoint, rewrite historical receipts, force-push `main`, bypass checks, publish unverified artifacts, enable Testnet13, or force-kill PID 4404.
+
+Historical project state remains below for context. When it conflicts with this section, verified Git/GitHub/runtime/evidence and this 2026-09-23 reconciliation take precedence.
+
 ## Metadata
 
-- Last state update: 2026-09-11 during P0 Runtime Lifecycle & Raw Logging Reliability remediation after verified BUG-0002 through BUG-0005 checkpoints and local close/relaunch contract validation.
+- Last state update: 2026-09-23 during local-only Kaspa v2.1.0 mainline upgrade qualification and continuity reconciliation.
 - State author/agent: Remote Desktop Commander continuity reconciliation session.
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - This document is the canonical resumable summary after reconciliation; Git/GitHub, CI, release metadata, and live runtime evidence remain the owning sources for their facts.
@@ -50,7 +68,7 @@
 
 - Preserve official Kaspa runtime ownership and official runtime bindings; do not reimplement official runtime behavior.
 - Preserve the zero-fake-log invariant: raw runtime panes show real official stdout/stderr only.
-- Keep `mainnet` and `testnet10` stable/supported; keep `testnet12` experimental and explicit opt-in.
+- Keep `mainnet` and `testnet10` stable/supported; keep `testnet13` experimental and explicit opt-in.
 - Keep immutable Desktop `0.1.1` bound to source `b911eb44619f8eab706bc2fe786d1c84ac958f1d` with its verified six-asset release set unchanged.
 - Preserve repaired draft-release semantics: draft-inclusive discovery, unique draft resolution by tag/target, numeric release-ID propagation, and ID-based post-create verification.
 - Keep `AGENTS.md` stable policy, `PROJECT_STATE.md` current state, ADRs durable decisions, runbooks repeatable operations, and `PLANS.md` active only for genuine multi-stage work.
@@ -111,7 +129,7 @@
 
 - Live Kaspa node/bridge runtime state: **NOT VERIFIED**. Dependency CI and release metadata are not runtime-health evidence.
 - No claim of mainnet/testnet runtime success is made from #52 tests.
-- `testnet12` live smoke was not run and remains explicit opt-in.
+- `testnet13` live smoke was not run and remains explicit opt-in.
 
 ### External Dependencies
 
@@ -264,7 +282,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 
 - Preserve official runtime ownership and official runtime bindings.
 - Preserve zero-fake-log policy.
-- `mainnet` and `testnet10` remain stable; `testnet12` remains experimental explicit opt-in.
+- `mainnet` and `testnet10` remain stable; `testnet13` remains experimental explicit opt-in.
 - Do not use destructive Git cleanup or discard user work.
 - Use PR-based integration and exact-head qualification for material repository changes.
 - Do not mutate immutable `desktop-v0.1.0` or `desktop-v0.1.1`.
@@ -332,7 +350,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane around official 
 - Workspace test qualification required an isolated `KASPA_GATEWAY_DATA_DIR`: the unisolated Server run was contaminated by preserved historical live-smoke ownership metadata under the real user data root. The external lease remains byte-identical and must not be deleted or modified.
 - With isolated data, Desktop library reached 77/77 PASS and integrated runtime IPC reached 55/55 PASS. A subsequent rk-bridge test exposed only a Windows-vs-Unix bind-diagnostic expectation; production correctly returned FAILED and never READY. The assertion was patched test-only, but the exact corrected test execution was TOOL_BLOCKED before start, so final workspace/all-targets PASS is NOT VERIFIED after that last test-only patch.
 - No production runtime source change was made for either final test-compatibility repair. Application/package qualification remains source-relevant because the later changes are confined to `#[cfg(test)]`/integration-test code.
-- No staging, commit, push, PR, merge, tag, release, deployment, Production, DNS, Testnet12, real-user database, shared credential, or live-provider qualification was performed. Unrelated kaspad PID 33436 / ports 16110 and 16111 remain excluded.
+- No staging, commit, push, PR, merge, tag, release, deployment, Production, DNS, Testnet13, real-user database, shared credential, or live-provider qualification was performed. Unrelated kaspad PID 33436 / ports 16110 and 16111 remain excluded.
 - Canonical detailed remediation checkpoint/evidence: `C:/KGW-Local-Validation/audits/functional-surface-ee92134/CURRENT.md` and `assessment-20260913T210623Z/continuation-20260914/remediation-all-20260914` below that audit root.
 - NEXT SAFE ACTION: owner review. If the tool block is later removed without source drift, execute only the exact corrected rk-bridge bind-diagnostic test and then the isolated workspace/all-targets gate; do not repeat green UI, package, Graphify, lifecycle, CLI, Explorer, or stable-network matrices without relevant source/environment changes.
 

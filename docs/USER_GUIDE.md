@@ -31,7 +31,7 @@ Use the published Universal `.dmg` or `.app.zip`. The current developer release 
 ## 2. First-run workflow
 
 1. Start Kaspa Gateway.
-2. Choose a network in the Node or Bridge surface. `mainnet` and `testnet10` are the stable supported networks. `testnet12` is experimental and requires explicit opt-in.
+2. Choose a network in the Node or Bridge surface. `mainnet` and `testnet10` are the stable supported networks. `testnet13` is experimental and requires explicit opt-in.
 3. In **Kaspa Node**, review the runtime/data location and network ports before starting the node.
 4. Start the node and wait for the runtime status/readiness surface to report the real managed-runtime state. Do not infer success only from a button click.
 5. In **Kaspa Bridge**, confirm the target Kaspa RPC endpoint and listener ports. Start the bridge only after the intended node/RPC endpoint is available.
@@ -64,7 +64,7 @@ Defaults are profiles, not permission to expose a service publicly. Review the a
 |---|---|---:|---:|
 | `mainnet` | Stable | `16110` | `16111` |
 | `testnet10` | Stable supported testnet | `16210` | `16211` |
-| `testnet12` | Experimental opt-in | `16310` | `16311` |
+| `testnet13` | Experimental opt-in | `16210` | `16711` |
 
 The CLI `node-plan` defaults to network `mainnet`, RPC host `127.0.0.1`, and RPC port `16110`.
 
@@ -74,7 +74,7 @@ The CLI `node-plan` defaults to network `mainnet`, RPC host `127.0.0.1`, and RPC
 |---|---:|---:|---:|---:|
 | `mainnet` | `16110` | `:5555` | `:2112` | `3030` |
 | `testnet10` | `16210` | `:5655` | `:2212` | `3130` |
-| `testnet12` | `16310` | `:5755` | `:2312` | `3230` |
+| `testnet13` | `16210` | `:5755` | `:2312` | `3230` |
 
 A listener such as `:5555` is a runtime listen setting, not a loopback-only promise. Restrict listener interfaces and host firewall rules to the access actually required.
 
@@ -103,7 +103,7 @@ Do not place seed phrases, private keys, passwords, access tokens, or other secr
 
 ## 6. Node workflow
 
-1. Select the intended network. Keep `testnet12` disabled unless you explicitly intend to use the experimental network.
+1. Select the intended network. Keep `testnet13` disabled unless you explicitly intend to use the experimental network.
 2. Review the effective data path, RPC/P2P settings, and any additional supported runtime arguments.
 3. Check that configured ports are not already owned by an unrelated process.
 4. Start the node from the Node surface.
@@ -152,7 +152,7 @@ Do not kill an unknown or unrelated Kaspa process to make the UI appear stopped.
 - Read the runtime status/readiness surface and the corresponding raw log.
 - Confirm the configured executable/runtime is available.
 - Check for port conflicts and invalid data/configuration paths.
-- Confirm the selected network is enabled; `testnet12` requires explicit opt-in.
+- Confirm the selected network is enabled; `testnet13` requires explicit opt-in.
 - For source/developer CLI builds, run `kaspa-gateway runtime-check` for the repository's runtime diagnostic report.
 
 ### Port conflict

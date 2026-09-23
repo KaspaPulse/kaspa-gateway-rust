@@ -1,40 +1,43 @@
 # EXECUTION PLAN
 
 ## Status
-**ACTIVE — P0 RUNTIME LIFECYCLE & RAW LOGGING RELIABILITY**
+**ACTIVE — GITHUB PUBLICATION / DESKTOP 0.1.3 RELEASE**
 
 ## Objective
-Rehabilitate network/bridge lifecycle and raw logging end-to-end using the accepted same-EXE ownership architecture, local-first Git development, real Windows runtime validation, and a single final GitHub publication.
+Publish the protected, qualified v2.1.0 candidate through current-main integration, exact-head protected CI, squash-only merge, exact-main qualification, trusted Windows/macOS artifacts, verified provenance plus SPDX SBOM attestations, and the final Desktop 0.1.3 GitHub Release.
 
 ## Success Criteria
-- Network and bridge state machines are truthful across Start/Ready/Stop/Stopped/Restart/Crash/Recovery/Relaunch/Reconciliation.
-- Exact process ownership identity is verified; no orphan, stale READY, false READY, or cross-network ownership.
-- Bridge readiness proves node attachment and listener readiness for every supported mode.
-- Native stdout/stderr is preserved, ordered, timestamped/identified by metadata, and separated from application diagnostics.
-- UI state reconciles to runtime truth after failures, application close, and relaunch.
-- Full local tests/security/build/artifact/Windows validation pass with no P0/P1 issue.
-- Real GitHub receives exactly one final validated push; deployment uses exactly that commit.
+- Preserve protected checkpoint `7d670bb00682a7ceec6d40046798cdbe645121d8` / tree `1668bd42e7dc4e0e2fb778638450bdebf3143945`.
+- Reuse BUILD-014/native 4-of-4/E2E evidence while their bound predicates stay unchanged.
+- Keep `rust-version = "1.97.1"` as MSRV, test MSRV explicitly, and run supported stable quality/security on Rust 1.98.1.
+- Keep all external Actions pinned to full commit SHAs.
+- Produce trusted Windows/macOS artifacts from final merged main with provenance and SPDX 2.3 SBOM attestations, verify both, then publish Desktop 0.1.3 only after all release gates pass.
+- Preserve `FAIL-0004` as a non-qualification blocker; never force-kill PID 4404.
 
 ## Milestones
-1. Establish and verify local bare remote workflow; block real GitHub push — **COMPLETE**.
-2. Audit full UI→IPC→runtime→process→logs→UI execution paths and reproduce defects — **COMPLETE LOCALLY**.
-3. Repair network lifecycle defects with regression coverage and local checkpoint commits — **COMPLETE LOCALLY**.
-4. Repair bridge lifecycle/readiness/attachment/listener defects with regression coverage — **COMPLETE LOCALLY AT SOURCE/IPC/FRONTEND LEVEL; WINDOWS PROOF REMAINS IN MILESTONE 8**.
-5. Repair raw stdout/stderr ordering/provenance/diagnostics separation and frontend rendering — **COMPLETE LOCALLY**.
-6. Repair reconciliation/orphan/stale-state/UI truth after crash, close, and relaunch — **COMPLETE LOCALLY**.
-7. Run full local regression/security/build/artifact validation — **COMPLETE FOR NON-WINDOWS GATES; WINDOWS ARTIFACT/GUI PROOF CONTINUES IN MILESTONE 8**.
-8. Run real Windows lifecycle matrix for mainnet/testnet10 and every supported bridge mode — **IN PROGRESS; BASELINE NODE + EXTERNAL BRIDGE PASS; FOCUSED RECOVERY FOUND BUG-0011 HARNESS MISCLASSIFICATION**.
-9. Consolidate local commits, independently verify final production artifact/evidence, and pass local release gate — **PENDING**.
-10. Perform one final real-GitHub push, deploy exact commit, verify production, and close durable state — **PENDING; REAL GITHUB REMAINS BLOCKED UNTIL FINAL LOCAL GATE**.
+1. Local v2.1.0 qualification — **VERIFIED_SUCCESS / CLOSED**.
+2. Protected write-once receive checkpoint — **VERIFIED_SUCCESS / CLOSED**.
+3. Fresh GitHub reconciliation — **VERIFIED_SUCCESS**; observed main `bb183816...`, one workflow-only drift commit, PR #95 open/behind, candidate absent remotely.
+4. Candidate integration/rebase — **VERIFIED_SUCCESS**; clean rebase, no conflicts, protected checkpoint unchanged.
+5. Validity-predicate evaluation — **VERIFIED_SUCCESS / REUSE**; Cargo.lock blob and all product/runtime/native/E2E predicates unchanged.
+6. Rust CI + release supply-chain hardening — **IN PROGRESS**; MSRV/Stable split and SPDX SBOM workflow changes implemented locally, affected contract checks PASS.
+7. Continuity + Graphify affected verification — **IN PROGRESS**.
+8. Publication branch push + PR — **PENDING**.
+9. Exact-final-PR-head required CI/reviews/rulesets — **PENDING**.
+10. Squash merge + exact-main CI — **PENDING**.
+11. Trusted Desktop Artifacts Windows/macOS — **PENDING**.
+12. Provenance + SBOM attestation verification — **PENDING**.
+13. Desktop 0.1.3 draft/release immutability gate/publication — **PENDING**.
+14. Final continuity receipt — **PENDING**.
 
 ## Progress
-Local remediation has BUG-0002 through BUG-0010 checkpointed; focused node recovery, in-process Bridge, and close/relaunch harnesses are also checkpointed locally. Windows baseline passed. The focused node recovery run proved exact-owner crash reconciliation returns `running=false;readiness=FAILED` but exposed BUG-0011 in the E2E stopped-state classifier; its local fix is green and awaits focused Windows rerun.
+Local qualification, checkpoint protection, fresh GitHub reconciliation, clean rebase, and validity-predicate reuse are complete. Publication hardening is implemented locally and its workflow contracts/full-SHA audit/diff-check are green. Continuity reconciliation is being validated now; publication branch push/PR and every remote release gate remain pending until their exact evidence exists.
 
 ## Completion Criteria
-Every local release checklist item is evidenced; no known P0/P1 issue remains; final diff/artifact/evidence match the release commit; post-push remote HEAD and deployed commit match exactly.
+Completion requires: publication branch pushed; PR created; exact-final-head required CI including MSRV PASS; review threads resolved; squash merge under current rulesets; exact-main CI PASS; trusted Windows/macOS artifact workflow PASS on final main; provenance and SPDX SBOM attestations generated and independently verified; Desktop 0.1.3 draft uniquely bound to final main and qualified artifact run; immutable-release administration gate PASS; release published and post-publication tag/assets/digests/immutability verified; protected checkpoint preserved; final continuity receipt verified.
 
 ## Constraints
-No intermediate GitHub pushes, no force push/rebase of remote history, no admin bypass, no unnecessary runtime rewrite, no direct frontend process ownership, no fake logs, no weakening of testnet12 policy or ownership identity.
+No protected-checkpoint mutation; no force-kill PID 4404; no Testnet13 live start; no broad product retest without predicate invalidation; no blind force push; no main protection weakening; no bypass of required CI; no historical receipt rewrite; no unverified release artifact.
 
 ## NEXT ACTION
-Checkpoint BUG-0011, rerun only focused node recovery on Server, then run focused in-process Bridge and native close/relaunch tests. Do not repeat baseline/non-Windows gates and do not push to real GitHub.
+Finish continuity and Graphify verification for current workflow/tooling changes, then commit reviewed scope. Immediately re-observe `main`; if unchanged, push candidate normally, open PR, update required-check governance safely to include the new MSRV context while removing duplicate baseline status-check ownership without reducing protection, then drive exact-head CI to PASS.

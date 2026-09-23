@@ -35,9 +35,9 @@ Optional but recommended:
 
 ## Runtime Repository Binding Expectations
 
-- mainnet: https://github.com/kaspanet/rusty-kaspa, stable v2.0.1
-- testnet10: https://github.com/kaspanet/rusty-kaspa, stable v2.0.1
-- testnet12: https://github.com/LiveLaughLove13/rusty-kaspa, branch RKStratumTN12, experimental and disabled by default
+- mainnet: https://github.com/kaspanet/rusty-kaspa, stable v2.1.0
+- testnet10: https://github.com/kaspanet/rusty-kaspa, stable v2.1.0
+- testnet13: https://github.com/kaspanet/rusty-kaspa, branch dagknight, experimental and disabled by default
 
 ## Before Claiming Hardened Status
 

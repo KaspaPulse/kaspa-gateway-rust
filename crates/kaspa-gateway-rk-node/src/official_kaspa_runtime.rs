@@ -36,7 +36,7 @@ impl KaspaRuntimeNetwork {
 
     pub fn revision(self) -> &'static str {
         match self {
-            Self::Mainnet | Self::Testnet10 => "98a4ccd8d200853787f227bd4536ac540cf34957",
+            Self::Mainnet | Self::Testnet10 => "01b532e8b553523216471682649693af92f0fd16",
             Self::Testnet13 => "ad45e241e6688a14901fd24dd8dc33c5c9a33f40",
         }
     }
@@ -74,7 +74,7 @@ pub enum KaspaRuntimeFamily {
 impl KaspaRuntimeFamily {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::Mainline => "official-stable-v2.0.1",
+            Self::Mainline => "official-stable-v2.1.0",
             Self::Tn13 => "official-dagknight",
         }
     }
@@ -542,7 +542,7 @@ pub fn all_parallel_runtime_plans_v1() -> Result<Vec<KaspaRuntimePlan>, KaspaRun
 }
 
 pub fn official_kaspa_runtime_summary_v1() -> &'static str {
-    "KGW mechanism applied to all node networks and bridges in parallel: settings -> runtime decision -> service events -> owner plan/status. mainnet/testnet10 use official stable v2.0.1; testnet13 is an explicit experimental tn13 runtime. No local clone, no downloaded exe, no frontend-owned runtime start."
+    "KGW mechanism applied to all node networks and bridges in parallel: settings -> runtime decision -> service events -> owner plan/status. mainnet/testnet10 use official stable v2.1.0; testnet13 is an explicit experimental tn13 runtime. No local clone, no downloaded exe, no frontend-owned runtime start."
 }
 
 #[cfg(feature = "official-kaspa-runtime-mainline")]
@@ -575,7 +575,7 @@ impl fmt::Display for KaspaNodeRuntimeMode {
 mod runtime_binding_tests {
     use super::{KaspaRuntimeFamily, KaspaRuntimeNetwork};
 
-    const STABLE_REV: &str = "98a4ccd8d200853787f227bd4536ac540cf34957";
+    const STABLE_REV: &str = "01b532e8b553523216471682649693af92f0fd16";
     const TN13_REV: &str = "ad45e241e6688a14901fd24dd8dc33c5c9a33f40";
 
     #[test]

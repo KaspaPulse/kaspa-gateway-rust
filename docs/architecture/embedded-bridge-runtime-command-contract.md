@@ -18,7 +18,7 @@ Required behavior:
 
 - Mainnet bridge uses the Bridge/Mainnet UI flags.
 - Testnet10 bridge uses the Bridge/Testnet10 UI flags.
-- Testnet12 bridge uses the Bridge/Testnet12 UI flags.
+- Testnet13 bridge uses the Bridge/Testnet13 UI flags.
 - The command preview and Start request must resolve from the same UI-state command builder.
 - The backend validates the selected network, feature family, and ports, but must not silently rebuild a different command.
 - External mode must never emit direct --netsuffix in the bridge command.
@@ -33,7 +33,7 @@ Required behavior:
 - Bridge flags appear before --.
 - Kaspad flags appear after --.
 - Testnet10 may emit -- --testnet --netsuffix=10 only when node-mode=inprocess.
-- Testnet12 may emit -- --testnet --netsuffix=12 only when node-mode=inprocess.
+- Testnet13 may emit -- --testnet --netsuffix=13 only when node-mode=inprocess.
 - Mainnet must not emit --testnet or --netsuffix.
 - Any future appdir, ports, RPC, miner, or metrics values must come from the visible Bridge UI fields or a single manifest/schema owner.
 
@@ -87,4 +87,4 @@ Node/Mainnet Runtime settings must not show:
 --netsuffix
 ```
 
-These controls are valid only for Node/Testnet10 and Node/Testnet12.
+These controls are valid only for Node/Testnet10 and Node/Testnet13.

@@ -14,11 +14,13 @@ export function runtimePortProfile(env = process.env) {
       rpcPort: readPort(env, "KGW_E2E_MAINNET_RPC_PORT", 16110),
       p2pPort: readPort(env, "KGW_E2E_MAINNET_P2P_PORT", 16111),
       bridgePort: readPort(env, "KGW_E2E_MAINNET_BRIDGE_PORT", 5556),
+      externalBridgeListeners: true,
     },
     testnet10: {
       rpcPort: readPort(env, "KGW_E2E_TESTNET10_RPC_PORT", 16210),
       p2pPort: readPort(env, "KGW_E2E_TESTNET10_P2P_PORT", 16211),
       bridgePort: readPort(env, "KGW_E2E_TESTNET10_BRIDGE_PORT", 5656),
+      externalBridgeListeners: false,
     },
   };
 }

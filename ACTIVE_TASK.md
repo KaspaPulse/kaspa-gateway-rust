@@ -1,41 +1,52 @@
 # ACTIVE TASK
 
 ## Status
-IN PROGRESS — P0 RUNTIME LIFECYCLE & RAW LOGGING RELIABILITY
+IN PROGRESS — KASPA V2.1.0 GITHUB PUBLICATION AND DESKTOP 0.1.3 RELEASE
 
 ## Objective
-Make network and bridge lifecycle trustworthy end-to-end: UI state must reflect real runtime ownership/readiness, Start/Stop/Restart/recovery/reconciliation must be deterministic, and Raw Log panes must contain ordered native stdout/stderr only.
+Publish the fully qualified Rusty Kaspa v2.1.0 candidate through protected GitHub integration, exact-head CI, trusted Windows/macOS artifact qualification, provenance plus SPDX SBOM attestations, and an immutable Desktop 0.1.3 release while preserving the protected local qualification checkpoint.
 
 ## Scope
-- Audit UI → Tauri IPC → supervisor/runtime → managed node/bridge → stdout/stderr → reconciliation → UI.
-- Repair network and bridge lifecycle without replacing the accepted same-EXE self-worker architecture.
-- Verify ownership identity, readiness, graceful/bounded stop, restart, crash recovery, orphan/stale-state reconciliation, network isolation, bridge attachment/listener readiness, and raw-log provenance/order/identity.
-- Use the LOCAL bare Git remote for every intermediate commit/checkpoint; real GitHub push is blocked until the final local release gate passes.
-- Validate real Windows runtime on `Server`; mocks alone are insufficient.
+- Use the authorized Windows `Server` worktree `feat/kaspa-v2.1.0-runtime-rebaseline-20260922`.
+- Protected qualification identity remains `7d670bb00682a7ceec6d40046798cdbe645121d8` / tree `1668bd42e7dc4e0e2fb778638450bdebf3143945`.
+- Protected ref `refs/checkpoints/kaspa-v2.1.0-runtime-rebaseline-20260923` is write-once receive protected and must not be changed or deleted.
+- Owner authorization now includes integration/rebase, GitHub push/PR/CI fixes, squash merge, exact-main qualification, trusted artifact workflows, provenance, SBOM, and final GitHub Release.
+- Reuse BUILD-014, native 4/4, and E2E evidence unless their actual validity predicates change.
+- Preserve Testnet13 as experimental explicit opt-in and preserve `FAIL-0004` without force-killing PID 4404.
 
 ## Current Phase
-Local remediation is complete through `BUG-0010`; focused Windows recovery/in-process/close-relaunch harnesses are checkpointed locally. Baseline Windows zero-touch is VERIFIED PASS. The first focused recovery run on `f7a82e7...` proved runtime crash reconciliation is correct but exposed `BUG-0011` in the E2E stopped-state classifier. Desktop `0.1.2` remains local-only and immutable `0.1.1` remains untouched.
+Fresh GitHub reconciliation is complete. The candidate was cleanly rebased onto observed main `bb183816e5c315107c64411c1793c89d8ec74e8e` without conflicts. The post-rebase publication head before current uncommitted hardening is `1a464f87926deace3f1d87b7edc013947085b72f`. Product/runtime, Git Cargo.lock blob, build-feature, native-harness, network-config, E2E, and artifact predicates remain unchanged, so prior product qualification is reusable.
 
 ## Confirmed Progress
-`local` remains the only push target for intermediate work and `origin` push remains disabled. Frontend raw logs/status truth, backend cross-network status responsiveness, and STARTING control semantics are repaired. READY status now retains and reports exact worker/parent identity plus runtime endpoint semantics without changing ownership behavior.
+- Local qualification and checkpoint-ref protection are CLOSED / VERIFIED_SUCCESS.
+- Protected checkpoint target/tree remain exact; protection receipt SHA-256 is `E78DF5070D227C75BD014149517C37D11F9E60C1A6A48315AA9E4F230DE2AC46`.
+- Fresh reconciliation found current main one workflow-only commit ahead of the historical candidate base, with zero product/runtime/Cargo.lock/harness/network overlap.
+- Rebase onto exact observed main completed cleanly; protected checkpoint was unchanged.
+- Cargo.lock Git blob is identical before/after rebase (`02b33e18a89d2ae2848cc2056aac807952207f7f`); a raw worktree SHA difference was line-ending-only and did not invalidate dependency evidence.
+- Current scoped hardening separates MSRV Rust 1.97.1 from stable quality/security Rust 1.98.1 and adds pinned Syft 1.52.0 SPDX 2.3 SBOM generation/attestation/verification to trusted release workflows.
+- Affected workflow contract gates, JavaScript syntax, full-SHA external Action audit, and `git diff --check` are PASS.
 
 ## Current Blocker
-BUG-0011 LOCAL FIX VERIFIED; focused Windows rerun pending. Runtime already reports `running=false;readiness=FAILED` after exact-owner crash while retaining PID identity as terminal evidence; the E2E helper incorrectly treated retained PID as liveness.
+`FAIL-0004` remains `BLOCKED_NON_QUALIFICATION`: PID 4404 is preserved, force-kill is forbidden, and this does not block GitHub publication/release.
 
 ## Last Completed Action
-Workspace Rust tests pass, the Desktop E2E-feature cargo check passes, and the full local gate advanced through raw-log checks. `BUG-0006` frontend regression and `kgw_true_raw_log_gate.ps1` now pass after preserving typed child rawText while rejecting only untyped transport envelopes.
+The publication candidate was cleanly rebased onto the freshly observed GitHub main without conflicts. Post-rebase validity predicates were reconciled to REUSE after proving Cargo.lock Git blob identity; scoped Rust CI/SBOM hardening was implemented and its affected workflow contract checks passed.
 
 ## Current Action
-Checkpoint BUG-0011 locally, transfer exact HEAD to `Server`, and rerun only the focused node lifecycle recovery spec. Then continue with the already-checkpointed in-process Bridge and native close/relaunch focused tests.
+Reconcile continuity for the newly authorized publication/release phase, run affected continuity/Graphify verification, review/stage/commit the scoped hardening, then re-observe GitHub main immediately before publication push.
 
 ## Next Action
-Verify BUG-0011 on Windows with only `lifecycle-recovery.e2e.js`; if green, run the focused in-process Bridge and native close/relaunch coverage without repeating the baseline matrix. No real GitHub push is allowed yet.
+If fresh main still matches the integrated base, push the publication branch normally, open a PR to `main`, capture exact PR head/tree/base, make the MSRV check required while preserving all existing protections, and drive exact-head CI/review to PASS before squash merge.
 
 ## Verification Required
-Focused regression per defect; full runtime IPC suite; frontend lifecycle/raw-log gates; workspace tests/security gates; production desktop build/artifact; real Windows lifecycle sequences for mainnet/testnet10 and supported bridge modes; no orphan/stale/false READY; final local audit.
+- Project continuity gate and its fail-closed regression tests must pass on the reconciled publication state.
+- Graphify must be incrementally refreshed once for changed tooling/docs and queried on the affected workflow-contract path.
+- Final staged paths/diff must be reviewed and pass `git diff --cached --check`.
+- Immediately before GitHub push, re-observe `main` and remote candidate state; after PR creation require exact-final-head protected CI, reviews/threads, mergeability, and rulesets.
+- After merge require exact-main CI, trusted artifact qualification, provenance verification, SPDX SBOM verification, immutable-release gate, and post-publication identity/digest checks.
 
 ## Completion Criteria
-All local release-gate items pass; no known P0/P1 lifecycle/raw-log issue remains; final release commit/artifact/evidence is locally verified; only then one final push to real GitHub followed by exact-commit deployment and production verification.
+The task is complete only after the candidate is integrated, pushed, reviewed and squash-merged under rulesets; exact-main CI passes; trusted Windows/macOS Desktop 0.1.3 artifacts pass their smoke/qualification workflows; provenance and SBOM attestations are verified; the existing verified release draft is published under the repository immutable-release policy; the protected local checkpoint remains unchanged; and final continuity evidence is reconciled.
 
 ## DO NOT REPEAT
-Do not push intermediate work to GitHub, weaken ownership/READY/stop contracts, replace raw stdout/stderr with diagnostics, kill unrelated Kaspa processes, rewrite accepted runtime topology, or treat mocks/CI as real Windows runtime proof.
+Do not rerun BUILD-014, native 4/4, E2E qualification, or broad product testing while their validity predicates remain unchanged. Do not mutate the protected checkpoint, force-kill PID 4404, enable Testnet13, bypass required checks, rewrite historical receipts, or publish an unverified artifact.

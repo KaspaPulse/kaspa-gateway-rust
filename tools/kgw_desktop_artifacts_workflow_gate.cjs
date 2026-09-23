@@ -89,6 +89,14 @@ const requiredWorkflowFragments = [
   "lipo -archs",
   "codesign --verify --deep --strict",
   "ditto -c -k --sequesterRsrc --keepParent",
+  "taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3",
+  "tool: syft@1.52.0",
+  "WINDOWS_SBOM.spdx.json",
+  "MACOS_SBOM.spdx.json",
+  "WINDOWS_SBOM_ATTESTATION.sigstore.json",
+  "MACOS_SBOM_ATTESTATION.sigstore.json",
+  "sbom-path:",
+  "SPDX-2.3",
   "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
 ];
 

@@ -231,9 +231,9 @@ impl NodeCapabilityManager {
                 args.push("--testnet".to_string());
                 args.push("--netsuffix=10".to_string());
             }
-            "testnet12" => {
+            "testnet13" => {
                 args.push("--testnet".to_string());
-                args.push("--netsuffix=12".to_string());
+                args.push("--netsuffix=13".to_string());
             }
             _ => {}
         }
@@ -267,7 +267,7 @@ pub fn normalize_network(value: &str) -> String {
     match value.trim().to_ascii_lowercase().as_str() {
         "mainnet" => "mainnet".to_string(),
         "testnet" | "testnet10" | "testnet-10" => "testnet10".to_string(),
-        "testnet12" | "tn12" | "testnet-12" => "testnet12".to_string(),
+        "testnet13" | "tn13" | "testnet-13" => "testnet13".to_string(),
         "simnet" => "simnet".to_string(),
         "devnet" => "devnet".to_string(),
         _ => "mainnet".to_string(),
@@ -276,15 +276,15 @@ pub fn normalize_network(value: &str) -> String {
 
 pub fn branch_for_network(value: &str) -> &'static str {
     match normalize_network(value).as_str() {
-        "testnet12" => "tn12",
+        "testnet13" => "dagknight",
         _ => "master",
     }
 }
 
 fn validate_network(value: &str) -> Result<()> {
     match value.trim().to_ascii_lowercase().as_str() {
-        "mainnet" | "testnet" | "testnet10" | "testnet-10" | "testnet12" | "tn12"
-        | "testnet-12" | "simnet" | "devnet" => Ok(()),
+        "mainnet" | "testnet" | "testnet10" | "testnet-10" | "testnet13" | "tn13"
+        | "testnet-13" | "simnet" | "devnet" => Ok(()),
         other => Err(NodeError::InvalidNetwork(other.to_string())),
     }
 }

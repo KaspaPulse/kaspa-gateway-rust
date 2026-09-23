@@ -906,7 +906,7 @@ function Get-KgwZeroTouchWdioEvidenceSummary {
         "Testnet10 Node copies isolated Testnet10 child raw lines",
         "Mainnet Bridge copies only bridge child raw lines",
         "Testnet10 Bridge copies isolated Testnet10 bridge child raw lines",
-        "Testnet12 stays disabled by default and policy blocks zero-touch launch"
+        "Testnet13 stays disabled by default and policy blocks zero-touch launch"
     )
 
     if ($jsonFiles.Count -eq 0) {
@@ -1001,13 +1001,13 @@ function Get-KgwZeroTouchWdioEvidenceSummary {
     }
 }
 
-function Get-KgwZeroTouchTestnet12PolicyEvidence {
+function Get-KgwZeroTouchTestnet13PolicyEvidence {
     param([Parameter(Mandatory)][string]$ArtifactDirectory)
 
     $artifactDirectory = [System.IO.Path]::GetFullPath($ArtifactDirectory)
     $errors = New-Object System.Collections.Generic.List[string]
-    $caseDirectory = Join-Path $artifactDirectory "cases/testnet12-policy"
-    $policyPath = Join-Path $caseDirectory "testnet12-policy.json"
+    $caseDirectory = Join-Path $artifactDirectory "cases/testnet13-policy"
+    $policyPath = Join-Path $caseDirectory "testnet13-policy.json"
     $processTreePath = Join-Path $caseDirectory "process-tree.json"
     $screenshotPath = Join-Path $caseDirectory "current-screenshot.png"
     $domStatePath = Join-Path $caseDirectory "current-dom-state.json"
@@ -1015,30 +1015,30 @@ function Get-KgwZeroTouchTestnet12PolicyEvidence {
     $policy = Read-KgwZeroTouchJsonFile -Path $policyPath
 
     if ($null -eq $policy) {
-        $errors.Add("Missing Testnet12 policy evidence: $policyPath")
+        $errors.Add("Missing Testnet13 policy evidence: $policyPath")
     } else {
         if ([bool](Get-KgwZeroTouchProperty -Object $policy -Names @("nodeEnabled"))) {
-            $errors.Add("Testnet12 node policy was enabled; expected disabled by default.")
+            $errors.Add("Testnet13 node policy was enabled; expected disabled by default.")
         }
         if ([bool](Get-KgwZeroTouchProperty -Object $policy -Names @("bridgeEnabled"))) {
-            $errors.Add("Testnet12 bridge policy was enabled; expected disabled by default.")
+            $errors.Add("Testnet13 bridge policy was enabled; expected disabled by default.")
         }
         $startBlocked = Get-KgwZeroTouchProperty -Object $policy -Names @("startBlocked")
         if ([bool](Get-KgwZeroTouchProperty -Object $startBlocked -Names @("ok"))) {
-            $errors.Add("Testnet12 start was not blocked.")
+            $errors.Add("Testnet13 start was not blocked.")
         }
         $blockError = [string](Get-KgwZeroTouchProperty -Object $startBlocked -Names @("error"))
         if ($blockError -notmatch '(?i)experimental|opt-in|disabled|policy') {
-            $errors.Add("Testnet12 block reason did not mention experimental opt-in policy.")
+            $errors.Add("Testnet13 block reason did not mention experimental opt-in policy.")
         }
         $status = [string](Get-KgwZeroTouchProperty -Object $policy -Names @("status"))
         if ($status -match '(?i)pid=\d+' -or $status -match '(?i)running=true') {
-            $errors.Add("Testnet12 policy status indicates a runtime started.")
+            $errors.Add("Testnet13 policy status indicates a runtime started.")
         }
     }
     foreach ($path in @($processTreePath, $screenshotPath, $domStatePath, $pageSourcePath)) {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-            $errors.Add("Missing Testnet12 policy evidence file: $path")
+            $errors.Add("Missing Testnet13 policy evidence file: $path")
         }
     }
 
@@ -1064,9 +1064,9 @@ function Get-KgwZeroTouchRecoveryEvidenceFiles {
             "zero-touch-report.md",
             "zero-touch-script-summary.json",
             "zero-touch-result.json",
-            "cases/testnet12-policy/testnet12-policy.json",
-            "cases/testnet12-policy/process-tree.json",
-            "cases/testnet12-policy/current-screenshot.png"
+            "cases/testnet13-policy/testnet13-policy.json",
+            "cases/testnet13-policy/process-tree.json",
+            "cases/testnet13-policy/current-screenshot.png"
         )) {
         $path = Join-Path $artifactDirectory $relativePath
         if (Test-Path -LiteralPath $path -PathType Leaf) {
@@ -1207,7 +1207,7 @@ function Test-KgwZeroTouchResultIntegrity {
         }
     }
 
-    $policy = Get-KgwZeroTouchTestnet12PolicyEvidence -ArtifactDirectory $artifactDirectory
+    $policy = Get-KgwZeroTouchTestnet13PolicyEvidence -ArtifactDirectory $artifactDirectory
     if (-not [bool]$policy.passed) {
         foreach ($error in @($policy.errors)) {
             $errors.Add($error)
@@ -1351,6 +1351,6 @@ function Test-KgwZeroTouchResultIntegrity {
         result = $result
         evidence = $evidence
         wdio = $wdio
-        testnet12_policy = $policy
+        testnet13_policy = $policy
     }
 }

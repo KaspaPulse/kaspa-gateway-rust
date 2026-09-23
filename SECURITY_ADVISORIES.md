@@ -99,10 +99,10 @@ https://github.com/kaspanet/rusty-kaspa.git
 Current approved mainline revision:
 
 ```text
-cfafeb4c093fa37a303f1b9f19c58f986b870ce3  # v2.0.1
+01b532e8b553523216471682649693af92f0fd16  # v2.1.0
 ```
 
-The Testnet-12 compatibility fork remains separately pinned to its reviewed immutable revision and must not be silently substituted for the official mainline source.
+The experimental Testnet 13 runtime remains separately pinned to the official kaspanet/rusty-kaspa dagknight branch revision and must not be silently substituted for the stable mainline source.
 
 ## Review checklist
 

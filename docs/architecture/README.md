@@ -5,7 +5,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane for official Kas
 ## Durable Boundaries
 
 - `mainnet` and `testnet10` are stable supported networks.
-- `testnet12` is experimental and explicit opt-in.
+- `testnet13` is experimental and explicit opt-in.
 - Runtime ownership remains isolated by role/network with one owner per runtime instance.
 - The frontend requests runtime actions across the Tauri IPC boundary; it does not own operating-system process launch.
 - Raw runtime log panes display captured official stdout/stderr only. Status or UI management messages must not be mixed into those raw streams.

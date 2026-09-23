@@ -90,13 +90,33 @@ where
     unsafe { std::env::remove_var(key) };
 }
 
-struct RuntimeWorkerTestGuard;
+struct RuntimeWorkerTestGuard {
+    data_dir: std::path::PathBuf,
+    previous_data_dir: Option<std::ffi::OsString>,
+}
 
 impl RuntimeWorkerTestGuard {
     fn new() -> Self {
+        let previous_data_dir = std::env::var_os("KASPA_GATEWAY_DATA_DIR");
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        let data_dir = std::env::temp_dir()
+            .join("KaspaGateway")
+            .join("integration-runtime")
+            .join(format!("{}-{unique}", std::process::id()));
+
+        std::fs::create_dir_all(&data_dir)
+            .expect("isolated runtime test data dir must be creatable");
+        set_runtime_worker_test_env("KASPA_GATEWAY_DATA_DIR", &data_dir);
         let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
         clear_runtime_worker_test_env();
-        Self
+
+        Self {
+            data_dir,
+            previous_data_dir,
+        }
     }
 }
 
@@ -104,6 +124,11 @@ impl Drop for RuntimeWorkerTestGuard {
     fn drop(&mut self) {
         let _ = integrated_runtime_commands::kgw_shutdown_all_runtime_workers_v1();
         clear_runtime_worker_test_env();
+        let _ = std::fs::remove_dir_all(&self.data_dir);
+        match self.previous_data_dir.as_ref() {
+            Some(value) => set_runtime_worker_test_env("KASPA_GATEWAY_DATA_DIR", value),
+            None => remove_runtime_worker_test_env("KASPA_GATEWAY_DATA_DIR"),
+        }
     }
 }
 
@@ -1670,7 +1695,7 @@ fn testnet10_uses_the_official_stable_runtime_family() {
         &plan,
         &[
             "network=testnet10",
-            "family=official-stable-v2.0.1",
+            "family=official-stable-v2.1.0",
             "branch=stable",
         ],
     );
