@@ -152,6 +152,9 @@ jobs:
       - name: Cache Cargo
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
+      - name: Enforce Rust-only owned implementation migration guard
+        run: cargo run --locked -p xtask -- language-policy check
+
       - name: Setup Node.js 24
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:

@@ -1,6 +1,23 @@
 # PROJECT STATE
 
-## Current Authoritative Reconciliation — 2026-09-23
+## Current Authoritative Reconciliation — 2026-09-23 Rust-only owned implementation migration
+
+- Current task: **OWNED PROGRAMMING IMPLEMENTATION 100% RUST MIGRATION**.
+- Task ID: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
+- GitHub baseline is `main=aaf2c635672c0fd35a5705579610be8de188b031`, tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`; Desktop `desktop-v0.1.3` is already published and immutable at that baseline.
+- Active development is isolated on Server branch `feat/owned-implementation-100-percent-rust-20260923`; older kas/Server worktrees remain preserved and are not migration inputs.
+- Baseline owned non-Rust programming inventory is **122 tracked files / 41,000 lines**: 44 JS, 35 CJS, 13 MJS, 19 PowerShell, 10 Python, and 1 Shell.
+- Success means **100% Rust owned programming implementation**, not GitHub Linguist manipulation. Required declarative/configuration/packaging/documentation/generated/vendor/governance artifacts remain when technically necessary and explicitly classified.
+- The architectural migration keeps the existing Rust/Tauri backend and IPC boundary unless evidence requires otherwise; the JavaScript frontend is planned for Rust/WASM, with security/CI tooling, Node gates, PowerShell helpers, and E2E migrated to Rust in bounded batches.
+- Rust stable remains `1.98.1`; repository MSRV remains `1.97.1` unless normal version governance changes it.
+- KSSS governance, Windows/macOS/Linux support, and supply-chain controls are hard invariants. Production, DNS, Cloudflare, live runtime, production credentials, and the protected historical qualification checkpoint are out of scope.
+- Prior Desktop 0.1.3 qualification is reused only for unchanged validity predicates. Any migrated surface is requalified proportionally; prior PASS is never transferred to changed code.
+- Graphify architecture extraction succeeded on an exact-baseline analysis-only clone on `kas` after the Server/Python 3.13 Graphify process crashed; development Git remains on Server.
+- Current phase: Rust-native `xtask` and fail-closed language inventory/guard, then migration debt burn-down.
+- NEXT ACTION: implement and validate the Rust language-policy/xtask foundation before migrating implementation batches.
+- DO NOT REPEAT: broad previous release qualification without predicate invalidation; do not touch old dirty worktrees, protected checkpoint, or use Linguist suppression as a substitute for migration.
+
+## Previous closed-task reconciliation — 2026-09-23
 
 - Current task: **KASPA V2.1.0 GITHUB PUBLICATION AND DESKTOP 0.1.3 RELEASE**.
 - Current HEAD/tree/status: **VERIFY DYNAMICALLY** from Git before any decision; the committed post-rebase publication head before current hardening edits was `1a464f87926deace3f1d87b7edc013947085b72f`, tree `860fc07c0ef9054abbc4e1abf99aa28bb2d345ca`.

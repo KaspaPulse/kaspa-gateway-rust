@@ -1,52 +1,65 @@
 # ACTIVE TASK
 
 ## Status
-IN PROGRESS — KASPA V2.1.0 GITHUB PUBLICATION AND DESKTOP 0.1.3 RELEASE
+IN PROGRESS — OWNED PROGRAMMING IMPLEMENTATION 100% RUST MIGRATION
 
 ## Objective
-Publish the fully qualified Rusty Kaspa v2.1.0 candidate through protected GitHub integration, exact-head CI, trusted Windows/macOS artifact qualification, provenance plus SPDX SBOM attestations, and an immutable Desktop 0.1.3 release while preserving the protected local qualification checkpoint.
+Make Rust the only owned programming implementation language in Kaspa Gateway without manipulating GitHub Linguist statistics. Preserve necessary declarative/configuration/packaging/governance files, Windows/macOS/Linux support, KSSS governance, and production isolation.
 
 ## Scope
-- Use the authorized Windows `Server` worktree `feat/kaspa-v2.1.0-runtime-rebaseline-20260922`.
-- Protected qualification identity remains `7d670bb00682a7ceec6d40046798cdbe645121d8` / tree `1668bd42e7dc4e0e2fb778638450bdebf3143945`.
-- Protected ref `refs/checkpoints/kaspa-v2.1.0-runtime-rebaseline-20260923` is write-once receive protected and must not be changed or deleted.
-- Owner authorization now includes integration/rebase, GitHub push/PR/CI fixes, squash merge, exact-main qualification, trusted artifact workflows, provenance, SBOM, and final GitHub Release.
-- Reuse BUILD-014, native 4/4, and E2E evidence unless their actual validity predicates change.
-- Preserve Testnet13 as experimental explicit opt-in and preserve `FAIL-0004` without force-killing PID 4404.
+- Migrate project-owned Python, JavaScript, TypeScript if introduced, Shell, PowerShell, and other programming implementation to Rust.
+- Keep the existing Rust/Tauri backend and IPC boundary unless evidence proves a change is required.
+- Replace the owned JavaScript frontend with a Rust/WASM frontend while preserving user-visible contracts and platform support.
+- Replace project-owned Node/WebdriverIO E2E, KSSS adapters/gates, CI parsers, release/security gates, and OS helpers with Rust-native equivalents.
+- Keep YAML/JSON/TOML/Markdown/licenses/manifests/generated/vendor artifacts only when technically required and explicitly classified.
+- Add a fail-closed CI guard so new non-Rust implementation cannot silently return.
+- No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-Fresh GitHub reconciliation is complete. The candidate was cleanly rebased onto observed main `bb183816e5c315107c64411c1793c89d8ec74e8e` without conflicts. The post-rebase publication head before current uncommitted hardening is `1a464f87926deace3f1d87b7edc013947085b72f`. Product/runtime, Git Cargo.lock blob, build-feature, native-harness, network-config, E2E, and artifact predicates remain unchanged, so prior product qualification is reusable.
+PHASE 1 — establish Rust-native `xtask`, exact migration-debt inventories, and CI language-policy enforcement before broad implementation rewrites.
 
 ## Confirmed Progress
-- Local qualification and checkpoint-ref protection are CLOSED / VERIFIED_SUCCESS.
-- Protected checkpoint target/tree remain exact; protection receipt SHA-256 is `E78DF5070D227C75BD014149517C37D11F9E60C1A6A48315AA9E4F230DE2AC46`.
-- Fresh reconciliation found current main one workflow-only commit ahead of the historical candidate base, with zero product/runtime/Cargo.lock/harness/network overlap.
-- Rebase onto exact observed main completed cleanly; protected checkpoint was unchanged.
-- Cargo.lock Git blob is identical before/after rebase (`02b33e18a89d2ae2848cc2056aac807952207f7f`); a raw worktree SHA difference was line-ending-only and did not invalidate dependency evidence.
-- Current scoped hardening separates MSRV Rust 1.97.1 from stable quality/security Rust 1.98.1 and adds pinned Syft 1.52.0 SPDX 2.3 SBOM generation/attestation/verification to trusted release workflows.
-- Affected workflow contract gates, JavaScript syntax, full-SHA external Action audit, and `git diff --check` are PASS.
+- Live GitHub baseline reconciled to `main=aaf2c635672c0fd35a5705579610be8de188b031`, tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
+- Fresh isolated Server worktree and branch `feat/owned-implementation-100-percent-rust-20260923` created; older worktrees remain untouched.
+- Baseline inventory confirmed 122 owned non-Rust source files / 41,000 lines plus 13 declarative files that execute or wire non-Rust implementation.
+- Graphify code-only extraction/query succeeded on an exact-baseline analysis-only clone on `kas`.
+- Rust `xtask` language policy compiles on the repository toolchain; unit tests are 5/5 PASS.
+- Migration-mode guard is PASS with exactly 122 source-debt and 13 execution-debt paths, zero unapproved paths, and zero technical exceptions.
+- Strict mode correctly FAILS while debt remains, proving the task cannot claim 100% Rust prematurely.
+- CI quality workflow now invokes the Rust migration guard before legacy Node checks.
+- Workspace `cargo fmt --all -- --check` and `git diff --check` are PASS after the guard work.
 
 ## Current Blocker
-`FAIL-0004` remains `BLOCKED_NON_QUALIFICATION`: PID 4404 is preserved, force-kill is forbidden, and this does not block GitHub publication/release.
+No engineering blocker for Phase 1. The continuity contract is being repaired after its first validation correctly detected missing schema fields in the new state documents. Local `actionlint` is not installed, so authoritative workflow lint remains NOT VERIFIED until CI or an equivalent validated tool runs.
 
 ## Last Completed Action
-The publication candidate was cleanly rebased onto the freshly observed GitHub main without conflicts. Post-rebase validity predicates were reconciled to REUSE after proving Cargo.lock Git blob identity; scoped Rust CI/SBOM hardening was implemented and its affected workflow contract checks passed.
+Implemented and locally validated the Rust language-policy guard, exact migration-debt manifests, and the CI quality step. The existing continuity gate then exposed missing state-document schema fields; no commit was made over that failure.
 
 ## Current Action
-Reconcile continuity for the newly authorized publication/release phase, run affected continuity/Graphify verification, review/stage/commit the scoped hardening, then re-observe GitHub main immediately before publication push.
+Restore the continuity documents to the repository-required schema while keeping the new migration facts authoritative, then rerun the continuity gate and regression tests.
 
 ## Next Action
-If fresh main still matches the integrated base, push the publication branch normally, open a PR to `main`, capture exact PR head/tree/base, make the MSRV check required while preserving all existing protections, and drive exact-head CI/review to PASS before squash merge.
+When continuity validation is green, review/stage and commit the Phase 1 foundation as an incremental checkpoint. Then begin the first debt-reduction batch with Python/Shell security and CI helpers, preserving KSSS trust semantics.
 
 ## Verification Required
-- Project continuity gate and its fail-closed regression tests must pass on the reconciled publication state.
-- Graphify must be incrementally refreshed once for changed tooling/docs and queried on the affected workflow-contract path.
-- Final staged paths/diff must be reviewed and pass `git diff --cached --check`.
-- Immediately before GitHub push, re-observe `main` and remote candidate state; after PR creation require exact-final-head protected CI, reviews/threads, mergeability, and rulesets.
-- After merge require exact-main CI, trusted artifact qualification, provenance verification, SPDX SBOM verification, immutable-release gate, and post-publication identity/digest checks.
+- `cargo run --locked -p xtask -- language-policy check` = PASS.
+- `cargo test --locked -p xtask` = PASS.
+- `cargo fmt --all -- --check` = PASS.
+- Existing project continuity gate and its regression tests = PASS after schema reconciliation.
+- `git diff --check` = PASS.
+- Workflow syntax/lint must be qualified in CI if local actionlint remains unavailable.
+- Each later migration batch must run affected-surface validation; prior runtime/E2E evidence is reused only while its validity predicates remain unchanged.
 
 ## Completion Criteria
-The task is complete only after the candidate is integrated, pushed, reviewed and squash-merged under rulesets; exact-main CI passes; trusted Windows/macOS Desktop 0.1.3 artifacts pass their smoke/qualification workflows; provenance and SBOM attestations are verified; the existing verified release draft is published under the repository immutable-release policy; the protected local checkpoint remains unchanged; and final continuity evidence is reconciled.
+- `OWNED_PROGRAMMING_IMPLEMENTATION=100_PERCENT_RUST`.
+- Owned non-Rust programming source debt = 0.
+- Non-Rust execution wiring debt = 0, except a narrowly documented platform-required adapter only if technically unavoidable.
+- Strict Rust language policy guard = PASS.
+- FMT, build/check, tests, Clippy, MSRV, dependency/security checks, secret scan, workflow lint, and required CI = PASS.
+- Windows, macOS, and Linux support preserved.
+- KSSS governance preserved.
+- Production mutation = NO.
+- GitHub integration follows fresh branch → exact-head CI → squash merge → exact-main qualification → durable closeout.
 
 ## DO NOT REPEAT
-Do not rerun BUILD-014, native 4/4, E2E qualification, or broad product testing while their validity predicates remain unchanged. Do not mutate the protected checkpoint, force-kill PID 4404, enable Testnet13, bypass required checks, rewrite historical receipts, or publish an unverified artifact.
+Do not rerun Desktop 0.1.3 runtime/native/E2E/release qualification unless a relevant validity predicate changes. Do not touch older dirty worktrees or the protected historical checkpoint. Do not hide language debt with Linguist attributes or auto-baseline new non-Rust files.

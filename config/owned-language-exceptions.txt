@@ -1,0 +1,4 @@
+# Technical exceptions use CATEGORY|PATH|REASON.
+# Allowed categories: GENERATED, VENDORED_THIRD_PARTY, PLATFORM_REQUIRED_ADAPTER.
+# Exceptions are exact-path, must exist, and require a non-empty technical reason.
+# The target final state is an empty exception set unless a platform contract makes one unavoidable.

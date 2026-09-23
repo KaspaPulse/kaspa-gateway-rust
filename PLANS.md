@@ -1,43 +1,40 @@
 # EXECUTION PLAN
 
 ## Status
-**ACTIVE — GITHUB PUBLICATION / DESKTOP 0.1.3 RELEASE**
+ACTIVE — OWNED PROGRAMMING IMPLEMENTATION 100% RUST MIGRATION
 
 ## Objective
-Publish the protected, qualified v2.1.0 candidate through current-main integration, exact-head protected CI, squash-only merge, exact-main qualification, trusted Windows/macOS artifacts, verified provenance plus SPDX SBOM attestations, and the final Desktop 0.1.3 GitHub Release.
+Replace all project-owned programming implementation outside Rust with Rust while preserving necessary declarative/platform artifacts, KSSS governance, and Windows/macOS/Linux functionality.
 
 ## Success Criteria
-- Preserve protected checkpoint `7d670bb00682a7ceec6d40046798cdbe645121d8` / tree `1668bd42e7dc4e0e2fb778638450bdebf3143945`.
-- Reuse BUILD-014/native 4-of-4/E2E evidence while their bound predicates stay unchanged.
-- Keep `rust-version = "1.97.1"` as MSRV, test MSRV explicitly, and run supported stable quality/security on Rust 1.98.1.
-- Keep all external Actions pinned to full commit SHAs.
-- Produce trusted Windows/macOS artifacts from final merged main with provenance and SPDX 2.3 SBOM attestations, verify both, then publish Desktop 0.1.3 only after all release gates pass.
-- Preserve `FAIL-0004` as a non-qualification blocker; never force-kill PID 4404.
+- Owned non-Rust programming implementation source count reaches zero.
+- Non-Rust execution wiring is removed from workflows/configuration except any proven platform-required adapter explicitly classified outside owned implementation.
+- `cargo run --locked -p xtask -- language-policy strict` passes.
+- Rust build/check/test/Clippy/FMT/MSRV/security and required CI pass.
+- Desktop support remains valid on Windows, macOS, and Linux.
+- No Production, DNS, Cloudflare, live runtime, production credential, or protected-checkpoint mutation occurs.
 
 ## Milestones
-1. Local v2.1.0 qualification — **VERIFIED_SUCCESS / CLOSED**.
-2. Protected write-once receive checkpoint — **VERIFIED_SUCCESS / CLOSED**.
-3. Fresh GitHub reconciliation — **VERIFIED_SUCCESS**; observed main `bb183816...`, one workflow-only drift commit, PR #95 open/behind, candidate absent remotely.
-4. Candidate integration/rebase — **VERIFIED_SUCCESS**; clean rebase, no conflicts, protected checkpoint unchanged.
-5. Validity-predicate evaluation — **VERIFIED_SUCCESS / REUSE**; Cargo.lock blob and all product/runtime/native/E2E predicates unchanged.
-6. Rust CI + release supply-chain hardening — **IN PROGRESS**; MSRV/Stable split and SPDX SBOM workflow changes implemented locally, affected contract checks PASS.
-7. Continuity + Graphify affected verification — **IN PROGRESS**.
-8. Publication branch push + PR — **PENDING**.
-9. Exact-final-PR-head required CI/reviews/rulesets — **PENDING**.
-10. Squash merge + exact-main CI — **PENDING**.
-11. Trusted Desktop Artifacts Windows/macOS — **PENDING**.
-12. Provenance + SBOM attestation verification — **PENDING**.
-13. Desktop 0.1.3 draft/release immutability gate/publication — **PENDING**.
-14. Final continuity receipt — **PENDING**.
+1. Recovery/reconciliation and comprehensive baseline inventory — **VERIFIED_SUCCESS**.
+2. Isolated Server branch + durable continuity — **VERIFIED_SUCCESS**.
+3. Rust `xtask` + fail-closed language policy/inventory + CI enforcement — **IN VALIDATION**.
+4. Python/Shell security and CI helper migration to Rust — **PENDING**.
+5. Node/CJS repository gate migration to Rust — **PENDING**.
+6. PowerShell helper migration to Rust with Windows behavior preserved — **PENDING**.
+7. WebdriverIO/Node E2E replacement with Rust-native desktop/WebDriver harness — **PENDING**.
+8. JavaScript frontend replacement with Rust/WASM while preserving Tauri IPC/UI contracts — **PENDING**.
+9. Remove Node/Python/PowerShell/Shell implementation dependencies and update workflows/configuration — **PENDING**.
+10. Zero-debt strict guard + cross-platform/security/MSRV qualification — **PENDING**.
+11. GitHub PR exact-head CI, squash merge, exact-main qualification, durable closeout — **PENDING**.
 
 ## Progress
-Local qualification, checkpoint protection, fresh GitHub reconciliation, clean rebase, and validity-predicate reuse are complete. Publication hardening is implemented locally and its workflow contracts/full-SHA audit/diff-check are green. Continuity reconciliation is being validated now; publication branch push/PR and every remote release gate remain pending until their exact evidence exists.
+Phase 1 code is implemented locally. The guard reports Rust source inventory 77, exact non-Rust source debt 122, execution-wiring debt 13, unapproved debt 0, and exceptions 0. Its 5 unit tests and workspace formatting pass. The CI quality job invokes the guard. Continuity validation initially failed because shortened state files omitted required schema sections; those documents are being reconciled before commit.
 
 ## Completion Criteria
-Completion requires: publication branch pushed; PR created; exact-final-head required CI including MSRV PASS; review threads resolved; squash merge under current rulesets; exact-main CI PASS; trusted Windows/macOS artifact workflow PASS on final main; provenance and SPDX SBOM attestations generated and independently verified; Desktop 0.1.3 draft uniquely bound to final main and qualified artifact run; immutable-release administration gate PASS; release published and post-publication tag/assets/digests/immutability verified; protected checkpoint preserved; final continuity receipt verified.
+The plan closes only when the strict language guard proves zero owned non-Rust implementation debt, all affected and final qualification checks pass on supported platforms, KSSS and supply-chain controls remain intact, the protected historical checkpoint is unchanged, the final PR is squash-merged under repository rules, exact-main CI passes, and a durable closeout records final SHA/tree/inventories/results.
 
 ## Constraints
-No protected-checkpoint mutation; no force-kill PID 4404; no Testnet13 live start; no broad product retest without predicate invalidation; no blind force push; no main protection weakening; no bypass of required CI; no historical receipt rewrite; no unverified release artifact.
+Keep Tauri/Rust backend boundaries unless evidence requires change. Prefer a Tauri-supported Rust/WASM frontend with generated JS/WASM treated as generated output rather than hand-owned implementation. Keep dependencies minimal and workspace-inherited. Workflow YAML stays declarative and should call Rust binaries instead of embedding owned scripting logic. Never auto-baseline new language debt.
 
 ## NEXT ACTION
-Finish continuity and Graphify verification for current workflow/tooling changes, then commit reviewed scope. Immediately re-observe `main`; if unchanged, push candidate normally, open PR, update required-check governance safely to include the new MSRV context while removing duplicate baseline status-check ownership without reducing protection, then drive exact-head CI to PASS.
+Finish Phase 1 continuity validation and checkpoint/commit. Then migrate the bounded Python/Shell security and CI tooling batch to Rust.
