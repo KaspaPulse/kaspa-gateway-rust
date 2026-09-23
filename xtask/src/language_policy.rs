@@ -355,6 +355,10 @@ fn non_rust_execution_reference(path: &str, absolute: &Path) -> Option<String> {
     }
 
     let content = fs::read_to_string(absolute).ok()?.to_ascii_lowercase();
+    non_rust_execution_content(&lower_path, &content)
+}
+
+fn non_rust_execution_content(lower_path: &str, content: &str) -> Option<String> {
     if lower_path.ends_with("/package.json") || lower_path.ends_with("/package-lock.json") {
         return Some("Node package manifest or lockfile".to_owned());
     }
@@ -363,6 +367,16 @@ fn non_rust_execution_reference(path: &str, absolute: &Path) -> Option<String> {
     }
     if lower_path == ".github/dependabot.yml" && content.contains("package-ecosystem: \"npm\"") {
         return Some("npm dependency automation".to_owned());
+    }
+    if lower_path.starts_with(".github/workflows/")
+        && (content.contains("run: |")
+            || content.contains("run: >")
+            || content.contains("shell: bash")
+            || content.contains("shell: sh")
+            || content.contains("shell: pwsh")
+            || content.contains("shell: powershell"))
+    {
+        return Some("GitHub Actions workflow embeds non-Rust shell/program logic".to_owned());
     }
 
     let tokens = [
@@ -485,5 +499,34 @@ mod tests {
         assert!(is_rust_source("src/lib.rs"));
         assert!(is_rust_source("src/GENERATED.RS"));
         assert!(!is_rust_source("src/lib.js"));
+    }
+
+    #[test]
+    fn workflow_multiline_shell_logic_is_execution_debt() {
+        assert!(
+            non_rust_execution_content(
+                ".github/workflows/ci.yml",
+                "steps:\n  - shell: bash\n    run: |\n      cargo test\n      echo done\n"
+            )
+            .is_some()
+        );
+        assert!(
+            non_rust_execution_content(
+                ".github/workflows/windows.yml",
+                "steps:\n  - shell: pwsh\n    run: |\n      cargo test\n"
+            )
+            .is_some()
+        );
+    }
+
+    #[test]
+    fn simple_rust_only_workflow_command_is_not_script_debt() {
+        assert!(
+            non_rust_execution_content(
+                ".github/workflows/rust.yml",
+                "steps:\n  - run: cargo test --locked --workspace\n"
+            )
+            .is_none()
+        );
     }
 }

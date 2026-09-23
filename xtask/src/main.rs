@@ -1,40 +1,156 @@
+mod clippy_policy;
+mod fuzz_build;
 mod language_policy;
+mod security_advisories;
+mod trufflehog_policy;
 
 use language_policy::{Mode, run_language_policy};
 use std::env;
+use std::path::{Path, PathBuf};
 
-fn usage() -> &'static str {
-    "usage: cargo run -p xtask -- language-policy <check|strict|inventory>"
+#[derive(Debug)]
+struct CliError {
+    code: i32,
+    message: String,
 }
 
-fn run() -> Result<(), String> {
-    let mut args = env::args().skip(1);
-    let Some(command) = args.next() else {
-        return Err(usage().to_owned());
-    };
-    if command != "language-policy" {
-        return Err(format!("unknown xtask command: {command}\n{}", usage()));
+impl CliError {
+    fn usage(message: impl Into<String>) -> Self {
+        Self {
+            code: 2,
+            message: message.into(),
+        }
     }
 
+    fn failure(message: impl Into<String>) -> Self {
+        Self {
+            code: 1,
+            message: message.into(),
+        }
+    }
+}
+
+fn usage() -> &'static str {
+    "usage:
+  cargo run -p xtask -- language-policy <check|strict|inventory>
+  cargo run -p xtask -- check-clippy-results <cargo-clippy-jsonl>
+  cargo run -p xtask -- check-security-advisories [--max-age-days N]
+  cargo run -p xtask -- check-trufflehog-results <jsonl>
+  cargo run -p xtask -- fuzz-build"
+}
+fn repo_root() -> Result<PathBuf, CliError> {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .map(Path::to_path_buf)
+        .ok_or_else(|| CliError::failure("xtask manifest has no repository parent"))
+}
+
+fn exactly_one(args: &mut impl Iterator<Item = String>, label: &str) -> Result<String, CliError> {
+    let value = args
+        .next()
+        .ok_or_else(|| CliError::usage(format!("missing {label}\n{}", usage())))?;
+    if args.next().is_some() {
+        return Err(CliError::usage(format!(
+            "too many arguments for {label}\n{}",
+            usage()
+        )));
+    }
+    Ok(value)
+}
+
+fn run() -> Result<(), CliError> {
+    let mut args = env::args().skip(1);
+    let command = args
+        .next()
+        .ok_or_else(|| CliError::usage(usage().to_owned()))?;
+
+    match command.as_str() {
+        "language-policy" => run_language_policy_command(&mut args),
+        "check-clippy-results" => {
+            let path = exactly_one(&mut args, "cargo-clippy-jsonl path")?;
+            let message = clippy_policy::check_file(Path::new(&path)).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "check-security-advisories" => run_security_advisories(&mut args),
+        "check-trufflehog-results" => {
+            let path = exactly_one(&mut args, "TruffleHog JSONL path")?;
+            let message =
+                trufflehog_policy::check_file(Path::new(&path)).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "fuzz-build" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "fuzz-build takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = fuzz_build::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        _ => Err(CliError::usage(format!(
+            "unknown xtask command: {command}\n{}",
+            usage()
+        ))),
+    }
+}
+
+fn run_language_policy_command(args: &mut impl Iterator<Item = String>) -> Result<(), CliError> {
     let action = args.next().unwrap_or_else(|| "check".to_owned());
     if args.next().is_some() {
-        return Err(format!("too many arguments\n{}", usage()));
+        return Err(CliError::usage(format!(
+            "too many language-policy arguments\n{}",
+            usage()
+        )));
     }
-
-    match action.as_str() {
+    let result = match action.as_str() {
         "check" => run_language_policy(Mode::Migration, false),
         "strict" => run_language_policy(Mode::Strict, false),
         "inventory" => run_language_policy(Mode::Migration, true),
-        _ => Err(format!(
-            "unknown language-policy action: {action}\n{}",
-            usage()
-        )),
+        _ => {
+            return Err(CliError::usage(format!(
+                "unknown language-policy action: {action}\n{}",
+                usage()
+            )));
+        }
+    };
+    result.map_err(CliError::failure)
+}
+fn run_security_advisories(args: &mut impl Iterator<Item = String>) -> Result<(), CliError> {
+    let mut max_age_days = 45_i64;
+    if let Some(flag) = args.next() {
+        if flag != "--max-age-days" {
+            return Err(CliError::usage(format!(
+                "unknown check-security-advisories argument: {flag}\n{}",
+                usage()
+            )));
+        }
+        let value = args.next().ok_or_else(|| {
+            CliError::usage(format!("--max-age-days requires a value\n{}", usage()))
+        })?;
+        max_age_days = value.parse().map_err(|error| {
+            CliError::usage(format!("invalid --max-age-days value {value}: {error}"))
+        })?;
     }
+    if args.next().is_some() {
+        return Err(CliError::usage(format!(
+            "too many check-security-advisories arguments\n{}",
+            usage()
+        )));
+    }
+
+    let message =
+        security_advisories::check(&repo_root()?, max_age_days).map_err(CliError::failure)?;
+    println!("{message}");
+    Ok(())
 }
 
 fn main() {
     if let Err(error) = run() {
-        eprintln!("LANGUAGE_POLICY_ERROR={error}");
-        std::process::exit(2);
+        eprintln!("{}", error.message);
+        std::process::exit(error.code);
     }
 }

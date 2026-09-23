@@ -1,7 +1,6 @@
 # Exact owned non-Rust programming source debt captured from baseline aaf2c635672c0fd35a5705579610be8de188b031.
 # One repository-relative path per line. This list may only shrink during the migration.
 # New non-Rust source is never auto-baselined and fails the Rust language policy guard.
-.clusterfuzzlite/build.sh
 .security/ksss/consumer.py
 .security/ksss/runtime_loader.py
 .security/ksss/test_consumer.py
@@ -65,11 +64,6 @@ e2e/specs/bridge-inprocess.e2e.js
 e2e/specs/lifecycle-recovery.e2e.js
 e2e/specs/zero-touch-live-matrix.e2e.js
 e2e/wdio.conf.mjs
-scripts/check-clippy-results.py
-scripts/check-security-advisories.py
-scripts/check-trufflehog-results.py
-scripts/test-check-clippy-results.py
-scripts/test-check-trufflehog-results.py
 tools/kgw_ai_workflow_gate.ps1
 tools/kgw_analysis_contract_tests.cjs
 tools/kgw_aud010_tauri_mock_seam_tests.cjs

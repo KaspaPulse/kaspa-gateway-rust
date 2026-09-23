@@ -2,3 +2,4 @@
 # Allowed categories: GENERATED, VENDORED_THIRD_PARTY, PLATFORM_REQUIRED_ADAPTER.
 # Exceptions are exact-path, must exist, and require a non-empty technical reason.
 # The target final state is an empty exception set unless a platform contract makes one unavoidable.
+PLATFORM_REQUIRED_ADAPTER|.clusterfuzzlite/build.sh|OSS-Fuzz/ClusterFuzzLite requires build.sh as the container build entrypoint; it contains no project build logic and delegates directly to Rust xtask.\n

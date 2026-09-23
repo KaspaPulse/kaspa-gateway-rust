@@ -331,7 +331,7 @@ jobs:
           command_status=$?
           if (( command_status != 0 )); then status=$command_status; fi
 
-          python3 scripts/check-clippy-results.py clippy-production.jsonl | tee clippy-production-policy.log
+          cargo run --locked -p xtask -- check-clippy-results clippy-production.jsonl | tee clippy-production-policy.log
           policy_status=${PIPESTATUS[0]}
           if (( policy_status != 0 )); then status=$policy_status; fi
           cat clippy-production.stderr.log
@@ -340,7 +340,7 @@ jobs:
           command_status=$?
           if (( command_status != 0 )); then status=$command_status; fi
 
-          python3 scripts/check-clippy-results.py clippy-workspace-tests.jsonl | tee clippy-workspace-tests-policy.log
+          cargo run --locked -p xtask -- check-clippy-results clippy-workspace-tests.jsonl | tee clippy-workspace-tests-policy.log
           policy_status=${PIPESTATUS[0]}
           if (( policy_status != 0 )); then status=$policy_status; fi
           cat clippy-workspace-tests.stderr.log
@@ -354,7 +354,7 @@ jobs:
           command_status=$?
           if (( command_status != 0 )); then status=$command_status; fi
 
-          python3 scripts/check-clippy-results.py clippy-desktop-tests.jsonl | tee clippy-desktop-tests-policy.log
+          cargo run --locked -p xtask -- check-clippy-results clippy-desktop-tests.jsonl | tee clippy-desktop-tests-policy.log
           policy_status=${PIPESTATUS[0]}
           if (( policy_status != 0 )); then status=$policy_status; fi
           cat clippy-desktop-tests.stderr.log

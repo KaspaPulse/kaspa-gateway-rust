@@ -109,7 +109,7 @@ The experimental Testnet 13 runtime remains separately pinned to the official ka
 Before release and whenever the Kaspa SDK changes:
 
 ```bash
-python3 scripts/check-security-advisories.py --max-age-days 45
+cargo run --locked -p xtask -- check-security-advisories --max-age-days 45
 cargo fmt --all -- --check
 cargo check --locked --workspace --all-targets
 cargo clippy --locked --workspace --all-targets -- -D warnings
