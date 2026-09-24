@@ -385,6 +385,43 @@ export function formatKas(value) {
     }
 }
 
+/**
+ * @param {any} state
+ * @returns {any}
+ */
+export function runtimePresentation(state) {
+    const ret = wasm.runtimePresentation(state);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {any} fields
+ * @param {any} running
+ * @param {any} cpu_only
+ * @returns {string}
+ */
+export function runtimeObservationSummary(fields, running, cpu_only) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ret = wasm.runtimeObservationSummary(fields, running, cpu_only);
+        var ptr1 = ret[0];
+        var len1 = ret[1];
+        if (ret[3]) {
+            ptr1 = 0; len1 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred2_0 = ptr1;
+        deferred2_1 = len1;
+        return getStringFromWasm0(ptr1, len1);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
 async function __wbg_load(module, imports) {
     if (typeof Response === 'function' && module instanceof Response) {
         if (typeof WebAssembly.instantiateStreaming === 'function') {
@@ -423,10 +460,22 @@ function __wbg_get_imports() {
         const ret = Boolean(arg0);
         return ret;
     };
+    imports.wbg.__wbg_Number_a11ec3febff3cf8a = function() { return handleError(function (arg0) {
+        const ret = Number(arg0);
+        return ret;
+    }, arguments) };
     imports.wbg.__wbg_Number_a8498279eca758ed = function(arg0) {
         const ret = Number(arg0);
         return ret;
     };
+    imports.wbg.__wbg_Object_03066f860601d582 = function(arg0) {
+        const ret = Object(arg0);
+        return ret;
+    };
+    imports.wbg.__wbg_String_0688f1288e3f182b = function() { return handleError(function (arg0) {
+        const ret = String(arg0);
+        return ret;
+    }, arguments) };
     imports.wbg.__wbg_String_919110ca02bcc15b = function(arg0) {
         const ret = String(arg0);
         return ret;
@@ -471,8 +520,16 @@ function __wbg_get_imports() {
         const ret = new Object();
         return ret;
     };
+    imports.wbg.__wbg_new_63847613cde5d4bc = function(arg0, arg1, arg2, arg3) {
+        const ret = new RegExp(getStringFromWasm0(arg0, arg1), getStringFromWasm0(arg2, arg3));
+        return ret;
+    };
     imports.wbg.__wbg_new_78feb108b6472713 = function() {
         const ret = new Array();
+        return ret;
+    };
+    imports.wbg.__wbg_new_b08a00743b8ae2f3 = function(arg0, arg1) {
+        const ret = new TypeError(getStringFromWasm0(arg0, arg1));
         return ret;
     };
     imports.wbg.__wbg_newnoargs_105ed471475aaf50 = function(arg0, arg1) {
@@ -499,6 +556,23 @@ function __wbg_get_imports() {
         const ret = typeof window === 'undefined' ? null : window;
         return isLikeNone(ret) ? 0 : addToExternrefTable0(ret);
     };
+    imports.wbg.__wbg_test_7f0ac7b9d67b7a48 = function(arg0, arg1, arg2) {
+        const ret = arg0.test(getStringFromWasm0(arg1, arg2));
+        return ret;
+    };
+    imports.wbg.__wbg_toFixed_43af7895cf202c17 = function() { return handleError(function (arg0, arg1) {
+        const ret = arg0.toFixed(arg1);
+        return ret;
+    }, arguments) };
+    imports.wbg.__wbg_toPrimitive_693467a3eb50bdea = function() {
+        const ret = Symbol.toPrimitive;
+        return ret;
+    };
+    imports.wbg.__wbindgen_boolean_get = function(arg0) {
+        const v = arg0;
+        const ret = typeof(v) === 'boolean' ? (v ? 1 : 0) : 2;
+        return ret;
+    };
     imports.wbg.__wbindgen_init_externref_table = function() {
         const table = wasm.__wbindgen_export_2;
         const offset = table.grow(4);
@@ -515,6 +589,15 @@ function __wbg_get_imports() {
     };
     imports.wbg.__wbindgen_is_null = function(arg0) {
         const ret = arg0 === null;
+        return ret;
+    };
+    imports.wbg.__wbindgen_is_object = function(arg0) {
+        const val = arg0;
+        const ret = typeof(val) === 'object' && val !== null;
+        return ret;
+    };
+    imports.wbg.__wbindgen_is_symbol = function(arg0) {
+        const ret = typeof(arg0) === 'symbol';
         return ret;
     };
     imports.wbg.__wbindgen_is_undefined = function(arg0) {

@@ -1,9 +1,16 @@
+import { readFile } from "node:fs/promises";
+import { initSync } from "../apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
+
+// Load the same generated artifact in Node without a browser-only file URL fetch.
+initSync({ module: await readFile(new URL("../apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm_bg.wasm", import.meta.url)) });
+const settings = await import("../apps/kaspa-gateway-desktop/frontend/src/settings-contract.js");
+
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
+const {
   NODE_ENDPOINTS, NODE_MANAGED, nodeFieldEnabled, validateNodeForm,
   isHost, isPort, endpoint, listenersOverlap, runtimePresentation,
-} from "../apps/kaspa-gateway-desktop/frontend/src/settings-contract.js";
+} = settings;
 
 const values = () => ({
   rpcListenEnabled: true, rpcListenHost: "127.0.0.1", rpcListenPort: "16110",
@@ -79,7 +86,7 @@ test("enabled profile never implies a running process or synchronized network", 
   assert.equal(runtimePresentation({error:"exit 1"}).process,"Failed");
 });
 
-import {BRIDGE_MANAGED, bridgeFieldEnabled, validateBridgeForm} from "../apps/kaspa-gateway-desktop/frontend/src/settings-contract.js";
+const {BRIDGE_MANAGED, bridgeFieldEnabled, validateBridgeForm} = settings;
 const bridge = () => ({
   nodeMode:"external", kaspadAddress:"127.0.0.1:16110", stratumPort:":5555", promPort:":2112",
   minShareDiff:"8192", sharesPerMin:"30", extranonceSize:"0", blockWaitTime:"50ms",
@@ -151,7 +158,7 @@ for (const network of ["testnet10", "testnet13"]) {
   });
 }
 
-import {runtimeObservationSummary} from "../apps/kaspa-gateway-desktop/frontend/src/settings-contract.js";
+const {runtimeObservationSummary} = settings;
 test("startup readiness never becomes live synchronization or mining evidence", () => {
   const text = runtimeObservationSummary({readiness:"READY"}, true, true);
   assert.match(text, /RPC: Unknown/); assert.match(text, /Sync: Not reported/); assert.match(text, /CPU: Not reported/);

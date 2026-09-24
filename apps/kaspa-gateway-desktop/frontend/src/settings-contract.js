@@ -1,3 +1,5 @@
+export { runtimePresentation, runtimeObservationSummary } from "./status.js";
+
 // Shared validation for the existing node and bridge settings owners.
 // These are effective configuration rules, not process or network simulation.
 export const NODE_ENDPOINTS = [
@@ -159,16 +161,6 @@ export function renderFieldErrors(root, prefix, errors) {
     field.closest(".node-v6-card, .bridge-v7-card")?.appendChild(error);
   }
 }
-export function runtimePresentation({role = "Node", enabled = true, running = false, transition = "", error = "", synced}) {
-  const process = transition === "starting" ? "Starting" : transition === "stopping" ? "Stopping"
-    : error ? "Failed" : running ? "Running" : "Stopped";
-  return {
-    application: "Ready", profile: enabled ? "Enabled" : "Disabled",
-    process, processLabel: role + ": " + process,
-    network: !running ? "Not connected" : synced === true ? "Synchronized"
-      : synced === false ? "Not synchronized" : "Synchronization not reported",
-  };
-}
 
 export const BRIDGE_MANAGED = {
   testnet: "Managed by the selected network.",
@@ -268,30 +260,6 @@ export function validateBridgeForm(values, options, network) {
   return errors;
 }
 
-export function runtimeObservationSummary(fields = {}, running = false, cpuOnly = false) {
-  const fresh = running && fields.observation_state === "fresh";
-  const rpc = !fresh ? "Unknown" : fields.rpc_ready === "true" ? "Available" : "Unavailable";
-  const sync = !fresh || fields.synced === "unknown" ? "Not reported"
-    : fields.synced === "true" ? "Synchronized" : fields.synced === "false" ? "Not synchronized" : "Not reported";
-  let text = "RPC: " + rpc + " | Sync: " + sync;
-  if (fresh && /^\d+$/.test(fields.virtual_daa_score || "")) text += " | DAA: " + fields.virtual_daa_score;
-  if (cpuOnly) {
-    const enabled = fresh && fields.cpu_enabled === "true";
-    const rate = enabled && fields.cpu_hashrate_hs !== "unknown" ? Number(fields.cpu_hashrate_hs) : NaN;
-    const activity = !fresh ? "Not reported" : !enabled ? "Disabled"
-      : Number.isFinite(rate) && rate > 0 ? "Hashing"
-      : fields.cpu_hashes_tried === "0" ? "Waiting for work" : "No recent hashing reported";
-    text += " | CPU: " + activity;
-    if (enabled) {
-      for (const [field, label] of [["cpu_hashes_tried","Hashes"],["cpu_blocks_submitted","Submitted blocks"],["cpu_blocks_confirmed_blue","Confirmed blue blocks"]])
-        if (/^\d+$/.test(fields[field] || "")) text += " | " + label + ": " + fields[field];
-      if (Number.isFinite(rate) && rate >= 0) text += " | " + rate.toFixed(2) + " H/s";
-    }
-  }
-  if (fresh && fields.observation_error && fields.observation_error !== "none")
-    text += " | RPC error: " + fields.observation_error;
-  return text;
-}
 
 export async function confirmUserAction(message) {
   const invoke = window.__TAURI__?.core?.invoke;

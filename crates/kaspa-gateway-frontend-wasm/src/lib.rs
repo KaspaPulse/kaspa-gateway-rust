@@ -1,3 +1,5 @@
+mod settings_runtime;
+
 use js_sys::{Array, Date, Function, Intl::NumberFormat, JsString, Object, Reflect};
 use wasm_bindgen::{JsCast, prelude::*};
 

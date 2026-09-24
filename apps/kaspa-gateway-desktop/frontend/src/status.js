@@ -4,6 +4,8 @@
 import init, {
   applyStatusTone as wasmApplyStatusTone,
   renderStatusSummary as wasmRenderStatusSummary,
+  runtimePresentation as wasmRuntimePresentation,
+  runtimeObservationSummary as wasmRuntimeObservationSummary,
   statusTone as wasmStatusTone,
 } from "../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
@@ -19,4 +21,12 @@ export function applyStatusTone(element, state) {
 
 export function renderStatusSummary(element, text) {
   return wasmRenderStatusSummary(element, text);
+}
+
+export function runtimePresentation(state) {
+  return wasmRuntimePresentation(state);
+}
+
+export function runtimeObservationSummary(fields = {}, running = false, cpuOnly = false) {
+  return wasmRuntimeObservationSummary(fields, running, cpuOnly);
 }
