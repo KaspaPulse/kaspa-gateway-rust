@@ -284,7 +284,7 @@ const OWNER_REGISTRY = {
     referenceFiles: [
       "apps/kaspa-gateway-desktop/src-tauri/src/main.rs",
       "apps/kaspa-gateway-desktop/src-tauri/src/bin/kgw-provenance-smoke.rs",
-      "tools/kgw_bridge_node_mode_routing_audit_v1.cjs",
+      "xtask/src/bridge_node_mode_routing.rs",
       "xtask/src/runtime_trace_owner.rs",
       "xtask/src/parallel_self_worker.rs",
       "xtask/src/raw_log_provenance.rs"
@@ -826,7 +826,7 @@ const OWNER_AUDIT_TOOL_FILES = new Set([
   "xtask/src/runtime_trace_owner.rs",
   "xtask/src/i18n_contracts.rs",
   "xtask/src/parallel_self_worker.rs",
-  "tools/kgw_bridge_node_mode_routing_audit_v1.cjs"
+  "xtask/src/bridge_node_mode_routing.rs"
 ]);
 
 function parseArgs(argv) {

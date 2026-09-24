@@ -1,4 +1,5 @@
 mod ai_workflow;
+mod bridge_node_mode_routing;
 mod clippy_policy;
 mod copy_log;
 mod desktop_artifacts;
@@ -62,6 +63,7 @@ impl CliError {
 fn usage() -> &'static str {
     "usage:
   cargo run -p xtask -- ai-workflow-gate
+  cargo run -p xtask -- bridge-node-mode-routing-audit <repo-root> <report-dir>
   cargo run -p xtask -- language-policy <check|strict|inventory>
   cargo run -p xtask -- check-clippy-results <cargo-clippy-jsonl>
   cargo run -p xtask -- check-security-advisories [--max-age-days N]
@@ -361,6 +363,20 @@ fn run() -> Result<(), CliError> {
         }
         "runtime-trace-owner-audit" => {
             let result = runtime_trace_owner::run_cli(&mut args).map_err(CliError::failure)?;
+            if !result.output.is_empty() {
+                println!("{}", result.output);
+            }
+            if result.code == 0 {
+                Ok(())
+            } else {
+                Err(CliError {
+                    code: result.code,
+                    message: String::new(),
+                })
+            }
+        }
+        "bridge-node-mode-routing-audit" => {
+            let result = bridge_node_mode_routing::run_cli(&mut args).map_err(CliError::failure)?;
             if !result.output.is_empty() {
                 println!("{}", result.output);
             }
