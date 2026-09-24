@@ -21,7 +21,6 @@ e2e/helpers/deepmerge-security-smoke.mjs
 e2e/helpers/kgw_windows_clipboard.ps1
 e2e/helpers/kgw_windows_evidence.ps1
 e2e/helpers/paths.mjs
-e2e/helpers/runtime-ports-smoke.mjs
 e2e/helpers/tauri-app.mjs
 e2e/helpers/windows.mjs
 e2e/specs/bridge-inprocess.e2e.js

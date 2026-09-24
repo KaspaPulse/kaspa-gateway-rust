@@ -4,6 +4,7 @@ use std::path::Path;
 
 const TAURI_APP: &str = "e2e/helpers/tauri-app.mjs";
 const ZERO_TOUCH_MATRIX: &str = "e2e/specs/zero-touch-live-matrix.e2e.js";
+const BRIDGE_INPROCESS: &str = "e2e/specs/bridge-inprocess.e2e.js";
 const WDIO_CONF: &str = "e2e/wdio.conf.mjs";
 const WINDOWS_HELPERS: &str = "e2e/helpers/windows.mjs";
 const OWNED_PROCESS_RUST: &str = "xtask/src/e2e_owned_process.rs";
@@ -13,6 +14,7 @@ const RELAUNCH: &str = "e2e/helpers/app-close-relaunch.mjs";
 struct Sources {
     tauri_app: String,
     zero_touch_matrix: String,
+    bridge_inprocess: String,
     wdio: String,
     windows_helpers: String,
     owned_process_rust: String,
@@ -38,6 +40,7 @@ fn load_sources(root: &Path) -> Result<Sources, String> {
     Ok(Sources {
         tauri_app: read(root, TAURI_APP)?,
         zero_touch_matrix: read(root, ZERO_TOUCH_MATRIX)?,
+        bridge_inprocess: read(root, BRIDGE_INPROCESS)?,
         wdio: read(root, WDIO_CONF)?,
         windows_helpers: read(root, WINDOWS_HELPERS)?,
         owned_process_rust: read(root, OWNED_PROCESS_RUST)?,
@@ -121,6 +124,48 @@ fn evaluate(s: &Sources) -> Vec<String> {
     .expect("valid bridge locator regex");
     if !bridge_write.is_match(&s.zero_touch_matrix) {
         failures.push("Bridge E2E must write the actual instancePort DOM id.".to_owned());
+    }
+
+    require(
+        &mut failures,
+        &s.zero_touch_matrix,
+        r#"setControlCheckedByTestId(`kgw-node-field-${network}-listenEnabled`, true)"#,
+        "isolated P2P validation must enable the --listen control before changing host/port.",
+    );
+    require(
+        &mut failures,
+        &s.zero_touch_matrix,
+        "externalBridgeListeners: runtimePorts.testnet10.externalBridgeListeners",
+        "zero-touch matrix must consume Testnet10 CPU-only listener policy.",
+    );
+    require(
+        &mut failures,
+        &s.zero_touch_matrix,
+        "if (status.externalBridgeListeners)",
+        "zero-touch Stratum probe must be gated by external-listener policy.",
+    );
+    require(
+        &mut failures,
+        &s.bridge_inprocess,
+        "if (profile.externalBridgeListeners)",
+        "in-process Bridge listener assertions must be policy-gated.",
+    );
+    require(
+        &mut failures,
+        &s.bridge_inprocess,
+        "CPU-only Bridge must not expose ASIC instances",
+        "in-process Testnet10 must reject fabricated ASIC instance expectations.",
+    );
+    require(
+        &mut failures,
+        &s.tauri_app,
+        "const bridgeInstanceId = active?.dataset?.instanceId ? String(active.dataset.instanceId) : null;",
+        "Bridge selection helper must preserve absence of CPU-only instances.",
+    );
+    if s.tauri_app
+        .contains(r#"active?.dataset?.instanceId || "1""#)
+    {
+        failures.push("Bridge selection helper must not fabricate instance id 1.".to_owned());
     }
 
     require(
@@ -262,10 +307,23 @@ mod tests {
 
     fn fixture() -> Sources {
         Sources {
-            tauri_app: r#"`#bridge-${net}-instancePort-${bridgeInstanceId}`"#.to_owned(),
-            zero_touch_matrix:
-                "setControlValueById(`bridge-${network}-instancePort-${selection.bridgeInstanceId}`, 1234)"
-                    .to_owned(),
+            tauri_app: [
+                r#"`#bridge-${net}-instancePort-${bridgeInstanceId}`"#,
+                "const bridgeInstanceId = active?.dataset?.instanceId ? String(active.dataset.instanceId) : null;",
+            ]
+            .join("\n"),
+            zero_touch_matrix: [
+                "setControlValueById(`bridge-${network}-instancePort-${selection.bridgeInstanceId}`, 1234)",
+                "setControlCheckedByTestId(`kgw-node-field-${network}-listenEnabled`, true)",
+                "externalBridgeListeners: runtimePorts.testnet10.externalBridgeListeners",
+                "if (status.externalBridgeListeners)",
+            ]
+            .join("\n"),
+            bridge_inprocess: [
+                "if (profile.externalBridgeListeners)",
+                "CPU-only Bridge must not expose ASIC instances",
+            ]
+            .join("\n"),
             wdio: [
                 r#"const selectedSpec = process.env.KGW_E2E_SPEC || "./specs/zero-touch-live-matrix.e2e.js";"#,
                 "specs: [selectedSpec]",
@@ -348,6 +406,20 @@ mod tests {
             failures
                 .iter()
                 .any(|failure| failure.contains("Executable identity"))
+        );
+    }
+
+    #[test]
+    fn runtime_port_policy_contract_fails_closed() {
+        let mut sources = fixture();
+        sources.zero_touch_matrix = sources
+            .zero_touch_matrix
+            .replace("if (status.externalBridgeListeners)", "");
+        let failures = evaluate(&sources);
+        assert!(
+            failures
+                .iter()
+                .any(|failure| failure.contains("Stratum probe must be gated"))
         );
     }
 
