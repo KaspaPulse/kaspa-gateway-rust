@@ -3,11 +3,11 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified frontend template/codegen checkpoint is `eae06aa2fc6aa2c857a7381f9340d974530bbc2e`, tree `87cd67b0a128a3d34fa17b710a984bfddb961080`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified dead-frontend-scaffold checkpoint is `65eb328b5e86b6d74a174685d6842f1948c33afa`, tree `84cecdeacfa9e4613127c8fe48aa2b28ec378209`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next frontend/tooling mutation. Commit `eae06aa...` was verified clean.
+- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next frontend/tooling mutation. Commit `65eb328...` was verified clean.
 - Current Rust source inventory: 105.
-- Current owned non-Rust programming source debt: 70.
+- Current owned non-Rust programming source debt: 58.
 - Current non-Rust execution-wiring debt: 13.
 - Rust language guard: PASS; unapproved source=0; unapproved execution=0.
 - Technical exceptions: 8 — seven deterministic Rust-generated frontend template wrappers plus the required ClusterFuzzLite `build.sh` thin adapter. No Linguist suppression is used.
@@ -28,7 +28,7 @@
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Reconcile this frontend template/codegen checkpoint, then inventory the remaining 70 owned non-Rust sources by architectural seam and continue with the smallest migration that preserves behavioral coverage. Do not replay prior verified gate/KSSS/Desktop qualification without predicate invalidation.
+Reconcile this dead-frontend-scaffold checkpoint, then inventory the remaining 58 active owned non-Rust sources by architectural seam and continue with the smallest migration that preserves behavioral coverage. Do not replay prior verified gate/KSSS/Desktop qualification without predicate invalidation.
 
 ## DO NOT REPEAT
 Do not replay Desktop runtime/native/E2E/release qualification without predicate invalidation. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted Python adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.

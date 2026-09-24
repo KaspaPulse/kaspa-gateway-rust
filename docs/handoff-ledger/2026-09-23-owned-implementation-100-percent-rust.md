@@ -1,14 +1,14 @@
 # Checkpoint — 100% Rust owned implementation migration
 
 Status: IN PROGRESS
-Timestamp: 2026-09-24T08:44:24Z
+Timestamp: 2026-09-24T09:35:18Z
 Task ID: KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923
 Branch: feat/owned-implementation-100-percent-rust-20260923
-Last committed phase boundary: eae06aa2fc6aa2c857a7381f9340d974530bbc2e / tree 87cd67b0a128a3d34fa17b710a984bfddb961080
+Last committed phase boundary: 65eb328b5e86b6d74a174685d6842f1948c33afa / tree 84cecdeacfa9e4613127c8fe48aa2b28ec378209
 Historical main baseline: aaf2c635672c0fd35a5705579610be8de188b031 / tree 0d19e16d115dc093a3f47967ec57b0cc3e81bfa1
 
 ## LAST CONFIRMED STATE
-E2E exact-owned-process kill/wait helpers are Rust and committed after real synthetic-process legacy/Rust parity for kill and wait plus deliberate executable-mismatch fail-closed proof; only the two exact PS1 helpers were retired and other E2E PowerShell helpers remain unchanged. Runtime-repository-binding apply, Copy Log, Start-button, AI workflow validation, and Windows PE runtime-dependency verification are also Rust and committed. Windows/PowerShell helper migration remains active. The worktree is continuity-only reconciliation. No GitHub, Production, DNS, Cloudflare, live-runtime, credential, old-worktree, or protected-checkpoint mutation occurred.
+Frontend template source normalization and dead-scaffold retirement are committed. Seven template modules are deterministic Rust-generated wrappers over exact-byte declarative HTML, and twelve unreachable JavaScript scaffold/compatibility modules were removed after repo-wide path/symbol reachability proof. Runtime import paths and exported template bytes remain unchanged. Tooling/E2E migrations through exact-owned-process helpers remain valid. The worktree is continuity-only reconciliation. No GitHub, Production, DNS, Cloudflare, live-runtime, credential, old-worktree, or protected-checkpoint mutation occurred.
 
 ## COMPLETED / VERIFIED
 - Foundation: `33461f6511c69b457c5f3dd069b54322d9a236a0`.
@@ -27,7 +27,8 @@ E2E exact-owned-process kill/wait helpers are Rust and committed after real synt
 - Runtime-repository-binding Rust apply: `59e8748a63b29fa44f003ffaf423745e11e4fd5a`.
 - E2E exact-owned-process Rust helpers: `ec46991d6e80478038dcb439952cd058394189f8`.
 - Frontend template/codegen migration: `eae06aa2fc6aa2c857a7381f9340d974530bbc2e`.
-- Current language guard: Rust 105; source debt 70; execution debt 13; unapproved 0/0; exceptions 8.
+- Dead frontend scaffold retirement: `65eb328b5e86b6d74a174685d6842f1948c33afa`.
+- Current language guard: Rust 105; source debt 58; execution debt 13; unapproved 0/0; exceptions 8.
 - Raw-log legacy/Rust parity: expected FAIL with exactly two Node/Bridge transport-wrapper findings.
 - Raw-log Rust regressions 4/4 PASS stable/MSRV; Clippy/FMT/MSRV check PASS; runtime-owner strict PASS.
 - Program-unified pre-retirement legacy/Rust deterministic summaries match across 14 steps; post-retirement Rust reference preserved the same three required failures. After runtime-trace migration, targeted regressions are 5/5 PASS stable/MSRV and the enabled trace step is Rust. Strict Clippy/FMT/MSRV check PASS.
@@ -38,6 +39,8 @@ E2E exact-owned-process kill/wait helpers are Rust and committed after real synt
 - Copy Log legacy/Rust exact current-failure parity PASS; Tauri clipboard tests 4/4 PASS; Rust regressions 6/6 PASS stable/MSRV; stable/MSRV/KSSS-feature checks, Clippy/FMT/language guard PASS; focused Graphify PASS at 6304 nodes / 16390 edges.
 - Runtime-repository-binding Rust apply drifted-fixture byte parity PASS across all mutable targets, Rust second-apply idempotence PASS, apply regressions 3/3 and validator regressions 11/11 PASS, real strict-offline gate PASS, stable/MSRV/KSSS-feature checks and Clippy/FMT/language guard PASS, focused Graphify PASS at 6326 nodes / 16488 edges.
 - E2E exact-owned-process helpers: legacy/Rust kill parity PASS and wait parity PASS on dedicated synthetic processes; executable-mismatch fail-closed left the test PID alive before exact-identity cleanup; Rust pure regressions 5/5 PASS; caller syntax + recovery-harness smoke PASS; language guard PASS; focused Graphify PASS at 6368 nodes / 16599 edges.
+- Frontend template/codegen parity PASS for seven wrappers with exact baseline export SHA/bytes/JS length; codegen/CI/policy validation PASS; focused Graphify PASS at 6415 nodes / 16723 edges.
+- Twelve dead frontend JS scaffolds removed after exact path/symbol audit; active shell/registry syntax and language guard PASS; focused Graphify PASS at 6384 nodes / 16704 edges with all twelve nodes absent.
 - i18n locale gate PASS at 32/0/0/1; full i18n contract current truth is FAIL at refs=266/missing=0/unbound=9/dynamic=6/quote=0/runtime=0. Seven added unbound findings are latent declarative template text newly visible to static analysis; generated runtime export bytes are unchanged.
 
 ## EVIDENCE
@@ -46,15 +49,15 @@ E2E exact-owned-process kill/wait helpers are Rust and committed after real synt
 - Raw-log Rust parity: `raw-log-rust-pre-delete.log`.
 - Raw-log affected qualification: `raw-log-rust-pre-delete-qualification.log`, `raw-log-final-qualification.log`.
 - CRLF-fixed legacy provenance reference SHA-256: `A12CA9F133005BFBDA2C2C9191AD5711DB0959CADBBBF2668E1A08E6928136F4`.
-- Focused Graphify for i18n/raw-log historical batches remains NOT VERIFIED / TOOL_BLOCKED; program-unified, runtime-trace-owner, Windows runtime-dependency verifier, AI workflow gate, Start-button gate, Copy Log gate, runtime-repository-binding apply, and E2E exact-owned-process helpers focused Graphify are PASS after SHA-bound Server→kas mirroring.
+- Focused Graphify for i18n/raw-log historical batches remains NOT VERIFIED / TOOL_BLOCKED; program-unified, runtime-trace-owner, Windows runtime-dependency verifier, AI workflow gate, Start-button gate, Copy Log gate, runtime-repository-binding apply, E2E exact-owned-process, frontend template/codegen, and dead-scaffold retirement focused Graphify are PASS after SHA-bound Server→kas mirroring.
 - Earlier verified KSSS/npm/runtime-binding/project-continuity/static/parallel evidence remains reusable while predicates remain unchanged.
 - Local actionlint/cargo-audit/cargo-deny/cargo-machete remain NOT VERIFIED / unavailable locally; exact-head GitHub CI is required.
 
 ## BLOCKERS / REMAINING WORK
-No blocker. Remaining debt is 70 owned non-Rust source files plus 13 execution-wiring files. Technical exceptions are 8: seven deterministic Rust-generated template wrappers and one platform-required ClusterFuzzLite thin adapter. Behavioral JS/E2E debt remains until equivalent Rust/WASM or Rust-native behavior exists. Product/static findings preserved: 9 i18n unbound findings, 6 dynamic literals, 2 raw transport-wrapper findings, duplicate Start/Stop IDs, and the shared frontend CJS test failure.
+No blocker. Remaining debt is 58 owned non-Rust source files plus 13 execution-wiring files. Technical exceptions are 8: seven deterministic Rust-generated template wrappers and one platform-required ClusterFuzzLite thin adapter. Behavioral JS/E2E debt remains until equivalent Rust/WASM or Rust-native behavior exists. Product/static findings preserved: 9 i18n unbound findings, 6 dynamic literals, 2 raw transport-wrapper findings, duplicate Start/Stop IDs, and the shared frontend CJS test failure.
 
 ## NEXT ACTION
-Validate this frontend template/codegen continuity reconciliation with the Rust project-continuity gate/regressions and checkpoint the docs. Then inventory the remaining 70 owned non-Rust sources and choose the next architectural seam that reduces real implementation debt without weakening behavioral coverage.
+Validate this dead-frontend-scaffold continuity reconciliation with the Rust project-continuity gate/regressions and checkpoint the docs. Then inventory the remaining 58 owned non-Rust sources and choose the next architectural seam that reduces real implementation debt without weakening behavioral coverage.
 
 ## DO NOT REPEAT
 Do not rerun broad Desktop qualification while product/runtime predicates are unchanged. Do not rerun verified KSSS/npm/runtime-binding/project-continuity/static/parallel/i18n/raw-log parity without invalidation, restore retired Python/CJS gates, hide current frontend findings, weaken signed-runtime/npm/binding/continuity/runtime-owner boundaries, touch unrelated worktrees, or mutate the protected checkpoint.
