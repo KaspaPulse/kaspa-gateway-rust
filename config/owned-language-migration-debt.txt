@@ -21,12 +21,10 @@ apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.js
 e2e/eslint.config.js
 e2e/helpers/app-close-relaunch.mjs
 e2e/helpers/assertions.mjs
-e2e/helpers/bridge-locator-smoke.mjs
 e2e/helpers/deepmerge-security-smoke.mjs
 e2e/helpers/kgw_windows_clipboard.ps1
 e2e/helpers/kgw_windows_evidence.ps1
 e2e/helpers/paths.mjs
-e2e/helpers/recovery-harness-smoke.mjs
 e2e/helpers/runtime-ports.mjs
 e2e/helpers/runtime-ports-smoke.mjs
 e2e/helpers/tauri-app.mjs
