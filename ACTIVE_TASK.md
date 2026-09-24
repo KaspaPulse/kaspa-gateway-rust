@@ -30,7 +30,7 @@ PHASE 10 — frontend Rust/WASM migration is IN PROGRESS after substantial tooli
 - Rust KSSS rejection contracts are 24/24 PASS; the complete xtask suite is 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
 - Old Python and new Rust adapters produced identical semantic JSON for check/evaluate/knowledge/release-check/structural trust, and cryptographic trust parity PASS with verified Cosign v3.0.6.
 - Stable check/Clippy `-D warnings`/FMT PASS; MSRV KSSS check/test PASS.
-- Current language guard after the Explorer utilities/date/formatting Rust/WASM seams: Rust source 107; owned non-Rust source debt 55; execution debt 13; unapproved 0/0; technical exceptions 12 (7 generated template wrappers + 3 generated Explorer ABI adapters + generated wasm-bindgen JS glue + 1 required ClusterFuzzLite adapter); PASS.
+- Current language guard after Rust-generated tab registry ownership: Rust source 107; owned non-Rust source debt 54; execution debt 13; unapproved 0/0; technical exceptions 13 (7 generated template wrappers + 3 generated Explorer ABI adapters + generated wasm-bindgen JS glue + generated tab registry + 1 required ClusterFuzzLite adapter); PASS.
 - Network-generation Node/CJS family is committed as `5494f580c9426155c5a848289595175f02d3d7d7`.
 - Runtime-automation-claims gate is ported to Rust `xtask`; legacy gate PASS before deletion, Rust gate PASS, four regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, and focused Graphify post-change refresh/query PASS.
 - Effective-node-settings gate is ported to Rust `xtask` and committed as `8798af0557384c83cbb8c1b075678a7a01266647`; legacy gate PASS before deletion, Rust gate PASS, five regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, language guard PASS, and focused Graphify PASS.
@@ -56,22 +56,23 @@ PHASE 10 — frontend Rust/WASM migration is IN PROGRESS after substantial tooli
 - Twelve unreachable frontend JS scaffold/compatibility modules were removed rather than rewritten and committed as `65eb328b5e86b6d74a174685d6842f1948c33afa`; repo-wide path/symbol audit found no active references, shell/registry syntax and language guard PASS, and Graphify confirms all twelve nodes absent.
 - First active frontend Rust/WASM seam is committed as `c480079f35d1cf41932b1f737209e32090d048d5`: `explorer.utils.js` is deterministic generated ABI glue only; implementation is owned by `kaspa-gateway-frontend-wasm`. Legacy/Rust/generated-adapter behavior matrices are byte-identical SHA-256, native tests 3/3 PASS, stable/MSRV wasm32 checks PASS, codegen+CI+language guard+Clippy/FMT/lint/CSP checks PASS, and focused Graphify PASS at 6432 nodes / 16819 edges.
 - Explorer date/formatting are committed as `3e73e1b40d550ffec8a1432e4d60697c4c9ad7b1`; legacy/Rust nodejs matrix SHA parity is exact, generated adapters pass full browser matrix parity under production-equivalent CSP at `Asia/Riyadh` / `en-US`, native 3/3 plus stable/MSRV wasm32 checks PASS, codegen/guard/lint/static contracts PASS, and focused Graphify PASS at 6470 nodes / 16933 edges.
+- Frontend tab registry is declarative JSON with deterministic Rust generation committed as `4037bd2b1f5f8d2b2643f5dfdbf1a366b18de4b8`; normalized runtime JS source SHA remains exactly `d880d93421e75deb871cf40bf1b1f462880133ec92e5fa5555994c3049f13680`, codegen 4/4 tests/check PASS, language guard/lint/static contracts/Clippy/FMT PASS, and focused Graphify PASS at 6475 nodes / 16948 edges.
 - Native/runtime/release evidence whose predicates exclude frontend Explorer utility behavior remains reusable. Frontend/app-boot/E2E evidence touching the changed module graph is now invalidated for final closure and must be requalified proportionally before the task can be declared complete.
 
 ## Current Blocker
 No local engineering blocker. Preserved frontend findings are now: i18n 9 unbound HTML + 6 dynamic literals, raw-log provenance Node/Bridge transport-wrapper filters, duplicate Start/Stop IDs, and shared behavioral CJS SyntaxError. Generated template/WASM JS artifacts are exceptions only where Rust deterministically owns generation and CI rejects drift. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` remain unavailable until exact-head CI.
 
 ## Last Completed Action
-Committed the verified Explorer date/formatting Rust/WASM seam as `3e73e1b40d550ffec8a1432e4d60697c4c9ad7b1`, tree `1691b3187279a485b7fb5dee223cdc5346f82507`; source debt is 55, execution debt is 13, and the worktree was clean immediately after commit.
+Committed the deterministic Rust-generated frontend tab registry as `4037bd2b1f5f8d2b2643f5dfdbf1a366b18de4b8`, tree `1a9aa5f3256962b57ef3be63d4f7c3172f1d285e`; source debt is 54, execution debt is 13, and the worktree was clean immediately after commit.
 
 ## Current Action
-Reconcile continuity to the committed Explorer date/formatting Rust/WASM boundary, then inventory the remaining 55 debt paths for the next pure/deterministic frontend or Windows/E2E seam while preserving DOM-bound behavior and generated-artifact controls.
+Reconcile continuity to the committed Rust-generated tab registry boundary, then inventory the remaining 54 debt paths for the next pure/deterministic frontend or Windows/E2E seam while preserving DOM-bound behavior and generated-artifact controls.
 
 ## Next Action
-Inventory the remaining frontend/E2E/PowerShell debt after the completed Explorer pure helpers. Prefer another pure/deterministic module seam with exact legacy behavior capture; keep DOM-bound `explorer.header.js` and behavioral E2E/Node coverage unchanged until equivalent Rust/WASM behavior is proven.
+Inventory the remaining frontend/E2E/PowerShell debt after the generated tab registry. Prefer the next pure/deterministic helper family with exact behavior capture; keep DOM-bound frontend code and behavioral E2E/Node coverage unchanged until equivalent Rust/WASM or Rust-native behavior is proven.
 
 ## Verification Required
-- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 107 / source debt 55 / execution debt 13 / exceptions 12 / zero unapproved.
+- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 107 / source debt 54 / execution debt 13 / exceptions 13 / zero unapproved.
 - Network-generation evidence remains reusable from commit `5494f58...`.
 - Runtime-automation Rust gate = PASS; regressions = 4/4 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Effective-node-settings Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
