@@ -17,8 +17,9 @@ time.workspace = true
 flate2 = { workspace = true, optional = true }
 pyo3 = { workspace = true, optional = true }
 sha2.workspace = true
+sysinfo = "0.39.6"
 tar = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys.workspace = true
+windows-sys = { workspace = true, features = ["Win32_NetworkManagement_IpHelper"] }

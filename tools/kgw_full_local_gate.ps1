@@ -74,8 +74,7 @@ function Invoke-PowerShellParserChecks {
         "tools/kgw_desktop_diagnostic_launch.ps1",
         "tools/kgw_zero_touch_e2e.ps1",
         "tools/kgw_zero_touch_evidence.ps1",
-        "e2e/helpers/kgw_windows_clipboard.ps1",
-        "e2e/helpers/kgw_windows_evidence.ps1"
+        "e2e/helpers/kgw_windows_clipboard.ps1"
     )
 
     foreach ($relativePath in $paths) {

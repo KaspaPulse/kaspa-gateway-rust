@@ -9,6 +9,7 @@ mod e2e_clipboard;
 mod e2e_owned_process;
 mod e2e_static_smokes;
 mod e2e_wasm_codegen;
+mod e2e_windows_evidence;
 mod effective_node_settings;
 mod frontend_template_codegen;
 mod frontend_wasm_codegen;
@@ -78,6 +79,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- e2e-owned-process <kill|wait> --process-id <pid> --expected-executable <path> --expected-start-time <unix-seconds> --output-path <path> [--timeout-seconds <n>]
   cargo run -p xtask -- e2e-static-smokes
   cargo run -p xtask -- e2e-wasm-codegen <check|write>
+  cargo run -p xtask -- e2e-windows-evidence --repository <path> --output-directory <path> [--ports <csv>] [--desktop-pid <pid>]
   cargo run -p xtask -- frontend-template-codegen <check|write>
   cargo run -p xtask -- frontend-wasm-codegen <check|write>
   cargo run -p xtask -- i18n-contract-gate
@@ -232,6 +234,11 @@ fn run() -> Result<(), CliError> {
         "e2e-wasm-codegen" => {
             let message =
                 e2e_wasm_codegen::run_cli(&mut args, &repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "e2e-windows-evidence" => {
+            let message = e2e_windows_evidence::run_cli(&mut args).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

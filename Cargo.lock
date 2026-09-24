@@ -12332,6 +12332,7 @@ dependencies = [
  "regex",
  "serde_json",
  "sha2 0.10.9",
+ "sysinfo 0.39.6",
  "tar",
  "tempfile",
  "time",

@@ -604,10 +604,6 @@ fn run_powershell_parser_checks(root: &Path, failures: &mut Vec<String>) {
             "e2e/helpers/kgw_windows_clipboard.ps1",
             "E2E clipboard helper",
         ),
-        (
-            "e2e/helpers/kgw_windows_evidence.ps1",
-            "E2E evidence helper",
-        ),
     ] {
         let escaped = relative.replace('\'', "''");
         let script = format!(

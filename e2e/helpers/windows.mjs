@@ -134,14 +134,15 @@ export async function waitForExactProcessExit({ pid, expectedExecutable, expecte
 }
 
 export async function captureWindowsEvidence({ repository, outputDirectory, ports = [], desktopPid = "" }) {
-  return await runPowerShell(helperScript("kgw_windows_evidence.ps1"), [
-    "-Repository",
+  return await runRustXtask([
+    "e2e-windows-evidence",
+    "--repository",
     repository,
-    "-OutputDirectory",
+    "--output-directory",
     outputDirectory,
-    "-Ports",
+    "--ports",
     ports.join(","),
-    "-DesktopPid",
+    "--desktop-pid",
     String(desktopPid || ""),
   ], { timeout: 60000 });
 }
