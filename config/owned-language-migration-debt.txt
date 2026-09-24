@@ -17,7 +17,6 @@ apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/log/log.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js
-apps/kaspa-gateway-desktop/frontend/src/tabs/tab-registry.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.js
 e2e/eslint.config.js
 e2e/helpers/app-close-relaunch.mjs

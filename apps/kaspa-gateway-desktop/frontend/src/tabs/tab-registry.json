@@ -1,0 +1,60 @@
+{
+  "tabs": [
+    {
+      "id": "explorer",
+      "templateBinding": "explorerHtml",
+      "template": "./explorer/explorer.template.js",
+      "css": "./src/tabs/explorer/explorer.css",
+      "module": "./explorer/explorer.js",
+      "init": "initExplorerTab"
+    },
+    {
+      "id": "kaspa-node",
+      "templateBinding": "kaspaNodeHtml",
+      "template": "./kaspa-node/kaspa-node.template.js",
+      "css": "./src/tabs/kaspa-node/kaspa-node.css",
+      "module": "./kaspa-node/kaspa-node.js",
+      "init": "initKaspaNodeTab"
+    },
+    {
+      "id": "kaspa-bridge",
+      "templateBinding": "kaspaBridgeHtml",
+      "template": "./kaspa-bridge/kaspa-bridge.template.js",
+      "css": "./src/tabs/kaspa-bridge/kaspa-bridge.css",
+      "module": "./kaspa-bridge/kaspa-bridge.js",
+      "init": "initKaspaBridgeTab"
+    },
+    {
+      "id": "analysis",
+      "templateBinding": "analysisHtml",
+      "template": "./analysis/analysis.template.js",
+      "css": "./src/tabs/analysis/analysis.css",
+      "module": "./analysis/analysis.js",
+      "init": "initAnalysisTab"
+    },
+    {
+      "id": "top-addresses",
+      "templateBinding": "topAddressesHtml",
+      "template": "./top-addresses/top-addresses.template.js",
+      "css": "./src/tabs/top-addresses/top-addresses.css",
+      "module": "./top-addresses/top-addresses.js",
+      "init": "initTopAddressesTab"
+    },
+    {
+      "id": "log",
+      "templateBinding": "logHtml",
+      "template": "./log/log.template.js",
+      "css": "./src/tabs/log/log.css",
+      "module": "./log/log.js",
+      "init": "initLogTab"
+    },
+    {
+      "id": "settings",
+      "templateBinding": "settingsHtml",
+      "template": "./settings/settings.template.js",
+      "css": "./src/tabs/settings/settings.css",
+      "module": "./settings/settings.js",
+      "init": "initSettingsTab"
+    }
+  ]
+}

@@ -1,6 +1,10 @@
 use std::fs;
 use std::path::Path;
 
+const REGISTRY_JSON_RELATIVE: &str =
+    "apps/kaspa-gateway-desktop/frontend/src/tabs/tab-registry.json";
+const REGISTRY_JS_RELATIVE: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/tab-registry.js";
+
 const TEMPLATES: [(&str, &str); 7] = [
     (
         "apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis.template.html",
@@ -66,6 +70,84 @@ fn expected(root: &Path, html_relative: &str) -> Result<String, String> {
     render_module(html_relative, &html)
 }
 
+fn registry_field<'a>(
+    tab: &'a serde_json::Value,
+    key: &str,
+    index: usize,
+) -> Result<&'a str, String> {
+    tab.get(key)
+        .and_then(serde_json::Value::as_str)
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| format!("tab-registry entry {index} missing/invalid {key}"))
+}
+
+fn expected_registry(root: &Path) -> Result<String, String> {
+    let source = root.join(REGISTRY_JSON_RELATIVE);
+    let bytes = fs::read(&source)
+        .map_err(|error| format!("failed to read {}: {error}", source.display()))?;
+    let value: serde_json::Value = serde_json::from_slice(&bytes)
+        .map_err(|error| format!("invalid registry JSON {}: {error}", source.display()))?;
+    let tabs = value
+        .get("tabs")
+        .and_then(serde_json::Value::as_array)
+        .ok_or_else(|| "tab-registry.json must contain tabs array".to_owned())?;
+    if tabs.len() != 7 {
+        return Err(format!(
+            "tab-registry.json must contain exactly 7 tabs; found {}",
+            tabs.len()
+        ));
+    }
+
+    let mut ids = std::collections::BTreeSet::new();
+    let mut bindings = std::collections::BTreeSet::new();
+    let mut rendered = String::new();
+    let mut parsed = Vec::new();
+
+    for (index, tab) in tabs.iter().enumerate() {
+        let id = registry_field(tab, "id", index)?;
+        let binding = registry_field(tab, "templateBinding", index)?;
+        let template = registry_field(tab, "template", index)?;
+        let css = registry_field(tab, "css", index)?;
+        let module = registry_field(tab, "module", index)?;
+        let init = registry_field(tab, "init", index)?;
+
+        if !ids.insert(id.to_owned()) {
+            return Err(format!("duplicate tab id in tab-registry.json: {id}"));
+        }
+        if !bindings.insert(binding.to_owned()) {
+            return Err(format!(
+                "duplicate template binding in tab-registry.json: {binding}"
+            ));
+        }
+        if !template.starts_with("./") || !module.starts_with("./") || !css.starts_with("./src/") {
+            return Err(format!(
+                "tab-registry entry {index} has non-relative template/module/css path"
+            ));
+        }
+
+        rendered.push_str(&format!("import {binding} from \"{template}\";\n"));
+        parsed.push((id, binding, css, module, init));
+    }
+
+    rendered.push('\n');
+    rendered.push_str("export const KGW_TABS = [\n");
+    for (index, (id, binding, css, module, init)) in parsed.iter().enumerate() {
+        rendered.push_str("  {\n");
+        rendered.push_str(&format!("    id: \"{id}\",\n"));
+        rendered.push_str(&format!("    css: \"{css}\",\n"));
+        rendered.push_str(&format!("    html: {binding},\n"));
+        rendered.push_str(&format!("    module: () => import(\"{module}\"),\n"));
+        rendered.push_str(&format!("    init: \"{init}\"\n"));
+        if index + 1 == parsed.len() {
+            rendered.push_str("  }\n");
+        } else {
+            rendered.push_str("  },\n");
+        }
+    }
+    rendered.push_str("];\n");
+    Ok(rendered)
+}
+
 fn check(root: &Path) -> Result<String, String> {
     let mut drift = Vec::new();
     for (html_relative, js_relative) in TEMPLATES {
@@ -80,6 +162,18 @@ fn check(root: &Path) -> Result<String, String> {
         if actual != expected {
             drift.push(js_relative);
         }
+    }
+
+    let expected_registry = expected_registry(root)?;
+    let registry_path = root.join(REGISTRY_JS_RELATIVE);
+    let actual_registry = fs::read_to_string(&registry_path).map_err(|error| {
+        format!(
+            "failed to read generated registry {}: {error}",
+            registry_path.display()
+        )
+    })?;
+    if actual_registry.replace("\r\n", "\n") != expected_registry {
+        drift.push(REGISTRY_JS_RELATIVE);
     }
 
     if drift.is_empty() {
@@ -106,6 +200,15 @@ fn write(root: &Path) -> Result<String, String> {
                 .map_err(|error| format!("failed to write {}: {error}", js_path.display()))?;
             changed.push(js_relative);
         }
+    }
+
+    let expected_registry = expected_registry(root)?;
+    let registry_path = root.join(REGISTRY_JS_RELATIVE);
+    let current_registry = fs::read_to_string(&registry_path).unwrap_or_default();
+    if current_registry.replace("\r\n", "\n") != expected_registry {
+        fs::write(&registry_path, expected_registry.as_bytes())
+            .map_err(|error| format!("failed to write {}: {error}", registry_path.display()))?;
+        changed.push(REGISTRY_JS_RELATIVE);
     }
 
     Ok(format!(
@@ -142,5 +245,25 @@ mod tests {
         }
         assert_eq!(html.len(), 7);
         assert_eq!(js.len(), 7);
+    }
+
+    #[test]
+    fn registry_json_renders_existing_normalized_source() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let expected = expected_registry(root).unwrap();
+        let actual = fs::read_to_string(root.join(REGISTRY_JS_RELATIVE))
+            .unwrap()
+            .replace("\r\n", "\n");
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn registry_paths_are_declarative_and_stable() {
+        assert!(REGISTRY_JSON_RELATIVE.ends_with("tab-registry.json"));
+        assert!(REGISTRY_JS_RELATIVE.ends_with("tab-registry.js"));
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let rendered = expected_registry(root).unwrap();
+        assert_eq!(rendered.matches("    id: ").count(), 7);
+        assert_eq!(rendered.matches("    module: () => import(").count(), 7);
     }
 }
