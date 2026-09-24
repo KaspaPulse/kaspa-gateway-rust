@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 8 — non-direct-CI owned tooling migration is IN PROGRESS. i18n, raw-log provenance, program-unified orchestration, and runtime-trace-owner audit are Rust and COMMITTED; dynamic effective-bridge, log-ui behavioral tests, and current frontend findings remain deferred to the frontend Rust/WASM phase.
+PHASE 9 — PowerShell tooling migration is IN PROGRESS after the static Node/CJS tooling lane. Windows runtime-dependency verification is now Rust and COMMITTED; dynamic effective-bridge, log-ui behavioral tests, and current frontend findings remain deferred to the frontend Rust/WASM phase.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -30,7 +30,7 @@ PHASE 8 — non-direct-CI owned tooling migration is IN PROGRESS. i18n, raw-log 
 - Rust KSSS rejection contracts are 24/24 PASS; the complete xtask suite is 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
 - Old Python and new Rust adapters produced identical semantic JSON for check/evaluate/knowledge/release-check/structural trust, and cryptographic trust parity PASS with verified Cosign v3.0.6.
 - Stable check/Clippy `-D warnings`/FMT PASS; MSRV KSSS check/test PASS.
-- Current language guard after the runtime-trace-owner migration: Rust source 98; owned non-Rust source debt 84; execution debt 14; unapproved 0/0; technical exception 1; PASS.
+- Current language guard after the Windows runtime-dependency verifier migration: Rust source 99; owned non-Rust source debt 83; execution debt 14; unapproved 0/0; technical exception 1; PASS.
 - Network-generation Node/CJS family is committed as `5494f580c9426155c5a848289595175f02d3d7d7`.
 - Runtime-automation-claims gate is ported to Rust `xtask`; legacy gate PASS before deletion, Rust gate PASS, four regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, and focused Graphify post-change refresh/query PASS.
 - Effective-node-settings gate is ported to Rust `xtask` and committed as `8798af0557384c83cbb8c1b075678a7a01266647`; legacy gate PASS before deletion, Rust gate PASS, five regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, language guard PASS, and focused Graphify PASS.
@@ -46,23 +46,24 @@ PHASE 8 — non-direct-CI owned tooling migration is IN PROGRESS. i18n, raw-log 
 - Raw-log provenance static gate is ported to Rust and committed as `9c084dc63fca128ae5b2e621dde1204e17d795e8`; CRLF-only legacy false negative was corrected before parity, legacy/Rust both preserve exactly two true frontend filter findings, 4/4 Rust regressions PASS stable/MSRV, Clippy/FMT/MSRV check/language guard/runtime-owner checks PASS. `kgw_log_ui_tests.cjs` remains because it executes live frontend JS behavior.
 - Program-unified orchestration/reporting is ported to Rust and committed as `a353ed52cf06f9383265a47e23d309e012181a11`; pre-retirement legacy/Rust semantic parity matched 14 steps and three required failures, post-retirement Rust has 13 steps with the same three required failures, 4/4 stable+MSRV regressions PASS, Clippy/FMT/MSRV check PASS, language guard PASS, and focused Graphify PASS at 6216 nodes / 16117 edges.
 - Runtime-trace-owner audit is ported to Rust and committed as `c22503d6e96d08f58e1e4fe5795819e876c72814`; legacy/Rust report parity PASS, post-switch Rust audit PASS, runtime-trace regressions 4/4 and program-unified regressions 5/5 PASS on stable/MSRV, Clippy/FMT/MSRV check/language guard PASS, and focused Graphify PASS at 6241 nodes / 16219 edges.
+- Windows PE runtime-dependency verifier is ported from PowerShell to Rust and committed as `9d1885dc5f66be60a36585ca189f15e8ae1417ef`; legacy/Rust same-PE SHA/import/runtime/passed parity PASS, 4/4 verifier and 7/7 desktop-artifacts regressions PASS stable/MSRV, workflow fail-closed contract PASS, Clippy/FMT/MSRV/KSSS-feature checks PASS, and focused Graphify PASS at 6265 nodes / 16288 edges.
 - `kgw_effective_bridge_settings_gate.cjs` remains intentionally deferred because it executes live frontend JavaScript via Node `vm`; replacing it now without a JS engine would weaken coverage, while adding an engine only for transitional tooling would increase supply-chain surface.
 - Previous Desktop runtime/native/E2E/release evidence remains reusable because application runtime/product source is untouched.
 
 ## Current Blocker
-No local engineering blocker for the static tooling lane. Preserved product findings for frontend migration: i18n has 2 unbound HTML + 6 dynamic literals; raw-log provenance has Node/Bridge transport-wrapper filters. `kgw_log_ui_tests.cjs` and dynamic effective-bridge remain behavioral JS coverage. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` remain unavailable until exact-head CI.
+No local engineering blocker for the PowerShell tooling lane. Preserved product findings for frontend migration: i18n has 2 unbound HTML + 6 dynamic literals; raw-log provenance has Node/Bridge transport-wrapper filters. Behavioral JS coverage remains deferred. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` remain unavailable until exact-head CI.
 
 ## Last Completed Action
-Committed the verified runtime-trace-owner Rust audit as `c22503d6e96d08f58e1e4fe5795819e876c72814`, tree `13eba7a46dee84b05d8f5b7ec326980cc1a89c44`; source debt is 84 and the worktree was clean immediately after commit.
+Committed the verified Windows runtime-dependency verifier migration as `9d1885dc5f66be60a36585ca189f15e8ae1417ef`, tree `4989128322b9dc84ddf10d1e787b9dafc147f722`; source debt is 83 and the worktree was clean immediately after commit.
 
 ## Current Action
-Reconcile continuity to the committed runtime-trace-owner boundary, then inventory remaining non-direct-CI Node/MJS tools and select the smallest static family that can move to Rust without weakening live frontend behavior coverage.
+Reconcile continuity to the committed Windows runtime-dependency verifier boundary, then continue the PowerShell lane with the smallest static/read-only helper that can move to Rust without weakening Windows or live-behavior coverage.
 
 ## Next Action
-Inspect the remaining small Node/MJS tools, classify each as static-contract versus behavioral-JS, then port the smallest independent static family with parity-first validation. Keep behavioral JS gates/tests for the frontend Rust/WASM phase.
+Port the smallest independent PowerShell static/read-only helper with parity-first validation; preserve mutating/live/native PowerShell helpers until an equivalent Rust path is proven. Keep behavioral JS gates/tests for the frontend Rust/WASM phase.
 
 ## Verification Required
-- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 98 / source debt 84 / execution debt 14 / exception 1 / zero unapproved.
+- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 99 / source debt 83 / execution debt 14 / exception 1 / zero unapproved.
 - Network-generation evidence remains reusable from commit `5494f58...`.
 - Runtime-automation Rust gate = PASS; regressions = 4/4 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Effective-node-settings Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
@@ -81,6 +82,7 @@ Inspect the remaining small Node/MJS tools, classify each as static-contract ver
 - Stable `cargo clippy --locked -p xtask --all-targets --features ksss -- -D warnings` = PASS.
 - Program-unified Rust runner = verified parity before/after legacy retirement; targeted regressions = 5/5 PASS stable/MSRV after runtime-trace callsite migration; Clippy/FMT/MSRV check = PASS; focused Graphify = PASS.
 - Runtime-trace-owner Rust audit = legacy/Rust report parity PASS; post-switch audit PASS; targeted regressions 4/4 PASS stable/MSRV; Clippy/FMT/MSRV check = PASS; focused Graphify = PASS.
+- Windows runtime-dependency Rust verifier = same-PE legacy/Rust SHA/import/runtime/passed parity PASS; parser regressions 4/4 and desktop-artifacts regressions 7/7 PASS stable/MSRV; workflow fail-closed contract, Clippy/FMT/MSRV/KSSS-feature checks, language guard, and focused Graphify = PASS.
 - `cargo fmt --all -- --check` = PASS.
 - KSSS old/new semantic parity = PASS for check/evaluate/knowledge/release-check/trust, including cryptographic Sigstore verification.
 - Signed KSSS runtime/trust evidence bytes = unchanged.
