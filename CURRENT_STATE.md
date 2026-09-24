@@ -3,11 +3,11 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified generated tab-registry checkpoint is `4037bd2b1f5f8d2b2643f5dfdbf1a366b18de4b8`, tree `1a9aa5f3256962b57ef3be63d4f7c3172f1d285e`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified true-raw-log Rust checkpoint is `b9b7282846c349b7c8decec1d16144b750ca5ad3`, tree `6bac801ca823283a4bdbf378f1d3d9e8e0c06dd9`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next frontend/tooling mutation. Commit `4037bd2...` was verified clean.
-- Current Rust source inventory: 107.
-- Current owned non-Rust programming source debt: 54.
+- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next tooling mutation. Commit `b9b7282...` was verified clean.
+- Current Rust source inventory: 108.
+- Current owned non-Rust programming source debt: 53.
 - Current non-Rust execution-wiring debt: 13.
 - Rust language guard: PASS; unapproved source=0; unapproved execution=0.
 - Technical exceptions: 13 — seven deterministic Rust-generated frontend template wrappers, three deterministic generated Explorer WASM ABI adapters (`utils/date/formatting`), one deterministic wasm-bindgen JavaScript glue file, one deterministic Rust-generated `tab-registry.js`, plus the required ClusterFuzzLite `build.sh` thin adapter. No Linguist suppression is used.
@@ -30,7 +30,7 @@
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Reconcile this generated tab-registry checkpoint, then inventory the remaining 54 debt paths and choose the next pure/deterministic frontend or Windows/E2E seam with parity-first proof. Preserve DOM-bound behavior and existing E2E/Node coverage until equivalent Rust/WASM or Rust-native behavior exists. Do not replay prior verified gate/KSSS/native qualification without predicate invalidation.
+Reconcile this true-raw-log Rust checkpoint, then port the full-local orchestration wrapper with parity-first proof if its artifact-reuse and live-E2E semantics can be preserved. Preserve DOM-bound behavior and existing E2E/Node coverage until equivalent Rust/WASM or Rust-native behavior exists. Do not replay prior verified gate/KSSS/native qualification without predicate invalidation.
 
 ## DO NOT REPEAT
 Do not replay unaffected native/runtime/release qualification without predicate invalidation. Frontend/app-boot/E2E qualification that depends on the changed Explorer module graph must be rerun before final closure. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.

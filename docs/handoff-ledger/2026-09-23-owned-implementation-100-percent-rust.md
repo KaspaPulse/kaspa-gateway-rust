@@ -1,10 +1,10 @@
 # Checkpoint — 100% Rust owned implementation migration
 
 Status: IN PROGRESS
-Timestamp: 2026-09-24T11:20:03Z
+Timestamp: 2026-09-24T12:06:18Z
 Task ID: KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923
 Branch: feat/owned-implementation-100-percent-rust-20260923
-Last committed phase boundary: 4037bd2b1f5f8d2b2643f5dfdbf1a366b18de4b8 / tree 1a9aa5f3256962b57ef3be63d4f7c3172f1d285e
+Last committed phase boundary: b9b7282846c349b7c8decec1d16144b750ca5ad3 / tree 6bac801ca823283a4bdbf378f1d3d9e8e0c06dd9
 Historical main baseline: aaf2c635672c0fd35a5705579610be8de188b031 / tree 0d19e16d115dc093a3f47967ec57b0cc3e81bfa1
 
 ## LAST CONFIRMED STATE
@@ -31,7 +31,8 @@ Frontend template source normalization, dead-scaffold retirement, and two active
 - First active Explorer Rust/WASM seam: `c480079f35d1cf41932b1f737209e32090d048d5`.
 - Explorer date/formatting Rust/WASM seam: `3e73e1b40d550ffec8a1432e4d60697c4c9ad7b1`.
 - Generated frontend tab registry: `4037bd2b1f5f8d2b2643f5dfdbf1a366b18de4b8`.
-- Current language guard: Rust 107; source debt 54; execution debt 13; unapproved 0/0; exceptions 13.
+- True raw-log Rust gate: `b9b7282846c349b7c8decec1d16144b750ca5ad3`.
+- Current language guard: Rust 108; source debt 53; execution debt 13; unapproved 0/0; exceptions 13.
 - Raw-log legacy/Rust parity: expected FAIL with exactly two Node/Bridge transport-wrapper findings.
 - Raw-log Rust regressions 4/4 PASS stable/MSRV; Clippy/FMT/MSRV check PASS; runtime-owner strict PASS.
 - Program-unified pre-retirement legacy/Rust deterministic summaries match across 14 steps; post-retirement Rust reference preserved the same three required failures. After runtime-trace migration, targeted regressions are 5/5 PASS stable/MSRV and the enabled trace step is Rust. Strict Clippy/FMT/MSRV check PASS.
@@ -59,10 +60,10 @@ Frontend template source normalization, dead-scaffold retirement, and two active
 - Local actionlint/cargo-audit/cargo-deny/cargo-machete remain NOT VERIFIED / unavailable locally; exact-head GitHub CI is required.
 
 ## BLOCKERS / REMAINING WORK
-No blocker. Remaining debt is 54 owned non-Rust source files plus 13 execution-wiring files. Technical exceptions are 13: seven deterministic Rust-generated template wrappers, three generated Explorer ABI adapters, one generated wasm-bindgen JS glue file, one deterministic Rust-generated tab registry, and one platform-required ClusterFuzzLite thin adapter. Behavioral JS/E2E debt remains until equivalent Rust/WASM or Rust-native behavior exists. Product/static findings preserved: 9 i18n unbound findings, 6 dynamic literals, 2 raw transport-wrapper findings, duplicate Start/Stop IDs, and the shared frontend CJS test failure. Frontend/app-boot/E2E evidence touching Explorer is invalidated for final closure.
+No blocker. Remaining debt is 53 owned non-Rust source files plus 13 execution-wiring files. Technical exceptions are 13: seven deterministic Rust-generated template wrappers, three generated Explorer ABI adapters, one generated wasm-bindgen JS glue file, one deterministic Rust-generated tab registry, and one platform-required ClusterFuzzLite thin adapter. Behavioral JS/E2E debt remains until equivalent Rust/WASM or Rust-native behavior exists. Product/static findings preserved: 9 i18n unbound findings, 6 dynamic literals, 2 raw transport-wrapper findings, duplicate Start/Stop IDs, and the shared frontend CJS test failure. Frontend/app-boot/E2E evidence touching Explorer is invalidated for final closure.
 
 ## NEXT ACTION
-Validate this generated tab-registry continuity reconciliation with the Rust project-continuity gate/regressions and checkpoint the docs. Then inventory the remaining 54 owned non-Rust sources and choose the next pure/deterministic frontend or Windows/E2E seam with legacy behavior capture before replacement.
+Validate this true-raw-log continuity reconciliation with the Rust project-continuity gate/regressions and checkpoint the docs. Then migrate the full-local PowerShell orchestration wrapper only if Rust can preserve artifact-reuse/live-E2E semantics and all underlying checks.
 
 ## DO NOT REPEAT
 Do not rerun unaffected native/runtime/release qualification while its predicates are unchanged. Frontend/app-boot/E2E predicates touching the changed Explorer module graph must be requalified before final closure. Do not rerun verified KSSS/npm/runtime-binding/project-continuity/static/parallel/i18n/raw-log parity without invalidation, restore retired gates, hide current frontend findings, weaken signed-runtime/npm/binding/continuity/runtime-owner boundaries, touch unrelated worktrees, or mutate the protected checkpoint.
