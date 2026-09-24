@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 8 — non-direct-CI owned tooling migration is IN PROGRESS. i18n locale/full-contract gates are Rust and COMMITTED; dynamic effective-bridge and the eight current i18n product findings are deferred to the frontend Rust/WASM phase.
+PHASE 8 — non-direct-CI owned tooling migration is IN PROGRESS. i18n and raw-log provenance static gates are Rust and COMMITTED; dynamic effective-bridge, log-ui behavioral tests, and current frontend findings are deferred to the frontend Rust/WASM phase.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -30,7 +30,7 @@ PHASE 8 — non-direct-CI owned tooling migration is IN PROGRESS. i18n locale/fu
 - Rust KSSS rejection contracts are 24/24 PASS; the complete xtask suite is 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
 - Old Python and new Rust adapters produced identical semantic JSON for check/evaluate/knowledge/release-check/structural trust, and cryptographic trust parity PASS with verified Cosign v3.0.6.
 - Stable check/Clippy `-D warnings`/FMT PASS; MSRV KSSS check/test PASS.
-- Current language guard after the i18n gate migration: Rust source 95; owned non-Rust source debt 87; execution debt 14; unapproved 0/0; technical exception 1; PASS.
+- Current language guard after the raw-log provenance migration: Rust source 96; owned non-Rust source debt 86; execution debt 14; unapproved 0/0; technical exception 1; PASS.
 - Network-generation Node/CJS family is committed as `5494f580c9426155c5a848289595175f02d3d7d7`.
 - Runtime-automation-claims gate is ported to Rust `xtask`; legacy gate PASS before deletion, Rust gate PASS, four regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, and focused Graphify post-change refresh/query PASS.
 - Effective-node-settings gate is ported to Rust `xtask` and committed as `8798af0557384c83cbb8c1b075678a7a01266647`; legacy gate PASS before deletion, Rust gate PASS, five regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, language guard PASS, and focused Graphify PASS.
@@ -43,23 +43,24 @@ PHASE 8 — non-direct-CI owned tooling migration is IN PROGRESS. i18n locale/fu
 - Six standalone static contract regressions (analysis, Explorer lint, functional UI, Settings workflow, AUD-010 Tauri seam, and programmatic restore) are consolidated in Rust `xtask` and committed as `cce6059c6efb9f0bc37e22ad4303c6edd7179895`; legacy six PASS before retirement, Rust aggregate PASS, 12/12 regressions PASS stable/MSRV, Clippy/FMT/check PASS, and focused Graphify PASS.
 - Parallel-self-worker runtime contract gate is ported to Rust and committed as `dd1dbe88562bc4a22f173b53c7a6fd7f35014376`; the legacy CRLF-sensitive extractor was corrected before retirement, both legacy/Rust real gates PASS, 5/5 regressions PASS stable/MSRV, and focused Graphify PASS.
 - i18n locale/full-contract gates are ported to Rust and committed as `9c53fa70a9cb6397e92efe68e2607da9033ea6e5`; locale parity PASS at 32/0/0/1, full-contract parity preserves the current FAIL truth at refs=266/missing=0/unbound=2/dynamic=6/quote=0/runtime=0, eight Rust regressions PASS stable/MSRV, Clippy/MSRV check/language guard PASS. Focused Graphify for this batch is NOT VERIFIED / TOOL_BLOCKED only because safe Server→kas file transfer is unavailable.
+- Raw-log provenance static gate is ported to Rust and committed as `9c084dc63fca128ae5b2e621dde1204e17d795e8`; CRLF-only legacy false negative was corrected before parity, legacy/Rust both preserve exactly two true frontend filter findings, 4/4 Rust regressions PASS stable/MSRV, Clippy/FMT/MSRV check/language guard/runtime-owner checks PASS. `kgw_log_ui_tests.cjs` remains because it executes live frontend JS behavior.
 - `kgw_effective_bridge_settings_gate.cjs` remains intentionally deferred because it executes live frontend JavaScript via Node `vm`; replacing it now without a JS engine would weaken coverage, while adding an engine only for transitional tooling would increase supply-chain surface.
 - Previous Desktop runtime/native/E2E/release evidence remains reusable because application runtime/product source is untouched.
 
 ## Current Blocker
-No local engineering blocker for the tooling lane. The current full i18n product contract still has eight verified findings (2 unbound HTML + 6 dynamic literals); they are preserved for the frontend Rust/WASM phase rather than hidden in tooling migration. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` remain unavailable until exact-head CI.
+No local engineering blocker for the static tooling lane. Preserved product findings for frontend migration: i18n has 2 unbound HTML + 6 dynamic literals; raw-log provenance has Node/Bridge transport-wrapper filters. `kgw_log_ui_tests.cjs` and dynamic effective-bridge remain behavioral JS coverage. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` remain unavailable until exact-head CI.
 
 ## Last Completed Action
-Committed the i18n Rust gate family as `9c53fa70a9cb6397e92efe68e2607da9033ea6e5`, tree `eb7878f1c0c14b1fd8c71eece4c867a7516a5df0`; source debt is 87 and the worktree was clean immediately after commit.
+Committed the raw-log provenance Rust gate as `9c084dc63fca128ae5b2e621dde1204e17d795e8`, tree `cb16827e96aa8456ecd17250bc4593600681a55a`; source debt is 86 and the worktree was clean immediately after commit.
 
 ## Current Action
-Reconcile continuity to the committed i18n Rust gate boundary, then analyze the raw-log tooling family (`kgw_log_ui_tests.cjs` + `kgw_raw_log_provenance_gate.cjs`) without changing runtime/frontend log sources.
+Reconcile continuity to the committed raw-log provenance boundary, then inventory remaining non-direct-CI Node/MJS tools and select the smallest static family that can move to Rust without executing frontend JS.
 
 ## Next Action
-Port the smallest coherent raw-log tooling family with parity-first validation. Preserve any current raw-log provenance failure as truth; do not modify runtime/frontend source merely to force the replacement gate green.
+Port the next smallest static non-direct-CI tooling family with parity-first validation. Keep behavioral JS gates/tests for the frontend Rust/WASM phase rather than replacing them with weaker static checks.
 
 ## Verification Required
-- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 95 / source debt 87 / execution debt 14 / exception 1 / zero unapproved.
+- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 96 / source debt 86 / execution debt 14 / exception 1 / zero unapproved.
 - Network-generation evidence remains reusable from commit `5494f58...`.
 - Runtime-automation Rust gate = PASS; regressions = 4/4 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Effective-node-settings Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
@@ -72,6 +73,7 @@ Port the smallest coherent raw-log tooling family with parity-first validation. 
 - Static-contract Rust aggregate = PASS; regressions = 12/12 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Parallel-self-worker Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - i18n locale Rust gate = PASS at 32 critical keys / 0 missing / 0 same-as-English / 1 approved; full i18n Rust gate matches legacy expected FAIL at 266/0/2/6/0/0 with identical findings; Rust regressions = 8/8 PASS stable/MSRV; Clippy/MSRV check PASS; focused Graphify NOT VERIFIED / TOOL_BLOCKED for this batch.
+- Raw-log provenance Rust gate matches legacy corrected expected FAIL with exactly two transport-wrapper findings; regressions = 4/4 PASS stable/MSRV; Clippy/FMT/MSRV check PASS; runtime-owner strict PASS; focused Graphify NOT VERIFIED / TOOL_BLOCKED for this batch.
 - `cargo test --locked -p xtask --features ksss` = 47/47 PASS on stable.
 - Rust 1.97.1 `cargo check/test --locked -p xtask --features ksss` = PASS / 47/47.
 - Stable `cargo clippy --locked -p xtask --all-targets --features ksss -- -D warnings` = PASS.
