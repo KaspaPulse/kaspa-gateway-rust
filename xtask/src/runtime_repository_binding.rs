@@ -93,11 +93,11 @@ fn files() -> Value {
         "officialRuntime": "crates/kaspa-gateway-rk-node/src/official_kaspa_runtime.rs",
         "bridgeRuntime": "crates/kaspa-gateway-rk-bridge/src/lib.rs",
         "cargoLock": "Cargo.lock",
-        "applyScript": "tools/kgw_runtime_repository_binding_apply.ps1"
+        "applyTool": "cargo run --locked -p xtask -- runtime-repository-binding-apply"
     })
 }
 
-fn required_files() -> [&'static str; 9] {
+fn required_files() -> [&'static str; 8] {
     [
         "config/runtime-repository-bindings.json",
         "crates/kaspa-gateway-rk-node/Cargo.toml",
@@ -107,7 +107,6 @@ fn required_files() -> [&'static str; 9] {
         "crates/kaspa-gateway-rk-node/src/kgw_service_controller.rs",
         "crates/kaspa-gateway-rk-node/src/official_kaspa_runtime.rs",
         "crates/kaspa-gateway-rk-bridge/src/lib.rs",
-        "tools/kgw_runtime_repository_binding_apply.ps1",
     ]
 }
 fn add(
@@ -535,7 +534,6 @@ fn evaluate(root: &Path, options: Options) -> Result<Value, String> {
         let bridge_cargo = read(root, "crates/kaspa-gateway-rk-bridge/Cargo.toml")?;
         let cli_cargo = read(root, "apps/kaspa-gateway-cli/Cargo.toml")?;
         let core_cargo = read(root, "crates/kaspa-gateway-core/Cargo.toml")?;
-        let apply_script = read(root, "tools/kgw_runtime_repository_binding_apply.ps1")?;
 
         let mut aliases: Vec<(&str, String, &str, &str, &str)> = Vec::new();
         for (family, network_name) in [("mainline", "mainnet"), ("tn13", "testnet13")] {
@@ -727,26 +725,6 @@ fn evaluate(root: &Path, options: Options) -> Result<Value, String> {
             );
         }
 
-        for needle in [
-            "nodeAliases",
-            "packages.node",
-            "bridgeAliases",
-            "packages.bridge",
-            "kaspa-grpc-client-live",
-            "kaspa-rpc-core-live",
-            "kaspa-addresses",
-            "testnet13",
-            r#"Get-BindingByFamily "tn13""#,
-        ] {
-            if !apply_script.contains(needle) {
-                add(
-                    &mut findings,
-                    "error",
-                    "apply-script-missing-manifest-driven-coverage",
-                    [("needle", json!(needle))],
-                );
-            }
-        }
         let service_controller = read(
             root,
             "crates/kaspa-gateway-rk-node/src/kgw_service_controller.rs",
@@ -1142,7 +1120,6 @@ mod tests {
         "Cargo.lock",
         "apps/kaspa-gateway-cli/Cargo.toml",
         "crates/kaspa-gateway-core/Cargo.toml",
-        "tools/kgw_runtime_repository_binding_apply.ps1",
     ];
 
     struct Fixture {
@@ -1343,17 +1320,13 @@ mod tests {
     }
 
     #[test]
-    fn apply_tool_coverage_drift_is_rejected() {
-        let fixture = fixture();
-        mutate_text(
-            &fixture.root,
-            "tools/kgw_runtime_repository_binding_apply.ps1",
-            |text| text.replace("bridgeAliases", "bridgeAliasList"),
+    fn files_report_rust_apply_tool() {
+        let value = files();
+        assert_eq!(
+            value.get("applyTool").and_then(Value::as_str),
+            Some("cargo run --locked -p xtask -- runtime-repository-binding-apply")
         );
-        reject(
-            &fixture.root,
-            "apply-script-missing-manifest-driven-coverage",
-        );
+        assert!(required_files().iter().all(|path| !path.ends_with(".ps1")));
     }
 
     #[test]

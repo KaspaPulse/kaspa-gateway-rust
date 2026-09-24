@@ -18,6 +18,7 @@ mod project_continuity;
 mod raw_log_provenance;
 mod runtime_automation_claims;
 mod runtime_repository_binding;
+mod runtime_repository_binding_apply;
 mod runtime_trace_owner;
 mod security_advisories;
 mod start_button;
@@ -73,6 +74,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- raw-log-provenance-gate
   cargo run -p xtask -- runtime-automation-claims-gate
   cargo run -p xtask -- runtime-repository-binding-gate [--strict] [--online|--fresh] [--offline] [--json]
+  cargo run -p xtask -- runtime-repository-binding-apply [--root <path>]
   cargo run -p xtask -- runtime-trace-owner-audit <repo-root> <report-dir>
   cargo run -p xtask -- start-button-gate
   cargo run -p xtask -- static-contract-regressions
@@ -303,6 +305,12 @@ fn run() -> Result<(), CliError> {
                     message: String::new(),
                 })
             }
+        }
+        "runtime-repository-binding-apply" => {
+            let message = runtime_repository_binding_apply::run_cli(&mut args, &repo_root()?)
+                .map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
         }
         "runtime-trace-owner-audit" => {
             let result = runtime_trace_owner::run_cli(&mut args).map_err(CliError::failure)?;
