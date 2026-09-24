@@ -1,3 +1,5 @@
+mod assertions;
+
 use js_sys::{Error, JsString, Object, Reflect};
 use wasm_bindgen::prelude::*;
 
