@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 9 — PowerShell tooling migration is IN PROGRESS after the static Node/CJS tooling lane. Windows runtime-dependency verification is now Rust and COMMITTED; dynamic effective-bridge, log-ui behavioral tests, and current frontend findings remain deferred to the frontend Rust/WASM phase.
+PHASE 9 — PowerShell tooling migration is IN PROGRESS after the static Node/CJS tooling lane. Windows runtime-dependency verification and the AI workflow gate are Rust and COMMITTED; dynamic effective-bridge, log-ui behavioral tests, and current frontend findings remain deferred to the frontend Rust/WASM phase.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -30,7 +30,7 @@ PHASE 9 — PowerShell tooling migration is IN PROGRESS after the static Node/CJ
 - Rust KSSS rejection contracts are 24/24 PASS; the complete xtask suite is 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
 - Old Python and new Rust adapters produced identical semantic JSON for check/evaluate/knowledge/release-check/structural trust, and cryptographic trust parity PASS with verified Cosign v3.0.6.
 - Stable check/Clippy `-D warnings`/FMT PASS; MSRV KSSS check/test PASS.
-- Current language guard after the Windows runtime-dependency verifier migration: Rust source 99; owned non-Rust source debt 83; execution debt 14; unapproved 0/0; technical exception 1; PASS.
+- Current language guard after the AI workflow gate migration: Rust source 100; owned non-Rust source debt 82; execution debt 14; unapproved 0/0; technical exception 1; PASS.
 - Network-generation Node/CJS family is committed as `5494f580c9426155c5a848289595175f02d3d7d7`.
 - Runtime-automation-claims gate is ported to Rust `xtask`; legacy gate PASS before deletion, Rust gate PASS, four regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, and focused Graphify post-change refresh/query PASS.
 - Effective-node-settings gate is ported to Rust `xtask` and committed as `8798af0557384c83cbb8c1b075678a7a01266647`; legacy gate PASS before deletion, Rust gate PASS, five regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, language guard PASS, and focused Graphify PASS.
@@ -47,6 +47,7 @@ PHASE 9 — PowerShell tooling migration is IN PROGRESS after the static Node/CJ
 - Program-unified orchestration/reporting is ported to Rust and committed as `a353ed52cf06f9383265a47e23d309e012181a11`; pre-retirement legacy/Rust semantic parity matched 14 steps and three required failures, post-retirement Rust has 13 steps with the same three required failures, 4/4 stable+MSRV regressions PASS, Clippy/FMT/MSRV check PASS, language guard PASS, and focused Graphify PASS at 6216 nodes / 16117 edges.
 - Runtime-trace-owner audit is ported to Rust and committed as `c22503d6e96d08f58e1e4fe5795819e876c72814`; legacy/Rust report parity PASS, post-switch Rust audit PASS, runtime-trace regressions 4/4 and program-unified regressions 5/5 PASS on stable/MSRV, Clippy/FMT/MSRV check/language guard PASS, and focused Graphify PASS at 6241 nodes / 16219 edges.
 - Windows PE runtime-dependency verifier is ported from PowerShell to Rust and committed as `9d1885dc5f66be60a36585ca189f15e8ae1417ef`; legacy/Rust same-PE SHA/import/runtime/passed parity PASS, 4/4 verifier and 7/7 desktop-artifacts regressions PASS stable/MSRV, workflow fail-closed contract PASS, Clippy/FMT/MSRV/KSSS-feature checks PASS, and focused Graphify PASS at 6265 nodes / 16288 edges.
+- AI workflow gate is ported from PowerShell to Rust and committed as `7b1d869bd0e79003f276ef8fec960dc5cea0750c`; legacy/Rust exact current-failure parity is preserved (missing `.codex/hooks.json` and `graphify-out/graph.json`), 5/5 regressions PASS stable/MSRV, stable/MSRV/KSSS-feature checks and Clippy/FMT PASS, active docs invoke Rust, and focused Graphify PASS at 6279 nodes / 16324 edges.
 - `kgw_effective_bridge_settings_gate.cjs` remains intentionally deferred because it executes live frontend JavaScript via Node `vm`; replacing it now without a JS engine would weaken coverage, while adding an engine only for transitional tooling would increase supply-chain surface.
 - Previous Desktop runtime/native/E2E/release evidence remains reusable because application runtime/product source is untouched.
 
@@ -54,16 +55,16 @@ PHASE 9 — PowerShell tooling migration is IN PROGRESS after the static Node/CJ
 No local engineering blocker for the PowerShell tooling lane. Preserved product findings for frontend migration: i18n has 2 unbound HTML + 6 dynamic literals; raw-log provenance has Node/Bridge transport-wrapper filters. Behavioral JS coverage remains deferred. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` remain unavailable until exact-head CI.
 
 ## Last Completed Action
-Committed the verified Windows runtime-dependency verifier migration as `9d1885dc5f66be60a36585ca189f15e8ae1417ef`, tree `4989128322b9dc84ddf10d1e787b9dafc147f722`; source debt is 83 and the worktree was clean immediately after commit.
+Committed the verified AI workflow gate Rust migration as `7b1d869bd0e79003f276ef8fec960dc5cea0750c`, tree `bae320539b8dba1225b5c3b661944a359b3de3d9`; source debt is 82 and the worktree was clean immediately after commit.
 
 ## Current Action
-Reconcile continuity to the committed Windows runtime-dependency verifier boundary, then continue the PowerShell lane with the smallest static/read-only helper that can move to Rust without weakening Windows or live-behavior coverage.
+Reconcile continuity to the committed AI workflow gate boundary, then port `tools/kgw_start_button_gate.ps1` as the next PowerShell orchestration gate while preserving its existing frontend JS regression and Tauri IPC test execution.
 
 ## Next Action
-Port the smallest independent PowerShell static/read-only helper with parity-first validation; preserve mutating/live/native PowerShell helpers until an equivalent Rust path is proven. Keep behavioral JS gates/tests for the frontend Rust/WASM phase.
+Port `tools/kgw_start_button_gate.ps1` to Rust with parity-first validation, preserving the exact static Start/Stop layout checks plus subordinate Node frontend regression and Tauri IPC test execution. Keep behavioral JS test files themselves for the frontend Rust/WASM phase.
 
 ## Verification Required
-- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 99 / source debt 83 / execution debt 14 / exception 1 / zero unapproved.
+- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 100 / source debt 82 / execution debt 14 / exception 1 / zero unapproved.
 - Network-generation evidence remains reusable from commit `5494f58...`.
 - Runtime-automation Rust gate = PASS; regressions = 4/4 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Effective-node-settings Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
@@ -83,6 +84,7 @@ Port the smallest independent PowerShell static/read-only helper with parity-fir
 - Program-unified Rust runner = verified parity before/after legacy retirement; targeted regressions = 5/5 PASS stable/MSRV after runtime-trace callsite migration; Clippy/FMT/MSRV check = PASS; focused Graphify = PASS.
 - Runtime-trace-owner Rust audit = legacy/Rust report parity PASS; post-switch audit PASS; targeted regressions 4/4 PASS stable/MSRV; Clippy/FMT/MSRV check = PASS; focused Graphify = PASS.
 - Windows runtime-dependency Rust verifier = same-PE legacy/Rust SHA/import/runtime/passed parity PASS; parser regressions 4/4 and desktop-artifacts regressions 7/7 PASS stable/MSRV; workflow fail-closed contract, Clippy/FMT/MSRV/KSSS-feature checks, language guard, and focused Graphify = PASS.
+- AI workflow Rust gate = exact legacy current-failure parity; regressions 5/5 PASS stable/MSRV; stable/MSRV/KSSS-feature checks, Clippy/FMT, language guard, active-doc migration, and focused Graphify = PASS.
 - `cargo fmt --all -- --check` = PASS.
 - KSSS old/new semantic parity = PASS for check/evaluate/knowledge/release-check/trust, including cryptographic Sigstore verification.
 - Signed KSSS runtime/trust evidence bytes = unchanged.
