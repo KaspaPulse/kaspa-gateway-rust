@@ -176,7 +176,6 @@ const syntaxTargets = [
   "tools/kgw_global_owner_gate.cjs",
   "tools/kgw_bridge_node_mode_routing_audit_v1.cjs",
   "tools/kgw_runtime_trace_owner_audit_v20.cjs",
-  "tools/kgw_raw_log_provenance_gate.cjs",
   "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
   "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js"
 ];
@@ -235,8 +234,8 @@ if (!skipRuntime) {
   );
   runStep(
     "raw_log_provenance_gate",
-    nodeExe,
-    ["tools/kgw_raw_log_provenance_gate.cjs"]
+    "cargo",
+    ["run", "--locked", "-p", "xtask", "--", "raw-log-provenance-gate"]
   );
 }
 

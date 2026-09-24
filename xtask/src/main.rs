@@ -12,6 +12,7 @@ mod network_generation;
 mod npm_dependency_policy;
 mod parallel_self_worker;
 mod project_continuity;
+mod raw_log_provenance;
 mod runtime_automation_claims;
 mod runtime_repository_binding;
 mod security_advisories;
@@ -60,6 +61,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- npm-dependency-policy-gate --workspace <desktop|e2e> --ci-log <path>
   cargo run -p xtask -- parallel-self-worker-runtime-gate
   cargo run -p xtask -- project-continuity-gate
+  cargo run -p xtask -- raw-log-provenance-gate
   cargo run -p xtask -- runtime-automation-claims-gate
   cargo run -p xtask -- runtime-repository-binding-gate [--strict] [--online|--fresh] [--offline] [--json]
   cargo run -p xtask -- static-contract-regressions
@@ -215,6 +217,17 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = project_continuity::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "raw-log-provenance-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "raw-log-provenance-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = raw_log_provenance::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
