@@ -1,14 +1,14 @@
 # Checkpoint — 100% Rust owned implementation migration
 
 Status: IN PROGRESS
-Timestamp: 2026-09-24T10:18:23Z
+Timestamp: 2026-09-24T10:59:05Z
 Task ID: KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923
 Branch: feat/owned-implementation-100-percent-rust-20260923
-Last committed phase boundary: c480079f35d1cf41932b1f737209e32090d048d5 / tree 8d62b0061969ade18a0b9498f05fd07f2a83ce51
+Last committed phase boundary: 3e73e1b40d550ffec8a1432e4d60697c4c9ad7b1 / tree 1691b3187279a485b7fb5dee223cdc5346f82507
 Historical main baseline: aaf2c635672c0fd35a5705579610be8de188b031 / tree 0d19e16d115dc093a3f47967ec57b0cc3e81bfa1
 
 ## LAST CONFIRMED STATE
-Frontend template source normalization, dead-scaffold retirement, and the first active Rust/WASM frontend seam are committed. Seven template modules remain deterministic Rust-generated wrappers over exact-byte declarative HTML; twelve unreachable JavaScript scaffolds are removed; Explorer pure utility implementation now lives in `kaspa-gateway-frontend-wasm`, with `explorer.utils.js` and wasm-bindgen JS tracked only as deterministic generated ABI/glue. Exact legacy/Rust/generated-adapter behavior matrices match byte-for-byte. Tooling/E2E migrations through exact-owned-process helpers remain valid. Native/runtime evidence outside the changed frontend module graph remains reusable; frontend/app-boot/E2E predicates touching Explorer must be requalified before final closure. No GitHub, Production, DNS, Cloudflare, live-runtime, credential, old-worktree, or protected-checkpoint mutation occurred.
+Frontend template source normalization, dead-scaffold retirement, and two active Rust/WASM frontend seams are committed. Seven template modules remain deterministic Rust-generated wrappers over exact-byte declarative HTML; twelve unreachable JavaScript scaffolds are removed; Explorer utility/date/formatting implementation now lives in `kaspa-gateway-frontend-wasm`, with `explorer.utils.js`, `explorer.date.js`, `explorer.formatting.js`, and wasm-bindgen JS tracked only as deterministic generated ABI/glue. Exact legacy/Rust parity is proven, including full browser parity for date/formatting. Tooling/E2E migrations through exact-owned-process helpers remain valid. Native/runtime evidence outside the changed frontend module graph remains reusable; frontend/app-boot/E2E predicates touching Explorer must be requalified before final closure. No GitHub, Production, DNS, Cloudflare, live-runtime, credential, old-worktree, or protected-checkpoint mutation occurred.
 
 ## COMPLETED / VERIFIED
 - Foundation: `33461f6511c69b457c5f3dd069b54322d9a236a0`.
@@ -29,7 +29,8 @@ Frontend template source normalization, dead-scaffold retirement, and the first 
 - Frontend template/codegen migration: `eae06aa2fc6aa2c857a7381f9340d974530bbc2e`.
 - Dead frontend scaffold retirement: `65eb328b5e86b6d74a174685d6842f1948c33afa`.
 - First active Explorer Rust/WASM seam: `c480079f35d1cf41932b1f737209e32090d048d5`.
-- Current language guard: Rust 107; source debt 57; execution debt 13; unapproved 0/0; exceptions 10.
+- Explorer date/formatting Rust/WASM seam: `3e73e1b40d550ffec8a1432e4d60697c4c9ad7b1`.
+- Current language guard: Rust 107; source debt 55; execution debt 13; unapproved 0/0; exceptions 12.
 - Raw-log legacy/Rust parity: expected FAIL with exactly two Node/Bridge transport-wrapper findings.
 - Raw-log Rust regressions 4/4 PASS stable/MSRV; Clippy/FMT/MSRV check PASS; runtime-owner strict PASS.
 - Program-unified pre-retirement legacy/Rust deterministic summaries match across 14 steps; post-retirement Rust reference preserved the same three required failures. After runtime-trace migration, targeted regressions are 5/5 PASS stable/MSRV and the enabled trace step is Rust. Strict Clippy/FMT/MSRV check PASS.
@@ -43,6 +44,7 @@ Frontend template source normalization, dead-scaffold retirement, and the first 
 - Frontend template/codegen parity PASS for seven wrappers with exact baseline export SHA/bytes/JS length; codegen/CI/policy validation PASS; focused Graphify PASS at 6415 nodes / 16723 edges.
 - Twelve dead frontend JS scaffolds removed after exact path/symbol audit; active shell/registry syntax and language guard PASS; focused Graphify PASS at 6384 nodes / 16704 edges with all twelve nodes absent.
 - Explorer utility Rust/WASM seam: legacy/Rust/generated-adapter normalized behavior matrices are byte-identical SHA-256 `7b8e555a348b975dafb55cb86bae4cd88dca45f8814d6d85d94cbcdd9fa0e9ca`; crate native tests 3/3 PASS; stable/MSRV wasm32 checks PASS; codegen check + 2/2 tests, KSSS/MSRV xtask checks, strict Clippy/FMT, desktop lint, CSP/load contract, language guard and focused Graphify PASS at 6432 nodes / 16819 edges.
+- Explorer date/formatting Rust/WASM seam: legacy/Rust nodejs matrices are byte-identical SHA-256 `be6fbce1d3fe2bd9eba94bde0633114db4027b531b2144779fc25f010aba5a21`; generated adapters pass the full browser matrix under production-equivalent CSP at `Asia/Riyadh` / `en-US`; native tests 3/3, stable/MSRV wasm32 checks, codegen/language guard/syntax/lint/static contracts, and focused Graphify PASS at 6470 nodes / 16933 edges.
 - i18n locale gate PASS at 32/0/0/1; full i18n contract current truth is FAIL at refs=266/missing=0/unbound=9/dynamic=6/quote=0/runtime=0. Seven added unbound findings are latent declarative template text newly visible to static analysis; generated runtime export bytes are unchanged.
 
 ## EVIDENCE
@@ -51,15 +53,15 @@ Frontend template source normalization, dead-scaffold retirement, and the first 
 - Raw-log Rust parity: `raw-log-rust-pre-delete.log`.
 - Raw-log affected qualification: `raw-log-rust-pre-delete-qualification.log`, `raw-log-final-qualification.log`.
 - CRLF-fixed legacy provenance reference SHA-256: `A12CA9F133005BFBDA2C2C9191AD5711DB0959CADBBBF2668E1A08E6928136F4`.
-- Focused Graphify for i18n/raw-log historical batches remains NOT VERIFIED / TOOL_BLOCKED; program-unified, runtime-trace-owner, Windows runtime-dependency verifier, AI workflow gate, Start-button gate, Copy Log gate, runtime-repository-binding apply, E2E exact-owned-process, frontend template/codegen, dead-scaffold retirement, and the Explorer Rust/WASM seam focused Graphify are PASS after SHA-bound Server→kas mirroring.
+- Focused Graphify for i18n/raw-log historical batches remains NOT VERIFIED / TOOL_BLOCKED; program-unified, runtime-trace-owner, Windows runtime-dependency verifier, AI workflow gate, Start-button gate, Copy Log gate, runtime-repository-binding apply, E2E exact-owned-process, frontend template/codegen, dead-scaffold retirement, Explorer utilities, and Explorer date/formatting Rust/WASM seams are PASS after SHA-bound Server→kas mirroring.
 - Earlier verified KSSS/npm/runtime-binding/project-continuity/static/parallel evidence remains reusable while predicates remain unchanged.
 - Local actionlint/cargo-audit/cargo-deny/cargo-machete remain NOT VERIFIED / unavailable locally; exact-head GitHub CI is required.
 
 ## BLOCKERS / REMAINING WORK
-No blocker. Remaining debt is 57 owned non-Rust source files plus 13 execution-wiring files. Technical exceptions are 10: seven deterministic Rust-generated template wrappers, one generated Explorer ABI adapter, one generated wasm-bindgen JS glue file, and one platform-required ClusterFuzzLite thin adapter. Behavioral JS/E2E debt remains until equivalent Rust/WASM or Rust-native behavior exists. Product/static findings preserved: 9 i18n unbound findings, 6 dynamic literals, 2 raw transport-wrapper findings, duplicate Start/Stop IDs, and the shared frontend CJS test failure. Frontend/app-boot/E2E evidence touching Explorer is invalidated for final closure.
+No blocker. Remaining debt is 55 owned non-Rust source files plus 13 execution-wiring files. Technical exceptions are 12: seven deterministic Rust-generated template wrappers, three generated Explorer ABI adapters, one generated wasm-bindgen JS glue file, and one platform-required ClusterFuzzLite thin adapter. Behavioral JS/E2E debt remains until equivalent Rust/WASM or Rust-native behavior exists. Product/static findings preserved: 9 i18n unbound findings, 6 dynamic literals, 2 raw transport-wrapper findings, duplicate Start/Stop IDs, and the shared frontend CJS test failure. Frontend/app-boot/E2E evidence touching Explorer is invalidated for final closure.
 
 ## NEXT ACTION
-Validate this first Explorer Rust/WASM continuity reconciliation with the Rust project-continuity gate/regressions and checkpoint the docs. Then extend the same seam to the next pure Explorer helper family with legacy behavior capture and parity before replacing additional JavaScript.
+Validate this Explorer date/formatting Rust/WASM continuity reconciliation with the Rust project-continuity gate/regressions and checkpoint the docs. Then inventory the remaining 55 owned non-Rust sources and choose the next pure/deterministic frontend or Windows/E2E seam with legacy behavior capture before replacement.
 
 ## DO NOT REPEAT
 Do not rerun unaffected native/runtime/release qualification while its predicates are unchanged. Frontend/app-boot/E2E predicates touching the changed Explorer module graph must be requalified before final closure. Do not rerun verified KSSS/npm/runtime-binding/project-continuity/static/parallel/i18n/raw-log parity without invalidation, restore retired gates, hide current frontend findings, weaken signed-runtime/npm/binding/continuity/runtime-owner boundaries, touch unrelated worktrees, or mutate the protected checkpoint.

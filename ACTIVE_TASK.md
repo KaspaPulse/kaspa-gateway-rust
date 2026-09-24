@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 — frontend Rust/WASM migration is IN PROGRESS after substantial tooling migration. Seven template modules are deterministic Rust-generated wrappers, twelve dead frontend JavaScript scaffolds are retired, and the first active Explorer utility seam now runs from a Rust/WASM crate with deterministic generated ABI/glue. Behavioral frontend/E2E JavaScript outside proven generated seams remains migration debt and is not claimed Rust.
+PHASE 10 — frontend Rust/WASM migration is IN PROGRESS after substantial tooling migration. Seven template modules are deterministic Rust-generated wrappers, twelve dead frontend JavaScript scaffolds are retired, and Explorer utilities/date/formatting now run from the shared Rust/WASM crate with deterministic generated ABI/glue. Behavioral frontend/E2E JavaScript outside proven generated seams remains migration debt and is not claimed Rust.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -30,7 +30,7 @@ PHASE 10 — frontend Rust/WASM migration is IN PROGRESS after substantial tooli
 - Rust KSSS rejection contracts are 24/24 PASS; the complete xtask suite is 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
 - Old Python and new Rust adapters produced identical semantic JSON for check/evaluate/knowledge/release-check/structural trust, and cryptographic trust parity PASS with verified Cosign v3.0.6.
 - Stable check/Clippy `-D warnings`/FMT PASS; MSRV KSSS check/test PASS.
-- Current language guard after the first Explorer Rust/WASM seam: Rust source 107; owned non-Rust source debt 57; execution debt 13; unapproved 0/0; technical exceptions 10 (7 generated template wrappers + generated Explorer ABI adapter + generated wasm-bindgen JS glue + 1 required ClusterFuzzLite adapter); PASS.
+- Current language guard after the Explorer utilities/date/formatting Rust/WASM seams: Rust source 107; owned non-Rust source debt 55; execution debt 13; unapproved 0/0; technical exceptions 12 (7 generated template wrappers + 3 generated Explorer ABI adapters + generated wasm-bindgen JS glue + 1 required ClusterFuzzLite adapter); PASS.
 - Network-generation Node/CJS family is committed as `5494f580c9426155c5a848289595175f02d3d7d7`.
 - Runtime-automation-claims gate is ported to Rust `xtask`; legacy gate PASS before deletion, Rust gate PASS, four regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, and focused Graphify post-change refresh/query PASS.
 - Effective-node-settings gate is ported to Rust `xtask` and committed as `8798af0557384c83cbb8c1b075678a7a01266647`; legacy gate PASS before deletion, Rust gate PASS, five regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, language guard PASS, and focused Graphify PASS.
@@ -55,22 +55,23 @@ PHASE 10 — frontend Rust/WASM migration is IN PROGRESS after substantial tooli
 - Frontend template source/codegen migration is committed as `eae06aa2fc6aa2c857a7381f9340d974530bbc2e`; seven `.template.html` sources have exact original export SHA/byte parity, seven `.template.js` files are Rust-generated and CI-checked, and focused Graphify PASS at 6415 nodes / 16723 edges.
 - Twelve unreachable frontend JS scaffold/compatibility modules were removed rather than rewritten and committed as `65eb328b5e86b6d74a174685d6842f1948c33afa`; repo-wide path/symbol audit found no active references, shell/registry syntax and language guard PASS, and Graphify confirms all twelve nodes absent.
 - First active frontend Rust/WASM seam is committed as `c480079f35d1cf41932b1f737209e32090d048d5`: `explorer.utils.js` is deterministic generated ABI glue only; implementation is owned by `kaspa-gateway-frontend-wasm`. Legacy/Rust/generated-adapter behavior matrices are byte-identical SHA-256, native tests 3/3 PASS, stable/MSRV wasm32 checks PASS, codegen+CI+language guard+Clippy/FMT/lint/CSP checks PASS, and focused Graphify PASS at 6432 nodes / 16819 edges.
+- Explorer date/formatting are committed as `3e73e1b40d550ffec8a1432e4d60697c4c9ad7b1`; legacy/Rust nodejs matrix SHA parity is exact, generated adapters pass full browser matrix parity under production-equivalent CSP at `Asia/Riyadh` / `en-US`, native 3/3 plus stable/MSRV wasm32 checks PASS, codegen/guard/lint/static contracts PASS, and focused Graphify PASS at 6470 nodes / 16933 edges.
 - Native/runtime/release evidence whose predicates exclude frontend Explorer utility behavior remains reusable. Frontend/app-boot/E2E evidence touching the changed module graph is now invalidated for final closure and must be requalified proportionally before the task can be declared complete.
 
 ## Current Blocker
 No local engineering blocker. Preserved frontend findings are now: i18n 9 unbound HTML + 6 dynamic literals, raw-log provenance Node/Bridge transport-wrapper filters, duplicate Start/Stop IDs, and shared behavioral CJS SyntaxError. Generated template/WASM JS artifacts are exceptions only where Rust deterministically owns generation and CI rejects drift. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` remain unavailable until exact-head CI.
 
 ## Last Completed Action
-Committed the first verified active frontend Rust/WASM seam as `c480079f35d1cf41932b1f737209e32090d048d5`, tree `8d62b0061969ade18a0b9498f05fd07f2a83ce51`; source debt is 57, execution debt is 13, and the worktree was clean immediately after commit.
+Committed the verified Explorer date/formatting Rust/WASM seam as `3e73e1b40d550ffec8a1432e4d60697c4c9ad7b1`, tree `1691b3187279a485b7fb5dee223cdc5346f82507`; source debt is 55, execution debt is 13, and the worktree was clean immediately after commit.
 
 ## Current Action
-Reconcile continuity to the committed first Rust/WASM frontend boundary, then extend the same proven seam to the next pure Explorer helper family while preserving DOM-bound behavior and generated-artifact controls.
+Reconcile continuity to the committed Explorer date/formatting Rust/WASM boundary, then inventory the remaining 55 debt paths for the next pure/deterministic frontend or Windows/E2E seam while preserving DOM-bound behavior and generated-artifact controls.
 
 ## Next Action
-Extend the existing Rust/WASM seam to the next pure Explorer helper family (date/formatting first if parity can be proven) with legacy behavior matrices before replacement. Keep DOM-bound `explorer.header.js` and behavioral E2E/Node coverage unchanged until equivalent Rust/WASM behavior is proven.
+Inventory the remaining frontend/E2E/PowerShell debt after the completed Explorer pure helpers. Prefer another pure/deterministic module seam with exact legacy behavior capture; keep DOM-bound `explorer.header.js` and behavioral E2E/Node coverage unchanged until equivalent Rust/WASM behavior is proven.
 
 ## Verification Required
-- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 107 / source debt 57 / execution debt 13 / exceptions 10 / zero unapproved.
+- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 107 / source debt 55 / execution debt 13 / exceptions 12 / zero unapproved.
 - Network-generation evidence remains reusable from commit `5494f58...`.
 - Runtime-automation Rust gate = PASS; regressions = 4/4 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Effective-node-settings Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
@@ -95,6 +96,7 @@ Extend the existing Rust/WASM seam to the next pure Explorer helper family (date
 - Copy Log Rust gate = exact legacy current-failure parity; Tauri clipboard tests = 4/4 PASS; Rust regressions 6/6 PASS stable/MSRV; stable/MSRV/KSSS-feature checks, Clippy/FMT, language guard, and focused Graphify = PASS.
 - Frontend template Rust codegen = seven exported HTML strings exact baseline SHA/bytes/JS length; codegen check PASS; codegen tests 2/2 and language-policy tests 9/9 PASS stable/MSRV; stable/MSRV/KSSS checks, Clippy/FMT, language guard, CI codegen enforcement, and focused Graphify PASS.
 - Frontend Rust/WASM Explorer utilities = exact legacy/Rust/generated-adapter behavior matrix SHA parity; native Rust tests 3/3 PASS; stable/MSRV wasm32 checks PASS; frontend-wasm-codegen check + 2/2 regressions PASS; generated adapter/glue syntax and desktop lint PASS; production/E2E CSP uses only `wasm-unsafe-eval` with same-origin fetch; focused Graphify PASS at 6432 nodes / 16819 edges.
+- Explorer date/formatting Rust/WASM = exact legacy/Rust nodejs matrix parity plus full browser generated-adapter matrix parity; native 3/3 and stable/MSRV wasm32 checks PASS; codegen/language guard/syntax/lint/static contracts/diff-check PASS; focused Graphify PASS at 6470 nodes / 16933 edges.
 - `cargo fmt --all -- --check` = PASS.
 - KSSS old/new semantic parity = PASS for check/evaluate/knowledge/release-check/trust, including cryptographic Sigstore verification.
 - Signed KSSS runtime/trust evidence bytes = unchanged.
