@@ -11,6 +11,7 @@ mod language_policy;
 mod network_generation;
 mod npm_dependency_policy;
 mod parallel_self_worker;
+mod program_unified;
 mod project_continuity;
 mod raw_log_provenance;
 mod runtime_automation_claims;
@@ -60,6 +61,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- network-generation-gate
   cargo run -p xtask -- npm-dependency-policy-gate --workspace <desktop|e2e> --ci-log <path>
   cargo run -p xtask -- parallel-self-worker-runtime-gate
+  cargo run -p xtask -- program-unified-gate [options]
   cargo run -p xtask -- project-continuity-gate
   cargo run -p xtask -- raw-log-provenance-gate
   cargo run -p xtask -- runtime-automation-claims-gate
@@ -209,6 +211,20 @@ fn run() -> Result<(), CliError> {
             println!("{message}");
             Ok(())
         }
+        "program-unified-gate" => match program_unified::run_cli(&mut args, &repo_root()?) {
+            Ok(result) => {
+                println!("{}", result.output);
+                if result.code == 0 {
+                    Ok(())
+                } else {
+                    Err(CliError {
+                        code: result.code,
+                        message: String::new(),
+                    })
+                }
+            }
+            Err(error) => Err(CliError::usage(format!("{error}\n{}", usage()))),
+        },
         "project-continuity-gate" => {
             if args.next().is_some() {
                 return Err(CliError::usage(format!(

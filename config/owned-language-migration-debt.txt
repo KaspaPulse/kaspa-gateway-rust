@@ -73,7 +73,6 @@ tools/kgw_live_network_smoke.ps1
 tools/kgw_live_raw_log_matrix.ps1
 tools/kgw_log_ui_tests.cjs
 tools/kgw_native_settings_preview_gate.mjs
-tools/kgw_program_unified_gate.cjs
 tools/kgw_raw_log_clipboard_capture.ps1
 tools/kgw_restore_latest_frontend_tests.cjs
 tools/kgw_runtime_repository_binding_apply.ps1
