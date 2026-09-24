@@ -6,7 +6,6 @@ apps/kaspa-gateway-desktop/frontend/src/core/header-live-metrics.js
 apps/kaspa-gateway-desktop/frontend/src/core/shell-logger.js
 apps/kaspa-gateway-desktop/frontend/src/settings-contract.js
 apps/kaspa-gateway-desktop/frontend/src/settings-layout.js
-apps/kaspa-gateway-desktop/frontend/src/status.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis-rust-binding.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.export.js

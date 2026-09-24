@@ -1,5 +1,5 @@
-use js_sys::{Array, Date, Intl::NumberFormat, JsString, Object, Reflect};
-use wasm_bindgen::prelude::*;
+use js_sys::{Array, Date, Function, Intl::NumberFormat, JsString, Object, Reflect};
+use wasm_bindgen::{JsCast, prelude::*};
 
 #[wasm_bindgen]
 extern "C" {
@@ -270,6 +270,203 @@ pub fn kgw_clean2_usd(value: JsValue) -> String {
     kgw_summary_format_usd(value)
 }
 
+fn normalize_status_text(value: &str) -> String {
+    let mut normalized = String::new();
+    let mut pending_space = false;
+    for ch in value.trim().to_lowercase().chars() {
+        if ch == '_' || ch == '-' || ch.is_whitespace() {
+            if !normalized.is_empty() {
+                pending_space = true;
+            }
+            continue;
+        }
+        if pending_space {
+            normalized.push(' ');
+            pending_space = false;
+        }
+        normalized.push(ch);
+    }
+    normalized
+}
+
+fn status_tone_text(value: &str) -> &'static str {
+    match normalize_status_text(value).as_str() {
+        "running" | "active" | "enabled" | "healthy" | "ok" | "success" | "hashing"
+        | "synchronized" | "synced" => "positive",
+        "stopped" | "disabled" | "error" | "failed" | "offline" | "unavailable"
+        | "disconnected" | "not connected" | "not ready" => "negative",
+        "ready" | "available" | "connected" | "verified" | "validated" | "complete"
+        | "completed" => "ready",
+        "warning"
+        | "warn"
+        | "degraded"
+        | "partial"
+        | "starting"
+        | "stopping"
+        | "syncing"
+        | "not synchronized"
+        | "not synced"
+        | "pending"
+        | "loading"
+        | "busy"
+        | "fetching"
+        | "validating"
+        | "reconciling"
+        | "waiting for work"
+        | "no recent hashing reported" => "warning",
+        _ => "neutral",
+    }
+}
+
+fn status_tone_from_js(value: &JsValue) -> &'static str {
+    let source = if js_boolean(value) {
+        value.clone()
+    } else {
+        JsValue::from_str("")
+    };
+    status_tone_text(&String::from(js_string(&source)))
+}
+
+fn get_property(target: &JsValue, name: &str) -> Result<JsValue, JsValue> {
+    Reflect::get(target, &JsValue::from_str(name))
+}
+
+fn set_property(target: &JsValue, name: &str, value: &JsValue) -> Result<(), JsValue> {
+    Reflect::set(target, &JsValue::from_str(name), value).map(|_| ())
+}
+
+fn method(target: &JsValue, name: &str) -> Result<Function, JsValue> {
+    get_property(target, name)?.dyn_into::<Function>()
+}
+
+fn call_method0(target: &JsValue, name: &str) -> Result<JsValue, JsValue> {
+    method(target, name)?.call0(target)
+}
+
+fn call_method1(target: &JsValue, name: &str, argument: &JsValue) -> Result<JsValue, JsValue> {
+    method(target, name)?.call1(target, argument)
+}
+
+fn apply_status_tone_js(element: JsValue, state: JsValue) -> Result<(), JsValue> {
+    if !js_boolean(&element) {
+        return Ok(());
+    }
+
+    let dataset = get_property(&element, "dataset")?;
+    let key = get_property(&dataset, "i18n")?;
+    if js_boolean(&key) {
+        let global = js_sys::global();
+        let translate = get_property(&global, "kgwT")?;
+        if let Some(function) = translate.dyn_ref::<Function>() {
+            let translated = function.call1(&global, &key)?;
+            let current_text = get_property(&element, "textContent")?;
+            if current_text != translated {
+                let _ = call_method1(&element, "removeAttribute", &JsValue::from_str("data-i18n"))?;
+            }
+        }
+    }
+
+    set_property(
+        &dataset,
+        "statusTone",
+        &JsValue::from_str(status_tone_from_js(&state)),
+    )
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+struct StatusSummaryPart {
+    label: String,
+    value: String,
+    tone: &'static str,
+}
+
+fn status_summary_parts(text: &str) -> Vec<StatusSummaryPart> {
+    text.split(" | ")
+        .map(|part| {
+            let split = part.find(": ");
+            let (label, value) = if let Some(index) = split {
+                (part[..index + 2].to_owned(), part[index + 2..].to_owned())
+            } else {
+                (String::new(), part.to_owned())
+            };
+            let tone = if label == "RPC error: " {
+                status_tone_text("error")
+            } else {
+                status_tone_text(&value)
+            };
+            StatusSummaryPart { label, value, tone }
+        })
+        .collect()
+}
+
+#[wasm_bindgen(js_name = statusTone)]
+pub fn status_tone(state: JsValue) -> String {
+    status_tone_from_js(&state).to_owned()
+}
+
+#[wasm_bindgen(js_name = applyStatusTone)]
+pub fn apply_status_tone(element: JsValue, state: JsValue) -> Result<(), JsValue> {
+    apply_status_tone_js(element, state)
+}
+
+#[wasm_bindgen(js_name = renderStatusSummary)]
+pub fn render_status_summary(element: JsValue, text: JsValue) -> Result<(), JsValue> {
+    if !js_boolean(&element) {
+        return Ok(());
+    }
+
+    let dataset = get_property(&element, "dataset")?;
+    if let (Some(current), Some(requested)) = (
+        get_property(&dataset, "statusSummary")?.as_string(),
+        text.as_string(),
+    ) && current == requested
+    {
+        let existing = call_method1(
+            &element,
+            "querySelector",
+            &JsValue::from_str(".kgw-status-value"),
+        )?;
+        if js_boolean(&existing) {
+            return Ok(());
+        }
+    }
+
+    let rendered_text = String::from(js_string(&text));
+    let global = js_sys::global();
+    let document = get_property(&global, "document")?;
+    let content = call_method0(&document, "createDocumentFragment")?;
+
+    for (index, part) in status_summary_parts(&rendered_text).iter().enumerate() {
+        if index > 0 {
+            let separator = call_method1(&document, "createTextNode", &JsValue::from_str(" | "))?;
+            let _ = call_method1(&content, "appendChild", &separator)?;
+        }
+
+        let item = call_method1(&document, "createElement", &JsValue::from_str("span"))?;
+        set_property(&item, "className", &JsValue::from_str("kgw-status-item"))?;
+
+        let label = call_method1(&document, "createTextNode", &JsValue::from_str(&part.label))?;
+        let _ = call_method1(&item, "appendChild", &label)?;
+
+        let badge = call_method1(&document, "createElement", &JsValue::from_str("span"))?;
+        set_property(&badge, "className", &JsValue::from_str("kgw-status-value"))?;
+        set_property(&badge, "textContent", &JsValue::from_str(&part.value))?;
+        apply_status_tone_js(
+            badge.clone(),
+            JsValue::from_str(if part.label == "RPC error: " {
+                "error"
+            } else {
+                &part.value
+            }),
+        )?;
+        let _ = call_method1(&item, "appendChild", &badge)?;
+        let _ = call_method1(&content, "appendChild", &item)?;
+    }
+
+    let _ = call_method1(&element, "replaceChildren", &content)?;
+    set_property(&dataset, "statusSummary", &text)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -291,5 +488,68 @@ mod tests {
     fn plain_text_is_stable() {
         assert_eq!(to_english_digits_text("abc-123"), "abc-123");
         assert_eq!(html_escape_text("abc-123"), "abc-123");
+    }
+
+    #[test]
+    fn status_tone_normalization_matches_frontend_contract() {
+        for (input, expected) in [
+            ("running", "positive"),
+            (" Running ", "positive"),
+            ("NOT_READY", "negative"),
+            ("not-ready", "negative"),
+            ("completed", "ready"),
+            ("Validating", "warning"),
+            ("waiting   for-work", "warning"),
+            ("something else", "neutral"),
+        ] {
+            assert_eq!(status_tone_text(input), expected, "{input}");
+        }
+    }
+
+    #[test]
+    fn status_summary_parts_match_frontend_contract() {
+        assert_eq!(
+            status_summary_parts("Node: Running | RPC: Ready | Mining: hashing"),
+            vec![
+                StatusSummaryPart {
+                    label: "Node: ".to_owned(),
+                    value: "Running".to_owned(),
+                    tone: "positive",
+                },
+                StatusSummaryPart {
+                    label: "RPC: ".to_owned(),
+                    value: "Ready".to_owned(),
+                    tone: "ready",
+                },
+                StatusSummaryPart {
+                    label: "Mining: ".to_owned(),
+                    value: "hashing".to_owned(),
+                    tone: "positive",
+                },
+            ]
+        );
+        assert_eq!(
+            status_summary_parts("RPC error: timeout | Sync: unknown"),
+            vec![
+                StatusSummaryPart {
+                    label: "RPC error: ".to_owned(),
+                    value: "timeout".to_owned(),
+                    tone: "negative",
+                },
+                StatusSummaryPart {
+                    label: "Sync: ".to_owned(),
+                    value: "unknown".to_owned(),
+                    tone: "neutral",
+                },
+            ]
+        );
+        assert_eq!(
+            status_summary_parts("Ready"),
+            vec![StatusSummaryPart {
+                label: String::new(),
+                value: "Ready".to_owned(),
+                tone: "ready",
+            }]
+        );
     }
 }
