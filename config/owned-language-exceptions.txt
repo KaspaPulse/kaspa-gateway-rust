@@ -3,3 +3,10 @@
 # Exceptions are exact-path, must exist, and require a non-empty technical reason.
 # The target final state is an empty exception set unless a platform contract makes one unavoidable.
 PLATFORM_REQUIRED_ADAPTER|.clusterfuzzlite/build.sh|OSS-Fuzz/ClusterFuzzLite requires build.sh as the container build entrypoint; it contains no project build logic and delegates directly to Rust xtask.\n
+GENERATED|apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis.template.js|Generated ES-module wrapper produced deterministically by Rust frontend-template-codegen from sibling declarative HTML; CI codegen check rejects manual drift.
+GENERATED|apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.template.js|Generated ES-module wrapper produced deterministically by Rust frontend-template-codegen from sibling declarative HTML; CI codegen check rejects manual drift.
+GENERATED|apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.template.js|Generated ES-module wrapper produced deterministically by Rust frontend-template-codegen from sibling declarative HTML; CI codegen check rejects manual drift.
+GENERATED|apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.template.js|Generated ES-module wrapper produced deterministically by Rust frontend-template-codegen from sibling declarative HTML; CI codegen check rejects manual drift.
+GENERATED|apps/kaspa-gateway-desktop/frontend/src/tabs/log/log.template.js|Generated ES-module wrapper produced deterministically by Rust frontend-template-codegen from sibling declarative HTML; CI codegen check rejects manual drift.
+GENERATED|apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.template.js|Generated ES-module wrapper produced deterministically by Rust frontend-template-codegen from sibling declarative HTML; CI codegen check rejects manual drift.
+GENERATED|apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.template.js|Generated ES-module wrapper produced deterministically by Rust frontend-template-codegen from sibling declarative HTML; CI codegen check rejects manual drift.

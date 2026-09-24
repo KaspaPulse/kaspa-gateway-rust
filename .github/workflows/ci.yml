@@ -168,6 +168,9 @@ jobs:
       - name: Cache Cargo
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
 
+      - name: Verify generated frontend template wrappers
+        run: cargo run --locked -p xtask -- frontend-template-codegen check
+
       - name: Enforce Rust-only owned implementation migration guard
         run: cargo run --locked -p xtask -- language-policy check
 

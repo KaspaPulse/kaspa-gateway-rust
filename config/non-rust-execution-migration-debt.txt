@@ -8,7 +8,6 @@
 .github/workflows/secret-scan.yml
 .github/workflows/security.yml
 apps/kaspa-gateway-desktop/frontend/index.html
-apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.html
 apps/kaspa-gateway-desktop/package.json
 apps/kaspa-gateway-desktop/package-lock.json
 e2e/package.json

@@ -362,8 +362,10 @@ fn non_rust_execution_content(lower_path: &str, content: &str) -> Option<String>
     if lower_path.ends_with("/package.json") || lower_path.ends_with("/package-lock.json") {
         return Some("Node package manifest or lockfile".to_owned());
     }
-    if lower_path.ends_with(".html") && content.contains("<script") {
-        return Some("HTML script execution/reference".to_owned());
+    if lower_path.ends_with(".html") {
+        return content
+            .contains("<script")
+            .then(|| "HTML script execution/reference".to_owned());
     }
     if lower_path == ".github/dependabot.yml" && content.contains("package-ecosystem: \"npm\"") {
         return Some("npm dependency automation".to_owned());
@@ -527,6 +529,28 @@ mod tests {
                 "steps:\n  - run: cargo test --locked --workspace\n"
             )
             .is_none()
+        );
+    }
+
+    #[test]
+    fn declarative_html_with_user_visible_node_text_is_not_execution_debt() {
+        assert!(
+            non_rust_execution_content(
+                "frontend/kaspa-node.template.html",
+                "<section><span>Node status</span><div>node ready</div></section>"
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn html_script_tag_is_execution_debt() {
+        assert!(
+            non_rust_execution_content(
+                "frontend/template.html",
+                "<section>safe</section><script>node do-work.js</script>"
+            )
+            .is_some()
         );
     }
 }
