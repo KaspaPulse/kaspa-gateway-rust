@@ -164,7 +164,6 @@ fn build_steps(options: &Options) -> Vec<Step> {
     syntax_targets.extend([
         "tools/kgw_global_owner_gate.cjs",
         "tools/kgw_bridge_node_mode_routing_audit_v1.cjs",
-        "tools/kgw_runtime_trace_owner_audit_v20.cjs",
         "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
         "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js",
     ]);
@@ -221,14 +220,12 @@ fn build_steps(options: &Options) -> Vec<Step> {
 
     if !options.skip_trace {
         let report = options.report_dir.join("runtime_trace_owner_audit_v20");
-        steps.push(node_step(
+        let repo_root = root.to_string_lossy().into_owned();
+        let report_dir = report.to_string_lossy().into_owned();
+        steps.push(cargo_step(
             root,
             "runtime_trace_owner_audit_v20",
-            "tools/kgw_runtime_trace_owner_audit_v20.cjs",
-            &[
-                root.to_string_lossy().into_owned(),
-                report.to_string_lossy().into_owned(),
-            ],
+            &["runtime-trace-owner-audit", &repo_root, &report_dir],
         ));
     }
     if !options.skip_runtime {
@@ -549,13 +546,35 @@ mod tests {
             .into_iter()
             .map(|step| step.name)
             .collect();
-        assert_eq!(names.len(), 13);
+        assert_eq!(names.len(), 12);
         assert_eq!(names[0], "node_check_tools_kgw_global_owner_gate.cjs");
         assert!(names.contains(&"runtime_repository_binding_gate_offline".to_owned()));
         assert!(names.contains(&"parallel_self_worker_runtime_gate".to_owned()));
         assert!(names.contains(&"raw_log_provenance_gate".to_owned()));
         assert_eq!(names[names.len() - 2], "git_status_short");
         assert_eq!(names[names.len() - 1], "git_diff_tools");
+    }
+
+    #[test]
+    fn enabled_runtime_trace_step_uses_rust_xtask() {
+        let mut options = options_for_test();
+        options.skip_trace = false;
+        let steps = build_steps(&options);
+        let step = steps
+            .iter()
+            .find(|step| step.name == "runtime_trace_owner_audit_v20")
+            .expect("runtime trace step must exist when enabled");
+        assert_eq!(step.command, "cargo");
+        assert!(
+            step.args
+                .iter()
+                .any(|arg| arg == "runtime-trace-owner-audit")
+        );
+        assert!(
+            step.args
+                .iter()
+                .all(|arg| !arg.contains("kgw_runtime_trace_owner_audit_v20.cjs"))
+        );
     }
 
     #[test]

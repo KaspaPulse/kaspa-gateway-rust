@@ -16,6 +16,7 @@ mod project_continuity;
 mod raw_log_provenance;
 mod runtime_automation_claims;
 mod runtime_repository_binding;
+mod runtime_trace_owner;
 mod security_advisories;
 mod static_contracts;
 mod trufflehog_policy;
@@ -66,6 +67,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- raw-log-provenance-gate
   cargo run -p xtask -- runtime-automation-claims-gate
   cargo run -p xtask -- runtime-repository-binding-gate [--strict] [--online|--fresh] [--offline] [--json]
+  cargo run -p xtask -- runtime-trace-owner-audit <repo-root> <report-dir>
   cargo run -p xtask -- static-contract-regressions
   cargo run -p xtask -- fuzz-build
   cargo run -p xtask --features ksss -- ksss <check|trust-verify|evaluate|knowledge|release-check|materialize> [options]"
@@ -263,6 +265,20 @@ fn run() -> Result<(), CliError> {
             let result = runtime_repository_binding::run_cli(&mut args, &repo_root()?)
                 .map_err(CliError::failure)?;
             println!("{}", result.output);
+            if result.code == 0 {
+                Ok(())
+            } else {
+                Err(CliError {
+                    code: result.code,
+                    message: String::new(),
+                })
+            }
+        }
+        "runtime-trace-owner-audit" => {
+            let result = runtime_trace_owner::run_cli(&mut args).map_err(CliError::failure)?;
+            if !result.output.is_empty() {
+                println!("{}", result.output);
+            }
             if result.code == 0 {
                 Ok(())
             } else {

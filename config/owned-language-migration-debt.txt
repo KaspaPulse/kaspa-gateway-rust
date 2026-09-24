@@ -76,7 +76,6 @@ tools/kgw_native_settings_preview_gate.mjs
 tools/kgw_raw_log_clipboard_capture.ps1
 tools/kgw_restore_latest_frontend_tests.cjs
 tools/kgw_runtime_repository_binding_apply.ps1
-tools/kgw_runtime_trace_owner_audit_v20.cjs
 tools/kgw_settings_contract_tests.mjs
 tools/kgw_start_button_frontend_tests.cjs
 tools/kgw_start_button_gate.ps1
