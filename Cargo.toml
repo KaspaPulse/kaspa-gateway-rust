@@ -94,7 +94,7 @@ flate2 = "1.1.9"
 tar = "0.4.46"
 tempfile = "3.27.0"
 pyo3 = { version = "0.29.2", features = ["auto-initialize", "abi3-py312"] }
-windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Threading"] }
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_DataExchange", "Win32_System_Memory", "Win32_System_Threading"] }
 duckdb = { version = "1", features = ["bundled"] }
 clap = { version = "4", features = ["derive"] }
 tauri = { version = "2", features = [] }
