@@ -1,5 +1,6 @@
 mod ai_workflow;
 mod clippy_policy;
+mod copy_log;
 mod desktop_artifacts;
 mod desktop_release_draft;
 mod desktop_version;
@@ -57,6 +58,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- check-clippy-results <cargo-clippy-jsonl>
   cargo run -p xtask -- check-security-advisories [--max-age-days N]
   cargo run -p xtask -- check-trufflehog-results <jsonl>
+  cargo run -p xtask -- copy-log-gate
   cargo run -p xtask -- desktop-artifacts-workflow-gate
   cargo run -p xtask -- desktop-release-draft-workflow-gate
   cargo run -p xtask -- desktop-version-contract-gate
@@ -128,6 +130,17 @@ fn run() -> Result<(), CliError> {
             let path = exactly_one(&mut args, "TruffleHog JSONL path")?;
             let message =
                 trufflehog_policy::check_file(Path::new(&path)).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "copy-log-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "copy-log-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = copy_log::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

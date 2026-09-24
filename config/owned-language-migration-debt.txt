@@ -63,7 +63,6 @@ e2e/wdio.conf.mjs
 tools/kgw_aud013_navigation_tests.cjs
 tools/kgw_bridge_node_mode_routing_audit_v1.cjs
 tools/kgw_bridge_readiness_frontend_tests.cjs
-tools/kgw_copy_log_gate.ps1
 tools/kgw_desktop_diagnostic_launch.ps1
 tools/kgw_effective_bridge_settings_gate.cjs
 tools/kgw_full_local_gate.ps1
