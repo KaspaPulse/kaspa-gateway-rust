@@ -3,11 +3,11 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified Copy Log gate checkpoint is `729c99aec7c4cdf8fee6727a77ed385f54c29e4c`, tree `2e9ed1a91e381c70e4787629b1dcf7409ea1664a`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified runtime-repository-binding apply checkpoint is `59e8748a63b29fa44f003ffaf423745e11e4fd5a`, tree `f06f3aa1fa8705330edf4b8187339a6a4cf4ac91`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next PowerShell tooling mutation. Commit `729c99a...` was verified clean.
-- Current Rust source inventory: 102.
-- Current owned non-Rust programming source debt: 80.
+- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next PowerShell tooling mutation. Commit `59e8748...` was verified clean.
+- Current Rust source inventory: 103.
+- Current owned non-Rust programming source debt: 79.
 - Current non-Rust execution-wiring debt: 14.
 - Rust language guard: PASS; unapproved source=0; unapproved execution=0.
 - Technical exceptions: 1 — required ClusterFuzzLite `build.sh` thin adapter delegating project logic to Rust.
@@ -28,7 +28,7 @@
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Reconcile this Copy Log gate checkpoint, then continue the PowerShell tooling lane with the smallest static/read-only helper. Preserve mutating/live/native helpers until equivalent Rust behavior is proven and do not replay prior verified gate/KSSS qualification without predicate invalidation.
+Reconcile this runtime-repository-binding apply checkpoint, then continue the PowerShell tooling lane with the smallest independent helper. Preserve live/native helpers until equivalent Rust behavior is proven and do not replay prior verified gate/KSSS qualification without predicate invalidation.
 
 ## DO NOT REPEAT
 Do not replay Desktop runtime/native/E2E/release qualification without predicate invalidation. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted Python adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.
