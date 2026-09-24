@@ -15,7 +15,6 @@ apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.export.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.formatting.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.header.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.js
-apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.utils.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/log/log.js

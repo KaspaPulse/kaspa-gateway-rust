@@ -7,6 +7,7 @@ mod desktop_version;
 mod e2e_owned_process;
 mod effective_node_settings;
 mod frontend_template_codegen;
+mod frontend_wasm_codegen;
 mod fuzz_build;
 mod i18n_contracts;
 #[cfg(feature = "ksss")]
@@ -68,6 +69,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- effective-node-settings-gate
   cargo run -p xtask -- e2e-owned-process <kill|wait> --process-id <pid> --expected-executable <path> --expected-start-time <unix-seconds> --output-path <path> [--timeout-seconds <n>]
   cargo run -p xtask -- frontend-template-codegen <check|write>
+  cargo run -p xtask -- frontend-wasm-codegen <check|write>
   cargo run -p xtask -- i18n-contract-gate
   cargo run -p xtask -- i18n-locale-coverage-gate
   cargo run -p xtask -- network-generation-gate
@@ -201,6 +203,12 @@ fn run() -> Result<(), CliError> {
         }
         "frontend-template-codegen" => {
             let message = frontend_template_codegen::run_cli(&mut args, &repo_root()?)
+                .map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "frontend-wasm-codegen" => {
+            let message = frontend_wasm_codegen::run_cli(&mut args, &repo_root()?)
                 .map_err(CliError::failure)?;
             println!("{message}");
             Ok(())

@@ -4514,6 +4514,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "kaspa-gateway-frontend-wasm"
+version = "0.1.0"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "kaspa-gateway-node"
 version = "0.1.0"
 dependencies = [

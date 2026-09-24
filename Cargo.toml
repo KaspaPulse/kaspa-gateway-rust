@@ -13,6 +13,7 @@ members = [
     "crates/kaspa-gateway-runtime",
     "apps/kaspa-gateway-cli",
     "apps/kaspa-gateway-desktop/src-tauri",
+    "crates/kaspa-gateway-frontend-wasm",
     "xtask"
 ]
 
@@ -74,6 +75,8 @@ thiserror = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 regex = "1.13.1"
+wasm-bindgen = "=0.2.100"
+js-sys = { version = "=0.3.77", default-features = false, features = ["std"] }
 toml = "1.1.2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "signal", "time", "fs", "io-util"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }

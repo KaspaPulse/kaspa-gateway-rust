@@ -1,0 +1,17 @@
+[package]
+name = "kaspa-gateway-frontend-wasm"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+js-sys.workspace = true
+wasm-bindgen.workspace = true
