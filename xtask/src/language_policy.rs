@@ -213,6 +213,7 @@ fn load_exceptions(path: &Path) -> Result<BTreeMap<String, ExceptionEntry>, Stri
         "GENERATED",
         "VENDORED_THIRD_PARTY",
         "PLATFORM_REQUIRED_ADAPTER",
+        "TOOL_REQUIRED_CONFIGURATION",
     ];
 
     for (index, raw) in text.lines().enumerate() {
@@ -233,6 +234,13 @@ fn load_exceptions(path: &Path) -> Result<BTreeMap<String, ExceptionEntry>, Stri
         }
 
         let source_path = normalize_path(source_path);
+        if !exception_category_allows_path(category, &source_path) {
+            return Err(format!(
+                "{}:{} category {category} is not allowed for path {source_path}",
+                path.display(),
+                index + 1
+            ));
+        }
         if entries
             .insert(
                 source_path.clone(),
@@ -251,6 +259,25 @@ fn load_exceptions(path: &Path) -> Result<BTreeMap<String, ExceptionEntry>, Stri
         }
     }
     Ok(entries)
+}
+
+fn exception_category_allows_path(category: &str, source_path: &str) -> bool {
+    match category {
+        "TOOL_REQUIRED_CONFIGURATION" => matches!(
+            Path::new(source_path)
+                .file_name()
+                .and_then(|name| name.to_str()),
+            Some(
+                "eslint.config.js"
+                    | "eslint.config.mjs"
+                    | "eslint.config.cjs"
+                    | "eslint.config.ts"
+                    | "eslint.config.mts"
+                    | "eslint.config.cts"
+            )
+        ),
+        _ => true,
+    }
 }
 
 fn is_rust_source(path: &str) -> bool {
@@ -494,6 +521,35 @@ mod tests {
         let exceptions = BTreeMap::new();
         let unapproved = difference_keys(&candidates, &debt, &exceptions);
         assert_eq!(unapproved, BTreeSet::from(["new.js".to_owned()]));
+    }
+
+    #[test]
+    fn tool_required_configuration_is_narrow_to_eslint_flat_config_names() {
+        for path in [
+            "eslint.config.js",
+            "apps/desktop/eslint.config.mjs",
+            "e2e/eslint.config.cjs",
+            "tools/eslint.config.ts",
+            "tools/eslint.config.mts",
+            "tools/eslint.config.cts",
+        ] {
+            assert!(exception_category_allows_path(
+                "TOOL_REQUIRED_CONFIGURATION",
+                path
+            ));
+        }
+        for path in [
+            "webpack.config.js",
+            "vite.config.js",
+            "src/runtime.js",
+            "eslint.config.json",
+        ] {
+            assert!(!exception_category_allows_path(
+                "TOOL_REQUIRED_CONFIGURATION",
+                path
+            ));
+        }
+        assert!(exception_category_allows_path("GENERATED", "any.js"));
     }
 
     #[test]

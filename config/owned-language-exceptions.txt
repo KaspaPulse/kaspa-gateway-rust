@@ -1,7 +1,9 @@
 # Technical exceptions use CATEGORY|PATH|REASON.
-# Allowed categories: GENERATED, VENDORED_THIRD_PARTY, PLATFORM_REQUIRED_ADAPTER.
+# Allowed categories: GENERATED, VENDORED_THIRD_PARTY, PLATFORM_REQUIRED_ADAPTER, TOOL_REQUIRED_CONFIGURATION.
 # Exceptions are exact-path, must exist, and require a non-empty technical reason.
-# The target final state is an empty exception set unless a platform contract makes one unavoidable.
+# The target final state is an empty exception set unless a platform/tool contract makes one unavoidable.
+TOOL_REQUIRED_CONFIGURATION|apps/kaspa-gateway-desktop/eslint.config.js|ESLint 10 flat config discovered by the linter; official ESLint configuration uses eslint.config.* JavaScript/TypeScript modules. This file contains lint-only files/globals/rules/ignores configuration and no product/runtime implementation.
+TOOL_REQUIRED_CONFIGURATION|e2e/eslint.config.js|ESLint 10 flat config discovered by the linter; official ESLint configuration uses eslint.config.* JavaScript/TypeScript modules. This file contains lint-only files/globals/rules/ignores configuration and no E2E runtime implementation.
 PLATFORM_REQUIRED_ADAPTER|.clusterfuzzlite/build.sh|OSS-Fuzz/ClusterFuzzLite requires build.sh as the container build entrypoint; it contains no project build logic and delegates directly to Rust xtask.\n
 GENERATED|apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis.template.js|Generated ES-module wrapper produced deterministically by Rust frontend-template-codegen from sibling declarative HTML; CI codegen check rejects manual drift.
 GENERATED|apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.template.js|Generated ES-module wrapper produced deterministically by Rust frontend-template-codegen from sibling declarative HTML; CI codegen check rejects manual drift.

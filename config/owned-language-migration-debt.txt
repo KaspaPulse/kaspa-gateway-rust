@@ -1,7 +1,6 @@
 # Exact owned non-Rust programming source debt captured from baseline aaf2c635672c0fd35a5705579610be8de188b031.
 # One repository-relative path per line. This list may only shrink during the migration.
 # New non-Rust source is never auto-baselined and fails the Rust language policy guard.
-apps/kaspa-gateway-desktop/eslint.config.js
 apps/kaspa-gateway-desktop/frontend/main.js
 apps/kaspa-gateway-desktop/frontend/src/core/header-live-metrics.js
 apps/kaspa-gateway-desktop/frontend/src/core/shell-logger.js
@@ -18,7 +17,6 @@ apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/log/log.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.js
-e2e/eslint.config.js
 e2e/helpers/app-close-relaunch.mjs
 e2e/helpers/assertions.mjs
 e2e/helpers/deepmerge-security-smoke.mjs
