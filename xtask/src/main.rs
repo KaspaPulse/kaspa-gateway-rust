@@ -1,3 +1,4 @@
+mod ai_workflow;
 mod clippy_policy;
 mod desktop_artifacts;
 mod desktop_release_draft;
@@ -50,6 +51,7 @@ impl CliError {
 
 fn usage() -> &'static str {
     "usage:
+  cargo run -p xtask -- ai-workflow-gate
   cargo run -p xtask -- language-policy <check|strict|inventory>
   cargo run -p xtask -- check-clippy-results <cargo-clippy-jsonl>
   cargo run -p xtask -- check-security-advisories [--max-age-days N]
@@ -101,6 +103,17 @@ fn run() -> Result<(), CliError> {
         .ok_or_else(|| CliError::usage(usage().to_owned()))?;
 
     match command.as_str() {
+        "ai-workflow-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "ai-workflow-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = ai_workflow::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
         "language-policy" => run_language_policy_command(&mut args),
         "check-clippy-results" => {
             let path = exactly_one(&mut args, "cargo-clippy-jsonl path")?;

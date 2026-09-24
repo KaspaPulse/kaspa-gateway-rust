@@ -73,7 +73,7 @@ Before editing workflow or continuity files, verify:
 - The repository Git config has a `merge.graphify.driver` entry.
 - `graphify hook status` reports installed hooks when supported by the installed CLI.
 
-The local gate `tools/kgw_ai_workflow_gate.ps1` checks the permanent Graphify/instruction surface. The cross-session continuity contract is checked by:
+The local Rust gate `cargo run --locked -p xtask -- ai-workflow-gate` checks the permanent Graphify/instruction surface. The cross-session continuity contract is checked by:
 
 ```bash
 cargo run --locked -p xtask -- project-continuity-gate
@@ -84,7 +84,7 @@ cargo run --locked -p xtask -- project-continuity-gate
 Use the narrowest test set that covers the change:
 
 - Continuity documentation: run `cargo run --locked -p xtask -- project-continuity-gate` and `cargo test --locked -p xtask project_continuity::tests`.
-- Workflow and PowerShell changes: run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/kgw_ai_workflow_gate.ps1` when PowerShell 7 is available, plus `actionlint` for workflow YAML.
+- Workflow and PowerShell changes: run `cargo run --locked -p xtask -- ai-workflow-gate`, plus `actionlint` for workflow YAML.
 - JavaScript tools: run `node --check <file>` and any relevant `tools/*.cjs` gate.
 - Frontend behavior: run syntax checks for touched modules and the existing owner/i18n gates that cover the affected surface.
 - Rust behavior: run targeted package or test names first.
