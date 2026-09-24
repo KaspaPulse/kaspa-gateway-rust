@@ -20,7 +20,7 @@ Replace all project-owned programming implementation outside Rust with Rust whil
 3. Rust `xtask` + fail-closed language policy/inventory + CI enforcement — **VERIFIED_LOCAL / COMMITTED** at `33461f6511c69b457c5f3dd069b54322d9a236a0`.
 4. Generic Python/Shell security and CI helper migration — **VERIFIED_LOCAL / COMMITTED** at `d5f274dcc6d9a423dd9783d21605591efdd05e65`; five generic Python scripts removed after Rust parity and ClusterFuzz build logic moved to Rust.
 5. KSSS Python consumer/gate migration to Rust — **VERIFIED_LOCAL / COMMITTED** at `55727c4eb53d34a2cd91c8e857850d543ec177e4`; five owned Python files retired after 24-contract and command/crypto parity, with signed central runtime bytes unchanged.
-6. Node/CJS repository/tooling migration to Rust — **IN PROGRESS**; all direct-CI static gate families, six standalone static regressions, parallel-self-worker, i18n static gates `9c53fa7`, and raw-log provenance `9c084dc` are COMMITTED. Dynamic effective-bridge, log-ui behavior, current i18n findings, and raw transport-wrapper findings are deferred to frontend migration; remaining static tools are next.
+6. Node/CJS repository/tooling migration to Rust — **IN PROGRESS**; all direct-CI static gate families, six standalone static regressions, parallel-self-worker, i18n static gates `9c53fa7`, raw-log provenance `9c084dc`, and program-unified orchestration `a353ed5` are COMMITTED. Dynamic effective-bridge, log-ui behavior, current i18n findings, and raw transport-wrapper findings are deferred to frontend migration; remaining static tools are next.
 7. PowerShell helper migration to Rust with Windows behavior preserved — **PENDING**.
 8. WebdriverIO/Node E2E replacement with Rust-native desktop/WebDriver harness — **PENDING**.
 9. JavaScript frontend replacement with Rust/WASM while preserving Tauri IPC/UI contracts — **PENDING**.
@@ -29,7 +29,7 @@ Replace all project-owned programming implementation outside Rust with Rust whil
 12. GitHub PR exact-head CI, squash merge, exact-main qualification, durable closeout — **PENDING**.
 
 ## Progress
-The guard now reports Rust source inventory 96, owned non-Rust source debt 86, execution-wiring debt 14, unapproved debt 0/0, and one platform-required thin adapter exception. Raw-log provenance is Rust with exact corrected legacy failure parity and 4/4 stable+MSRV regressions; Node/Bridge transport-wrapper filters remain current product findings and log-ui behavioral CJS stays deferred. Focused Graphify for recent Server-only batches is NOT VERIFIED / TOOL_BLOCKED. Workflow lint and cargo audit/deny/machete remain exact-head CI qualification work.
+The guard now reports Rust source inventory 97, owned non-Rust source debt 85, execution-wiring debt 14, unapproved debt 0/0, and one platform-required thin adapter exception. Program-unified orchestration is Rust with exact legacy/post-retirement summary parity, 4/4 stable+MSRV regressions, strict Clippy/FMT/MSRV check PASS, and focused Graphify PASS. Raw-log/i18n product findings remain preserved for frontend migration. Workflow lint and cargo audit/deny/machete remain exact-head CI qualification work.
 
 ## Completion Criteria
 The plan closes only when strict language policy proves zero owned non-Rust implementation debt, all affected/final checks pass on supported platforms, KSSS/supply-chain controls remain intact, protected checkpoint is unchanged, final PR is squash-merged under repository rules, exact-main CI passes, and durable closeout records final SHA/tree/inventories/results.
@@ -38,4 +38,4 @@ The plan closes only when strict language policy proves zero owned non-Rust impl
 Keep Tauri/Rust backend boundaries unless evidence requires change. Prefer Tauri-supported Rust/WASM frontend with generated output clearly classified. Keep dependencies minimal/workspace-inherited. Workflow YAML stays declarative and should invoke Rust binaries instead of embedding owned scripting logic. Never auto-baseline new debt.
 
 ## NEXT ACTION
-Inventory remaining non-direct-CI Node/MJS tooling and port the smallest static family with parity-first validation. Defer dynamic effective-bridge, log-ui behavioral JS, current i18n findings, and raw transport-wrapper findings until frontend Rust/WASM migration. Reuse prior verified evidence while its predicates remain unchanged.
+Classify the remaining non-direct-CI Node/MJS tools into static-contract versus behavioral-JS families, then port the smallest independent static family with parity-first validation. Defer dynamic effective-bridge, log-ui behavioral JS, current i18n findings, and raw transport-wrapper findings until frontend Rust/WASM migration. Reuse prior verified evidence while its predicates remain unchanged.

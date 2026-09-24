@@ -3,11 +3,11 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified raw-log provenance checkpoint is `9c084dc63fca128ae5b2e621dde1204e17d795e8`, tree `cb16827e96aa8456ecd17250bc4593600681a55a`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified program-unified checkpoint is `a353ed52cf06f9383265a47e23d309e012181a11`, tree `2258689127bb2a143f1ca0c9f6ce9f2757f893c9`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next static tooling mutation. Commit `9c084dc...` was verified clean.
-- Current Rust source inventory: 96.
-- Current owned non-Rust programming source debt: 86.
+- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next static tooling mutation. Commit `a353ed5...` was verified clean.
+- Current Rust source inventory: 97.
+- Current owned non-Rust programming source debt: 85.
 - Current non-Rust execution-wiring debt: 14.
 - Rust language guard: PASS; unapproved source=0; unapproved execution=0.
 - Technical exceptions: 1 — required ClusterFuzzLite `build.sh` thin adapter delegating project logic to Rust.
@@ -17,7 +17,7 @@
 - Stable check/Clippy `-D warnings`/FMT PASS; MSRV feature check/test PASS.
 - Old/new KSSS semantic parity: PASS for check/evaluate/knowledge/release-check/trust, including cryptographic verification with pinned Cosign v3.0.6.
 - i18n locale gate: PASS (32 critical keys, 0 missing, 0 same-as-English, 1 approved). Full i18n contract: **FAIL / VERIFIED CURRENT TRUTH** with 2 unbound HTML findings and 6 dynamic literals; missingRefs/quoteRisks/runtimeFindings are 0.
-- Focused Graphify for the i18n and raw-log provenance batches: **NOT VERIFIED / TOOL_BLOCKED** because safe Server→kas worktree transfer is unavailable in current tooling.
+- Focused Graphify for the i18n and raw-log provenance batches remains **NOT VERIFIED / TOOL_BLOCKED** for those historical batches; program-unified focused Graphify is PASS after exact Server→kas SHA-bound mirroring.
 - Raw-log provenance: **FAIL / VERIFIED CURRENT TRUTH** with exactly two findings — Node and Bridge frontend retain transport-wrapper filters. `kgw_log_ui_tests.cjs` remains PASS and deferred because it executes live frontend JS behavior.
 - Continuity validation after this state update: **NOT VERIFIED** until rerun.
 - Local actionlint/cargo-audit/cargo-deny/cargo-machete: **NOT VERIFIED / unavailable locally**; exact-head GitHub CI is required.
@@ -26,7 +26,7 @@
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Reconcile this raw-log provenance checkpoint, then inventory remaining non-direct-CI Node/MJS tools and port the smallest static family. Preserve behavioral JS tests for frontend migration and do not replay prior verified gate/KSSS qualification without predicate invalidation.
+Reconcile this program-unified checkpoint, then inventory remaining non-direct-CI Node/MJS tools and port the smallest independent static family. Preserve behavioral JS tests for frontend migration and do not replay prior verified gate/KSSS qualification without predicate invalidation.
 
 ## DO NOT REPEAT
 Do not replay Desktop runtime/native/E2E/release qualification without predicate invalidation. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted Python adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.
