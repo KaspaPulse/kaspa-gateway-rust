@@ -30,7 +30,7 @@ PHASE 10 — frontend Rust/WASM migration is IN PROGRESS after substantial tooli
 - Rust KSSS rejection contracts are 24/24 PASS; the complete xtask suite is 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
 - Old Python and new Rust adapters produced identical semantic JSON for check/evaluate/knowledge/release-check/structural trust, and cryptographic trust parity PASS with verified Cosign v3.0.6.
 - Stable check/Clippy `-D warnings`/FMT PASS; MSRV KSSS check/test PASS.
-- Current language guard after E2E static-smoke migration plus the unadopted Rust clipboard capability checkpoint: Rust source 111; owned non-Rust source debt 50; execution debt 13; unapproved 0/0; technical exceptions 13 (7 generated template wrappers + 3 generated Explorer ABI adapters + generated wasm-bindgen JS glue + generated tab registry + 1 required ClusterFuzzLite adapter); PASS.
+- Current language guard after ESLint tool-configuration reclassification: Rust source 111; owned non-Rust source debt 48; execution debt 13; unapproved 0/0; technical exceptions 15 (13 prior exceptions + 2 exact ESLint flat-config TOOL_REQUIRED_CONFIGURATION exceptions); PASS.
 - Network-generation Node/CJS family is committed as `5494f580c9426155c5a848289595175f02d3d7d7`.
 - Runtime-automation-claims gate is ported to Rust `xtask`; legacy gate PASS before deletion, Rust gate PASS, four regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, and focused Graphify post-change refresh/query PASS.
 - Effective-node-settings gate is ported to Rust `xtask` and committed as `8798af0557384c83cbb8c1b075678a7a01266647`; legacy gate PASS before deletion, Rust gate PASS, five regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, language guard PASS, and focused Graphify PASS.
@@ -67,16 +67,16 @@ PHASE 10 — frontend Rust/WASM migration is IN PROGRESS after substantial tooli
 Two independent blockers are explicit: full-local wrapper retirement is BLOCKED because no current zero-touch E2E artifact passes `Test-KgwZeroTouchResultIntegrity`; Rust clipboard caller adoption is BLOCKED because current user clipboard formats include OLE/enterprise non-text data and safe real write parity cannot mutate/restore them losslessly. Independent work continues. Preserved frontend findings remain: i18n 9 unbound HTML + 6 dynamic literals, raw-log provenance Node/Bridge transport-wrapper filters, duplicate Start/Stop IDs, and shared behavioral CJS SyntaxError. Generated template/WASM JS artifacts are exceptions only where Rust deterministically owns generation and CI rejects drift. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` remain unavailable until exact-head CI.
 
 ## Last Completed Action
-Committed the verified Rust clipboard capability checkpoint as `e9f1b48aa892d9c7e186b379d88b75be605469fb`, tree `dfe8a5f206866a4964325854b66100fc6b06ddfc`, after the completed E2E static-smoke migration `39768dffbc2a912987a915b53f86f4a0c3529386`; source debt is 50, execution debt is 13, and the worktree was clean immediately after commit. Clipboard caller adoption remains blocked and is not claimed complete.
+Committed the verified ESLint required-tool-configuration reclassification as `76605e40ca24be98cebbc04586ab18c382d4d085`, tree `95cc88d134d7672ff0603652b42cd1d6274f6af0`; source debt is 48, execution debt is 13, exceptions are 15, and the worktree was clean immediately after commit. The earlier Rust clipboard capability remains checkpointed but not adopted.
 
 ## Current Action
-Reconcile continuity to the E2E static-smoke + Rust clipboard candidate boundary. Full-local and clipboard adoption are blocked independently; continue safe independent migration work.
+Reconcile continuity to the ESLint tool-configuration classification boundary. Full-local and clipboard adoption remain independently blocked; continue safe implementation migration work.
 
 ## Next Action
-Verify whether the two ESLint flat-config JavaScript files are tool-required configuration rather than owned implementation; if so reclassify them narrowly with official ESLint evidence and language-policy tests. Then continue the next independent helper/frontend seam. Revisit full-local only after a reusable E2E artifact exists and clipboard adoption only in an isolated/safe clipboard context.
+Continue the next independent implementation migration; ESLint flat-config classification is complete and guarded narrowly. Revisit full-local only after a reusable E2E artifact exists and clipboard adoption only in an isolated/safe clipboard context.
 
 ## Verification Required
-- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 111 / source debt 50 / execution debt 13 / exceptions 13 / zero unapproved.
+- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 111 / source debt 48 / execution debt 13 / exceptions 15 / zero unapproved.
 - Network-generation evidence remains reusable from commit `5494f58...`.
 - Runtime-automation Rust gate = PASS; regressions = 4/4 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Effective-node-settings Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.

@@ -1,10 +1,10 @@
 # Checkpoint — 100% Rust owned implementation migration
 
 Status: IN PROGRESS
-Timestamp: 2026-09-24T13:18:06Z
+Timestamp: 2026-09-24T13:38:52Z
 Task ID: KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923
 Branch: feat/owned-implementation-100-percent-rust-20260923
-Last committed phase boundary: e9f1b48aa892d9c7e186b379d88b75be605469fb / tree dfe8a5f206866a4964325854b66100fc6b06ddfc
+Last committed phase boundary: 76605e40ca24be98cebbc04586ab18c382d4d085 / tree 95cc88d134d7672ff0603652b42cd1d6274f6af0
 Historical main baseline: aaf2c635672c0fd35a5705579610be8de188b031 / tree 0d19e16d115dc093a3f47967ec57b0cc3e81bfa1
 
 ## LAST CONFIRMED STATE
@@ -35,7 +35,8 @@ Frontend template source normalization, dead-scaffold retirement, and two active
 - Zero-touch result-writer Rust tests: `eeb2a3e0070da4f029abb558c1830f3b320cf2b8`.
 - E2E bridge-locator/recovery static smokes: `39768dffbc2a912987a915b53f86f4a0c3529386`.
 - Rust E2E clipboard capability checkpoint: `e9f1b48aa892d9c7e186b379d88b75be605469fb` — read parity verified; caller adoption NOT COMPLETE because safe isolated write parity is blocked.
-- Current language guard: Rust 111; source debt 50; execution debt 13; unapproved 0/0; exceptions 13.
+- ESLint tool-configuration reclassification: `76605e40ca24be98cebbc04586ab18c382d4d085` — two exact ESLint flat configs remain tracked/lint-active as TOOL_REQUIRED_CONFIGURATION, not implementation debt.
+- Current language guard: Rust 111; source debt 48; execution debt 13; unapproved 0/0; exceptions 15.
 - Raw-log legacy/Rust parity: expected FAIL with exactly two Node/Bridge transport-wrapper findings.
 - Raw-log Rust regressions 4/4 PASS stable/MSRV; Clippy/FMT/MSRV check PASS; runtime-owner strict PASS.
 - Program-unified pre-retirement legacy/Rust deterministic summaries match across 14 steps; post-retirement Rust reference preserved the same three required failures. After runtime-trace migration, targeted regressions are 5/5 PASS stable/MSRV and the enabled trace step is Rust. Strict Clippy/FMT/MSRV check PASS.
@@ -63,10 +64,10 @@ Frontend template source normalization, dead-scaffold retirement, and two active
 - Local actionlint/cargo-audit/cargo-deny/cargo-machete remain NOT VERIFIED / unavailable locally; exact-head GitHub CI is required.
 
 ## BLOCKERS / REMAINING WORK
-Two independent blockers are explicit. Full-local wrapper retirement is BLOCKED because no current zero-touch E2E artifact satisfies the reusable-artifact integrity contract, and a fresh live E2E rerun is not justified solely for wrapper parity. Clipboard caller adoption is BLOCKED because the current user clipboard contains non-text/OLE/enterprise formats and a text-only sentinel/restore could destroy them; only read-only parity has been performed. Remaining debt is 50 owned non-Rust source files plus 13 execution-wiring files. Technical exceptions are 13: seven deterministic Rust-generated template wrappers, three generated Explorer ABI adapters, one generated wasm-bindgen JS glue file, one deterministic Rust-generated tab registry, and one platform-required ClusterFuzzLite thin adapter. Behavioral JS/E2E debt remains until equivalent Rust/WASM or Rust-native behavior exists. Product/static findings preserved: 9 i18n unbound findings, 6 dynamic literals, 2 raw transport-wrapper findings, duplicate Start/Stop IDs, and the shared frontend CJS test failure. Frontend/app-boot/E2E evidence touching Explorer is invalidated for final closure.
+Two independent blockers are explicit. Full-local wrapper retirement is BLOCKED because no current zero-touch E2E artifact satisfies the reusable-artifact integrity contract, and a fresh live E2E rerun is not justified solely for wrapper parity. Clipboard caller adoption is BLOCKED because the current user clipboard contains non-text/OLE/enterprise formats and a text-only sentinel/restore could destroy them; only read-only parity has been performed. Remaining debt is 48 owned non-Rust source files plus 13 execution-wiring files. Technical exceptions are 15: seven deterministic Rust-generated template wrappers, three generated Explorer ABI adapters, one generated wasm-bindgen JS glue file, one deterministic Rust-generated tab registry, one platform-required ClusterFuzzLite thin adapter, and two exact ESLint flat-config tool-required configuration files. Behavioral JS/E2E debt remains until equivalent Rust/WASM or Rust-native behavior exists. Product/static findings preserved: 9 i18n unbound findings, 6 dynamic literals, 2 raw transport-wrapper findings, duplicate Start/Stop IDs, and the shared frontend CJS test failure. Frontend/app-boot/E2E evidence touching Explorer is invalidated for final closure.
 
 ## NEXT ACTION
-Validate this E2E static-smoke + Rust clipboard-candidate reconciliation with the Rust project-continuity gate/regressions and checkpoint the docs. Full-local remains blocked pending a reusable current E2E artifact; clipboard adoption remains blocked pending safe isolated write parity. Next verify whether ESLint flat-config JavaScript files are required tooling configuration and, only if officially justified, reclassify them narrowly rather than treating them as owned implementation.
+Validate this ESLint tool-configuration classification reconciliation with the Rust project-continuity gate/regressions and checkpoint the docs. Full-local remains blocked pending a reusable current E2E artifact; clipboard adoption remains blocked pending safe isolated write parity. Continue an actual implementation migration next rather than further configuration-only debt reduction.
 
 ## DO NOT REPEAT
 Do not rerun unaffected native/runtime/release qualification while its predicates are unchanged. Frontend/app-boot/E2E predicates touching the changed Explorer module graph must be requalified before final closure. Do not rerun verified KSSS/npm/runtime-binding/project-continuity/static/parallel/i18n/raw-log parity without invalidation, restore retired gates, hide current frontend findings, weaken signed-runtime/npm/binding/continuity/runtime-owner boundaries, touch unrelated worktrees, or mutate the protected checkpoint.

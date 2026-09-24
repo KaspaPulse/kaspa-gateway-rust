@@ -3,14 +3,14 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified source checkpoint is Rust clipboard candidate `e9f1b48aa892d9c7e186b379d88b75be605469fb`, tree `dfe8a5f206866a4964325854b66100fc6b06ddfc`, after completed E2E static-smoke migration `39768dffbc2a912987a915b53f86f4a0c3529386`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified source checkpoint is ESLint tool-configuration classification `76605e40ca24be98cebbc04586ab18c382d4d085`, tree `95cc88d134d7672ff0603652b42cd1d6274f6af0`, after completed E2E static-smoke migration and the unadopted Rust clipboard candidate.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next tooling mutation. Commit `e9f1b48...` was verified clean.
+- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next tooling mutation. Commit `76605e4...` was verified clean.
 - Current Rust source inventory: 111.
-- Current owned non-Rust programming source debt: 50.
+- Current owned non-Rust programming source debt: 48.
 - Current non-Rust execution-wiring debt: 13.
 - Rust language guard: PASS; unapproved source=0; unapproved execution=0.
-- Technical exceptions: 13 — seven deterministic Rust-generated frontend template wrappers, three deterministic generated Explorer WASM ABI adapters (`utils/date/formatting`), one deterministic wasm-bindgen JavaScript glue file, one deterministic Rust-generated `tab-registry.js`, plus the required ClusterFuzzLite `build.sh` thin adapter. No Linguist suppression is used.
+- Technical exceptions: 15 — the prior thirteen technical exceptions plus two exact-path ESLint flat-config TOOL_REQUIRED_CONFIGURATION exceptions. No Linguist suppression is used.
 - KSSS owned adapter: Rust/PyO3; five superseded KGW-owned Python adapter/gate files removed after parity.
 - Signed KSSS central runtime: unchanged third-party archive; SHA-256 `38309d2ab8fa30096d99940f855e88173faa182e60db33f2a96b2d3408507430`.
 - KSSS Rust regressions: 24/24 PASS; full xtask tests: 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
@@ -30,7 +30,7 @@
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Reconcile this E2E static-smoke + Rust clipboard candidate boundary. Full-local wrapper retirement remains BLOCKED until a current reusable E2E artifact exists. Clipboard caller adoption remains BLOCKED until safe isolated write parity exists; current user clipboard must not be destructively normalized. Continue independent migration work and preserve DOM-bound/E2E behavior. Do not replay prior verified gate/KSSS/native qualification without predicate invalidation.
+Reconcile this ESLint tool-configuration classification boundary. Full-local wrapper retirement remains BLOCKED until a current reusable E2E artifact exists. Clipboard caller adoption remains BLOCKED until safe isolated write parity exists; current user clipboard must not be destructively normalized. Continue independent implementation migration work and preserve DOM-bound/E2E behavior. Do not replay prior verified gate/KSSS/native qualification without predicate invalidation.
 
 ## DO NOT REPEAT
 Do not replay unaffected native/runtime/release qualification without predicate invalidation. Frontend/app-boot/E2E qualification that depends on the changed Explorer module graph must be rerun before final closure. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.
