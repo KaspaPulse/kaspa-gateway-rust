@@ -3,7 +3,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import globals from "globals";
 
 export default defineConfig([
-  globalIgnores(["node_modules/", "artifacts/", "reports/"]),
+  globalIgnores(["node_modules/", "artifacts/", "reports/", "generated/"]),
   {
     name: "kaspa-gateway/e2e",
     files: ["**/*.js", "**/*.mjs"],

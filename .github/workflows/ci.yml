@@ -133,6 +133,9 @@ jobs:
       - name: Check frontend WASM on MSRV
         run: cargo check --locked -p kaspa-gateway-frontend-wasm --target wasm32-unknown-unknown
 
+      - name: Check E2E WASM on MSRV
+        run: cargo check --locked -p kaspa-gateway-e2e-wasm --target wasm32-unknown-unknown
+
       - name: Cargo test on MSRV
         run: cargo test --locked --workspace --all-targets
 
@@ -182,11 +185,17 @@ jobs:
       - name: Check frontend WASM target
         run: cargo check --locked -p kaspa-gateway-frontend-wasm --target wasm32-unknown-unknown
 
+      - name: Check E2E WASM target
+        run: cargo check --locked -p kaspa-gateway-e2e-wasm --target wasm32-unknown-unknown
+
       - name: Verify generated frontend template wrappers
         run: cargo run --locked -p xtask -- frontend-template-codegen check
 
       - name: Verify generated frontend WASM artifacts
         run: cargo run --locked -p xtask -- frontend-wasm-codegen check
+
+      - name: Verify generated E2E WASM artifacts
+        run: cargo run --locked -p xtask -- e2e-wasm-codegen check
 
       - name: Enforce Rust-only owned implementation migration guard
         run: cargo run --locked -p xtask -- language-policy check

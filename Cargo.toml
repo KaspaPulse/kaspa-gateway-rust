@@ -14,6 +14,7 @@ members = [
     "apps/kaspa-gateway-cli",
     "apps/kaspa-gateway-desktop/src-tauri",
     "crates/kaspa-gateway-frontend-wasm",
+    "crates/kaspa-gateway-e2e-wasm",
     "xtask"
 ]
 
