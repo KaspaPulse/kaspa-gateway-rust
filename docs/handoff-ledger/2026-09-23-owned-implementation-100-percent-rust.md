@@ -1,10 +1,10 @@
 # Checkpoint — 100% Rust owned implementation migration
 
 Status: IN PROGRESS
-Timestamp: 2026-09-24T13:38:52Z
+Timestamp: 2026-09-24T14:22:58Z
 Task ID: KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923
 Branch: feat/owned-implementation-100-percent-rust-20260923
-Last committed phase boundary: 76605e40ca24be98cebbc04586ab18c382d4d085 / tree 95cc88d134d7672ff0603652b42cd1d6274f6af0
+Last committed phase boundary: d16ae5b0f4e8824e0d1871bdce2269279dd57769 / tree 55b4e3e7b0e196fa52ab655ef3e8df3c7e3c07cf
 Historical main baseline: aaf2c635672c0fd35a5705579610be8de188b031 / tree 0d19e16d115dc093a3f47967ec57b0cc3e81bfa1
 
 ## LAST CONFIRMED STATE
@@ -36,7 +36,8 @@ Frontend template source normalization, dead-scaffold retirement, and two active
 - E2E bridge-locator/recovery static smokes: `39768dffbc2a912987a915b53f86f4a0c3529386`.
 - Rust E2E clipboard capability checkpoint: `e9f1b48aa892d9c7e186b379d88b75be605469fb` — read parity verified; caller adoption NOT COMPLETE because safe isolated write parity is blocked.
 - ESLint tool-configuration reclassification: `76605e40ca24be98cebbc04586ab18c382d4d085` — two exact ESLint flat configs remain tracked/lint-active as TOOL_REQUIRED_CONFIGURATION, not implementation debt.
-- Current language guard: Rust 111; source debt 48; execution debt 13; unapproved 0/0; exceptions 15.
+- Bridge node-mode routing Rust audit: `d16ae5b0f4e8824e0d1871bdce2269279dd57769` — legacy/Rust findings/verdict/extract-name/node-syntax semantics match; program-unified invokes Rust; runtime global-owner scan is clean after CJS retirement; focused Graphify PASS at 6549 nodes / 17276 edges.
+- Current language guard: Rust 112; source debt 47; execution debt 13; unapproved 0/0; exceptions 15.
 - Raw-log legacy/Rust parity: expected FAIL with exactly two Node/Bridge transport-wrapper findings.
 - Raw-log Rust regressions 4/4 PASS stable/MSRV; Clippy/FMT/MSRV check PASS; runtime-owner strict PASS.
 - Program-unified pre-retirement legacy/Rust deterministic summaries match across 14 steps; post-retirement Rust reference preserved the same three required failures. After runtime-trace migration, targeted regressions are 5/5 PASS stable/MSRV and the enabled trace step is Rust. Strict Clippy/FMT/MSRV check PASS.
@@ -59,15 +60,15 @@ Frontend template source normalization, dead-scaffold retirement, and two active
 - Raw-log Rust parity: `raw-log-rust-pre-delete.log`.
 - Raw-log affected qualification: `raw-log-rust-pre-delete-qualification.log`, `raw-log-final-qualification.log`.
 - CRLF-fixed legacy provenance reference SHA-256: `A12CA9F133005BFBDA2C2C9191AD5711DB0959CADBBBF2668E1A08E6928136F4`.
-- Focused Graphify for i18n/raw-log historical batches remains NOT VERIFIED / TOOL_BLOCKED; program-unified, runtime-trace-owner, Windows runtime-dependency verifier, AI workflow gate, Start-button gate, Copy Log gate, runtime-repository-binding apply, E2E exact-owned-process, frontend template/codegen, dead-scaffold retirement, Explorer utilities, and Explorer date/formatting Rust/WASM seams are PASS after SHA-bound Server→kas mirroring.
+- Focused Graphify for i18n/raw-log historical batches remains NOT VERIFIED / TOOL_BLOCKED; program-unified, runtime-trace-owner, Windows runtime-dependency verifier, AI workflow gate, Start-button gate, Copy Log gate, runtime-repository-binding apply, E2E exact-owned-process, frontend template/codegen, dead-scaffold retirement, Explorer utilities/date/formatting Rust/WASM, E2E static smokes, and Bridge node-mode routing Rust audit are PASS after SHA-bound Server→kas mirroring.
 - Earlier verified KSSS/npm/runtime-binding/project-continuity/static/parallel evidence remains reusable while predicates remain unchanged.
 - Local actionlint/cargo-audit/cargo-deny/cargo-machete remain NOT VERIFIED / unavailable locally; exact-head GitHub CI is required.
 
 ## BLOCKERS / REMAINING WORK
-Two independent blockers are explicit. Full-local wrapper retirement is BLOCKED because no current zero-touch E2E artifact satisfies the reusable-artifact integrity contract, and a fresh live E2E rerun is not justified solely for wrapper parity. Clipboard caller adoption is BLOCKED because the current user clipboard contains non-text/OLE/enterprise formats and a text-only sentinel/restore could destroy them; only read-only parity has been performed. Remaining debt is 48 owned non-Rust source files plus 13 execution-wiring files. Technical exceptions are 15: seven deterministic Rust-generated template wrappers, three generated Explorer ABI adapters, one generated wasm-bindgen JS glue file, one deterministic Rust-generated tab registry, one platform-required ClusterFuzzLite thin adapter, and two exact ESLint flat-config tool-required configuration files. Behavioral JS/E2E debt remains until equivalent Rust/WASM or Rust-native behavior exists. Product/static findings preserved: 9 i18n unbound findings, 6 dynamic literals, 2 raw transport-wrapper findings, duplicate Start/Stop IDs, and the shared frontend CJS test failure. Frontend/app-boot/E2E evidence touching Explorer is invalidated for final closure.
+Two independent blockers are explicit. Full-local wrapper retirement is BLOCKED because no current zero-touch E2E artifact satisfies the reusable-artifact integrity contract, and a fresh live E2E rerun is not justified solely for wrapper parity. Clipboard caller adoption is BLOCKED because the current user clipboard contains non-text/OLE/enterprise formats and a text-only sentinel/restore could destroy them; only read-only parity has been performed. Remaining debt is 47 owned non-Rust source files plus 13 execution-wiring files. Technical exceptions are 15: seven deterministic Rust-generated template wrappers, three generated Explorer ABI adapters, one generated wasm-bindgen JS glue file, one deterministic Rust-generated tab registry, one platform-required ClusterFuzzLite thin adapter, and two exact ESLint flat-config tool-required configuration files. Behavioral JS/E2E debt remains until equivalent Rust/WASM or Rust-native behavior exists. Product/static findings preserved: 9 i18n unbound findings, 6 dynamic literals, 2 raw transport-wrapper findings, duplicate Start/Stop IDs, and the shared frontend CJS test failure. Frontend/app-boot/E2E evidence touching Explorer is invalidated for final closure.
 
 ## NEXT ACTION
-Validate this ESLint tool-configuration classification reconciliation with the Rust project-continuity gate/regressions and checkpoint the docs. Full-local remains blocked pending a reusable current E2E artifact; clipboard adoption remains blocked pending safe isolated write parity. Continue an actual implementation migration next rather than further configuration-only debt reduction.
+Validate this Bridge node-mode routing Rust audit reconciliation with the Rust project-continuity gate/regressions and checkpoint the docs. Full-local remains blocked pending a reusable current E2E artifact; clipboard adoption remains blocked pending safe isolated write parity. Continue an actual implementation migration next.
 
 ## DO NOT REPEAT
 Do not rerun unaffected native/runtime/release qualification while its predicates are unchanged. Frontend/app-boot/E2E predicates touching the changed Explorer module graph must be requalified before final closure. Do not rerun verified KSSS/npm/runtime-binding/project-continuity/static/parallel/i18n/raw-log parity without invalidation, restore retired gates, hide current frontend findings, weaken signed-runtime/npm/binding/continuity/runtime-owner boundaries, touch unrelated worktrees, or mutate the protected checkpoint.

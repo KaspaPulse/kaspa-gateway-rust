@@ -3,11 +3,11 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified source checkpoint is ESLint tool-configuration classification `76605e40ca24be98cebbc04586ab18c382d4d085`, tree `95cc88d134d7672ff0603652b42cd1d6274f6af0`, after completed E2E static-smoke migration and the unadopted Rust clipboard candidate.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified source checkpoint is Bridge node-mode routing Rust audit `d16ae5b0f4e8824e0d1871bdce2269279dd57769`, tree `55b4e3e7b0e196fa52ab655ef3e8df3c7e3c07cf`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
 - Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next tooling mutation. Commit `76605e4...` was verified clean.
-- Current Rust source inventory: 111.
-- Current owned non-Rust programming source debt: 48.
+- Current Rust source inventory: 112.
+- Current owned non-Rust programming source debt: 47.
 - Current non-Rust execution-wiring debt: 13.
 - Rust language guard: PASS; unapproved source=0; unapproved execution=0.
 - Technical exceptions: 15 — the prior thirteen technical exceptions plus two exact-path ESLint flat-config TOOL_REQUIRED_CONFIGURATION exceptions. No Linguist suppression is used.
@@ -30,7 +30,7 @@
 - Remote GitHub mutation for this task: NO.
 
 ## NEXT ACTION
-Reconcile this ESLint tool-configuration classification boundary. Full-local wrapper retirement remains BLOCKED until a current reusable E2E artifact exists. Clipboard caller adoption remains BLOCKED until safe isolated write parity exists; current user clipboard must not be destructively normalized. Continue independent implementation migration work and preserve DOM-bound/E2E behavior. Do not replay prior verified gate/KSSS/native qualification without predicate invalidation.
+Reconcile this Bridge node-mode routing Rust audit boundary. Full-local wrapper retirement remains BLOCKED until a current reusable E2E artifact exists. Clipboard caller adoption remains BLOCKED until safe isolated write parity exists; current user clipboard must not be destructively normalized. Continue independent implementation migration work and preserve DOM-bound/E2E behavior. Do not replay prior verified gate/KSSS/native qualification without predicate invalidation.
 
 ## DO NOT REPEAT
 Do not replay unaffected native/runtime/release qualification without predicate invalidation. Frontend/app-boot/E2E qualification that depends on the changed Explorer module graph must be rerun before final closure. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.
