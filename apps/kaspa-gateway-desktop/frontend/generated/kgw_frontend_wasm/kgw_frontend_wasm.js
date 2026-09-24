@@ -257,6 +257,17 @@ export function renderStatusSummary(element, text) {
 }
 
 /**
+ * @returns {number}
+ */
+export function parseHeaderUsdPrice() {
+    const ret = wasm.parseHeaderUsdPrice();
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0];
+}
+
+/**
  * @param {any} value
  * @param {number} fallback
  * @returns {number}

@@ -467,6 +467,137 @@ pub fn render_status_summary(element: JsValue, text: JsValue) -> Result<(), JsVa
     set_property(&dataset, "statusSummary", &text)
 }
 
+fn optional_property(target: &JsValue, name: &str) -> JsValue {
+    if target.is_null() || target.is_undefined() {
+        return JsValue::UNDEFINED;
+    }
+    Reflect::get(target, &JsValue::from_str(name)).unwrap_or(JsValue::UNDEFINED)
+}
+
+fn positive_price_candidate(value: &JsValue) -> Option<f64> {
+    let source = if js_boolean(value) {
+        value.clone()
+    } else {
+        JsValue::from_str("")
+    };
+    let normalized = String::from(js_string(&source)).replace(',', "");
+    let number = js_number(&JsValue::from_str(&normalized));
+    (number.is_finite() && number > 0.0).then_some(number)
+}
+
+fn first_decimal_text(value: &str) -> Option<String> {
+    let bytes = value.as_bytes();
+    for start in 0..bytes.len() {
+        if !bytes[start].is_ascii_digit() {
+            continue;
+        }
+        let mut end = start + 1;
+        while end < bytes.len() && bytes[end].is_ascii_digit() {
+            end += 1;
+        }
+        if end + 1 < bytes.len() && bytes[end] == b'.' && bytes[end + 1].is_ascii_digit() {
+            end += 2;
+            while end < bytes.len() && bytes[end].is_ascii_digit() {
+                end += 1;
+            }
+        }
+        return Some(value[start..end].to_owned());
+    }
+    None
+}
+
+fn first_usd_decimal_text(value: &str) -> Option<String> {
+    let bytes = value.as_bytes();
+    for start in 0..bytes.len() {
+        if !bytes[start].is_ascii_digit() {
+            continue;
+        }
+        let mut end = start + 1;
+        while end < bytes.len() && bytes[end].is_ascii_digit() {
+            end += 1;
+        }
+        if end + 1 < bytes.len() && bytes[end] == b'.' && bytes[end + 1].is_ascii_digit() {
+            end += 2;
+            while end < bytes.len() && bytes[end].is_ascii_digit() {
+                end += 1;
+            }
+        }
+
+        let mut tail = end;
+        while tail < value.len() {
+            let Some(ch) = value[tail..].chars().next() else {
+                break;
+            };
+            if !ch.is_whitespace() {
+                break;
+            }
+            tail += ch.len_utf8();
+        }
+        if tail + 3 <= value.len()
+            && value
+                .get(tail..tail + 3)
+                .is_some_and(|suffix| suffix.eq_ignore_ascii_case("USD"))
+        {
+            return Some(value[start..end].to_owned());
+        }
+    }
+    None
+}
+
+fn decimal_text_to_positive_number(value: Option<String>) -> Option<f64> {
+    let number = value?.parse::<f64>().ok()?;
+    (number.is_finite() && number > 0.0).then_some(number)
+}
+
+#[wasm_bindgen(js_name = parseHeaderUsdPrice)]
+pub fn parse_header_usd_price() -> Result<f64, JsValue> {
+    let global = js_sys::global();
+    let window = optional_property(&global, "window");
+    let document = get_property(&global, "document")?;
+    let document_element = optional_property(&document, "documentElement");
+    let dataset = optional_property(&document_element, "dataset");
+
+    let direct = [
+        optional_property(&window, "__kgwKaspaUsdPrice"),
+        optional_property(&window, "__kgwHeaderPriceUsd"),
+        optional_property(&window, "__kgwLastKasPriceUsd"),
+        optional_property(&window, "__kaspaPriceUsd"),
+        optional_property(&window, "kaspaPriceUsd"),
+        optional_property(&dataset, "kgwKaspaUsdPrice"),
+    ];
+    for item in &direct {
+        if let Some(number) = positive_price_candidate(item) {
+            return Ok(number);
+        }
+    }
+
+    let header_price = call_method1(
+        &document,
+        "getElementById",
+        &JsValue::from_str("kgwHeaderPrice"),
+    )?;
+    let header_text_value = optional_property(&header_price, "textContent");
+    let header_source = if js_boolean(&header_text_value) {
+        header_text_value
+    } else {
+        JsValue::from_str("")
+    };
+    let header_text = String::from(js_string(&header_source)).replace(',', "");
+    if let Some(number) = decimal_text_to_positive_number(first_decimal_text(&header_text)) {
+        return Ok(number);
+    }
+
+    let body = optional_property(&document, "body");
+    let body_text_value = optional_property(&body, "innerText");
+    let body_source = if js_boolean(&body_text_value) {
+        body_text_value
+    } else {
+        JsValue::from_str("")
+    };
+    let body_text = String::from(js_string(&body_source)).replace(',', "");
+    Ok(decimal_text_to_positive_number(first_usd_decimal_text(&body_text)).unwrap_or(0.0))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -488,6 +619,39 @@ mod tests {
     fn plain_text_is_stable() {
         assert_eq!(to_english_digits_text("abc-123"), "abc-123");
         assert_eq!(html_escape_text("abc-123"), "abc-123");
+    }
+
+    #[test]
+    fn explorer_header_decimal_parsing_preserves_legacy_shape() {
+        assert_eq!(
+            first_decimal_text("KAS $1234.56 USD"),
+            Some("1234.56".to_owned())
+        );
+        assert_eq!(first_decimal_text("-1 USD"), Some("1".to_owned()));
+        assert_eq!(first_decimal_text("prefix .5 USD"), Some("5".to_owned()));
+        assert_eq!(first_decimal_text("no price"), None);
+        assert_eq!(decimal_text_to_positive_number(Some("0".to_owned())), None);
+        assert_eq!(
+            decimal_text_to_positive_number(Some("0.25".to_owned())),
+            Some(0.25)
+        );
+    }
+
+    #[test]
+    fn explorer_header_body_usd_parsing_matches_contract() {
+        assert_eq!(
+            first_usd_decimal_text("Kaspa Price 0.55 USD"),
+            Some("0.55".to_owned())
+        );
+        assert_eq!(
+            first_usd_decimal_text("Market 0.66usd now"),
+            Some("0.66".to_owned())
+        );
+        assert_eq!(
+            first_usd_decimal_text("1 EUR then 2.5 USD"),
+            Some("2.5".to_owned())
+        );
+        assert_eq!(first_usd_decimal_text("Price 3.0 EUR"), None);
     }
 
     #[test]
