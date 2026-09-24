@@ -23,7 +23,7 @@ Replace all project-owned programming implementation outside Rust with Rust whil
 6. Node/CJS repository/tooling migration to Rust — **IN PROGRESS / STATIC LANE ADVANCED**; all direct-CI static gate families, six standalone static regressions, parallel-self-worker, i18n static gates `9c53fa7`, raw-log provenance `9c084dc`, program-unified orchestration `a353ed5`, and runtime-trace-owner audit `c22503d` are COMMITTED. Dynamic effective-bridge, log-ui behavior, current i18n findings, and raw transport-wrapper findings are deferred to frontend migration.
 7. Windows/PowerShell helper migration to Rust with Windows behavior preserved — **IN PROGRESS**; Windows runtime-dependency verifier `9d1885d`, AI workflow gate `7b1d869`, Start-button orchestration `2e4a3e1`, Copy Log orchestration `729c99a`, runtime-repository-binding apply `59e8748`, and E2E exact-owned-process helpers `ec46991` are committed after parity/fail-closed preservation.
 8. WebdriverIO/Node E2E replacement with Rust-native desktop/WebDriver harness — **PENDING**.
-9. JavaScript frontend replacement with Rust/WASM while preserving Tauri IPC/UI contracts — **PENDING**.
+9. JavaScript frontend replacement with Rust/WASM while preserving Tauri IPC/UI contracts — **IN PROGRESS / TEMPLATE SOURCE NORMALIZATION STARTED**; seven template modules are now Rust-generated wrappers over exact-byte declarative HTML at `eae06aa`.
 10. Remove Node/Python/PowerShell/Shell implementation dependencies and update workflows/configuration — **PENDING**.
 11. Zero-debt strict guard + cross-platform/security/MSRV qualification — **PENDING**.
 12. GitHub PR exact-head CI, squash merge, exact-main qualification, durable closeout — **PENDING**.
