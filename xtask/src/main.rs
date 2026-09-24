@@ -19,6 +19,7 @@ mod runtime_automation_claims;
 mod runtime_repository_binding;
 mod runtime_trace_owner;
 mod security_advisories;
+mod start_button;
 mod static_contracts;
 mod trufflehog_policy;
 mod windows_runtime_dependencies;
@@ -71,6 +72,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- runtime-automation-claims-gate
   cargo run -p xtask -- runtime-repository-binding-gate [--strict] [--online|--fresh] [--offline] [--json]
   cargo run -p xtask -- runtime-trace-owner-audit <repo-root> <report-dir>
+  cargo run -p xtask -- start-button-gate
   cargo run -p xtask -- static-contract-regressions
   cargo run -p xtask -- verify-windows-runtime-dependencies --executable <path> [--dumpbin-path <path>] [--report-path <path>]
   cargo run -p xtask -- fuzz-build
@@ -302,6 +304,17 @@ fn run() -> Result<(), CliError> {
                     message: String::new(),
                 })
             }
+        }
+        "start-button-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "start-button-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = start_button::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
         }
         "static-contract-regressions" => {
             if args.next().is_some() {
