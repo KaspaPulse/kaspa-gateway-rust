@@ -1,14 +1,14 @@
 # Checkpoint — 100% Rust owned implementation migration
 
 Status: IN PROGRESS
-Timestamp: 2026-09-24T08:18:55Z
+Timestamp: 2026-09-24T08:44:24Z
 Task ID: KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923
 Branch: feat/owned-implementation-100-percent-rust-20260923
-Last committed phase boundary: 59e8748a63b29fa44f003ffaf423745e11e4fd5a / tree f06f3aa1fa8705330edf4b8187339a6a4cf4ac91
+Last committed phase boundary: ec46991d6e80478038dcb439952cd058394189f8 / tree def017e55ea6b3fc6b9a1f5c620f39a7c12d5435
 Historical main baseline: aaf2c635672c0fd35a5705579610be8de188b031 / tree 0d19e16d115dc093a3f47967ec57b0cc3e81bfa1
 
 ## LAST CONFIRMED STATE
-Runtime-repository-binding apply is Rust and committed after exact mutating legacy/Rust parity on drifted fixtures plus Rust idempotence. Copy Log orchestration remains Rust with only the shared behavioral frontend CJS failure and Tauri clipboard 4/4 PASS; Start-button remains Rust with its three preserved findings and Tauri IPC 56/56 PASS. AI workflow validation and Windows PE runtime-dependency verification are also Rust and committed. PowerShell tooling migration remains active. The worktree is continuity-only reconciliation. No GitHub, Production, DNS, Cloudflare, live-runtime, credential, old-worktree, or protected-checkpoint mutation occurred.
+E2E exact-owned-process kill/wait helpers are Rust and committed after real synthetic-process legacy/Rust parity for kill and wait plus deliberate executable-mismatch fail-closed proof; only the two exact PS1 helpers were retired and other E2E PowerShell helpers remain unchanged. Runtime-repository-binding apply, Copy Log, Start-button, AI workflow validation, and Windows PE runtime-dependency verification are also Rust and committed. Windows/PowerShell helper migration remains active. The worktree is continuity-only reconciliation. No GitHub, Production, DNS, Cloudflare, live-runtime, credential, old-worktree, or protected-checkpoint mutation occurred.
 
 ## COMPLETED / VERIFIED
 - Foundation: `33461f6511c69b457c5f3dd069b54322d9a236a0`.
@@ -25,7 +25,8 @@ Runtime-repository-binding apply is Rust and committed after exact mutating lega
 - Start-button Rust gate: `2e4a3e1dd4ce94a18486f49a30f170d7b08e239c`.
 - Copy Log Rust gate: `729c99aec7c4cdf8fee6727a77ed385f54c29e4c`.
 - Runtime-repository-binding Rust apply: `59e8748a63b29fa44f003ffaf423745e11e4fd5a`.
-- Current language guard: Rust 103; source debt 79; execution debt 14; unapproved 0/0; exception 1.
+- E2E exact-owned-process Rust helpers: `ec46991d6e80478038dcb439952cd058394189f8`.
+- Current language guard: Rust 104; source debt 77; execution debt 14; unapproved 0/0; exception 1.
 - Raw-log legacy/Rust parity: expected FAIL with exactly two Node/Bridge transport-wrapper findings.
 - Raw-log Rust regressions 4/4 PASS stable/MSRV; Clippy/FMT/MSRV check PASS; runtime-owner strict PASS.
 - Program-unified pre-retirement legacy/Rust deterministic summaries match across 14 steps; post-retirement Rust reference preserved the same three required failures. After runtime-trace migration, targeted regressions are 5/5 PASS stable/MSRV and the enabled trace step is Rust. Strict Clippy/FMT/MSRV check PASS.
@@ -35,6 +36,7 @@ Runtime-repository-binding apply is Rust and committed after exact mutating lega
 - Start-button legacy/Rust exact current-failure parity PASS; Tauri IPC 56/56 PASS; Rust regressions 6/6 PASS stable/MSRV; stable/MSRV/KSSS-feature checks, Clippy/FMT/language guard PASS; focused Graphify PASS at 6290 nodes / 16349 edges.
 - Copy Log legacy/Rust exact current-failure parity PASS; Tauri clipboard tests 4/4 PASS; Rust regressions 6/6 PASS stable/MSRV; stable/MSRV/KSSS-feature checks, Clippy/FMT/language guard PASS; focused Graphify PASS at 6304 nodes / 16390 edges.
 - Runtime-repository-binding Rust apply drifted-fixture byte parity PASS across all mutable targets, Rust second-apply idempotence PASS, apply regressions 3/3 and validator regressions 11/11 PASS, real strict-offline gate PASS, stable/MSRV/KSSS-feature checks and Clippy/FMT/language guard PASS, focused Graphify PASS at 6326 nodes / 16488 edges.
+- E2E exact-owned-process helpers: legacy/Rust kill parity PASS and wait parity PASS on dedicated synthetic processes; executable-mismatch fail-closed left the test PID alive before exact-identity cleanup; Rust pure regressions 5/5 PASS; caller syntax + recovery-harness smoke PASS; language guard PASS; focused Graphify PASS at 6368 nodes / 16599 edges.
 - i18n locale gate PASS at 32/0/0/1; full i18n contract remains verified FAIL at refs=266/missing=0/unbound=2/dynamic=6/quote=0/runtime=0.
 
 ## EVIDENCE
@@ -43,15 +45,15 @@ Runtime-repository-binding apply is Rust and committed after exact mutating lega
 - Raw-log Rust parity: `raw-log-rust-pre-delete.log`.
 - Raw-log affected qualification: `raw-log-rust-pre-delete-qualification.log`, `raw-log-final-qualification.log`.
 - CRLF-fixed legacy provenance reference SHA-256: `A12CA9F133005BFBDA2C2C9191AD5711DB0959CADBBBF2668E1A08E6928136F4`.
-- Focused Graphify for i18n/raw-log historical batches remains NOT VERIFIED / TOOL_BLOCKED; program-unified, runtime-trace-owner, Windows runtime-dependency verifier, AI workflow gate, Start-button gate, Copy Log gate, and runtime-repository-binding apply focused Graphify are PASS after SHA-bound Server→kas mirroring.
+- Focused Graphify for i18n/raw-log historical batches remains NOT VERIFIED / TOOL_BLOCKED; program-unified, runtime-trace-owner, Windows runtime-dependency verifier, AI workflow gate, Start-button gate, Copy Log gate, runtime-repository-binding apply, and E2E exact-owned-process helpers focused Graphify are PASS after SHA-bound Server→kas mirroring.
 - Earlier verified KSSS/npm/runtime-binding/project-continuity/static/parallel evidence remains reusable while predicates remain unchanged.
 - Local actionlint/cargo-audit/cargo-deny/cargo-machete remain NOT VERIFIED / unavailable locally; exact-head GitHub CI is required.
 
 ## BLOCKERS / REMAINING WORK
-No blocker for PowerShell tooling migration. Remaining debt is 79 owned non-Rust source files plus 14 execution-wiring files and one platform-required ClusterFuzzLite thin-adapter exception. Behavioral JS debt intentionally deferred to frontend migration includes dynamic effective-bridge, `kgw_log_ui_tests.cjs`, and the shared Start-button/Copy-Log frontend test failure. Product findings preserved: 8 i18n findings, 2 raw transport-wrapper findings, and duplicate Start/Stop IDs.
+No blocker for Windows/PowerShell helper migration. Remaining debt is 77 owned non-Rust source files plus 14 execution-wiring files and one platform-required ClusterFuzzLite thin-adapter exception. E2E clipboard/evidence PowerShell helpers remain intentionally tracked until equivalent Rust behavior is proven. Behavioral JS debt intentionally deferred to frontend migration includes dynamic effective-bridge, `kgw_log_ui_tests.cjs`, and the shared Start-button/Copy-Log frontend test failure. Product findings preserved: 8 i18n findings, 2 raw transport-wrapper findings, and duplicate Start/Stop IDs.
 
 ## NEXT ACTION
-Validate this runtime-repository-binding apply continuity reconciliation with the Rust project-continuity gate/regressions and checkpoint the docs. Then select the smallest remaining independent PowerShell helper and port it with parity-first validation.
+Validate this E2E exact-owned-process continuity reconciliation with the Rust project-continuity gate/regressions and checkpoint the docs. Then select the smallest remaining independent Windows/PowerShell helper and port it with parity-first validation.
 
 ## DO NOT REPEAT
 Do not rerun broad Desktop qualification while product/runtime predicates are unchanged. Do not rerun verified KSSS/npm/runtime-binding/project-continuity/static/parallel/i18n/raw-log parity without invalidation, restore retired Python/CJS gates, hide current frontend findings, weaken signed-runtime/npm/binding/continuity/runtime-owner boundaries, touch unrelated worktrees, or mutate the protected checkpoint.

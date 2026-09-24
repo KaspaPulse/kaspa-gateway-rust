@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 9 — PowerShell tooling migration is IN PROGRESS after the static Node/CJS tooling lane. Windows runtime-dependency verification, AI workflow validation, Start-button orchestration, Copy Log orchestration, and runtime-repository-binding apply are Rust and COMMITTED; dynamic effective-bridge, behavioral frontend tests, and current frontend findings remain deferred to the frontend Rust/WASM phase.
+PHASE 9 — Windows/PowerShell tooling migration is IN PROGRESS after the static Node/CJS tooling lane. Windows runtime-dependency verification, AI workflow validation, Start-button orchestration, Copy Log orchestration, runtime-repository-binding apply, and the E2E exact-owned-process kill/wait helpers are Rust and COMMITTED; dynamic effective-bridge, behavioral frontend tests, and current frontend findings remain deferred to the frontend Rust/WASM phase.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -30,7 +30,7 @@ PHASE 9 — PowerShell tooling migration is IN PROGRESS after the static Node/CJ
 - Rust KSSS rejection contracts are 24/24 PASS; the complete xtask suite is 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
 - Old Python and new Rust adapters produced identical semantic JSON for check/evaluate/knowledge/release-check/structural trust, and cryptographic trust parity PASS with verified Cosign v3.0.6.
 - Stable check/Clippy `-D warnings`/FMT PASS; MSRV KSSS check/test PASS.
-- Current language guard after the runtime-repository-binding apply migration: Rust source 103; owned non-Rust source debt 79; execution debt 14; unapproved 0/0; technical exception 1; PASS.
+- Current language guard after the E2E exact-owned-process helper migration: Rust source 104; owned non-Rust source debt 77; execution debt 14; unapproved 0/0; technical exception 1; PASS.
 - Network-generation Node/CJS family is committed as `5494f580c9426155c5a848289595175f02d3d7d7`.
 - Runtime-automation-claims gate is ported to Rust `xtask`; legacy gate PASS before deletion, Rust gate PASS, four regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, and focused Graphify post-change refresh/query PASS.
 - Effective-node-settings gate is ported to Rust `xtask` and committed as `8798af0557384c83cbb8c1b075678a7a01266647`; legacy gate PASS before deletion, Rust gate PASS, five regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, language guard PASS, and focused Graphify PASS.
@@ -39,6 +39,7 @@ PHASE 9 — PowerShell tooling migration is IN PROGRESS after the static Node/CJ
 - Desktop-artifacts workflow contract gate is ported to Rust `xtask` and committed as `efc5885d9d1959271a91c49d1d27ef776452a180`; legacy/Rust real gates PASS, seven regressions PASS stable/MSRV, Clippy/FMT/check PASS, and focused Graphify PASS.
 - npm dependency policy gate/tests are ported to Rust `xtask` and committed as `478ff1642d6016bc65aca53c3fbf20c132b21164`; legacy regression suite PASS, live desktop/E2E policy reference PASS, Rust real gates PASS, eight regressions PASS stable/MSRV, Clippy/FMT/check PASS, and focused Graphify PASS.
 - Runtime-repository-binding canonical gate/tests and legacy audit wrappers are ported/retired in commit `a296932742847b232844603ab5d38e1417fae9f1`; the mutating apply path is now Rust and committed as `59e8748a63b29fa44f003ffaf423745e11e4fd5a` after exact drifted-fixture legacy/Rust byte parity and Rust idempotence. Apply regressions 3/3, gate regressions 11/11, strict-offline real gate, stable/MSRV/KSSS-feature checks, Clippy/FMT/language guard, and focused Graphify all PASS.
+- E2E exact-owned-process kill/wait helpers are ported from PowerShell to Rust and committed as `ec46991d6e80478038dcb439952cd058394189f8`; legacy/Rust kill parity and wait parity PASS on dedicated synthetic processes, deliberate executable mismatch fails closed without killing, recovery-harness smoke PASS after JS caller migration, language guard PASS, and focused Graphify PASS at 6368 nodes / 16599 edges.
 - Project-continuity gate/tests are ported to Rust and committed as `d23d656838397d36c4b0ebc18d96631b8210155a`; the real Rust gate PASS, 9/9 positive/fail-closed regressions PASS on stable/MSRV, Clippy/FMT/check PASS, and focused Graphify PASS.
 - Six standalone static contract regressions (analysis, Explorer lint, functional UI, Settings workflow, AUD-010 Tauri seam, and programmatic restore) are consolidated in Rust `xtask` and committed as `cce6059c6efb9f0bc37e22ad4303c6edd7179895`; legacy six PASS before retirement, Rust aggregate PASS, 12/12 regressions PASS stable/MSRV, Clippy/FMT/check PASS, and focused Graphify PASS.
 - Parallel-self-worker runtime contract gate is ported to Rust and committed as `dd1dbe88562bc4a22f173b53c7a6fd7f35014376`; the legacy CRLF-sensitive extractor was corrected before retirement, both legacy/Rust real gates PASS, 5/5 regressions PASS stable/MSRV, and focused Graphify PASS.
@@ -57,16 +58,16 @@ PHASE 9 — PowerShell tooling migration is IN PROGRESS after the static Node/CJ
 No local engineering blocker for the PowerShell tooling lane. Preserved product findings for frontend migration: i18n has 2 unbound HTML + 6 dynamic literals; raw-log provenance has Node/Bridge transport-wrapper filters. Behavioral JS coverage remains deferred. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` remain unavailable until exact-head CI.
 
 ## Last Completed Action
-Committed the verified runtime-repository-binding Rust apply migration as `59e8748a63b29fa44f003ffaf423745e11e4fd5a`, tree `f06f3aa1fa8705330edf4b8187339a6a4cf4ac91`; source debt is 79 and the worktree was clean immediately after commit.
+Committed the verified E2E exact-owned-process Rust helper migration as `ec46991d6e80478038dcb439952cd058394189f8`, tree `def017e55ea6b3fc6b9a1f5c620f39a7c12d5435`; source debt is 77 and the worktree was clean immediately after commit.
 
 ## Current Action
-Reconcile continuity to the committed runtime-repository-binding apply boundary, then continue the PowerShell lane with the smallest independent helper that can move to Rust without weakening live/native behavior coverage.
+Reconcile continuity to the committed E2E exact-owned-process boundary, then continue the Windows/PowerShell helper lane with the smallest independent helper that can move to Rust without weakening live/native behavior coverage.
 
 ## Next Action
-Inventory the remaining PowerShell helpers and port the smallest independent static/read-only family with parity-first validation. Preserve mutating/live/native PowerShell helpers until equivalent Rust behavior is proven; keep behavioral JS test files for the frontend Rust/WASM phase.
+Inventory the remaining PowerShell/E2E helpers and port the smallest independent family with parity-first validation. Preserve clipboard/evidence/live helpers until equivalent Rust behavior is proven; keep behavioral JS test files for the frontend Rust/WASM phase.
 
 ## Verification Required
-- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 103 / source debt 79 / execution debt 14 / exception 1 / zero unapproved.
+- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 104 / source debt 77 / execution debt 14 / exception 1 / zero unapproved.
 - Network-generation evidence remains reusable from commit `5494f58...`.
 - Runtime-automation Rust gate = PASS; regressions = 4/4 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Effective-node-settings Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
