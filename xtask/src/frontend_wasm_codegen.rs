@@ -13,6 +13,7 @@ const FORMATTING_ADAPTER_RELATIVE: &str =
     "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.formatting.js";
 const JS_NAME: &str = "kgw_frontend_wasm.js";
 const WASM_NAME: &str = "kgw_frontend_wasm_bg.wasm";
+type AdapterGenerator = (&'static str, fn() -> String);
 
 pub fn run_cli(args: &mut impl Iterator<Item = String>, root: &Path) -> Result<String, String> {
     let action = args.next().unwrap_or_else(|| "check".to_owned());
@@ -144,7 +145,7 @@ export function kgwClean2Usd(value) {
     .to_owned()
 }
 
-fn adapters() -> [(&'static str, fn() -> String); 3] {
+fn adapters() -> [AdapterGenerator; 3] {
     [
         (UTILS_ADAPTER_RELATIVE, utils_adapter_source),
         (DATE_ADAPTER_RELATIVE, date_adapter_source),
