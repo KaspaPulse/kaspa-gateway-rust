@@ -8,7 +8,7 @@ publish = false
 
 [features]
 default = []
-ksss = ["dep:flate2", "dep:pyo3", "dep:sha2", "dep:tar", "dep:tempfile", "time/parsing"]
+ksss = ["dep:flate2", "dep:pyo3", "dep:tar", "dep:tempfile", "time/parsing"]
 
 [dependencies]
 regex.workspace = true
@@ -16,6 +16,6 @@ serde_json.workspace = true
 time.workspace = true
 flate2 = { workspace = true, optional = true }
 pyo3 = { workspace = true, optional = true }
-sha2 = { workspace = true, optional = true }
+sha2.workspace = true
 tar = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }

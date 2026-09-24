@@ -20,6 +20,7 @@ mod runtime_trace_owner;
 mod security_advisories;
 mod static_contracts;
 mod trufflehog_policy;
+mod windows_runtime_dependencies;
 
 use language_policy::{Mode, run_language_policy};
 use std::env;
@@ -69,6 +70,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- runtime-repository-binding-gate [--strict] [--online|--fresh] [--offline] [--json]
   cargo run -p xtask -- runtime-trace-owner-audit <repo-root> <report-dir>
   cargo run -p xtask -- static-contract-regressions
+  cargo run -p xtask -- verify-windows-runtime-dependencies --executable <path> [--dumpbin-path <path>] [--report-path <path>]
   cargo run -p xtask -- fuzz-build
   cargo run -p xtask --features ksss -- ksss <check|trust-verify|evaluate|knowledge|release-check|materialize> [options]"
 }
@@ -296,6 +298,12 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = static_contracts::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "verify-windows-runtime-dependencies" => {
+            let message =
+                windows_runtime_dependencies::run_cli(&mut args).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

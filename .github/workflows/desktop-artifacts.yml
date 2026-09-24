@@ -152,7 +152,8 @@ jobs:
             throw "Raw desktop executable was not produced at $rawExe."
           }
 
-          & ./tools/kgw_verify_windows_runtime_dependencies.ps1 -Executable $rawExe -ReportPath (Join-Path $artifactDir "raw-runtime-dependencies.json")
+          cargo run --locked -p xtask -- verify-windows-runtime-dependencies --executable $rawExe --report-path (Join-Path $artifactDir "raw-runtime-dependencies.json")
+          if ($LASTEXITCODE -ne 0) { throw "Raw PE runtime dependency verification failed with exit code $LASTEXITCODE." }
 
           $installer = Join-Path $artifactDir "KaspaGateway-windows-x64-nsis.exe"
           $rawArtifact = Join-Path $artifactDir "kaspa-gateway-desktop-windows-x64.exe"
@@ -180,7 +181,8 @@ jobs:
           $env:KASPA_GATEWAY_DATA_DIR = $dataDir
           $application = $null
           try {
-            & ./tools/kgw_verify_windows_runtime_dependencies.ps1 -Executable $installedExecutables[0].FullName -ReportPath (Join-Path $artifactDir "installed-runtime-dependencies.json")
+            cargo run --locked -p xtask -- verify-windows-runtime-dependencies --executable $installedExecutables[0].FullName --report-path (Join-Path $artifactDir "installed-runtime-dependencies.json")
+            if ($LASTEXITCODE -ne 0) { throw "Installed PE runtime dependency verification failed with exit code $LASTEXITCODE." }
             $application = Start-Process -FilePath $installedExecutables[0].FullName -PassThru
             Start-Sleep -Seconds 15
             if ($application.HasExited) {
