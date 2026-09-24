@@ -25,7 +25,7 @@ struct Sources {
     smoke: String,
     node_frontend: String,
     bridge_frontend: String,
-    true_raw_gate: String,
+    true_raw_gate_rust: String,
     full_local_gate: String,
 }
 pub fn run(root: &Path) -> Result<String, String> {
@@ -59,7 +59,7 @@ fn load_sources(root: &Path) -> Result<Sources, String> {
         smoke: read(root, SMOKE)?,
         node_frontend: read(root, NODE_FRONTEND)?,
         bridge_frontend: read(root, BRIDGE_FRONTEND)?,
-        true_raw_gate: read(root, "tools/kgw_true_raw_log_gate.ps1")?,
+        true_raw_gate_rust: read(root, "xtask/src/true_raw_log.rs")?,
         full_local_gate: read(root, "tools/kgw_full_local_gate.ps1")?,
     })
 }
@@ -242,13 +242,13 @@ fn evaluate(s: &Sources) -> Result<Vec<Check>, String> {
     let sentinel = "official_sentinel_stdout_and_stderr_use_the_production_pipe_reader_unchanged";
     check(
         &mut checks,
-        "official sentinel test is wired into the true raw log gate",
-        s.true_raw_gate.contains(sentinel),
+        "official sentinel test is wired into the Rust true raw log gate",
+        s.true_raw_gate_rust.contains(sentinel),
     );
     check(
         &mut checks,
-        "official sentinel test is wired into the full local gate",
-        s.full_local_gate.contains(sentinel),
+        "full local gate delegates true raw log verification to Rust",
+        s.full_local_gate.contains("true-raw-log-gate"),
     );
 
     let emitter = emitter_pattern();

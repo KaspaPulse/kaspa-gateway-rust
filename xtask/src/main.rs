@@ -26,6 +26,7 @@ mod runtime_trace_owner;
 mod security_advisories;
 mod start_button;
 mod static_contracts;
+mod true_raw_log;
 mod trufflehog_policy;
 mod windows_runtime_dependencies;
 
@@ -84,6 +85,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- runtime-trace-owner-audit <repo-root> <report-dir>
   cargo run -p xtask -- start-button-gate
   cargo run -p xtask -- static-contract-regressions
+  cargo run -p xtask -- true-raw-log-gate
   cargo run -p xtask -- verify-windows-runtime-dependencies --executable <path> [--dumpbin-path <path>] [--report-path <path>]
   cargo run -p xtask -- fuzz-build
   cargo run -p xtask --features ksss -- ksss <check|trust-verify|evaluate|knowledge|release-check|materialize> [options]"
@@ -368,6 +370,17 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = static_contracts::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "true-raw-log-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "true-raw-log-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = true_raw_log::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

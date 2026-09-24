@@ -69,7 +69,6 @@ function Restore-GeneratedTauriSchemasIfNewlyDirty {
 function Invoke-PowerShellParserChecks {
     $paths = @(
         "tools/kgw_full_local_gate.ps1",
-        "tools/kgw_true_raw_log_gate.ps1",
         "tools/kgw_live_raw_log_matrix.ps1",
         "tools/kgw_raw_log_clipboard_capture.ps1",
         "tools/kgw_desktop_diagnostic_launch.ps1",
@@ -139,7 +138,6 @@ function Commit-ScopedChanges {
         "tools/kgw_live_raw_log_matrix.ps1",
         "tools/kgw_raw_log_clipboard_capture.ps1",
         "tools/kgw_true_raw_log_frontend_tests.cjs",
-        "tools/kgw_true_raw_log_gate.ps1",
         "tools/kgw_zero_touch_e2e.ps1",
         "tools/kgw_zero_touch_evidence.ps1",
         "tools/kgw_zero_touch_result_writer_tests.ps1",
@@ -255,8 +253,8 @@ try {
 
     Invoke-GateCommand `
         -Label "True raw log gate" `
-        -FilePath $RequiredPowerShellPath `
-        -Arguments @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/kgw_true_raw_log_gate.ps1") `
+        -FilePath "cargo" `
+        -Arguments @("run", "--locked", "-p", "xtask", "--", "true-raw-log-gate") `
         -WorkingDirectory $Repository
 
     if ([string]::IsNullOrWhiteSpace($ReuseSuccessfulE2EArtifact)) {
