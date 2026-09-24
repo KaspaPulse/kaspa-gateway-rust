@@ -74,7 +74,6 @@ function Invoke-PowerShellParserChecks {
         "tools/kgw_desktop_diagnostic_launch.ps1",
         "tools/kgw_zero_touch_e2e.ps1",
         "tools/kgw_zero_touch_evidence.ps1",
-        "tools/kgw_zero_touch_result_writer_tests.ps1",
         "e2e/helpers/kgw_windows_clipboard.ps1",
         "e2e/helpers/kgw_windows_evidence.ps1"
     )
@@ -140,7 +139,6 @@ function Commit-ScopedChanges {
         "tools/kgw_true_raw_log_frontend_tests.cjs",
         "tools/kgw_zero_touch_e2e.ps1",
         "tools/kgw_zero_touch_evidence.ps1",
-        "tools/kgw_zero_touch_result_writer_tests.ps1",
         "tools/kgw_full_local_gate.ps1",
         "e2e/package.json",
         "e2e/package-lock.json",
@@ -247,8 +245,8 @@ try {
 
     Invoke-GateCommand `
         -Label "Zero-touch result writer tests" `
-        -FilePath $RequiredPowerShellPath `
-        -Arguments @("-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/kgw_zero_touch_result_writer_tests.ps1") `
+        -FilePath "cargo" `
+        -Arguments @("run", "--locked", "-p", "xtask", "--", "zero-touch-result-writer-tests") `
         -WorkingDirectory $Repository
 
     Invoke-GateCommand `

@@ -398,6 +398,12 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
         "$RequiredPowerShellPath",
         "Full local gate must launch remaining PowerShell scripts with resolved pwsh.",
     );
+    require(
+        failures,
+        &s.full_local_gate,
+        "zero-touch-result-writer-tests",
+        "Full local gate must invoke the Rust zero-touch result-writer tests.",
+    );
     forbid(
         failures,
         &s.full_local_gate,
@@ -593,10 +599,6 @@ fn run_powershell_parser_checks(root: &Path, failures: &mut Vec<String>) {
         ),
         (ZERO_TOUCH_E2E, "Zero-touch E2E launcher"),
         (ZERO_TOUCH_EVIDENCE, "Zero-touch evidence helper"),
-        (
-            "tools/kgw_zero_touch_result_writer_tests.ps1",
-            "Zero-touch result writer tests",
-        ),
         (FULL_LOCAL_GATE, "Full local gate"),
         (
             "e2e/helpers/kgw_windows_clipboard.ps1",
@@ -686,6 +688,7 @@ mod tests {
             full_local_gate: [
                 "$RequiredPowerShellPath",
                 "cargo run --locked -p xtask -- true-raw-log-gate",
+                "cargo run --locked -p xtask -- zero-touch-result-writer-tests",
             ]
             .join("\n"),
             e2e_windows_helper: "KGW_REQUIRED_PWSH_PATH".to_owned(),

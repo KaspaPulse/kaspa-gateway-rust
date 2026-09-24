@@ -53,4 +53,3 @@ tools/kgw_start_button_frontend_tests.cjs
 tools/kgw_true_raw_log_frontend_tests.cjs
 tools/kgw_zero_touch_e2e.ps1
 tools/kgw_zero_touch_evidence.ps1
-tools/kgw_zero_touch_result_writer_tests.ps1

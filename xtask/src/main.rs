@@ -29,6 +29,7 @@ mod static_contracts;
 mod true_raw_log;
 mod trufflehog_policy;
 mod windows_runtime_dependencies;
+mod zero_touch_result_writer;
 
 use language_policy::{Mode, run_language_policy};
 use std::env;
@@ -87,6 +88,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- static-contract-regressions
   cargo run -p xtask -- true-raw-log-gate
   cargo run -p xtask -- verify-windows-runtime-dependencies --executable <path> [--dumpbin-path <path>] [--report-path <path>]
+  cargo run -p xtask -- zero-touch-result-writer-tests
   cargo run -p xtask -- fuzz-build
   cargo run -p xtask --features ksss -- ksss <check|trust-verify|evaluate|knowledge|release-check|materialize> [options]"
 }
@@ -387,6 +389,18 @@ fn run() -> Result<(), CliError> {
         "verify-windows-runtime-dependencies" => {
             let message =
                 windows_runtime_dependencies::run_cli(&mut args).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "zero-touch-result-writer-tests" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "zero-touch-result-writer-tests takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message =
+                zero_touch_result_writer::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
