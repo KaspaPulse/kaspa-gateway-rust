@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import net from "node:net";
 import path from "node:path";
 import { promisify } from "node:util";
-import { helperScript, writeJson } from "./paths.mjs";
+import { helperScript, repository, writeJson } from "./paths.mjs";
 
 const execFileAsync = promisify(execFile);
 
@@ -47,6 +47,37 @@ export async function runPowerShell(script, args = [], options = {}) {
   }
 }
 
+async function runRustXtask(args = [], options = {}) {
+  try {
+    const result = await execFileAsync("cargo", [
+      "run",
+      "--quiet",
+      "--locked",
+      "-p",
+      "xtask",
+      "--",
+      ...args,
+    ], {
+      windowsHide: true,
+      maxBuffer: options.maxBuffer || 16 * 1024 * 1024,
+      timeout: options.timeout || 60000,
+      cwd: repository,
+      env: { ...process.env, ...(options.env || {}) },
+    });
+    const stdout = String(result.stdout || "").trim();
+    return stdout ? JSON.parse(stdout) : {};
+  } catch (error) {
+    const stdout = String(error?.stdout || "").trim();
+    const stderr = String(error?.stderr || "").trim();
+    const message = [
+      error?.message || "Rust xtask command failed",
+      stdout ? `stdout=${stdout}` : "",
+      stderr ? `stderr=${stderr}` : "",
+    ].filter(Boolean).join("\n");
+    throw new Error(message, { cause: error });
+  }
+}
+
 export async function writeClipboardSentinel(value) {
   return await runPowerShell(helperScript("kgw_windows_clipboard.ps1"), [
     "-Mode",
@@ -80,21 +111,25 @@ export async function waitForClipboardShaToFile({ outputPath, expectedSha = "", 
 }
 
 export async function killExactOwnedProcess({ pid, expectedExecutable, expectedStartTime, outputPath }) {
-  return await runPowerShell(helperScript("kgw_kill_exact_owned_process.ps1"), [
-    "-ProcessId", String(pid),
-    "-ExpectedExecutable", String(expectedExecutable || ""),
-    "-ExpectedStartTime", String(expectedStartTime || ""),
-    "-OutputPath", outputPath,
+  return await runRustXtask([
+    "e2e-owned-process",
+    "kill",
+    "--process-id", String(pid),
+    "--expected-executable", String(expectedExecutable || ""),
+    "--expected-start-time", String(expectedStartTime || ""),
+    "--output-path", outputPath,
   ], { timeout: 30000 });
 }
 
 export async function waitForExactProcessExit({ pid, expectedExecutable, expectedStartTime, outputPath, timeoutSeconds = 45 }) {
-  return await runPowerShell(helperScript("kgw_wait_exact_process_exit.ps1"), [
-    "-ProcessId", String(pid),
-    "-ExpectedExecutable", String(expectedExecutable || ""),
-    "-ExpectedStartTime", String(expectedStartTime || ""),
-    "-OutputPath", outputPath,
-    "-TimeoutSeconds", String(timeoutSeconds),
+  return await runRustXtask([
+    "e2e-owned-process",
+    "wait",
+    "--process-id", String(pid),
+    "--expected-executable", String(expectedExecutable || ""),
+    "--expected-start-time", String(expectedStartTime || ""),
+    "--output-path", outputPath,
+    "--timeout-seconds", String(timeoutSeconds),
   ], { timeout: (Number(timeoutSeconds) + 15) * 1000 });
 }
 

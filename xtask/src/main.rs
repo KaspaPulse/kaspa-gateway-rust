@@ -4,6 +4,7 @@ mod copy_log;
 mod desktop_artifacts;
 mod desktop_release_draft;
 mod desktop_version;
+mod e2e_owned_process;
 mod effective_node_settings;
 mod fuzz_build;
 mod i18n_contracts;
@@ -64,6 +65,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- desktop-release-draft-workflow-gate
   cargo run -p xtask -- desktop-version-contract-gate
   cargo run -p xtask -- effective-node-settings-gate
+  cargo run -p xtask -- e2e-owned-process <kill|wait> --process-id <pid> --expected-executable <path> --expected-start-time <unix-seconds> --output-path <path> [--timeout-seconds <n>]
   cargo run -p xtask -- i18n-contract-gate
   cargo run -p xtask -- i18n-locale-coverage-gate
   cargo run -p xtask -- network-generation-gate
@@ -187,6 +189,11 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = effective_node_settings::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "e2e-owned-process" => {
+            let message = e2e_owned_process::run_cli(&mut args).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

@@ -46,8 +46,6 @@ e2e/helpers/app-close-relaunch.mjs
 e2e/helpers/assertions.mjs
 e2e/helpers/bridge-locator-smoke.mjs
 e2e/helpers/deepmerge-security-smoke.mjs
-e2e/helpers/kgw_kill_exact_owned_process.ps1
-e2e/helpers/kgw_wait_exact_process_exit.ps1
 e2e/helpers/kgw_windows_clipboard.ps1
 e2e/helpers/kgw_windows_evidence.ps1
 e2e/helpers/paths.mjs
