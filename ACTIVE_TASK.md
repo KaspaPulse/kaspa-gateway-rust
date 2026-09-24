@@ -30,7 +30,7 @@ PHASE 10 — frontend Rust/WASM migration is IN PROGRESS after substantial tooli
 - Rust KSSS rejection contracts are 24/24 PASS; the complete xtask suite is 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
 - Old Python and new Rust adapters produced identical semantic JSON for check/evaluate/knowledge/release-check/structural trust, and cryptographic trust parity PASS with verified Cosign v3.0.6.
 - Stable check/Clippy `-D warnings`/FMT PASS; MSRV KSSS check/test PASS.
-- Current language guard after complete frontend status Rust/WASM migration: Rust source 112; owned non-Rust source debt 46; execution debt 13; unapproved 0/0; technical exceptions 16; PASS.
+- Current language guard after complete E2E runtime-ports Rust/WASM migration: Rust source 114; owned non-Rust source debt 45; execution debt 13; unapproved 0/0; technical exceptions 19; PASS.
 - Network-generation Node/CJS family is committed as `5494f580c9426155c5a848289595175f02d3d7d7`.
 - Runtime-automation-claims gate is ported to Rust `xtask`; legacy gate PASS before deletion, Rust gate PASS, four regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, and focused Graphify post-change refresh/query PASS.
 - Effective-node-settings gate is ported to Rust `xtask` and committed as `8798af0557384c83cbb8c1b075678a7a01266647`; legacy gate PASS before deletion, Rust gate PASS, five regressions PASS on stable and MSRV, strict Clippy/FMT/check PASS, language guard PASS, and focused Graphify PASS.
@@ -63,22 +63,23 @@ PHASE 10 — frontend Rust/WASM migration is IN PROGRESS after substantial tooli
 - Bridge node-mode routing audit/reporting is ported from CJS to Rust and committed as `d16ae5b0f4e8824e0d1871bdce2269279dd57769`; legacy/Rust findings/verdict/extract-name/node-syntax semantics match exactly, Rust regressions 4/4 and program-unified regressions 6/6 PASS, runtime global-owner scan returns ok=true/errors=0 after CJS retirement, stable/MSRV/KSSS/Clippy/FMT/language guard PASS, and focused Graphify PASS at 6549 nodes / 17276 edges.
 - E2E bridge-locator + recovery-harness static smokes are ported from MJS to Rust and committed as `39768dffbc2a912987a915b53f86f4a0c3529386`; legacy smokes PASS, Rust regressions 5/5 stable/MSRV, E2E npm check PASS with unchanged behavioral deepmerge/runtime-port smokes, KSSS/Clippy/FMT/language guard PASS, and focused Graphify PASS at 6541 nodes / 17218 edges.
 - Native Rust E2E clipboard capability is checkpointed as `e9f1b48aa892d9c7e186b379d88b75be605469fb`; read-only legacy/Rust metadata parity is exact and 5/5 tests stable/MSRV plus KSSS/Clippy/FMT pass. It is NOT adopted by `windows.mjs` and does NOT retire `kgw_windows_clipboard.ps1` because real write parity is blocked while the user's clipboard contains non-text/OLE/enterprise formats that a text-only restore could destroy.
+- E2E `runtime-ports.mjs` implementation is fully migrated to a dedicated Rust/WASM Node-target crate and committed as `2979d1822027b11576dab8b389d2afd07ccf124b`; unchanged runtime-port behavioral smoke PASSes against the generated adapter in both external parity and tracked E2E workspace, native tests 3/3 plus stable/MSRV wasm32 checks PASS, E2E npm check/lint PASS, deterministic codegen+CI enforcement PASS, language guard PASS, focused Graphify PASS at 6642 nodes / 17482 edges, and generated CommonJS packaging is scoped narrowly by generated package.json.
 - Native/runtime/release evidence whose predicates exclude frontend Explorer utility behavior remains reusable. Frontend/app-boot/E2E evidence touching the changed module graph is now invalidated for final closure and must be requalified proportionally before the task can be declared complete.
 
 ## Current Blocker
 Two independent blockers are explicit: full-local wrapper retirement is BLOCKED because no current zero-touch E2E artifact passes `Test-KgwZeroTouchResultIntegrity`; Rust clipboard caller adoption is BLOCKED because current user clipboard formats include OLE/enterprise non-text data and safe real write parity cannot mutate/restore them losslessly. Independent work continues. Preserved frontend findings remain: i18n 9 unbound HTML + 6 dynamic literals, raw-log provenance Node/Bridge transport-wrapper filters, duplicate Start/Stop IDs, and shared behavioral CJS SyntaxError. Generated template/WASM JS artifacts are exceptions only where Rust deterministically owns generation and CI rejects drift. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` remain unavailable until exact-head CI.
 
 ## Last Completed Action
-Committed the verified complete status Rust/WASM migration as `1105ae86efee4469476159bcdff5c1e5990e73a3`, tree `e227446efe27ee5f9c0e2fbcc965a0a09535b47c`; source debt is 46, execution debt is 13, exceptions are 16, and the worktree was clean immediately after commit. The earlier Rust clipboard capability remains checkpointed but not adopted.
+Committed the verified E2E runtime-ports Rust/WASM migration as `2979d1822027b11576dab8b389d2afd07ccf124b`, tree `b78a0bb83d858e8d6797745716231aecd5ee6fd5`; source debt is 45, execution debt is 13, exceptions are 19, and the worktree was clean immediately after commit. The earlier Rust clipboard capability remains checkpointed but not adopted.
 
 ## Current Action
-Reconcile continuity to the complete status Rust/WASM boundary. Full-local and clipboard adoption remain independently blocked; continue safe implementation migration work.
+Reconcile continuity to the E2E runtime-ports Rust/WASM boundary. Full-local and clipboard adoption remain independently blocked; continue safe implementation migration work.
 
 ## Next Action
-Continue the next independent implementation migration; ESLint flat-config classification is complete and guarded narrowly. Revisit full-local only after a reusable E2E artifact exists and clipboard adoption only in an isolated/safe clipboard context.
+Continue the next independent implementation migration; prefer pure deterministic E2E/frontend logic with existing behavioral smoke coverage. Revisit full-local only after a reusable E2E artifact exists and clipboard adoption only in an isolated/safe clipboard context.
 
 ## Verification Required
-- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 112 / source debt 46 / execution debt 13 / exceptions 16 / zero unapproved.
+- `cargo run --locked -p xtask -- language-policy check` = PASS with Rust 114 / source debt 45 / execution debt 13 / exceptions 19 / zero unapproved.
 - Network-generation evidence remains reusable from commit `5494f58...`.
 - Runtime-automation Rust gate = PASS; regressions = 4/4 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Effective-node-settings Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.

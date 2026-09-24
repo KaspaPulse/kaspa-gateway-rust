@@ -1,10 +1,10 @@
 # Checkpoint — 100% Rust owned implementation migration
 
 Status: IN PROGRESS
-Timestamp: 2026-09-24T15:24:30Z
+Timestamp: 2026-09-24T16:33:22Z
 Task ID: KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923
 Branch: feat/owned-implementation-100-percent-rust-20260923
-Last committed phase boundary: 1105ae86efee4469476159bcdff5c1e5990e73a3 / tree e227446efe27ee5f9c0e2fbcc965a0a09535b47c
+Last committed phase boundary: 2979d1822027b11576dab8b389d2afd07ccf124b / tree b78a0bb83d858e8d6797745716231aecd5ee6fd5
 Historical main baseline: aaf2c635672c0fd35a5705579610be8de188b031 / tree 0d19e16d115dc093a3f47967ec57b0cc3e81bfa1
 
 ## LAST CONFIRMED STATE
@@ -61,7 +61,7 @@ Frontend template source normalization, dead-scaffold retirement, and active Rus
 - Raw-log Rust parity: `raw-log-rust-pre-delete.log`.
 - Raw-log affected qualification: `raw-log-rust-pre-delete-qualification.log`, `raw-log-final-qualification.log`.
 - CRLF-fixed legacy provenance reference SHA-256: `A12CA9F133005BFBDA2C2C9191AD5711DB0959CADBBBF2668E1A08E6928136F4`.
-- Focused Graphify for i18n/raw-log historical batches remains NOT VERIFIED / TOOL_BLOCKED; program-unified, runtime-trace-owner, Windows runtime-dependency verifier, AI workflow gate, Start-button gate, Copy Log gate, runtime-repository-binding apply, E2E exact-owned-process, frontend template/codegen, dead-scaffold retirement, Explorer utilities/date/formatting/status Rust/WASM, E2E static smokes, and Bridge node-mode routing Rust audit are PASS after SHA-bound Server→kas mirroring.
+- Focused Graphify for i18n/raw-log historical batches remains NOT VERIFIED / TOOL_BLOCKED; program-unified, runtime-trace-owner, Windows runtime-dependency verifier, AI workflow gate, Start-button gate, Copy Log gate, runtime-repository-binding apply, E2E exact-owned-process, frontend template/codegen, dead-scaffold retirement, Explorer utilities/date/formatting/status Rust/WASM, E2E static smokes, Bridge node-mode routing Rust audit, and E2E runtime-ports Rust/WASM are PASS after SHA-bound Server→kas mirroring.
 - Earlier verified KSSS/npm/runtime-binding/project-continuity/static/parallel evidence remains reusable while predicates remain unchanged.
 - Local actionlint/cargo-audit/cargo-deny/cargo-machete remain NOT VERIFIED / unavailable locally; exact-head GitHub CI is required.
 

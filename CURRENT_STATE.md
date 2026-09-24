@@ -3,14 +3,14 @@
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified source checkpoint is complete frontend status Rust/WASM migration `1105ae86efee4469476159bcdff5c1e5990e73a3`, tree `e227446efe27ee5f9c0e2fbcc965a0a09535b47c`.
+- Current HEAD: **VERIFY DYNAMICALLY** before every commit/publication decision; last verified source checkpoint is complete E2E runtime-ports Rust/WASM migration `2979d1822027b11576dab8b389d2afd07ccf124b`, tree `b78a0bb83d858e8d6797745716231aecd5ee6fd5`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next tooling mutation. Commit `1105ae8...` was verified clean.
-- Current Rust source inventory: 112.
-- Current owned non-Rust programming source debt: 46.
+- Working tree: **NOT VERIFIED** after the next state-document commit; verify dynamically before the next tooling mutation. Commit `2979d18...` was verified clean.
+- Current Rust source inventory: 114.
+- Current owned non-Rust programming source debt: 45.
 - Current non-Rust execution-wiring debt: 13.
 - Rust language guard: PASS; unapproved source=0; unapproved execution=0.
-- Technical exceptions: 16 — the prior fifteen technical exceptions plus the deterministic generated `frontend/src/status.js` Rust/WASM ABI adapter. No Linguist suppression is used.
+- Technical exceptions: 19 — the prior sixteen technical exceptions plus deterministic generated E2E `runtime-ports.mjs`, generated wasm-bindgen Node JS glue, and generated package.json that scopes the CommonJS glue under the E2E `type=module` tree. No Linguist suppression is used.
 - KSSS owned adapter: Rust/PyO3; five superseded KGW-owned Python adapter/gate files removed after parity.
 - Signed KSSS central runtime: unchanged third-party archive; SHA-256 `38309d2ab8fa30096d99940f855e88173faa182e60db33f2a96b2d3408507430`.
 - KSSS Rust regressions: 24/24 PASS; full xtask tests: 47/47 PASS on stable and 47/47 PASS on MSRV 1.97.1.
@@ -23,6 +23,7 @@
 - Copy Log gate: **FAIL / VERIFIED CURRENT TRUTH** only because the shared behavioral frontend CJS regression exits 1 with the same SyntaxError. Static Copy Log contracts pass and targeted Tauri clipboard tests remain 4/4 PASS.
 - Explorer Rust/WASM utilities/date/formatting: **VERIFIED_LOCAL / COMMITTED** through `3e73e1b40d550ffec8a1432e4d60697c4c9ad7b1`; utility behavior parity plus date/formatting full browser matrix parity PASS, native 3/3, stable/MSRV wasm32 checks, codegen, language guard, syntax/lint/static contracts and focused Graphify PASS.
 - Frontend status Rust/WASM: **VERIFIED_LOCAL / COMMITTED** at `1105ae86efee4469476159bcdff5c1e5990e73a3`; canonical browser matrix parity exact with 0 structural diffs, native Rust tests 5/5 PASS, stable/MSRV wasm32 checks PASS, deterministic codegen/lint/language guard PASS, focused Graphify PASS at 6572 nodes / 17345 edges.
+- E2E runtime-ports Rust/WASM: **VERIFIED_LOCAL / COMMITTED** at `2979d1822027b11576dab8b389d2afd07ccf124b`; unchanged behavioral smoke PASS externally and in tracked E2E workspace, native tests 3/3 PASS, stable/MSRV wasm32 checks PASS, E2E lint/check PASS, deterministic codegen/CI/language guard PASS, focused Graphify PASS at 6642 nodes / 17482 edges.
 - Frontend/app-boot/E2E evidence that depends on the changed Explorer module graph is **INVALIDATED FOR FINAL CLOSURE**; native/runtime evidence outside that predicate remains reusable.
 - Continuity validation after this state update: **NOT VERIFIED** until rerun.
 - Local actionlint/cargo-audit/cargo-deny/cargo-machete: **NOT VERIFIED / unavailable locally**; exact-head GitHub CI is required.
