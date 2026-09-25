@@ -37,6 +37,37 @@ function isLikeNone(x) {
     return x === undefined || x === null;
 }
 
+const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(state => {
+    wasm.__wbindgen_export_3.get(state.dtor)(state.a, state.b)
+});
+
+function makeMutClosure(arg0, arg1, dtor, f) {
+    const state = { a: arg0, b: arg1, cnt: 1, dtor };
+    const real = (...args) => {
+        // First up with a closure we increment the internal reference
+        // count. This ensures that the Rust closure environment won't
+        // be deallocated while we're invoking it.
+        state.cnt++;
+        const a = state.a;
+        state.a = 0;
+        try {
+            return f(a, state.b, ...args);
+        } finally {
+            if (--state.cnt === 0) {
+                wasm.__wbindgen_export_3.get(state.dtor)(a, state.b);
+                CLOSURE_DTORS.unregister(state);
+            } else {
+                state.a = a;
+            }
+        }
+    };
+    real.original = state;
+    CLOSURE_DTORS.register(real, state, state);
+    return real;
+}
+
 let cachedDataViewMemory0 = null;
 
 function getDataViewMemory0() {
@@ -101,6 +132,214 @@ function passStringToWasm0(arg, malloc, realloc) {
     WASM_VECTOR_LEN = offset;
     return ptr;
 }
+/**
+ * @returns {Array<any>}
+ */
+export function settingsNodeEndpoints() {
+    const ret = wasm.settingsNodeEndpoints();
+    return ret;
+}
+
+/**
+ * @returns {object}
+ */
+export function settingsNodeManaged() {
+    const ret = wasm.settingsNodeManaged();
+    return ret;
+}
+
+/**
+ * @returns {object}
+ */
+export function settingsNodeRequired() {
+    const ret = wasm.settingsNodeRequired();
+    return ret;
+}
+
+/**
+ * @returns {Array<any>}
+ */
+export function settingsNodeOptional() {
+    const ret = wasm.settingsNodeOptional();
+    return ret;
+}
+
+/**
+ * @param {any} host
+ * @returns {boolean}
+ */
+export function settingsIsLoopback(host) {
+    const ret = wasm.settingsIsLoopback(host);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} a
+ * @param {any} b
+ * @returns {boolean}
+ */
+export function settingsListenersOverlap(a, b) {
+    const ret = wasm.settingsListenersOverlap(a, b);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} name
+ * @param {any} values
+ * @param {any} options
+ * @returns {boolean}
+ */
+export function settingsNodeFieldEnabled(name, values, options) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsNodeFieldEnabled(ptr0, len0, values, options);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} values
+ * @param {any} options
+ * @param {string} network
+ * @returns {any}
+ */
+export function settingsValidateNodeForm(values, options, network) {
+    const ptr0 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsValidateNodeForm(values, options, ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {string} name
+ * @param {any} values
+ * @param {any} options
+ * @returns {boolean}
+ */
+export function settingsBridgeFieldEnabled(name, values, options) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsBridgeFieldEnabled(ptr0, len0, values, options);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} values
+ * @param {any} options
+ * @param {string} network
+ * @returns {any}
+ */
+export function settingsValidateBridgeForm(values, options, network) {
+    const ptr0 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsValidateBridgeForm(values, options, ptr0, len0);
+    return ret;
+}
+
+function takeFromExternrefTable0(idx) {
+    const value = wasm.__wbindgen_export_2.get(idx);
+    wasm.__externref_table_dealloc(idx);
+    return value;
+}
+/**
+ * @param {any} root
+ * @param {string} prefix
+ * @param {any} errors
+ */
+export function settingsRenderFieldErrors(root, prefix, errors) {
+    const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsRenderFieldErrors(root, ptr0, len0, errors);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} message
+ * @returns {Promise<boolean>}
+ */
+export function settingsConfirmUserAction(message) {
+    const ret = wasm.settingsConfirmUserAction(message);
+    return ret;
+}
+
+/**
+ * @returns {object}
+ */
+export function settingsNodeDangerous() {
+    const ret = wasm.settingsNodeDangerous();
+    return ret;
+}
+
+/**
+ * @returns {object}
+ */
+export function settingsBridgeManaged() {
+    const ret = wasm.settingsBridgeManaged();
+    return ret;
+}
+
+/**
+ * @returns {Array<any>}
+ */
+export function settingsBridgeRequired() {
+    const ret = wasm.settingsBridgeRequired();
+    return ret;
+}
+
+/**
+ * @returns {Array<any>}
+ */
+export function settingsBridgeOptional() {
+    const ret = wasm.settingsBridgeOptional();
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @returns {boolean}
+ */
+export function settingsIsHost(value) {
+    const ret = wasm.settingsIsHost(value);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} value
+ * @returns {boolean}
+ */
+export function settingsIsPort(value) {
+    const ret = wasm.settingsIsPort(value);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} host
+ * @param {any} port
+ * @returns {string}
+ */
+export function settingsEndpoint(host, port) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.settingsEndpoint(host, port);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} value
+ * @returns {any}
+ */
+export function settingsSplitEndpoint(value) {
+    const ret = wasm.settingsSplitEndpoint(value);
+    return ret;
+}
+
 /**
  * @param {any} value
  * @returns {string}
@@ -229,11 +468,6 @@ export function statusTone(state) {
     }
 }
 
-function takeFromExternrefTable0(idx) {
-    const value = wasm.__wbindgen_export_2.get(idx);
-    wasm.__externref_table_dealloc(idx);
-    return value;
-}
 /**
  * @param {any} element
  * @param {any} state
@@ -422,6 +656,14 @@ export function runtimeObservationSummary(fields, running, cpu_only) {
     }
 }
 
+function __wbg_adapter_34(arg0, arg1, arg2) {
+    wasm.closure19_externref_shim(arg0, arg1, arg2);
+}
+
+function __wbg_adapter_121(arg0, arg1, arg2, arg3) {
+    wasm.closure43_externref_shim(arg0, arg1, arg2, arg3);
+}
+
 async function __wbg_load(module, imports) {
     if (typeof Response === 'function' && module instanceof Response) {
         if (typeof WebAssembly.instantiateStreaming === 'function') {
@@ -488,6 +730,14 @@ function __wbg_get_imports() {
         const ret = arg0.call(arg1, arg2);
         return ret;
     }, arguments) };
+    imports.wbg.__wbg_call_833bed5770ea2041 = function() { return handleError(function (arg0, arg1, arg2, arg3) {
+        const ret = arg0.call(arg1, arg2, arg3);
+        return ret;
+    }, arguments) };
+    imports.wbg.__wbg_deleteProperty_96363d4a1d977c97 = function() { return handleError(function (arg0, arg1) {
+        const ret = Reflect.deleteProperty(arg0, arg1);
+        return ret;
+    }, arguments) };
     imports.wbg.__wbg_format_0545b83dc1d8a934 = function(arg0) {
         const ret = arg0.format;
         return ret;
@@ -504,6 +754,20 @@ function __wbg_get_imports() {
         const ret = arg0[arg1 >>> 0];
         return ret;
     };
+    imports.wbg.__wbg_instanceof_Promise_935168b8f4b49db3 = function(arg0) {
+        let result;
+        try {
+            result = arg0 instanceof Promise;
+        } catch (_) {
+            result = false;
+        }
+        const ret = result;
+        return ret;
+    };
+    imports.wbg.__wbg_keys_5c77a08ddc2fb8a6 = function(arg0) {
+        const ret = Object.keys(arg0);
+        return ret;
+    };
     imports.wbg.__wbg_length_e2d2a49132c1b256 = function(arg0) {
         const ret = arg0.length;
         return ret;
@@ -511,6 +775,24 @@ function __wbg_get_imports() {
     imports.wbg.__wbg_new_08dc65a1d6785f11 = function(arg0, arg1) {
         const ret = new Intl.NumberFormat(arg0, arg1);
         return ret;
+    };
+    imports.wbg.__wbg_new_23a2665fac83c611 = function(arg0, arg1) {
+        try {
+            var state0 = {a: arg0, b: arg1};
+            var cb0 = (arg0, arg1) => {
+                const a = state0.a;
+                state0.a = 0;
+                try {
+                    return __wbg_adapter_121(a, state0.b, arg0, arg1);
+                } finally {
+                    state0.a = a;
+                }
+            };
+            const ret = new Promise(cb0);
+            return ret;
+        } finally {
+            state0.a = state0.b = 0;
+        }
     };
     imports.wbg.__wbg_new_31a97dac4f10fab7 = function(arg0) {
         const ret = new Date(arg0);
@@ -534,6 +816,21 @@ function __wbg_get_imports() {
     };
     imports.wbg.__wbg_newnoargs_105ed471475aaf50 = function(arg0, arg1) {
         const ret = new Function(getStringFromWasm0(arg0, arg1));
+        return ret;
+    };
+    imports.wbg.__wbg_push_737cfc8c1432c2c6 = function(arg0, arg1) {
+        const ret = arg0.push(arg1);
+        return ret;
+    };
+    imports.wbg.__wbg_queueMicrotask_97d92b4fcc8a61c5 = function(arg0) {
+        queueMicrotask(arg0);
+    };
+    imports.wbg.__wbg_queueMicrotask_d3219def82552485 = function(arg0) {
+        const ret = arg0.queueMicrotask;
+        return ret;
+    };
+    imports.wbg.__wbg_resolve_4851785c9c5f573d = function(arg0) {
+        const ret = Promise.resolve(arg0);
         return ret;
     };
     imports.wbg.__wbg_set_bb8cecf6a62b9f46 = function() { return handleError(function (arg0, arg1, arg2) {
@@ -560,6 +857,14 @@ function __wbg_get_imports() {
         const ret = arg0.test(getStringFromWasm0(arg1, arg2));
         return ret;
     };
+    imports.wbg.__wbg_then_44b73946d2fb3e7d = function(arg0, arg1) {
+        const ret = arg0.then(arg1);
+        return ret;
+    };
+    imports.wbg.__wbg_then_48b406749878a531 = function(arg0, arg1, arg2) {
+        const ret = arg0.then(arg1, arg2);
+        return ret;
+    };
     imports.wbg.__wbg_toFixed_43af7895cf202c17 = function() { return handleError(function (arg0, arg1) {
         const ret = arg0.toFixed(arg1);
         return ret;
@@ -571,6 +876,19 @@ function __wbg_get_imports() {
     imports.wbg.__wbindgen_boolean_get = function(arg0) {
         const v = arg0;
         const ret = typeof(v) === 'boolean' ? (v ? 1 : 0) : 2;
+        return ret;
+    };
+    imports.wbg.__wbindgen_cb_drop = function(arg0) {
+        const obj = arg0.original;
+        if (obj.cnt-- == 1) {
+            obj.a = 0;
+            return true;
+        }
+        const ret = false;
+        return ret;
+    };
+    imports.wbg.__wbindgen_closure_wrapper212 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 20, __wbg_adapter_34);
         return ret;
     };
     imports.wbg.__wbindgen_init_externref_table = function() {
