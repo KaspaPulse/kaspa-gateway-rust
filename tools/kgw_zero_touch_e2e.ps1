@@ -15,6 +15,21 @@ $PSNativeCommandUseErrorActionPreference = $false
 Assert-KgwZeroTouchPowerShell7
 $RequiredPowerShellPath = (Get-Command pwsh -ErrorAction Stop).Source
 
+function Get-KgwNativeEvidenceSummary {
+    param([Parameter(Mandatory)][string]$Repository,[Parameter(Mandatory)][string]$ArtifactDirectory)
+    # Exit1 is a valid rejected-evidence report, not a failed command transport.
+    # This preference is local to the adapter; non-contract exits still throw.
+    $PSNativeCommandUseErrorActionPreference = $false
+    $lines = & cargo run --manifest-path (Join-Path $Repository "Cargo.toml") --locked -p xtask --bin kgw-zero-touch-evidence -- summary --artifact-directory $ArtifactDirectory
+    $nativeExit = $LASTEXITCODE
+    if ($nativeExit -notin @(0, 1)) { throw "Native evidence summary could not complete; exit code $nativeExit." }
+    $summary = ($lines -join "`n") | ConvertFrom-Json -ErrorAction Stop
+    if ($null -eq $summary -or $summary.passed -isnot [bool] -or (($nativeExit -eq 0) -ne $summary.passed)) {
+        throw "Native evidence summary returned an inconsistent pass/exit result."
+    }
+    return $summary
+}
+
 function Write-KgwZeroTouchNativeResult {
     param(
         [Parameter(Mandatory)][string]$Repository,
@@ -367,7 +382,7 @@ try {
     }
     [void]$Summary.commands.Add([ordered]@{ label = "npm run e2e"; status = "passed"; exit_code = 0; log = "wdio-run.log" })
 
-    $EvidenceSummary = Get-KgwZeroTouchEvidenceSummary -ArtifactDirectory $ArtifactRoot
+    $EvidenceSummary = Get-KgwNativeEvidenceSummary -Repository $Repository -ArtifactDirectory $ArtifactRoot
     $Summary["evidence_validation"] = $EvidenceSummary
     if (-not $EvidenceSummary.passed) {
         $exitCode = 1
@@ -412,7 +427,7 @@ finally {
     $resultPath = Join-Path $ArtifactRoot "zero-touch-result.json"
     try {
         if ($null -eq $EvidenceSummary) {
-            $EvidenceSummary = Get-KgwZeroTouchEvidenceSummary -ArtifactDirectory $ArtifactRoot
+            $EvidenceSummary = Get-KgwNativeEvidenceSummary -Repository $Repository -ArtifactDirectory $ArtifactRoot
         }
         if ($exitCode -eq 0 -and -not $EvidenceSummary.passed) {
             $exitCode = 1
