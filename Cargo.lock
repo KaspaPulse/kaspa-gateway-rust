@@ -12331,6 +12331,7 @@ dependencies = [
  "flate2",
  "pyo3",
  "regex",
+ "serde",
  "serde_json",
  "sha2 0.10.9",
  "sysinfo 0.39.6",

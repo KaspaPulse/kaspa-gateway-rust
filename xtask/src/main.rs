@@ -14,6 +14,7 @@ mod effective_node_settings;
 mod frontend_template_codegen;
 mod frontend_wasm_codegen;
 mod fuzz_build;
+mod global_owner;
 mod i18n_contracts;
 #[cfg(feature = "ksss")]
 mod ksss;
@@ -82,6 +83,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- e2e-windows-evidence --repository <path> --output-directory <path> [--ports <csv>] [--desktop-pid <pid>]
   cargo run -p xtask -- frontend-template-codegen <check|write>
   cargo run -p xtask -- frontend-wasm-codegen <check|write>
+  cargo run -p xtask -- global-owner-gate [--strict] [--json] [--owner <name>] [--changed-files <files...>]
   cargo run -p xtask -- i18n-contract-gate
   cargo run -p xtask -- i18n-locale-coverage-gate
   cargo run -p xtask -- network-generation-gate
@@ -253,6 +255,21 @@ fn run() -> Result<(), CliError> {
                 .map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
+        }
+        "global-owner-gate" => {
+            let result =
+                global_owner::run_cli(&mut args, &repo_root()?).map_err(CliError::failure)?;
+            if !result.output.is_empty() {
+                println!("{}", result.output);
+            }
+            if result.code == 0 {
+                Ok(())
+            } else {
+                Err(CliError {
+                    code: result.code,
+                    message: String::new(),
+                })
+            }
         }
         "i18n-contract-gate" => {
             if args.next().is_some() {

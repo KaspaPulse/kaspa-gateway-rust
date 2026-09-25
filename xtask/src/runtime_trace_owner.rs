@@ -179,6 +179,36 @@ fn run_check(
     }));
     Ok(status.unwrap_or(1))
 }
+
+fn run_global_owner_gate_check(audit: &mut Audit, repo_root: &Path) -> Result<i32, String> {
+    let mut args = Vec::<String>::new().into_iter();
+    let result = crate::global_owner::run_cli(&mut args, repo_root);
+    let (status, stdout, error) = match result {
+        Ok(result) => (Some(result.code), result.output, Value::Null),
+        Err(error) => (None, String::new(), Value::String(error)),
+    };
+    let display = "xtask global-owner-gate (in-process Rust)".to_owned();
+    let index = audit.checks.len() + 1;
+    let body = format!(
+        "COMMAND: {display}\nCWD: {}\nSTATUS: {}\nSIGNAL: null\nERROR: {}\n\n--- STDOUT ---\n{}\n\n--- STDERR ---\n",
+        repo_root.display(),
+        status.map_or_else(|| "null".to_owned(), |value| value.to_string()),
+        error.as_str().unwrap_or("null"),
+        stdout,
+    );
+    audit.save(&check_log_name(index, "xtask_global_owner_gate"), &body)?;
+    audit.checks.push(json!({
+        "command": display,
+        "cwd": repo_root.to_string_lossy(),
+        "status": status,
+        "signal": Value::Null,
+        "stdout": stdout,
+        "stderr": "",
+        "error": error,
+    }));
+    Ok(status.unwrap_or(1))
+}
+
 fn source_findings(
     node_js: &str,
     bridge_js: &str,
@@ -535,7 +565,8 @@ pub fn run_cli(args: &mut impl Iterator<Item = String>) -> Result<RunResult, Str
         "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs",
         "apps/kaspa-gateway-desktop/src-tauri/src/main.rs",
         "apps/kaspa-gateway-desktop/src-tauri/tauri.conf.json",
-        "tools/kgw_global_owner_gate.cjs",
+        "xtask/src/global_owner.rs",
+        "docs/governance/global-owner-registry.json",
         "package.json",
         "apps/kaspa-gateway-desktop/package.json",
     ];
@@ -550,22 +581,22 @@ pub fn run_cli(args: &mut impl Iterator<Item = String>) -> Result<RunResult, Str
     let bridge_rel = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
     let lib_rel = "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs";
     let main_rel = "apps/kaspa-gateway-desktop/src-tauri/src/main.rs";
-    let gate_rel = "tools/kgw_global_owner_gate.cjs";
+    let gate_rel = "xtask/src/global_owner.rs";
+    let registry_rel = "docs/governance/global-owner-registry.json";
     let node_js = texts.get(node_rel).map(String::as_str).unwrap_or("");
     let bridge_js = texts.get(bridge_rel).map(String::as_str).unwrap_or("");
     let lib_rs = texts.get(lib_rel).map(String::as_str).unwrap_or("");
     let main_rs = texts.get(main_rel).map(String::as_str).unwrap_or("");
     let gate = texts.get(gate_rel).map(String::as_str).unwrap_or("");
+    let registry = texts.get(registry_rel).map(String::as_str).unwrap_or("");
+    let gate_sources = format!("{gate}\n{registry}");
 
-    let (findings, mut critical) = source_findings(node_js, bridge_js, lib_rs, main_rs, gate);
+    let (findings, mut critical) =
+        source_findings(node_js, bridge_js, lib_rs, main_rs, &gate_sources);
     audit.findings.extend(findings);
 
     let node_path = audit.abs(node_rel).to_string_lossy().into_owned();
     let bridge_path = audit.abs(bridge_rel).to_string_lossy().into_owned();
-    let gate_path = audit.abs(gate_rel);
-    let gate_path_text = gate_path.to_string_lossy().into_owned();
-    let repo_root_text = repo_root.to_string_lossy().into_owned();
-
     let node_status = run_check(
         &mut audit,
         "node",
@@ -578,14 +609,7 @@ pub fn run_cli(args: &mut impl Iterator<Item = String>) -> Result<RunResult, Str
         vec!["--check".to_owned(), bridge_path],
         &repo_root,
     )?;
-    if gate_path.is_file() {
-        let _ = run_check(
-            &mut audit,
-            "node",
-            vec![gate_path_text, repo_root_text],
-            &repo_root,
-        )?;
-    }
+    let _ = run_global_owner_gate_check(&mut audit, &repo_root)?;
     let _ = run_check(
         &mut audit,
         "cargo",

@@ -161,6 +161,17 @@ fn repo_root() -> Result<PathBuf, String> {
         .ok_or_else(|| "xtask manifest has no repository parent".to_owned())
 }
 
+fn parse_existing_repository_files(
+    text: &str,
+    mut exists: impl FnMut(&str) -> bool,
+) -> BTreeSet<String> {
+    text.split('\0')
+        .filter(|value| !value.is_empty())
+        .map(normalize_path)
+        .filter(|path| exists(path))
+        .collect()
+}
+
 fn repository_files(root: &Path) -> Result<BTreeSet<String>, String> {
     let output = Command::new("git")
         .arg("-C")
@@ -177,11 +188,9 @@ fn repository_files(root: &Path) -> Result<BTreeSet<String>, String> {
 
     let text = String::from_utf8(output.stdout)
         .map_err(|_| "git ls-files returned a non-UTF-8 repository path".to_owned())?;
-    Ok(text
-        .split('\0')
-        .filter(|value| !value.is_empty())
-        .map(normalize_path)
-        .collect())
+    Ok(parse_existing_repository_files(&text, |path| {
+        fs::symlink_metadata(root.join(path)).is_ok()
+    }))
 }
 
 fn load_path_manifest(path: &Path) -> Result<BTreeSet<String>, String> {
@@ -504,6 +513,18 @@ mod tests {
     fn normalizes_repository_paths() {
         assert_eq!(normalize_path(".\\tools\\gate.py"), "tools/gate.py");
         assert_eq!(normalize_path("./tools/gate.py"), "tools/gate.py");
+    }
+
+    #[test]
+    fn deleted_tracked_paths_are_not_counted_as_live_repository_files() {
+        let files = parse_existing_repository_files(
+            "src/live.rs\0tools/deleted.js\0tools/untracked.py\0",
+            |path| path != "tools/deleted.js",
+        );
+        assert_eq!(
+            files,
+            BTreeSet::from(["src/live.rs".to_owned(), "tools/untracked.py".to_owned(),])
+        );
     }
 
     #[test]

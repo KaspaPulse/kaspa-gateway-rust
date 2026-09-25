@@ -141,18 +141,6 @@ fn cargo_step(root: &Path, name: &str, xtask_args: &[&str]) -> Step {
     }
 }
 
-fn node_step(root: &Path, name: &str, script: &str, args: &[String]) -> Step {
-    let mut all = vec![script.to_owned()];
-    all.extend(args.iter().cloned());
-    Step {
-        name: name.to_owned(),
-        command: "node".to_owned(),
-        args: all,
-        cwd: root.to_path_buf(),
-        required: true,
-    }
-}
-
 fn build_steps(options: &Options) -> Vec<Step> {
     let root = &options.repo_root;
     let mut steps = Vec::new();
@@ -162,7 +150,6 @@ fn build_steps(options: &Options) -> Vec<Step> {
         syntax_targets.push("tools/kgw_program_unified_gate.cjs");
     }
     syntax_targets.extend([
-        "tools/kgw_global_owner_gate.cjs",
         "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
         "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js",
     ]);
@@ -170,11 +157,10 @@ fn build_steps(options: &Options) -> Vec<Step> {
         steps.push(syntax_step(root, target));
     }
 
-    steps.push(node_step(
+    steps.push(cargo_step(
         root,
         "global_owner_gate_strict",
-        "tools/kgw_global_owner_gate.cjs",
-        &["--strict".to_owned()],
+        &["global-owner-gate", "--strict"],
     ));
     steps.push(cargo_step(
         root,
@@ -543,13 +529,35 @@ mod tests {
             .into_iter()
             .map(|step| step.name)
             .collect();
-        assert_eq!(names.len(), 11);
-        assert_eq!(names[0], "node_check_tools_kgw_global_owner_gate.cjs");
+        assert_eq!(names.len(), 10);
+        assert!(
+            names
+                .iter()
+                .all(|name| name != "node_check_tools_kgw_global_owner_gate.cjs")
+        );
+        assert!(names.contains(&"global_owner_gate_strict".to_owned()));
         assert!(names.contains(&"runtime_repository_binding_gate_offline".to_owned()));
         assert!(names.contains(&"parallel_self_worker_runtime_gate".to_owned()));
         assert!(names.contains(&"raw_log_provenance_gate".to_owned()));
         assert_eq!(names[names.len() - 2], "git_status_short");
         assert_eq!(names[names.len() - 1], "git_diff_tools");
+    }
+
+    #[test]
+    fn global_owner_step_uses_rust_xtask() {
+        let options = options_for_test();
+        let steps = build_steps(&options);
+        let step = steps
+            .iter()
+            .find(|step| step.name == "global_owner_gate_strict")
+            .expect("global owner gate step must exist");
+        assert_eq!(step.command, "cargo");
+        assert!(step.args.iter().any(|arg| arg == "global-owner-gate"));
+        assert!(
+            step.args
+                .iter()
+                .all(|arg| !arg.contains("kgw_global_owner_gate.cjs"))
+        );
     }
 
     #[test]
