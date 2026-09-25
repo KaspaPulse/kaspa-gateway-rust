@@ -1,3 +1,4 @@
+mod artifact_paths;
 mod assertions;
 
 use js_sys::{Error, JsString, Object, Reflect};

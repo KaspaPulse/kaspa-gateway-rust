@@ -2,6 +2,9 @@
 let imports = {};
 imports['__wbindgen_placeholder__'] = module.exports;
 let wasm;
+const { mkdir, writeFile } = require(`node:fs/promises`);
+const { dirname, join, resolve } = require(`node:path`);
+const { fileURLToPath } = require(`node:url`);
 const { TextDecoder, TextEncoder } = require(`util`);
 
 function addToExternrefTable0(obj) {
@@ -35,6 +38,37 @@ function getUint8ArrayMemory0() {
 function getStringFromWasm0(ptr, len) {
     ptr = ptr >>> 0;
     return cachedTextDecoder.decode(getUint8ArrayMemory0().subarray(ptr, ptr + len));
+}
+
+const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
+    ? { register: () => {}, unregister: () => {} }
+    : new FinalizationRegistry(state => {
+    wasm.__wbindgen_export_3.get(state.dtor)(state.a, state.b)
+});
+
+function makeMutClosure(arg0, arg1, dtor, f) {
+    const state = { a: arg0, b: arg1, cnt: 1, dtor };
+    const real = (...args) => {
+        // First up with a closure we increment the internal reference
+        // count. This ensures that the Rust closure environment won't
+        // be deallocated while we're invoking it.
+        state.cnt++;
+        const a = state.a;
+        state.a = 0;
+        try {
+            return f(a, state.b, ...args);
+        } finally {
+            if (--state.cnt === 0) {
+                wasm.__wbindgen_export_3.get(state.dtor)(a, state.b);
+                CLOSURE_DTORS.unregister(state);
+            } else {
+                state.a = a;
+            }
+        }
+    };
+    real.original = state;
+    CLOSURE_DTORS.register(real, state, state);
+    return real;
 }
 
 function isLikeNone(x) {
@@ -233,6 +267,74 @@ module.exports.assertRuntimeLogReport = function(report, options) {
 };
 
 /**
+ * @param {any} url
+ * @param {any} env
+ * @returns {object}
+ */
+module.exports.artifactPathContext = function(url, env) {
+    const ret = wasm.artifactPathContext(url, env);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+};
+
+/**
+ * @param {any} artifact_root
+ * @param {any} slug
+ * @returns {any}
+ */
+module.exports.artifactCaseDir = function(artifact_root, slug) {
+    const ret = wasm.artifactCaseDir(artifact_root, slug);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+};
+
+/**
+ * @param {any} e2e_dir
+ * @param {any} name
+ * @returns {any}
+ */
+module.exports.artifactHelperScript = function(e2e_dir, name) {
+    const ret = wasm.artifactHelperScript(e2e_dir, name);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+};
+
+/**
+ * @param {any} directory
+ * @returns {Promise<any>}
+ */
+module.exports.artifactEnsureDir = function(directory) {
+    const ret = wasm.artifactEnsureDir(directory);
+    return ret;
+};
+
+/**
+ * @param {any} file
+ * @param {any} value
+ * @returns {Promise<any>}
+ */
+module.exports.artifactWriteJson = function(file, value) {
+    const ret = wasm.artifactWriteJson(file, value);
+    return ret;
+};
+
+/**
+ * @param {any} file
+ * @param {any} value
+ * @returns {Promise<any>}
+ */
+module.exports.artifactWriteText = function(file, value) {
+    const ret = wasm.artifactWriteText(file, value);
+    return ret;
+};
+
+/**
  * @param {any} env
  * @returns {any}
  */
@@ -244,6 +346,19 @@ module.exports.runtimePortProfile = function(env) {
     return takeFromExternrefTable0(ret[0]);
 };
 
+function __wbg_adapter_26(arg0, arg1, arg2) {
+    const ret = wasm.closure16_externref_shim_multivalue_shim(arg0, arg1, arg2);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+module.exports.__wbg_Boolean_8afa98d5184b1132 = function(arg0) {
+    const ret = Boolean(arg0);
+    return ret;
+};
+
 module.exports.__wbg_Number_f7e4c6f68f48c6df = function(arg0) {
     const ret = Number(arg0);
     return ret;
@@ -253,6 +368,26 @@ module.exports.__wbg_String_0698c0ff1c967aa4 = function(arg0) {
     const ret = String(arg0);
     return ret;
 };
+
+module.exports.__wbg_String_209310a119167e73 = function() { return handleError(function (arg0) {
+    const ret = String(arg0);
+    return ret;
+}, arguments) };
+
+module.exports.__wbg_call_7cccdd69e0791ae2 = function() { return handleError(function (arg0, arg1, arg2) {
+    const ret = arg0.call(arg1, arg2);
+    return ret;
+}, arguments) };
+
+module.exports.__wbg_dirname_99b0ecf328866900 = function() { return handleError(function (arg0) {
+    const ret = dirname(arg0);
+    return ret;
+}, arguments) };
+
+module.exports.__wbg_fileURLToPath_64d71cf710015898 = function() { return handleError(function (arg0) {
+    const ret = fileURLToPath(arg0);
+    return ret;
+}, arguments) };
 
 module.exports.__wbg_freeze_ef6d70cf38e8d948 = function(arg0) {
     const ret = Object.freeze(arg0);
@@ -269,15 +404,41 @@ module.exports.__wbg_get_b9b93047fe3cf45b = function(arg0, arg1) {
     return ret;
 };
 
+module.exports.__wbg_instanceof_Promise_935168b8f4b49db3 = function(arg0) {
+    let result;
+    try {
+        result = arg0 instanceof Promise;
+    } catch (_) {
+        result = false;
+    }
+    const ret = result;
+    return ret;
+};
+
 module.exports.__wbg_isArray_a1eab7e0d067391b = function(arg0) {
     const ret = Array.isArray(arg0);
     return ret;
 };
 
+module.exports.__wbg_join_442dcbef917ba7a2 = function() { return handleError(function (arg0, arg1, arg2, arg3) {
+    const ret = join(arg0, getStringFromWasm0(arg1, arg2), arg3);
+    return ret;
+}, arguments) };
+
+module.exports.__wbg_join_fa0cf6fb2ab47ca7 = function() { return handleError(function (arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
+    const ret = join(arg0, getStringFromWasm0(arg1, arg2), getStringFromWasm0(arg3, arg4), getStringFromWasm0(arg5, arg6));
+    return ret;
+}, arguments) };
+
 module.exports.__wbg_length_e2d2a49132c1b256 = function(arg0) {
     const ret = arg0.length;
     return ret;
 };
+
+module.exports.__wbg_mkdir_147f959b191b3c20 = function() { return handleError(function (arg0, arg1) {
+    const ret = mkdir(arg0, arg1);
+    return ret;
+}, arguments) };
 
 module.exports.__wbg_new_405e22f390576ce2 = function() {
     const ret = new Object();
@@ -294,10 +455,25 @@ module.exports.__wbg_new_c68d7209be747379 = function(arg0, arg1) {
     return ret;
 };
 
+module.exports.__wbg_now_807e54c39636c349 = function() {
+    const ret = Date.now();
+    return ret;
+};
+
 module.exports.__wbg_push_737cfc8c1432c2c6 = function(arg0, arg1) {
     const ret = arg0.push(arg1);
     return ret;
 };
+
+module.exports.__wbg_reject_b3fcf99063186ff7 = function(arg0) {
+    const ret = Promise.reject(arg0);
+    return ret;
+};
+
+module.exports.__wbg_resolve_412ea39f68c9e898 = function() { return handleError(function (arg0, arg1, arg2) {
+    const ret = resolve(arg0, getStringFromWasm0(arg1, arg2));
+    return ret;
+}, arguments) };
 
 module.exports.__wbg_set_bb8cecf6a62b9f46 = function() { return handleError(function (arg0, arg1, arg2) {
     const ret = Reflect.set(arg0, arg1, arg2);
@@ -307,6 +483,11 @@ module.exports.__wbg_set_bb8cecf6a62b9f46 = function() { return handleError(func
 module.exports.__wbg_setname_6df54b7ebf9404a9 = function(arg0, arg1, arg2) {
     arg0.name = getStringFromWasm0(arg1, arg2);
 };
+
+module.exports.__wbg_stringify_079f8cd10d739b69 = function() { return handleError(function (arg0, arg1, arg2) {
+    const ret = JSON.stringify(arg0, arg1, arg2 >>> 0);
+    return ret;
+}, arguments) };
 
 module.exports.__wbg_test_7f0ac7b9d67b7a48 = function(arg0, arg1, arg2) {
     const ret = arg0.test(getStringFromWasm0(arg1, arg2));
@@ -318,9 +499,19 @@ module.exports.__wbg_toString_5594a7237007a325 = function(arg0) {
     return ret;
 };
 
+module.exports.__wbg_writeFile_9d0ce1294dd441fd = function() { return handleError(function (arg0, arg1, arg2, arg3) {
+    const ret = writeFile(arg0, arg1, getStringFromWasm0(arg2, arg3));
+    return ret;
+}, arguments) };
+
 module.exports.__wbindgen_boolean_get = function(arg0) {
     const v = arg0;
     const ret = typeof(v) === 'boolean' ? (v ? 1 : 0) : 2;
+    return ret;
+};
+
+module.exports.__wbindgen_closure_wrapper118 = function(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 17, __wbg_adapter_26);
     return ret;
 };
 
@@ -333,6 +524,11 @@ module.exports.__wbindgen_init_externref_table = function() {
     table.set(offset + 2, true);
     table.set(offset + 3, false);
     ;
+};
+
+module.exports.__wbindgen_is_function = function(arg0) {
+    const ret = typeof(arg0) === 'function';
+    return ret;
 };
 
 module.exports.__wbindgen_is_null = function(arg0) {
