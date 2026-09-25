@@ -130,14 +130,17 @@ fn static_failures(node_js: &str) -> Vec<String> {
         ));
     }
 
-    let start_id_before = Regex::new(r#"<button[^>]+id=[^>]+data-node-action="start""#).unwrap();
-    let start_id_after = Regex::new(r#"<button[^>]+data-node-action="start"[^>]+id="#).unwrap();
+    // Match the actual id attribute, not data-testid/custom-id suffixes.
+    let start_id_before =
+        Regex::new(r#"<button[^>]*\sid\s*=[^>]+data-node-action="start""#).unwrap();
+    let start_id_after =
+        Regex::new(r#"<button[^>]+data-node-action="start"[^>]*\sid\s*="#).unwrap();
     if start_id_before.is_match(node_js) || start_id_after.is_match(node_js) {
         failures.push("Start control uses an ID that can duplicate across networks.".to_owned());
     }
 
-    let stop_id_before = Regex::new(r#"<button[^>]+id=[^>]+data-node-action="stop""#).unwrap();
-    let stop_id_after = Regex::new(r#"<button[^>]+data-node-action="stop"[^>]+id="#).unwrap();
+    let stop_id_before = Regex::new(r#"<button[^>]*\sid\s*=[^>]+data-node-action="stop""#).unwrap();
+    let stop_id_after = Regex::new(r#"<button[^>]+data-node-action="stop"[^>]*\sid\s*="#).unwrap();
     if stop_id_before.is_match(node_js) || stop_id_after.is_match(node_js) {
         failures.push("Stop control uses an ID that can duplicate across networks.".to_owned());
     }
@@ -246,5 +249,59 @@ mod tests {
                 .iter()
                 .any(|item| item.contains("Could not verify"))
         );
+    }
+    #[test]
+    fn id_attribute_boundary_test_and_custom_names_are_not_dom_ids() {
+        for action in ["start", "stop"] {
+            for name in ["data-testid", "custom-id", "invalidid", "data-id"] {
+                for before in [true, false] {
+                    let control = format!("data-node-action=\"{action}\"");
+                    let attribute = format!("{name}=\"{action}-test\"");
+                    let replacement = if before {
+                        format!("{attribute} {control}")
+                    } else {
+                        format!("{control} {attribute}")
+                    };
+                    let source = valid_fixture().replace(&control, &replacement);
+                    let failures = static_failures(&source);
+                    assert!(
+                        failures.is_empty(),
+                        "{action}/{name}/{before}: {failures:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn id_attribute_boundary_real_ids_with_spacing_still_fail_closed() {
+        for action in ["start", "stop"] {
+            for attribute in ["id=\"fixed\"", "id = \"fixed\"", "id\t=\t'fixed'"] {
+                for before in [true, false] {
+                    let control = format!("data-node-action=\"{action}\"");
+                    let replacement = if before {
+                        format!("{attribute} {control}")
+                    } else {
+                        format!("{control} {attribute}")
+                    };
+                    let source = valid_fixture().replace(&control, &replacement);
+                    let failures = static_failures(&source);
+                    assert!(
+                        failures
+                            .iter()
+                            .any(|item| item.contains("control uses an ID")),
+                        "{action}/{attribute}/{before}: {failures:?}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn id_attribute_boundary_current_node_markup_has_no_static_violation() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let source = fs::read_to_string(root.join(NODE_JS)).unwrap();
+        let failures = static_failures(&source);
+        assert!(failures.is_empty(), "current Node source: {failures:?}");
     }
 }
