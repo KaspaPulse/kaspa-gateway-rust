@@ -1,3 +1,6 @@
+#[path = "../verified_tool.rs"]
+mod verified_tool;
+
 #[path = "../workflow_lint.rs"]
 mod workflow_lint;
 

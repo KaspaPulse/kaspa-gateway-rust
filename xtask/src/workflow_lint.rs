@@ -1,20 +1,28 @@
 //! Rust-owned bootstrap and execution for the pinned workflow linter.
-//! Downloaded bytes are verified before parsing or executing; no global install.
-use flate2::read::GzDecoder;
-use sha2::{Digest, Sha256};
-use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Write};
-use std::path::{Component, Path, PathBuf};
+use crate::verified_tool::{self, ArchivePolicy};
+#[cfg(test)]
+use crate::verified_tool::{safe_archive_path, sha256};
+use std::fs;
+#[cfg(test)]
+use std::io::Write;
+#[cfg(test)]
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 
 pub const VERSION: &str = "1.7.12";
 pub const ARCHIVE_SHA256: &str = "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8";
 const ARCHIVE_URL: &str = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz";
-const MAX_ARCHIVE_BYTES: u64 = 32 * 1024 * 1024;
-const MAX_EXPANDED_BYTES: u64 = 128 * 1024 * 1024;
 const MAX_BINARY_BYTES: u64 = 64 * 1024 * 1024;
-const MAX_ENTRIES: usize = 1024;
-
+const PIN: ArchivePolicy<'static> = ArchivePolicy {
+    name: "actionlint",
+    url: ARCHIVE_URL,
+    archive_sha256: ARCHIVE_SHA256,
+    max_archive_bytes: 32 * 1024 * 1024,
+    max_expanded_bytes: 128 * 1024 * 1024,
+    max_binary_bytes: MAX_BINARY_BYTES,
+    max_entries: 1024,
+};
 type Result<T> = std::result::Result<T, String>;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -54,137 +62,21 @@ pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Options> {
     })
 }
 
-fn sha256(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
-}
-
-fn read_archive(path: &Path) -> Result<Vec<u8>> {
-    let file = File::open(path).map_err(|error| format!("Read {}: {error}", path.display()))?;
-    if !file
-        .metadata()
-        .map_err(|error| error.to_string())?
-        .is_file()
-    {
-        return Err("Actionlint archive must be a regular file".to_owned());
-    }
-    let mut bytes = Vec::new();
-    file.take(MAX_ARCHIVE_BYTES + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|error| error.to_string())?;
-    if bytes.is_empty() || bytes.len() as u64 > MAX_ARCHIVE_BYTES {
-        return Err("Actionlint archive is empty or exceeds the size limit".to_owned());
-    }
-    Ok(bytes)
-}
-
-fn safe_archive_path(path: &Path) -> bool {
-    !path.as_os_str().is_empty()
-        && path
-            .components()
-            .all(|part| matches!(part, Component::Normal(_) | Component::CurDir))
-        && !path.to_string_lossy().contains('\\')
-        && !path.to_string_lossy().contains(':')
-}
-
+#[cfg(test)]
 fn extract_verified(bytes: &[u8], expected: &str, destination: &Path) -> Result<String> {
-    if bytes.len() as u64 > MAX_ARCHIVE_BYTES || sha256(bytes) != expected {
-        return Err("Actionlint archive SHA256 mismatch or size limit exceeded".to_owned());
-    }
-    let decoder = GzDecoder::new(bytes);
-    let mut archive = tar::Archive::new(decoder);
-    let mut selected = None;
-    let mut expanded = 0_u64;
-    for (count, entry) in archive
-        .entries()
-        .map_err(|error| error.to_string())?
-        .enumerate()
-    {
-        if count >= MAX_ENTRIES {
-            return Err("Actionlint archive entry limit exceeded".to_owned());
-        }
-        let mut entry = entry.map_err(|error| error.to_string())?;
-        let path = entry
-            .path()
-            .map_err(|error| error.to_string())?
-            .into_owned();
-        if !safe_archive_path(&path) {
-            return Err(format!("Unsafe archive path: {}", path.display()));
-        }
-        let kind = entry.header().entry_type();
-        if !kind.is_file() && !kind.is_dir() {
-            return Err("Archive links and special entries are not permitted".to_owned());
-        }
-        let size = entry.size();
-        expanded = expanded.checked_add(size).ok_or("Archive size overflow")?;
-        if expanded > MAX_EXPANDED_BYTES {
-            return Err("Actionlint expanded archive limit exceeded".to_owned());
-        }
-        if path == Path::new("actionlint") {
-            if !kind.is_file() || selected.is_some() || size == 0 || size > MAX_BINARY_BYTES {
-                return Err("Actionlint binary must be one nonempty regular root entry".to_owned());
-            }
-            let mut binary = Vec::new();
-            entry
-                .by_ref()
-                .take(MAX_BINARY_BYTES + 1)
-                .read_to_end(&mut binary)
-                .map_err(|error| error.to_string())?;
-            if binary.len() as u64 != size {
-                return Err("Actionlint binary size differs from its archive header".to_owned());
-            }
-            selected = Some(binary);
-        }
-    }
-    let binary = selected.ok_or("Actionlint binary is missing from the verified archive")?;
-    // Do not write any entry until the complete archive has been validated.
-    let mut file = OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open(destination)
-        .map_err(|error| format!("Create {}: {error}", destination.display()))?;
-    file.write_all(&binary)
-        .and_then(|()| file.sync_all())
-        .map_err(|error| error.to_string())?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        file.set_permissions(fs::Permissions::from_mode(0o755))
-            .map_err(|error| error.to_string())?;
-    }
-    drop(file);
-    let actual = fs::read(destination).map_err(|error| error.to_string())?;
-    if actual != binary {
-        return Err("Extracted actionlint read-back mismatch".to_owned());
-    }
-    Ok(sha256(&binary))
+    verified_tool::extract_verified(
+        bytes,
+        ArchivePolicy {
+            archive_sha256: expected,
+            ..PIN
+        },
+        destination,
+    )
 }
-
+#[cfg(test)]
 fn download_arguments(destination: &Path) -> Vec<std::ffi::OsString> {
-    [
-        "--disable",
-        "--proto",
-        "=https",
-        "--proto-redir",
-        "=https",
-        "--tlsv1.2",
-        "--fail",
-        "--location",
-        "--silent",
-        "--show-error",
-        "--connect-timeout",
-        "10",
-        "--max-time",
-        "90",
-        "--max-filesize",
-        "33554432",
-        "--output",
-    ]
-    .into_iter()
-    .map(Into::into)
-    .chain([destination.as_os_str().to_owned(), ARCHIVE_URL.into()])
-    .collect()
+    verified_tool::download_arguments(destination, PIN)
 }
-
 fn check_version(output: &str) -> Result<()> {
     if output.lines().next().map(str::trim) != Some(VERSION) {
         return Err(format!(
@@ -193,7 +85,6 @@ fn check_version(output: &str) -> Result<()> {
     }
     Ok(())
 }
-
 pub fn run(options: Options) -> Result<()> {
     if !options.verify_only && !(cfg!(target_os = "linux") && cfg!(target_arch = "x86_64")) {
         return Err("Workflow lint execution requires Linux x86_64; --verify-only never executes the binary".to_owned());
@@ -202,36 +93,14 @@ pub fn run(options: Options) -> Result<()> {
     if !root.join("Cargo.toml").is_file() || !root.join(".github/workflows").is_dir() {
         return Err("Workflow lint requires the repository root".to_owned());
     }
-    let parent = root.join("target/kgw-workflow-lint");
-    fs::create_dir_all(&parent).map_err(|error| error.to_string())?;
-    let work = tempfile::Builder::new()
-        .prefix("verified-")
-        .tempdir_in(&parent)
-        .map_err(|error| error.to_string())?;
-    let archive_path = match options.archive {
-        Some(path) => path,
-        None => {
-            let path = work.path().join("actionlint.tar.gz");
-            let status = Command::new("curl")
-                .args(download_arguments(&path))
-                .status()
-                .map_err(|error| format!("Cannot start HTTPS downloader: {error}"))?;
-            if !status.success() {
-                return Err(format!("Actionlint HTTPS download failed: {status}"));
-            }
-            path
-        }
-    };
-    let bytes = read_archive(&archive_path)?;
-    let binary = work.path().join("actionlint");
-    let binary_hash = extract_verified(&bytes, ARCHIVE_SHA256, &binary)?;
+    let tool = verified_tool::prepare(&root, PIN, options.archive.as_deref())?;
     println!("ACTIONLINT_ARCHIVE_SHA256={ARCHIVE_SHA256}");
-    println!("ACTIONLINT_BINARY_SHA256={binary_hash}");
+    println!("ACTIONLINT_BINARY_SHA256={}", tool.binary_sha256);
     if options.verify_only {
         println!("ACTIONLINT_ARCHIVE=VERIFIED; EXECUTION=NOT_PERFORMED");
         return Ok(());
     }
-    let version = Command::new(&binary)
+    let version = Command::new(&tool.executable)
         .arg("-version")
         .output()
         .map_err(|error| error.to_string())?;
@@ -240,7 +109,6 @@ pub fn run(options: Options) -> Result<()> {
     }
     check_version(std::str::from_utf8(&version.stdout).map_err(|error| error.to_string())?)?;
     println!("ACTIONLINT_VERSION={VERSION}");
-    // Hosted Linux checks must not silently lose shell validation.
     let shellcheck = Command::new("shellcheck")
         .arg("--version")
         .output()
@@ -248,7 +116,7 @@ pub fn run(options: Options) -> Result<()> {
     if !shellcheck.status.success() {
         return Err("shellcheck version check failed".to_owned());
     }
-    let status = Command::new(&binary)
+    let status = Command::new(&tool.executable)
         .arg("-color")
         .current_dir(&root)
         .status()

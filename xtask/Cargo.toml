@@ -8,6 +8,7 @@ publish = false
 default-run = "xtask"
 
 [features]
+secret-scan = ["dep:flate2", "dep:tar"]
 workflow-lint = ["dep:flate2", "dep:tar"]
 default = []
 ksss = ["dep:flate2", "dep:pyo3", "dep:tar", "time/parsing"]
@@ -31,3 +32,8 @@ windows-sys = { workspace = true, features = ["Win32_NetworkManagement_IpHelper"
 name = "kgw-workflow-lint"
 path = "src/bin/kgw-workflow-lint.rs"
 required-features = ["workflow-lint"]
+
+[[bin]]
+name = "kgw-secret-scan"
+path = "src/bin/kgw-secret-scan.rs"
+required-features = ["secret-scan"]

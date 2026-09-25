@@ -5,7 +5,6 @@
 .github/workflows/dependency-review.yml
 .github/workflows/desktop-artifacts.yml
 .github/workflows/desktop-release-draft.yml
-.github/workflows/secret-scan.yml
 apps/kaspa-gateway-desktop/frontend/index.html
 apps/kaspa-gateway-desktop/package.json
 apps/kaspa-gateway-desktop/package-lock.json
