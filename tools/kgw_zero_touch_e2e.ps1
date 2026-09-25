@@ -15,6 +15,32 @@ $PSNativeCommandUseErrorActionPreference = $false
 Assert-KgwZeroTouchPowerShell7
 $RequiredPowerShellPath = (Get-Command pwsh -ErrorAction Stop).Source
 
+function Write-KgwZeroTouchNativeResult {
+    param(
+        [Parameter(Mandatory)][string]$Repository,
+        [Parameter(Mandatory)][string]$ArtifactDirectory,
+        [Parameter(Mandatory)][string]$StartedAt,
+        [Parameter(Mandatory)][int]$ExitCode,
+        [AllowNull()][string]$FailedStage,
+        [AllowNull()][string]$ExecutablePath,
+        [AllowNull()]$EvidenceSummary
+    )
+    # This adapter only carries typed metadata across the native Rust boundary.
+    $request = [ordered]@{
+        repository = $Repository; artifact_directory = $ArtifactDirectory
+        started_at = $StartedAt; exit_code = $ExitCode; failed_stage = $FailedStage
+        executable_path = $ExecutablePath; evidence_summary = $EvidenceSummary
+    }
+    $json = ConvertTo-Json -InputObject $request -Depth 64 -Compress -ErrorAction Stop
+    $lines = $json | & cargo run --manifest-path (Join-Path $Repository "Cargo.toml") --locked -p xtask --bin kgw-zero-touch-result -- build-write --request -
+    if ($LASTEXITCODE -ne 0) { throw "Native Rust result construction/writing failed with exit code $LASTEXITCODE." }
+    $result = ($lines -join "`n") | ConvertFrom-Json -ErrorAction Stop
+    if ($null -eq $result -or $result.completed -isnot [bool] -or -not $result.completed) {
+        throw "Native Rust result writer did not return a completed result receipt."
+    }
+    return $result
+}
+
 function New-RunId {
     return (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ") + "-" + ([System.Guid]::NewGuid().ToString("N").Substring(0, 8))
 }
@@ -394,7 +420,7 @@ finally {
                 $FailedStage = if ($EvidenceSummary.failed_stage) { $EvidenceSummary.failed_stage } else { "Zero-touch evidence validation" }
             }
         }
-        $result = New-KgwZeroTouchResultObject `
+        $result = Write-KgwZeroTouchNativeResult `
             -Repository $Repository `
             -ArtifactDirectory $ArtifactRoot `
             -StartedAt $StartedAt `
@@ -402,7 +428,6 @@ finally {
             -FailedStage $FailedStage `
             -ExecutablePath $AppBinary `
             -EvidenceSummary $EvidenceSummary
-        Write-KgwZeroTouchJsonFile -Value $result -Path $resultPath -Depth 16
         $Summary["result_file"] = $resultPath
         $Summary["passed_stages"] = $result.passed_stages
         $Summary["failed_stage"] = $result.failed_stage

@@ -1,6 +1,6 @@
 use super::*;
 
-fn normalized_hashes(value: &Value) -> Vec<Value> {
+pub(super) fn normalized_hashes(value: &Value) -> Vec<Value> {
     sequence(value).into_iter().filter(|entry| !entry.is_null()).map(|entry| json!({
         "stage":field(entry,&["stage"]),"network":field(entry,&["network"]),"runtime_role":field(entry,&["runtime_role","runtimeRole"]),
         "bridge_instance_id":field(entry,&["bridge_instance_id","bridgeInstanceId"]),"expected_sha256":field(entry,&["expected_sha256","expectedSha256"]),
@@ -8,7 +8,7 @@ fn normalized_hashes(value: &Value) -> Vec<Value> {
         "windows_clipboard_sha256":field(entry,&["windows_clipboard_sha256","windowsClipboardSha256"]),"raw_file":field(entry,&["raw_file","rawFile"])
     })).collect()
 }
-fn normalized_pids(value: &Value) -> EvidenceResult<Vec<Value>> {
+pub(super) fn normalized_pids(value: &Value) -> EvidenceResult<Vec<Value>> {
     let mut result = Vec::new();
     for entry in sequence(value) {
         if let Some(pid) = integer(property(entry, &["pid"]))? {
@@ -18,7 +18,7 @@ fn normalized_pids(value: &Value) -> EvidenceResult<Vec<Value>> {
     }
     Ok(result)
 }
-fn normalized_ports(value: &Value) -> EvidenceResult<Vec<Value>> {
+pub(super) fn normalized_ports(value: &Value) -> EvidenceResult<Vec<Value>> {
     let mut result = Vec::new();
     for entry in sequence(value) {
         if let Some(port) = integer(property(entry, &["port"]))? {

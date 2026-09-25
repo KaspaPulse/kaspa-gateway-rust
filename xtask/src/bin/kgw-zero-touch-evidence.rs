@@ -1,9 +1,7 @@
 //! Rust-only, read-only inspection of saved zero-touch qualification evidence.
-#[path = "../zero_touch_evidence/mod.rs"]
-mod zero_touch_evidence;
 
 use std::path::PathBuf;
-use zero_touch_evidence::{EvidenceResult, dispatch};
+use xtask::zero_touch_evidence::{EvidenceResult, dispatch};
 
 const USAGE: &str = "kgw-zero-touch-evidence <stages|stage|summary|wdio|policy|integrity|source-hash|recovery-files> [--repository PATH] [--artifact-directory PATH] [--stage SLUG]";
 

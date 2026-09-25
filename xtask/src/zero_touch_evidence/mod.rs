@@ -3,6 +3,7 @@
 mod identity;
 mod integrity;
 mod reports;
+pub mod result;
 mod stage;
 
 use serde_json::{Value, json};
