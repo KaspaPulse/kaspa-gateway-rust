@@ -210,6 +210,9 @@ jobs:
             e2e/package-lock.json
           package-manager-cache: true
 
+      - name: Verify frontend settings Rust-owned regression suite
+        run: cargo run --locked -p xtask -- settings-contract-regressions
+
       - name: Verify bundled npm
         run: |
           npm --version

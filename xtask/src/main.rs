@@ -30,6 +30,7 @@ mod runtime_repository_binding;
 mod runtime_repository_binding_apply;
 mod runtime_trace_owner;
 mod security_advisories;
+mod settings_contract_regressions;
 mod start_button;
 mod static_contracts;
 mod true_raw_log;
@@ -96,6 +97,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- runtime-repository-binding-gate [--strict] [--online|--fresh] [--offline] [--json]
   cargo run -p xtask -- runtime-repository-binding-apply [--root <path>]
   cargo run -p xtask -- runtime-trace-owner-audit <repo-root> <report-dir>
+  cargo run -p xtask -- settings-contract-regressions
   cargo run -p xtask -- start-button-gate
   cargo run -p xtask -- static-contract-regressions
   cargo run -p xtask -- true-raw-log-gate
@@ -420,6 +422,18 @@ fn run() -> Result<(), CliError> {
                     message: String::new(),
                 })
             }
+        }
+        "settings-contract-regressions" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "settings-contract-regressions takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message =
+                settings_contract_regressions::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
         }
         "start-button-gate" => {
             if args.next().is_some() {
