@@ -41,18 +41,7 @@ jobs:
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          pr="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER")"
-          jq -e --arg repo "$GH_REPO" --arg sha "$EXPECTED_SHA" '
-            .state == "open" and .draft == false and
-            .user.login == "dependabot[bot]" and .user.type == "Bot" and
-            .head.repo.full_name == $repo and .base.ref == "main" and
-            .head.sha == $sha
-          ' <<< "$pr" >/dev/null
-          gh pr merge "$PR_NUMBER" --repo "$GH_REPO" \
-            --auto --squash --match-head-commit "$EXPECTED_SHA"
+        run: cargo run --locked -p xtask --bin kgw-dependabot-auto-merge
 # Major upgrades, DuckDB upgrades, and required reviews are not auto-approved.
 # Main is additionally protected by the no-bypass status-check ruleset installed
 # by the repair script. Its required checks must remain in force.
