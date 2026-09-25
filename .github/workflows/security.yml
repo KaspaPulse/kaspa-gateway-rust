@@ -41,6 +41,9 @@ jobs:
         with:
           toolchain: 1.98.1
 
+      - name: Test native CI diagnostic contracts
+        run: cargo test --locked -p xtask --bin kgw-ci-diagnostics
+
       - name: Validate advisory exception policy
         run: cargo run --locked -p xtask -- check-security-advisories --max-age-days 45
 
@@ -55,12 +58,7 @@ jobs:
 
       - name: Cargo deny
         id: cargo-deny
-        shell: bash
-        run: |
-          set +e
-          cargo deny check 2>&1 | tee cargo-deny.log
-          status=${PIPESTATUS[0]}
-          exit "$status"
+        run: cargo run --locked -p xtask --bin kgw-ci-diagnostics -- capture-cargo-deny --directory .
 
       - name: Upload cargo-deny diagnostics
         if: failure() && steps.cargo-deny.outcome == 'failure'
@@ -72,12 +70,7 @@ jobs:
 
       - name: Unused dependency scan
         id: cargo-machete
-        shell: bash
-        run: |
-          set +e
-          cargo machete --with-metadata 2>&1 | tee cargo-machete.log
-          status=${PIPESTATUS[0]}
-          exit "$status"
+        run: cargo run --locked -p xtask --bin kgw-ci-diagnostics -- capture-cargo-machete --directory .
 
       - name: Upload cargo-machete diagnostics
         if: failure() && steps.cargo-machete.outcome == 'failure'
