@@ -162,7 +162,20 @@ function Assert-SuccessfulE2EArtifactReusable {
     param([Parameter(Mandatory)][string]$ArtifactDirectory)
 
     $resolved = (Resolve-Path -LiteralPath $ArtifactDirectory -ErrorAction Stop).Path
-    $result = Test-KgwZeroTouchResultIntegrity -Repository $Repository -ArtifactDirectory $resolved
+    # Rust validates saved evidence only; this does not start another E2E run.
+    $reportLines = & cargo run --manifest-path (Join-Path $Repository "Cargo.toml") --locked -p xtask --bin kgw-zero-touch-evidence -- integrity --repository $Repository --artifact-directory $resolved
+    $validatorExit = $LASTEXITCODE
+    if ($validatorExit -notin @(0, 1)) {
+        throw "Rust E2E evidence validation could not complete; exit code $validatorExit."
+    }
+    try {
+        $result = ($reportLines -join "`n") | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+        throw "Rust E2E evidence validation returned invalid JSON: $($_.Exception.Message)"
+    }
+    if (($result.passed -isnot [bool]) -or (($validatorExit -eq 0) -ne $result.passed)) {
+        throw "Rust E2E evidence validation returned an inconsistent pass/exit result."
+    }
     if (-not $result.passed) {
         $message = "Rejected E2E artifact reuse: " + (($result.errors | ForEach-Object { [string]$_ }) -join " | ")
         throw $message

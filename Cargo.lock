@@ -12337,6 +12337,7 @@ dependencies = [
  "tempfile",
  "time",
  "windows-sys 0.61.2",
+ "xml-rs",
 ]
 
 [[package]]
