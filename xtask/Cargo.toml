@@ -8,6 +8,7 @@ publish = false
 default-run = "xtask"
 
 [features]
+workflow-lint = ["dep:flate2", "dep:tar"]
 default = []
 ksss = ["dep:flate2", "dep:pyo3", "dep:tar", "time/parsing"]
 
@@ -25,3 +26,8 @@ tempfile.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = ["Win32_NetworkManagement_IpHelper"] }
+
+[[bin]]
+name = "kgw-workflow-lint"
+path = "src/bin/kgw-workflow-lint.rs"
+required-features = ["workflow-lint"]
