@@ -2,6 +2,7 @@ mod log_tab;
 mod settings_contract;
 mod settings_runtime;
 mod settings_schema;
+mod shell_logger;
 
 use js_sys::{Array, Date, Function, Intl::NumberFormat, JsString, Object, Reflect};
 use wasm_bindgen::{JsCast, prelude::*};

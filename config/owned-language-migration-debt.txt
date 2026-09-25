@@ -3,7 +3,6 @@
 # New non-Rust source is never auto-baselined and fails the Rust language policy guard.
 apps/kaspa-gateway-desktop/frontend/main.js
 apps/kaspa-gateway-desktop/frontend/src/core/header-live-metrics.js
-apps/kaspa-gateway-desktop/frontend/src/core/shell-logger.js
 apps/kaspa-gateway-desktop/frontend/src/settings-layout.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis-rust-binding.js
