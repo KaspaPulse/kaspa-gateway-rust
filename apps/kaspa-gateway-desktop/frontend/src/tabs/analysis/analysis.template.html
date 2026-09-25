@@ -2,7 +2,7 @@
   <div class="kgw-analysis-shell">
     <section class="kgw-analysis-control-card" aria-label="Analysis controls">
       <div class="kgw-analysis-field kgw-analysis-address-field kgw-analysis-no-visible-label">
-        <label for="analysisAddressSelect" class="kgw-analysis-hidden-compat">Address</label>
+        <label for="analysisAddressSelect" class="kgw-analysis-hidden-compat" data-i18n="ui.analysis.address">Address</label>
         <select id="analysisAddressSelect" aria-label="Analysis address">
           <option value="" data-i18n="ui.explorer.select.saved.address">Select saved address</option>
         </select>
@@ -16,10 +16,10 @@
       <span id="analysisStatus" class="kgw-analysis-hidden-compat" role="status" aria-live="polite">Load an address to see analysis.</span>
       <input id="analysisAddressInput" class="kgw-analysis-hidden-compat" type="text" autocomplete="off" spellcheck="false" dir="ltr" tabindex="-1" aria-hidden="true">
       <select id="analysisTimeRange" class="kgw-analysis-hidden-compat" tabindex="-1" aria-hidden="true">
-        <option value="all">ALL</option>
-        <option value="30d">Last 30 days</option>
-        <option value="90d">Last 90 days</option>
-        <option value="1y">Last year</option>
+        <option value="all" data-i18n="common.all">ALL</option>
+        <option value="30d" data-i18n="ui.analysis.last30Days">Last 30 days</option>
+        <option value="90d" data-i18n="ui.analysis.last90Days">Last 90 days</option>
+        <option value="1y" data-i18n="ui.analysis.lastYear">Last year</option>
       </select>
     </section>
 
