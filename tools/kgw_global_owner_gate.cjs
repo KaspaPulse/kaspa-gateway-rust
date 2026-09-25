@@ -508,7 +508,7 @@ const OWNER_REGISTRY = {
     ownerId: "KGW_LOG_TAB_TRACE_OWNER",
     description: "Standalone Log tab trace ownership.",
     activeFiles: [
-      "apps/kaspa-gateway-desktop/frontend/src/tabs/log/log.js"
+      "crates/kaspa-gateway-frontend-wasm/src/log_tab.rs"
     ],
     referenceFiles: [],
     requiredMarkers: [
@@ -786,6 +786,7 @@ const OWNER_REGISTRY = {
       "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
       "apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js",
       "apps/kaspa-gateway-desktop/frontend/src/tabs/log/log.js",
+      "crates/kaspa-gateway-frontend-wasm/src/log_tab.rs",
       "apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.js",
       "apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis.js",
       "apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis-rust-binding.js",
@@ -814,6 +815,7 @@ const SCAN_ROOTS = [
   "tools",
   "apps/kaspa-gateway-desktop/frontend",
   "apps/kaspa-gateway-desktop/src-tauri/src",
+  "crates/kaspa-gateway-frontend-wasm/src",
   "crates/kaspa-gateway-rk-bridge/src",
   "crates/kaspa-gateway-rk-node/src",
   "config"

@@ -1,3 +1,4 @@
+mod log_tab;
 mod settings_contract;
 mod settings_runtime;
 mod settings_schema;
