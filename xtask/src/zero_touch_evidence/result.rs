@@ -132,6 +132,47 @@ fn failure_at(request: &Value, completed_at: &str) -> EvidenceResult<Value> {
     }))
 }
 
+/// Finalize an emergency receipt without hiding the original writer failure.
+/// Metadata is best-effort and collected in legacy order; a failed field stops
+/// later collection but never erases an already collected identity field.
+pub fn failure_with_metadata(request: &Value) -> EvidenceResult<Value> {
+    let receipt = failure(request)?;
+    let repository = PathBuf::from(required_text(request, "repository")?);
+    let executable = field(request, &["executable_path"]);
+    Ok(complete_failure_metadata(receipt, |key| match key {
+        "git_commit" => identity::commit(&repository).map(Some),
+        "source_diff_sha256" => identity::source_diff(&repository).map(Some),
+        "executable_sha256" if Path::new(&executable).is_file() => {
+            identity::hash_file(Path::new(&executable)).map(Some)
+        }
+        "executable_sha256" => Ok(None),
+        _ => Err("Unknown failure metadata field".to_owned()),
+    }))
+}
+
+fn complete_failure_metadata(
+    mut receipt: Value,
+    mut collect: impl FnMut(&str) -> EvidenceResult<Option<String>>,
+) -> Value {
+    for key in ["git_commit", "source_diff_sha256", "executable_sha256"] {
+        match collect(key) {
+            Ok(Some(value)) => receipt[key] = json!(value),
+            Ok(None) => {}
+            Err(error) => {
+                // failure() always owns this array. Preserve its existing entries.
+                receipt["validation_errors"]
+                    .as_array_mut()
+                    .expect("failure receipt must have a validation error array")
+                    .push(json!(format!(
+                        "Fallback metadata collection failed: {error}"
+                    )));
+                break;
+            }
+        }
+    }
+    receipt
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -171,5 +212,91 @@ mod tests {
             string_list(&json!(["Node", null]), true),
             vec!["Node".to_owned(), String::new()]
         );
+    }
+
+    fn failure_fixture() -> Value {
+        failure_at(&json!({
+            "repository":".", "artifact_directory":".", "started_at":"start",
+            "original_exit_code":37, "original_failed_stage":"original stage",
+            "writer_error":{"message":"original error", "type":"OriginalType", "stack":"original stack"},
+            "validation_errors":["prior validation"]
+        }), "completed").unwrap()
+    }
+
+    #[test]
+    fn emergency_metadata_success_never_changes_original_failure() {
+        let before = failure_fixture();
+        let mut fields = Vec::new();
+        let result = complete_failure_metadata(before.clone(), |key| {
+            fields.push(key.to_owned());
+            Ok(Some(format!("identity:{key}")))
+        });
+        assert_eq!(
+            fields,
+            ["git_commit", "source_diff_sha256", "executable_sha256"]
+        );
+        for key in [
+            "success",
+            "exit_code",
+            "original_exit_code",
+            "failed_stage",
+            "original_failure_stage",
+            "result_writer_error",
+            "validation_errors",
+        ] {
+            assert_eq!(result[key], before[key], "failure changed: {key}");
+        }
+        assert_eq!(result["git_commit"], "identity:git_commit");
+        assert_eq!(result["executable_sha256"], "identity:executable_sha256");
+    }
+
+    #[test]
+    fn emergency_metadata_failure_preserves_prefix_and_stops_collection() {
+        for fail_at in 0..3 {
+            let mut calls = 0;
+            let before = failure_fixture();
+            let result = complete_failure_metadata(before.clone(), |_| {
+                let index = calls;
+                calls += 1;
+                if index == fail_at {
+                    Err("metadata unavailable".to_owned())
+                } else {
+                    Ok(Some(format!("identity:{index}")))
+                }
+            });
+            assert_eq!(calls, fail_at + 1);
+            for (index, key) in ["git_commit", "source_diff_sha256", "executable_sha256"]
+                .iter()
+                .enumerate()
+            {
+                if index < fail_at {
+                    assert_eq!(result[*key], format!("identity:{index}"));
+                } else {
+                    assert!(result[*key].is_null());
+                }
+            }
+            assert_eq!(result["success"], false);
+            assert_eq!(result["original_exit_code"], 37);
+            assert_eq!(result["result_writer_error"], before["result_writer_error"]);
+            let errors = result["validation_errors"].as_array().unwrap();
+            assert_eq!(
+                errors.len(),
+                before["validation_errors"].as_array().unwrap().len() + 1
+            );
+            assert_eq!(
+                errors.last().unwrap(),
+                "Fallback metadata collection failed: metadata unavailable"
+            );
+        }
+    }
+
+    #[test]
+    fn emergency_missing_executable_is_null_without_metadata_error() {
+        let before = failure_fixture();
+        let result = complete_failure_metadata(before.clone(), |key| {
+            Ok((key != "executable_sha256").then(|| format!("identity:{key}")))
+        });
+        assert!(result["executable_sha256"].is_null());
+        assert_eq!(result["validation_errors"], before["validation_errors"]);
     }
 }

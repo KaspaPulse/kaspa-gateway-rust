@@ -56,6 +56,45 @@ function Write-KgwZeroTouchNativeResult {
     return $result
 }
 
+function Write-KgwZeroTouchNativeFailure {
+    param(
+        [Parameter(Mandatory)][string]$Repository,
+        [Parameter(Mandatory)][string]$ArtifactDirectory,
+        [Parameter(Mandatory)][string]$StartedAt,
+        [Parameter(Mandatory)][int]$OriginalExitCode,
+        [AllowNull()][string]$OriginalFailedStage,
+        [AllowNull()][string]$ExecutablePath,
+        [AllowNull()]$WriterError,
+        [AllowNull()]$ValidationErrors
+    )
+    $request = [ordered]@{
+        repository = $Repository; artifact_directory = $ArtifactDirectory
+        started_at = $StartedAt; original_exit_code = $OriginalExitCode
+        original_failed_stage = $OriginalFailedStage; executable_path = $ExecutablePath
+        writer_error = ConvertTo-KgwZeroTouchSerializableException -Value $WriterError
+        validation_errors = @($ValidationErrors)
+    }
+    $json = ConvertTo-Json -InputObject $request -Depth 64 -Compress -ErrorAction Stop
+    $targetDirectory = if ($env:CARGO_TARGET_DIR) {
+        [System.IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)
+    } else {
+        Join-Path $Repository "target"
+    }
+    $writer = Join-Path $targetDirectory "debug/kgw-zero-touch-result.exe"
+    if (Test-Path -LiteralPath $writer -PathType Leaf) {
+        $lines = $json | & $writer failure-write --request -
+    } else {
+        $lines = $json | & cargo run --manifest-path (Join-Path $Repository "Cargo.toml") --locked -p xtask --bin kgw-zero-touch-result -- failure-write --request -
+    }
+    if ($LASTEXITCODE -ne 0) { throw "Native Rust emergency result writing failed with exit code $LASTEXITCODE." }
+    $result = ($lines -join "`n") | ConvertFrom-Json -ErrorAction Stop
+    if ($null -eq $result -or $result.completed -isnot [bool] -or -not $result.completed -or
+        $result.success -isnot [bool] -or $result.success) {
+        throw "Native Rust emergency result writer returned an invalid failure receipt."
+    }
+    return $result
+}
+
 function New-RunId {
     return (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ") + "-" + ([System.Guid]::NewGuid().ToString("N").Substring(0, 8))
 }
@@ -451,7 +490,7 @@ finally {
         $originalExitCode = $exitCode
         $originalFailedStage = $FailedStage
         $writerError = $_
-        $fallback = New-KgwZeroTouchWriterFailureResultObject `
+        $fallback = Write-KgwZeroTouchNativeFailure `
             -Repository $Repository `
             -ArtifactDirectory $ArtifactRoot `
             -StartedAt $StartedAt `
@@ -460,23 +499,9 @@ finally {
             -ExecutablePath $AppBinary `
             -WriterError $writerError `
             -ValidationErrors @((Get-KgwZeroTouchProperty -Object $EvidenceSummary -Names @("validation_errors")))
-        try {
-            $fallback.git_commit = Get-KgwZeroTouchCurrentGitCommit -Repository $Repository
-            $fallback.source_diff_sha256 = Get-KgwZeroTouchSourceDiffSha256 -Repository $Repository
-            if (Test-Path -LiteralPath $AppBinary -PathType Leaf) {
-                $fallback.executable_sha256 = Get-KgwZeroTouchSha256ForFile -Path $AppBinary
-            }
+        if ([string]$fallback.artifact_directory -ne [string]$ArtifactRoot) {
+            throw "Native Rust emergency result writer returned a different artifact directory."
         }
-        catch {
-            $metadataError = ConvertTo-KgwZeroTouchSerializableException -Value $_
-            $errors = New-Object System.Collections.Generic.List[string]
-            foreach ($error in @($fallback.validation_errors)) {
-                [void]$errors.Add([string]$error)
-            }
-            [void]$errors.Add("Fallback metadata collection failed: $($metadataError.message)")
-            $fallback.validation_errors = $errors.ToArray()
-        }
-        Write-KgwZeroTouchEmergencyJsonFile -Value $fallback -Path $resultPath -Depth 16
         $exitCode = if ($originalExitCode -ne 0) { $originalExitCode } else { 1 }
         $FailedStage = "Zero-touch result writing"
         $Summary["result_file"] = $resultPath

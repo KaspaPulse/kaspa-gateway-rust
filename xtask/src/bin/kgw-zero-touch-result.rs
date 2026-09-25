@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use xtask::zero_touch_evidence::{EvidenceResult, read_json, result};
 use xtask::zero_touch_result_io::{artifact_target, atomic_write};
 
-const USAGE: &str = "kgw-zero-touch-result <build|failure|write|build-write> --request <JSON_PATH|-> [--artifact-directory PATH] [--file-name zero-touch-result.json]";
+const USAGE: &str = "kgw-zero-touch-result <build|failure|write|build-write|failure-write> --request <JSON_PATH|-> [--artifact-directory PATH] [--file-name zero-touch-result.json]";
 fn run() -> EvidenceResult<()> {
     let mut args = std::env::args().skip(1);
     let command = args.next().ok_or_else(|| USAGE.to_owned())?;
@@ -64,14 +64,18 @@ fn run() -> EvidenceResult<()> {
             )?;
             atomic_write(&path, &value)?
         }
-        "build-write" => {
+        "build-write" | "failure-write" => {
             if directory.is_some() || filename.is_some() {
                 return Err(
-                    "build-write derives its single target from artifact_directory in the request"
+                    "The combined writer derives its single target from artifact_directory in the request"
                         .to_owned(),
                 );
             }
-            let built = result::build(&value)?;
+            let built = if command == "failure-write" {
+                result::failure_with_metadata(&value)?
+            } else {
+                result::build(&value)?
+            };
             let directory = built["artifact_directory"]
                 .as_str()
                 .ok_or_else(|| "Invalid artifact directory".to_owned())?;
