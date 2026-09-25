@@ -604,6 +604,53 @@ fn show_copy_status(message: &str, success: bool) -> Result<(), JsValue> {
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ClipboardApiState {
+    Unavailable,
+    Succeeded,
+    Failed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ClipboardFallbackState {
+    Unavailable,
+    Succeeded,
+    Rejected,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ClipboardDecision {
+    Succeeded,
+    TryFallback,
+    PreserveApiError,
+    Unavailable,
+    FallbackRejected,
+}
+
+fn clipboard_after_api(api: ClipboardApiState) -> ClipboardDecision {
+    match api {
+        ClipboardApiState::Succeeded => ClipboardDecision::Succeeded,
+        ClipboardApiState::Unavailable | ClipboardApiState::Failed => {
+            ClipboardDecision::TryFallback
+        }
+    }
+}
+
+fn clipboard_after_fallback(
+    api: ClipboardApiState,
+    fallback: ClipboardFallbackState,
+) -> ClipboardDecision {
+    match fallback {
+        ClipboardFallbackState::Succeeded => ClipboardDecision::Succeeded,
+        ClipboardFallbackState::Rejected => ClipboardDecision::FallbackRejected,
+        ClipboardFallbackState::Unavailable => match api {
+            ClipboardApiState::Failed => ClipboardDecision::PreserveApiError,
+            ClipboardApiState::Unavailable => ClipboardDecision::Unavailable,
+            ClipboardApiState::Succeeded => ClipboardDecision::Succeeded,
+        },
+    }
+}
+
 #[wasm_bindgen(js_name = kgwLogCopyTextToClipboard)]
 pub async fn copy_text_to_clipboard(text: JsValue, env: JsValue) -> Result<bool, JsValue> {
     let clipboard = if has_own(&env, "clipboard") {
@@ -614,18 +661,28 @@ pub async fn copy_text_to_clipboard(text: JsValue, env: JsValue) -> Result<bool,
     };
     let text = raw_string(&text);
     let mut api_error = None;
+    let mut api_state = ClipboardApiState::Unavailable;
 
     if js_boolean(&clipboard) {
         let write_text = optional_property(&clipboard, "writeText");
         if let Some(function) = write_text.dyn_ref::<Function>() {
             match function.call1(&clipboard, &JsValue::from_str(&text)) {
                 Ok(value) => match await_value(value).await {
-                    Ok(_) => return Ok(true),
-                    Err(error) => api_error = Some(error),
+                    Ok(_) => api_state = ClipboardApiState::Succeeded,
+                    Err(error) => {
+                        api_state = ClipboardApiState::Failed;
+                        api_error = Some(error);
+                    }
                 },
-                Err(error) => api_error = Some(error),
+                Err(error) => {
+                    api_state = ClipboardApiState::Failed;
+                    api_error = Some(error);
+                }
             }
         }
+    }
+    if clipboard_after_api(api_state) == ClipboardDecision::Succeeded {
+        return Ok(true);
     }
 
     let document = if has_own(&env, "document") {
@@ -642,7 +699,15 @@ pub async fn copy_text_to_clipboard(text: JsValue, env: JsValue) -> Result<bool,
         || !js_boolean(&body)
     {
         return Err(
-            api_error.unwrap_or_else(|| JsValue::from_str("Clipboard copy is unavailable."))
+            match clipboard_after_fallback(api_state, ClipboardFallbackState::Unavailable) {
+                ClipboardDecision::PreserveApiError => {
+                    api_error.unwrap_or_else(|| JsValue::from_str("Clipboard copy is unavailable."))
+                }
+                ClipboardDecision::Unavailable => {
+                    JsValue::from_str("Clipboard copy is unavailable.")
+                }
+                _ => JsValue::from_str("Clipboard copy is unavailable."),
+            },
         );
     }
 
@@ -657,10 +722,20 @@ pub async fn copy_text_to_clipboard(text: JsValue, env: JsValue) -> Result<bool,
         let copied = exec_command
             .unchecked_ref::<Function>()
             .call1(&document, &JsValue::from_str("copy"))?;
-        if copied.as_bool() != Some(true) {
-            return Err(JsValue::from_str("Clipboard fallback was rejected."));
+        match clipboard_after_fallback(
+            api_state,
+            if copied.as_bool() == Some(true) {
+                ClipboardFallbackState::Succeeded
+            } else {
+                ClipboardFallbackState::Rejected
+            },
+        ) {
+            ClipboardDecision::Succeeded => Ok(true),
+            ClipboardDecision::FallbackRejected => {
+                Err(JsValue::from_str("Clipboard fallback was rejected."))
+            }
+            _ => Err(JsValue::from_str("Clipboard copy is unavailable.")),
         }
-        Ok(true)
     })();
     let _ = call_method0(&textarea, "remove");
     result
@@ -995,6 +1070,54 @@ mod tests {
         assert_eq!(
             highlight_line("time=\"x\" level=\"INFO\""),
             "time=\"x\" level=\"INFO\""
+        );
+    }
+
+    #[test]
+    fn clipboard_decision_matches_legacy_api_and_fallback_contracts() {
+        assert_eq!(
+            clipboard_after_api(ClipboardApiState::Succeeded),
+            ClipboardDecision::Succeeded
+        );
+        assert_eq!(
+            clipboard_after_api(ClipboardApiState::Unavailable),
+            ClipboardDecision::TryFallback
+        );
+        assert_eq!(
+            clipboard_after_api(ClipboardApiState::Failed),
+            ClipboardDecision::TryFallback
+        );
+        assert_eq!(
+            clipboard_after_fallback(
+                ClipboardApiState::Unavailable,
+                ClipboardFallbackState::Succeeded,
+            ),
+            ClipboardDecision::Succeeded
+        );
+        assert_eq!(
+            clipboard_after_fallback(ClipboardApiState::Failed, ClipboardFallbackState::Succeeded,),
+            ClipboardDecision::Succeeded
+        );
+        assert_eq!(
+            clipboard_after_fallback(
+                ClipboardApiState::Unavailable,
+                ClipboardFallbackState::Rejected,
+            ),
+            ClipboardDecision::FallbackRejected
+        );
+        assert_eq!(
+            clipboard_after_fallback(
+                ClipboardApiState::Unavailable,
+                ClipboardFallbackState::Unavailable,
+            ),
+            ClipboardDecision::Unavailable
+        );
+        assert_eq!(
+            clipboard_after_fallback(
+                ClipboardApiState::Failed,
+                ClipboardFallbackState::Unavailable,
+            ),
+            ClipboardDecision::PreserveApiError
         );
     }
 
