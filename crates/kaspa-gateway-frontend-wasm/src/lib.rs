@@ -1,4 +1,5 @@
 mod analysis_binding;
+mod header_live_metrics;
 mod log_tab;
 mod settings_contract;
 mod settings_layout;
