@@ -12,6 +12,7 @@ mod e2e_owned_process;
 mod e2e_static_smokes;
 mod e2e_wasm_codegen;
 mod e2e_windows_evidence;
+mod effective_bridge_settings_frontend;
 mod effective_node_settings;
 mod frontend_template_codegen;
 mod frontend_wasm_codegen;
@@ -80,6 +81,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- desktop-release-draft-workflow-gate
   cargo run -p xtask -- desktop-version-contract-gate
   cargo run -p xtask -- deepmerge-security-smoke
+  cargo run -p xtask -- effective-bridge-settings-gate
   cargo run -p xtask -- effective-node-settings-gate
   cargo run -p xtask -- e2e-clipboard <read|write> [--value <text>] [--output-path <path>]
   cargo run -p xtask -- e2e-owned-process <kill|wait> --process-id <pid> --expected-executable <path> --expected-start-time <unix-seconds> --output-path <path> [--timeout-seconds <n>]
@@ -216,6 +218,18 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = desktop_version::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "effective-bridge-settings-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "effective-bridge-settings-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = effective_bridge_settings_frontend::run(&repo_root()?)
+                .map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
