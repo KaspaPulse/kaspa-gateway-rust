@@ -132,6 +132,55 @@ function passStringToWasm0(arg, malloc, realloc) {
     WASM_VECTOR_LEN = offset;
     return ptr;
 }
+/**
+ * @returns {Promise<any>}
+ */
+export function analysisLoadSavedAddresses() {
+    const ret = wasm.analysisLoadSavedAddresses();
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function analysisNormalizeTimeRange(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.analysisNormalizeTimeRange(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+export function analysisClear() {
+    wasm.analysisClear();
+}
+
+/**
+ * @returns {Promise<any>}
+ */
+export function analysisRun() {
+    const ret = wasm.analysisRun();
+    return ret;
+}
+
+function takeFromExternrefTable0(idx) {
+    const value = wasm.__wbindgen_export_2.get(idx);
+    wasm.__externref_table_dealloc(idx);
+    return value;
+}
+
+export function analysisInstallBinding() {
+    const ret = wasm.analysisInstallBinding();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
 
 export function explorerExportInstall() {
     wasm.explorerExportInstall();
@@ -286,11 +335,6 @@ export function topAddressesValueForCurrency(row, currency) {
     }
 }
 
-function takeFromExternrefTable0(idx) {
-    const value = wasm.__wbindgen_export_2.get(idx);
-    wasm.__externref_table_dealloc(idx);
-    return value;
-}
 /**
  * @returns {any}
  */
@@ -872,50 +916,6 @@ export function headerLiveMetricsSelectedCurrencyValue(metric_value, current_tex
 }
 
 /**
- * @returns {Promise<any>}
- */
-export function analysisLoadSavedAddresses() {
-    const ret = wasm.analysisLoadSavedAddresses();
-    return ret;
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function analysisNormalizeTimeRange(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.analysisNormalizeTimeRange(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-export function analysisClear() {
-    wasm.analysisClear();
-}
-
-/**
- * @returns {Promise<any>}
- */
-export function analysisRun() {
-    const ret = wasm.analysisRun();
-    return ret;
-}
-
-export function analysisInstallBinding() {
-    const ret = wasm.analysisInstallBinding();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
  * @param {any} level
  * @param {any} message
  * @param {any} details
@@ -1303,11 +1303,11 @@ function __wbg_adapter_34(arg0, arg1) {
 }
 
 function __wbg_adapter_37(arg0, arg1, arg2) {
-    wasm.closure230_externref_shim(arg0, arg1, arg2);
+    wasm.closure246_externref_shim(arg0, arg1, arg2);
 }
 
 function __wbg_adapter_212(arg0, arg1, arg2, arg3) {
-    wasm.closure254_externref_shim(arg0, arg1, arg2, arg3);
+    wasm.closure270_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 async function __wbg_load(module, imports) {
@@ -1633,12 +1633,12 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper746 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 142, __wbg_adapter_34);
+    imports.wbg.__wbindgen_closure_wrapper885 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 192, __wbg_adapter_34);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper929 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 231, __wbg_adapter_37);
+    imports.wbg.__wbindgen_closure_wrapper973 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 247, __wbg_adapter_37);
         return ret;
     };
     imports.wbg.__wbindgen_init_externref_table = function() {

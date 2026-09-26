@@ -348,7 +348,7 @@ fn render_addresses(select: &JsValue, rows: &[AddressRow], current: &str) -> Res
         let text = if row.label == row.address {
             row.address.clone()
         } else {
-            format!("{} — {}", row.label, row.address)
+            format!("{} â€” {}", row.label, row.address)
         };
         set_property(&option, "textContent", &JsValue::from_str(&text))?;
         let _ = call_method1(select, "appendChild", &option)?;
@@ -467,7 +467,7 @@ fn time_range() -> String {
 
 fn format_metric_value(metric: &JsValue) -> String {
     if metric.is_null() || metric.is_undefined() {
-        return "—".to_owned();
+        return "â€”".to_owned();
     }
     let value = optional_property(metric, "value");
     if !value.is_null() && !value.is_undefined() && !raw_string(&value).is_empty() {
@@ -482,7 +482,7 @@ fn format_metric_value(metric: &JsValue) -> String {
         let number = js_number(&raw_sompi) / 100_000_000.0;
         return raw_string(&JsValue::from_f64(number));
     }
-    "—".to_owned()
+    "â€”".to_owned()
 }
 
 fn metric_map(report: &JsValue) -> Vec<(String, String)> {
@@ -508,14 +508,14 @@ fn pick_metric(map: &[(String, String)], names: &[&str]) -> String {
             return value.clone();
         }
     }
-    "—".to_owned()
+    "â€”".to_owned()
 }
 
 fn summary_from_report(report: &JsValue) -> Object {
     let map = metric_map(report);
     let output = Object::new();
     let total_metric = pick_metric(&map, &["Total Transactions"]);
-    let total_transactions = if total_metric != "—" {
+    let total_transactions = if total_metric != "â€”" {
         total_metric
     } else {
         let raw = optional_property(report, "total_transactions");
@@ -1062,11 +1062,477 @@ fn bind_controls() {
     );
 }
 
+fn export_clean_id(value: &str) -> String {
+    let mut clean = value.trim().to_owned();
+    while clean
+        .chars()
+        .last()
+        .is_some_and(|ch| ch.is_whitespace() || matches!(ch, '\'' | '"' | '<' | '>'))
+    {
+        clean.pop();
+    }
+    clean
+}
+
+fn analysis_address_url(address: &str) -> String {
+    let clean = export_clean_id(address);
+    if clean.starts_with("kaspa:") {
+        format!("https://explorer.kaspa.org/addresses/{clean}")
+    } else {
+        String::new()
+    }
+}
+
+fn analysis_tx_url(txid: &str) -> String {
+    let clean = export_clean_id(txid);
+    let valid = clean.len() >= 32 && clean.bytes().all(|byte| byte.is_ascii_hexdigit());
+    if valid {
+        format!("https://explorer.kaspa.org/txs/{clean}")
+    } else {
+        String::new()
+    }
+}
+
+fn parse_display_number(value: &str) -> Option<f64> {
+    let normalized = value.replace(',', "");
+    normalized
+        .split_whitespace()
+        .next()
+        .and_then(|part| part.parse::<f64>().ok())
+        .filter(|number| number.is_finite())
+}
+
+struct AnalysisExportGroup {
+    key: String,
+    name: String,
+    address: String,
+    rows: Vec<JsValue>,
+    total_kas: f64,
+    total_usd: f64,
+}
+
+fn first_export_text(row: &JsValue, names: &[&str]) -> String {
+    for name in names {
+        let value = optional_property(row, name);
+        if js_boolean(&value) {
+            let text = raw_string(&value);
+            if !text.is_empty() {
+                return text;
+            }
+        }
+    }
+    String::new()
+}
+
+fn export_groups(rows: Vec<JsValue>) -> Vec<AnalysisExportGroup> {
+    let mut groups: Vec<AnalysisExportGroup> = Vec::new();
+    for row in rows {
+        let address = first_export_text(&row, &["address", "counterparty"]);
+        let name = first_export_text(&row, &["name", "knownName"]);
+        let key = if !address.is_empty() {
+            address.clone()
+        } else if !name.is_empty() {
+            name.clone()
+        } else {
+            "Unknown Counterparty".to_owned()
+        };
+        let index = groups.iter().position(|group| group.key == key);
+        let target = if let Some(index) = index {
+            index
+        } else {
+            groups.push(AnalysisExportGroup {
+                key: key.clone(),
+                name: name.clone(),
+                address: address.clone(),
+                rows: Vec::new(),
+                total_kas: 0.0,
+                total_usd: 0.0,
+            });
+            groups.len() - 1
+        };
+        let kas = first_export_text(&row, &["amount", "netFlow"]);
+        let usd = first_export_text(&row, &["valueUsd"]);
+        if let Some(value) = parse_display_number(&kas) {
+            groups[target].total_kas += value;
+        }
+        if let Some(value) = parse_display_number(&usd) {
+            groups[target].total_usd += value;
+        }
+        groups[target].rows.push(row);
+    }
+    groups.sort_by(|left, right| {
+        let left = if !left.name.is_empty() {
+            &left.name
+        } else if !left.address.is_empty() {
+            &left.address
+        } else {
+            &left.key
+        };
+        let right = if !right.name.is_empty() {
+            &right.name
+        } else if !right.address.is_empty() {
+            &right.address
+        } else {
+            &right.key
+        };
+        left.to_lowercase().cmp(&right.to_lowercase())
+    });
+    groups
+}
+
+fn export_row(values: &[String]) -> JsValue {
+    let row = Array::new();
+    for value in values {
+        row.push(&JsValue::from_str(value));
+    }
+    row.into()
+}
+
+fn analysis_client_table() -> Result<JsValue, JsValue> {
+    super::analysis_view::apply_filter_export();
+    let filtered = super::analysis_view::filtered_rows();
+    let rows = filtered.iter().collect::<Vec<_>>();
+    let filtered_count = rows.len();
+    let groups = export_groups(rows);
+    let output_rows = Array::new();
+
+    for group in &groups {
+        let group_address = if !group.address.is_empty() {
+            group.address.clone()
+        } else {
+            group.key.clone()
+        };
+        output_rows.push(&export_row(&[
+            "Counterparty".to_owned(),
+            group.name.clone(),
+            group_address.clone(),
+            analysis_address_url(&group_address),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
+        ]));
+
+        for row in &group.rows {
+            let address = {
+                let direct = first_export_text(row, &["address", "counterparty"]);
+                if direct.is_empty() {
+                    group.address.clone()
+                } else {
+                    direct
+                }
+            };
+            let txid = first_export_text(row, &["transactionId", "txid"]);
+            output_rows.push(&export_row(&[
+                String::new(),
+                {
+                    let value = first_export_text(row, &["name", "knownName"]);
+                    if value.is_empty() {
+                        group.name.clone()
+                    } else {
+                        value
+                    }
+                },
+                address.clone(),
+                analysis_address_url(&address),
+                first_export_text(row, &["datetime"]),
+                txid.clone(),
+                analysis_tx_url(&txid),
+                first_export_text(row, &["direction", "txsDir"]),
+                first_export_text(row, &["amount", "netFlow"]),
+                first_export_text(row, &["valueUsd"]),
+                first_export_text(row, &["blockScore"]),
+                first_export_text(row, &["type"]),
+            ]));
+        }
+
+        output_rows.push(&export_row(&[
+            "Total".to_owned(),
+            group.name.clone(),
+            group_address.clone(),
+            analysis_address_url(&group_address),
+            String::new(),
+            String::new(),
+            String::new(),
+            String::new(),
+            group.total_kas.to_string(),
+            group.total_usd.to_string(),
+            String::new(),
+            String::new(),
+        ]));
+        output_rows.push(&export_row(&vec![String::new(); 12]));
+    }
+
+    if output_rows.length() == 0 {
+        return Err(JsValue::from_str(
+            "No analysis rows are available for export.",
+        ));
+    }
+
+    let headers = Array::new();
+    for header in [
+        "Counterparty",
+        "Known Name",
+        "Counterparty Address",
+        "Counterparty URL",
+        "Date/Time",
+        "Transaction ID",
+        "Transaction URL",
+        "Direction",
+        "Amount (KAS)",
+        "Value (USD)",
+        "Block Score",
+        "Type",
+    ] {
+        headers.push(&JsValue::from_str(header));
+    }
+    let table = Object::new();
+    let _ = set_property(
+        table.as_ref(),
+        "title",
+        &JsValue::from_str("Kaspa Gateway Analysis Report"),
+    );
+    let _ = set_property(
+        table.as_ref(),
+        "subtitle",
+        &JsValue::from_str(&format!(
+            "Counterparty groups: {} | Rows: {}",
+            groups.len(),
+            filtered_count
+        )),
+    );
+    let _ = set_property(table.as_ref(), "headers", headers.as_ref());
+    let _ = set_property(table.as_ref(), "rows", output_rows.as_ref());
+    Ok(table.into())
+}
+
+fn analysis_locale() -> String {
+    let root = optional_property(&document(), "documentElement");
+    let from_attr = call_method1(&root, "getAttribute", &JsValue::from_str("lang"))
+        .ok()
+        .map(|value| truthy_text(&value))
+        .unwrap_or_default();
+    for value in [
+        from_attr,
+        truthy_text(&optional_property(&window(), "kgwCurrentLocale")),
+        {
+            let storage = optional_property(&window(), "localStorage");
+            call_method1(&storage, "getItem", &JsValue::from_str("kgw.locale"))
+                .ok()
+                .map(|value| truthy_text(&value))
+                .unwrap_or_default()
+        },
+    ] {
+        if !value.is_empty() {
+            return value;
+        }
+    }
+    "en".to_owned()
+}
+
+fn set_analysis_export_status(message: &str) {
+    let status = q("#analysisStatus");
+    if js_boolean(&status) {
+        let _ = set_property(&status, "textContent", &JsValue::from_str(message));
+    }
+    let data = Object::new();
+    let _ = set_property(data.as_ref(), "message", &JsValue::from_str(message));
+    log_analysis("analysis export", Some(data.as_ref()));
+}
+
+fn analysis_dialog_api() -> Result<JsValue, JsValue> {
+    let dialog = optional_property(&optional_property(&window(), "__TAURI__"), "dialog");
+    if optional_property(&dialog, "save")
+        .dyn_ref::<Function>()
+        .is_none()
+        || optional_property(&dialog, "ask")
+            .dyn_ref::<Function>()
+            .is_none()
+    {
+        return Err(JsValue::from_str(
+            "Tauri global dialog API is not available. Expected window.__TAURI__.dialog.save/ask.",
+        ));
+    }
+    Ok(dialog)
+}
+
+fn analysis_dialog_filter(format: &str) -> JsValue {
+    let ext = format.trim_start_matches('.').to_ascii_lowercase();
+    let output = Object::new();
+    let name = if ext.is_empty() {
+        "Export files".to_owned()
+    } else {
+        format!("{} files", ext.to_ascii_uppercase())
+    };
+    let extensions = Array::new();
+    if !ext.is_empty() {
+        extensions.push(&JsValue::from_str(&ext));
+    }
+    let _ = set_property(output.as_ref(), "name", &JsValue::from_str(&name));
+    let _ = set_property(output.as_ref(), "extensions", extensions.as_ref());
+    output.into()
+}
+
+async fn analysis_native_save_path(
+    format: &str,
+    default_path: &str,
+) -> Result<Option<String>, JsValue> {
+    let dialog = analysis_dialog_api()?;
+    let options = Object::new();
+    let _ = set_property(options.as_ref(), "title", &JsValue::from_str("Save export"));
+    let _ = set_property(
+        options.as_ref(),
+        "defaultPath",
+        &JsValue::from_str(default_path),
+    );
+    let filters = Array::new();
+    filters.push(&analysis_dialog_filter(format));
+    let _ = set_property(options.as_ref(), "filters", filters.as_ref());
+    let result = method(&dialog, "save")?.call1(&dialog, options.as_ref())?;
+    let selected = await_value(result).await?;
+    if js_boolean(&selected) {
+        Ok(Some(raw_string(&selected)))
+    } else {
+        Ok(None)
+    }
+}
+
+async fn analysis_export_backend(format: &'static str) -> Result<(), JsValue> {
+    let default_args = Object::new();
+    let _ = set_property(
+        default_args.as_ref(),
+        "reportType",
+        &JsValue::from_str("Analysis"),
+    );
+    let _ = set_property(default_args.as_ref(), "format", &JsValue::from_str(format));
+    let output_path = await_value(invoke_now(
+        "export_default_path",
+        Some(default_args.as_ref()),
+    )?)
+    .await?;
+    let output_path = raw_string(&output_path);
+    let Some(selected_path) = analysis_native_save_path(format, &output_path).await? else {
+        set_analysis_export_status("Export cancelled.");
+        return Ok(());
+    };
+
+    let address = {
+        let select = truthy_text(&optional_property(&q("#analysisAddressSelect"), "value"));
+        if select.trim().is_empty() {
+            truthy_text(&optional_property(&q("#analysisAddressInput"), "value"))
+        } else {
+            select
+        }
+    };
+    let time_range = {
+        let value = truthy_text(&optional_property(&q("#analysisTimeRange"), "value"));
+        if value.is_empty() {
+            "all".to_owned()
+        } else {
+            value
+        }
+    };
+    let request = Object::new();
+    for (name, value) in [
+        ("reportType", JsValue::from_str("Analysis")),
+        ("format", JsValue::from_str(format)),
+        ("outputPath", JsValue::from_str(&selected_path)),
+        (
+            "addressFilter",
+            if address.trim().is_empty() {
+                JsValue::NULL
+            } else {
+                JsValue::from_str(address.trim())
+            },
+        ),
+        ("timeRange", JsValue::from_str(&time_range)),
+        ("limit", JsValue::from_f64(100000.0)),
+        ("locale", JsValue::from_str(&analysis_locale())),
+        ("clientTable", analysis_client_table()?),
+    ] {
+        let _ = set_property(request.as_ref(), name, &value);
+    }
+    let args = Object::new();
+    let _ = set_property(args.as_ref(), "request", request.as_ref());
+    let result = await_value(invoke_now("export_report", Some(args.as_ref()))?).await?;
+    let snake = optional_property(&result, "output_path");
+    let camel = optional_property(&result, "outputPath");
+    let final_path = if js_boolean(&snake) {
+        raw_string(&snake)
+    } else if js_boolean(&camel) {
+        raw_string(&camel)
+    } else {
+        selected_path
+    };
+    set_analysis_export_status(&format!("Export completed: {final_path}"));
+
+    if super::top_addresses::centered_open_prompt().await? {
+        let open_args = Object::new();
+        let _ = set_property(open_args.as_ref(), "path", &JsValue::from_str(&final_path));
+        let _ = await_value(invoke_now(
+            "kgw_open_exported_file_v1",
+            Some(open_args.as_ref()),
+        )?)
+        .await?;
+    }
+    Ok(())
+}
+
+fn spawn_analysis_export(format: &'static str) {
+    spawn_local(async move {
+        if let Err(error) = analysis_export_backend(format).await {
+            set_analysis_export_status(&error_text(&error));
+        }
+    });
+}
+
+fn bind_analysis_export_button(selector: &'static str, format: &'static str) {
+    bind_node_once(
+        selector,
+        "kgwAnalysisExportPhase1",
+        "click",
+        Closure::wrap(Box::new(move |event: JsValue| {
+            prevent_default(&event);
+            let button = q(selector);
+            trace(
+                "analysis-export",
+                "r50b-analysis-export-click",
+                details(&[
+                    ("trusted", JsValue::from_bool(event_trusted(&event))),
+                    ("format", JsValue::from_str(format)),
+                    ("selector", JsValue::from_str(selector)),
+                    (
+                        "id",
+                        JsValue::from_str(&truthy_text(&optional_property(&button, "id"))),
+                    ),
+                    (
+                        "text",
+                        JsValue::from_str(
+                            truthy_text(&optional_property(&button, "textContent")).trim(),
+                        ),
+                    ),
+                ]),
+            );
+            spawn_analysis_export(format);
+        }) as Box<dyn FnMut(JsValue)>),
+    );
+}
+
+fn bind_analysis_export_buttons() {
+    bind_analysis_export_button("#analysisExportCsv", "csv");
+    bind_analysis_export_button("#analysisExportHtml", "html");
+    bind_analysis_export_button("#analysisExportPdf", "pdf");
+}
 fn bind_when_ready() {
     if !js_boolean(&root()) {
         return;
     }
     bind_controls();
+    bind_analysis_export_buttons();
     update_run_state();
     if !ADDRESSES_LOADED.get() {
         begin_load_saved_addresses();
@@ -1176,5 +1642,27 @@ mod tests {
         rows.sort_by(|left, right| left.label.cmp(&right.label));
         assert_eq!(rows[0].address, "kaspa:qalpha");
         assert_eq!(rows[1].address, "kaspa:qbeta");
+    }
+
+    #[test]
+    fn analysis_export_urls_preserve_legacy_contract() {
+        assert_eq!(
+            analysis_address_url(" kaspa:qabc<> "),
+            "https://explorer.kaspa.org/addresses/kaspa:qabc"
+        );
+        assert_eq!(analysis_address_url("kaspatest:qabc"), "");
+        let txid = "a".repeat(32);
+        assert_eq!(
+            analysis_tx_url(&txid),
+            format!("https://explorer.kaspa.org/txs/{txid}")
+        );
+        assert_eq!(analysis_tx_url("not-a-tx"), "");
+    }
+
+    #[test]
+    fn analysis_export_number_parsing_matches_display_values() {
+        assert_eq!(parse_display_number("1,234.5 KAS"), Some(1234.5));
+        assert_eq!(parse_display_number("-0.25"), Some(-0.25));
+        assert_eq!(parse_display_number(""), None);
     }
 }
