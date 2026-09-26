@@ -28,6 +28,7 @@ mod parallel_self_worker;
 mod program_unified;
 mod project_continuity;
 mod raw_log_provenance;
+mod restore_latest_frontend_regressions;
 mod runtime_automation_claims;
 mod runtime_repository_binding;
 mod runtime_repository_binding_apply;
@@ -98,6 +99,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- parallel-self-worker-runtime-gate
   cargo run -p xtask -- program-unified-gate [options]
   cargo run -p xtask -- project-continuity-gate
+  cargo run -p xtask -- restore-latest-frontend-regressions
   cargo run -p xtask -- raw-log-provenance-gate
   cargo run -p xtask -- runtime-automation-claims-gate
   cargo run -p xtask -- runtime-repository-binding-gate [--strict] [--online|--fresh] [--offline] [--json]
@@ -159,6 +161,18 @@ fn run() -> Result<(), CliError> {
             }
             let message =
                 aud013_navigation_regressions::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "restore-latest-frontend-regressions" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "restore-latest-frontend-regressions takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = restore_latest_frontend_regressions::run(&repo_root()?)
+                .map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
