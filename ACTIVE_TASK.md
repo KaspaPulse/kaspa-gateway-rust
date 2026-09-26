@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 — frontend/E2E Rust/WASM migration is IN PROGRESS after substantial tooling migration. Seven template modules are deterministic Rust-generated wrappers, twelve dead frontend JavaScript scaffolds are retired, Explorer utilities/date/formatting, frontend status, Settings layout, header live metrics, and Top Addresses now run from Rust/WASM through deterministic generated ABI glue; E2E runtime-port/assertion helpers and three native WebDriver behavioral boundaries are also Rust-owned. Behavioral frontend/E2E JavaScript outside proven generated seams remains migration debt and is not claimed Rust.
+PHASE 10 — frontend/E2E/operational-helper Rust migration is IN PROGRESS after substantial tooling migration. Seven template modules are deterministic Rust-generated wrappers, twelve dead frontend JavaScript scaffolds are retired, Explorer utilities/date/formatting, frontend status, Settings layout, header live metrics, and Top Addresses run from Rust/WASM through deterministic generated ABI glue; E2E runtime-port/assertion helpers, three native WebDriver behavioral boundaries, and the Desktop diagnostic launcher are Rust-owned. Behavioral frontend/E2E JavaScript and remaining PowerShell outside proven generated/platform seams remain migration debt and are not claimed Rust.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -85,17 +85,17 @@ PHASE 10 — frontend/E2E Rust/WASM migration is IN PROGRESS after substantial t
 Two independent blockers are explicit: full-local wrapper retirement is BLOCKED because no current zero-touch E2E artifact passes `Test-KgwZeroTouchResultIntegrity`; Rust clipboard caller adoption is BLOCKED because current user clipboard formats include OLE/enterprise non-text data and safe real write parity cannot mutate/restore them losslessly. Independent work continues. Preserved frontend findings remain: i18n 9 unbound HTML + 6 dynamic literals, raw-log provenance Node/Bridge transport-wrapper filters, duplicate Start/Stop IDs, and shared behavioral CJS SyntaxError. Generated template/WASM JS artifacts are exceptions only where Rust deterministically owns generation and CI rejects drift. Local `actionlint`, `cargo-audit`, `cargo-deny`, and `cargo-machete` remain unavailable until exact-head CI.
 
 ## Last Completed Action
-OP102 Top Addresses Rust/WASM ownership is committed as `dbdd0681cb57b017768d988175f7736d6481e571`, tree `d958dddfbf55271889562ecfbc503ae05f045462`. Exact 13-group legacy/Rust-WASM parity, unit 4/4, FMT, strict Clippy, MSRV wasm32, deterministic codegen, functional UI Rust-ownership contract, Desktop lint, language policy, focused Graphify and diff-check all PASS. Current measured state is Rust 168 / owned non-Rust source debt 17 / execution references 10 / technical exceptions 30 / unapproved 0/0.
+OP103 Desktop diagnostic launcher Rust ownership is committed as `ec23f1fc9b162724b2a90e648e917227d74dfbf0`, tree `01586b1e51793bd4753edaa325dcf053b553b3a0`. Legacy PowerShell SHA/line evidence was frozen before retirement. Stable diagnostic 5/5, Windows evidence 5/5, clipboard 5/5, cargo check, strict Clippy, FMT, MSRV 1.97.1 check + diagnostic 5/5, aggregate true-raw-log gate, full-local parser and diff-check PASS. Current measured state is Rust 169 / owned non-Rust source debt 16 / execution references 10 / technical exceptions 30 / unapproved 0/0.
 
 ## Current Action
-Continuity reconciliation is updating canonical state documents to the exact committed OP102 implementation checkpoint. No source implementation mutation is in progress during this documentation-only boundary.
+Continuity reconciliation is updating canonical state documents to the exact committed OP103 implementation checkpoint. No source implementation mutation is in progress during this documentation-only boundary.
 
 ## Next Action
-Run the project-continuity gate and checkpoint only these canonical state updates. Then recover the actual 17-source / 10-execution debt inventory and select the smallest independent unblocked next boundary. Preserve OP090-OP102 valid evidence; revisit blocked full-local/clipboard/zero-touch paths only when their stated conditions change.
+Run the project-continuity gate and checkpoint only these canonical state updates. Then recover the actual 16-source / 10-execution debt inventory and select the smallest independent unblocked next boundary. Preserve OP090-OP103 valid evidence; revisit blocked full-local/clipboard/zero-touch paths only when their stated conditions change.
 
 ## Verification Required
-- OP102 affected surface: exact 13-group legacy/Rust-WASM parity PASS; Rust unit 4/4 PASS; FMT PASS; strict frontend-WASM Clippy PASS; MSRV 1.97.1 wasm32 check PASS; deterministic frontend-WASM codegen PASS with 13 artifacts; functional UI Rust-ownership contract PASS; Desktop lint PASS with 0 errors; language-policy PASS; focused Graphify PASS; diff-check PASS.
-- Repository final zero-debt gate remains open because 17 source and 10 execution debts remain; unapproved debt is 0/0.
+- OP103 affected surface: legacy launcher frozen at SHA-256 `7229e1fd33546f0c14dc89dd34627b2626eaede00d07bdf08956721964cca0c5`; stable diagnostic/Windows-evidence/clipboard tests 5/5 each PASS; cargo check, FMT and strict xtask Clippy PASS; MSRV 1.97.1 check + diagnostic 5/5 PASS; aggregate true-raw-log gate PASS; full-local parser PASS; language inventory PASS at Rust 169 / source debt 16 / execution debt 10 / exceptions 30 / unapproved 0/0; diff-check PASS.
+- Repository final zero-debt gate remains open because 16 source and 10 execution debts remain; unapproved debt is 0/0.
 - Network-generation evidence remains reusable from commit `5494f58...`.
 - Runtime-automation Rust gate = PASS; regressions = 4/4 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Effective-node-settings Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
