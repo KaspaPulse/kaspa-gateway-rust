@@ -1,6 +1,7 @@
 mod analysis_binding;
 mod log_tab;
 mod settings_contract;
+mod settings_layout;
 mod settings_runtime;
 mod settings_schema;
 mod shell_logger;

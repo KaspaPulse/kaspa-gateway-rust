@@ -11,7 +11,7 @@
 ## LAST CONFIRMED STATE
 Rust now owns the former `e2e/specs/lifecycle-recovery.e2e.js` behavioral scenario through the embedded W3C WebDriver foundation. The Rust scenario covers mainnet and testnet10 start, READY/exact-owner verification, normal stop, restart, intentional exact-owner crash, stopped reconciliation, and recovery/restart. The JavaScript spec is retired only after native Rust behavior passed.
 
-## IMPLEMENTATION / REPAIRS
+## COMPLETED / VERIFIED
 - Added `xtask/src/e2e_lifecycle_recovery.rs` and command wiring.
 - Reused Rust/WASM runtime-port and owner-status semantics plus exact-owned-process kill/wait helpers.
 - Expanded native WebDriver/process support needed by the real lifecycle scenario.
@@ -21,7 +21,7 @@ Rust now owns the former `e2e/specs/lifecycle-recovery.e2e.js` behavioral scenar
 - Completed lint-only cleanup required by strict Desktop Clippy without changing intended runtime semantics.
 - Retired `e2e/specs/lifecycle-recovery.e2e.js` and its package/debt references.
 
-## VERIFIED EVIDENCE
+## EVIDENCE / TESTS
 - Lifecycle Rust harness tests: 4/4 PASS on stable and MSRV 1.97.1.
 - E2E Rust/WASM tests: 7/7 PASS on stable and MSRV.
 - wasm32 checks: PASS on stable and MSRV.

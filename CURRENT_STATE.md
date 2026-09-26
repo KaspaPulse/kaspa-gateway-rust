@@ -1,58 +1,65 @@
 # CURRENT STATE
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
-- Active task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
-- Current branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY**. Latest implemented caller/source checkpoint is `5ec5bfe7da8dbf074c9343b79859c23fb66f9c2f`, tree `5e89602ea24492ec40da7ac321745872d8350c2a`; OP068 and OP069 implementations are committed in its ancestry. These are local WIP checkpoints, not final publication qualification.
-- Current remote main: **VERIFY DYNAMICALLY** immediately before GitHub publication/integration; task baseline was `aaf2c635672c0fd35a5705579610be8de188b031`.
-- Working tree: **DIRTY_PRESERVED** because the older OP066 E2E tracked modifications and three untracked files remain deliberately unstaged. Applied OP068/OP069/OP070 source is locally committed. Ignored failed-write proposals remain preserved; verify Git/index dynamically.
-- Current Rust source inventory: verify the latest OP073 language receipt; one additional unwired OP072 partial exists. Inventory is not completed migration percentage.
-- Current owned non-Rust programming source debt: 41.
-- Current non-Rust execution-wiring debt: 13.
-- Rust language guard: PASS; unapproved source=0; unapproved execution=0.
-- Technical exceptions: 21 — the prior twenty technical exceptions plus deterministic generated Explorer `explorer.header.js`; price parsing now lives in Rust/WASM and the tracked adapter is codegen-owned. No Linguist suppression is used.
-- KSSS owned adapter: Rust/PyO3; five superseded KGW-owned Python adapter/gate files removed after parity.
-- Signed KSSS central runtime: unchanged third-party archive; SHA-256 `38309d2ab8fa30096d99940f855e88173faa182e60db33f2a96b2d3408507430`.
-- Historical KSSS adapter checkpoint: 24/24 rejection contracts and the then-complete 47/47 xtask suite passed on stable/MSRV. This is reusable unchanged-adapter evidence, not a current full-workspace test count or proof of the blocked OP068 evaluation result.
-- Stable check/Clippy `-D warnings`/FMT PASS; MSRV feature check/test PASS.
-- Old/new KSSS semantic parity: PASS for check/evaluate/knowledge/release-check/trust, including cryptographic verification with pinned Cosign v3.0.6.
-- i18n locale gate: PASS (32 critical keys, 0 missing, 0 same-as-English, 1 approved). Full i18n contract: **FAIL / VERIFIED CURRENT TRUTH** with 4 unbound HTML findings and 6 dynamic literals after five OP073 static Analysis bindings were fixed; missingRefs/quoteRisks/runtimeFindings are 0. Seven extra unbound findings are latent template HTML now statically visible after source normalization, while exported runtime HTML bytes remain unchanged.
-- Focused Graphify for the i18n and raw-log provenance batches remains **NOT VERIFIED / TOOL_BLOCKED** for those historical batches; program-unified focused Graphify is PASS after exact Server→kas SHA-bound mirroring.
-- Raw-log provenance: **FAIL / VERIFIED CURRENT TRUTH** with exactly two findings — Node and Bridge frontend retain transport-wrapper filters. `kgw_log_ui_tests.cjs` remains PASS and deferred because it executes live frontend JS behavior.
-- Start-button gate: **FAIL / VERIFIED CURRENT TRUTH** with exactly three findings — duplicate Start ID, duplicate Stop ID, and behavioral frontend CJS SyntaxError. Targeted Tauri IPC suite remains 56/56 PASS.
-- Copy Log gate: **FAIL / VERIFIED CURRENT TRUTH** only because the shared behavioral frontend CJS regression exits 1 with the same SyntaxError. Static Copy Log contracts pass and targeted Tauri clipboard tests remain 4/4 PASS.
-- Explorer Rust/WASM utilities/date/formatting: **VERIFIED_LOCAL / COMMITTED** through `3e73e1b40d550ffec8a1432e4d60697c4c9ad7b1`; utility behavior parity plus date/formatting full browser matrix parity PASS, native 3/3, stable/MSRV wasm32 checks, codegen, language guard, syntax/lint/static contracts and focused Graphify PASS.
-- Frontend status Rust/WASM: **VERIFIED_LOCAL / COMMITTED** at `1105ae86efee4469476159bcdff5c1e5990e73a3`; canonical browser matrix parity exact with 0 structural diffs, native Rust tests 5/5 PASS, stable/MSRV wasm32 checks PASS, deterministic codegen/lint/language guard PASS, focused Graphify PASS at 6572 nodes / 17345 edges.
-- E2E runtime-ports Rust/WASM: **VERIFIED_LOCAL / COMMITTED** at `2979d1822027b11576dab8b389d2afd07ccf124b`; unchanged behavioral smoke PASS externally and in tracked E2E workspace, native tests 3/3 PASS, stable/MSRV wasm32 checks PASS, E2E lint/check PASS, deterministic codegen/CI/language guard PASS, focused Graphify PASS at 6642 nodes / 17482 edges.
-- E2E assertions Rust/WASM: **VERIFIED_LOCAL / COMMITTED** at `5d9be6dfca8be7ec2a600179e991c1d629210a99`; legacy/external/tracked behavior matrices are byte-identical SHA-256 `40287354a84163529e9d32c21d68b5aa232eb824f190323f6ddac71c50facc27` across 17 assertion cases, native tests 7/7 PASS, stable/MSRV wasm32 checks PASS, codegen tests/check, E2E lint/check, language guard, Clippy/FMT/diff-check PASS, focused Graphify PASS at 6686 nodes / 17604 edges.
-- E2E runtime-port JavaScript smoke retirement: **VERIFIED_LOCAL / COMMITTED** at `1315a1af9d5aaaf70f1ed53ae6e8d458332789e0`; six static source contracts moved to Rust `e2e_static_smokes`, targeted Rust regressions 6/6 PASS, existing runtime-port Rust behavior evidence reused, MSRV/Clippy/FMT/E2E lint+check/language guard PASS, focused Graphify PASS at 6681 nodes / 17598 edges with the legacy smoke path absent.
-- Explorer header price Rust/WASM: **VERIFIED_LOCAL / COMMITTED** at `198c7ccd5fe91bb55fc3db401b19653a602d61d9`; exact 19-case legacy/headless-Edge matrix SHA-256 parity `1af01977f595e0db56e7c217640a2679c1e68c40d7ea8696b167fd3b385639dc`, tracked/external generated bytes 3/3 identical, native frontend-WASM tests 7/7 PASS, stable/MSRV wasm32 checks PASS, codegen/MSRV/KSSS/Clippy/FMT/Desktop lint/language guard PASS, focused Graphify PASS at 6691 nodes / 17632 edges.
-- Windows zero-touch evidence capture: **VERIFIED_LOCAL / COMMITTED** at `f4ec63bb24b47e1fabf4cdb3f7cb44c377c93fc9`; frozen legacy JSON schema, direct Rust synthetic process/TCP-owner proof, and `windows.mjs` caller proof PASS; the PowerShell evidence helper is retired; Rust tests 5/5 + E2E static 6/6 + true-raw-log static 5/5, MSRV/KSSS/Clippy/FMT/E2E lint+check/full-local parser/language guard PASS, focused Graphify PASS at 6732 nodes / 17748 edges.
-- Settings runtime presentation/observation are implemented in Rust/WASM and locally checkpointed as `5403092f243ea9d4041de6a6faabeff9f7b2e579` (tree `b0bfbc13d5228dd32d9493178a296298ac422158`). `settings-contract.js` retains all validators/DOM/confirmation and remains migration debt; it re-exports the two functions through the existing generated status ABI. All 582 legacy/actual-WASM cases are identical (SHA-256 `fea26266dbfdf9b13e117850acfe4134cdb19140e53bc7d9e0259d401b64b73b`), all 49 existing settings assertions pass unchanged, native Rust regressions are 5/5 on stable and MSRV, wasm32/codegen/Clippy/FMT/KSSS-feature compile/Desktop lint/language guard pass, and SHA-bound focused Graphify passes at 6756 nodes / 17803 edges. Browser verification is NOT VERIFIED / TOOL_BLOCKED; no browser run started. This is a local component checkpoint, not full migration or publication qualification.
-- Frontend/app-boot/E2E evidence that depends on the changed Explorer/settings/status module graph is **INVALIDATED FOR FINAL CLOSURE**; native/runtime evidence outside that predicate remains reusable.
-- Continuity validation: **VERIFY DYNAMICALLY** from the latest source-bound OP070 gate receipts in the existing operation journal; no gate result is assumed by this document.
-- Local actionlint/cargo-audit/cargo-deny/cargo-machete: **NOT VERIFIED / unavailable locally**; exact-head GitHub CI is required.
-- Production/DNS/Cloudflare/live runtime mutation: NO.
-- Protected historical checkpoint mutation: NO.
-- Remote GitHub mutation for this task: NO.
+- Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
+- Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
+- Branch: `feat/owned-implementation-100-percent-rust-20260923`.
+- Current HEAD: **VERIFY DYNAMICALLY** with `git rev-parse HEAD`; historical pre-OP100 checkpoint was `4296e84c023d3b94e3b4c2086216d9f45ee2d3c3`, tree `cb56a8514097eca10b2d8c0dcb357271daf919a0`.
+- Current remote main: **VERIFY DYNAMICALLY** immediately before any remote integration or publication.
+- Working tree: **NOT VERIFIED** after any checkpoint transition; derive it dynamically with `git status --porcelain=v2`. During OP100 checkpoint preparation, intentional OP100 changes were dirty and unrelated stat-only byte-identical paths were excluded.
+- Remote publication: NOT STARTED for the current local migration candidate; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
-- Canonical state recovery: **PARTIAL / ATOMIC_REPLACE_BLOCKED**. OP063 recovered and compared all five proposals and backups. Only CURRENT_STATE.md and PLANS.md are selected for this update; PROJECT_STATE.md, ACTIVE_TASK.md and the task handoff remain older than source5403092. The saved PROJECT_STATE.md.op062.tmp is preserved. A guarded same-API replacement failed again with WinError5. Restart Manager identifies a Desktop Commander reader, but DELETE-only access probes pass, so the historical root cause is not established. No process, permission, ownership or security setting was changed.
+## MIGRATION STATE
 
-## Latest implementation boundary
-- OP073 verified five static Analysis translation bindings; four HTML and six dynamic i18n findings remain. Rust template codegen, static contracts, locale coverage and exact attribute-only repair checks PASS; browser qualification is not inferred.
-- OP071 native emergency metadata finalization has three stable/MSRV tests, strict Clippy/build PASS and thirteen logged comparison successes, but overall parity failed at a non-repository fixture. Result inspection and caller adoption were tool-blocked; code is partial and unadopted.
-- OP072 preview source is a30-line unwired Rust partial at xtask/src/native_settings_preview.rs after tool-blocked endpoint append; original Node gate/dependencies remain unchanged.
-- Latest attempt/repair checkpoint: docs/handoff-ledger/2026-09-25-emergency-preview-i18n-progress.md. All OP066 bytes and earlier unapplied proposals remain preserved.
-- OP070 routed both active evidence-summary calls to the native Rust CLI. Ten extracted caller cases and parser/diff checks PASS. A reviewed16-function/937-line legacy retirement was blocked by WinError5; the original1356-line helper and its proposed replacement remain preserved. The deletion was NOT applied and source debt stays41. Detailed checkpoint: docs/handoff-ledger/2026-09-25-native-evidence-callers.md.
-- OP069 adds native result/failure construction and atomic JSON artifact writing. The actual primary E2E result path now delegates to Rust:34 builder cases,20 writer cases,four extracted caller cases,35 stable/MSRV tests,strict Clippy/MSRV feature checks and Unicode roundtrip PASS. Legacy emergency handling and the remaining PowerShell helper remain; no full E2E/native application run occurred. Detailed checkpoint: docs/handoff-ledger/2026-09-25-rust-native-result-writer.md.
-- OP068 implemented the native Rust saved-evidence validator and adopted it in the full-local artifact-reuse function. Native/PowerShell comparison73 cases PASS (67 exact JSON and6 invalid-input rejection),25 stable/MSRV regressions PASS, strict Clippy/package feature compilation and six extracted caller cases PASS. Graphify preparation and KSSS-result inspection are TOOL_BLOCKED; no full component/final application qualification is inferred. The legacy result-writing library remains active, so owned source debt stays41.
-- Current detailed checkpoint: `docs/handoff-ledger/2026-09-25-native-evidence-callers.md`; OP068/OP069 implementation checkpoints and their evidence directories remain valid historical component receipts.
-- OP066 added an uncommitted Rust E2E artifact-path capability: actual Node/WASM and isolated filesystem parity 557/557 with zero differences; stable/MSRV, strict Clippy, existing codegen, E2E check/lint and focused Graphify PASS. The original paths.mjs remains active because its generator-source atomic update failed. Commit attempt OP066I was TOOL_BLOCKED before execution. No source-debt retirement or full migration success is claimed.
-- The unadopted declarative global-owner registry is preserved outside active scan roots in `global-owner-rust-op065/unadopted-global-owner-registry.json`; the introduced 145 scoped findings are removed without weakening the scanner. Original full-gate four missing-marker findings remain.
-- Historical OP066 source/receipt checkpoint: `docs/handoff-ledger/2026-09-25-rust-e2e-artifact-paths-capability.md`. Its original base was `6ab33ff2f6a0fefa3e0224709ec4a2fae495fdca`; its six dirty/untracked paths remain preserved outside the new implementation commits.
+- OP090 through OP099 are locally checkpointed commits. OP099 commit is `4296e84c023d3b94e3b4c2086216d9f45ee2d3c3`.
+- OP100 Settings layout Rust/WASM ownership is VERIFIED_LOCAL_IMPLEMENTATION and awaiting its local checkpoint commit.
+- Rust source inventory: 166.
+- Owned non-Rust programming source debt: 19.
+- Non-Rust execution-wiring debt: 10.
+- Technical exceptions: 28.
+- Unapproved non-Rust source/execution: 0 / 0.
+- Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt is closed.
+- No Linguist suppression or automatic debt baselining is used.
 
-## NEXT ACTION
-Recover exact Git, OP071-073 records and preserved partial source. Continue independent required migration/qualification; investigate legacy v2 source fingerprint coverage of the Git index and untracked paths with isolated regression fixtures. Do not retry blocked emergency/preview/dynamic-translation inspections or protected file replacements. Full migration remains PARTIAL and publication NOT_QUALIFIED.
+## OP100 VERIFIED EVIDENCE
+
+- Former hand-maintained `frontend/src/settings-layout.js` is now deterministic ABI glue generated by Rust `frontend-wasm-codegen`.
+- Rust owner: `crates/kaspa-gateway-frontend-wasm/src/settings_layout.rs`.
+- Legacy source SHA-256: `1a24b6496863f72c54d8415a48cde570142af9977a8e8de8f5c2ce4ccdfdf1ad`.
+- Legacy vs final generated Rust/WASM pure-contract parity: PASS for 70 help keys, 24 global IDs, field-kind matrix, and exact Node/Bridge rendered HTML hashes.
+- Rust layout tests: 4/4 PASS.
+- frontend-wasm-codegen tests: 2/2 PASS.
+- wasm-pack 0.15.0 write/check: PASS; artifact count 12.
+- Strict affected Clippy: PASS.
+- MSRV 1.97.1 wasm32 check: PASS.
+- Generated adapter ESLint: PASS.
+- Settings static contracts: 2/2 PASS.
+- `git diff --check`: PASS.
+- Temporary Node/WASM execution probe: PASS.
+- Edge/Chrome headless DOM dump harness: NOT VERIFIED / NON-EVIDENTIARY. It produced no dump; no product PASS/FAIL is inferred. Native/frontend qualification remains required at final closure.
+
+## REUSABLE PRIOR EVIDENCE
+
+- OP095 lifecycle recovery, OP096 Bridge in-process, and OP097 app close/relaunch remain locally verified native evidence while their predicates remain valid.
+- OP098 true raw-log frontend and OP099 Start/Copy regression ownership remain valid unless affected source changes invalidate them.
+- KSSS signed-runtime and adapter evidence remains reusable because OP100 did not modify that surface.
+- Tauri backend/runtime qualification outside changed frontend/WASM predicates remains reusable.
+- Local actionlint/cargo-audit/cargo-deny/cargo-machete are unavailable and remain REMOTE_VALIDATION_REQUIRED at exact-head CI.
+
+## KNOWN BLOCKERS
+
+- Full-local wrapper retirement remains blocked by absence of a current zero-touch E2E artifact that passes the repository integrity validator.
+- Real Rust clipboard caller adoption remains blocked by the current Windows clipboard containing non-text OLE/enterprise formats that cannot be safely round-tripped losslessly; do not mutate the user's live clipboard merely to obtain PASS.
+- Zero-touch live matrix and its `tauri-app.mjs` / `windows.mjs` helpers remain coupled to real clipboard SHA evidence and must not be retired independently while that condition holds.
+- `tools/kgw_zero_touch_evidence.ps1` retains its previously recorded external file-use/access-denied blocker; do not force-delete or force-unlock it.
 
 ## DO NOT REPEAT
-Do not replay unaffected native/runtime/release qualification without predicate invalidation. Frontend/app-boot/E2E qualification that depends on the changed Explorer/settings/status module graph must be rerun before final closure. Do not rerun verified KSSS parity/47-test qualification merely because the phase advances. Do not restore deleted adapters, touch unrelated worktrees/protected checkpoint, weaken signed-runtime boundaries, or hide debt with Linguist/automatic baselining.
+
+- Do not replay OP090-OP100 successful tests/qualification while their validity predicates remain unchanged.
+- Do not reset, clean, stash, discard, overwrite or replace newer local work with remote state.
+- Do not force unsafe clipboard mutation or file unlocking.
+- Do not push merely to discover locally detectable failures.
+
+## NEXT ACTION
+
+Finish OP100 continuity reconciliation, run the project-continuity gate, review/stage only the exact OP100 scope and create a coherent local checkpoint commit. Then recover the actual state again and continue the next smallest independent unblocked owned non-Rust boundary, expected to be `frontend/src/core/header-live-metrics.js` unless live evidence proves another boundary is safer.
