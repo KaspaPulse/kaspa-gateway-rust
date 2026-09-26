@@ -394,13 +394,17 @@ fn non_rust_execution_reference(path: &str, absolute: &Path) -> Option<String> {
     non_rust_execution_content(&lower_path, &content)
 }
 
-fn contains_shell_script_reference(content: &str) -> bool {
-    content.match_indices(".sh").any(|(index, _)| {
-        content[index + 3..]
-            .chars()
-            .next()
-            .is_none_or(|ch| !ch.is_ascii_alphanumeric())
-    })
+fn contains_script_file_reference(content: &str) -> bool {
+    [".py", ".js", ".mjs", ".cjs", ".ps1", ".sh"]
+        .iter()
+        .any(|extension| {
+            content.match_indices(extension).any(|(index, _)| {
+                content[index + extension.len()..]
+                    .chars()
+                    .next()
+                    .is_none_or(|ch| !ch.is_ascii_alphanumeric())
+            })
+        })
 }
 
 fn non_rust_execution_content(lower_path: &str, content: &str) -> Option<String> {
@@ -437,15 +441,9 @@ fn non_rust_execution_content(lower_path: &str, content: &str) -> Option<String>
         "pwsh ",
         "bash ",
         "run: sh ",
-        ".py",
-        ".js",
-        ".mjs",
-        ".cjs",
-        ".ps1",
         "setup-node",
     ];
-    if tokens.iter().any(|token| content.contains(token))
-        || contains_shell_script_reference(content)
+    if tokens.iter().any(|token| content.contains(token)) || contains_script_file_reference(content)
     {
         return Some("declarative file invokes or wires non-Rust implementation".to_owned());
     }
@@ -623,13 +621,19 @@ mod tests {
     #[test]
     fn github_sha_and_squash_do_not_look_like_shell_scripts() {
         let workflow = "env:\n  EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}\nsteps:\n  - run: cargo run --locked -p xtask --bin kgw-dependabot-auto-merge -- --squash\n";
-        assert!(!contains_shell_script_reference(workflow));
+        assert!(!contains_script_file_reference(workflow));
         assert!(
             non_rust_execution_content(".github/workflows/dependabot-auto-merge.yml", workflow)
                 .is_none()
         );
-        assert!(contains_shell_script_reference(
+        assert!(contains_script_file_reference(
             "run: ./tools/check.sh --strict\n"
+        ));
+        assert!(!contains_script_file_reference(
+            "path: invalid-license-changes.json\n"
+        ));
+        assert!(contains_script_file_reference(
+            "run: node ./tools/check.js\n"
         ));
     }
 
