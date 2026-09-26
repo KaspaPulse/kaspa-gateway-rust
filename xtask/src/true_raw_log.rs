@@ -536,10 +536,6 @@ fn run_powershell_parser_checks(root: &Path, failures: &mut Vec<String>) {
     for (relative, label) in [
         (CLIPBOARD_CAPTURE, "Raw clipboard capture helper"),
         (LIVE_MATRIX, "Live raw log matrix"),
-        (
-            "tools/kgw_desktop_diagnostic_launch.ps1",
-            "Desktop diagnostic launcher",
-        ),
         (ZERO_TOUCH_E2E, "Zero-touch E2E launcher"),
         (ZERO_TOUCH_EVIDENCE, "Zero-touch evidence helper"),
         (FULL_LOCAL_GATE, "Full local gate"),

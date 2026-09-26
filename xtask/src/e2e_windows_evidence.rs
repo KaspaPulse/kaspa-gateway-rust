@@ -234,6 +234,20 @@ fn capture_process_tree(
     Ok(result)
 }
 
+#[cfg(windows)]
+pub(crate) fn capture_process_values(
+    repository: &Path,
+    desktop_pid: Option<u32>,
+) -> Result<Vec<Value>, String> {
+    capture_process_tree(repository, desktop_pid)
+        .map(|values| values.iter().map(process_json).collect())
+}
+
+#[cfg(windows)]
+pub(crate) fn capture_port_values(ports: &[u16]) -> Result<Vec<Value>, String> {
+    capture_port_state(ports).map(|values| values.iter().map(tcp_json).collect())
+}
+
 fn process_matches_repository(
     executable: &str,
     command_line: &str,

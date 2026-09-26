@@ -93,6 +93,12 @@ fn run(options: &Options) -> Result<String, String> {
     }
 }
 
+#[cfg(windows)]
+pub(crate) fn read_snapshot_metadata() -> Result<Value, String> {
+    let text = read_clipboard_text()?;
+    Ok(read_metadata(&text, None))
+}
+
 fn write_metadata(text: &str) -> Value {
     json!({
         "mode": "write",

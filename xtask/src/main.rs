@@ -6,6 +6,7 @@ mod clippy_policy;
 mod copy_log;
 mod deepmerge_security_smoke;
 mod desktop_artifacts;
+mod desktop_diagnostic;
 mod desktop_release_draft;
 mod desktop_version;
 mod e2e_app_close_relaunch;
@@ -88,6 +89,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- check-trufflehog-results <jsonl>
   cargo run -p xtask -- copy-log-gate
   cargo run -p xtask -- desktop-artifacts-workflow-gate
+  cargo run -p xtask -- desktop-diagnostic [--repository <path>]
   cargo run -p xtask -- desktop-release-draft-workflow-gate
   cargo run -p xtask -- desktop-version-contract-gate
   cargo run -p xtask -- deepmerge-security-smoke
@@ -236,6 +238,12 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = desktop_artifacts::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "desktop-diagnostic" => {
+            let message =
+                desktop_diagnostic::run_cli(&mut args, &repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

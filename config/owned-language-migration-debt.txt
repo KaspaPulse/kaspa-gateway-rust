@@ -12,7 +12,6 @@ e2e/helpers/kgw_windows_clipboard.ps1
 e2e/helpers/tauri-app.mjs
 e2e/helpers/windows.mjs
 e2e/specs/zero-touch-live-matrix.e2e.js
-tools/kgw_desktop_diagnostic_launch.ps1
 tools/kgw_full_local_gate.ps1
 tools/kgw_live_raw_log_matrix.ps1
 tools/kgw_raw_log_clipboard_capture.ps1
