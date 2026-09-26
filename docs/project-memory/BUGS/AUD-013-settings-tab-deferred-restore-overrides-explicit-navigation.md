@@ -17,10 +17,10 @@ Saved-tab restore scheduling had no explicit-navigation generation/state. Displa
 Keep startup restoration, but give explicit top-level navigation its own generation. Explicit navigation invalidates pending bootstrap restores, future stale scheduling is suppressed, and an async explicit open activates only if its generation is still the latest. No Settings-specific hardcode was added.
 
 ## Verification
-`tools/kgw_aud013_navigation_tests.cjs` PASS. Real WebDriver regression PASS on source-bound Desktop binary SHA-256 `2e10c23295951c6a3ef581888f71c30c1965d6b6ea3d1a41b05d51b877c6c2e7`: startup restored saved `kaspa-bridge`; Settings remained the sole active tab/panel after stale restore delays; rapid bridge→Settings left Settings active. File-scoped ESLint count was unchanged before/after the fix (32 errors, 3 warnings).
+`cargo run --locked -p xtask -- aud013-navigation-regressions` PASS. Real WebDriver regression PASS on source-bound Desktop binary SHA-256 `2e10c23295951c6a3ef581888f71c30c1965d6b6ea3d1a41b05d51b877c6c2e7`: startup restored saved `kaspa-bridge`; Settings remained the sole active tab/panel after stale restore delays; rapid bridge→Settings left Settings active. File-scoped ESLint count was unchanged before/after the fix (32 errors, 3 warnings).
 
 ## Regression Protection
-`tools/kgw_aud013_navigation_tests.cjs` guards stale pending restore invalidation, startup restore without interaction, latest explicit generation wins, no post-intent restore scheduling, and source integration. The targeted Desktop WebDriver evidence protects the actual shell path.
+`cargo run --locked -p xtask -- aud013-navigation-regressions` guards stale pending restore invalidation, startup restore without interaction, latest explicit generation wins, no post-intent restore scheduling, and source integration. The targeted Desktop WebDriver evidence protects the actual shell path.
 
 ## Remaining Risk
 NONE known for this defect. Repository-wide preexisting frontend lint debt is tracked separately and is not caused by AUD-013.

@@ -1,4 +1,5 @@
 mod ai_workflow;
+mod aud013_navigation_regressions;
 mod bridge_node_mode_routing;
 mod clippy_policy;
 mod copy_log;
@@ -68,6 +69,7 @@ impl CliError {
 fn usage() -> &'static str {
     "usage:
   cargo run -p xtask -- ai-workflow-gate
+  cargo run -p xtask -- aud013-navigation-regressions
   cargo run -p xtask -- bridge-node-mode-routing-audit <repo-root> <report-dir>
   cargo run -p xtask -- language-policy <check|strict|inventory>
   cargo run -p xtask -- check-clippy-results <cargo-clippy-jsonl>
@@ -143,6 +145,18 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = ai_workflow::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "aud013-navigation-regressions" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "aud013-navigation-regressions takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message =
+                aud013_navigation_regressions::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

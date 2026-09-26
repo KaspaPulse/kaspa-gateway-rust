@@ -19,7 +19,6 @@ e2e/specs/bridge-inprocess.e2e.js
 e2e/specs/lifecycle-recovery.e2e.js
 e2e/specs/zero-touch-live-matrix.e2e.js
 e2e/wdio.conf.mjs
-tools/kgw_aud013_navigation_tests.cjs
 tools/kgw_bridge_readiness_frontend_tests.cjs
 tools/kgw_desktop_diagnostic_launch.ps1
 tools/kgw_effective_bridge_settings_gate.cjs
