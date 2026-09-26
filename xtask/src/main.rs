@@ -8,6 +8,7 @@ mod deepmerge_security_smoke;
 mod desktop_artifacts;
 mod desktop_release_draft;
 mod desktop_version;
+mod e2e_app_close_relaunch;
 mod e2e_bridge_inprocess;
 mod e2e_clipboard;
 mod e2e_config_codegen;
@@ -92,6 +93,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- effective-node-settings-gate
   cargo run -p xtask -- e2e-clipboard <read|write> [--value <text>] [--output-path <path>]
   cargo run -p xtask -- e2e-config-codegen <check|write>
+  cargo run -p xtask -- e2e-app-close-relaunch --app-binary <path> --output-directory <path> [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-bridge-inprocess --app-binary <path> --output-directory <path> [--network <all|mainnet|testnet10>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-lifecycle-recovery --app-binary <path> --output-directory <path> [--network <all|mainnet|testnet10>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-native-webdriver-smoke --app-binary <path> [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
@@ -300,6 +302,12 @@ fn run() -> Result<(), CliError> {
         "e2e-config-codegen" => {
             let message =
                 e2e_config_codegen::run_cli(&mut args, &repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "e2e-app-close-relaunch" => {
+            let message = e2e_app_close_relaunch::run_cli(&mut args, &repo_root()?)
+                .map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

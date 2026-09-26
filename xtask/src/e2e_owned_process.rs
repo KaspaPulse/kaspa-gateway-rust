@@ -166,6 +166,20 @@ fn run(options: &Options) -> Result<String, String> {
 #[cfg(windows)]
 struct OwnedHandle(HANDLE);
 
+pub(crate) struct ExactProcessExitGuard {
+    #[cfg(windows)]
+    handle: OwnedHandle,
+    process_id: u32,
+    expected_executable: String,
+    expected_start_time: i64,
+}
+
+impl ExactProcessExitGuard {
+    pub(crate) fn process_id(&self) -> u32 {
+        self.process_id
+    }
+}
+
 #[cfg(windows)]
 impl Drop for OwnedHandle {
     fn drop(&mut self) {
@@ -245,6 +259,105 @@ fn query_process_optional(process_id: u32) -> Result<Option<Identity>, String> {
         return Ok(None);
     };
     query_identity(&handle).map(Some)
+}
+
+pub(crate) fn prepare_exact_process_exit_guard(
+    process_id: u32,
+    expected_executable: &str,
+    expected_start_time: i64,
+) -> Result<ExactProcessExitGuard, String> {
+    #[cfg(windows)]
+    {
+        let Some(handle) = open_process(
+            process_id,
+            PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_SYNCHRONIZE,
+        )?
+        else {
+            return Err(format!(
+                "exact process identity {process_id} is not running"
+            ));
+        };
+        let actual = query_identity(&handle)?;
+        let options = Options {
+            action: "wait".to_owned(),
+            process_id,
+            expected_executable: expected_executable.to_owned(),
+            expected_start_time,
+            output_path: PathBuf::new(),
+            timeout_seconds: 1,
+        };
+        if !same_identity(&actual, &options) {
+            return Err(format!(
+                "exact process identity {process_id} does not match expected executable/start time"
+            ));
+        }
+        Ok(ExactProcessExitGuard {
+            handle,
+            process_id,
+            expected_executable: expected_executable.to_owned(),
+            expected_start_time,
+        })
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = (process_id, expected_executable, expected_start_time);
+        Err("exact process exit guard requires Windows".to_owned())
+    }
+}
+
+pub(crate) fn wait_prepared_exact_process_exit(
+    guard: ExactProcessExitGuard,
+    output_path: &Path,
+    timeout_seconds: u32,
+) -> Result<String, String> {
+    if timeout_seconds == 0 {
+        return Err("timeout_seconds must be positive".to_owned());
+    }
+
+    #[cfg(windows)]
+    {
+        let timeout_ms = timeout_seconds.saturating_mul(1000);
+        let wait = unsafe { WaitForSingleObject(guard.handle.0, timeout_ms) };
+        if wait == WAIT_TIMEOUT {
+            return Err(format!(
+                "exact process identity {} did not exit within {} seconds",
+                guard.process_id, timeout_seconds
+            ));
+        }
+        if wait != WAIT_OBJECT_0 {
+            return Err(format!(
+                "failed while waiting for exact process identity {}: wait status {}",
+                guard.process_id, wait
+            ));
+        }
+
+        let mut evidence = Map::new();
+        evidence.insert("process_id".to_owned(), json!(guard.process_id));
+        evidence.insert(
+            "expected_executable".to_owned(),
+            json!(guard.expected_executable),
+        );
+        evidence.insert(
+            "expected_start_time".to_owned(),
+            json!(guard.expected_start_time),
+        );
+        evidence.insert("exact_identity_exited".to_owned(), Value::Bool(true));
+        evidence.insert("pid_reused".to_owned(), Value::Bool(false));
+
+        // The validated process handle is intentionally held until this evidence is
+        // written. Windows cannot recycle the PID while that process object remains
+        // referenced by this handle, so a separate post-exit PID lookup would only
+        // reopen the same terminated process object and is neither necessary nor safe.
+        evidence.insert("observed_at".to_owned(), Value::String(observed_at()?));
+        write_evidence(output_path, &Value::Object(evidence))
+    }
+
+    #[cfg(not(windows))]
+    {
+        let _ = (guard, output_path);
+        Err("exact process exit guard requires Windows".to_owned())
+    }
 }
 
 #[cfg(windows)]

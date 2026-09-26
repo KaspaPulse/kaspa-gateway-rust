@@ -8,7 +8,7 @@ const BRIDGE_INPROCESS: &str = "xtask/src/e2e_bridge_inprocess.rs";
 const WDIO_CONF: &str = "e2e/wdio.conf.mjs";
 const WINDOWS_HELPERS: &str = "e2e/helpers/windows.mjs";
 const OWNED_PROCESS_RUST: &str = "xtask/src/e2e_owned_process.rs";
-const RELAUNCH: &str = "e2e/helpers/app-close-relaunch.mjs";
+const RELAUNCH: &str = "xtask/src/e2e_app_close_relaunch.rs";
 
 #[derive(Debug)]
 struct Sources {
@@ -286,16 +286,29 @@ fn evaluate(s: &Sources) -> Vec<String> {
     require_order(
         &mut failures,
         &s.relaunch,
-        "firstBrowser.closeWindow()",
-        "waitForExactProcessExit({",
-        "Relaunch flow must request close before waiting for exact identity exit.",
+        "let exit_guard =",
+        "let close_result = harness.session().close_window().await;",
+        "Relaunch flow must pin exact process identity before requesting native close.",
     );
     require_order(
         &mut failures,
         &s.relaunch,
-        "waitForExactProcessExit({",
-        r#"secondBrowser = await newSession("after-relaunch""#,
-        "Relaunch flow must wait for exact identity exit before creating a new session.",
+        "let close_result = harness.session().close_window().await;",
+        "let exit_result = wait_exact_parent_exit(",
+        "Relaunch flow must request close before waiting for the prevalidated identity exit.",
+    );
+    require_order(
+        &mut failures,
+        &s.relaunch,
+        "close_window_and_wait(first, &first_parent, &before_dir).await?;",
+        "let mut second = NativeWebDriverHarness::launch(",
+        "Relaunch flow must finish exact first-parent exit before creating the second desktop session.",
+    );
+    require(
+        &mut failures,
+        &s.relaunch,
+        "if mainnet_parent == first_parent",
+        "Relaunch flow must reject reuse of the original exact desktop parent identity.",
     );
 
     failures
@@ -352,9 +365,12 @@ mod tests {
             ]
             .join("\n"),
             relaunch: [
-                "firstBrowser.closeWindow();",
-                "waitForExactProcessExit({});",
-                r#"secondBrowser = await newSession("after-relaunch");"#,
+                "let exit_guard =",
+                "let close_result = harness.session().close_window().await;",
+                "let exit_result = wait_exact_parent_exit(",
+                "close_window_and_wait(first, &first_parent, &before_dir).await?;",
+                "let mut second = NativeWebDriverHarness::launch(",
+                "if mainnet_parent == first_parent",
             ]
             .join("\n"),
         }

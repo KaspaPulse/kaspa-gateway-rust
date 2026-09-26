@@ -195,6 +195,12 @@ impl WebDriverSession {
             .await
     }
 
+    pub(crate) async fn close_window(&self) -> Result<Value, String> {
+        self.driver
+            .request_value(Method::DELETE, &self.path("/window"), None)
+            .await
+    }
+
     pub(crate) async fn close(&self) -> Result<(), String> {
         self.driver
             .request_value(Method::DELETE, &self.path(""), None)
