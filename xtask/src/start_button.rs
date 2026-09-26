@@ -11,20 +11,15 @@ pub fn run(root: &Path) -> Result<String, String> {
         .map_err(|_| format!("Missing required file: {NODE_JS}"))?;
     let mut failures = static_failures(&node_js);
 
-    run_local_command(
-        root,
-        "frontend regression syntax",
-        "node",
-        &["--check", "tools/kgw_start_button_frontend_tests.cjs"],
-        &mut failures,
-    );
-    run_local_command(
-        root,
-        "frontend start button regression tests",
-        "node",
-        &["tools/kgw_start_button_frontend_tests.cjs"],
-        &mut failures,
-    );
+    println!("Running: Rust-owned frontend start button regression bridge");
+    match crate::start_button_frontend::run(root) {
+        Ok(message) => {
+            if !message.is_empty() {
+                println!("{message}");
+            }
+        }
+        Err(error) => failures.push(error),
+    }
     run_local_command(
         root,
         "targeted Tauri IPC regression tests",

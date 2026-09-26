@@ -42,6 +42,7 @@ mod runtime_trace_owner;
 mod security_advisories;
 mod settings_contract_regressions;
 mod start_button;
+mod start_button_frontend;
 mod static_contracts;
 mod true_raw_log;
 mod true_raw_log_frontend;

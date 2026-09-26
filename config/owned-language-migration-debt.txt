@@ -19,6 +19,5 @@ tools/kgw_desktop_diagnostic_launch.ps1
 tools/kgw_full_local_gate.ps1
 tools/kgw_live_raw_log_matrix.ps1
 tools/kgw_raw_log_clipboard_capture.ps1
-tools/kgw_start_button_frontend_tests.cjs
 tools/kgw_zero_touch_e2e.ps1
 tools/kgw_zero_touch_evidence.ps1

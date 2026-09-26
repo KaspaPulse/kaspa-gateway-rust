@@ -1,4 +1,8 @@
-#!/usr/bin/env node
+use std::fs;
+use std::path::Path;
+use std::process::Command;
+
+const NODE_BRIDGE: &str = r########"#!/usr/bin/env node
 const assert = require("assert");
 const { webcrypto } = require("crypto");
 const fs = require("fs");
@@ -175,6 +179,7 @@ class TestElement {
     this.textContent = "";
     this.id = "";
     this.type = "";
+    if (this.tagName === "TEMPLATE") this.content = this;
   }
 
   appendChild(child) {
@@ -290,6 +295,17 @@ class TestElement {
 
   querySelector(selector) {
     return this.querySelectorAll(selector)[0] || null;
+  }
+
+  get outerHTML() {
+    const tag = String(this.tagName || "div").toLowerCase();
+    const attrs = Object.entries(this.attributes)
+      .map(([name, value]) => value === "" ? name : name + '="' + String(value).replace(/"/g, "&quot;") + '"')
+      .join(" ");
+    const opening = "<" + tag + (attrs ? " " + attrs : "") + ">";
+    if (["input", "br", "hr", "img", "meta", "link"].includes(tag)) return opening;
+    const body = (this.textContent || "") + this.children.map(child => child.outerHTML || "").join("");
+    return opening + body + "</" + tag + ">";
   }
 
   set innerHTML(value) {
@@ -490,7 +506,7 @@ function createHarness(options = {}) {
   for (const [net, label, active] of [
     ["mainnet", "Mainnet", true],
     ["testnet10", "Testnet 10", false],
-    ["testnet13", "Testnet 13 · Experimental", false],
+    ["testnet13", "Testnet 13 آ· Experimental", false],
   ]) {
     const button = document.createElement("button");
     button.setAttribute("type", "button");
@@ -526,8 +542,31 @@ function createHarness(options = {}) {
   };
   sandbox.globalThis = sandbox;
 
-  const executable = source
+  const importPrelude = `
+const applyStatusTone = (node, state) => { if (node) node.dataset.state = String(state || "").toLowerCase(); };
+const renderStatusSummary = (node, text) => { if (node) node.textContent = String(text || ""); };
+const NODE_ENDPOINTS = [["rpcListenEnabled","rpcListenHost","rpcListenPort","rpcListen",true],["rpcBorshEnabled","rpcBorshHost","rpcBorshPort","rpcListenBorsh",true],["rpcJsonEnabled","rpcJsonHost","rpcJsonPort","rpcListenJson",true],["listenEnabled","listenHost","listenPort","p2pListen",false],["externalIpEnabled","externalIpHost","externalIpPort","externalIp",false],["connectEnabled","connectHost","connectPort","connectPeers",false],["addPeerEnabled","addPeerHost","addPeerPort","addPeers",false]];
+const NODE_MANAGED = { appDir:"Managed", configFile:"Unsupported", overrideParamsFile:"Unsupported", testnet:"Managed", netsuffix:"Managed", noGrpc:"Managed", rpcListenEnabled:"Managed" };
+const NODE_REQUIRED = { logLevel:"info", asyncThreads:"16", ramScale:"1", rpcMaxClients:"16", outPeers:"8", maxInPeers:"32" };
+const NODE_OPTIONAL = new Set(["uaComment","retentionDays","maxTrackedAddresses","perfMetricsInterval","rocksDbPreset","rocksDbCacheSize","rocksDbWalDir","logDir"]);
+const NODE_DANGEROUS = { resetDb:"Deletes database", unsafeRpc:"Unsafe RPC", enableUnsyncedMining:"Unsynced mining" };
+const nodeFieldEnabled = () => true;
+const validateNodeForm = () => ({});
+const renderFieldErrors = () => {};
+const endpoint = (host, port) => String(host) + ":" + String(port);
+const runtimePresentation = ({enabled, running, transition, error}) => ({ process: error ? "Failed" : transition === "starting" ? "Starting" : transition === "stopping" ? "Stopping" : running ? "Running" : "Stopped", processLabel: error ? "Node: Failed" : transition === "starting" ? "Node: Starting" : transition === "stopping" ? "Node: Stopping" : running ? "Node: Running" : "Node: Stopped", profile: enabled ? "Enabled" : "Disabled" });
+const runtimeObservationSummary = () => "RPC/synchronization/mining: unknown";
+const confirmUserAction = async () => true;
+const renderSettingsTabs = (_scope, _key, groups) => groups.map(group => group[3]).join("");
+const installSettingsLayout = () => {};
+const decorateSettingsFields = () => {};
+const revealSettingsField = () => {};
+const setSettingFieldState = () => {};
+`;
+  const executable = importPrelude + source
+    .replace(/^import[^\n]*\n/gm, "")
     .replace(/export\s+async\s+function\s+initKaspaNodeTab/, "async function initKaspaNodeTab")
+    .replace(/export\s*\{[^}]+\}\s*;?/g, "")
     .replace(/export\s+default\s+initKaspaNodeTab\s*;/, "")
     + "\nwindow.__kgwStartButtonTest = { initKaspaNodeTab, getTauriInvoke, kgwResolvePublicTauriInvokeR1, kgwStartTraceTauriShapeR1, kgwNodeR51SetRuntimeButtons, KGW_NODE_R51_TRANSITIONS };\n";
   vm.runInNewContext(executable, sandbox, { filename: nodeJsPath });
@@ -579,7 +618,7 @@ async function dynamicClickTests() {
 
   const calls = [];
   window.__TAURI__ = {
-    tauri: {
+    core: {
       invoke: async (command, payload) => {
         calls.push({ command, payload });
         if (command !== "kgw_kgw_apply_node_settings_v1") return "ignored";
@@ -619,10 +658,16 @@ async function dynamicClickTests() {
   await flush();
   assert.strictEqual(startCalls(calls).length, 0, "testnet13 Start must not invoke while opt-in is disabled");
 
-  window.__TAURI__.tauri.invoke = async (command, payload) => {
+  window.__TAURI__.core.invoke = async (command, payload) => {
     calls.push({ command, payload });
-    if (command === "kgw_start_trace_frontend_v1") return true;
-    throw new Error("spawn_failed=true;runtime_role=node;network=mainnet;source=self-worker;error=Access is denied.");
+    if (command === "kgw_start_trace_frontend_v1" || command === "kgw_frontend_button_trace_v1") return true;
+    if (command === "kgw_kgw_apply_node_settings_v1") {
+      throw new Error("spawn_failed=true;runtime_role=node;network=mainnet;source=self-worker;error=Access is denied.");
+    }
+    if (command === "kgw_runtime_owner_status_v1") {
+      throw new Error("runtime status unavailable after rejected Start");
+    }
+    return true;
   };
   const mainnetStart = root.querySelector('[data-node-action="start"][data-net="mainnet"]');
   mainnetStart.disabled = false;
@@ -857,7 +902,7 @@ async function copyLogFrontendTests() {
   copyReject = null;
 
   calls.length = 0;
-  mainnetLog.textContent = "MAINNET log is empty.";
+  mainnetLog.textContent = "Mainnet log is empty.";
   mainnetCopy.textContent = "Copy Log";
   mainnetCopy.click();
   await flush();
@@ -927,3 +972,48 @@ async function copyLogFrontendTests() {
     fail(error && error.stack ? error.stack : String(error));
   }
 })();
+"########;
+
+pub fn run(root: &Path) -> Result<String, String> {
+    let temp = tempfile::Builder::new()
+        .prefix(".kgw-start-button-frontend-")
+        .tempdir()
+        .map_err(|error| format!("failed to create start-button tempdir: {error}"))?;
+    let bridge = temp.path().join("bridge.cjs");
+    fs::write(&bridge, NODE_BRIDGE.as_bytes())
+        .map_err(|error| format!("failed to write start-button Node bridge: {error}"))?;
+    let output = Command::new("node")
+        .arg(&bridge)
+        .current_dir(root)
+        .output()
+        .map_err(|error| format!("failed to launch start-button Node bridge: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "start-button frontend bridge failed with {}\nstdout={}\nstderr={}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn real_frontend_bridge_passes() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+        let message = run(root).unwrap();
+        assert!(message.contains("PASSED"), "{message}");
+    }
+
+    #[test]
+    fn generated_bridge_is_interop_only_and_loads_real_frontend() {
+        assert!(NODE_BRIDGE.contains("apps"));
+        assert!(NODE_BRIDGE.contains("kaspa-node.js"));
+        assert!(NODE_BRIDGE.contains("vm.runInNewContext"));
+        assert!(NODE_BRIDGE.contains("KGW start button and Copy Log frontend tests PASSED"));
+    }
+}

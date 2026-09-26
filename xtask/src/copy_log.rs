@@ -3,7 +3,7 @@ use std::path::Path;
 use std::process::Command;
 
 const NODE_JS_REL: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
-const FRONTEND_TEST_REL: &str = "tools/kgw_start_button_frontend_tests.cjs";
+const FRONTEND_TEST_REL: &str = "xtask/src/start_button_frontend.rs";
 const LIB_RS_REL: &str = "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs";
 const CARGO_TOML_REL: &str = "apps/kaspa-gateway-desktop/src-tauri/Cargo.toml";
 
@@ -24,20 +24,15 @@ pub fn run(root: &Path) -> Result<String, String> {
     };
 
     let mut failures = validate(&inputs);
-    run_command(
-        root,
-        "Copy Log frontend syntax",
-        "node",
-        &["--check", FRONTEND_TEST_REL],
-        &mut failures,
-    );
-    run_command(
-        root,
-        "Copy Log frontend regression tests",
-        "node",
-        &[FRONTEND_TEST_REL],
-        &mut failures,
-    );
+    println!("Running: Rust-owned Copy Log frontend regression bridge");
+    match crate::start_button_frontend::run(root) {
+        Ok(message) => {
+            if !message.is_empty() {
+                println!("{message}");
+            }
+        }
+        Err(error) => failures.push(error),
+    }
     run_command(
         root,
         "targeted Tauri clipboard tests",
