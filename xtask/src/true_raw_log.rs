@@ -5,7 +5,7 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const CLIPBOARD_CAPTURE: &str = "tools/kgw_raw_log_clipboard_capture.ps1";
-const LIVE_MATRIX: &str = "tools/kgw_live_raw_log_matrix.ps1";
+const LIVE_MATRIX: &str = "xtask/src/live_raw_log_matrix.rs";
 const NODE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
 const BRIDGE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
 const RUNTIME_RS: &str = "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs";
@@ -287,23 +287,23 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
 
     for (needle, message) in [
         (
-            r#"Name = "Testnet10 Node""#,
+            r#"name: "Testnet10 Node""#,
             "Live matrix must guide Testnet10 Node first.",
         ),
         (
-            r#"Name = "Mainnet Bridge""#,
+            r#"name: "Mainnet Bridge""#,
             "Live matrix must guide Mainnet Bridge second.",
         ),
         (
-            r#"Name = "Testnet10 Bridge""#,
+            r#"name: "Testnet10 Bridge""#,
             "Live matrix must guide Testnet10 Bridge third.",
         ),
         (
-            "Set-ClipboardSentinel",
-            "Live matrix must set a clipboard sentinel before each stage.",
+            "write_text_after_preflight",
+            "Live matrix must set a clipboard sentinel through the fail-closed Rust preflight.",
         ),
         (
-            "Wait-ForStageCapture",
+            "wait_for_stage_capture",
             "Live matrix must capture Copy Log at event time before advancing.",
         ),
     ] {
@@ -535,7 +535,6 @@ fn run_clipboard_self_test(root: &Path, failures: &mut Vec<String>) {
 fn run_powershell_parser_checks(root: &Path, failures: &mut Vec<String>) {
     for (relative, label) in [
         (CLIPBOARD_CAPTURE, "Raw clipboard capture helper"),
-        (LIVE_MATRIX, "Live raw log matrix"),
         (ZERO_TOUCH_E2E, "Zero-touch E2E launcher"),
         (ZERO_TOUCH_EVIDENCE, "Zero-touch evidence helper"),
         (FULL_LOCAL_GATE, "Full local gate"),
@@ -590,11 +589,11 @@ mod tests {
             ]
             .join("\n"),
             live_matrix: [
-                r#"Name = "Testnet10 Node""#,
-                r#"Name = "Mainnet Bridge""#,
-                r#"Name = "Testnet10 Bridge""#,
-                "Set-ClipboardSentinel",
-                "Wait-ForStageCapture",
+                r#"name: "Testnet10 Node""#,
+                r#"name: "Mainnet Bridge""#,
+                r#"name: "Testnet10 Bridge""#,
+                "write_text_after_preflight",
+                "wait_for_stage_capture",
             ]
             .join("\n"),
             zero_touch: [

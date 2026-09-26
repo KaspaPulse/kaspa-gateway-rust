@@ -29,6 +29,7 @@ mod i18n_contracts;
 #[cfg(feature = "ksss")]
 mod ksss;
 mod language_policy;
+mod live_raw_log_matrix;
 mod network_generation;
 mod npm_dependency_policy;
 mod parallel_self_worker;
@@ -84,6 +85,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- bridge-node-mode-routing-audit <repo-root> <report-dir>
   cargo run -p xtask -- bridge-readiness-frontend-regressions
   cargo run -p xtask -- language-policy <check|strict|inventory>
+  cargo run -p xtask -- live-raw-log-matrix [--repository <path>] [--timeout-seconds <n>]
   cargo run -p xtask -- check-clippy-results <cargo-clippy-jsonl>
   cargo run -p xtask -- check-security-advisories [--max-age-days N]
   cargo run -p xtask -- check-trufflehog-results <jsonl>
@@ -95,7 +97,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- deepmerge-security-smoke
   cargo run -p xtask -- effective-bridge-settings-gate
   cargo run -p xtask -- effective-node-settings-gate
-  cargo run -p xtask -- e2e-clipboard <read|write> [--value <text>] [--output-path <path>]
+  cargo run -p xtask -- e2e-clipboard <read|write|preflight> [--value <text>] [--output-path <path>]
   cargo run -p xtask -- e2e-config-codegen <check|write>
   cargo run -p xtask -- e2e-app-close-relaunch --app-binary <path> --output-directory <path> [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-bridge-inprocess --app-binary <path> --output-directory <path> [--network <all|mainnet|testnet10>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
@@ -574,6 +576,13 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = static_contracts::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "live-raw-log-matrix" => {
+            let root = repo_root()?;
+            let message =
+                live_raw_log_matrix::run_cli(&mut args, &root).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

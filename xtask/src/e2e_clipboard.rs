@@ -15,14 +15,16 @@ use std::time::Duration;
 use windows_sys::Win32::Foundation::{GlobalFree, HGLOBAL};
 #[cfg(windows)]
 use windows_sys::Win32::System::DataExchange::{
-    CloseClipboard, EmptyClipboard, GetClipboardData, IsClipboardFormatAvailable, OpenClipboard,
-    SetClipboardData,
+    CloseClipboard, EmptyClipboard, EnumClipboardFormats, GetClipboardData,
+    IsClipboardFormatAvailable, OpenClipboard, SetClipboardData,
 };
 #[cfg(windows)]
 use windows_sys::Win32::System::Memory::{
     GMEM_MOVEABLE, GMEM_ZEROINIT, GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock,
 };
 
+const CF_TEXT: u32 = 1;
+const CF_OEMTEXT: u32 = 7;
 const CF_UNICODETEXT: u32 = 13;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -40,8 +42,8 @@ pub fn run_cli(args: &mut impl Iterator<Item = String>) -> Result<String, String
 fn parse_options(args: &mut impl Iterator<Item = String>) -> Result<Options, String> {
     let action = args
         .next()
-        .ok_or_else(|| "e2e-clipboard requires read or write".to_owned())?;
-    if !matches!(action.as_str(), "read" | "write") {
+        .ok_or_else(|| "e2e-clipboard requires read, write, or preflight".to_owned())?;
+    if !matches!(action.as_str(), "read" | "write" | "preflight") {
         return Err(format!("unknown e2e-clipboard action: {action}"));
     }
 
@@ -80,6 +82,7 @@ fn run(options: &Options) -> Result<String, String> {
                 }
                 read_metadata(&text, options.output_path.as_deref())
             }
+            "preflight" => clipboard_text_write_preflight()?,
             _ => unreachable!(),
         };
         serde_json::to_string(&result)
@@ -185,6 +188,66 @@ fn open_clipboard_with_retry(label: &str) -> Result<ClipboardGuard, String> {
         thread::sleep(Duration::from_millis(50 * attempt));
     }
     Err(format!("{label} failed after retries: {last_error}"))
+}
+
+#[cfg(windows)]
+pub(crate) fn clipboard_format_ids() -> Result<Vec<u32>, String> {
+    let _clipboard = open_clipboard_with_retry("Clipboard format preflight")?;
+    let mut formats = Vec::new();
+    let mut current = 0_u32;
+    loop {
+        current = unsafe { EnumClipboardFormats(current) };
+        if current == 0 {
+            break;
+        }
+        formats.push(current);
+    }
+    formats.sort_unstable();
+    formats.dedup();
+    Ok(formats)
+}
+
+#[cfg(windows)]
+pub(crate) fn clipboard_text_write_preflight() -> Result<Value, String> {
+    let formats = clipboard_format_ids()?;
+    let non_text: Vec<u32> = formats
+        .iter()
+        .copied()
+        .filter(|format| !matches!(*format, CF_TEXT | CF_OEMTEXT | CF_UNICODETEXT))
+        .collect();
+    let safe = non_text.is_empty();
+    Ok(json!({
+        "safe_for_text_only_write": safe,
+        "formats": formats,
+        "non_text_formats": non_text,
+        "reason": if safe {
+            "clipboard contains only text-compatible formats"
+        } else {
+            "text-only EmptyClipboard/SetClipboardData would destroy non-text formats"
+        }
+    }))
+}
+
+#[cfg(windows)]
+pub(crate) fn ensure_text_only_write_safe() -> Result<Value, String> {
+    let result = clipboard_text_write_preflight()?;
+    if result["safe_for_text_only_write"].as_bool() == Some(true) {
+        Ok(result)
+    } else {
+        Err(format!(
+            "clipboard mutation blocked: {} non-text formats={}",
+            result["reason"]
+                .as_str()
+                .unwrap_or("unsafe clipboard formats"),
+            result["non_text_formats"]
+        ))
+    }
+}
+
+#[cfg(windows)]
+pub(crate) fn write_text_after_preflight(text: &str) -> Result<(), String> {
+    ensure_text_only_write_safe()?;
+    write_clipboard_text(text)
 }
 
 #[cfg(windows)]
