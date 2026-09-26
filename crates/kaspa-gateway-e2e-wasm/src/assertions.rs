@@ -124,6 +124,22 @@ fn is_stopped_owner_status_value(text: &str) -> bool {
     regex.is_match(text) && !running.eq_ignore_ascii_case("true")
 }
 
+pub fn parse_key_value_line_native(text: &str) -> Vec<(String, String)> {
+    parse_key_value_line_value(text)
+}
+
+pub fn pid_from_status_native(text: &str) -> Option<u32> {
+    let fields = parse_key_value_line_value(text);
+    field(&fields, "pid")
+        .parse::<u32>()
+        .ok()
+        .filter(|pid| *pid > 0)
+}
+
+pub fn is_stopped_owner_status_native(text: &str) -> bool {
+    is_stopped_owner_status_value(text)
+}
+
 fn assertion_error(message: &str) -> JsValue {
     let error = Error::new(message);
     error.set_name("AssertionError");

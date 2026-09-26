@@ -1,6 +1,10 @@
 mod artifact_paths;
 mod assertions;
 
+pub use assertions::{
+    is_stopped_owner_status_native, parse_key_value_line_native, pid_from_status_native,
+};
+
 use js_sys::{Error, JsString, Object, Reflect};
 use wasm_bindgen::prelude::*;
 
@@ -21,17 +25,17 @@ extern "C" {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct NetworkPorts {
-    rpc_port: u16,
-    p2p_port: u16,
-    bridge_port: u16,
-    external_bridge_listeners: bool,
+pub struct NetworkPorts {
+    pub rpc_port: u16,
+    pub p2p_port: u16,
+    pub bridge_port: u16,
+    pub external_bridge_listeners: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct RuntimePortProfile {
-    mainnet: NetworkPorts,
-    testnet10: NetworkPorts,
+pub struct RuntimePortProfile {
+    pub mainnet: NetworkPorts,
+    pub testnet10: NetworkPorts,
 }
 
 fn validate_port_number(value: f64, name: &str, raw: &str) -> Result<u16, String> {
@@ -59,6 +63,18 @@ fn profile_with(
             bridge_port: read("KGW_E2E_TESTNET10_BRIDGE_PORT", TESTNET10_BRIDGE_DEFAULT)?,
             external_bridge_listeners: false,
         },
+    })
+}
+
+pub fn runtime_port_profile_native() -> Result<RuntimePortProfile, String> {
+    profile_with(|name, fallback| {
+        let raw = match std::env::var(name) {
+            Ok(value) if !value.trim().is_empty() => value.trim().to_owned(),
+            Ok(_) | Err(std::env::VarError::NotPresent) => return Ok(fallback),
+            Err(error) => return Err(format!("failed to read {name}: {error}")),
+        };
+        let value = raw.parse::<f64>().unwrap_or(f64::NAN);
+        validate_port_number(value, name, &raw)
     })
 }
 

@@ -631,15 +631,9 @@ fn kgw_runtime_owner_reconcile_stale_lease_v1(
             executable: lease.parent_executable.clone(),
         },
     );
-    let current_executable = std::env::current_exe()
-        .and_then(|path| path.canonicalize())
-        .map_err(|error| format!("resolve current executable for lease failed: {error}"))?
-        .to_string_lossy()
-        .to_string();
     if lease.version != KGW_RUNTIME_OWNER_LEASE_VERSION_V1
         || lease.runtime_role != role
         || lease.network != network
-        || lease.parent_executable != current_executable
     {
         return Err(format!(
             "start_blocked=true;start_allowed=false;block_reason=runtime-owner-lease-identity-mismatch;runtime_role={role};network={network};message=Stale ownership metadata does not match the requested exact owner. No process was signaled."
@@ -649,7 +643,6 @@ fn kgw_runtime_owner_reconcile_stale_lease_v1(
     let parent_alive = kgw_process_identity_for_worker_v1(lease.parent_pid).is_ok_and(|identity| {
         identity.start_time == lease.parent_start_time
             && identity.executable == lease.parent_executable
-            && identity.executable == current_executable
     });
     if parent_alive {
         return Err(format!(
@@ -714,7 +707,7 @@ fn kgw_runtime_owner_reconcile_stale_lease_v1(
                 || worker.parent_start_time != observed.parent_start_time
                 || worker.parent_executable != observed.parent_executable
                 || worker.worker_pid == 0
-                || worker.worker_executable != current_executable
+                || worker.worker_executable != observed.parent_executable
             {
                 return Err(format!(
                     "start_blocked=true;start_allowed=false;block_reason=runtime-owner-worker-identity-mismatch;runtime_role={role};network={network};message=Worker ownership metadata does not match the immutable reservation. No process was signaled."
@@ -724,7 +717,6 @@ fn kgw_runtime_owner_reconcile_stale_lease_v1(
                 .is_ok_and(|identity| {
                     identity.start_time == worker.worker_start_time
                         && identity.executable == worker.worker_executable
-                        && identity.executable == current_executable
                 });
             if !exact_worker_alive {
                 kgw_runtime_owner_remove_files_v1(&path, &worker_path);
@@ -3844,21 +3836,6 @@ fn kgw_command_preview_normalize_listen(value: String) -> String {
     }
 }
 
-#[cfg(test)]
-fn kgw_bridge_config_path_from_preview_r122(command_preview: Option<&str>) -> Option<String> {
-    let preview = command_preview?.trim();
-
-    if preview.is_empty() {
-        return None;
-    }
-
-    kgw_command_preview_find_cli_value(preview, "--config")
-        .or_else(|| kgw_command_preview_find_cli_value(preview, "--bridge-config"))
-        .or_else(|| kgw_command_preview_find_cli_value(preview, "--config-path"))
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-}
-
 fn kgw_effective_bridge_settings_from_config_v1(
     network: kaspa_gateway_rk_node::KgwNetwork,
     config_path: &str,
@@ -4076,13 +4053,12 @@ fn kgw_resolve_effective_runtime_settings_v1(
     let _ = (node_command_preview, bridge_command_preview);
     let options = bridge_options.unwrap_or_default();
     let bridge_config_path_for_worker = options.config_file;
-    if let Some(path) = bridge_config_path_for_worker.as_deref() {
-        if path.trim().is_empty()
+    if let Some(path) = bridge_config_path_for_worker.as_deref()
+        && (path.trim().is_empty()
             || !std::path::Path::new(path).is_absolute()
-            || path.contains(['\0', '\r', '\n'])
-        {
-            return Err("Bridge configFile must be a nonempty absolute path".to_string());
-        }
+            || path.contains(['\0', '\r', '\n']))
+    {
+        return Err("Bridge configFile must be a nonempty absolute path".to_string());
     }
     let role = kgw_worker_role_from_request(runtime_role, settings)?;
     let owns_node = role == "node"

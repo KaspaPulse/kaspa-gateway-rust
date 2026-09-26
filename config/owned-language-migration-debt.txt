@@ -16,7 +16,6 @@ e2e/helpers/kgw_windows_clipboard.ps1
 e2e/helpers/tauri-app.mjs
 e2e/helpers/windows.mjs
 e2e/specs/bridge-inprocess.e2e.js
-e2e/specs/lifecycle-recovery.e2e.js
 e2e/specs/zero-touch-live-matrix.e2e.js
 tools/kgw_desktop_diagnostic_launch.ps1
 tools/kgw_full_local_gate.ps1

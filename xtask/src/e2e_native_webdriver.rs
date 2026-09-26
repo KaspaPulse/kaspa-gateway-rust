@@ -358,13 +358,72 @@ async fn wait_for_ready(
     }
 }
 
-async fn smoke(root: &Path, args: SmokeArgs) -> Result<Value, String> {
-    let driver = WebDriverClient::loopback(args.port)?;
-    let mut app = EmbeddedApp::spawn(root, &args.app_binary, args.port)?;
-    let result = async {
-        wait_for_ready(&driver, &mut app, args.startup_timeout).await?;
-        let session = driver.create_session(&args.window_label).await?;
+pub(crate) struct NativeWebDriverHarness {
+    app: EmbeddedApp,
+    session: WebDriverSession,
+    pub(crate) port: u16,
+    pub(crate) window_label: String,
+}
+
+impl NativeWebDriverHarness {
+    pub(crate) async fn launch(
+        root: &Path,
+        app_binary: &Path,
+        port: u16,
+        window_label: &str,
+        startup_timeout: Duration,
+    ) -> Result<Self, String> {
+        let driver = WebDriverClient::loopback(port)?;
+        let mut app = EmbeddedApp::spawn(root, app_binary, port)?;
+        wait_for_ready(&driver, &mut app, startup_timeout).await?;
+        let session = match driver.create_session(window_label).await {
+            Ok(session) => session,
+            Err(error) => {
+                let cleanup = app.terminate();
+                return Err(match cleanup {
+                    Ok(()) => error,
+                    Err(cleanup_error) => format!("{error}; cleanup failure: {cleanup_error}"),
+                });
+            }
+        };
         session.set_timeouts(0, 300_000, 65_000).await?;
+        Ok(Self {
+            app,
+            session,
+            port,
+            window_label: window_label.to_owned(),
+        })
+    }
+
+    pub(crate) fn session(&self) -> &WebDriverSession {
+        &self.session
+    }
+
+    pub(crate) async fn shutdown(&mut self) -> Result<(), String> {
+        let session_result = self.session.close().await;
+        let app_result = self.app.terminate();
+        match (session_result, app_result) {
+            (Ok(()), Ok(())) => Ok(()),
+            (Err(error), Ok(())) => Err(error),
+            (Ok(()), Err(error)) => Err(error),
+            (Err(error), Err(cleanup_error)) => {
+                Err(format!("{error}; cleanup failure: {cleanup_error}"))
+            }
+        }
+    }
+}
+
+async fn smoke(root: &Path, args: SmokeArgs) -> Result<Value, String> {
+    let mut harness = NativeWebDriverHarness::launch(
+        root,
+        &args.app_binary,
+        args.port,
+        &args.window_label,
+        args.startup_timeout,
+    )
+    .await?;
+    let result = async {
+        let session = harness.session();
         let title = session.title().await?;
         let state = session
             .execute_sync(
@@ -373,18 +432,17 @@ async fn smoke(root: &Path, args: SmokeArgs) -> Result<Value, String> {
             )
             .await?;
         let source = session.source().await?;
-        session.close().await?;
         Ok(json!({
             "passed": true,
-            "port": args.port,
-            "windowLabel": args.window_label,
+            "port": harness.port,
+            "windowLabel": harness.window_label,
             "title": title,
             "state": state,
             "sourceBytes": source.len(),
         }))
     }
     .await;
-    let cleanup = app.terminate();
+    let cleanup = harness.shutdown().await;
     match (result, cleanup) {
         (Ok(value), Ok(())) => Ok(value),
         (Err(error), Ok(())) => Err(error),

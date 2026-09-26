@@ -15,6 +15,7 @@ ksss = ["dep:flate2", "dep:pyo3", "dep:tar", "time/parsing"]
 
 [dependencies]
 xml-rs = "=0.8.29"
+kaspa-gateway-e2e-wasm = { path = "../crates/kaspa-gateway-e2e-wasm" }
 regex.workspace = true
 reqwest.workspace = true
 serde.workspace = true

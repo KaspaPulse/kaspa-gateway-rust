@@ -286,6 +286,120 @@ fn runtime_owner_lease_requires_exact_process_identity() {
 }
 
 #[test]
+fn stale_owner_from_retired_executable_is_reconciled_after_exact_terminality() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    let network = "upgrade-fixture";
+    let appdir = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("nodes")
+        .join(network)
+        .to_string_lossy()
+        .to_string();
+    let retired_executable = std::env::current_exe()
+        .expect("current executable path")
+        .with_extension("retired.exe")
+        .to_string_lossy()
+        .to_string();
+    let parent = integrated_runtime_commands::KgwProcessIdentityV1 {
+        pid: u32::MAX - 10,
+        start_time: 1,
+        executable: retired_executable.clone(),
+    };
+    let worker = integrated_runtime_commands::KgwProcessIdentityV1 {
+        pid: u32::MAX - 11,
+        start_time: 2,
+        executable: retired_executable,
+    };
+    let (lease, _) = integrated_runtime_commands::kgw_runtime_owner_lease_fixture_v1(
+        "node",
+        network,
+        &appdir,
+        "same-exe-self-worker",
+        &parent,
+        &worker,
+    );
+    let lease_path = runtime_owner_lease_path("node", network);
+    integrated_runtime_commands::kgw_runtime_owner_reserve_for_test_v1(&lease_path, &lease)
+        .expect("retired-executable owner reservation must be creatable");
+    let worker_path = integrated_runtime_commands::kgw_runtime_owner_publish_worker_for_test_v1(
+        &lease_path,
+        &parent,
+        &worker,
+    )
+    .expect("retired-executable worker identity must be publishable");
+
+    let reconciliation = integrated_runtime_commands::kgw_runtime_owner_reconcile_for_test_v1(
+        "node", network, &appdir,
+    )
+    .expect("terminal retired-executable ownership must reconcile");
+    assert!(
+        reconciliation
+            .as_deref()
+            .is_some_and(|evidence| evidence.contains("removed-terminal-lease")),
+        "retired executable reconciliation evidence missing: {reconciliation:?}"
+    );
+    assert!(
+        !lease_path.exists() && !worker_path.exists(),
+        "terminal retired-executable ownership metadata must be removed"
+    );
+}
+
+#[test]
+fn stale_owner_with_worker_executable_mismatch_remains_fail_closed() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    let network = "upgrade-fixture-worker-mismatch";
+    let appdir = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("nodes")
+        .join(network)
+        .to_string_lossy()
+        .to_string();
+    let parent = integrated_runtime_commands::KgwProcessIdentityV1 {
+        pid: u32::MAX - 20,
+        start_time: 3,
+        executable: "C:\\retired\\gateway.exe".to_owned(),
+    };
+    let worker = integrated_runtime_commands::KgwProcessIdentityV1 {
+        pid: u32::MAX - 21,
+        start_time: 4,
+        executable: "C:\\foreign\\gateway.exe".to_owned(),
+    };
+    let (lease, _) = integrated_runtime_commands::kgw_runtime_owner_lease_fixture_v1(
+        "node",
+        network,
+        &appdir,
+        "same-exe-self-worker",
+        &parent,
+        &worker,
+    );
+    let lease_path = runtime_owner_lease_path("node", network);
+    integrated_runtime_commands::kgw_runtime_owner_reserve_for_test_v1(&lease_path, &lease)
+        .expect("mismatch owner reservation must be creatable");
+    let worker_path = integrated_runtime_commands::kgw_runtime_owner_publish_worker_for_test_v1(
+        &lease_path,
+        &parent,
+        &worker,
+    )
+    .expect("mismatch worker identity must be publishable");
+
+    let error = integrated_runtime_commands::kgw_runtime_owner_reconcile_for_test_v1(
+        "node", network, &appdir,
+    )
+    .expect_err("worker executable mismatch must remain fail-closed");
+    assert!(error.contains("runtime-owner-worker-identity-mismatch"));
+    assert!(
+        lease_path.exists() && worker_path.exists(),
+        "fail-closed mismatch must preserve ownership evidence"
+    );
+}
+
+#[test]
 fn status_poll_does_not_block_behind_other_network_startup() {
     let _guard = runtime_test_lock()
         .lock()

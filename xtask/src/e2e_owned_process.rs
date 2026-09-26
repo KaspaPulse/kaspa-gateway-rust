@@ -33,6 +33,22 @@ pub fn run_cli(args: &mut impl Iterator<Item = String>) -> Result<String, String
     run(&options)
 }
 
+pub(crate) fn kill_exact_owned_process_checked(
+    process_id: u32,
+    expected_executable: &str,
+    expected_start_time: i64,
+    output_path: &Path,
+) -> Result<String, String> {
+    run(&Options {
+        action: "kill".to_owned(),
+        process_id,
+        expected_executable: expected_executable.to_owned(),
+        expected_start_time,
+        output_path: output_path.to_path_buf(),
+        timeout_seconds: 45,
+    })
+}
+
 fn parse_options(args: &mut impl Iterator<Item = String>) -> Result<Options, String> {
     let action = args
         .next()

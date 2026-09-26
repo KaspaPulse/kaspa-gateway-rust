@@ -12329,6 +12329,7 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "flate2",
+ "kaspa-gateway-e2e-wasm",
  "pyo3",
  "regex",
  "reqwest 0.12.28",
