@@ -13,7 +13,6 @@ apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.js
 e2e/helpers/app-close-relaunch.mjs
-e2e/helpers/deepmerge-security-smoke.mjs
 e2e/helpers/kgw_windows_clipboard.ps1
 e2e/helpers/tauri-app.mjs
 e2e/helpers/windows.mjs

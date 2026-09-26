@@ -2,6 +2,7 @@ mod ai_workflow;
 mod bridge_node_mode_routing;
 mod clippy_policy;
 mod copy_log;
+mod deepmerge_security_smoke;
 mod desktop_artifacts;
 mod desktop_release_draft;
 mod desktop_version;
@@ -76,6 +77,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- desktop-artifacts-workflow-gate
   cargo run -p xtask -- desktop-release-draft-workflow-gate
   cargo run -p xtask -- desktop-version-contract-gate
+  cargo run -p xtask -- deepmerge-security-smoke
   cargo run -p xtask -- effective-node-settings-gate
   cargo run -p xtask -- e2e-clipboard <read|write> [--value <text>] [--output-path <path>]
   cargo run -p xtask -- e2e-owned-process <kill|wait> --process-id <pid> --expected-executable <path> --expected-start-time <unix-seconds> --output-path <path> [--timeout-seconds <n>]
@@ -211,6 +213,18 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = effective_node_settings::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "deepmerge-security-smoke" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "deepmerge-security-smoke takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message =
+                deepmerge_security_smoke::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
