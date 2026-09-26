@@ -197,6 +197,9 @@ jobs:
       - name: Verify generated E2E WASM artifacts
         run: cargo run --locked -p xtask -- e2e-wasm-codegen check
 
+      - name: Verify generated E2E tool configuration
+        run: cargo run --locked -p xtask -- e2e-config-codegen check
+
       - name: Enforce Rust-only owned implementation migration guard
         run: cargo run --locked -p xtask -- language-policy check
 

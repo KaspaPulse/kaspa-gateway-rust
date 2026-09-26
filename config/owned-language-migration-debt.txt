@@ -18,7 +18,6 @@ e2e/helpers/windows.mjs
 e2e/specs/bridge-inprocess.e2e.js
 e2e/specs/lifecycle-recovery.e2e.js
 e2e/specs/zero-touch-live-matrix.e2e.js
-e2e/wdio.conf.mjs
 tools/kgw_desktop_diagnostic_launch.ps1
 tools/kgw_full_local_gate.ps1
 tools/kgw_live_raw_log_matrix.ps1
