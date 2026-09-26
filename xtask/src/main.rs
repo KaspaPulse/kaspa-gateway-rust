@@ -1,6 +1,7 @@
 mod ai_workflow;
 mod aud013_navigation_regressions;
 mod bridge_node_mode_routing;
+mod bridge_readiness_frontend_regressions;
 mod clippy_policy;
 mod copy_log;
 mod deepmerge_security_smoke;
@@ -73,6 +74,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- ai-workflow-gate
   cargo run -p xtask -- aud013-navigation-regressions
   cargo run -p xtask -- bridge-node-mode-routing-audit <repo-root> <report-dir>
+  cargo run -p xtask -- bridge-readiness-frontend-regressions
   cargo run -p xtask -- language-policy <check|strict|inventory>
   cargo run -p xtask -- check-clippy-results <cargo-clippy-jsonl>
   cargo run -p xtask -- check-security-advisories [--max-age-days N]
@@ -161,6 +163,18 @@ fn run() -> Result<(), CliError> {
             }
             let message =
                 aud013_navigation_regressions::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "bridge-readiness-frontend-regressions" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "bridge-readiness-frontend-regressions takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = bridge_readiness_frontend_regressions::run(&repo_root()?)
+                .map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
