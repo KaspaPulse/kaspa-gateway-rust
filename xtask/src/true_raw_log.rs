@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const FRONTEND_TEST: &str = "tools/kgw_true_raw_log_frontend_tests.cjs";
 const CLIPBOARD_CAPTURE: &str = "tools/kgw_raw_log_clipboard_capture.ps1";
 const LIVE_MATRIX: &str = "tools/kgw_live_raw_log_matrix.ps1";
 const NODE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
@@ -20,7 +19,6 @@ struct Sources {
     node: String,
     bridge: String,
     runtime: String,
-    frontend_test: String,
     clipboard_capture: String,
     live_matrix: String,
     zero_touch: String,
@@ -63,20 +61,11 @@ pub fn run(root: &Path) -> Result<String, String> {
         &["--check", BRIDGE_JS],
         &mut ctx.failures,
     );
-    run_checked(
-        root,
-        "True raw log frontend syntax",
-        "node",
-        &["--check", FRONTEND_TEST],
-        &mut ctx.failures,
-    );
-    run_checked(
-        root,
-        "True raw log frontend tests",
-        "node",
-        &[FRONTEND_TEST],
-        &mut ctx.failures,
-    );
+    println!("Running: True raw log frontend Rust owner");
+    if let Err(error) = crate::true_raw_log_frontend::run(root) {
+        ctx.failures
+            .push(format!("True raw log frontend Rust owner failed: {error}"));
+    }
 
     run_cargo_checked(
         root,
@@ -167,7 +156,6 @@ fn load_sources(root: &Path) -> Result<Sources, String> {
         node: read(root, NODE_JS)?,
         bridge: read(root, BRIDGE_JS)?,
         runtime: read(root, RUNTIME_RS)?,
-        frontend_test: read(root, FRONTEND_TEST)?,
         clipboard_capture: read(root, CLIPBOARD_CAPTURE)?,
         live_matrix: read(root, LIVE_MATRIX)?,
         zero_touch: read(root, ZERO_TOUCH_E2E)?,
@@ -201,51 +189,6 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
         "kgw_raw_process_log_v1",
         "Rust runtime source must not serialize the old raw-process envelope.",
     );
-
-    for (needle, message) in [
-        (
-            "Untyped Node transport wrapper is rejected before display or copy",
-            "Frontend fixtures must reject an untyped Node transport envelope.",
-        ),
-        (
-            "Untyped Bridge transport wrapper is rejected before display or copy",
-            "Frontend fixtures must reject an untyped Bridge transport envelope.",
-        ),
-        (
-            "transport-looking official literals remain verbatim",
-            "Typed child rawText that resembles transport framing must remain verbatim.",
-        ),
-        (
-            "Node Copy Log equals visible raw output byte-for-byte after newline normalization",
-            "Frontend tests must verify node Copy Log raw payload.",
-        ),
-        (
-            "Bridge Copy Log equals visible raw output byte-for-byte after newline normalization",
-            "Frontend tests must verify bridge Copy Log raw payload.",
-        ),
-        (
-            "Bridge status summaries must be rejected as raw process output",
-            "Frontend tests must reject generated bridge summaries as raw output.",
-        ),
-        (
-            "Missing bridge output must not reach native clipboard",
-            "Frontend tests must cover missing bridge output.",
-        ),
-        (
-            "transport",
-            "Frontend tests must cover transport wrapper rejection.",
-        ),
-        (
-            "Sequence ordering is preserved",
-            "Frontend tests must cover sequence ordering.",
-        ),
-        (
-            "must not mix into",
-            "Frontend tests must cover network and role isolation.",
-        ),
-    ] {
-        require(failures, &s.frontend_test, needle, message);
-    }
 
     let old_append = Regex::new(r"(?i)appendLog\s*\([^)]*kgw_raw_process_log_v1")
         .expect("valid old envelope regex");
@@ -643,19 +586,6 @@ mod tests {
             ]
             .join("\n"),
             runtime: ["KgwRuntimeRawLogEntryV1", "sequence", "raw_text"].join("\n"),
-            frontend_test: [
-                "Untyped Node transport wrapper is rejected before display or copy",
-                "Untyped Bridge transport wrapper is rejected before display or copy",
-                "transport-looking official literals remain verbatim",
-                "Node Copy Log equals visible raw output byte-for-byte after newline normalization",
-                "Bridge Copy Log equals visible raw output byte-for-byte after newline normalization",
-                "Bridge status summaries must be rejected as raw process output",
-                "Missing bridge output must not reach native clipboard",
-                "transport",
-                "Sequence ordering is preserved",
-                "must not mix into",
-            ]
-            .join("\n"),
             clipboard_capture: [
                 "New-KgwRawLogClipboardCaptureFromClipboardV1",
                 "expected_sha256",

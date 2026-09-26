@@ -44,6 +44,7 @@ mod settings_contract_regressions;
 mod start_button;
 mod static_contracts;
 mod true_raw_log;
+mod true_raw_log_frontend;
 mod trufflehog_policy;
 mod windows_runtime_dependencies;
 mod zero_touch_result_writer;
@@ -564,6 +565,17 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = static_contracts::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "true-raw-log-frontend-regressions" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "true-raw-log-frontend-regressions takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = true_raw_log_frontend::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

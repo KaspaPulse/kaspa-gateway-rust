@@ -135,7 +135,7 @@ function Commit-ScopedChanges {
         "tools/kgw_desktop_diagnostic_launch.ps1",
         "tools/kgw_live_raw_log_matrix.ps1",
         "tools/kgw_raw_log_clipboard_capture.ps1",
-        "tools/kgw_true_raw_log_frontend_tests.cjs",
+        "xtask/src/true_raw_log_frontend.rs",
         "tools/kgw_zero_touch_e2e.ps1",
         "tools/kgw_zero_touch_evidence.ps1",
         "tools/kgw_full_local_gate.ps1",
@@ -244,9 +244,9 @@ try {
         -WorkingDirectory $Repository
 
     Invoke-GateCommand `
-        -Label "True raw log frontend tests" `
-        -FilePath "node" `
-        -Arguments @("tools/kgw_true_raw_log_frontend_tests.cjs") `
+        -Label "True raw log frontend Rust owner" `
+        -FilePath "cargo" `
+        -Arguments @("run", "--locked", "-p", "xtask", "--", "true-raw-log-frontend-regressions") `
         -WorkingDirectory $Repository
 
     Invoke-GateCommand `
