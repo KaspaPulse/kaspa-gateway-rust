@@ -8,6 +8,11 @@ import init, {
   analysisLoadSavedAddresses as wasmAnalysisLoadSavedAddresses,
   analysisNormalizeTimeRange as wasmAnalysisNormalizeTimeRange,
   analysisRun as wasmAnalysisRun,
+  analysisViewApplyFilter as wasmAnalysisViewApplyFilter,
+  analysisViewFilteredRows as wasmAnalysisViewFilteredRows,
+  analysisViewRenderRows as wasmAnalysisViewRenderRows,
+  analysisViewResetExpansion as wasmAnalysisViewResetExpansion,
+  analysisViewSetData as wasmAnalysisViewSetData,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
 await init();
@@ -26,6 +31,26 @@ function clearAnalysisView() {
 
 export function kgwNormalizeAnalysisTimeRange(value) {
   return wasmAnalysisNormalizeTimeRange(value);
+}
+
+export function analysisViewSetData(payload) {
+  return wasmAnalysisViewSetData(payload);
+}
+
+export function analysisViewApplyFilter() {
+  return wasmAnalysisViewApplyFilter();
+}
+
+export function analysisViewFilteredRows() {
+  return wasmAnalysisViewFilteredRows();
+}
+
+export function analysisViewRenderRows() {
+  return wasmAnalysisViewRenderRows();
+}
+
+export function analysisViewResetExpansion() {
+  return wasmAnalysisViewResetExpansion();
 }
 
 export function installRustAnalysisBinding() {

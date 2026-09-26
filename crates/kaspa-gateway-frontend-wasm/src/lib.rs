@@ -1,4 +1,5 @@
 mod analysis_binding;
+mod analysis_view;
 mod explorer_export;
 mod header_live_metrics;
 mod log_tab;

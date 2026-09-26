@@ -1,7 +1,10 @@
-import { installRustAnalysisBinding } from "./analysis-rust-binding.js";
-
-let analysisRows = [];
-let filteredRows = [];
+import {
+  analysisViewApplyFilter,
+  analysisViewFilteredRows,
+  analysisViewRenderRows,
+  analysisViewSetData,
+  installRustAnalysisBinding
+} from "./analysis-rust-binding.js";
 
 function root() {
   return document.getElementById("analysis");
@@ -24,13 +27,6 @@ function log() {
   return { log: () => {}, warn: () => {}, error: () => {} };
 }
 
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
 function toWesternDigits(value) {
   return String(value ?? "")
     .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
@@ -39,462 +35,24 @@ function toWesternDigits(value) {
 
 function setText(selector, value) {
   const node = q(selector);
-  if (node) node.textContent = value;
-}
-
-function setSummary(summary = {}) {
-  const values = [
-    summary.totalInflow,
-    summary.totalOutflow,
-    summary.netFlow,
-    summary.avgInflow,
-    summary.avgOutflow,
-    summary.totalTransactions,
-    summary.largestInflow,
-    summary.largestOutflow,
-    summary.uniqueCounterparties,
-    summary.firstTransaction,
-    summary.lastTransaction,
-    summary.durationDays
-  ];
-
-  qa(".analysis-metric strong").forEach((node, index) => {
-    const value = values[index];
-    node.textContent = value === undefined || value === null || value === "" ? "—" : String(value);
-    node.title = node.textContent;
-  });
-}
-
-function rowMatches(row, search, type, direction) {
-  const text = [
-    row.name,
-    row.datetime,
-    row.address,
-    row.transactionId,
-    row.type,
-    row.direction,
-    row.txsDir,
-    row.netFlow,
-    row.amount,
-    row.blockScore
-  ].join(" ").toLowerCase();
-
-  const rowType = String(row.type || "").toUpperCase();
-  const rowDirection = String(row.direction || row.txsDir || "").toUpperCase();
-
-  return (!search || text.includes(search)) &&
-    (type === "ALL" || rowType === type) &&
-    (direction === "ALL" || rowDirection === direction);
+  if (node) node.textContent = String(value ?? "");
 }
 
 function applyFilter() {
-  const search = String(q("#analysisSearch")?.value || "").trim().toLowerCase();
-  const type = String(q("#analysisType")?.value || "ALL").toUpperCase();
-  const direction = String(q("#analysisDirection")?.value || "ALL").toUpperCase();
-
-  filteredRows = analysisRows.filter((row) => rowMatches(row, search, type, direction));
-}
-
-function emptyMessage() {
-  return analysisRows.length
-    ? "No rows match the current filter."
-    : "Load an address to see analysis.";
-}
-
-
-
-
-// KGW_ANALYSIS_PYTHON_STYLE_LAZY_TABLE_R9
-const kgwAnalysisExpandedRowsR9 = new Set();
-
-function kgwAnalysisPythonRowKeyR9(row, index) {
-  return [
-    index,
-    kgwAnalysisRawR3(row.type || ""),
-    kgwAnalysisRawR3(row.address || row.counterparty || ""),
-    kgwAnalysisRawR3(row.transactionId || row.txid || ""),
-    kgwAnalysisRawR3(row.name || row.knownName || "")
-  ].join("|");
-}
-
-function kgwAnalysisPythonChildRowsR9(row) {
-  const candidates = [
-    row.transactions,
-    row.children,
-    row.details,
-    row.items,
-    row.txList,
-    row.tx_list,
-    row.rows
-  ];
-
-  for (const value of candidates) {
-    if (Array.isArray(value)) return value;
-  }
-
-  return [];
-}
-
-function kgwAnalysisPythonNormalizeChildR9(tx, index) {
-  if (!tx || typeof tx !== "object") {
-    return {
-      datetime: "",
-      id: "",
-      direction: "",
-      amount: "",
-      value: "",
-      block: "",
-      type: ""
-    };
-  }
-
-  const timestampRaw = tx.timestamp_ms ?? tx.timestampMs ?? tx.timestamp ?? tx.datetime ?? tx.date_time ?? tx.time ?? "";
-  let datetime = kgwAnalysisRawR3(timestampRaw);
-
-  const numericTs = Number(timestampRaw);
-  if (Number.isFinite(numericTs) && numericTs > 0) {
-    const ms = numericTs > 10000000000 ? numericTs : numericTs * 1000;
-    const d = new Date(ms);
-    if (!Number.isNaN(d.getTime())) {
-      datetime = [
-        d.getFullYear(),
-        "-",
-        String(d.getMonth() + 1).padStart(2, "0"),
-        "-",
-        String(d.getDate()).padStart(2, "0"),
-        " ",
-        String(d.getHours()).padStart(2, "0"),
-        ":",
-        String(d.getMinutes()).padStart(2, "0"),
-        ":",
-        String(d.getSeconds()).padStart(2, "0")
-      ].join("");
-    }
-  }
-
-  const amount =
-    tx.amount_kas ??
-    tx.amountKas ??
-    tx.amount ??
-    tx.value ??
-    "";
-
-  return {
-    datetime,
-    id: kgwAnalysisRawR3(tx.txid || tx.transaction_id || tx.transactionId || tx.id || tx.hash || ""),
-    direction: kgwAnalysisRawR3(tx.direction || tx.txsDir || ""),
-    amount,
-    value: tx.value_usd ?? tx.valueUsd ?? "",
-    block: tx.block_score ?? tx.blockScore ?? tx.block_height ?? tx.blockHeight ?? "",
-    type: kgwAnalysisRawR3(tx.tx_type || tx.txType || tx.type || ""),
-    counterparty: kgwAnalysisRawR3(tx.counterparty || tx.address || tx.from_address || tx.to_address || "")
-  };
-}
-
-function kgwAnalysisPythonRenderChildrenR9(rowKey, row, colspan = 7) {
-  const children = kgwAnalysisPythonChildRowsR9(row);
-
-  if (!children.length) {
-    return `
-      <tr class="kgw-analysis-python-child-row-r9 kgw-analysis-python-tree-empty-r14" data-kgw-analysis-python-child="true" data-row-key="${escapeHtml(rowKey)}">
-        <td colspan="${colspan}" class="kgw-analysis-python-empty-r9">
-          No transaction rows found for this parent.
-        </td>
-      </tr>
-    `;
-  }
-
-  return children.map((tx, childIndex) => {
-    const item = kgwAnalysisPythonNormalizeChildR9(tx, childIndex);
-    const amountDisplay = kgwAnalysisFlowSignR3(item.amount);
-    const valueDisplay = kgwAnalysisValueUsdR16(item.amount, item.value);
-    const idDisplay = item.id || item.counterparty || "";
-    const directionDisplay = kgwAnalysisDirectionCaseR16(item.direction);
-    const typeDisplay = kgwAnalysisTitleCaseR16(item.type);
-
-    return `
-      <tr class="kgw-analysis-python-child-row-r9 kgw-analysis-python-tree-child-r14 kgw-analysis-child-columns-r16" data-kgw-analysis-python-child="true" data-row-key="${escapeHtml(rowKey)}">
-        <td class="kgw-analysis-tree-date-r14">${escapeHtml(item.datetime || "—")}</td>
-        <td class="kgw-analysis-tree-id-r14" title="${escapeHtml(item.id || item.counterparty || "")}">
-          <span class="kgw-analysis-mono">${escapeHtml(idDisplay || "—")}</span>
-        </td>
-        <td class="kgw-analysis-tree-dir-r14">${escapeHtml(directionDisplay)}</td>
-        <td class="kgw-analysis-tree-amount-r14">${escapeHtml(amountDisplay || "—")}</td>
-        <td class="kgw-analysis-tree-value-r14">${escapeHtml(valueDisplay)}</td>
-        <td class="kgw-analysis-tree-block-r14">${escapeHtml(item.block || "—")}</td>
-        <td class="kgw-analysis-tree-type-r14">${escapeHtml(typeDisplay)}</td>
-      </tr>
-    `;
-  }).join("");
-}
-
-function kgwAnalysisPythonBindR9() {
-  const body = q("#analysisRows");
-  if (!body || body.dataset.kgwAnalysisPythonLazyR9 === "true") return;
-
-  body.dataset.kgwAnalysisPythonLazyR9 = "true";
-
-  body.addEventListener("click", (event) => {
-    const button = event.target && event.target.closest
-      ? event.target.closest("[data-kgw-analysis-python-toggle-r9]")
-      : null;
-
-    if (!button || !body.contains(button)) return;
-
-    event.preventDefault();
-
-    const rowKey = button.getAttribute("data-row-key") || "";
-    if (!rowKey) return;
-
-    if (kgwAnalysisExpandedRowsR9.has(rowKey)) {
-      kgwAnalysisExpandedRowsR9.delete(rowKey);
-    } else {
-      kgwAnalysisExpandedRowsR9.add(rowKey);
-    }
-
-    renderRows();
-  });
-}
-
-function kgwAnalysisPythonResetR9() {
-  kgwAnalysisExpandedRowsR9.clear();
-}
-
-
-
-// KGW_ANALYSIS_PYTHON_TREEVIEW_VISUAL_PATCH_R14
-function kgwAnalysisPlainNumberR14(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return kgwAnalysisRawR3(value || "");
-  return numeric.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  });
-}
-
-
-// KGW_ANALYSIS_CHILD_COLUMNS_PYTHON_PARITY_PATCH_R16
-function kgwAnalysisCurrentUsdPriceR16() {
-  const text = document.body ? String(document.body.textContent || "") : "";
-  const matches = [...text.matchAll(/(\d+(?:\.\d+)?)\s*USD/g)];
-  if (!matches.length) return null;
-  const price = Number(matches[0][1]);
-  return Number.isFinite(price) && price > 0 ? price : null;
-}
-
-function kgwAnalysisValueUsdR16(amount, explicitValue) {
-  const explicit = kgwAnalysisNumberR3(explicitValue);
-  if (explicit !== null) return kgwAnalysisFormatUsdR3(explicit);
-
-  const numericAmount = kgwAnalysisNumberR3(amount);
-  const price = kgwAnalysisCurrentUsdPriceR16();
-
-  if (numericAmount === null || price === null) return "—";
-  return kgwAnalysisFormatUsdR3(Math.abs(numericAmount) * price);
-}
-
-function kgwAnalysisTitleCaseR16(value) {
-  const raw = kgwAnalysisRawR3(value);
-  if (!raw) return "—";
-  return raw
-    .split(/[\s_-]+/)
-    .filter(Boolean)
-    .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1).toLowerCase())
-    .join(" ");
-}
-
-function kgwAnalysisDirectionCaseR16(value) {
-  const raw = kgwAnalysisRawR3(value);
-  if (!raw) return "—";
-  return raw.slice(0, 1).toUpperCase() + raw.slice(1).toLowerCase();
-}
-
-// KGW_ANALYSIS_RESULTS_TABLE_UI_PATCH_R3
-function kgwAnalysisRawR3(value) {
-  return value === undefined || value === null ? "" : String(value).trim();
-}
-
-function kgwAnalysisNumberR3(value) {
-  const raw = kgwAnalysisRawR3(value).replace(/,/g, "").replace(/\s+(KAS|USD)$/i, "");
-  if (!raw) return null;
-  const number = Number(raw);
-  return Number.isFinite(number) ? number : null;
-}
-
-function kgwAnalysisFormatKasR3(value) {
-  const number = kgwAnalysisNumberR3(value);
-  if (number === null) return kgwAnalysisRawR3(value);
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 3
-  }).format(number);
-}
-
-function kgwAnalysisFormatCountR3(value) {
-  const number = kgwAnalysisNumberR3(value);
-  if (number === null) return kgwAnalysisRawR3(value);
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 0
-  }).format(number);
-}
-
-function kgwAnalysisFormatUsdR3(value) {
-  const number = kgwAnalysisNumberR3(value);
-  if (number === null) return kgwAnalysisRawR3(value);
-  return "$" + new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  }).format(number);
-}
-
-function kgwAnalysisMiddleTrimR3(value, head = 18, tail = 10) {
-  const raw = kgwAnalysisRawR3(value);
-  if (raw.length <= head + tail + 3) return raw;
-  return raw.slice(0, head) + "…" + raw.slice(-tail);
-}
-
-function kgwAnalysisDirectionLabelR3(row) {
-  const direction = kgwAnalysisRawR3(row.direction || row.txsDir).toUpperCase();
-  if (direction === "IN" || direction === "OUT" || direction === "MIXED") return direction;
-  return direction && !/^\d+$/.test(direction) ? direction : "—";
-}
-
-function kgwAnalysisTxCountR3(row) {
-  return row.txCount || row.txs || row.transactions || row.txsDir || "";
-}
-
-function kgwAnalysisFlowClassR3(value) {
-  const number = kgwAnalysisNumberR3(value);
-  if (number === null) return "is-neutral";
-  if (number > 0) return "is-positive";
-  if (number < 0) return "is-negative";
-  return "is-neutral";
-}
-
-function kgwAnalysisFlowSignR3(value) {
-  const number = kgwAnalysisNumberR3(value);
-  if (number === null) return kgwAnalysisRawR3(value);
-  const formatted = kgwAnalysisFormatKasR3(number);
-  return number > 0 ? "+" + formatted : formatted;
-}
-
-function kgwAnalysisTypeLabelR3(value) {
-  const raw = kgwAnalysisRawR3(value);
-  return raw || "—";
+  return analysisViewApplyFilter();
 }
 
 function renderRows() {
-  const body = q("#analysisRows");
-  if (!body) return;
-
-  applyFilter();
-  kgwAnalysisPythonBindR9();
-
-  if (!filteredRows.length) {
-    body.innerHTML = `
-      <tr class="analysis-empty-row kgw-analysis-python-tree-empty-r14">
-        <td colspan="7">${escapeHtml(emptyMessage())}</td>
-      </tr>
-    `;
-    return;
-  }
-
-  body.innerHTML = filteredRows.map((row, index) => {
-    const rowKey = kgwAnalysisPythonRowKeyR9(row, index);
-    const expanded = kgwAnalysisExpandedRowsR9.has(rowKey);
-    const childRows = expanded ? kgwAnalysisPythonRenderChildrenR9(rowKey, row, 7) : "";
-
-    const primary = row.name || row.knownName || row.datetime || "Counterparty";
-    const isCoinbase = /coinbase|mining/i.test(String(row.address || row.transactionId || primary || row.type || ""));
-    const parentLabel = isCoinbase ? "Coinbase / Mining" : primary;
-    const addressOrTx = row.address || row.transactionId || "";
-    const addressOrTxDisplay = isCoinbase ? "" : kgwAnalysisMiddleTrimR3(addressOrTx, 64, 18);
-    const txCount = kgwAnalysisFormatCountR3(kgwAnalysisTxCountR3(row));
-    const flowRaw = row.netFlow || row.amount || "";
-    const flowDisplay = kgwAnalysisPlainNumberR14(flowRaw);
-    const valueDisplay = kgwAnalysisValueUsdR16(flowRaw, row.valueUsd || row.value || "");
-    const blockDisplay = kgwAnalysisMiddleTrimR3(row.blockScore || "", 12, 8);
-    const typeDisplay = isCoinbase ? "" : kgwAnalysisTypeLabelR3(row.type);
-    const plusLabel = expanded ? "⊟" : "⊞";
-
-    return `
-      <tr class="kgw-analysis-result-row kgw-analysis-python-parent-row-r9 kgw-analysis-python-tree-parent-r14" data-row-key="${escapeHtml(rowKey)}">
-        <td class="kgw-analysis-tree-name-r14" title="${escapeHtml(parentLabel)}">
-          <button
-            type="button"
-            class="kgw-analysis-python-toggle-r9 kgw-analysis-tree-toggle-r14"
-            data-kgw-analysis-python-toggle-r9="true"
-            data-row-key="${escapeHtml(rowKey)}"
-            aria-expanded="${expanded ? "true" : "false"}"
-            title="${expanded ? "Hide transactions" : "Show transactions"}"
-          >${plusLabel}</button>
-          <span class="kgw-analysis-tree-parent-label-r14">${escapeHtml(parentLabel)}</span>
-        </td>
-        <td class="kgw-analysis-tree-id-r14" title="${escapeHtml(addressOrTx)}">
-          <span class="kgw-analysis-mono">${escapeHtml(addressOrTxDisplay)}</span>
-        </td>
-        <td class="kgw-analysis-tree-txs-r14">${escapeHtml(txCount || "—")}</td>
-        <td class="kgw-analysis-tree-amount-r14">${escapeHtml(flowDisplay || "—")}</td>
-        <td class="kgw-analysis-tree-value-r14">${escapeHtml(valueDisplay || "")}</td>
-        <td class="kgw-analysis-tree-block-r14">${escapeHtml(blockDisplay || "")}</td>
-        <td class="kgw-analysis-tree-type-r14">${escapeHtml(typeDisplay || "")}</td>
-      </tr>
-      ${childRows}
-    `;
-  }).join("");
-}
-
-function setFilterControlsEnabled(enabled) {
-  [
-    "#analysisSearch",
-    "#analysisType",
-    "#analysisDirection",
-    "#analysisFilter",
-    "#analysisResetFilter"
-  ].forEach((selector) => {
-    const node = q(selector);
-    if (node) node.disabled = !enabled;
-  });
+  return analysisViewRenderRows();
 }
 
 function setAnalysisData(payload = {}) {
-  kgwAnalysisPythonResetR9();
-  const rows = Array.isArray(payload)
-    ? payload
-    : Array.isArray(payload.rows)
-      ? payload.rows
-      : Array.isArray(payload.counterparties)
-        ? payload.counterparties
-        : [];
-
-  analysisRows = rows.map((row) => ({
-    name: row.name ?? row.knownName ?? row.datetime ?? "",
-    knownName: row.knownName ?? row.name ?? "",
-    datetime: row.datetime ?? "",
-    address: row.address ?? row.counterparty ?? "",
-    transactionId: row.transactionId ?? row.txid ?? "",
-    txCount: row.txCount ?? row.txs ?? row.transactions ?? row.count ?? "",
-    txsDir: row.txsDir ?? row.direction ?? "",
-    direction: row.direction ?? "",
-    netFlow: row.netFlow ?? row.amount ?? row.net_kas ?? "",
-    amount: row.amount ?? row.amount_kas ?? row.net_kas ?? "",
-    valueUsd: row.valueUsd ?? row.value ?? "",
-    blockScore: row.blockScore ?? row.block ?? "",
-    type: row.type ?? row.tx_type ?? "",
-    details: row.details ?? row.children ?? row.items ?? row.txList ?? row.tx_list ?? row.rows ?? (Array.isArray(row.transactions) ? row.transactions : []),
-    transactions: row.details ?? row.children ?? row.items ?? row.txList ?? row.tx_list ?? row.rows ?? (Array.isArray(row.transactions) ? row.transactions : []),
-    firstSeen: row.firstSeen ?? row.firstTransaction ?? row.first ?? "",
-    lastSeen: row.lastSeen ?? row.lastTransaction ?? row.last ?? ""
-  }));
-
-  setSummary(payload.summary || {});
-  setFilterControlsEnabled(analysisRows.length > 0);
-  kgwAnalysisSetExportButtonsEnabledV1G(analysisRows.length > 0);
-  renderRows();
-
-  log().log("analysis rows set", { count: analysisRows.length });
+  return analysisViewSetData(payload);
 }
 
+function kgwAnalysisPythonBindR9() {
+  return analysisViewRenderRows();
+}
 /* KGW_CALENDAR_EXISTING_OWNER_REBUILD_R2_ANALYSIS_OWNER_START */
 /* KGW_CALENDAR_EXISTING_OWNER_REGEX_FIX_R4: fixed regex escaping only; no new owner layer.\n * KGW_CALENDAR_EXISTING_OWNER_DOM_CSS_FIX_R6: robust DOM contract + body-attached compact popover inside existing owner.\n * KGW_CALENDAR_SCOPED_POPOVER_OWNER_FIX_R7: scope-isolated popovers per tab.\n * KGW_CALENDAR_SINGLE_ACTIVE_POPOVER_FIX_R8: removes stale body-attached popovers before opening current tab calendar.
 /* */
@@ -1321,6 +879,7 @@ function kgwAnalysisGroupRowsV2(rows) {
 
 function kgwAnalysisClientTableV1G() {
   applyFilter();
+  const filteredRows = Array.from(analysisViewFilteredRows());
 
   const groups = kgwAnalysisGroupRowsV2(filteredRows);
 
