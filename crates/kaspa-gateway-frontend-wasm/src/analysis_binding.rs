@@ -1527,6 +1527,189 @@ fn bind_analysis_export_buttons() {
     bind_analysis_export_button("#analysisExportHtml", "html");
     bind_analysis_export_button("#analysisExportPdf", "pdf");
 }
+fn bind_filter_controls() {
+    for (selector, event_name) in [
+        ("#analysisSearch", "input"),
+        ("#analysisType", "change"),
+        ("#analysisDirection", "change"),
+    ] {
+        bind_node_once(
+            selector,
+            "bound",
+            event_name,
+            Closure::wrap(Box::new(move |event: JsValue| {
+                let node = q(selector);
+                trace(
+                    "analysis-filter",
+                    "r50b-analysis-filter-change",
+                    details(&[
+                        ("trusted", JsValue::from_bool(event_trusted(&event))),
+                        (
+                            "id",
+                            JsValue::from_str(&truthy_text(&optional_property(&node, "id"))),
+                        ),
+                        (
+                            "tag",
+                            JsValue::from_str(&truthy_text(&optional_property(&node, "tagName"))),
+                        ),
+                        ("eventName", JsValue::from_str(event_name)),
+                        (
+                            "value",
+                            JsValue::from_str(&truthy_text(&optional_property(&node, "value"))),
+                        ),
+                    ]),
+                );
+                super::analysis_view::render_rows();
+            }) as Box<dyn FnMut(JsValue)>),
+        );
+    }
+
+    bind_node_once(
+        "#analysisFilter",
+        "bound",
+        "click",
+        Closure::wrap(Box::new(move |event: JsValue| {
+            let node = q("#analysisFilter");
+            trace(
+                "analysis-filter",
+                "r50b-analysis-filter-click",
+                details(&[
+                    ("trusted", JsValue::from_bool(event_trusted(&event))),
+                    (
+                        "id",
+                        JsValue::from_str(&truthy_text(&optional_property(&node, "id"))),
+                    ),
+                    (
+                        "text",
+                        JsValue::from_str(
+                            truthy_text(&optional_property(&node, "textContent")).trim(),
+                        ),
+                    ),
+                ]),
+            );
+            super::analysis_view::render_rows();
+        }) as Box<dyn FnMut(JsValue)>),
+    );
+
+    bind_node_once(
+        "#analysisResetFilter",
+        "bound",
+        "click",
+        Closure::wrap(Box::new(move |event: JsValue| {
+            let node = q("#analysisResetFilter");
+            trace(
+                "analysis-filter",
+                "r50b-analysis-reset-filter-click",
+                details(&[
+                    ("trusted", JsValue::from_bool(event_trusted(&event))),
+                    (
+                        "id",
+                        JsValue::from_str(&truthy_text(&optional_property(&node, "id"))),
+                    ),
+                    (
+                        "text",
+                        JsValue::from_str(
+                            truthy_text(&optional_property(&node, "textContent")).trim(),
+                        ),
+                    ),
+                ]),
+            );
+            for (selector, value) in [
+                ("#analysisSearch", ""),
+                ("#analysisType", "ALL"),
+                ("#analysisDirection", "ALL"),
+            ] {
+                let target = q(selector);
+                if js_boolean(&target) {
+                    let _ = set_property(&target, "value", &JsValue::from_str(value));
+                }
+            }
+            super::analysis_calendar::ensure_today(true);
+            super::analysis_view::render_rows();
+        }) as Box<dyn FnMut(JsValue)>),
+    );
+}
+
+fn install_analysis_data_hook() {
+    let win = window();
+    if js_boolean(&optional_property(
+        &win,
+        "__kgwAnalysisRebuildHookInstalled",
+    )) {
+        return;
+    }
+    let _ = set_property(
+        &win,
+        "__kgwAnalysisRebuildHookInstalled",
+        &JsValue::from_bool(true),
+    );
+
+    add_global_listener(
+        &win,
+        "kgw:analysis",
+        Closure::wrap(Box::new(move |event: JsValue| {
+            let detail = optional_property(&event, "detail");
+            let payload = if detail.is_null() || detail.is_undefined() {
+                Object::new().into()
+            } else {
+                detail
+            };
+            super::analysis_view::set_analysis_data(payload);
+        }) as Box<dyn FnMut(JsValue)>),
+    );
+
+    let callback = Closure::wrap(Box::new(move |payload: JsValue| {
+        let value = if payload.is_null() || payload.is_undefined() {
+            Object::new().into()
+        } else {
+            payload
+        };
+        super::analysis_view::set_analysis_data(value);
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = set_property(
+        &win,
+        "kgwSetAnalysisData",
+        callback.as_ref().unchecked_ref(),
+    );
+    callback.forget();
+}
+
+#[wasm_bindgen(js_name = analysisInitTab)]
+pub fn analysis_init_tab() -> Result<(), JsValue> {
+    let owner = root();
+    if !js_boolean(&owner) {
+        return Ok(());
+    }
+
+    install_binding()?;
+    bind_filter_controls();
+    super::analysis_calendar::install();
+    install_analysis_data_hook();
+
+    let data = dataset(&owner);
+    if truthy_text(&optional_property(&data, "analysisInitialized")) != "true" {
+        let _ = set_property(&data, "analysisInitialized", &JsValue::from_str("true"));
+        let payload = Object::new();
+        let rows = Array::new();
+        let summary = Object::new();
+        let _ = set_property(payload.as_ref(), "rows", rows.as_ref());
+        let _ = set_property(payload.as_ref(), "summary", summary.as_ref());
+        super::analysis_view::set_analysis_data(payload.into());
+        let status = q("#analysisStatus");
+        if js_boolean(&status) {
+            let _ = set_property(
+                &status,
+                "textContent",
+                &JsValue::from_str("Load an address to see analysis."),
+            );
+        }
+        log_analysis("analysis rebuilt owner initialized", None);
+    } else {
+        super::analysis_view::render_rows();
+    }
+    Ok(())
+}
+
 fn bind_when_ready() {
     if !js_boolean(&root()) {
         return;

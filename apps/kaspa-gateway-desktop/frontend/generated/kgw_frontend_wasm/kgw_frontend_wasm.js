@@ -175,6 +175,13 @@ function takeFromExternrefTable0(idx) {
     return value;
 }
 
+export function analysisInitTab() {
+    const ret = wasm.analysisInitTab();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
 export function analysisInstallBinding() {
     const ret = wasm.analysisInstallBinding();
     if (ret[1]) {
@@ -1323,11 +1330,11 @@ function __wbg_adapter_34(arg0, arg1) {
 }
 
 function __wbg_adapter_37(arg0, arg1, arg2) {
-    wasm.closure274_externref_shim(arg0, arg1, arg2);
+    wasm.closure284_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_222(arg0, arg1, arg2, arg3) {
-    wasm.closure298_externref_shim(arg0, arg1, arg2, arg3);
+function __wbg_adapter_223(arg0, arg1, arg2, arg3) {
+    wasm.closure308_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 async function __wbg_load(module, imports) {
@@ -1533,7 +1540,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_222(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_223(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1669,12 +1676,12 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1028 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 275, __wbg_adapter_37);
+    imports.wbg.__wbindgen_closure_wrapper1042 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 285, __wbg_adapter_37);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper566 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 143, __wbg_adapter_34);
+    imports.wbg.__wbindgen_closure_wrapper578 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 153, __wbg_adapter_34);
         return ret;
     };
     imports.wbg.__wbindgen_init_externref_table = function() {
