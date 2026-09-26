@@ -4,7 +4,7 @@ use std::path::Path;
 
 const TAURI_APP: &str = "e2e/helpers/tauri-app.mjs";
 const ZERO_TOUCH_MATRIX: &str = "e2e/specs/zero-touch-live-matrix.e2e.js";
-const BRIDGE_INPROCESS: &str = "e2e/specs/bridge-inprocess.e2e.js";
+const BRIDGE_INPROCESS: &str = "xtask/src/e2e_bridge_inprocess.rs";
 const WDIO_CONF: &str = "e2e/wdio.conf.mjs";
 const WINDOWS_HELPERS: &str = "e2e/helpers/windows.mjs";
 const OWNED_PROCESS_RUST: &str = "xtask/src/e2e_owned_process.rs";
@@ -147,13 +147,13 @@ fn evaluate(s: &Sources) -> Vec<String> {
     require(
         &mut failures,
         &s.bridge_inprocess,
-        "if (profile.externalBridgeListeners)",
+        "if profile.external_bridge_listeners {",
         "in-process Bridge listener assertions must be policy-gated.",
     );
     require(
         &mut failures,
         &s.bridge_inprocess,
-        "CPU-only Bridge must not expose ASIC instances",
+        "CPU-only Bridge exposed ASIC instance/listener",
         "in-process Testnet10 must reject fabricated ASIC instance expectations.",
     );
     require(
@@ -320,8 +320,8 @@ mod tests {
             ]
             .join("\n"),
             bridge_inprocess: [
-                "if (profile.externalBridgeListeners)",
-                "CPU-only Bridge must not expose ASIC instances",
+                "if profile.external_bridge_listeners {",
+                "CPU-only Bridge exposed ASIC instance/listener",
             ]
             .join("\n"),
             wdio: [
