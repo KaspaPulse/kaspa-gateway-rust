@@ -32,6 +32,10 @@ fn analysis_contract(root: &Path) -> Result<(), String> {
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis-rust-binding.js",
     )?;
+    let rust_owner = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/analysis_binding.rs",
+    )?;
     let settings = read(
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js",
@@ -40,21 +44,44 @@ fn analysis_contract(root: &Path) -> Result<(), String> {
         root,
         "apps/kaspa-gateway-desktop/src-tauri/src/analysis_commands.rs",
     )?;
-    validate_analysis(&binding, &settings, &backend)
+    validate_analysis(&binding, &rust_owner, &settings, &backend)
 }
 
-fn validate_analysis(binding: &str, settings: &str, backend: &str) -> Result<(), String> {
+fn validate_analysis(
+    binding: &str,
+    rust_owner: &str,
+    settings: &str,
+    backend: &str,
+) -> Result<(), String> {
+    for needle in [
+        "wasmAnalysisNormalizeTimeRange(value)",
+        "wasmAnalysisInstallBinding()",
+        "window.kgwRunRustAnalysis = runRustAnalysis",
+    ] {
+        require_contains(
+            binding,
+            needle,
+            "generated Analysis adapter contract missing",
+        )?;
+    }
+    for forbidden in ["analysis_report", "get_all_addresses", "raw_sompi"] {
+        forbid_contains(
+            binding,
+            forbidden,
+            "generated Analysis adapter must not regain implementation logic",
+        )?;
+    }
     if ![
-        "\"30d\": \"last_month\"",
-        "\"90d\": \"last_3_months\"",
-        "\"1y\": \"last_year\"",
+        "\"30d\" => \"last_month\"",
+        "\"90d\" => \"last_3_months\"",
+        "\"1y\" => \"last_year\"",
     ]
     .iter()
-    .all(|needle| binding.contains(needle))
+    .all(|needle| rust_owner.contains(needle))
     {
-        return Err("frontend range aliases missing".to_owned());
+        return Err("Rust frontend range aliases missing".to_owned());
     }
-    if !binding.contains("kgw:saved-addresses-changed")
+    if !rust_owner.contains("kgw:saved-addresses-changed")
         || !settings.contains("kgwNotifySavedAddressesChanged")
     {
         return Err("saved-address invalidation contract missing".to_owned());
@@ -525,8 +552,13 @@ mod tests {
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis-rust-binding.js",
         )
+        .unwrap();
+        let rust_owner = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/analysis_binding.rs",
+        )
         .unwrap()
-        .replace(r#""30d": "last_month""#, r#""30d": "wrong""#);
+        .replace(r#""30d" => "last_month""#, r#""30d" => "wrong""#);
         let settings = read(
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js",
@@ -537,7 +569,7 @@ mod tests {
             "apps/kaspa-gateway-desktop/src-tauri/src/analysis_commands.rs",
         )
         .unwrap();
-        assert!(validate_analysis(&binding, &settings, &backend).is_err());
+        assert!(validate_analysis(&binding, &rust_owner, &settings, &backend).is_err());
     }
 
     #[test]
