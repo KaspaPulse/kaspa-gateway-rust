@@ -16,6 +16,7 @@ ksss = ["dep:flate2", "dep:pyo3", "dep:tar", "time/parsing"]
 [dependencies]
 xml-rs = "=0.8.29"
 regex.workspace = true
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 time.workspace = true
@@ -25,6 +26,7 @@ sha2.workspace = true
 sysinfo = "0.39.6"
 tar = { workspace = true, optional = true }
 tempfile.workspace = true
+tokio.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, features = ["Win32_NetworkManagement_IpHelper"] }
