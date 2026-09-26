@@ -168,6 +168,10 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.js",
     )?;
+    let top_rust = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/top_addresses.rs",
+    )?;
     let top_html = read(
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.html",
@@ -181,6 +185,7 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
         &explorer_css,
         &settings,
         &top_js,
+        &top_rust,
         &top_html,
         &top_template,
     )
@@ -190,6 +195,7 @@ fn validate_functional_ui(
     explorer_css: &str,
     settings: &str,
     top_js: &str,
+    top_rust: &str,
     top_html: &str,
     top_template: &str,
 ) -> Result<(), String> {
@@ -235,9 +241,50 @@ fn validate_functional_ui(
     {
         return Err("Top Addresses status target missing from runtime template".to_owned());
     }
+    for needle in [
+        "@generated",
+        "wasmInitTopAddressesTab()",
+        "wasmRefreshTopAddresses()",
+    ] {
+        require_contains(
+            top_js,
+            needle,
+            "Top Addresses JavaScript must remain deterministic Rust/WASM ABI glue",
+        )?;
+    }
+    for forbidden in [
+        "fetch_top_addresses_rust",
+        "export_default_path",
+        "export_report",
+        "kgw_open_exported_file_v1",
+        "kgw_frontend_button_trace_v1",
+        "querySelector(",
+        "addEventListener(",
+    ] {
+        forbid_contains(
+            top_js,
+            forbidden,
+            "Top Addresses implementation must not return to generated JavaScript",
+        )?;
+    }
     for state in ["LOADING —", "EMPTY —", "ERROR —", "SUCCESS —"] {
-        if !top_js.contains(state) {
-            return Err(format!("Top Addresses {state} state missing"));
+        if !top_rust.contains(state) {
+            return Err(format!("Top Addresses Rust owner missing {state} state"));
+        }
+    }
+    for command in [
+        "fetch_top_addresses_rust",
+        "export_default_path",
+        "export_report",
+        "kgw_open_exported_file_v1",
+        "kgw_frontend_button_trace_v1",
+        "KGW_TOP_ADDRESSES_SAFE_CONTROLS_TRACE_PATCH_R49D",
+        "top-addresses-installButtonHandlers-safe-owner",
+    ] {
+        if !top_rust.contains(command) {
+            return Err(format!(
+                "Top Addresses Rust owner missing contract {command}"
+            ));
         }
     }
     Ok(())
@@ -621,6 +668,11 @@ mod tests {
             "apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.js",
         )
         .unwrap();
+        let top_rust = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/top_addresses.rs",
+        )
+        .unwrap();
         let top_html = read(
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.html",
@@ -637,6 +689,7 @@ mod tests {
                 &explorer_css,
                 &settings,
                 &top_js,
+                &top_rust,
                 &top_html,
                 &top_template
             )

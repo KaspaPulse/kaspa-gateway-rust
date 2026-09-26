@@ -132,6 +132,173 @@ function passStringToWasm0(arg, malloc, realloc) {
     WASM_VECTOR_LEN = offset;
     return ptr;
 }
+
+export function topAddressesInitTab() {
+    wasm.topAddressesInitTab();
+}
+
+export function topAddressesRefresh() {
+    wasm.topAddressesRefresh();
+}
+
+/**
+ * @param {any} row
+ * @param {number} index
+ * @returns {any}
+ */
+export function topAddressesNormalizeRow(row, index) {
+    const ret = wasm.topAddressesNormalizeRow(row, index);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function topAddressesEscapeCsv(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.topAddressesEscapeCsv(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {Array<any>} value
+ */
+export function topAddressesContractSetFilteredRows(value) {
+    wasm.topAddressesContractSetFilteredRows(value);
+}
+
+/**
+ * @param {string} value
+ */
+export function topAddressesContractSetLastUpdatedText(value) {
+    const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.topAddressesContractSetLastUpdatedText(ptr0, len0);
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function topAddressesEscapeHtml(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.topAddressesEscapeHtml(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function topAddressesAddressUrl(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.topAddressesAddressUrl(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @returns {string}
+ */
+export function topAddressesSelectedCurrency() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.topAddressesSelectedCurrency();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} row
+ * @param {string} currency
+ * @returns {string}
+ */
+export function topAddressesValueForCurrency(row, currency) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.topAddressesValueForCurrency(row, ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+function takeFromExternrefTable0(idx) {
+    const value = wasm.__wbindgen_export_2.get(idx);
+    wasm.__externref_table_dealloc(idx);
+    return value;
+}
+/**
+ * @returns {any}
+ */
+export function topAddressesClientTable() {
+    const ret = wasm.topAddressesClientTable();
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {string} format
+ * @returns {any}
+ */
+export function topAddressesNativeDialogFilter(format) {
+    const ptr0 = passStringToWasm0(format, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.topAddressesNativeDialogFilter(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {string} locale
+ * @returns {any}
+ */
+export function topAddressesPromptText(locale) {
+    const ptr0 = passStringToWasm0(locale, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.topAddressesPromptText(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ */
+export function topAddressesContractSetPrices(value) {
+    wasm.topAddressesContractSetPrices(value);
+}
+
 /**
  * @returns {any}
  */
@@ -188,11 +355,6 @@ export function settingsLayoutRenderTabs(scope, net, groups) {
     }
 }
 
-function takeFromExternrefTable0(idx) {
-    const value = wasm.__wbindgen_export_2.get(idx);
-    wasm.__externref_table_dealloc(idx);
-    return value;
-}
 /**
  * @param {any} root
  */
@@ -1082,11 +1244,11 @@ function __wbg_adapter_34(arg0, arg1) {
 }
 
 function __wbg_adapter_37(arg0, arg1, arg2) {
-    wasm.closure162_externref_shim(arg0, arg1, arg2);
+    wasm.closure197_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_186(arg0, arg1, arg2, arg3) {
-    wasm.closure186_externref_shim(arg0, arg1, arg2, arg3);
+function __wbg_adapter_200(arg0, arg1, arg2, arg3) {
+    wasm.closure221_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 async function __wbg_load(module, imports) {
@@ -1167,6 +1329,10 @@ function __wbg_get_imports() {
         const ret = arg0.call(arg1, arg2, arg3, arg4);
         return ret;
     }, arguments) };
+    imports.wbg.__wbg_catch_a6e601879b2610e9 = function(arg0, arg1) {
+        const ret = arg0.catch(arg1);
+        return ret;
+    };
     imports.wbg.__wbg_construct_b91ff0e53b60c0c3 = function() { return handleError(function (arg0, arg1) {
         const ret = Reflect.construct(arg0, arg1);
         return ret;
@@ -1274,7 +1440,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_186(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_200(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1398,12 +1564,12 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper524 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 104, __wbg_adapter_34);
+    imports.wbg.__wbindgen_closure_wrapper688 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 145, __wbg_adapter_34);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper649 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 163, __wbg_adapter_37);
+    imports.wbg.__wbindgen_closure_wrapper782 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 198, __wbg_adapter_37);
         return ret;
     };
     imports.wbg.__wbindgen_init_externref_table = function() {

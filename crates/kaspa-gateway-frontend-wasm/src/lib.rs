@@ -6,6 +6,7 @@ mod settings_layout;
 mod settings_runtime;
 mod settings_schema;
 mod shell_logger;
+mod top_addresses;
 
 use js_sys::{Array, Date, Function, Intl::NumberFormat, JsString, Object, Reflect};
 use wasm_bindgen::{JsCast, prelude::*};
