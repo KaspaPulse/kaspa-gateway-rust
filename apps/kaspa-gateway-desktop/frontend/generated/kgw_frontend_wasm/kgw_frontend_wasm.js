@@ -729,6 +729,46 @@ export function kgwLogInitTab() {
 }
 
 /**
+ * @param {any} level
+ * @param {any} message
+ * @param {any} details
+ * @param {any} source
+ * @returns {any}
+ */
+export function shellLoggerLog(level, message, details, source) {
+    const ret = wasm.shellLoggerLog(level, message, details, source);
+    return ret;
+}
+
+/**
+ * @param {any} error
+ * @param {any} source
+ */
+export function shellLoggerFatal(error, source) {
+    wasm.shellLoggerFatal(error, source);
+}
+
+/**
+ * @returns {any}
+ */
+export function shellLoggerGetBufferedLogs() {
+    const ret = wasm.shellLoggerGetBufferedLogs();
+    return ret;
+}
+
+export function shellLoggerClearBufferedLogs() {
+    wasm.shellLoggerClearBufferedLogs();
+}
+
+/**
+ * @returns {boolean}
+ */
+export function shellLoggerInstall() {
+    const ret = wasm.shellLoggerInstall();
+    return ret !== 0;
+}
+
+/**
  * @param {any} reason
  * @returns {Promise<boolean>}
  */
@@ -913,46 +953,6 @@ export function headerLiveMetricsSelectedCurrencyValue(metric_value, current_tex
     } finally {
         wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
     }
-}
-
-/**
- * @param {any} level
- * @param {any} message
- * @param {any} details
- * @param {any} source
- * @returns {any}
- */
-export function shellLoggerLog(level, message, details, source) {
-    const ret = wasm.shellLoggerLog(level, message, details, source);
-    return ret;
-}
-
-/**
- * @param {any} error
- * @param {any} source
- */
-export function shellLoggerFatal(error, source) {
-    wasm.shellLoggerFatal(error, source);
-}
-
-/**
- * @returns {any}
- */
-export function shellLoggerGetBufferedLogs() {
-    const ret = wasm.shellLoggerGetBufferedLogs();
-    return ret;
-}
-
-export function shellLoggerClearBufferedLogs() {
-    wasm.shellLoggerClearBufferedLogs();
-}
-
-/**
- * @returns {boolean}
- */
-export function shellLoggerInstall() {
-    const ret = wasm.shellLoggerInstall();
-    return ret !== 0;
 }
 
 /**
@@ -1271,6 +1271,26 @@ export function formatKas(value) {
     }
 }
 
+export function analysisCalendarInstall() {
+    wasm.analysisCalendarInstall();
+}
+
+/**
+ * @returns {string}
+ */
+export function analysisCalendarResetToToday() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.analysisCalendarResetToToday();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
 /**
  * @param {any} payload
  */
@@ -1303,11 +1323,11 @@ function __wbg_adapter_34(arg0, arg1) {
 }
 
 function __wbg_adapter_37(arg0, arg1, arg2) {
-    wasm.closure246_externref_shim(arg0, arg1, arg2);
+    wasm.closure274_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_212(arg0, arg1, arg2, arg3) {
-    wasm.closure270_externref_shim(arg0, arg1, arg2, arg3);
+function __wbg_adapter_222(arg0, arg1, arg2, arg3) {
+    wasm.closure298_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 async function __wbg_load(module, imports) {
@@ -1412,6 +1432,10 @@ function __wbg_get_imports() {
         const ret = arg0.getDate();
         return ret;
     };
+    imports.wbg.__wbg_getDay_3da98b461c969439 = function(arg0) {
+        const ret = arg0.getDay();
+        return ret;
+    };
     imports.wbg.__wbg_getFullYear_17d3c9e4db748eb7 = function(arg0) {
         const ret = arg0.getFullYear();
         return ret;
@@ -1509,7 +1533,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_212(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_222(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1544,6 +1568,10 @@ function __wbg_get_imports() {
         const ret = new Function(getStringFromWasm0(arg0, arg1));
         return ret;
     };
+    imports.wbg.__wbg_newwithyearmonthday_03748851282a850d = function(arg0, arg1, arg2) {
+        const ret = new Date(arg0 >>> 0, arg1, arg2);
+        return ret;
+    };
     imports.wbg.__wbg_now_807e54c39636c349 = function() {
         const ret = Date.now();
         return ret;
@@ -1565,6 +1593,14 @@ function __wbg_get_imports() {
     };
     imports.wbg.__wbg_resolve_4851785c9c5f573d = function(arg0) {
         const ret = Promise.resolve(arg0);
+        return ret;
+    };
+    imports.wbg.__wbg_setDate_90491bc93d09cadd = function(arg0, arg1) {
+        const ret = arg0.setDate(arg1 >>> 0);
+        return ret;
+    };
+    imports.wbg.__wbg_setTime_8afa2faa26e7eb59 = function(arg0, arg1) {
+        const ret = arg0.setTime(arg1);
         return ret;
     };
     imports.wbg.__wbg_set_bb8cecf6a62b9f46 = function() { return handleError(function (arg0, arg1, arg2) {
@@ -1633,12 +1669,12 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper885 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 192, __wbg_adapter_34);
+    imports.wbg.__wbindgen_closure_wrapper1028 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 275, __wbg_adapter_37);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper973 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 247, __wbg_adapter_37);
+    imports.wbg.__wbindgen_closure_wrapper566 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 143, __wbg_adapter_34);
         return ret;
     };
     imports.wbg.__wbindgen_init_externref_table = function() {

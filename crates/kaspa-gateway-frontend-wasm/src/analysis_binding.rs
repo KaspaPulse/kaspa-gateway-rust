@@ -830,7 +830,7 @@ pub async fn run_analysis() -> Result<JsValue, JsValue> {
     run_analysis_internal().await
 }
 
-fn event_trusted(event: &JsValue) -> bool {
+pub(crate) fn event_trusted(event: &JsValue) -> bool {
     optional_property(event, "isTrusted")
         .as_bool()
         .unwrap_or(false)
@@ -840,7 +840,7 @@ fn prevent_default(event: &JsValue) {
     let _ = call_method0(event, "preventDefault");
 }
 
-fn trace(action: &str, phase: &str, details: JsValue) {
+pub(crate) fn trace(action: &str, phase: &str, details: JsValue) {
     let Some(call) = invoke_function() else {
         return;
     };
@@ -889,7 +889,7 @@ fn trace(action: &str, phase: &str, details: JsValue) {
     }
 }
 
-fn details(entries: &[(&str, JsValue)]) -> JsValue {
+pub(crate) fn details(entries: &[(&str, JsValue)]) -> JsValue {
     let object = Object::new();
     for (key, value) in entries {
         let _ = set_property(object.as_ref(), key, value);
