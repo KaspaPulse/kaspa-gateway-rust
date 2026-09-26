@@ -3,7 +3,6 @@
 # New non-Rust source is never auto-baselined and fails the Rust language policy guard.
 apps/kaspa-gateway-desktop/frontend/main.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis.js
-apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.export.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js
 apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js

@@ -1086,7 +1086,7 @@ fn bind_prompt_click(
     callback.forget();
 }
 
-async fn centered_open_prompt() -> Result<bool, JsValue> {
+pub(crate) async fn centered_open_prompt() -> Result<bool, JsValue> {
     ensure_prompt_style();
     let labels = prompt_text(&current_prompt_locale());
     let previous_active = property(&document(), "activeElement");
