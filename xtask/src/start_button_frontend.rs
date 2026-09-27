@@ -110,7 +110,8 @@ function staticPlacementTests() {
   assert.ok(
     source.includes("nodeRuntimeEvidence as kgwNodeRuntimeEvidence")
       && !source.includes("function kgwNodeRuntimeEvidence(")
-      && source.includes("nodeAssertStartEvidence as wasmNodeAssertStartEvidence"),
+      && source.includes("nodeAssertStartEvidence as kgwNodeAssertStartEvidence")
+      && !source.includes("function kgwNodeAssertStartEvidence("),
     "Node runtime evidence and Start attestation must be delegated to the Rust/WASM owner",
   );
   assert.ok(
@@ -139,7 +140,8 @@ function staticPlacementTests() {
   );
   assert.ok(
     source.includes("nodeR51Keys as wasmNodeR51Keys")
-      && source.includes("nodeR51Panel as wasmNodeR51Panel")
+      && source.includes("nodeR51Panel as kgwNodeR51Panel")
+      && !source.includes("function kgwNodeR51Panel(")
       && source.includes("nodeR51Fields as wasmNodeR51Fields")
       && source.includes("nodeR51ReadSettings as wasmNodeR51ReadSettings")
       && source.includes("nodeR51Load as wasmNodeR51Load")
@@ -184,8 +186,8 @@ function staticPlacementTests() {
     "Node effective settings must delegate to the Rust/WASM owner",
   );
   assert.ok(
-    source.includes("nodeRuntimeArgs as wasmNodeRuntimeArgs")
-      && /function nodeRuntimeArgs\(net, command\)\s*\{\s*return wasmNodeRuntimeArgs\(String\(net \|\| \"\"\), String\(command \|\| \"\"\)\);\s*\}/.test(source),
+    source.includes("nodeRuntimeArgs as nodeRuntimeArgs")
+      && !source.includes("function nodeRuntimeArgs("),
     "Node runtime args must delegate to the Rust/WASM owner",
   );
   for (const retired of [
@@ -1429,6 +1431,13 @@ const kgwNodeRuntimeEvidence = wasmNodeRuntimeEvidence;
 const kgwNodeR51CaptureFactoryDefaults = wasmNodeR51CaptureFactoryDefaults;
 const kgwNodeR51IsRunning = wasmNodeRuntimeIsRunning;
 const kgwNodeRuntimeErrorFromStatus = wasmNodeRuntimeErrorFromStatus;
+const kgwNodeTraceActiveNetworkR1 = wasmNodeTraceActiveNetwork;
+const kgwNodeBackendInvokeR5 = wasmNodeBackendInvoke;
+const kgwNodeResolveInnerTabR101U = wasmNodeResolveInnerTab;
+const kgwNodeSaveInnerTabR101U = wasmNodeSaveInnerTab;
+const kgwNodeAssertStartEvidence = wasmNodeAssertStartEvidence;
+const nodeRuntimeArgs = wasmNodeRuntimeArgs;
+const kgwNodeR51Panel = wasmNodeR51Panel;
 `;
   const executable = importPrelude + source
     .replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "")

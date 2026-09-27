@@ -122,8 +122,7 @@ fn validate(s: &Sources) -> Result<(), String> {
     for needle in [
         "function kgwNodeEffectiveNodeSettings(net)",
         "return wasmNodeEffectiveNodeSettings(String(net || \"\"));",
-        "function nodeRuntimeArgs(net, command)",
-        "return wasmNodeRuntimeArgs(String(net || \"\"), String(command || \"\"));",
+        "nodeRuntimeArgs as nodeRuntimeArgs",
     ] {
         require(&s.node, needle, "Node Rust/WASM adapter")?;
     }
@@ -144,6 +143,7 @@ fn validate(s: &Sources) -> Result<(), String> {
         require(&s.node_owner, needle, "Node Rust owner")?;
     }
     for needle in [
+        "function nodeRuntimeArgs(",
         "const rpcBase = net ===",
         "asyncThreads: kgwNodeEffectiveNumber",
         "effectiveNodeSettings: kgwNodeEffectiveNodeSettings(net)",
@@ -255,9 +255,7 @@ mod tests {
         let node = "function kgwNodeEffectiveNodeSettings(net) {\n\
 return wasmNodeEffectiveNodeSettings(String(net || \"\"));\n\
 }\n\
-function nodeRuntimeArgs(net, command) {\n\
-return wasmNodeRuntimeArgs(String(net || \"\"), String(command || \"\"));\n\
-}\n\
+nodeRuntimeArgs as nodeRuntimeArgs\n\
 Restart required to apply changed effective settings\n\
 net.key === \"testnet10\" ? \"16211\" : \"16711\"\n\
 cardCheck(net.key, \"disableUpnp\", \"--disable-upnp\", true)\n\

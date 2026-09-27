@@ -1885,11 +1885,9 @@ fn start_command_is_registered_and_payload_matches_frontend() {
         "start trace frontend command must be registered in tauri generate_handler"
     );
     assert!(
-        node_js.contains("nodeRuntimeArgs as wasmNodeRuntimeArgs")
-            && node_js.contains(
-                "return wasmNodeRuntimeArgs(String(net || \"\"), String(command || \"\"));"
-            ),
-        "frontend must delegate runtime IPC argument construction to the Rust/WASM owner"
+        node_js.contains("nodeRuntimeArgs as nodeRuntimeArgs")
+            && !node_js.contains("function nodeRuntimeArgs("),
+        "frontend must delegate runtime IPC argument construction directly to the Rust/WASM owner"
     );
 
     let runtime_args_start = node_frontend_helpers

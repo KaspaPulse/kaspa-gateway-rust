@@ -2,7 +2,7 @@ import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { NODE_MANAGED, NODE_REQUIRED, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initNodeRust, {
-  nodeBackendInvoke as wasmNodeBackendInvoke,
+  nodeBackendInvoke as kgwNodeBackendInvokeR5,
   nodeById as byId,
   nodeCardCheck as wasmNodeCardCheck,
   nodeCardInput as wasmNodeCardInput,
@@ -30,7 +30,7 @@ import initNodeRust, {
   nodeNetworkProfile as kgwNodeNetworkProfile,
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
   nodeNormalizeNetwork as kgwNodeNormalizeNetworkR101W2,
-  nodeAssertStartEvidence as wasmNodeAssertStartEvidence,
+  nodeAssertStartEvidence as kgwNodeAssertStartEvidence,
   nodeNormalizeRuntimeError as normalizeRuntimeError,
   nodeParseRuntimeFields as parseRuntimeFields,
   nodeRuntimeEvidence as kgwNodeRuntimeEvidence,
@@ -40,24 +40,24 @@ import initNodeRust, {
   nodeR51Keys as wasmNodeR51Keys,
   nodeR51Load as wasmNodeR51Load,
   nodeR51LoadSavedSettings as wasmNodeR51LoadSavedSettings,
-  nodeR51Panel as wasmNodeR51Panel,
+  nodeR51Panel as kgwNodeR51Panel,
   nodeR51ReadSettings as wasmNodeR51ReadSettings,
   nodeR51RestoreDefaultsAction as wasmNodeR51RestoreDefaultsAction,
   nodeR51SaveSettingsAction as wasmNodeR51SaveSettingsAction,
   nodeR51SetDefaultsAction as wasmNodeR51SetDefaultsAction,
-  nodeResolveInnerTab as wasmNodeResolveInnerTab,
+  nodeResolveInnerTab as kgwNodeResolveInnerTabR101U,
   nodeResolvePublicTauriInvoke as kgwResolvePublicTauriInvokeR1,
   nodeRuntimeActionForCommand as kgwNodeRuntimeActionForCommandR1,
-  nodeRuntimeArgs as wasmNodeRuntimeArgs,
+  nodeRuntimeArgs as nodeRuntimeArgs,
   nodeRuntimeErrorFromStatus as kgwNodeRuntimeErrorFromStatus,
   nodeRuntimeIsRunning as kgwNodeR51IsRunning,
-  nodeSaveInnerTab as wasmNodeSaveInnerTab,
+  nodeSaveInnerTab as kgwNodeSaveInnerTabR101U,
   nodeSaveLastNetwork as kgwNodeSaveLastNetworkR101W2,
   nodeSetNetworkEnabled as kgwNodeSetNetworkEnabled,
   nodeStringifyRuntimeResult as stringifyRuntimeResult,
   nodeSmallOwnerTrace as kgwNodeSmallOwnerTraceR44D,
   nodeStartTraceFrontend as kgwStartTraceFrontendR1,
-  nodeTraceActiveNetwork as wasmNodeTraceActiveNetwork,
+  nodeTraceActiveNetwork as kgwNodeTraceActiveNetworkR1,
   nodeTraceRenderedStartControls as kgwNodeTraceRenderedStartControlsR1,
   nodeTraceStartButtonState as kgwNodeTraceStartButtonStateR1,
   nodeValue as v,
@@ -696,18 +696,10 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
 /* KGW_NODE_TRACE_OBSERVER_R1 is Rust-owned in node_start_trace.rs. */
 
 
-function kgwNodeTraceActiveNetworkR1(root = document.getElementById("kaspa-node")) {
-  return wasmNodeTraceActiveNetwork(root);
-}
-
 /* Canonical isolated node runtime paths.
  * Each network owns a separate database below:
  * %LOCALAPPDATA%\KaspaGateway\nodes\<network>
  */
-function kgwNodeBackendInvokeR5(command, payload = {}) {
-  return wasmNodeBackendInvoke(String(command || ""), payload || {});
-}
-
 /* KGW_NODE_PATH_HELPERS_R5 are Rust-owned in node_path_helpers.rs. */
 
 
@@ -941,14 +933,6 @@ function renderSections(net) {
 }
 
 /* R101U inner-tab persistence is Rust-owned in node_frontend_helpers.rs. */
-function kgwNodeResolveInnerTabR101U(net) {
-  return wasmNodeResolveInnerTab(String(net || ""));
-}
-
-function kgwNodeSaveInnerTabR101U(net, selected) {
-  return wasmNodeSaveInnerTab(String(net || ""), selected);
-}
-
 function renderNetworkPanel(net, index) {
   /* KGW_NODE_LIVE_MONITOR_TAB_LABEL_ORDER_R101S */
   /* KGW_NODE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U
@@ -1306,14 +1290,7 @@ function kgwNodeMarkRestartRequired(net) {
   authority.dataset.restartRequired = running ? "true" : "false";
 }
 
-function kgwNodeAssertStartEvidence(net, result) {
-  return wasmNodeAssertStartEvidence(String(net || ""), result);
-}
-
 /* Runtime IPC argument construction is Rust/WASM-owned in node_frontend_helpers.rs. */
-function nodeRuntimeArgs(net, command) {
-  return wasmNodeRuntimeArgs(String(net || ""), String(command || ""));
-}
 function invokeWithTimeout(invoke, command, args, timeoutMs) {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     return Promise.resolve().then(() => invoke(command, args));
@@ -1566,10 +1543,6 @@ let KGW_NODE_R51_TIMER = null;
 
 function kgwNodeR51Keys() {
   return Array.from(wasmNodeR51Keys());
-}
-
-function kgwNodeR51Panel(net) {
-  return wasmNodeR51Panel(String(net || ""));
 }
 
 function kgwNodeR51Fields(net) {
