@@ -43,6 +43,9 @@ import init, {
   settingsNodeManaged as wasmNodeManaged,
   settingsNodeOptional as wasmNodeOptional,
   settingsNodeRequired as wasmNodeRequired,
+  settingsPathsApply as wasmPathsApply,
+  settingsPathsLoadDefaults as wasmPathsLoadDefaults,
+  settingsPathsRepairBeforeSave as wasmPathsRepairBeforeSave,
   settingsRenderFieldErrors as wasmRenderFieldErrors,
   settingsSelectedDisplayKeys as wasmSelectedDisplayKeys,
   settingsSplitEndpoint as wasmSplitEndpoint,
@@ -140,6 +143,18 @@ export function settingsAddressesRestoreEpoch() {
 
 export function settingsAddressesOpenExplorer(address) {
   return wasmAddressesOpenExplorer(address);
+}
+
+export function settingsPathsApply(paths, force = false) {
+  return wasmPathsApply(paths, force);
+}
+
+export async function settingsPathsLoadDefaults(reason = "settings") {
+  return await wasmPathsLoadDefaults(reason);
+}
+
+export async function settingsPathsRepairBeforeSave() {
+  return await wasmPathsRepairBeforeSave();
 }
 
 export function settingsDbKindFromFileName(value) {

@@ -11,6 +11,8 @@ import {
   settingsDatabaseInstall,
   settingsDatabaseInstallMaintenance,
   settingsDatabaseRefresh,
+  settingsPathsLoadDefaults,
+  settingsPathsRepairBeforeSave,
   settingsSelectedDisplayKeys,
   settingsToWesternDigits
 } from "../../settings-contract.js";
@@ -823,53 +825,13 @@ function kgwInstallSettingsRealWorkflowActions() {
   void kgwSettingsRefreshBackendProfiles("workflow-install");
 }
 
-function kgwSettingsIsStaleUserPathR4(value) {
-  const text = String(value || "");
-  return /^[A-Za-z]:[\\/]+Users[\\/]+[^\\/]+[\\/]+AppData[\\/]+Roaming[\\/]+KaspaGateway/i.test(text) || /AppData[\\/]+Roaming[\\/]+KaspaGateway/i.test(text);
-}
-
-function kgwSettingsApplyDynamicPathValuesR4(paths, options = {}) {
-  const force = options.force === true;
-
-  const mapping = {
-    settingsDatabasePath: paths.database || paths.database_path || paths.data || "",
-    settingsExportPath: paths.exports || paths.export_path || "",
-    settingsLogPath: paths.logs || paths.log_path || "",
-    settingsBackupPath: paths.backups || paths.backup_path || ""
-  };
-
-  Object.entries(mapping).forEach(([id, value]) => {
-    if (!value) return;
-
-    const node = q(`#${CSS.escape(id)}`);
-    if (!node) return;
-
-    const current = String(node.value || "");
-    if (force || current.trim() === "" || kgwSettingsIsStaleUserPathR4(current)) {
-      node.value = value;
-    }
-  });
-}
-
 async function kgwSettingsLoadDynamicPathDefaultsR4(reason = "settings") {
-  try {
-    const defaults = await kgwSettingsBackendInvokeR4("settings_defaults");
-    if (defaults && defaults.paths) {
-      kgwSettingsApplyDynamicPathValuesR4(defaults.paths, { force: reason === "reset-defaults" });
-      settingsLogger().log("dynamic settings paths loaded from backend owner", { reason });
-      return defaults.paths;
-    }
-  } catch (error) {
-    settingsLogger().warn("dynamic settings paths backend load failed", { reason, error: String(error?.message || error) });
-  }
-
-  return null;
+  return await settingsPathsLoadDefaults(reason);
 }
 
 async function kgwSettingsRepairDynamicPathsBeforeSaveR4() {
-  await kgwSettingsLoadDynamicPathDefaultsR4("save-repair");
+  return await settingsPathsRepairBeforeSave();
 }
-
 /* KGW_SETTINGS_SINGLE_SAVE_FLIGHT_R75 */
 let kgwSettingsSaveInFlightR75 = false;
 
