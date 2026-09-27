@@ -935,9 +935,212 @@ pub async fn confirm_user_action(message: JsValue) -> Result<bool, JsValue> {
     Ok(await_value(answer).await?.as_bool() == Some(true))
 }
 
+fn western_digits_text(value: &str) -> String {
+    value
+        .chars()
+        .map(|ch| match ch as u32 {
+            code @ 0x0660..=0x0669 => char::from_u32(u32::from(b'0') + code - 0x0660).unwrap(),
+            code @ 0x06F0..=0x06F9 => char::from_u32(u32::from(b'0') + code - 0x06F0).unwrap(),
+            _ => ch,
+        })
+        .collect()
+}
+
+fn display_defaults() -> [(&'static str, bool); 9] {
+    [
+        ("language:en", true),
+        ("currency:USD", true),
+        ("tab:kaspa-node", true),
+        ("tab:kaspa-bridge", true),
+        ("tab:settings", true),
+        ("tab:explorer", false),
+        ("tab:analysis", false),
+        ("tab:top-addresses", false),
+        ("tab:log", false),
+    ]
+}
+
+fn copy_object(value: &JsValue) -> Object {
+    let output = Object::new();
+    if !value.is_object() {
+        return output;
+    }
+    for key in Object::keys(value.unchecked_ref::<Object>()).iter() {
+        let current = Reflect::get(value, &key).unwrap_or(JsValue::UNDEFINED);
+        let _ = Reflect::set(output.as_ref(), &key, &current);
+    }
+    output
+}
+
+fn starts_with_display_prefix(key: &str) -> bool {
+    key.starts_with("language:") || key.starts_with("currency:") || key.starts_with("tab:")
+}
+
+fn known_display_entry(value: &JsValue) -> (String, String) {
+    (text_property(value, "key"), text_property(value, "id"))
+}
+
+fn selected_display_values(checks: &JsValue, prefix: &str) -> Vec<String> {
+    if !checks.is_object() {
+        return Vec::new();
+    }
+    Object::keys(checks.unchecked_ref::<Object>())
+        .iter()
+        .filter_map(|key| {
+            let key = raw_string(&key);
+            if !key.starts_with(prefix) {
+                return None;
+            }
+            let value = Reflect::get(checks, &JsValue::from_str(&key)).ok()?;
+            strict_true(&value).then(|| key[prefix.len()..].to_owned())
+        })
+        .collect()
+}
+
+fn unique_or(values: Vec<String>, fallback: &[&str]) -> Vec<String> {
+    let mut output = Vec::new();
+    for value in values {
+        if !output.contains(&value) {
+            output.push(value);
+        }
+    }
+    if output.is_empty() {
+        output.extend(fallback.iter().map(|value| (*value).to_owned()));
+    }
+    output
+}
+
+fn string_array(values: &[String]) -> Array {
+    let output = Array::new();
+    for value in values {
+        output.push(&JsValue::from_str(value));
+    }
+    output
+}
+
+#[wasm_bindgen(js_name = settingsToWesternDigits)]
+pub fn settings_to_western_digits(value: JsValue) -> String {
+    western_digits_text(&raw_string(&value))
+}
+
+#[wasm_bindgen(js_name = settingsDisplayChecksWithDefaults)]
+pub fn settings_display_checks_with_defaults(checks: JsValue, known_entries: Array) -> JsValue {
+    let next = copy_object(&checks);
+
+    for key in Object::keys(&next).iter() {
+        let key_text = raw_string(&key);
+        if starts_with_display_prefix(&key_text) {
+            let _ = Reflect::set(next.as_ref(), &key, &JsValue::FALSE);
+        }
+    }
+
+    let known = known_entries
+        .iter()
+        .map(|entry| known_display_entry(&entry))
+        .collect::<Vec<_>>();
+    for (key, id) in &known {
+        if !key.is_empty() {
+            let _ = set_property(next.as_ref(), key, &JsValue::FALSE);
+        }
+        if !id.is_empty() {
+            let _ = set_property(next.as_ref(), id, &JsValue::FALSE);
+        }
+    }
+
+    for (key, enabled) in display_defaults() {
+        let value = JsValue::from_bool(enabled);
+        let _ = set_property(next.as_ref(), key, &value);
+        if let Some((_, id)) = known.iter().find(|(known_key, _)| known_key == key)
+            && !id.is_empty()
+        {
+            let _ = set_property(next.as_ref(), id, &value);
+        }
+    }
+    for id in [
+        "settingsLangSelectAll",
+        "settingsCurrencySelectAll",
+        "settingsTabSelectAll",
+    ] {
+        let _ = set_property(next.as_ref(), id, &JsValue::FALSE);
+    }
+    next.into()
+}
+
+#[wasm_bindgen(js_name = settingsSelectedDisplayKeys)]
+pub fn settings_selected_display_keys(checks: JsValue, prefix: String) -> Array {
+    string_array(&selected_display_values(&checks, &prefix))
+}
+
+#[wasm_bindgen(js_name = settingsDisplayStateMissingContract)]
+pub fn settings_display_state_missing_contract(checks: JsValue) -> bool {
+    if !checks.is_object() {
+        return true;
+    }
+    ["language:", "currency:", "tab:"]
+        .iter()
+        .any(|prefix| selected_display_values(&checks, prefix).is_empty())
+}
+
+#[wasm_bindgen(js_name = settingsDisplayPreferences)]
+pub fn settings_display_preferences(checks: JsValue) -> JsValue {
+    if !checks.is_object() {
+        return JsValue::NULL;
+    }
+    let languages = unique_or(selected_display_values(&checks, "language:"), &["en"]);
+    let currencies = unique_or(selected_display_values(&checks, "currency:"), &["USD"]);
+    let mut tabs = unique_or(
+        selected_display_values(&checks, "tab:"),
+        &["kaspa-node", "kaspa-bridge", "settings"],
+    );
+    if !tabs.iter().any(|tab| tab == "settings") {
+        tabs.push("settings".to_owned());
+    }
+    let output = Object::new();
+    let _ = set_property(
+        output.as_ref(),
+        "languages",
+        string_array(&languages).as_ref(),
+    );
+    let _ = set_property(
+        output.as_ref(),
+        "currencies",
+        string_array(&currencies).as_ref(),
+    );
+    let _ = set_property(output.as_ref(), "tabs", string_array(&tabs).as_ref());
+    output.into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn western_digits_cover_arabic_and_persian_forms() {
+        let arabic = (0x0661..=0x0669)
+            .chain(std::iter::once(0x0660))
+            .filter_map(char::from_u32)
+            .collect::<String>();
+        let persian = (0x06F1..=0x06F9)
+            .chain(std::iter::once(0x06F0))
+            .filter_map(char::from_u32)
+            .collect::<String>();
+        let mixed = format!(
+            "12.{}{}",
+            char::from_u32(0x0663).unwrap(),
+            char::from_u32(0x06F4).unwrap()
+        );
+        assert_eq!(western_digits_text(&arabic), "1234567890");
+        assert_eq!(western_digits_text(&persian), "1234567890");
+        assert_eq!(western_digits_text(&mixed), "12.34");
+    }
+
+    #[test]
+    fn display_defaults_preserve_canonical_shell_contract() {
+        assert_eq!(display_defaults()[0], ("language:en", true));
+        assert!(display_defaults().contains(&("currency:USD", true)));
+        assert!(display_defaults().contains(&("tab:settings", true)));
+        assert!(display_defaults().contains(&("tab:explorer", false)));
+    }
 
     #[test]
     fn host_validation_matches_contract_examples() {

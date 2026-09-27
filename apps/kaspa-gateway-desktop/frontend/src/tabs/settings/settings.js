@@ -1,12 +1,17 @@
 import { applyStatusTone } from "../../status.js";
-import { confirmUserAction } from "../../settings-contract.js";
+import {
+  confirmUserAction,
+  settingsDisplayChecksWithDefaults,
+  settingsDisplayPreferences,
+  settingsDisplayStateMissingContract,
+  settingsSelectedDisplayKeys,
+  settingsToWesternDigits
+} from "../../settings-contract.js";
 import { installGlobalSettingsLayout } from "../../settings-layout.js";
 const SETTINGS_STORAGE_KEY = "kgw-settings-python-exact-state";
 
 function kgwSettingsToWesternDigits(value) {
-  return String(value ?? "")
-    .replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d))
-    .replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d));
+  return settingsToWesternDigits(value);
 }
 
 function kgwSettingsNormalizeNumericFields() {
@@ -374,39 +379,6 @@ function kgwDisplaySelectionBindMinimumGuardsR1() {
  * Canonical settings adapter.
  * Settings prepares state and delegates shell decisions to the canonical owner in main.js.
  */
-const KGW_SHELL_DISPLAY_DEFAULT_CHECKS_R59C = Object.freeze({
-  "language:en": true,
-  "currency:USD": true,
-  "tab:kaspa-node": true,
-  "tab:kaspa-bridge": true,
-  "tab:settings": true,
-  "tab:explorer": false,
-  "tab:analysis": false,
-  "tab:top-addresses": false,
-  "tab:log": false
-});
-
-function kgwSettingsSetDisplayCheckboxR59C(key, checked) {
-  let node = null;
-
-  if (key.startsWith("language:")) {
-    node = q('[data-settings-language="' + CSS.escape(key.slice("language:".length)) + '"]');
-  } else if (key.startsWith("currency:")) {
-    node = q('[data-settings-currency="' + CSS.escape(key.slice("currency:".length)) + '"]');
-  } else if (key.startsWith("tab:")) {
-    node = q('[data-settings-visible-tab="' + CSS.escape(key.slice("tab:".length)) + '"]');
-  }
-
-  if (node && node.type === "checkbox") {
-    node.checked = Boolean(checked);
-  }
-}
-
-/* KGW_SETTINGS_DISPLAY_CHECKBOX_AND_SAVE_OWNER_PATCH_R65
- * Settings display checkbox and save owner repair.
- * settings.js remains the Settings state owner.
- * main.js remains the Shell display application owner.
- */
 function kgwSettingsDisplayKeyForNodeR65(node) {
   if (!node || !node.dataset) return "";
 
@@ -430,85 +402,24 @@ function kgwSettingsDisplayNodesR65() {
     .filter((node) => node && node.type === "checkbox");
 }
 
-function kgwSettingsDisplayNodeForKeyR69(key) {
-  if (!key || typeof key !== "string") return null;
-
-  if (key.startsWith("language:")) {
-    return q(`[data-settings-language="${CSS.escape(key.slice("language:".length))}"]`);
-  }
-
-  if (key.startsWith("currency:")) {
-    return q(`[data-settings-currency="${CSS.escape(key.slice("currency:".length))}"]`);
-  }
-
-  if (key.startsWith("tab:")) {
-    return q(`[data-settings-visible-tab="${CSS.escape(key.slice("tab:".length))}"]`);
-  }
-
-  return null;
+function kgwSettingsKnownDisplayEntriesR65() {
+  return kgwSettingsDisplayNodesR65().map((node) => ({
+    key: kgwSettingsDisplayKeyForNodeR65(node),
+    id: node.id || ""
+  }));
 }
 
 function kgwSettingsDisplayChecksWithDefaultsR65(checks) {
-  /* KGW_SETTINGS_DISPLAY_DEFAULTS_R69
-   * Canonical display defaults must clear every display language, currency, and tab first.
-   * Previous behavior preserved stale all-selected keys from the current Settings UI.
-   */
-  const next = Object.assign({}, checks || {});
-
-  Object.keys(next).forEach((key) => {
-    if (key.startsWith("language:") || key.startsWith("currency:") || key.startsWith("tab:")) {
-      next[key] = false;
-    }
-  });
-
-  kgwSettingsDisplayNodesR65().forEach((node) => {
-    const key = kgwSettingsDisplayKeyForNodeR65(node);
-    if (key) next[key] = false;
-    if (node.id) next[node.id] = false;
-  });
-
-  Object.entries(KGW_SHELL_DISPLAY_DEFAULT_CHECKS_R59C).forEach(([key, value]) => {
-    const enabled = !!value;
-    next[key] = enabled;
-
-    const node = kgwSettingsDisplayNodeForKeyR69(key);
-    if (node && node.id) {
-      next[node.id] = enabled;
-    }
-  });
-
-  next.settingsLangSelectAll = false;
-  next.settingsCurrencySelectAll = false;
-  next.settingsTabSelectAll = false;
-
-  return next;
+  return settingsDisplayChecksWithDefaults(checks, kgwSettingsKnownDisplayEntriesR65());
 }
 
 function kgwSettingsSelectedDisplayKeysR65(checks, prefix) {
-  if (!checks || typeof checks !== "object") return [];
-  return Object.entries(checks)
-    .filter(([key, value]) => key.startsWith(prefix) && !!value)
-    .map(([key]) => key.slice(prefix.length));
+  return settingsSelectedDisplayKeys(checks, prefix);
 }
 
 function kgwSettingsDisplayStateLooksLegacyAllSelectedR65(state) {
-  /* KGW_SETTINGS_FULL_PERSISTENCE_CONTRACT_FIX_R104
-   * Selecting every displayed language/currency/tab is a valid user choice.
-   * Only missing display contract keys are legacy/invalid.
-   */
   const checks = state && typeof state === "object" ? state.checks : null;
-  if (!checks || typeof checks !== "object") return true;
-
-  const selectedLanguages = kgwSettingsSelectedDisplayKeysR65(checks, "language:");
-  const selectedCurrencies = kgwSettingsSelectedDisplayKeysR65(checks, "currency:");
-  const selectedTabs = kgwSettingsSelectedDisplayKeysR65(checks, "tab:");
-
-  const noDisplayKeys =
-    selectedLanguages.length === 0 ||
-    selectedCurrencies.length === 0 ||
-    selectedTabs.length === 0;
-
-  return noDisplayKeys;
+  return settingsDisplayStateMissingContract(checks);
 }
 
 function kgwSettingsApplyDisplayChecksR65(checks, reason = "display-checks") {
@@ -664,25 +575,7 @@ function applyState(state) {
  */
 function kgwSettingsDisplayPrefsFromCanonicalState(state) {
   const checks = state && typeof state === "object" ? state.checks : null;
-  if (!checks || typeof checks !== "object") return null;
-
-  const languages = kgwSettingsSelectedDisplayKeysR65(checks, "language:");
-  const currencies = kgwSettingsSelectedDisplayKeysR65(checks, "currency:");
-  const tabs = kgwSettingsSelectedDisplayKeysR65(checks, "tab:");
-
-  const normalizedLanguages = languages.length ? Array.from(new Set(languages)) : ["en"];
-  const normalizedCurrencies = currencies.length ? Array.from(new Set(currencies)) : ["USD"];
-  const normalizedTabs = tabs.length ? Array.from(new Set(tabs)) : ["kaspa-node", "kaspa-bridge", "settings"];
-
-  if (!normalizedTabs.includes("settings")) {
-    normalizedTabs.push("settings");
-  }
-
-  return {
-    languages: normalizedLanguages,
-    currencies: normalizedCurrencies,
-    tabs: normalizedTabs
-  };
+  return settingsDisplayPreferences(checks);
 }
 
 function kgwSettingsApplyShellDisplayFromState(state, reason = "settings") {
@@ -1424,34 +1317,6 @@ function bindStaticActions() {
 /* KGW_SETTINGS_STALE_DISPLAY_STATE_NORMALIZER_R63F
  * Normalizes stale saved display selections that predate the canonical R59C shell owner.
  */
-function kgwSettingsDisplayStateNeedsCanonicalResetR63F(state) {
-  if (!state || typeof state !== "object" || !state.checks || typeof state.checks !== "object") {
-    return true;
-  }
-
-  const checks = state.checks;
-  const selectedLanguages = Object.entries(checks).filter(([key, value]) => key.startsWith("language:") && value).map(([key]) => key.slice("language:".length));
-  const selectedCurrencies = Object.entries(checks).filter(([key, value]) => key.startsWith("currency:") && value).map(([key]) => key.slice("currency:".length));
-  const selectedTabs = Object.entries(checks).filter(([key, value]) => key.startsWith("tab:") && value).map(([key]) => key.slice("tab:".length));
-
-  const requiredTabs = ["kaspa-node", "kaspa-bridge", "settings"];
-  const forbiddenTabs = ["explorer", "analysis", "top-addresses", "log"];
-
-  if (selectedLanguages.length !== 1 || selectedLanguages[0] !== "en") return true;
-  if (selectedCurrencies.length !== 1 || selectedCurrencies[0] !== "USD") return true;
-
-  for (const tabId of requiredTabs) {
-    if (!selectedTabs.includes(tabId)) return true;
-  }
-
-  for (const tabId of forbiddenTabs) {
-    if (selectedTabs.includes(tabId)) return true;
-  }
-
-  return false;
-}
-
-
 function loadSavedState() {
   /* KGW_SETTINGS_FULL_PERSISTENCE_CONTRACT_FIX_R104
    * Valid user-saved state is authoritative.

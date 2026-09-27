@@ -221,6 +221,266 @@ export function explorerExportPdf(section) {
     wasm.explorerExportPdf(section);
 }
 
+/**
+ * @returns {Array<any>}
+ */
+export function settingsNodeEndpoints() {
+    const ret = wasm.settingsNodeEndpoints();
+    return ret;
+}
+
+/**
+ * @param {any} checks
+ * @param {Array<any>} known_entries
+ * @returns {any}
+ */
+export function settingsDisplayChecksWithDefaults(checks, known_entries) {
+    const ret = wasm.settingsDisplayChecksWithDefaults(checks, known_entries);
+    return ret;
+}
+
+/**
+ * @param {any} checks
+ * @param {string} prefix
+ * @returns {Array<any>}
+ */
+export function settingsSelectedDisplayKeys(checks, prefix) {
+    const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsSelectedDisplayKeys(checks, ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} checks
+ * @returns {boolean}
+ */
+export function settingsDisplayStateMissingContract(checks) {
+    const ret = wasm.settingsDisplayStateMissingContract(checks);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} checks
+ * @returns {any}
+ */
+export function settingsDisplayPreferences(checks) {
+    const ret = wasm.settingsDisplayPreferences(checks);
+    return ret;
+}
+
+/**
+ * @returns {object}
+ */
+export function settingsNodeManaged() {
+    const ret = wasm.settingsNodeManaged();
+    return ret;
+}
+
+/**
+ * @returns {object}
+ */
+export function settingsNodeRequired() {
+    const ret = wasm.settingsNodeRequired();
+    return ret;
+}
+
+/**
+ * @returns {Array<any>}
+ */
+export function settingsNodeOptional() {
+    const ret = wasm.settingsNodeOptional();
+    return ret;
+}
+
+/**
+ * @param {any} host
+ * @returns {boolean}
+ */
+export function settingsIsLoopback(host) {
+    const ret = wasm.settingsIsLoopback(host);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} a
+ * @param {any} b
+ * @returns {boolean}
+ */
+export function settingsListenersOverlap(a, b) {
+    const ret = wasm.settingsListenersOverlap(a, b);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} name
+ * @param {any} values
+ * @param {any} options
+ * @returns {boolean}
+ */
+export function settingsNodeFieldEnabled(name, values, options) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsNodeFieldEnabled(ptr0, len0, values, options);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} values
+ * @param {any} options
+ * @param {string} network
+ * @returns {any}
+ */
+export function settingsValidateNodeForm(values, options, network) {
+    const ptr0 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsValidateNodeForm(values, options, ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {string} name
+ * @param {any} values
+ * @param {any} options
+ * @returns {boolean}
+ */
+export function settingsBridgeFieldEnabled(name, values, options) {
+    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsBridgeFieldEnabled(ptr0, len0, values, options);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} values
+ * @param {any} options
+ * @param {string} network
+ * @returns {any}
+ */
+export function settingsValidateBridgeForm(values, options, network) {
+    const ptr0 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsValidateBridgeForm(values, options, ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} root
+ * @param {string} prefix
+ * @param {any} errors
+ */
+export function settingsRenderFieldErrors(root, prefix, errors) {
+    const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsRenderFieldErrors(root, ptr0, len0, errors);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} message
+ * @returns {Promise<boolean>}
+ */
+export function settingsConfirmUserAction(message) {
+    const ret = wasm.settingsConfirmUserAction(message);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function settingsToWesternDigits(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.settingsToWesternDigits(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @returns {object}
+ */
+export function settingsNodeDangerous() {
+    const ret = wasm.settingsNodeDangerous();
+    return ret;
+}
+
+/**
+ * @returns {object}
+ */
+export function settingsBridgeManaged() {
+    const ret = wasm.settingsBridgeManaged();
+    return ret;
+}
+
+/**
+ * @returns {Array<any>}
+ */
+export function settingsBridgeRequired() {
+    const ret = wasm.settingsBridgeRequired();
+    return ret;
+}
+
+/**
+ * @returns {Array<any>}
+ */
+export function settingsBridgeOptional() {
+    const ret = wasm.settingsBridgeOptional();
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @returns {boolean}
+ */
+export function settingsIsHost(value) {
+    const ret = wasm.settingsIsHost(value);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} value
+ * @returns {boolean}
+ */
+export function settingsIsPort(value) {
+    const ret = wasm.settingsIsPort(value);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} host
+ * @param {any} port
+ * @returns {string}
+ */
+export function settingsEndpoint(host, port) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.settingsEndpoint(host, port);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} value
+ * @returns {any}
+ */
+export function settingsSplitEndpoint(value) {
+    const ret = wasm.settingsSplitEndpoint(value);
+    return ret;
+}
+
 export function topAddressesInitTab() {
     wasm.topAddressesInitTab();
 }
@@ -499,206 +759,40 @@ export function settingsLayoutInstallGlobal(root) {
 }
 
 /**
- * @returns {Array<any>}
- */
-export function settingsNodeEndpoints() {
-    const ret = wasm.settingsNodeEndpoints();
-    return ret;
-}
-
-/**
- * @returns {object}
- */
-export function settingsNodeManaged() {
-    const ret = wasm.settingsNodeManaged();
-    return ret;
-}
-
-/**
- * @returns {object}
- */
-export function settingsNodeRequired() {
-    const ret = wasm.settingsNodeRequired();
-    return ret;
-}
-
-/**
- * @returns {Array<any>}
- */
-export function settingsNodeOptional() {
-    const ret = wasm.settingsNodeOptional();
-    return ret;
-}
-
-/**
- * @param {any} host
- * @returns {boolean}
- */
-export function settingsIsLoopback(host) {
-    const ret = wasm.settingsIsLoopback(host);
-    return ret !== 0;
-}
-
-/**
- * @param {any} a
- * @param {any} b
- * @returns {boolean}
- */
-export function settingsListenersOverlap(a, b) {
-    const ret = wasm.settingsListenersOverlap(a, b);
-    return ret !== 0;
-}
-
-/**
- * @param {string} name
- * @param {any} values
- * @param {any} options
- * @returns {boolean}
- */
-export function settingsNodeFieldEnabled(name, values, options) {
-    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.settingsNodeFieldEnabled(ptr0, len0, values, options);
-    return ret !== 0;
-}
-
-/**
- * @param {any} values
- * @param {any} options
- * @param {string} network
+ * @param {any} state
  * @returns {any}
  */
-export function settingsValidateNodeForm(values, options, network) {
-    const ptr0 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.settingsValidateNodeForm(values, options, ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {string} name
- * @param {any} values
- * @param {any} options
- * @returns {boolean}
- */
-export function settingsBridgeFieldEnabled(name, values, options) {
-    const ptr0 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.settingsBridgeFieldEnabled(ptr0, len0, values, options);
-    return ret !== 0;
-}
-
-/**
- * @param {any} values
- * @param {any} options
- * @param {string} network
- * @returns {any}
- */
-export function settingsValidateBridgeForm(values, options, network) {
-    const ptr0 = passStringToWasm0(network, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.settingsValidateBridgeForm(values, options, ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {any} root
- * @param {string} prefix
- * @param {any} errors
- */
-export function settingsRenderFieldErrors(root, prefix, errors) {
-    const ptr0 = passStringToWasm0(prefix, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.settingsRenderFieldErrors(root, ptr0, len0, errors);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
+export function runtimePresentation(state) {
+    const ret = wasm.runtimePresentation(state);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
     }
+    return takeFromExternrefTable0(ret[0]);
 }
 
 /**
- * @param {any} message
- * @returns {Promise<boolean>}
- */
-export function settingsConfirmUserAction(message) {
-    const ret = wasm.settingsConfirmUserAction(message);
-    return ret;
-}
-
-/**
- * @returns {object}
- */
-export function settingsNodeDangerous() {
-    const ret = wasm.settingsNodeDangerous();
-    return ret;
-}
-
-/**
- * @returns {object}
- */
-export function settingsBridgeManaged() {
-    const ret = wasm.settingsBridgeManaged();
-    return ret;
-}
-
-/**
- * @returns {Array<any>}
- */
-export function settingsBridgeRequired() {
-    const ret = wasm.settingsBridgeRequired();
-    return ret;
-}
-
-/**
- * @returns {Array<any>}
- */
-export function settingsBridgeOptional() {
-    const ret = wasm.settingsBridgeOptional();
-    return ret;
-}
-
-/**
- * @param {any} value
- * @returns {boolean}
- */
-export function settingsIsHost(value) {
-    const ret = wasm.settingsIsHost(value);
-    return ret !== 0;
-}
-
-/**
- * @param {any} value
- * @returns {boolean}
- */
-export function settingsIsPort(value) {
-    const ret = wasm.settingsIsPort(value);
-    return ret !== 0;
-}
-
-/**
- * @param {any} host
- * @param {any} port
+ * @param {any} fields
+ * @param {any} running
+ * @param {any} cpu_only
  * @returns {string}
  */
-export function settingsEndpoint(host, port) {
-    let deferred1_0;
-    let deferred1_1;
+export function runtimeObservationSummary(fields, running, cpu_only) {
+    let deferred2_0;
+    let deferred2_1;
     try {
-        const ret = wasm.settingsEndpoint(host, port);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
+        const ret = wasm.runtimeObservationSummary(fields, running, cpu_only);
+        var ptr1 = ret[0];
+        var len1 = ret[1];
+        if (ret[3]) {
+            ptr1 = 0; len1 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred2_0 = ptr1;
+        deferred2_1 = len1;
+        return getStringFromWasm0(ptr1, len1);
     } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
     }
-}
-
-/**
- * @param {any} value
- * @returns {any}
- */
-export function settingsSplitEndpoint(value) {
-    const ret = wasm.settingsSplitEndpoint(value);
-    return ret;
 }
 
 /**
@@ -959,43 +1053,6 @@ export function headerLiveMetricsSelectedCurrencyValue(metric_value, current_tex
         return getStringFromWasm0(ret[0], ret[1]);
     } finally {
         wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
-    }
-}
-
-/**
- * @param {any} state
- * @returns {any}
- */
-export function runtimePresentation(state) {
-    const ret = wasm.runtimePresentation(state);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * @param {any} fields
- * @param {any} running
- * @param {any} cpu_only
- * @returns {string}
- */
-export function runtimeObservationSummary(fields, running, cpu_only) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ret = wasm.runtimeObservationSummary(fields, running, cpu_only);
-        var ptr1 = ret[0];
-        var len1 = ret[1];
-        if (ret[3]) {
-            ptr1 = 0; len1 = 0;
-            throw takeFromExternrefTable0(ret[2]);
-        }
-        deferred2_0 = ptr1;
-        deferred2_1 = len1;
-        return getStringFromWasm0(ptr1, len1);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
     }
 }
 
@@ -1333,7 +1390,7 @@ function __wbg_adapter_37(arg0, arg1, arg2) {
     wasm.closure284_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_223(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_228(arg0, arg1, arg2, arg3) {
     wasm.closure308_externref_shim(arg0, arg1, arg2, arg3);
 }
 
@@ -1540,7 +1597,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_223(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_228(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1676,12 +1733,12 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1042 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper1056 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 285, __wbg_adapter_37);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper578 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 153, __wbg_adapter_34);
+    imports.wbg.__wbindgen_closure_wrapper630 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 170, __wbg_adapter_34);
         return ret;
     };
     imports.wbg.__wbindgen_init_externref_table = function() {

@@ -231,6 +231,9 @@ import init, {
   settingsBridgeOptional as wasmBridgeOptional,
   settingsBridgeRequired as wasmBridgeRequired,
   settingsConfirmUserAction as wasmConfirmUserAction,
+  settingsDisplayChecksWithDefaults as wasmDisplayChecksWithDefaults,
+  settingsDisplayPreferences as wasmDisplayPreferences,
+  settingsDisplayStateMissingContract as wasmDisplayStateMissingContract,
   settingsEndpoint as wasmEndpoint,
   settingsIsHost as wasmIsHost,
   settingsIsLoopback as wasmIsLoopback,
@@ -243,7 +246,9 @@ import init, {
   settingsNodeOptional as wasmNodeOptional,
   settingsNodeRequired as wasmNodeRequired,
   settingsRenderFieldErrors as wasmRenderFieldErrors,
+  settingsSelectedDisplayKeys as wasmSelectedDisplayKeys,
   settingsSplitEndpoint as wasmSplitEndpoint,
+  settingsToWesternDigits as wasmToWesternDigits,
   settingsValidateBridgeForm as wasmValidateBridgeForm,
   settingsValidateNodeForm as wasmValidateNodeForm,
 } from "../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
@@ -293,6 +298,26 @@ export function bridgeFieldEnabled(name, values, options = {}) {
 export function validateBridgeForm(values, options, network) {
   return wasmValidateBridgeForm(values, options, network);
 }
+export function settingsToWesternDigits(value) {
+  return wasmToWesternDigits(value);
+}
+
+export function settingsDisplayChecksWithDefaults(checks, knownEntries = []) {
+  return wasmDisplayChecksWithDefaults(checks, knownEntries);
+}
+
+export function settingsSelectedDisplayKeys(checks, prefix) {
+  return Array.from(wasmSelectedDisplayKeys(checks, prefix));
+}
+
+export function settingsDisplayStateMissingContract(checks) {
+  return wasmDisplayStateMissingContract(checks);
+}
+
+export function settingsDisplayPreferences(checks) {
+  return wasmDisplayPreferences(checks);
+}
+
 export async function confirmUserAction(message) {
   return (await wasmConfirmUserAction(message)) === true;
 }
@@ -892,6 +917,10 @@ mod tests {
         assert!(settings.contains("wasmValidateBridgeForm(values, options, network)"));
         assert!(settings.contains("wasmRenderFieldErrors(root, prefix, errors)"));
         assert!(settings.contains("await wasmConfirmUserAction(message)"));
+        assert!(settings.contains("wasmToWesternDigits(value)"));
+        assert!(settings.contains("wasmDisplayChecksWithDefaults(checks, knownEntries)"));
+        assert!(settings.contains("wasmDisplayStateMissingContract(checks)"));
+        assert!(settings.contains("wasmDisplayPreferences(checks)"));
         assert!(settings.contains("new Set(wasmNodeOptional())"));
         assert!(settings.contains("new Set(wasmBridgeRequired())"));
         for forbidden in [
