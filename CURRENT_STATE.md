@@ -4,9 +4,9 @@
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest verified local implementation checkpoint is OP103 `ec23f1fc9b162724b2a90e648e917227d74dfbf0`, tree `01586b1e51793bd4753edaa325dcf053b553b3a0`.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest committed local checkpoint is OP113 `5c52ca8aa1d837d5fc58456ec6a84b60d4639b3b`, tree `918eac46d1e89776f997c5280660add58d1b0fa4`. OP114 is a locally qualified dirty candidate pending checkpoint.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **DIRTY** only because `config/non-rust-execution-migration-debt.txt` reports stat-only/byte-identical metadata plus this continuity update; no uncheckpointed implementation code exists.
+- Working tree: **DIRTY / QUALIFIED OP114 CANDIDATE**. The diff contains the generated `windows.mjs` adoption, Rust clipboard preflight enforcement, retirement of the legacy PowerShell clipboard helper, generated E2E WASM artifacts, policy/debt updates, and canonical state updates.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -15,10 +15,10 @@
 - OP101 Header live metrics Rust/WASM ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `a1f71cb804b8155fb93d4892193a679eab59870c`.
 - OP102 Top Addresses Rust/WASM ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `dbdd0681cb57b017768d988175f7736d6481e571`.
 - OP103 Desktop diagnostic launcher Rust ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `ec23f1fc9b162724b2a90e648e917227d74dfbf0`.
-- Rust source inventory: 169.
-- Owned non-Rust programming source debt: 16.
-- Non-Rust execution-wiring debt: 10.
-- Technical exceptions: 30.
+- Owned non-Rust programming source debt: 9.
+- Non-Rust execution-wiring debt: 8.
+- Technical exceptions: 33.
+- Rust source inventory: 176.
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
 
@@ -69,19 +69,19 @@
 
 ## KNOWN BLOCKERS
 
-- Full-local wrapper retirement remains blocked by absence of a current zero-touch E2E artifact that passes the repository integrity validator.
-- Real Rust clipboard caller adoption remains blocked by the live Windows clipboard containing non-text OLE/enterprise formats that cannot be safely round-tripped losslessly.
+- Full-local wrapper retirement is complete; the live zero-touch branch remains externally gated by a current integrity-valid artifact or a safe live E2E environment.
+- Rust clipboard caller adoption is complete and the legacy PowerShell clipboard helper is retired. Live text mutation remains blocked by the read-only Rust preflight while non-text/OLE clipboard formats are present; OP114 performed no clipboard write.
 - Zero-touch live matrix and its `tauri-app.mjs` / `windows.mjs` helpers remain coupled to real clipboard SHA evidence.
 - `tools/kgw_zero_touch_evidence.ps1` retains its recorded external file-use/access-denied blocker; do not force-delete or force-unlock it.
 - OP100 browser DOM headless dump is non-evidentiary; final frontend/native qualification remains required after migration.
 
 ## DO NOT REPEAT
 
-- Do not replay OP090-OP103 successful checks while their validity predicates remain unchanged.
+- Do not replay OP090-OP114 successful checks while their validity predicates remain unchanged.
 - Do not reset, clean, stash, discard, overwrite, or replace newer local work with remote state.
 - Do not force unsafe clipboard mutation, protected file unlocking, or broad requalification for reassurance.
 - Do not push merely to discover locally detectable failures.
 
 ## NEXT ACTION
 
-Run the project-continuity gate against this exact post-OP103 implementation checkpoint, commit only these continuity updates if clean, then recover the live 16-source / 10-execution debt inventory and select the smallest independent unblocked remaining boundary. No push yet.
+Persist the OP114 qualification receipt, create a coherent local checkpoint for the qualified candidate, verify exact commit/tree/status, then audit the remaining 9-source / 8-execution debt inventory and select the smallest independent unblocked next boundary. No push yet.

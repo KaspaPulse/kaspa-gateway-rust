@@ -72,7 +72,7 @@ fn run(options: &Options) -> Result<String, String> {
     {
         let result = match options.action.as_str() {
             "write" => {
-                write_clipboard_text(&options.value)?;
+                write_text_after_preflight(&options.value)?;
                 write_metadata(&options.value)
             }
             "read" => {

@@ -362,8 +362,14 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
     require(
         failures,
         &s.e2e_windows_helper,
-        "KGW_REQUIRED_PWSH_PATH",
-        "WDIO helper must inherit the resolved PowerShell 7 executable.",
+        "e2e-clipboard",
+        "WDIO Windows helper must delegate clipboard operations to Rust e2e-clipboard.",
+    );
+    forbid(
+        failures,
+        &s.e2e_windows_helper,
+        ".ps1",
+        "WDIO Windows helper must not invoke PowerShell clipboard helpers.",
     );
 }
 
@@ -522,10 +528,6 @@ fn run_powershell_parser_checks(root: &Path, failures: &mut Vec<String>) {
     for (relative, label) in [
         (ZERO_TOUCH_E2E, "Zero-touch E2E launcher"),
         (ZERO_TOUCH_EVIDENCE, "Zero-touch evidence helper"),
-        (
-            "e2e/helpers/kgw_windows_clipboard.ps1",
-            "E2E clipboard helper",
-        ),
     ] {
         let escaped = relative.replace('\'', "''");
         let script = format!(
@@ -596,7 +598,7 @@ mod tests {
                 "zero-touch-result-writer-tests",
             ]
             .join("\n"),
-            e2e_windows_helper: "KGW_REQUIRED_PWSH_PATH".to_owned(),
+            e2e_windows_helper: "e2e-clipboard".to_owned(),
         }
     }
 

@@ -112,7 +112,6 @@ fn powershell_parser_checks(root: &Path) -> Result<(), String> {
     for relative in [
         "tools/kgw_zero_touch_e2e.ps1",
         "tools/kgw_zero_touch_evidence.ps1",
-        "e2e/helpers/kgw_windows_clipboard.ps1",
     ] {
         let absolute = root.join(relative);
         if !absolute.is_file() {
