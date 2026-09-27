@@ -15,7 +15,7 @@ import initNodeRust, {
   nodeToggleCommandOption as wasmNodeToggleCommandOption,
   nodeApplyRuntimeLogReport as kgwNodeApplyRuntimeLogReportV1,
   nodeClearRawLogBuffer as kgwNodeClearRawLogBufferV1,
-  nodeCopyLogFailure as wasmNodeCopyLogFailure,
+  nodeCopyLogFailure as kgwNodeCopyLogFailureV1,
   nodeDispatchClipboardWrite as kgwNodeDispatchClipboardWriteV1,
   nodeDispatchRuntimeLogClear as kgwNodeDispatchRuntimeLogClearV1,
   nodeEffectiveNodeSettings as wasmNodeEffectiveNodeSettings,
@@ -1073,7 +1073,7 @@ function kgwNodePreviewMessage(net, message, error = false) {
   }
 }
 async function kgwNodePreparePreview(net, effective) {
-  const invoke = getTauriInvoke();
+  const invoke = kgwResolvePublicTauriInvokeR1().invoke;
   if (!invoke) throw new Error("Connect to the desktop backend to validate these settings.");
   return invokeWithTimeout(invoke, "kgw_node_settings_preview_v1",
     {network:net,effectiveNodeSettings:effective}, 10000);
@@ -1236,10 +1236,6 @@ function installDelegatedTabs(root) {
 const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 110000;
 const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 0;
 
-
-function getTauriInvoke() {
-  return kgwResolvePublicTauriInvokeR1().invoke;
-}
 
 /* Runtime result/error/field parsing is Rust-owned in node_frontend_helpers.rs. */
 function kgwNodeSetRuntimeNotice(net, state, evidence = "", errorText = null, errorSource = "") {
@@ -1919,7 +1915,7 @@ function kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, locked, reason) {
 async function kgwNodeR51BridgeInprocessLockedV7(net) {
   const observedLock = kgwBridgeOwnedNodeLockStoreR65E()[net];
   try {
-    const invoke = getTauriInvoke();
+    const invoke = kgwResolvePublicTauriInvokeR1().invoke;
     if (!invoke) return kgwIsBridgeOwnedNodeLockedR65E(net);
     const result = stringifyRuntimeResult(await invokeWithTimeout(
       invoke, "kgw_runtime_owner_status_v1",
@@ -2101,10 +2097,6 @@ function kgwNodeTranslateRuntimeV29(key, fallback) {
   return fallback || key;
 }
 
-function kgwNodeLogOutputV29(net) {
-  return document.getElementById("node-" + net + "-logOutput");
-}
-
 function kgwNodeRestoreLogActionLabelV29(button) {
   if (!button) return;
   const original = button.dataset.kgwLogOriginalLabelV29;
@@ -2131,10 +2123,6 @@ function kgwNodeFlashLogActionButtonV29(button, doneLabel) {
   }, 1600);
 }
 
-function kgwNodeCopyLogFailureV1(net, button, error, details = {}) {
-  return wasmNodeCopyLogFailure(String(net || ""), button || null, error, details || {});
-}
-
 async function kgwNodeHandleLogActionV29(action, net, button) {
   
   kgwNodeSmallOwnerTraceR44D(net, String(action || "log-action"), "r51b3-node-log-action-click", {
@@ -2144,7 +2132,7 @@ async function kgwNodeHandleLogActionV29(action, net, button) {
     buttonText: String(button && button.textContent || "").trim()
   });
   kgwNodeSmallOwnerTraceR44D(net, String(action || "log-action"), "r44d-owner-begin", {});
-  const out = kgwNodeLogOutputV29(net);
+  const out = byId(id(net, "logOutput"));
   if (!out && action !== "copy-log") return;
 
   if (action === "copy-log") {

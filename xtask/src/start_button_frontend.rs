@@ -89,9 +89,11 @@ function staticPlacementTests() {
     source.includes("nodeApplyRuntimeLogReport as kgwNodeApplyRuntimeLogReportV1")
       && source.includes("nodeClearRawLogBuffer as kgwNodeClearRawLogBufferV1")
       && source.includes("nodeDispatchRuntimeLogClear as kgwNodeDispatchRuntimeLogClearV1")
+      && source.includes("nodeCopyLogFailure as kgwNodeCopyLogFailureV1")
       && !source.includes("function kgwNodeApplyRuntimeLogReportV1(")
       && !source.includes("function kgwNodeClearRawLogBufferV1(")
-      && !source.includes("function kgwNodeDispatchRuntimeLogClearV1("),
+      && !source.includes("function kgwNodeDispatchRuntimeLogClearV1(")
+      && !source.includes("function kgwNodeCopyLogFailureV1("),
     "Node raw-log adapters must bind directly to the Rust/WASM owner without JavaScript wrappers",
   );
   assert.ok(
@@ -1308,6 +1310,7 @@ const wasmNodeStartTraceFrontend = (stage, options = {}) => {
 const kgwResolvePublicTauriInvokeR1 = wasmNodeResolvePublicTauriInvoke;
 const kgwStartTraceFrontendR1 = wasmNodeStartTraceFrontend;
 const kgwNodeDispatchClipboardWriteV1 = wasmNodeDispatchClipboardWrite;
+const kgwNodeCopyLogFailureV1 = wasmNodeCopyLogFailure;
 const kgwNodeClearRawLogBufferV1 = wasmNodeClearRawLogBuffer;
 const kgwNodeDispatchRuntimeLogClearV1 = async (net, role = "node") => {
   const resolved = wasmNodeResolvePublicTauriInvoke();
@@ -1468,7 +1471,7 @@ const kgwNodeR51Panel = wasmNodeR51Panel;
     .replace(/export\s+async\s+function\s+initKaspaNodeTab/, "async function initKaspaNodeTab")
     .replace(/export\s*\{[^}]+\}\s*;?/g, "")
     .replace(/export\s+default\s+initKaspaNodeTab\s*;/, "")
-    + "\nwindow.__kgwStartButtonTest = { initKaspaNodeTab, getTauriInvoke, kgwResolvePublicTauriInvokeR1, kgwNodeR51SetRuntimeButtons, KGW_NODE_R51_TRANSITIONS };\n";
+    + "\nwindow.__kgwStartButtonTest = { initKaspaNodeTab, kgwResolvePublicTauriInvokeR1, kgwNodeR51SetRuntimeButtons, KGW_NODE_R51_TRANSITIONS };\n";
   vm.runInNewContext(executable, sandbox, { filename: nodeJsPath });
 
   return { window, document, root };
