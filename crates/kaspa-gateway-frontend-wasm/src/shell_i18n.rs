@@ -1,4 +1,4 @@
-use js_sys::{Array, Function, Object, Promise, Reflect};
+use js_sys::{Array, Date, Function, Object, Promise, Reflect};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
@@ -23,9 +23,17 @@ struct RuntimeState {
     reverse: HashMap<String, String>,
 }
 
+#[derive(Default)]
+struct AuxOwnerState {
+    last_language_applied_at: f64,
+    recent_language_apply_count: u32,
+    last_warning_at: f64,
+}
+
 thread_local! {
     static CACHE: RefCell<HashMap<String, JsValue>> = RefCell::new(HashMap::new());
     static RUNTIME: RefCell<RuntimeState> = RefCell::new(RuntimeState::default());
+    static AUX_OWNER_STATE: RefCell<AuxOwnerState> = RefCell::new(AuxOwnerState::default());
 }
 
 fn global() -> JsValue {
@@ -758,6 +766,472 @@ fn call3_event(target: &JsValue, event: &str, callback: &JsValue, capture: bool)
         })
         .unwrap_or(JsValue::UNDEFINED)
 }
+
+fn remove_attr(target: &JsValue, name: &str) {
+    let _ = call1(target, "removeAttribute", &JsValue::from_str(name));
+}
+
+fn closest(target: &JsValue, selector: &str) -> JsValue {
+    call1(target, "closest", &JsValue::from_str(selector))
+}
+
+fn query_one(root: &JsValue, selector: &str) -> JsValue {
+    call1(root, "querySelector", &JsValue::from_str(selector))
+}
+
+fn style_set(target: &JsValue, name: &str, value: &str) {
+    set(&property(target, "style"), name, &JsValue::from_str(value));
+}
+
+fn remove_parent_i18n_ownership(control: &JsValue) {
+    let mut parent = property(control, "parentElement");
+    let mut depth = 0_u8;
+    while present(&parent) && depth < 8 {
+        if present(&dataset(&parent)) && present(&query_one(&parent, "select,input,textarea")) {
+            for name in ["data-i18n", "data-i18n-title", "data-i18n-placeholder"] {
+                remove_attr(&parent, name);
+            }
+        }
+        style_set(&parent, "pointerEvents", "auto");
+        parent = property(&parent, "parentElement");
+        depth += 1;
+    }
+}
+
+fn protect_shell_selects() {
+    for id in ["shellLanguageSelect", "shellCurrencySelect"] {
+        let select = by_id(id);
+        if !present(&select) {
+            continue;
+        }
+        set(&select, "disabled", &JsValue::FALSE);
+        remove_attr(&select, "disabled");
+        remove_attr(&select, "aria-disabled");
+        style_set(&select, "pointerEvents", "auto");
+        style_set(&select, "position", "relative");
+        style_set(&select, "zIndex", "2147483647");
+        style_set(&select, "direction", "ltr");
+        style_set(&select, "unicodeBidi", "isolate");
+        style_set(&select, "textAlign", "left");
+        remove_parent_i18n_ownership(&select);
+    }
+    set(
+        &dataset(&property(&document(), "documentElement")),
+        "kgwR89ShellSelectGuard",
+        &JsValue::from_str("ready"),
+    );
+}
+
+fn protect_interactive_controls() {
+    for control in query_all(&document(), "select,input,textarea,button") {
+        if present(&closest(&control, "#kaspa-node,#kaspa-bridge")) {
+            continue;
+        }
+        style_set(&control, "pointerEvents", "auto");
+        let id = text(&property(&control, "id"));
+        if matches!(id.as_str(), "shellLanguageSelect" | "shellCurrencySelect") {
+            set(&control, "disabled", &JsValue::FALSE);
+            remove_attr(&control, "disabled");
+            style_set(&control, "position", "relative");
+            style_set(&control, "zIndex", "2147483647");
+            style_set(&control, "direction", "ltr");
+            style_set(&control, "unicodeBidi", "isolate");
+            style_set(&control, "textAlign", "left");
+        }
+        remove_parent_i18n_ownership(&control);
+    }
+    set(
+        &dataset(&property(&document(), "documentElement")),
+        "kgwR87SelectFreezeFix",
+        &JsValue::from_str("ready"),
+    );
+    set(
+        &dataset(&property(&document(), "documentElement")),
+        "kgwR88InteractiveGuard",
+        &JsValue::from_str("ready"),
+    );
+}
+
+fn bind_exact_pairs(
+    scope: &JsValue,
+    selector: &str,
+    pairs: &[(&str, &str)],
+    include_placeholder: bool,
+) {
+    for element in query_all(scope, selector) {
+        if !present(&dataset(&element)) {
+            continue;
+        }
+        let body = normalized_text(&text(&property(&element, "textContent")));
+        for (source, key) in pairs {
+            let data = dataset(&element);
+            if text(&property(&data, "i18n")).is_empty() && body == *source {
+                set(&data, "i18n", &JsValue::from_str(key));
+            }
+            if has_attr(&element, "title")
+                && text(&property(&data, "i18nTitle")).is_empty()
+                && normalized_text(&attr(&element, "title")) == *source
+            {
+                set(&data, "i18nTitle", &JsValue::from_str(key));
+            }
+            if include_placeholder
+                && has_attr(&element, "placeholder")
+                && text(&property(&data, "i18nPlaceholder")).is_empty()
+                && normalized_text(&attr(&element, "placeholder")) == *source
+            {
+                set(&data, "i18nPlaceholder", &JsValue::from_str(key));
+            }
+        }
+    }
+}
+
+fn apply_action_bindings() {
+    const PAIRS: &[(&str, &str)] = &[
+        ("Add", "actions.add"),
+        ("Backup", "actions.backup"),
+        ("Cancel", "actions.cancel"),
+        ("Clear Caches", "actions.clear.caches"),
+        ("Clear caches", "actions.clear.caches"),
+        ("Copy", "actions.copy"),
+        ("Delete", "actions.delete"),
+        ("Fetch", "actions.fetch"),
+        ("Filter", "actions.filter"),
+        ("Refresh", "actions.refresh"),
+        ("Reset", "actions.reset"),
+        ("Restore", "actions.restore"),
+        ("Save As", "actions.save.as"),
+        ("Save as", "actions.save.as"),
+        ("Search", "actions.search"),
+        ("Update", "actions.update"),
+    ];
+    bind_exact_pairs(&document(), "button,a,label,span,option", PAIRS, false);
+    schedule_reapply("binding-refresh".to_owned());
+}
+
+fn apply_validation_bindings() {
+    const PAIRS: &[(&str, &str)] = &[
+        (
+            "Missing advanced libraries (networkx, scikit-learn).",
+            "validation.missing.advanced.libraries.networkx.scikit.learn",
+        ),
+        (
+            "Please select at least one currency.",
+            "validation.please.select.at.least.one.currency",
+        ),
+        (
+            "Please select at least one language.",
+            "validation.please.select.at.least.one.language",
+        ),
+        (
+            "User aborted update due to missing hash file.",
+            "validation.user.aborted.update.due.to.missing.hash.file",
+        ),
+    ];
+    bind_exact_pairs(&document(), "label,span,p,small,option,button", PAIRS, true);
+    schedule_reapply("r90-validation-binding".to_owned());
+}
+
+fn bridge_scope() -> JsValue {
+    for selector in [
+        "[data-tab-panel='kaspa-bridge']",
+        "[data-tab='kaspa-bridge']",
+    ] {
+        let found = query_one(&document(), selector);
+        if present(&found) {
+            return found;
+        }
+    }
+    document()
+}
+
+fn apply_bridge_bindings() {
+    const PAIRS: &[(&str, &str)] = &[
+        ("Bridge 1", "bridge.bridge.1"),
+        ("Bridge 2", "bridge.bridge.2"),
+        (
+            "Bridge files are already up to date.",
+            "bridge.bridge.files.are.already.up.to.date",
+        ),
+        (
+            "Bridge is already running.",
+            "bridge.bridge.is.already.running",
+        ),
+        ("Bridge is not running.", "bridge.bridge.is.not.running"),
+        ("Bridge update complete.", "bridge.bridge.update.complete"),
+        ("Enable Bridge 2", "bridge.enable.bridge.2"),
+        ("Kaspa Bridge", "bridge.kaspa.bridge"),
+        ("Kaspa Bridge", "bridge.tabs.kaspabridge"),
+        (
+            "Please stop Bridge 2 before disabling it.",
+            "bridge.please.stop.bridge.2.before.disabling.it",
+        ),
+        ("tabs.kaspaBridge", "bridge.tabs.kaspabridge"),
+    ];
+    bind_exact_pairs(
+        &bridge_scope(),
+        "label,span,p,small,option,button,h1,h2,h3,h4",
+        PAIRS,
+        true,
+    );
+    schedule_reapply("r92-bridge-binding".to_owned());
+}
+
+fn schedule_owner_action(delay: f64, action: fn()) {
+    let callback = Closure::once_into_js(action);
+    set_timeout(callback, delay);
+}
+
+fn warn_repeated_language_apply() {
+    let now = Date::now();
+    let warning = AUX_OWNER_STATE.with(|state| {
+        let mut state = state.borrow_mut();
+        if now - state.last_language_applied_at < 600.0 {
+            state.recent_language_apply_count += 1;
+        } else {
+            state.recent_language_apply_count = 1;
+        }
+        state.last_language_applied_at = now;
+        if state.recent_language_apply_count > 4 && now - state.last_warning_at >= 3000.0 {
+            state.last_warning_at = now;
+            Some(state.recent_language_apply_count)
+        } else {
+            None
+        }
+    });
+    if let Some(count) = warning {
+        let console = property(&global(), "console");
+        if let Some(warn) = func(&console, "warn") {
+            let details = Object::new();
+            set(
+                details.as_ref(),
+                "recentLanguageApplyCount",
+                &JsValue::from_f64(count as f64),
+            );
+            let _ = warn.call3(
+                &console,
+                &JsValue::from_str("[KGW i18n][R98 owner sentinel]"),
+                &JsValue::from_str("possible repeated language-apply cycle detected"),
+                details.as_ref(),
+            );
+        }
+    }
+}
+
+fn publish_aux_compatibility_api() {
+    let actions = Closure::wrap(Box::new(move |_root: JsValue| {
+        apply_action_bindings();
+    }) as Box<dyn FnMut(JsValue)>);
+    set(
+        &window(),
+        "kgwApplyActionsI18nR85B",
+        actions.as_ref().unchecked_ref(),
+    );
+    actions.forget();
+
+    let protect87 = Closure::wrap(Box::new(move || {
+        protect_interactive_controls();
+    }) as Box<dyn FnMut()>);
+    set(
+        &window(),
+        "kgwProtectControlsR87",
+        protect87.as_ref().unchecked_ref(),
+    );
+    protect87.forget();
+
+    let protect88 = Closure::wrap(Box::new(move || {
+        protect_interactive_controls();
+    }) as Box<dyn FnMut()>);
+    set(
+        &window(),
+        "kgwProtectInteractiveControlsR88",
+        protect88.as_ref().unchecked_ref(),
+    );
+    protect88.forget();
+
+    let protect89 = Closure::wrap(Box::new(move || {
+        protect_shell_selects();
+    }) as Box<dyn FnMut()>);
+    set(
+        &window(),
+        "kgwProtectShellSelectsR89",
+        protect89.as_ref().unchecked_ref(),
+    );
+    protect89.forget();
+
+    let validation = Closure::wrap(Box::new(move |_root: JsValue| {
+        apply_validation_bindings();
+    }) as Box<dyn FnMut(JsValue)>);
+    set(
+        &window(),
+        "kgwApplyValidationI18nR90",
+        validation.as_ref().unchecked_ref(),
+    );
+    validation.forget();
+
+    let bridge = Closure::wrap(Box::new(move |_root: JsValue| {
+        apply_bridge_bindings();
+    }) as Box<dyn FnMut(JsValue)>);
+    set(
+        &window(),
+        "kgwApplyBridgeI18nR92",
+        bridge.as_ref().unchecked_ref(),
+    );
+    bridge.forget();
+
+    let sentinel = Object::new();
+    let protect = Closure::wrap(Box::new(move || {
+        protect_shell_selects();
+    }) as Box<dyn FnMut()>);
+    set(
+        sentinel.as_ref(),
+        "protectShellSelects",
+        protect.as_ref().unchecked_ref(),
+    );
+    protect.forget();
+
+    let get_state = Closure::wrap(Box::new(move || -> JsValue {
+        AUX_OWNER_STATE.with(|state| {
+            let state = state.borrow();
+            let output = Object::new();
+            set(
+                output.as_ref(),
+                "lastLanguageAppliedAt",
+                &JsValue::from_f64(state.last_language_applied_at),
+            );
+            set(
+                output.as_ref(),
+                "recentLanguageApplyCount",
+                &JsValue::from_f64(state.recent_language_apply_count as f64),
+            );
+            set(
+                output.as_ref(),
+                "lastWarningAt",
+                &JsValue::from_f64(state.last_warning_at),
+            );
+            output.into()
+        })
+    }) as Box<dyn FnMut() -> JsValue>);
+    set(
+        sentinel.as_ref(),
+        "getState",
+        get_state.as_ref().unchecked_ref(),
+    );
+    get_state.forget();
+    set(&window(), "kgwFinalI18nOwnerSentinelR98", sentinel.as_ref());
+}
+
+fn install_aux_owner_events() {
+    let language = Closure::wrap(Box::new(move |_event: JsValue| {
+        warn_repeated_language_apply();
+        for delay in [0.0, 120.0, 500.0] {
+            schedule_owner_action(delay, protect_interactive_controls);
+        }
+        schedule_owner_action(0.0, apply_action_bindings);
+        schedule_owner_action(0.0, apply_validation_bindings);
+        schedule_owner_action(0.0, apply_bridge_bindings);
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call2(
+        &window(),
+        "addEventListener",
+        &JsValue::from_str("kgw:language-applied"),
+        language.as_ref().unchecked_ref(),
+    );
+    language.forget();
+
+    let display = Closure::wrap(Box::new(move |_event: JsValue| {
+        schedule_owner_action(0.0, protect_interactive_controls);
+        schedule_owner_action(120.0, protect_interactive_controls);
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call2(
+        &window(),
+        "addEventListener",
+        &JsValue::from_str("kgw:shell-display-preferences-changed"),
+        display.as_ref().unchecked_ref(),
+    );
+    display.forget();
+
+    let pointer = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+        if present(&closest(
+            &target,
+            "#shellLanguageSelect,#shellCurrencySelect,select,input,textarea,button",
+        )) {
+            protect_interactive_controls();
+            protect_shell_selects();
+        }
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call3_event(
+        &document(),
+        "pointerdown",
+        pointer.as_ref().unchecked_ref(),
+        true,
+    );
+    pointer.forget();
+
+    let change = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+        let id = text(&property(&target, "id"));
+        if id == "shellLanguageSelect" {
+            AUX_OWNER_STATE.with(|state| state.borrow_mut().last_language_applied_at = Date::now());
+        }
+        schedule_owner_action(0.0, protect_interactive_controls);
+        schedule_owner_action(120.0, protect_interactive_controls);
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call3_event(&document(), "change", change.as_ref().unchecked_ref(), true);
+    change.forget();
+
+    let click = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+        if present(&closest(&target, "[data-tab]")) {
+            for delay in [80.0, 350.0, 900.0] {
+                schedule_owner_action(delay, apply_action_bindings);
+            }
+            for delay in [80.0, 350.0] {
+                schedule_owner_action(delay, apply_validation_bindings);
+            }
+        }
+        if present(&closest(
+            &target,
+            "[data-tab='kaspa-bridge'],[data-tab='bridge'],[data-tab-panel='kaspa-bridge']",
+        )) {
+            schedule_owner_action(80.0, apply_bridge_bindings);
+            schedule_owner_action(350.0, apply_bridge_bindings);
+        }
+        schedule_owner_action(0.0, protect_interactive_controls);
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call3_event(&document(), "click", click.as_ref().unchecked_ref(), true);
+    click.forget();
+}
+
+fn boot_aux_owners() {
+    apply_action_bindings();
+    apply_validation_bindings();
+    apply_bridge_bindings();
+    protect_interactive_controls();
+    protect_shell_selects();
+}
+
+fn install_aux_owners() {
+    if truthy(&property(&window(), "kgwShellI18nAuxOwnersRust")) {
+        return;
+    }
+    set(&window(), "kgwShellI18nAuxOwnersRust", &JsValue::TRUE);
+    publish_aux_compatibility_api();
+    install_aux_owner_events();
+    let ready = text(&property(&document(), "readyState"));
+    if ready == "loading" {
+        let callback = Closure::once_into_js(boot_aux_owners);
+        let _ = call2(
+            &document(),
+            "addEventListener",
+            &JsValue::from_str("DOMContentLoaded"),
+            &callback,
+        );
+    } else {
+        schedule_owner_action(0.0, boot_aux_owners);
+    }
+}
+
 fn boot() {
     install_select_listener();
     let lang = current_language();
@@ -778,6 +1252,7 @@ pub fn install() {
     );
     publish_translation_api();
     install_runtime_events();
+    install_aux_owners();
     let ready = text(&property(&document(), "readyState"));
     if ready == "loading" {
         let callback = Closure::once_into_js(boot);
