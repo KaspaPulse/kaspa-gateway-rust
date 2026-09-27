@@ -1436,6 +1436,193 @@ fn install_global_settings_layout(root: &JsValue) -> Result<(), JsValue> {
     Ok(())
 }
 
+const SETTINGS_I18N_R80: &[(&str, &str)] = &[
+    ("API Settings", "settings.api.settings"),
+    ("Language", "settings.language"),
+    ("Theme", "settings.theme"),
+    (
+        "Autostart can only be set for the installed application.",
+        "settings.autostart.can.only.be.set.for.the.installed.application",
+    ),
+    (
+        "Autostart is only available on Windows.",
+        "settings.autostart.is.only.available.on.windows",
+    ),
+];
+
+const SETTINGS_I18N_R83: &[(&str, &str)] = &[
+    ("General", "settings.general"),
+    ("Language", "settings.language"),
+    ("Currency", "settings.currency"),
+    ("Theme", "settings.theme"),
+    ("Displayed Currencies", "settings.displayed.currencies"),
+    ("Displayed Tabs", "settings.displayed.tabs"),
+    ("Displayed Languages", "settings.displayed.languages"),
+    ("API Settings", "settings.api.settings"),
+    (
+        "Autostart can only be set for the installed application.",
+        "settings.autostart.can.only.be.set.for.the.installed.application",
+    ),
+    (
+        "Autostart is only available on Windows.",
+        "settings.autostart.is.only.available.on.windows",
+    ),
+];
+
+fn normalized_binding_text(value: &str) -> String {
+    value.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+fn schedule_settings_language_reapply() {
+    if property(&window(), "kgwApplyLanguageR73")
+        .dyn_ref::<Function>()
+        .is_none()
+    {
+        return;
+    }
+    let callback = Closure::<dyn FnMut()>::new(move || {
+        let reapply = property(&window(), "kgwReapplyLanguageSilentlyR89");
+        if let Ok(reapply) = reapply.dyn_into::<Function>() {
+            let _ = reapply.call1(&window(), &JsValue::from_str("binding-refresh"));
+        }
+    });
+    if let Ok(timeout) = function(&window(), "setTimeout") {
+        let _ = timeout.call2(
+            &window(),
+            callback.as_ref().unchecked_ref(),
+            &JsValue::from_f64(0.0),
+        );
+    }
+    callback.forget();
+}
+
+fn apply_settings_i18n_bindings(
+    root: &JsValue,
+    selector: &str,
+    bindings: &'static [(&'static str, &'static str)],
+) {
+    for element in query_all(root, selector) {
+        let data = dataset(&element);
+        if !is_present(&data) || !dataset_text(&element, "i18n").is_empty() {
+            continue;
+        }
+        let text = normalized_binding_text(&raw_string(&property(&element, "textContent")));
+        if let Some((_, key)) = bindings.iter().find(|(source, _)| *source == text) {
+            let _ = set_property(&data, "i18n", &JsValue::from_str(key));
+        }
+    }
+    schedule_settings_language_reapply();
+}
+
+fn schedule_settings_i18n_apply(
+    selector: &'static str,
+    bindings: &'static [(&'static str, &'static str)],
+    delay_ms: f64,
+) {
+    let callback = Closure::<dyn FnMut()>::new(move || {
+        apply_settings_i18n_bindings(&document(), selector, bindings);
+    });
+    if let Ok(timeout) = function(&window(), "setTimeout") {
+        let _ = timeout.call2(
+            &window(),
+            callback.as_ref().unchecked_ref(),
+            &JsValue::from_f64(delay_ms),
+        );
+    }
+    callback.forget();
+}
+
+fn install_settings_i18n_owner(
+    flag: &'static str,
+    selector: &'static str,
+    bindings: &'static [(&'static str, &'static str)],
+    click_delays: &'static [f64],
+    publish_apply: bool,
+) -> Result<(), JsValue> {
+    let win = window();
+    if boolean(&property(&win, flag)) {
+        return Ok(());
+    }
+    set_property(&win, flag, &JsValue::TRUE)?;
+
+    let click = Closure::<dyn FnMut(JsValue)>::new(move |event| {
+        let target = property(&event, "target");
+        let settings_tab = closest(&target, "[data-tab='settings']");
+        if !is_present(&settings_tab) {
+            return;
+        }
+        for delay in click_delays {
+            schedule_settings_i18n_apply(selector, bindings, *delay);
+        }
+    });
+    function(&document(), "addEventListener")?.call3(
+        &document(),
+        &JsValue::from_str("click"),
+        click.as_ref().unchecked_ref(),
+        &JsValue::TRUE,
+    )?;
+    click.forget();
+
+    let language = Closure::<dyn FnMut(JsValue)>::new(move |_event| {
+        schedule_settings_i18n_apply(selector, bindings, 0.0);
+    });
+    function(&win, "addEventListener")?.call2(
+        &win,
+        &JsValue::from_str("kgw:language-applied"),
+        language.as_ref().unchecked_ref(),
+    )?;
+    language.forget();
+
+    if publish_apply {
+        let apply = Closure::<dyn FnMut(JsValue)>::new(move |root| {
+            let root = if is_present(&root) { root } else { document() };
+            apply_settings_i18n_bindings(&root, selector, bindings);
+        });
+        set_property(
+            &win,
+            "kgwApplySettingsGeneralI18nR83",
+            apply.as_ref().unchecked_ref(),
+        )?;
+        apply.forget();
+    }
+
+    if raw_string(&property(&document(), "readyState")) == "loading" {
+        let loaded = Closure::<dyn FnMut(JsValue)>::new(move |_event| {
+            apply_settings_i18n_bindings(&document(), selector, bindings);
+        });
+        let options = Object::new();
+        let _ = set_property(options.as_ref(), "once", &JsValue::TRUE);
+        function(&document(), "addEventListener")?.call3(
+            &document(),
+            &JsValue::from_str("DOMContentLoaded"),
+            loaded.as_ref().unchecked_ref(),
+            options.as_ref(),
+        )?;
+        loaded.forget();
+    } else {
+        schedule_settings_i18n_apply(selector, bindings, 0.0);
+    }
+    Ok(())
+}
+
+#[wasm_bindgen(js_name = settingsLayoutInstallSettingsI18nBindings)]
+pub fn install_settings_i18n_bindings() -> Result<(), JsValue> {
+    install_settings_i18n_owner(
+        "kgwSettingsSemanticI18nBindingR80V3",
+        "button, label, span, h1, h2, h3, h4, p, small, option",
+        SETTINGS_I18N_R80,
+        &[60.0, 300.0],
+        false,
+    )?;
+    install_settings_i18n_owner(
+        "kgwSettingsGeneralComprehensiveI18nBindingR83",
+        "button, label, span, h1, h2, h3, h4, p, small, option, legend",
+        SETTINGS_I18N_R83,
+        &[60.0, 300.0, 900.0],
+        true,
+    )
+}
+
 fn set_style_value(target: &JsValue, name: &str, value: &str) {
     let style = property(target, "style");
     if is_present(&style) {
@@ -1617,6 +1804,29 @@ mod tests {
         );
         assert_eq!(setting_kind_from("anything", "", "INPUT", true), "preview");
     }
+    #[test]
+    fn settings_i18n_binding_contract_is_owned_by_rust() {
+        assert_eq!(
+            normalized_binding_text("  Displayed   Tabs \n"),
+            "Displayed Tabs"
+        );
+        assert!(SETTINGS_I18N_R80.contains(&("API Settings", "settings.api.settings")));
+        assert!(SETTINGS_I18N_R83.contains(&("General", "settings.general")));
+        assert!(
+            SETTINGS_I18N_R83.contains(&("Displayed Languages", "settings.displayed.languages"))
+        );
+        assert!(
+            !SETTINGS_I18N_R80
+                .iter()
+                .any(|(text, _)| *text == "Currency")
+        );
+        assert!(
+            SETTINGS_I18N_R83
+                .iter()
+                .any(|(text, _)| *text == "Currency")
+        );
+    }
+
     #[test]
     fn setting_name_normalization_matches_network_and_instance_rules() {
         assert_eq!(

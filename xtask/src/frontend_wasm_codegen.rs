@@ -369,6 +369,7 @@ import init, {
   settingsLayoutInstall as wasmInstall,
   settingsLayoutInstallGlobal as wasmInstallGlobal,
   settingsLayoutInstallManageAddressesClean as wasmInstallManageAddressesClean,
+  settingsLayoutInstallSettingsI18nBindings as wasmInstallSettingsI18nBindings,
   settingsLayoutRenderTabs as wasmRenderTabs,
   settingsLayoutRevealField as wasmRevealField,
   settingsLayoutSetFieldState as wasmSetFieldState,
@@ -413,6 +414,10 @@ export function installGlobalSettingsLayout(root) {
 
 export function installManageAddressesCleanLayout() {
   return wasmInstallManageAddressesClean();
+}
+
+export function installSettingsI18nBindings() {
+  return wasmInstallSettingsI18nBindings();
 }
 "#
     .to_owned()
@@ -989,6 +994,7 @@ mod tests {
         assert!(layout.contains("wasmDecorateGlobal(root)"));
         assert!(layout.contains("wasmInstallGlobal(root)"));
         assert!(layout.contains("wasmInstallManageAddressesClean()"));
+        assert!(layout.contains("wasmInstallSettingsI18nBindings()"));
         for forbidden in [
             "querySelector(",
             "addEventListener(",
