@@ -466,6 +466,109 @@ pub fn node_toggle_command_option(net: String, name: String) -> bool {
     enabled
 }
 
+const COMMAND_OPTIONS_KEY: &str = "__kgwNodeCommandOptionsR38C";
+
+fn command_option_restore_enabled(name: &str, enabled: bool, has_value: bool) -> bool {
+    enabled && (!NODE_OPTIONAL.contains(&name) || has_value)
+}
+
+fn read_command_options(net: &str) -> JsValue {
+    let output = Object::new();
+    let Some(root) = call1(
+        &document(),
+        "getElementById",
+        &JsValue::from_str("kaspa-node"),
+    ) else {
+        return output.into();
+    };
+    if !present(&root) {
+        return output.into();
+    }
+    let Some(list) = call1(
+        &root,
+        "querySelectorAll",
+        &JsValue::from_str("[data-node-command-option-toggle-r7]"),
+    ) else {
+        return output.into();
+    };
+    let length = crate::js_number(&property(&list, "length"));
+    if !length.is_finite() || length <= 0.0 {
+        return output.into();
+    }
+    for index in 0..length as u32 {
+        let Ok(item) = Reflect::get(&list, &JsValue::from_f64(index as f64)) else {
+            continue;
+        };
+        let data = property(&item, "dataset");
+        if crate::js_string_owned(&property(&data, "net")) != net {
+            continue;
+        }
+        let name = crate::js_string_owned(&property(&data, "nodeCommandOptionToggleR7"));
+        if name.is_empty() {
+            continue;
+        }
+        set(
+            output.as_ref(),
+            &name,
+            &JsValue::from_bool(crate::js_boolean(&property(&item, "checked"))),
+        );
+    }
+    output.into()
+}
+
+fn apply_command_options(net: &str, values: &JsValue) -> JsValue {
+    let result = Object::new();
+    set(result.as_ref(), "applied", &JsValue::FALSE);
+    set(result.as_ref(), "count", &JsValue::from_f64(0.0));
+
+    let options = property(values, COMMAND_OPTIONS_KEY);
+    if !options.is_object() || options.is_null() {
+        return result.into();
+    }
+
+    let state = command_state_object(net);
+    let entries = Object::entries(&Object::from(options));
+    let mut count = 0_u32;
+    for entry in entries.iter() {
+        let pair = Array::from(&entry);
+        if pair.length() < 2 {
+            continue;
+        }
+        let name = crate::js_string_owned(&pair.get(0));
+        let enabled = crate::js_boolean(&pair.get(1));
+        let has_value = !node_value(net.to_owned(), name.clone()).is_empty();
+        set(
+            &state,
+            &name,
+            &JsValue::from_bool(command_option_restore_enabled(&name, enabled, has_value)),
+        );
+        count += 1;
+    }
+    refresh_command_toggles(net);
+    set(result.as_ref(), "applied", &JsValue::TRUE);
+    set(
+        result.as_ref(),
+        "count",
+        &JsValue::from_f64(f64::from(count)),
+    );
+    result.into()
+}
+
+#[wasm_bindgen(js_name = nodeCommandOptionsKey)]
+pub fn node_command_options_key() -> String {
+    COMMAND_OPTIONS_KEY.to_owned()
+}
+
+#[wasm_bindgen(js_name = nodeReadCommandOptions)]
+pub fn node_read_command_options(net: String) -> JsValue {
+    read_command_options(&net)
+}
+
+#[wasm_bindgen(js_name = nodeApplyCommandOptions)]
+pub fn node_apply_command_options(net: String, values: JsValue) -> JsValue {
+    apply_command_options(&net, &values)
+}
+
 fn card_input_html(
     net: &str,
     name: &str,
@@ -967,6 +1070,15 @@ mod tests {
         );
         assert_eq!(runtime_error_from_status_text("runtimeError=None"), "");
         assert_eq!(runtime_error_from_status_text("runtime_error=  none "), "");
+    }
+
+    #[test]
+    fn command_option_persistence_contract_matches_legacy_rule() {
+        assert_eq!(COMMAND_OPTIONS_KEY, "__kgwNodeCommandOptionsR38C");
+        assert!(command_option_restore_enabled("logLevel", true, false));
+        assert!(command_option_restore_enabled("uaComment", true, true));
+        assert!(!command_option_restore_enabled("uaComment", true, false));
+        assert!(!command_option_restore_enabled("uaComment", false, true));
     }
 
     #[test]

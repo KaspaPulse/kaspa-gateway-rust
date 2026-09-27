@@ -125,6 +125,23 @@ function staticPlacementTests() {
     !source.includes("NODE_ENDPOINTS.some(row => row[1] === name || row[2] === name)"),
     "Node command-composer schema policy must not remain implemented in hand-maintained JS",
   );
+  assert.ok(
+    source.includes("nodeCommandOptionsKey as wasmNodeCommandOptionsKey")
+      && source.includes("nodeReadCommandOptions as wasmNodeReadCommandOptions")
+      && source.includes("nodeApplyCommandOptions as wasmNodeApplyCommandOptions"),
+    "Node command-option persistence must be delegated to Rust/WASM",
+  );
+  assert.ok(
+    source.includes("const KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C = wasmNodeCommandOptionsKey();")
+      && source.includes("wasmNodeReadCommandOptions(String(net ||")
+      && source.includes("wasmNodeApplyCommandOptions(String(net ||"),
+    "Node R38C persistence wrappers must remain thin Rust/WASM adapters",
+  );
+  assert.ok(
+    !source.includes("const commandOptions = values && values[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C];")
+      && !source.includes("state[String(name)] = Boolean(enabled) && (!NODE_OPTIONAL.has(name)"),
+    "Node R38C persistence implementation must not return to hand-maintained JS",
+  );
 }
 
 class ClassList {
@@ -665,6 +682,32 @@ const wasmNodeToggleCommandOption = (net, name) => {
   state[key] = state[key] === false;
   wasmNodeRefreshInlineCommandToggles(net);
   return state[key];
+};
+const wasmNodeCommandOptionsKey = () => "__kgwNodeCommandOptionsR38C";
+const wasmNodeReadCommandOptions = (net) => {
+  const state = {};
+  const root = document.getElementById("kaspa-node");
+  if (!root) return state;
+  for (const item of root.querySelectorAll("[data-node-command-option-toggle-r7]")) {
+    if (String(item.dataset.net || "") !== String(net || "")) continue;
+    const name = String(item.dataset.nodeCommandOptionToggleR7 || "");
+    if (name) state[name] = Boolean(item.checked);
+  }
+  return state;
+};
+const wasmNodeApplyCommandOptions = (net, values) => {
+  const result = { applied: false, count: 0 };
+  const commandOptions = values && values[wasmNodeCommandOptionsKey()];
+  if (!commandOptions || typeof commandOptions !== "object") return result;
+  const state = wasmNodeCommandInlineState(net);
+  for (const [name, enabled] of Object.entries(commandOptions)) {
+    state[String(name)] = Boolean(enabled)
+      && (!NODE_OPTIONAL.has(name) || Boolean(wasmNodeValue(net, name)));
+    result.count += 1;
+  }
+  wasmNodeRefreshInlineCommandToggles(net);
+  result.applied = true;
+  return result;
 };
 const wasmNodeCardInput = (net, name, label, value = "", placeholder = "", span2 = false, toggle = "") =>
   '\\n    <div class="node-v6-card' + (span2 ? ' span2' : '') + '">'

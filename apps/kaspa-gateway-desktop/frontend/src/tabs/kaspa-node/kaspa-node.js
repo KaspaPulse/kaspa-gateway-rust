@@ -2,6 +2,7 @@ import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { NODE_ENDPOINTS, NODE_MANAGED, NODE_REQUIRED, NODE_OPTIONAL, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, endpoint, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initNodeRust, {
+  nodeApplyCommandOptions as wasmNodeApplyCommandOptions,
   nodeBackendInvoke as wasmNodeBackendInvoke,
   nodeById as wasmNodeById,
   nodeCardCheck as wasmNodeCardCheck,
@@ -12,6 +13,7 @@ import initNodeRust, {
   nodeCommandInlineStateKey as wasmNodeCommandInlineStateKey,
   nodeCommandInlineToggle as wasmNodeCommandInlineToggle,
   nodeCommandOptionEnabled as wasmNodeCommandOptionEnabled,
+  nodeCommandOptionsKey as wasmNodeCommandOptionsKey,
   nodeCommandShouldInclude as wasmNodeCommandShouldInclude,
   nodeRefreshInlineCommandToggles as wasmNodeRefreshInlineCommandToggles,
   nodeToggleCommandOption as wasmNodeToggleCommandOption,
@@ -33,6 +35,7 @@ import initNodeRust, {
   nodeNormalizeNetwork as wasmNodeNormalizeNetwork,
   nodeNormalizeRuntimeError as wasmNodeNormalizeRuntimeError,
   nodeParseRuntimeFields as wasmNodeParseRuntimeFields,
+  nodeReadCommandOptions as wasmNodeReadCommandOptions,
   nodeReadLastNetwork as wasmNodeReadLastNetwork,
   nodeResolveInnerTab as wasmNodeResolveInnerTab,
   nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
@@ -2031,40 +2034,21 @@ function kgwNodeR51ReadSettings(net) {
  * Persist Node command include/exclude checkboxes by semantic keys, not empty DOM ids.
  * This patches the existing R51 settings persistence owner only.
  */
-const KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C = "__kgwNodeCommandOptionsR38C";
+const KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C = wasmNodeCommandOptionsKey();
 
 function kgwNodeR51ReadCommandOptionsR38C(net) {
-  const state = {};
-  try {
-    const root = document.getElementById("kaspa-node");
-    if (!root) return state;
-
-    for (const item of root.querySelectorAll('[data-node-command-option-toggle-r7][data-net="' + String(net || "") + '"]')) {
-      const name = String(item.dataset.nodeCommandOptionToggleR7 || "");
-      if (!name) continue;
-      state[name] = Boolean(item.checked);
-    }
-  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
-  return state;
+  return wasmNodeReadCommandOptions(String(net || ""));
 }
 
 function kgwNodeR51ApplyCommandOptionsR38C(net, values) {
   try {
-    const commandOptions = values && values[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C];
-
-    if (commandOptions && typeof commandOptions === "object") {
-      const state = kgwNodeCommandInlineStateR7(net);
-      for (const [name, enabled] of Object.entries(commandOptions)) {
-        state[String(name)] = Boolean(enabled) && (!NODE_OPTIONAL.has(name) || Boolean(v(net, name)));
-      }
-      kgwNodeRefreshInlineCommandTogglesR7(net);
-      updateCommand(net);
-    }
+    const result = wasmNodeApplyCommandOptions(String(net || ""), values || {});
+    if (result && result.applied) updateCommand(net);
 
     kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-command-options-restored", {
       patch: "R38C",
       owner: "node-r51-settings-owner",
-      commandOptionCount: commandOptions && typeof commandOptions === "object" ? Object.keys(commandOptions).length : 0
+      commandOptionCount: Number(result && result.count || 0)
     });
   } catch (error) {
     kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-command-options-restore-failed", {
