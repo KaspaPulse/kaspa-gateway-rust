@@ -7,6 +7,10 @@ import initNodeRust, {
   nodeClipboardPlaceholderText as wasmNodeClipboardPlaceholderText,
   nodeClipboardSafeError as wasmNodeClipboardSafeError,
   nodeNormalizeClipboardLineEndings as wasmNodeNormalizeClipboardLineEndings,
+  nodeExtractUserLocalAppData as wasmNodeExtractUserLocalAppData,
+  nodeIsEmptyOrGeneratedPath as wasmNodeIsEmptyOrGeneratedPath,
+  nodeJoinPath as wasmNodeJoinPath,
+  nodeRustyKaspaLocalAppDataRoot as wasmNodeRustyKaspaLocalAppDataRoot,
   nodeInstallStartTraceDocumentClickObserver as wasmNodeInstallStartTraceDocumentClickObserver,
   nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
   nodeRuntimeActionForCommand as wasmNodeRuntimeActionForCommand,
@@ -856,32 +860,21 @@ function kgwNodeBackendInvokeR5(command, payload = {}) {
   return invoke(command, payload);
 }
 
+/* KGW_NODE_PATH_HELPERS_R5 are Rust-owned in node_path_helpers.rs. */
 function kgwNodeJoinPathR5(root, child) {
-  const base = String(root || "").replace(/[\\/]+$/, "");
-  if (!base) return "";
-  return base + "\\" + child;
+  return wasmNodeJoinPath(String(root || ""), String(child || ""));
 }
 
 function kgwNodeExtractUserLocalAppDataR5(paths) {
-  const values = Object.values(paths || {}).map((value) => String(value || ""));
-  for (const value of values) {
-    const match = value.match(/^([A-Za-z]:[\\/]Users[\\/][^\\/]+[\\/]AppData)[\\/](?:Local|Roaming)(?:[\\/].*)?$/i);
-    if (match && match[1]) {
-      return match[1] + "\\Local";
-    }
-  }
-  return "%LOCALAPPDATA%";
+  return wasmNodeExtractUserLocalAppData(paths || {});
 }
 
 function kgwNodeRustyKaspaLocalAppDataRootR5(paths = {}, net = "mainnet") {
-  const appRoot = kgwNodeJoinPathR5(kgwNodeExtractUserLocalAppDataR5(paths), "KaspaGateway");
-  const nodesRoot = kgwNodeJoinPathR5(appRoot, "nodes");
-  return kgwNodeJoinPathR5(nodesRoot, String(net || "mainnet"));
+  return wasmNodeRustyKaspaLocalAppDataRoot(paths || {}, String(net || "mainnet"));
 }
 
 function kgwNodeIsEmptyOrGeneratedPathR5(value) {
-  const text = String(value || "");
-  return text.trim() === "" || /^[A-Za-z]:[\\/]+Users[\\/]+[^\\/]+AppData[\\/]+(?:Local|Roaming)[\\/]+(?:rusty-kaspa|KaspaGateway)(?:[\\/].*)?$/i.test(text) || /^%LOCALAPPDATA%[\\/]+rusty-kaspa(?:[\\/].*)?$/i.test(text);
+  return wasmNodeIsEmptyOrGeneratedPath(String(value || ""));
 }
 
 async function kgwNodeLoadEnvironmentPathHintsR5() {
