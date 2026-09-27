@@ -478,6 +478,9 @@ fn contract_report(root: &Path) -> Result<ContractReport, String> {
     }
 
     let main_js = read(&frontend.join("main.js"))?;
+    let shell_runtime_rs =
+        read(&root.join("crates/kaspa-gateway-frontend-wasm/src/shell_runtime.rs"))?;
+    let runtime_owner_source = format!("{main_js}\n{shell_runtime_rs}");
     let mut runtime_findings = Vec::new();
     for marker in [
         "KGW_R99_CANONICAL_I18N_BIND_APPLY_HELPER",
@@ -493,7 +496,7 @@ fn contract_report(root: &Path) -> Result<ContractReport, String> {
         "bindMissingI18nAttributesR99",
         "updateDynamicKgwI18nRuntimeR102",
     ] {
-        if !main_js.contains(marker) {
+        if !runtime_owner_source.contains(marker) {
             runtime_findings.push(format!("missing-main-marker:{marker}"));
         }
     }

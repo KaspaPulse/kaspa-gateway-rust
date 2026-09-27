@@ -6,7 +6,7 @@ const PACKAGE_JSON: &str = "apps/kaspa-gateway-desktop/package.json";
 const CARGO_TOML: &str = "apps/kaspa-gateway-desktop/src-tauri/Cargo.toml";
 const TAURI_CONFIG: &str = "apps/kaspa-gateway-desktop/src-tauri/tauri.conf.json";
 const INDEX_HTML: &str = "apps/kaspa-gateway-desktop/frontend/index.html";
-const MAIN_JS: &str = "apps/kaspa-gateway-desktop/frontend/main.js";
+const SHELL_RUNTIME_RS: &str = "crates/kaspa-gateway-frontend-wasm/src/shell_runtime.rs";
 const DIAGNOSTICS_RS: &str = "apps/kaspa-gateway-desktop/src-tauri/src/diagnostics.rs";
 const LIB_RS: &str = "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs";
 const LOCALES: &[&str] = &[
@@ -18,7 +18,7 @@ struct Inputs {
     cargo_toml: String,
     tauri_config: String,
     index_html: String,
-    main_js: String,
+    shell_runtime_rs: String,
     diagnostics_rs: String,
     lib_rs: String,
     locales: Vec<(String, String)>,
@@ -30,7 +30,7 @@ pub fn run(root: &Path) -> Result<String, String> {
         cargo_toml: read(root, CARGO_TOML)?,
         tauri_config: read(root, TAURI_CONFIG)?,
         index_html: read(root, INDEX_HTML)?,
-        main_js: read(root, MAIN_JS)?,
+        shell_runtime_rs: read(root, SHELL_RUNTIME_RS)?,
         diagnostics_rs: read(root, DIAGNOSTICS_RS)?,
         lib_rs: read(root, LIB_RS)?,
         locales: LOCALES
@@ -171,19 +171,23 @@ fn validate(inputs: &Inputs) -> Result<String, String> {
     }
     for (needle, message) in [
         (
-            r#"resolved.invoke("kgw_app_version_v1")"#,
-            "Desktop shell must request the authoritative package version over Tauri IPC",
+            r#"invoke("kgw_app_version_v1""#,
+            "Desktop Rust shell must request the authoritative package version over Tauri IPC",
         ),
         (
-            "await kgwHydrateAppVersionV1();",
-            "Desktop shell boot must hydrate the visible package version",
+            "hydrate_version().await;",
+            "Desktop Rust shell boot must hydrate the visible package version",
         ),
         (
-            r#"title.dataset.versionSource = "cargo-pkg-version""#,
-            "Desktop shell must mark the authoritative version source",
+            r#""versionSource""#,
+            "Desktop Rust shell must mark the authoritative version source",
+        ),
+        (
+            r#""cargo-pkg-version""#,
+            "Desktop Rust shell must identify CARGO package version provenance",
         ),
     ] {
-        require_contains(&inputs.main_js, needle, message)?;
+        require_contains(&inputs.shell_runtime_rs, needle, message)?;
     }
 
     for (path, text) in &inputs.locales {
@@ -213,9 +217,9 @@ mod tests {
             tauri_config: r#"{"version":"0.1.3"}"#.to_owned(),
             index_html: r#"<h1 id="kgwAppVersionTitle" data-kgw-no-i18n="true">KaspaGateway</h1>"#
                 .to_owned(),
-            main_js: r#"resolved.invoke("kgw_app_version_v1")
-await kgwHydrateAppVersionV1();
-title.dataset.versionSource = "cargo-pkg-version""#
+            shell_runtime_rs: r#"invoke("kgw_app_version_v1", args).await;
+hydrate_version().await;
+set(&dataset(&title), "versionSource", &JsValue::from_str("cargo-pkg-version"));"#
                 .to_owned(),
             diagnostics_rs:
                 r#"pub fn kgw_app_version_v1() -> String { env!("CARGO_PKG_VERSION").to_string() }"#
@@ -291,12 +295,13 @@ title.dataset.versionSource = "cargo-pkg-version""#
     #[test]
     fn shell_hydration_markers_are_required() {
         for marker in [
-            r#"resolved.invoke("kgw_app_version_v1")"#,
-            "await kgwHydrateAppVersionV1();",
-            r#"title.dataset.versionSource = "cargo-pkg-version""#,
+            r#"invoke("kgw_app_version_v1""#,
+            "hydrate_version().await;",
+            r#""versionSource""#,
+            r#""cargo-pkg-version""#,
         ] {
             let mut input = fixture();
-            input.main_js = input.main_js.replace(marker, "");
+            input.shell_runtime_rs = input.shell_runtime_rs.replace(marker, "");
             assert!(validate(&input).is_err(), "{marker}");
         }
     }
