@@ -109,6 +109,22 @@ function staticPlacementTests() {
     source.includes('kgwNodeTranslateRuntimeV29("runtime.failed", "Failed")'),
     "Node post-READY failure must remain visible outside raw logs",
   );
+  assert.ok(
+    source.includes("nodeCommandInlineState as wasmNodeCommandInlineState")
+      && source.includes("nodeCommandOptionEnabled as wasmNodeCommandOptionEnabled")
+      && source.includes("nodeCommandInlineToggle as wasmNodeCommandInlineToggle")
+      && source.includes("nodeRefreshInlineCommandToggles as wasmNodeRefreshInlineCommandToggles")
+      && source.includes("nodeToggleCommandOption as wasmNodeToggleCommandOption"),
+    "Node command-composer state/policy/toggle ownership must be delegated to Rust/WASM",
+  );
+  assert.ok(
+    !source.includes("window.__kgwNodeCommandComposerInlineR7 = window.__kgwNodeCommandComposerInlineR7 || {}"),
+    "Node command-composer state initialization must not remain implemented in hand-maintained JS",
+  );
+  assert.ok(
+    !source.includes("NODE_ENDPOINTS.some(row => row[1] === name || row[2] === name)"),
+    "Node command-composer schema policy must not remain implemented in hand-maintained JS",
+  );
 }
 
 class ClassList {
@@ -607,6 +623,48 @@ const wasmNodeValue = (net, name) => {
 const wasmNodeChecked = (net, name) => {
   const element = wasmNodeById(wasmNodeElementId(net, name));
   return Boolean(element && element.checked);
+};
+const wasmNodeCommandInlineStateKey = (net) => String(net || "mainnet");
+const wasmNodeCommandInlineState = (net) => {
+  const key = wasmNodeCommandInlineStateKey(net);
+  window.__kgwNodeCommandComposerInlineR7 = window.__kgwNodeCommandComposerInlineR7 || {};
+  window.__kgwNodeCommandComposerInlineR7[key] = window.__kgwNodeCommandComposerInlineR7[key] || {};
+  return window.__kgwNodeCommandComposerInlineR7[key];
+};
+const wasmNodeCommandOptionEnabled = (net, name) => {
+  if (Object.hasOwn(NODE_REQUIRED, name)) return true;
+  const state = wasmNodeCommandInlineState(net);
+  if (NODE_OPTIONAL.has(name)) return state[String(name)] === true;
+  return state[String(name)] !== false;
+};
+const wasmNodeCommandShouldInclude = (net, name) => wasmNodeCommandOptionEnabled(net, name);
+const wasmNodeCommandInlineToggle = (net, name) => {
+  if (NODE_MANAGED[name] || Object.hasOwn(NODE_REQUIRED, name)
+      || NODE_ENDPOINTS.some((row) => row[1] === name || row[2] === name)) return "";
+  const enabled = wasmNodeCommandOptionEnabled(net, name);
+  return '<input type="checkbox" class="kgw-command-option-checkbox-r9" data-node-command-option-toggle-r7="'
+    + wasmNodeEscapeHtml(name) + '" data-net="' + wasmNodeEscapeHtml(net) + '" '
+    + (enabled ? "checked" : "") + ' aria-label="Use ' + wasmNodeEscapeHtml(name)
+    + '" title="Enable this optional setting">';
+};
+const wasmNodeRefreshInlineCommandToggles = (net) => {
+  for (const el of document.querySelectorAll("[data-node-command-option-toggle-r7]")) {
+    if (String(el.dataset.net || "") !== String(net || "")) continue;
+    const name = String(el.dataset.nodeCommandOptionToggleR7 || "");
+    const enabled = wasmNodeCommandOptionEnabled(net, name);
+    el.checked = enabled;
+    el.setAttribute("aria-label", enabled ? "Included in command" : "Excluded from command");
+    el.setAttribute("title", enabled ? "Included in command" : "Excluded from command");
+    el.classList.toggle("is-on", enabled);
+    el.classList.toggle("is-off", !enabled);
+  }
+};
+const wasmNodeToggleCommandOption = (net, name) => {
+  const state = wasmNodeCommandInlineState(net);
+  const key = String(name || "");
+  state[key] = state[key] === false;
+  wasmNodeRefreshInlineCommandToggles(net);
+  return state[key];
 };
 const wasmNodeCardInput = (net, name, label, value = "", placeholder = "", span2 = false, toggle = "") =>
   '\\n    <div class="node-v6-card' + (span2 ? ' span2' : '') + '">'

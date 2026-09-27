@@ -1,3 +1,4 @@
+use super::settings_schema::{NODE_ENDPOINTS, NODE_MANAGED, NODE_OPTIONAL, NODE_REQUIRED};
 use js_sys::{Array, Function, JSON, Object, Promise, Reflect};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 
@@ -297,6 +298,172 @@ pub fn node_value(net: String, name: String) -> String {
 pub fn node_checked(net: String, name: String) -> bool {
     let element = node_by_id(node_element_id(net, name));
     present(&element) && crate::js_boolean(&property(&element, "checked"))
+}
+
+const COMMAND_STATE_GLOBAL: &str = "__kgwNodeCommandComposerInlineR7";
+
+fn schema_pair_contains(items: &[(&str, &str)], name: &str) -> bool {
+    items.iter().any(|(key, _)| *key == name)
+}
+
+fn schema_endpoint_field(name: &str) -> bool {
+    NODE_ENDPOINTS
+        .iter()
+        .any(|(_, host, port, _, _)| *host == name || *port == name)
+}
+
+fn command_state_key_text(net: &str) -> String {
+    if net.is_empty() {
+        "mainnet".to_owned()
+    } else {
+        net.to_owned()
+    }
+}
+
+fn command_state_object(net: &str) -> JsValue {
+    let win = window();
+    let mut root = property(&win, COMMAND_STATE_GLOBAL);
+    if !root.is_object() || root.is_null() {
+        root = Object::new().into();
+        set(&win, COMMAND_STATE_GLOBAL, &root);
+    }
+
+    let key = command_state_key_text(net);
+    let mut state = property(&root, &key);
+    if !state.is_object() || state.is_null() {
+        state = Object::new().into();
+        set(&root, &key, &state);
+    }
+    state
+}
+
+fn command_option_enabled_inner(net: &str, name: &str) -> bool {
+    if schema_pair_contains(NODE_REQUIRED, name) {
+        return true;
+    }
+    let state = command_state_object(net);
+    let value = property(&state, name);
+    if NODE_OPTIONAL.contains(&name) {
+        value.as_bool() == Some(true)
+    } else {
+        value.as_bool() != Some(false)
+    }
+}
+
+fn command_toggle_markup(net: &str, name: &str, enabled: bool) -> String {
+    let checked = if enabled { "checked" } else { "" };
+    format!(
+        "<input type=\"checkbox\" class=\"kgw-command-option-checkbox-r9\" data-node-command-option-toggle-r7=\"{}\" data-net=\"{}\" {checked} aria-label=\"Use {}\" title=\"Enable this optional setting\">",
+        escape_html_text(name),
+        escape_html_text(net),
+        escape_html_text(name),
+    )
+}
+
+fn command_inline_toggle_html(net: &str, name: &str) -> String {
+    if schema_pair_contains(NODE_MANAGED, name)
+        || schema_pair_contains(NODE_REQUIRED, name)
+        || schema_endpoint_field(name)
+    {
+        return String::new();
+    }
+    command_toggle_markup(net, name, command_option_enabled_inner(net, name))
+}
+
+fn refresh_command_toggles(net: &str) {
+    let Some(list) = call1(
+        &document(),
+        "querySelectorAll",
+        &JsValue::from_str("[data-node-command-option-toggle-r7]"),
+    ) else {
+        return;
+    };
+    let length = crate::js_number(&property(&list, "length"));
+    if !length.is_finite() || length <= 0.0 {
+        return;
+    }
+
+    for index in 0..length as u32 {
+        let Ok(element) = Reflect::get(&list, &JsValue::from_f64(index as f64)) else {
+            continue;
+        };
+        let data = property(&element, "dataset");
+        if crate::js_string_owned(&property(&data, "net")) != net {
+            continue;
+        }
+        let name = crate::js_string_owned(&property(&data, "nodeCommandOptionToggleR7"));
+        let enabled = command_option_enabled_inner(net, &name);
+        set(&element, "checked", &JsValue::from_bool(enabled));
+        let label = if enabled {
+            "Included in command"
+        } else {
+            "Excluded from command"
+        };
+        let _ = call2(
+            &element,
+            "setAttribute",
+            &JsValue::from_str("aria-label"),
+            &JsValue::from_str(label),
+        );
+        let _ = call2(
+            &element,
+            "setAttribute",
+            &JsValue::from_str("title"),
+            &JsValue::from_str(label),
+        );
+        let classes = property(&element, "classList");
+        let _ = call2(
+            &classes,
+            "toggle",
+            &JsValue::from_str("is-on"),
+            &JsValue::from_bool(enabled),
+        );
+        let _ = call2(
+            &classes,
+            "toggle",
+            &JsValue::from_str("is-off"),
+            &JsValue::from_bool(!enabled),
+        );
+    }
+}
+
+#[wasm_bindgen(js_name = nodeCommandInlineStateKey)]
+pub fn node_command_inline_state_key(net: String) -> String {
+    command_state_key_text(&net)
+}
+
+#[wasm_bindgen(js_name = nodeCommandInlineState)]
+pub fn node_command_inline_state(net: String) -> JsValue {
+    command_state_object(&net)
+}
+
+#[wasm_bindgen(js_name = nodeCommandOptionEnabled)]
+pub fn node_command_option_enabled(net: String, name: String) -> bool {
+    command_option_enabled_inner(&net, &name)
+}
+
+#[wasm_bindgen(js_name = nodeCommandShouldInclude)]
+pub fn node_command_should_include(net: String, name: String) -> bool {
+    command_option_enabled_inner(&net, &name)
+}
+
+#[wasm_bindgen(js_name = nodeCommandInlineToggle)]
+pub fn node_command_inline_toggle(net: String, name: String) -> String {
+    command_inline_toggle_html(&net, &name)
+}
+
+#[wasm_bindgen(js_name = nodeRefreshInlineCommandToggles)]
+pub fn node_refresh_inline_command_toggles(net: String) {
+    refresh_command_toggles(&net);
+}
+
+#[wasm_bindgen(js_name = nodeToggleCommandOption)]
+pub fn node_toggle_command_option(net: String, name: String) -> bool {
+    let state = command_state_object(&net);
+    let enabled = property(&state, &name).as_bool() == Some(false);
+    set(&state, &name, &JsValue::from_bool(enabled));
+    refresh_command_toggles(&net);
+    enabled
 }
 
 fn card_input_html(
@@ -800,6 +967,32 @@ mod tests {
         );
         assert_eq!(runtime_error_from_status_text("runtimeError=None"), "");
         assert_eq!(runtime_error_from_status_text("runtime_error=  none "), "");
+    }
+
+    #[test]
+    fn command_composer_schema_policy_matches_legacy_contract() {
+        assert_eq!(command_state_key_text(""), "mainnet");
+        assert_eq!(command_state_key_text("testnet10"), "testnet10");
+        assert!(schema_pair_contains(NODE_REQUIRED, "logLevel"));
+        assert!(schema_pair_contains(NODE_MANAGED, "appDir"));
+        assert!(NODE_OPTIONAL.contains(&"uaComment"));
+        assert!(schema_endpoint_field("rpcListenHost"));
+        assert!(schema_endpoint_field("rpcListenPort"));
+        assert!(!schema_endpoint_field("uaComment"));
+    }
+
+    #[test]
+    fn command_composer_toggle_markup_is_stable_and_escaped() {
+        let enabled = command_toggle_markup("main<net", "ua&Comment", true);
+        assert!(enabled.contains("kgw-command-option-checkbox-r9"));
+        assert!(enabled.contains("data-net=\"main&lt;net\""));
+        assert!(enabled.contains("data-node-command-option-toggle-r7=\"ua&amp;Comment\""));
+        assert!(enabled.contains(" checked aria-label="));
+
+        let disabled = command_toggle_markup("mainnet", "uaComment", false);
+        assert!(disabled.contains("data-net=\"mainnet\""));
+        assert!(!disabled.contains(" checked aria-label="));
+        assert!(disabled.contains(" aria-label=\"Use uaComment\""));
     }
 
     #[test]

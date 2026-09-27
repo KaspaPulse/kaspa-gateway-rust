@@ -8,6 +8,13 @@ import initNodeRust, {
   nodeCardInput as wasmNodeCardInput,
   nodeCardSelect as wasmNodeCardSelect,
   nodeChecked as wasmNodeChecked,
+  nodeCommandInlineState as wasmNodeCommandInlineState,
+  nodeCommandInlineStateKey as wasmNodeCommandInlineStateKey,
+  nodeCommandInlineToggle as wasmNodeCommandInlineToggle,
+  nodeCommandOptionEnabled as wasmNodeCommandOptionEnabled,
+  nodeCommandShouldInclude as wasmNodeCommandShouldInclude,
+  nodeRefreshInlineCommandToggles as wasmNodeRefreshInlineCommandToggles,
+  nodeToggleCommandOption as wasmNodeToggleCommandOption,
   nodeCopyLogFailure as wasmNodeCopyLogFailure,
   nodeDispatchClipboardWrite as wasmNodeDispatchClipboardWrite,
   nodeElementId as wasmNodeElementId,
@@ -811,57 +818,33 @@ function c(net, name) {
 
 
 // KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
-
-
+/* Command-composer state/policy/toggle ownership is Rust/WASM-owned. */
 function kgwNodeCommandInlineStateKeyR7(net) {
-  return String(net || "mainnet");
+  return wasmNodeCommandInlineStateKey(String(net || ""));
 }
 
 function kgwNodeCommandInlineStateR7(net) {
-  const key = kgwNodeCommandInlineStateKeyR7(net);
-  window.__kgwNodeCommandComposerInlineR7 = window.__kgwNodeCommandComposerInlineR7 || {};
-  window.__kgwNodeCommandComposerInlineR7[key] = window.__kgwNodeCommandComposerInlineR7[key] || {};
-  return window.__kgwNodeCommandComposerInlineR7[key];
+  return wasmNodeCommandInlineState(String(net || ""));
 }
 
 function kgwNodeCommandOptionEnabledR7(net, name) {
-  if (Object.hasOwn(NODE_REQUIRED, name)) return true;
-  const state = kgwNodeCommandInlineStateR7(net);
-  if (NODE_OPTIONAL.has(name)) return state[String(name)] === true;
-  return state[String(name)] !== false;
+  return wasmNodeCommandOptionEnabled(String(net || ""), String(name || ""));
 }
 
 function kgwNodeCommandShouldIncludeR7(net, name) {
-  return kgwNodeCommandOptionEnabledR7(net, name);
+  return wasmNodeCommandShouldInclude(String(net || ""), String(name || ""));
 }
 
-
 function kgwNodeCommandInlineToggleR7(net, name) {
-  if (NODE_MANAGED[name] || Object.hasOwn(NODE_REQUIRED, name) ||
-      NODE_ENDPOINTS.some(row => row[1] === name || row[2] === name)) return "";
-  const enabled = kgwNodeCommandOptionEnabledR7(net, name);
-  return '<input type="checkbox" class="kgw-command-option-checkbox-r9" data-node-command-option-toggle-r7="' +
-    esc(name) + '" data-net="' + esc(net) + '" ' + (enabled ? "checked" : "") +
-    ' aria-label="Use ' + esc(name) + '" title="Enable this optional setting">';
+  return wasmNodeCommandInlineToggle(String(net || ""), String(name || ""));
 }
 
 function kgwNodeRefreshInlineCommandTogglesR7(net) {
-  document.querySelectorAll(`[data-node-command-option-toggle-r7][data-net="${CSS.escape(String(net))}"]`).forEach((el) => {
-    const name = el.dataset.nodeCommandOptionToggleR7;
-    const enabled = kgwNodeCommandOptionEnabledR7(net, name);
-    el.checked = enabled;
-    el.setAttribute("aria-label", enabled ? "Included in command" : "Excluded from command");
-    el.setAttribute("title", enabled ? "Included in command" : "Excluded from command");
-    el.classList.toggle("is-on", enabled);
-    el.classList.toggle("is-off", !enabled);
-  });
+  wasmNodeRefreshInlineCommandToggles(String(net || ""));
 }
 
 function kgwNodeToggleCommandOptionR7(net, name) {
-  const state = kgwNodeCommandInlineStateR7(net);
-  const key = String(name);
-  state[key] = state[key] === false;
-  kgwNodeRefreshInlineCommandTogglesR7(net);
+  wasmNodeToggleCommandOption(String(net || ""), String(name || ""));
   updateCommand(net);
 }
 
