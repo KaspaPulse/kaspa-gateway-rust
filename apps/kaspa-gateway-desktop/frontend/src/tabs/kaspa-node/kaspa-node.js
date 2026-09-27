@@ -1,5 +1,5 @@
 import { applyStatusTone, renderStatusSummary } from "../../status.js";
-import { NODE_ENDPOINTS, NODE_MANAGED, NODE_REQUIRED, NODE_OPTIONAL, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, endpoint, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
+import { NODE_MANAGED, NODE_REQUIRED, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, endpoint, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initNodeRust, {
   nodeBackendInvoke as wasmNodeBackendInvoke,
@@ -9,9 +9,7 @@ import initNodeRust, {
   nodeCardSelect as wasmNodeCardSelect,
   nodeChecked as wasmNodeChecked,
   nodeCommandInlineState as wasmNodeCommandInlineState,
-  nodeCommandInlineStateKey as wasmNodeCommandInlineStateKey,
   nodeCommandInlineToggle as wasmNodeCommandInlineToggle,
-  nodeCommandOptionEnabled as wasmNodeCommandOptionEnabled,
   nodeCommandOptionsKey as wasmNodeCommandOptionsKey,
   nodeCommandShouldInclude as wasmNodeCommandShouldInclude,
   nodeRefreshInlineCommandToggles as wasmNodeRefreshInlineCommandToggles,
@@ -26,11 +24,9 @@ import initNodeRust, {
   nodeInstallStartTraceDocumentClickObserver as wasmNodeInstallStartTraceDocumentClickObserver,
   nodeLogAutoScrollEnabled as wasmNodeLogAutoScrollEnabled,
   nodeNetworkEnabled as wasmNodeNetworkEnabled,
-  nodeNetworkPolicyKey as wasmNodeNetworkPolicyKey,
   nodeNetworkPolicyMessage as wasmNodeNetworkPolicyMessage,
   nodeNetworkProfile as wasmNodeNetworkProfile,
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
-  nodeNormalizeInnerTab as wasmNodeNormalizeInnerTab,
   nodeNormalizeNetwork as wasmNodeNormalizeNetwork,
   nodeNormalizeRuntimeError as wasmNodeNormalizeRuntimeError,
   nodeParseRuntimeFields as wasmNodeParseRuntimeFields,
@@ -45,8 +41,6 @@ import initNodeRust, {
   nodeR51RestoreDefaultsAction as wasmNodeR51RestoreDefaultsAction,
   nodeR51SaveSettingsAction as wasmNodeR51SaveSettingsAction,
   nodeR51SetDefaultsAction as wasmNodeR51SetDefaultsAction,
-  nodeR51Store as wasmNodeR51Store,
-  nodeR51WriteSettings as wasmNodeR51WriteSettings,
   nodeResolveInnerTab as wasmNodeResolveInnerTab,
   nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
   nodeRuntimeActionForCommand as wasmNodeRuntimeActionForCommand,
@@ -54,7 +48,6 @@ import initNodeRust, {
   nodeRuntimeIsRunning as wasmNodeRuntimeIsRunning,
   nodeSaveInnerTab as wasmNodeSaveInnerTab,
   nodeSaveLastNetwork as wasmNodeSaveLastNetwork,
-  nodeSetLogAutoScroll as wasmNodeSetLogAutoScroll,
   nodeSetNetworkEnabled as wasmNodeSetNetworkEnabled,
   nodeStringifyRuntimeResult as wasmNodeStringifyRuntimeResult,
   nodeSmallOwnerTrace as wasmNodeSmallOwnerTrace,
@@ -783,10 +776,6 @@ function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
 
 const NODE_NETWORKS = wasmNodeNetworkProfiles();
 
-function kgwNodeNetworkPolicyKey(net) {
-  return wasmNodeNetworkPolicyKey(String(net || ""));
-}
-
 function kgwNodeNetworkProfile(net) {
   return wasmNodeNetworkProfile(String(net || ""));
 }
@@ -832,16 +821,8 @@ function c(net, name) {
 
 // KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
 /* Command-composer state/policy/toggle ownership is Rust/WASM-owned. */
-function kgwNodeCommandInlineStateKeyR7(net) {
-  return wasmNodeCommandInlineStateKey(String(net || ""));
-}
-
 function kgwNodeCommandInlineStateR7(net) {
   return wasmNodeCommandInlineState(String(net || ""));
-}
-
-function kgwNodeCommandOptionEnabledR7(net, name) {
-  return wasmNodeCommandOptionEnabled(String(net || ""), String(name || ""));
 }
 
 function kgwNodeCommandShouldIncludeR7(net, name) {
@@ -904,10 +885,6 @@ function cardCheck(net, name, label, checked = false, span2 = false) {
 // KGW_NODE_LOG_AUTOSCROLL_CONTROLS_R27 is Rust-owned in node_frontend_helpers.rs.
 function kgwNodeLogAutoScrollEnabledR27(net) {
   return wasmNodeLogAutoScrollEnabled(String(net || ""));
-}
-
-function kgwNodeSetLogAutoScrollR27(net, enabled) {
-  wasmNodeSetLogAutoScroll(String(net || ""), Boolean(enabled));
 }
 
 function kgwInstallNodeLogAutoScrollControlsR27() {
@@ -1181,10 +1158,6 @@ function renderSections(net) {
 }
 
 /* R101U inner-tab persistence is Rust-owned in node_frontend_helpers.rs. */
-function kgwNodeNormalizeInnerTabR101U(value) {
-  return wasmNodeNormalizeInnerTab(value);
-}
-
 function kgwNodeResolveInnerTabR101U(net) {
   return wasmNodeResolveInnerTab(String(net || ""));
 }
@@ -2024,33 +1997,6 @@ function kgwNodeR51ReadSettings(net) {
  * This patches the existing R51 settings persistence owner only.
  */
 const KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C = wasmNodeCommandOptionsKey();
-
-function kgwNodeR51WriteSettings(net, values) {
-  if (!values || typeof values !== "object") return null;
-  try {
-    const result = wasmNodeR51WriteSettings(String(net || ""), values);
-    if (result?.commandOptionsApplied) {
-      kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-command-options-restored", {
-        patch: "R38C",
-        owner: "node-r51-settings-owner",
-        commandOptionCount: Number(result.commandOptionsCount || 0)
-      });
-    }
-    if (result?.applied) updateCommand(net);
-    return result;
-  } catch (error) {
-    kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-command-options-restore-failed", {
-      patch: "R38C",
-      owner: "node-r51-settings-owner",
-      message: error && error.message ? error.message : String(error)
-    });
-    throw error;
-  }
-}
-
-function kgwNodeR51Store(key, value) {
-  return wasmNodeR51Store(String(key || ""), value);
-}
 
 function kgwNodeR51Load(key) {
   try {

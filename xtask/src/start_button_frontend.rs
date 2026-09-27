@@ -111,7 +111,7 @@ function staticPlacementTests() {
   );
   assert.ok(
     source.includes("nodeCommandInlineState as wasmNodeCommandInlineState")
-      && source.includes("nodeCommandOptionEnabled as wasmNodeCommandOptionEnabled")
+      && source.includes("nodeCommandShouldInclude as wasmNodeCommandShouldInclude")
       && source.includes("nodeCommandInlineToggle as wasmNodeCommandInlineToggle")
       && source.includes("nodeRefreshInlineCommandToggles as wasmNodeRefreshInlineCommandToggles")
       && source.includes("nodeToggleCommandOption as wasmNodeToggleCommandOption"),
@@ -130,8 +130,6 @@ function staticPlacementTests() {
       && source.includes("nodeR51Panel as wasmNodeR51Panel")
       && source.includes("nodeR51Fields as wasmNodeR51Fields")
       && source.includes("nodeR51ReadSettings as wasmNodeR51ReadSettings")
-      && source.includes("nodeR51WriteSettings as wasmNodeR51WriteSettings")
-      && source.includes("nodeR51Store as wasmNodeR51Store")
       && source.includes("nodeR51Load as wasmNodeR51Load")
       && source.includes("nodeR51CaptureFactoryDefaults as wasmNodeR51CaptureFactoryDefaults")
       && source.includes("nodeR51LoadSavedSettings as wasmNodeR51LoadSavedSettings"),
@@ -140,9 +138,9 @@ function staticPlacementTests() {
   assert.ok(
     source.includes("const KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C = wasmNodeCommandOptionsKey();")
       && /function kgwNodeR51ReadSettings\(net\)\s*\{\s*const values = wasmNodeR51ReadSettings/.test(source)
-      && /function kgwNodeR51WriteSettings\(net, values\)[\s\S]*?wasmNodeR51WriteSettings/.test(source)
-      && source.includes('return wasmNodeR51Store(String(key || ""), value);')
-      && source.includes('return wasmNodeR51Load(String(key || ""));'),
+      && source.includes('return wasmNodeR51Load(String(key || ""));')
+      && !source.includes("function kgwNodeR51WriteSettings(")
+      && !source.includes("function kgwNodeR51Store("),
     "Node R51 wrappers must remain thin Rust/WASM adapters with JS-only trace/update glue",
   );
   assert.ok(
