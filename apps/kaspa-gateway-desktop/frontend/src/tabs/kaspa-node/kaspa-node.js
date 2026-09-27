@@ -11,7 +11,6 @@ import initNodeRust, {
   nodeCommandInlineState as wasmNodeCommandInlineState,
   nodeCommandInlineToggle as wasmNodeCommandInlineToggle,
   nodeCommandOptionsKey as wasmNodeCommandOptionsKey,
-  nodeCommandShouldInclude as wasmNodeCommandShouldInclude,
   nodeRefreshInlineCommandToggles as wasmNodeRefreshInlineCommandToggles,
   nodeToggleCommandOption as wasmNodeToggleCommandOption,
   nodeCopyLogFailure as wasmNodeCopyLogFailure,
@@ -822,10 +821,6 @@ function c(net, name) {
 /* Command-composer state/policy/toggle ownership is Rust/WASM-owned. */
 function kgwNodeCommandInlineStateR7(net) {
   return wasmNodeCommandInlineState(String(net || ""));
-}
-
-function kgwNodeCommandShouldIncludeR7(net, name) {
-  return wasmNodeCommandShouldInclude(String(net || ""), String(name || ""));
 }
 
 function kgwNodeCommandInlineToggleR7(net, name) {
@@ -3260,9 +3255,6 @@ function kgwNodeForm(net) {
     values[name] = field.type === "checkbox" ? field.checked : field.value;
   });
   return values;
-}
-function kgwNodeSettingActive(net, name) {
-  return nodeFieldEnabled(name, kgwNodeForm(net), kgwNodeCommandInlineStateR7(net));
 }
 function kgwNodeValidateForm(net, focus = false) {
   const errors = validateNodeForm(kgwNodeForm(net), kgwNodeCommandInlineStateR7(net), net);

@@ -116,11 +116,12 @@ function staticPlacementTests() {
   );
   assert.ok(
     source.includes("nodeCommandInlineState as wasmNodeCommandInlineState")
-      && source.includes("nodeCommandShouldInclude as wasmNodeCommandShouldInclude")
       && source.includes("nodeCommandInlineToggle as wasmNodeCommandInlineToggle")
       && source.includes("nodeRefreshInlineCommandToggles as wasmNodeRefreshInlineCommandToggles")
-      && source.includes("nodeToggleCommandOption as wasmNodeToggleCommandOption"),
-    "Node command-composer state/policy/toggle ownership must be delegated to Rust/WASM",
+      && source.includes("nodeToggleCommandOption as wasmNodeToggleCommandOption")
+      && !source.includes("nodeCommandShouldInclude as wasmNodeCommandShouldInclude")
+      && !source.includes("function kgwNodeCommandShouldIncludeR7("),
+    "Active Node command-composer adapters must delegate to Rust/WASM and the retired unused wrapper must stay absent",
   );
   assert.ok(
     !source.includes("window.__kgwNodeCommandComposerInlineR7 = window.__kgwNodeCommandComposerInlineR7 || {}"),
