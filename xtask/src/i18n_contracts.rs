@@ -477,27 +477,28 @@ fn contract_report(root: &Path) -> Result<ContractReport, String> {
         }
     }
 
-    let main_js = read(&frontend.join("main.js"))?;
+    let shell_i18n_rs = read(&root.join("crates/kaspa-gateway-frontend-wasm/src/shell_i18n.rs"))?;
     let shell_runtime_rs =
         read(&root.join("crates/kaspa-gateway-frontend-wasm/src/shell_runtime.rs"))?;
-    let runtime_owner_source = format!("{main_js}\n{shell_runtime_rs}");
+    let runtime_owner_source = format!("{shell_i18n_rs}\n{shell_runtime_rs}");
     let mut runtime_findings = Vec::new();
     for marker in [
-        "KGW_R99_CANONICAL_I18N_BIND_APPLY_HELPER",
-        "KGW_R100_FLATTEN_I18N_DICTIONARY",
-        "KGW_R102_DYNAMIC_DOM_I18N_REAPPLY",
-        "KGW_R107_CANONICAL_TRANSLATION_RUNTIME_API",
-        "window.kgwT = function kgwTranslateRuntimeR107",
-        "window.kgwI18n = window.kgwT",
-        "window.__kgwI18nDictR107 = dict;",
-        "kgw:tab-opened",
+        "const STORAGE_KEY: &str = \"kgw.shell.language.v73\";",
+        "fn bind_missing(",
+        "fn flattened(",
+        "fn schedule_reapply(",
+        "fn publish_translation_api(",
+        "\"kgwT\"",
+        "\"kgwI18n\"",
+        "\"__kgwI18nDictR107\"",
+        "\"kgw:tab-opened\"",
         "tab-opened-after-mount",
-        "flattenKgwI18nDictionaryR100",
-        "bindMissingI18nAttributesR99",
-        "updateDynamicKgwI18nRuntimeR102",
+        "fn update_runtime(",
+        "fn apply_dictionary(",
+        "shellI18nInstall",
     ] {
         if !runtime_owner_source.contains(marker) {
-            runtime_findings.push(format!("missing-main-marker:{marker}"));
+            runtime_findings.push(format!("missing-rust-runtime-marker:{marker}"));
         }
     }
 
