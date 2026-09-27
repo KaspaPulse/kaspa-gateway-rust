@@ -3,7 +3,9 @@ import {
   confirmUserAction,
   settingsDisplayChecksWithDefaults,
   settingsDisplayPreferences,
+  settingsAddressNormalize,
   settingsDisplayStateMissingContract,
+  settingsIsKaspaAddress,
   settingsSelectedDisplayKeys,
   settingsToWesternDigits
 } from "../../settings-contract.js";
@@ -1593,12 +1595,6 @@ function kgwSettingsAddressInvoke() {
   return window.__TAURI__?.core?.invoke || window.__TAURI__?.tauri?.invoke || window.__TAURI_INVOKE__;
 }
 
-function kgwSettingsAddressShort(value) {
-  const text = String(value || "");
-  if (text.length <= 28) return text;
-  return `${text.slice(0, 14)}…${text.slice(-12)}`;
-}
-
 function kgwSettingsAddressNow() {
   const date = new Date();
   const y = date.getFullYear();
@@ -1611,8 +1607,7 @@ function kgwSettingsAddressNow() {
 }
 
 function kgwSettingsIsKaspaAddress(value) {
-  const text = String(value || "").trim();
-  return text.startsWith("kaspa:") || text.startsWith("kaspatest:");
+  return settingsIsKaspaAddress(value);
 }
 
 function kgwSettingsAddressElements() {
@@ -1633,21 +1628,7 @@ function kgwSettingsAddressSetStatus(message, state = "info") {
 }
 
 function kgwSettingsAddressNormalize(record) {
-  const address = String(record?.address || record?.Address || "").trim();
-  const rawName = String(record?.name || record?.Name || record?.label || record?.Label || "").trim();
-  const network = String(record?.network || record?.Network || "mainnet").trim();
-
-  // Do not show generated fallback names like "Kaspa kaspa:...." as user names.
-  const generatedPrefix = `Kaspa ${kgwSettingsAddressShort(address)}`;
-  const name = rawName === generatedPrefix || rawName.startsWith("Kaspa kaspa:")
-    ? ""
-    : rawName;
-
-  return {
-    address,
-    name,
-    network
-  };
+  return settingsAddressNormalize(record);
 }
 
 function kgwSettingsAddressFormatNumber(value, digits = 2) {

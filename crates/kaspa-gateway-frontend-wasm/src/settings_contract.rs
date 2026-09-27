@@ -935,6 +935,68 @@ pub async fn confirm_user_action(message: JsValue) -> Result<bool, JsValue> {
     Ok(await_value(answer).await?.as_bool() == Some(true))
 }
 
+fn first_truthy_text_property(target: &JsValue, names: &[&str], fallback: &str) -> String {
+    for name in names {
+        let value = property(target, name);
+        if js_boolean(&value) {
+            return raw_string(&value).trim().to_owned();
+        }
+    }
+    fallback.to_owned()
+}
+
+fn settings_address_short_text(value: &str) -> String {
+    let chars = value.chars().collect::<Vec<_>>();
+    if chars.len() <= 28 {
+        return value.to_owned();
+    }
+    let left = chars.iter().take(14).collect::<String>();
+    let right = chars
+        .iter()
+        .rev()
+        .take(12)
+        .copied()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect::<String>();
+    format!("{left}\u{2026}{right}")
+}
+
+fn settings_is_kaspa_address_text(value: &str) -> bool {
+    let text = value.trim();
+    text.starts_with("kaspa:") || text.starts_with("kaspatest:")
+}
+
+#[wasm_bindgen(js_name = settingsAddressShort)]
+pub fn settings_address_short(value: JsValue) -> String {
+    settings_address_short_text(&raw_string(&value))
+}
+
+#[wasm_bindgen(js_name = settingsIsKaspaAddress)]
+pub fn settings_is_kaspa_address(value: JsValue) -> bool {
+    settings_is_kaspa_address_text(&raw_string(&value))
+}
+
+#[wasm_bindgen(js_name = settingsAddressNormalize)]
+pub fn settings_address_normalize(record: JsValue) -> JsValue {
+    let address = first_truthy_text_property(&record, &["address", "Address"], "");
+    let raw_name = first_truthy_text_property(&record, &["name", "Name", "label", "Label"], "");
+    let network = first_truthy_text_property(&record, &["network", "Network"], "mainnet");
+    let generated_prefix = format!("Kaspa {}", settings_address_short_text(&address));
+    let name = if raw_name == generated_prefix || raw_name.starts_with("Kaspa kaspa:") {
+        String::new()
+    } else {
+        raw_name
+    };
+
+    let output = Object::new();
+    let _ = set_property(output.as_ref(), "address", &JsValue::from_str(&address));
+    let _ = set_property(output.as_ref(), "name", &JsValue::from_str(&name));
+    let _ = set_property(output.as_ref(), "network", &JsValue::from_str(&network));
+    output.into()
+}
+
 fn western_digits_text(value: &str) -> String {
     value
         .chars()
@@ -1113,6 +1175,32 @@ pub fn settings_display_preferences(checks: JsValue) -> JsValue {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn address_helpers_preserve_legacy_contracts() {
+        assert_eq!(settings_address_short_text("short"), "short");
+        let long = "kaspa:abcdefghijklmnopqrstuvwxyz0123456789";
+        let shortened = settings_address_short_text(long);
+        assert_eq!(shortened.chars().count(), 27);
+        assert!(shortened.contains('\u{2026}'));
+        assert!(shortened.starts_with(&long.chars().take(14).collect::<String>()));
+        assert!(
+            shortened.ends_with(
+                &long
+                    .chars()
+                    .rev()
+                    .take(12)
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .rev()
+                    .collect::<String>()
+            )
+        );
+        assert!(settings_is_kaspa_address_text(" kaspa:qabc "));
+        assert!(settings_is_kaspa_address_text("kaspatest:qabc"));
+        assert!(!settings_is_kaspa_address_text("kaspa-dev:qabc"));
+        assert!(!settings_is_kaspa_address_text("btc:qabc"));
+    }
 
     #[test]
     fn western_digits_cover_arabic_and_persian_forms() {

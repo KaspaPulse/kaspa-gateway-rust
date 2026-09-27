@@ -228,6 +228,8 @@ export { runtimePresentation, runtimeObservationSummary } from "./status.js";
 import init, {
   settingsBridgeFieldEnabled as wasmBridgeFieldEnabled,
   settingsBridgeManaged as wasmBridgeManaged,
+  settingsAddressNormalize as wasmAddressNormalize,
+  settingsAddressShort as wasmAddressShort,
   settingsBridgeOptional as wasmBridgeOptional,
   settingsBridgeRequired as wasmBridgeRequired,
   settingsConfirmUserAction as wasmConfirmUserAction,
@@ -236,6 +238,7 @@ import init, {
   settingsDisplayStateMissingContract as wasmDisplayStateMissingContract,
   settingsEndpoint as wasmEndpoint,
   settingsIsHost as wasmIsHost,
+  settingsIsKaspaAddress as wasmIsKaspaAddress,
   settingsIsLoopback as wasmIsLoopback,
   settingsIsPort as wasmIsPort,
   settingsListenersOverlap as wasmListenersOverlap,
@@ -292,6 +295,18 @@ export function validateNodeForm(values, options, network) {
 export function renderFieldErrors(root, prefix, errors) {
   return wasmRenderFieldErrors(root, prefix, errors);
 }
+export function settingsAddressShort(value) {
+  return wasmAddressShort(value);
+}
+
+export function settingsIsKaspaAddress(value) {
+  return wasmIsKaspaAddress(value);
+}
+
+export function settingsAddressNormalize(record) {
+  return wasmAddressNormalize(record);
+}
+
 export function bridgeFieldEnabled(name, values, options = {}) {
   return wasmBridgeFieldEnabled(name, values, options);
 }
@@ -926,6 +941,9 @@ mod tests {
         assert!(settings.contains("wasmDisplayChecksWithDefaults(checks, knownEntries)"));
         assert!(settings.contains("wasmDisplayStateMissingContract(checks)"));
         assert!(settings.contains("wasmDisplayPreferences(checks)"));
+        assert!(settings.contains("wasmAddressShort(value)"));
+        assert!(settings.contains("wasmIsKaspaAddress(value)"));
+        assert!(settings.contains("wasmAddressNormalize(record)"));
         assert!(settings.contains("new Set(wasmNodeOptional())"));
         assert!(settings.contains("new Set(wasmBridgeRequired())"));
         for forbidden in [
