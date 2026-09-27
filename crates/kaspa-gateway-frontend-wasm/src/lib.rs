@@ -15,6 +15,7 @@ mod settings_profiles;
 mod settings_runtime;
 mod settings_schema;
 mod settings_state;
+mod settings_ui;
 mod shell_logger;
 mod top_addresses;
 

@@ -307,10 +307,9 @@ fn option_enabled(options: &JsValue, name: &str) -> bool {
     option_value_enabled(property(options, name).as_bool())
 }
 
-#[wasm_bindgen(js_name = settingsPersistenceResetDefaults)]
-pub async fn reset_defaults(options: JsValue) {
-    let should_clear = option_enabled(&options, "clearStorage");
-    let should_apply_shell = option_enabled(&options, "applyShell");
+fn reset_defaults_sync(options: &JsValue) {
+    let should_clear = option_enabled(options, "clearStorage");
+    let should_apply_shell = option_enabled(options, "applyShell");
 
     if should_clear {
         storage_remove();
@@ -359,6 +358,16 @@ pub async fn reset_defaults(options: JsValue) {
     }
 
     set_save_enabled(false);
+}
+
+pub(crate) fn reset_defaults_for_init(options: JsValue) {
+    reset_defaults_sync(&options);
+    spawn_paths("reset-defaults");
+}
+
+#[wasm_bindgen(js_name = settingsPersistenceResetDefaults)]
+pub async fn reset_defaults(options: JsValue) {
+    reset_defaults_sync(&options);
     let _ = crate::settings_paths::load_defaults("reset-defaults".to_owned()).await;
 }
 
