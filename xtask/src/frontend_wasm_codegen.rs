@@ -236,6 +236,9 @@ import init, {
   settingsDisplayChecksWithDefaults as wasmDisplayChecksWithDefaults,
   settingsDisplayPreferences as wasmDisplayPreferences,
   settingsDisplayStateMissingContract as wasmDisplayStateMissingContract,
+  settingsDatabaseInstall as wasmDatabaseInstall,
+  settingsDatabaseRefresh as wasmDatabaseRefresh,
+  settingsDatabaseRenderRows as wasmDatabaseRenderRows,
   settingsDbKindFromFileName as wasmDbKindFromFileName,
   settingsEndpoint as wasmEndpoint,
   settingsExplorerAddress as wasmExplorerAddress,
@@ -312,6 +315,18 @@ export function settingsAddressNormalize(record) {
 
 export function settingsDbKindFromFileName(value) {
   return wasmDbKindFromFileName(value);
+}
+
+export function settingsDatabaseRenderRows(rows) {
+  return wasmDatabaseRenderRows(rows);
+}
+
+export async function settingsDatabaseRefresh() {
+  return await wasmDatabaseRefresh();
+}
+
+export function settingsDatabaseInstall() {
+  return wasmDatabaseInstall();
 }
 
 export function settingsExplorerAddress(value) {
@@ -965,6 +980,9 @@ mod tests {
         assert!(settings.contains("wasmIsKaspaAddress(value)"));
         assert!(settings.contains("wasmAddressNormalize(record)"));
         assert!(settings.contains("wasmDbKindFromFileName(value)"));
+        assert!(settings.contains("wasmDatabaseRenderRows(rows)"));
+        assert!(settings.contains("await wasmDatabaseRefresh()"));
+        assert!(settings.contains("wasmDatabaseInstall()"));
         assert!(settings.contains("wasmExplorerAddress(value)"));
         assert!(settings.contains("wasmExplorerUrl(value)"));
         assert!(settings.contains("new Set(wasmNodeOptional())"));

@@ -5,6 +5,7 @@ mod explorer_export;
 mod header_live_metrics;
 mod log_tab;
 mod settings_contract;
+mod settings_database;
 mod settings_layout;
 mod settings_runtime;
 mod settings_schema;

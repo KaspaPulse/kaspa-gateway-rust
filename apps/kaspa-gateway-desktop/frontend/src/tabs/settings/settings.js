@@ -5,6 +5,9 @@ import {
   settingsDisplayPreferences,
   settingsAddressNormalize,
   settingsDisplayStateMissingContract,
+  settingsDatabaseInstall,
+  settingsDatabaseRefresh,
+  settingsDatabaseRenderRows,
   settingsDbKindFromFileName,
   settingsExplorerAddress,
   settingsExplorerUrl,
@@ -1471,113 +1474,16 @@ function kgwSettingsDbInvoke() {
   return window.__TAURI__?.core?.invoke || window.__TAURI__?.tauri?.invoke || window.__TAURI_INVOKE__;
 }
 
-function kgwFormatSettingsDbModified(value) {
-  const raw = String(value || "");
-
-  if (!raw || raw === "missing" || raw === "unknown") return raw || "--";
-
-  const ms = Number(raw);
-  if (!Number.isFinite(ms)) return raw;
-
-  const date = new Date(ms);
-  if (Number.isNaN(date.getTime())) return raw;
-
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  const ss = String(date.getSeconds()).padStart(2, "0");
-
-  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
-}
-
 function kgwRenderSettingsDatabaseRows(rows) {
-  const tbody = document.getElementById("settingsDatabaseRows");
-  if (!tbody) return;
-
-  tbody.innerHTML = "";
-
-  if (!Array.isArray(rows) || rows.length === 0) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 4;
-    td.textContent = (window.kgwT ? window.kgwT("settings.noDatabaseFilesFound") : "No database files found.");
-    tr.appendChild(td);
-    tbody.appendChild(tr);
-    return;
-  }
-
-  for (const row of rows) {
-    const tr = document.createElement("tr");
-
-    const cells = [
-      row.file || "--",
-      Number(row.size_kb || 0).toLocaleString(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }),
-      kgwFormatSettingsDbModified(row.last_modified),
-      row.details || (row.exists ? "available" : "missing")
-    ];
-
-    for (const value of cells) {
-      const td = document.createElement("td");
-      td.textContent = String(value);
-      tr.appendChild(td);
-    }
-
-    tbody.appendChild(tr);
-  }
+  return settingsDatabaseRenderRows(rows);
 }
 
 async function kgwRefreshSettingsDatabaseStatus() {
-  const tbody = document.getElementById("settingsDatabaseRows");
-  const invoke = kgwSettingsDbInvoke();
-
-  if (!tbody) return;
-
-  if (!invoke) {
-    tbody.innerHTML = "<tr><td colspan=\"4\">Tauri invoke API is not available.</td></tr>";
-    return;
-  }
-
-  tbody.innerHTML = "<tr><td colspan=\"4\">Loading database status...</td></tr>";
-
-  try {
-    const rows = await invoke("kgw_settings_database_status");
-    kgwRenderSettingsDatabaseRows(rows);
-  } catch (error) {
-    tbody.innerHTML = "";
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 4;
-    td.textContent = `Failed to load database status: ${error?.message || error}`;
-    tr.appendChild(td);
-    tbody.appendChild(tr);
-  }
+  return await settingsDatabaseRefresh();
 }
 
 function kgwInstallSettingsDatabaseStatus() {
-  if (window.__kgwSettingsDatabaseStatusInstalled) return;
-  window.__kgwSettingsDatabaseStatusInstalled = true;
-
-  document.addEventListener("click", (event) => {
-    const button = event.target.closest && event.target.closest("#settingsDbRefresh");
-    if (!button) return;
-
-    event.preventDefault();
-    kgwRefreshSettingsDatabaseStatus();
-  }, true);
-
-  document.addEventListener("click", (event) => {
-    const tab = event.target.closest && event.target.closest('[data-settings-tab="database-maintenance"]');
-    if (!tab) return;
-
-    window.setTimeout(kgwRefreshSettingsDatabaseStatus, 100);
-  }, true);
-
-  window.setTimeout(kgwRefreshSettingsDatabaseStatus, 300);
+  return settingsDatabaseInstall();
 }
 
 window.kgwRefreshSettingsDatabaseStatus = kgwRefreshSettingsDatabaseStatus;

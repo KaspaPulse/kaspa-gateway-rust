@@ -859,6 +859,227 @@ export function topAddressesContractSetPrices(value) {
 }
 
 /**
+ * @param {any} line
+ * @returns {string}
+ */
+export function kgwLogParseLevel(line) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.kgwLogParseLevel(line);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} text
+ * @param {any} env
+ * @returns {Promise<boolean>}
+ */
+export function kgwLogCopyTextToClipboard(text, env) {
+    const ret = wasm.kgwLogCopyTextToClipboard(text, env);
+    return ret;
+}
+
+export function kgwLogInitTab() {
+    const ret = wasm.kgwLogInitTab();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} reason
+ * @returns {Promise<boolean>}
+ */
+export function headerLiveMetricsRefreshSelectedCurrencyPrice(reason) {
+    const ret = wasm.headerLiveMetricsRefreshSelectedCurrencyPrice(reason);
+    return ret;
+}
+
+export function headerLiveMetricsInit() {
+    wasm.headerLiveMetricsInit();
+}
+
+export function headerLiveMetricsInstallModule() {
+    wasm.headerLiveMetricsInstallModule();
+}
+
+/**
+ * @param {any} value
+ * @returns {number}
+ */
+export function headerLiveMetricsExtractUsdPrice(value) {
+    const ret = wasm.headerLiveMetricsExtractUsdPrice(value);
+    return ret;
+}
+
+/**
+ * @param {string} label
+ * @param {string} value
+ * @param {string} updated_at
+ * @param {string} source
+ * @returns {string}
+ */
+export function headerLiveMetricsBuildEnglishTooltip(label, value, updated_at, source) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(updated_at, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passStringToWasm0(source, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len3 = WASM_VECTOR_LEN;
+        const ret = wasm.headerLiveMetricsBuildEnglishTooltip(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        deferred5_0 = ret[0];
+        deferred5_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
+ * @param {number} epoch_ms
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatLocalDateTime(epoch_ms) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.headerLiveMetricsFormatLocalDateTime(epoch_ms);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {number} epoch_ms
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatEnglishTime(epoch_ms) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.headerLiveMetricsFormatEnglishTime(epoch_ms);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {number} epoch_ms
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatEnglishDate(epoch_ms) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.headerLiveMetricsFormatEnglishDate(epoch_ms);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {number} epoch_ms
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatEnglishStamp(epoch_ms) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.headerLiveMetricsFormatEnglishStamp(epoch_ms);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {string} kind
+ * @returns {any}
+ */
+export function headerLiveMetricsMetricIds(kind) {
+    const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.headerLiveMetricsMetricIds(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} prices
+ * @param {string} currency
+ * @returns {any}
+ */
+export function headerLiveMetricsNumericPrice(prices, currency) {
+    const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.headerLiveMetricsNumericPrice(prices, ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {string} currency
+ * @param {number} value
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatCurrency(currency, value) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.headerLiveMetricsFormatCurrency(ptr0, len0, value);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {string} metric_value
+ * @param {string} current_text
+ * @returns {string}
+ */
+export function headerLiveMetricsSelectedCurrencyValue(metric_value, current_text) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(metric_value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(current_text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.headerLiveMetricsSelectedCurrencyValue(ptr0, len0, ptr1, len1);
+        deferred3_0 = ret[0];
+        deferred3_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
  * @param {any} value
  * @returns {string}
  */
@@ -1138,6 +1359,65 @@ export function formatKas(value) {
 }
 
 /**
+ * @param {any} state
+ * @returns {any}
+ */
+export function runtimePresentation(state) {
+    const ret = wasm.runtimePresentation(state);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {any} fields
+ * @param {any} running
+ * @param {any} cpu_only
+ * @returns {string}
+ */
+export function runtimeObservationSummary(fields, running, cpu_only) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ret = wasm.runtimeObservationSummary(fields, running, cpu_only);
+        var ptr1 = ret[0];
+        var len1 = ret[1];
+        if (ret[3]) {
+            ptr1 = 0; len1 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred2_0 = ptr1;
+        deferred2_1 = len1;
+        return getStringFromWasm0(ptr1, len1);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {any} rows
+ */
+export function settingsDatabaseRenderRows(rows) {
+    wasm.settingsDatabaseRenderRows(rows);
+}
+
+/**
+ * @returns {Promise<void>}
+ */
+export function settingsDatabaseRefresh() {
+    const ret = wasm.settingsDatabaseRefresh();
+    return ret;
+}
+
+export function settingsDatabaseInstall() {
+    const ret = wasm.settingsDatabaseInstall();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
  * @param {any} level
  * @param {any} message
  * @param {any} details
@@ -1177,261 +1457,23 @@ export function shellLoggerInstall() {
     return ret !== 0;
 }
 
+export function analysisCalendarInstall() {
+    wasm.analysisCalendarInstall();
+}
+
 /**
- * @param {any} line
  * @returns {string}
  */
-export function kgwLogParseLevel(line) {
+export function analysisCalendarResetToToday() {
     let deferred1_0;
     let deferred1_1;
     try {
-        const ret = wasm.kgwLogParseLevel(line);
+        const ret = wasm.analysisCalendarResetToToday();
         deferred1_0 = ret[0];
         deferred1_1 = ret[1];
         return getStringFromWasm0(ret[0], ret[1]);
     } finally {
         wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} text
- * @param {any} env
- * @returns {Promise<boolean>}
- */
-export function kgwLogCopyTextToClipboard(text, env) {
-    const ret = wasm.kgwLogCopyTextToClipboard(text, env);
-    return ret;
-}
-
-export function kgwLogInitTab() {
-    const ret = wasm.kgwLogInitTab();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} reason
- * @returns {Promise<boolean>}
- */
-export function headerLiveMetricsRefreshSelectedCurrencyPrice(reason) {
-    const ret = wasm.headerLiveMetricsRefreshSelectedCurrencyPrice(reason);
-    return ret;
-}
-
-export function headerLiveMetricsInit() {
-    wasm.headerLiveMetricsInit();
-}
-
-export function headerLiveMetricsInstallModule() {
-    wasm.headerLiveMetricsInstallModule();
-}
-
-/**
- * @param {any} value
- * @returns {number}
- */
-export function headerLiveMetricsExtractUsdPrice(value) {
-    const ret = wasm.headerLiveMetricsExtractUsdPrice(value);
-    return ret;
-}
-
-/**
- * @param {string} label
- * @param {string} value
- * @param {string} updated_at
- * @param {string} source
- * @returns {string}
- */
-export function headerLiveMetricsBuildEnglishTooltip(label, value, updated_at, source) {
-    let deferred5_0;
-    let deferred5_1;
-    try {
-        const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(updated_at, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len2 = WASM_VECTOR_LEN;
-        const ptr3 = passStringToWasm0(source, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len3 = WASM_VECTOR_LEN;
-        const ret = wasm.headerLiveMetricsBuildEnglishTooltip(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
-        deferred5_0 = ret[0];
-        deferred5_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
-    }
-}
-
-/**
- * @param {number} epoch_ms
- * @returns {string}
- */
-export function headerLiveMetricsFormatLocalDateTime(epoch_ms) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.headerLiveMetricsFormatLocalDateTime(epoch_ms);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {number} epoch_ms
- * @returns {string}
- */
-export function headerLiveMetricsFormatEnglishTime(epoch_ms) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.headerLiveMetricsFormatEnglishTime(epoch_ms);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {number} epoch_ms
- * @returns {string}
- */
-export function headerLiveMetricsFormatEnglishDate(epoch_ms) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.headerLiveMetricsFormatEnglishDate(epoch_ms);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {number} epoch_ms
- * @returns {string}
- */
-export function headerLiveMetricsFormatEnglishStamp(epoch_ms) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.headerLiveMetricsFormatEnglishStamp(epoch_ms);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {string} kind
- * @returns {any}
- */
-export function headerLiveMetricsMetricIds(kind) {
-    const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.headerLiveMetricsMetricIds(ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {any} prices
- * @param {string} currency
- * @returns {any}
- */
-export function headerLiveMetricsNumericPrice(prices, currency) {
-    const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.headerLiveMetricsNumericPrice(prices, ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {string} currency
- * @param {number} value
- * @returns {string}
- */
-export function headerLiveMetricsFormatCurrency(currency, value) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.headerLiveMetricsFormatCurrency(ptr0, len0, value);
-        deferred2_0 = ret[0];
-        deferred2_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
- * @param {string} metric_value
- * @param {string} current_text
- * @returns {string}
- */
-export function headerLiveMetricsSelectedCurrencyValue(metric_value, current_text) {
-    let deferred3_0;
-    let deferred3_1;
-    try {
-        const ptr0 = passStringToWasm0(metric_value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(current_text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.headerLiveMetricsSelectedCurrencyValue(ptr0, len0, ptr1, len1);
-        deferred3_0 = ret[0];
-        deferred3_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
-    }
-}
-
-/**
- * @param {any} state
- * @returns {any}
- */
-export function runtimePresentation(state) {
-    const ret = wasm.runtimePresentation(state);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * @param {any} fields
- * @param {any} running
- * @param {any} cpu_only
- * @returns {string}
- */
-export function runtimeObservationSummary(fields, running, cpu_only) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ret = wasm.runtimeObservationSummary(fields, running, cpu_only);
-        var ptr1 = ret[0];
-        var len1 = ret[1];
-        if (ret[3]) {
-            ptr1 = 0; len1 = 0;
-            throw takeFromExternrefTable0(ret[2]);
-        }
-        deferred2_0 = ptr1;
-        deferred2_1 = len1;
-        return getStringFromWasm0(ptr1, len1);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
     }
 }
 
@@ -1462,36 +1504,16 @@ export function analysisViewResetExpansion() {
     wasm.analysisViewResetExpansion();
 }
 
-export function analysisCalendarInstall() {
-    wasm.analysisCalendarInstall();
-}
-
-/**
- * @returns {string}
- */
-export function analysisCalendarResetToToday() {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.analysisCalendarResetToToday();
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
 function __wbg_adapter_34(arg0, arg1) {
     wasm._dyn_core_ed718c3d60ebd546___ops__function__FnMut_____Output______as_wasm_bindgen_1ba7c375a52abd4d___closure__WasmClosure___describe__invoke______(arg0, arg1);
 }
 
 function __wbg_adapter_37(arg0, arg1, arg2) {
-    wasm.closure298_externref_shim(arg0, arg1, arg2);
+    wasm.closure310_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_236(arg0, arg1, arg2, arg3) {
-    wasm.closure322_externref_shim(arg0, arg1, arg2, arg3);
+function __wbg_adapter_239(arg0, arg1, arg2, arg3) {
+    wasm.closure334_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 async function __wbg_load(module, imports) {
@@ -1697,7 +1719,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_236(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_239(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1833,12 +1855,12 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1093 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 299, __wbg_adapter_37);
+    imports.wbg.__wbindgen_closure_wrapper1124 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 311, __wbg_adapter_37);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper598 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 123, __wbg_adapter_34);
+    imports.wbg.__wbindgen_closure_wrapper823 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 170, __wbg_adapter_34);
         return ret;
     };
     imports.wbg.__wbindgen_init_externref_table = function() {
