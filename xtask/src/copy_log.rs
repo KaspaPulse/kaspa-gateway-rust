@@ -3,6 +3,7 @@ use std::path::Path;
 use std::process::Command;
 
 const NODE_JS_REL: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
+const NODE_RUST_REL: &str = "crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs";
 const FRONTEND_TEST_REL: &str = "xtask/src/start_button_frontend.rs";
 const LIB_RS_REL: &str = "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs";
 const CARGO_TOML_REL: &str = "apps/kaspa-gateway-desktop/src-tauri/Cargo.toml";
@@ -10,6 +11,7 @@ const CARGO_TOML_REL: &str = "apps/kaspa-gateway-desktop/src-tauri/Cargo.toml";
 #[derive(Debug, Clone)]
 struct Inputs {
     node: String,
+    node_rust: String,
     frontend_test: String,
     lib_rs: String,
     cargo_toml: String,
@@ -18,6 +20,7 @@ struct Inputs {
 pub fn run(root: &Path) -> Result<String, String> {
     let inputs = Inputs {
         node: read_required(root, NODE_JS_REL)?,
+        node_rust: read_required(root, NODE_RUST_REL)?,
         frontend_test: read_required(root, FRONTEND_TEST_REL)?,
         lib_rs: read_required(root, LIB_RS_REL)?,
         cargo_toml: read_required(root, CARGO_TOML_REL)?,
@@ -165,38 +168,12 @@ fn validate(inputs: &Inputs) -> Vec<String> {
         r#"if (action === "clear-log") {"#,
     );
 
-    for (needle, message) in [
-        (
-            "kgwNodeTraceActiveNetworkR1",
-            "Copy Log must resolve the active network.",
-        ),
-        (
-            "kgwNodeReadClipboardRawLogBufferV1(copyNetwork)",
-            "Copy Log must read the selected active-network raw buffer.",
-        ),
-        (
-            "buffer.isPlaceholder",
-            "Copy Log must reject placeholder log text.",
-        ),
-        (
-            "non-empty raw log buffer",
-            "Copy Log must reject empty logs with an explicit error.",
-        ),
-        (
-            "await kgwNodeDispatchClipboardWriteV1",
-            "Copy Log must await native clipboard success.",
-        ),
-        (
-            "kgwNodeCopyLogFailureV1",
-            "Copy Log native failure must remain an error.",
-        ),
-        (
-            "frontend.copy_log_succeeded",
-            "Copy Log success trace must exist.",
-        ),
-    ] {
-        assert_contains(&mut failures, &copy_block, needle, message);
-    }
+    assert_contains(
+        &mut failures,
+        &copy_block,
+        "await wasmNodeHandleCopyLog",
+        "JavaScript Copy Log must delegate to the Rust/WASM owner.",
+    );
     for (needle, message) in [
         (
             "navigator.clipboard.writeText",
@@ -210,8 +187,82 @@ fn validate(inputs: &Inputs) -> Vec<String> {
         assert_not_contains(&mut failures, &copy_block, needle, message);
     }
 
-    let await_index = copy_block.find("await kgwNodeDispatchClipboardWriteV1");
-    let feedback_index = copy_block.find(r#"kgwNodeTranslateRuntimeV29("log.copied""#);
+    let rust_owner = &inputs.node_rust;
+    for (needle, message) in [
+        (
+            "async fn handle_copy_log_impl",
+            "Rust must own the Copy Log orchestration.",
+        ),
+        (
+            "trace_active_network(&root)",
+            "Rust Copy Log must resolve the active network.",
+        ),
+        (
+            "let buffer = read_copy_log_buffer(&copy_network);",
+            "Rust Copy Log must read the selected active-network raw buffer.",
+        ),
+        (
+            "buffer.is_placeholder",
+            "Rust Copy Log must reject placeholder log text.",
+        ),
+        (
+            "Copy Log requires a non-empty raw log buffer",
+            "Rust Copy Log must reject empty logs with an explicit error.",
+        ),
+        (
+            "dispatch_clipboard_write_impl(",
+            "Rust Copy Log must await the native clipboard owner.",
+        ),
+        (
+            "copy_log_failure_impl(",
+            "Rust Copy Log native failure must remain an error.",
+        ),
+        (
+            "frontend.copy_log_succeeded",
+            "Rust Copy Log success trace must exist.",
+        ),
+        (
+            "frontend.copy_log_click_observed",
+            "Rust Copy Log physical click trace stage is required.",
+        ),
+        (
+            "frontend.copy_log_network_resolved",
+            "Rust Copy Log network trace stage is required.",
+        ),
+        (
+            "frontend.copy_log_content_prepared",
+            "Rust Copy Log content trace stage is required.",
+        ),
+        (
+            "frontend.copy_log_dispatched",
+            "Rust Copy Log dispatch trace stage is required.",
+        ),
+        (
+            "frontend.copy_log_failed",
+            "Rust Copy Log failure trace stage is required.",
+        ),
+        (
+            "kgw_copy_text_to_clipboard_v1",
+            "Rust Copy Log must call the project-owned native clipboard command.",
+        ),
+        (
+            "normalize_clipboard_line_endings_text",
+            "Rust Copy Log must normalize line endings safely.",
+        ),
+        (
+            "copy_log_sha256_hex",
+            "Rust Copy Log should include SHA-256 metadata when practical.",
+        ),
+    ] {
+        assert_contains(&mut failures, rust_owner, needle, message);
+    }
+
+    let rust_handle = rust_owner
+        .find("async fn handle_copy_log_impl")
+        .map(|index| &rust_owner[index..])
+        .unwrap_or("");
+    let await_index = rust_handle.find("dispatch_clipboard_write_impl(");
+    let feedback_index = rust_handle.find(r#"translate_copy_log_text("log.copied""#);
     if await_index.is_none()
         || feedback_index.is_none()
         || matches!((await_index, feedback_index), (Some(awaited), Some(feedback)) if feedback < awaited)
@@ -221,47 +272,18 @@ fn validate(inputs: &Inputs) -> Vec<String> {
                 .to_owned(),
         );
     }
-    for (needle, message) in [
-        (
-            "frontend.copy_log_click_observed",
-            "Copy Log physical click trace stage is required.",
-        ),
-        (
-            "frontend.copy_log_network_resolved",
-            "Copy Log network trace stage is required.",
-        ),
-        (
-            "frontend.copy_log_content_prepared",
-            "Copy Log content trace stage is required.",
-        ),
-        (
-            "frontend.copy_log_dispatched",
-            "Copy Log dispatch trace stage is required.",
-        ),
-        (
-            "frontend.copy_log_failed",
-            "Copy Log failure trace stage is required.",
-        ),
-        (
-            "kgw_copy_text_to_clipboard_v1",
-            "Copy Log must call the project-owned native clipboard command.",
-        ),
-        (
-            "kgwNodeNormalizeClipboardLineEndingsV1",
-            "Copy Log must normalize line endings safely.",
-        ),
-        (
-            "kgwNodeSha256HexV1",
-            "Copy Log should include SHA-256 metadata when practical.",
-        ),
-    ] {
-        assert_contains(&mut failures, node, needle, message);
-    }
+
     assert_not_contains(
         &mut failures,
         node,
         "completeClipboardContent",
         "Trace metadata must not expose clipboard content.",
+    );
+    assert_not_contains(
+        &mut failures,
+        rust_owner,
+        "completeClipboardContent",
+        "Rust trace metadata must not expose clipboard content.",
     );
 
     for (needle, message) in [
@@ -340,29 +362,35 @@ function install() {
   if (action === "copy-log" || action === "clear-log") {}
 }
 async function kgwNodeHandleLogActionV29() {
-  frontend.copy_log_click_observed;
-  frontend.copy_log_network_resolved;
-  frontend.copy_log_content_prepared;
-  frontend.copy_log_dispatched;
-  frontend.copy_log_failed;
-  kgw_copy_text_to_clipboard_v1;
-  kgwNodeNormalizeClipboardLineEndingsV1;
-  kgwNodeSha256HexV1;
   if (action === "copy-log") {
-    kgwNodeTraceActiveNetworkR1();
-    kgwNodeReadClipboardRawLogBufferV1(copyNetwork);
-    buffer.isPlaceholder;
-    "non-empty raw log buffer";
-    await kgwNodeDispatchClipboardWriteV1();
-    kgwNodeCopyLogFailureV1();
-    frontend.copy_log_succeeded;
-    kgwNodeTranslateRuntimeV29("log.copied");
+    await wasmNodeHandleCopyLog(String(net || ""), button || null);
   }
   if (action === "clear-log") {}
 }
 "#;
+        let node_rust = r#"
+async fn handle_copy_log_impl() {
+    trace_active_network(&root);
+    let buffer = read_copy_log_buffer(&copy_network);
+    buffer.is_placeholder;
+    "Copy Log requires a non-empty raw log buffer";
+    normalize_clipboard_line_endings_text;
+    copy_log_sha256_hex;
+    frontend.copy_log_click_observed;
+    frontend.copy_log_network_resolved;
+    frontend.copy_log_content_prepared;
+    frontend.copy_log_dispatched;
+    frontend.copy_log_failed;
+    copy_log_failure_impl();
+    kgw_copy_text_to_clipboard_v1;
+    dispatch_clipboard_write_impl();
+    translate_copy_log_text("log.copied", "Copied");
+    frontend.copy_log_succeeded;
+}
+"#;
         Inputs {
             node: node.to_owned(),
+            node_rust: node_rust.to_owned(),
             frontend_test: [
                 "Copy Log must invoke native clipboard exactly once",
                 "Copy Log must pass testnet10 when testnet10 is active",
@@ -406,8 +434,8 @@ async function kgwNodeHandleLogActionV29() {
     fn browser_clipboard_path_fails_closed() {
         let mut inputs = fixture();
         inputs.node = inputs.node.replace(
-            "await kgwNodeDispatchClipboardWriteV1();",
-            "navigator.clipboard.writeText(raw); await kgwNodeDispatchClipboardWriteV1();",
+            r#"await wasmNodeHandleCopyLog(String(net || ""), button || null);"#,
+            r#"navigator.clipboard.writeText(raw); await wasmNodeHandleCopyLog(String(net || ""), button || null);"#,
         );
         assert!(
             validate(&inputs)
@@ -419,15 +447,11 @@ async function kgwNodeHandleLogActionV29() {
     #[test]
     fn success_feedback_before_await_fails_closed() {
         let mut inputs = fixture();
-        inputs.node = inputs.node.replace(
-            r#"await kgwNodeDispatchClipboardWriteV1();
-    kgwNodeCopyLogFailureV1();
-    frontend.copy_log_succeeded;
-    kgwNodeTranslateRuntimeV29("log.copied");"#,
-            r#"kgwNodeTranslateRuntimeV29("log.copied");
-    await kgwNodeDispatchClipboardWriteV1();
-    kgwNodeCopyLogFailureV1();
-    frontend.copy_log_succeeded;"#,
+        inputs.node_rust = inputs.node_rust.replace(
+            r#"dispatch_clipboard_write_impl();
+    translate_copy_log_text("log.copied", "Copied");"#,
+            r#"translate_copy_log_text("log.copied", "Copied");
+    dispatch_clipboard_write_impl();"#,
         );
         assert!(
             validate(&inputs)

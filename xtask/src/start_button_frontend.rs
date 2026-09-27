@@ -1075,6 +1075,14 @@ const wasmNodeSetLogAutoScroll = (net, enabled) => {
   const out = document.getElementById("node-" + String(net || "") + "-logOutput");
   if (enabled && out) out.scrollTop = out.scrollHeight;
 };
+const wasmNodeClearRawLogBuffer = (net, _role = "node") => {
+  const key = String(net || "");
+  const out = document.getElementById("node-" + key + "-logOutput");
+  if (out) out.textContent = "";
+  const empty = document.getElementById("node-" + key + "-logEmpty");
+  if (empty) empty.hidden = false;
+  return Boolean(out);
+};
 const wasmNodeInstallLogAutoScrollControls = () => {
   for (const profile of wasmNodeNetworkProfiles()) {
     const net = profile.key;
@@ -1277,6 +1285,9 @@ const wasmNodeStartTraceFrontend = (stage, options = {}) => {
   Promise.resolve(resolved.invoke("kgw_start_trace_frontend_v1", { stage: safeText(stage, "frontend.unknown"), network: safeText(options.network || options.net, "unknown"), action: safeText(options.action, "unknown"), result: safeText(options.result, "observed"), details: JSON.stringify(details) })).catch(() => {});
   return true;
 };
+const kgwResolvePublicTauriInvokeR1 = wasmNodeResolvePublicTauriInvoke;
+const kgwStartTraceFrontendR1 = wasmNodeStartTraceFrontend;
+const kgwNodeDispatchClipboardWriteV1 = wasmNodeDispatchClipboardWrite;
 const wasmNodeTraceActiveNetwork = (root = document.getElementById("kaspa-node")) => {
   if (!root) return "";
   const panel = Array.from(root.querySelectorAll("[data-node-network-panel]")).find((item) =>

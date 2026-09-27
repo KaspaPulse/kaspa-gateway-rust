@@ -16,7 +16,7 @@ import initNodeRust, {
   nodeApplyRuntimeLogReport as wasmNodeApplyRuntimeLogReport,
   nodeClearRawLogBuffer as wasmNodeClearRawLogBuffer,
   nodeCopyLogFailure as wasmNodeCopyLogFailure,
-  nodeDispatchClipboardWrite as wasmNodeDispatchClipboardWrite,
+  nodeDispatchClipboardWrite as kgwNodeDispatchClipboardWriteV1,
   nodeDispatchRuntimeLogClear as wasmNodeDispatchRuntimeLogClear,
   nodeEffectiveNodeSettings as wasmNodeEffectiveNodeSettings,
   nodeElementId as wasmNodeElementId,
@@ -46,7 +46,7 @@ import initNodeRust, {
   nodeR51SaveSettingsAction as wasmNodeR51SaveSettingsAction,
   nodeR51SetDefaultsAction as wasmNodeR51SetDefaultsAction,
   nodeResolveInnerTab as wasmNodeResolveInnerTab,
-  nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
+  nodeResolvePublicTauriInvoke as kgwResolvePublicTauriInvokeR1,
   nodeRuntimeActionForCommand as wasmNodeRuntimeActionForCommand,
   nodeRuntimeArgs as wasmNodeRuntimeArgs,
   nodeRuntimeErrorFromStatus as wasmNodeRuntimeErrorFromStatus,
@@ -56,7 +56,7 @@ import initNodeRust, {
   nodeSetNetworkEnabled as wasmNodeSetNetworkEnabled,
   nodeStringifyRuntimeResult as wasmNodeStringifyRuntimeResult,
   nodeSmallOwnerTrace as wasmNodeSmallOwnerTrace,
-  nodeStartTraceFrontend as wasmNodeStartTraceFrontend,
+  nodeStartTraceFrontend as kgwStartTraceFrontendR1,
   nodeTraceActiveNetwork as wasmNodeTraceActiveNetwork,
   nodeTraceRenderedStartControls as wasmNodeTraceRenderedStartControls,
   nodeTraceStartButtonState as wasmNodeTraceStartButtonState,
@@ -693,17 +693,6 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
 // END_KGW_SETTINGS_OWNER_V19
 
 /* KGW_START_TRACE_R1 is Rust-owned in node_start_trace.rs. */
-function kgwResolvePublicTauriInvokeR1() {
-  return wasmNodeResolvePublicTauriInvoke();
-}
-
-function kgwStartTraceFrontendR1(stage, options = {}) {
-  return wasmNodeStartTraceFrontend(stage, options || {});
-}
-async function kgwNodeDispatchClipboardWriteV1(net, text, metadata = {}) {
-  return await wasmNodeDispatchClipboardWrite(String(net || ""), String(text ?? ""), metadata || {});
-}
-
 /* KGW_NODE_TRACE_OBSERVER_R1 is Rust-owned in node_start_trace.rs. */
 
 
