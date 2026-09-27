@@ -86,6 +86,15 @@ function staticPlacementTests() {
   assert.ok(!/appendLog\([^)]*node settings saved/i.test(source), "Settings success text must not be inserted into raw logs");
   assert.ok(!/appendLog\([^)]*node .* response/i.test(source), "Synthetic start response text must not be inserted into raw logs");
   assert.ok(
+    source.includes("nodeApplyRuntimeLogReport as kgwNodeApplyRuntimeLogReportV1")
+      && source.includes("nodeClearRawLogBuffer as kgwNodeClearRawLogBufferV1")
+      && source.includes("nodeDispatchRuntimeLogClear as kgwNodeDispatchRuntimeLogClearV1")
+      && !source.includes("function kgwNodeApplyRuntimeLogReportV1(")
+      && !source.includes("function kgwNodeClearRawLogBufferV1(")
+      && !source.includes("function kgwNodeDispatchRuntimeLogClearV1("),
+    "Node raw-log adapters must bind directly to the Rust/WASM owner without JavaScript wrappers",
+  );
+  assert.ok(
     source.includes("const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 110000"),
     "Node Start must wait through the backend readiness window",
   );
@@ -139,10 +148,12 @@ function staticPlacementTests() {
     "Node command-composer schema policy must not remain implemented in hand-maintained JS",
   );
   assert.ok(
-    source.includes("nodeR51Keys as wasmNodeR51Keys")
+    source.includes("nodeR51Keys as kgwNodeR51Keys")
+      && !source.includes("function kgwNodeR51Keys(")
       && source.includes("nodeR51Panel as kgwNodeR51Panel")
       && !source.includes("function kgwNodeR51Panel(")
-      && source.includes("nodeR51Fields as wasmNodeR51Fields")
+      && source.includes("nodeR51Fields as kgwNodeR51Fields")
+      && !source.includes("function kgwNodeR51Fields(")
       && source.includes("nodeR51ReadSettings as wasmNodeR51ReadSettings")
       && source.includes("nodeR51Load as wasmNodeR51Load")
       && source.includes("nodeR51CaptureFactoryDefaults as kgwNodeR51CaptureFactoryDefaults")
@@ -1297,6 +1308,15 @@ const wasmNodeStartTraceFrontend = (stage, options = {}) => {
 const kgwResolvePublicTauriInvokeR1 = wasmNodeResolvePublicTauriInvoke;
 const kgwStartTraceFrontendR1 = wasmNodeStartTraceFrontend;
 const kgwNodeDispatchClipboardWriteV1 = wasmNodeDispatchClipboardWrite;
+const kgwNodeClearRawLogBufferV1 = wasmNodeClearRawLogBuffer;
+const kgwNodeDispatchRuntimeLogClearV1 = async (net, role = "node") => {
+  const resolved = wasmNodeResolvePublicTauriInvoke();
+  if (typeof resolved.invoke !== "function") return null;
+  return await resolved.invoke("kgw_kgw_runtime_clear_logs_v1", {
+    network: String(net || ""),
+    runtimeRole: String(role || "node"),
+  });
+};
 const wasmNodeTraceActiveNetwork = (root = document.getElementById("kaspa-node")) => {
   if (!root) return "";
   const panel = Array.from(root.querySelectorAll("[data-node-network-panel]")).find((item) =>
@@ -1437,6 +1457,8 @@ const kgwNodeResolveInnerTabR101U = wasmNodeResolveInnerTab;
 const kgwNodeSaveInnerTabR101U = wasmNodeSaveInnerTab;
 const kgwNodeAssertStartEvidence = wasmNodeAssertStartEvidence;
 const nodeRuntimeArgs = wasmNodeRuntimeArgs;
+const kgwNodeR51Keys = wasmNodeR51Keys;
+const kgwNodeR51Fields = wasmNodeR51Fields;
 const kgwNodeR51Panel = wasmNodeR51Panel;
 `;
   const executable = importPrelude + source

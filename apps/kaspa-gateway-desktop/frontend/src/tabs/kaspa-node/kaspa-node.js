@@ -13,11 +13,11 @@ import initNodeRust, {
   nodeCommandOptionsKey as wasmNodeCommandOptionsKey,
   nodeRefreshInlineCommandToggles as kgwNodeRefreshInlineCommandTogglesR7,
   nodeToggleCommandOption as wasmNodeToggleCommandOption,
-  nodeApplyRuntimeLogReport as wasmNodeApplyRuntimeLogReport,
-  nodeClearRawLogBuffer as wasmNodeClearRawLogBuffer,
+  nodeApplyRuntimeLogReport as kgwNodeApplyRuntimeLogReportV1,
+  nodeClearRawLogBuffer as kgwNodeClearRawLogBufferV1,
   nodeCopyLogFailure as wasmNodeCopyLogFailure,
   nodeDispatchClipboardWrite as kgwNodeDispatchClipboardWriteV1,
-  nodeDispatchRuntimeLogClear as wasmNodeDispatchRuntimeLogClear,
+  nodeDispatchRuntimeLogClear as kgwNodeDispatchRuntimeLogClearV1,
   nodeEffectiveNodeSettings as wasmNodeEffectiveNodeSettings,
   nodeElementId as id,
   nodeEscapeHtml as esc,
@@ -36,8 +36,8 @@ import initNodeRust, {
   nodeRuntimeEvidence as kgwNodeRuntimeEvidence,
   nodeReadLastNetwork as kgwNodeReadLastNetworkR101W2,
   nodeR51CaptureFactoryDefaults as kgwNodeR51CaptureFactoryDefaults,
-  nodeR51Fields as wasmNodeR51Fields,
-  nodeR51Keys as wasmNodeR51Keys,
+  nodeR51Fields as kgwNodeR51Fields,
+  nodeR51Keys as kgwNodeR51Keys,
   nodeR51Load as wasmNodeR51Load,
   nodeR51LoadSavedSettings as wasmNodeR51LoadSavedSettings,
   nodeR51Panel as kgwNodeR51Panel,
@@ -777,18 +777,6 @@ function cardCheck(net, name, label, checked = false, span2 = false) {
 // KGW_NODE_LOG_AUTOSCROLL_CONTROLS_R27 is Rust-owned in node_frontend_helpers.rs.
 
 /* KGW_NODE_RAW_LOG_OWNER_V2 is Rust-owned in node_start_trace.rs. */
-function kgwNodeApplyRuntimeLogReportV1(net, role, report) {
-  return wasmNodeApplyRuntimeLogReport(String(net || ""), String(role || "node"), report);
-}
-
-function kgwNodeClearRawLogBufferV1(net, role = "node") {
-  return wasmNodeClearRawLogBuffer(String(net || ""), String(role || "node"));
-}
-
-async function kgwNodeDispatchRuntimeLogClearV1(net, role = "node") {
-  return await wasmNodeDispatchRuntimeLogClear(String(net || ""), String(role || "node"));
-}
-
 function appendLog(net, message) {
   // Raw monitor text is driven by typed runtime log reports. This legacy hook is
   // intentionally inert so UI status strings cannot become fabricated raw lines.
@@ -1540,15 +1528,6 @@ const KGW_NODE_R51_TRANSITIONS = {};
 const KGW_NODE_R51_STATUS_IN_FLIGHT = new Map();
 const KGW_NODE_R51_LOGS_IN_FLIGHT = new Map();
 let KGW_NODE_R51_TIMER = null;
-
-function kgwNodeR51Keys() {
-  return Array.from(wasmNodeR51Keys());
-}
-
-function kgwNodeR51Fields(net) {
-  return Array.from(wasmNodeR51Fields(String(net || "")));
-}
-
 
 /* KGW_NODE_SETTINGS_LIFECYCLE_FIX_R6_START */
 
