@@ -17,6 +17,7 @@ mod settings_schema;
 mod settings_state;
 mod settings_ui;
 mod shell_aux;
+mod shell_display;
 mod shell_logger;
 mod shell_runtime;
 mod top_addresses;
