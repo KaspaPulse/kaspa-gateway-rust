@@ -374,7 +374,7 @@ fn call_method1(target: &JsValue, name: &str, argument: &JsValue) -> Result<JsVa
     method(target, name)?.call1(target, argument)
 }
 
-fn apply_status_tone_js(element: JsValue, state: JsValue) -> Result<(), JsValue> {
+pub(crate) fn apply_status_tone_js(element: JsValue, state: JsValue) -> Result<(), JsValue> {
     if !js_boolean(&element) {
         return Ok(());
     }

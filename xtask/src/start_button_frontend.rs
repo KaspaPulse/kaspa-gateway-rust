@@ -583,6 +583,141 @@ const wasmNodeClipboardPlaceholderText = (net) => {
   const labels = { mainnet: "Mainnet", testnet10: "Testnet 10", testnet13: "Testnet 13" };
   return String(labels[key] || key) + " log is empty.";
 };
+const wasmNodeCopyLogStatus = (net, message, state = "info") => {
+  const out = document.getElementById("node-" + net + "-logOutput");
+  const panel = out && out.closest && out.closest('[data-node-inner-panel="log"]');
+  const toolbar = panel && panel.querySelector(".node-v6-log-toolbar");
+  if (!toolbar) return false;
+  let status = toolbar.querySelector('.kgw-copy-log-status-v1[data-net="' + net + '"]');
+  if (!status) {
+    status = document.createElement("span");
+    status.setAttribute("class", "kgw-copy-log-status-v1");
+    status.dataset.net = net;
+    status.setAttribute("data-net", net);
+    status.setAttribute("role", "status");
+    status.setAttribute("aria-live", "polite");
+    toolbar.appendChild(status);
+  }
+  status.textContent = String(message || "");
+  status.dataset.state = String(state || "info");
+  status.hidden = !status.textContent;
+  return true;
+};
+const wasmNodeCopyLogFailure = (net, button, error, details = {}) => {
+  const safeError = wasmNodeClipboardSafeError(error);
+  wasmNodeCopyLogStatus(net, safeError, "error");
+  if (button) button.textContent = "Copy failed";
+  wasmNodeStartTraceFrontend("frontend.copy_log_failed", {
+    network: net,
+    action: "copy-log",
+    result: "error",
+    details: { ...(details || {}), safeError, userFeedbackDisplayed: true },
+  });
+  return false;
+};
+const wasmNodeDispatchClipboardWrite = async (net, text, metadata = {}) => {
+  const resolved = wasmNodeResolvePublicTauriInvoke();
+  if (typeof resolved.invoke !== "function") {
+    throw new Error("Tauri invoke API is not available. Expected window.__TAURI__.core.invoke from Tauri 2 with withGlobalTauri enabled.");
+  }
+  wasmNodeStartTraceFrontend("frontend.copy_log_dispatched", {
+    network: net,
+    action: "copy-log",
+    result: "dispatched",
+    details: {
+      commandName: "kgw_copy_text_to_clipboard_v1",
+      implementation: "native-tauri-command",
+      runtimeRole: metadata.runtimeRole || "node",
+      bridgeInstanceId: metadata.bridgeInstanceId || "",
+      characterCount: metadata.characterCount,
+      lineCount: metadata.lineCount,
+      sha256: metadata.sha256 || "",
+      payloadFieldCount: 7,
+    },
+  });
+  return await resolved.invoke("kgw_copy_text_to_clipboard_v1", {
+    network: net,
+    runtimeRole: metadata.runtimeRole || "node",
+    bridgeInstanceId: metadata.bridgeInstanceId || "",
+    text,
+    characterCount: metadata.characterCount,
+    lineCount: metadata.lineCount,
+    sha256: metadata.sha256 || "",
+  });
+};
+const wasmNodeHandleCopyLog = async (net, button) => {
+  const copyNetwork = String(net || "").trim();
+  const root = document.getElementById("kaspa-node");
+  const activeNetwork = wasmNodeTraceActiveNetwork(root);
+  const belongsToLiveNodeMonitor = Boolean(button && button.closest && button.closest('[data-node-inner-panel="log"]'));
+  if (!copyNetwork) {
+    return wasmNodeCopyLogFailure(net, button, "Copy Log could not resolve the active network.", {
+      reason: "missing-network", activeNetwork, belongsToLiveNodeMonitor,
+    });
+  }
+  wasmNodeStartTraceFrontend("frontend.copy_log_network_resolved", {
+    network: copyNetwork,
+    action: "copy-log",
+    result: activeNetwork && activeNetwork !== copyNetwork ? "error" : "ok",
+    details: { activeNetwork, buttonNetwork: copyNetwork, belongsToLiveNodeMonitor },
+  });
+  if (activeNetwork && activeNetwork !== copyNetwork) {
+    return wasmNodeCopyLogFailure(copyNetwork, button, "Copy Log network mismatch; active network changed before copy started.", {
+      reason: "network-mismatch", activeNetwork, buttonNetwork: copyNetwork, belongsToLiveNodeMonitor,
+    });
+  }
+  if (button && button.dataset && button.dataset.kgwCopyLogInFlightV1 === "1") {
+    return wasmNodeCopyLogFailure(copyNetwork, button, "Copy Log is already in progress for this network.", {
+      reason: "duplicate-copy", activeNetwork, belongsToLiveNodeMonitor,
+    });
+  }
+  const originalDisabled = Boolean(button && button.disabled);
+  if (button) {
+    button.dataset.kgwCopyLogInFlightV1 = "1";
+    button.disabled = true;
+  }
+  let ok = false;
+  try {
+    const out = document.getElementById("node-" + copyNetwork + "-logOutput");
+    const tag = String(out && out.tagName || "").toUpperCase();
+    const rawText = String(out ? ((tag === "TEXTAREA" || tag === "INPUT") ? out.value : out.textContent) : "");
+    const normalizedText = wasmNodeNormalizeClipboardLineEndings(rawText);
+    const isPlaceholder = rawText.trim() === wasmNodeClipboardPlaceholderText(copyNetwork).trim();
+    const characterCount = wasmNodeClipboardCharacterCount(normalizedText);
+    const lineCount = wasmNodeClipboardLineCount(normalizedText);
+    if (!out || isPlaceholder || !normalizedText.trim()) {
+      wasmNodeStartTraceFrontend("frontend.copy_log_content_prepared", {
+        network: copyNetwork, action: "copy-log", result: "error",
+        details: { rawLogBufferSelected: Boolean(out), placeholderRejected: Boolean(isPlaceholder), runtimeRole: "node", bridgeInstanceId: "", characterCount, lineCount, sha256: "" },
+      });
+      throw new Error("Copy Log requires a non-empty raw log buffer for " + copyNetwork + ".");
+    }
+    const bytes = new TextEncoder().encode(normalizedText);
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    const sha256 = Array.from(new Uint8Array(digest)).map((value) => value.toString(16).padStart(2, "0")).join("");
+    const metadata = { runtimeRole: "node", bridgeInstanceId: "", characterCount, lineCount, sha256 };
+    wasmNodeStartTraceFrontend("frontend.copy_log_content_prepared", {
+      network: copyNetwork, action: "copy-log", result: "ok",
+      details: { rawLogBufferSelected: true, placeholderRejected: false, ...metadata },
+    });
+    await wasmNodeDispatchClipboardWrite(copyNetwork, normalizedText, metadata);
+    if (button) button.textContent = "Copied";
+    wasmNodeCopyLogStatus(copyNetwork, "Copied", "ok");
+    wasmNodeStartTraceFrontend("frontend.copy_log_succeeded", {
+      network: copyNetwork, action: "copy-log", result: "ok",
+      details: { ...metadata, userFeedbackDisplayed: true },
+    });
+    ok = true;
+  } catch (error) {
+    wasmNodeCopyLogFailure(copyNetwork, button, error, { activeNetwork, belongsToLiveNodeMonitor });
+  } finally {
+    if (button) {
+      button.disabled = originalDisabled;
+      delete button.dataset.kgwCopyLogInFlightV1;
+    }
+  }
+  return ok;
+};
 const wasmNodeStartTraceTauriShape = (adapterName = "") => {
   const tauri = window.__TAURI__;
   const keys = (value) => value && typeof value === "object" ? Object.keys(value).sort().slice(0, 24) : [];

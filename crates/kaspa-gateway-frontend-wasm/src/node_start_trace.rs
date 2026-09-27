@@ -1,5 +1,6 @@
-use js_sys::{Array, Function, JSON, Object, Promise, Reflect};
+use js_sys::{Array, Function, JSON, Object, Promise, Reflect, Uint8Array};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
+use wasm_bindgen_futures::JsFuture;
 
 const COMMAND: &str = "kgw_start_trace_frontend_v1";
 const REDACTED: &str = "[redacted]";
@@ -709,6 +710,680 @@ fn resolved_invoke() -> JsValue {
     set(output.as_ref(), "shape", &tauri_shape("missing"));
     output.into()
 }
+#[derive(Clone)]
+struct NodeClipboardBuffer {
+    out: JsValue,
+    normalized_text: String,
+    is_placeholder: bool,
+    character_count: u32,
+    line_count: u32,
+}
+
+fn copy_log_call2(
+    target: &JsValue,
+    name: &str,
+    first: &JsValue,
+    second: &JsValue,
+) -> Option<JsValue> {
+    function(target, name)?.call2(target, first, second).ok()
+}
+
+fn copy_log_set_attr(target: &JsValue, name: &str, value: &str) {
+    let _ = copy_log_call2(
+        target,
+        "setAttribute",
+        &JsValue::from_str(name),
+        &JsValue::from_str(value),
+    );
+}
+
+fn copy_log_output(net: &str) -> JsValue {
+    call1(
+        &document(),
+        "getElementById",
+        &JsValue::from_str(&format!("node-{net}-logOutput")),
+    )
+    .unwrap_or(JsValue::UNDEFINED)
+}
+
+fn copy_log_status_element(net: &str) -> JsValue {
+    let out = copy_log_output(net);
+    if !present(&out) {
+        return JsValue::UNDEFINED;
+    }
+    let panel = closest(&out, "[data-node-inner-panel=\"log\"]");
+    if !present(&panel) {
+        return JsValue::UNDEFINED;
+    }
+    let toolbar = query(&panel, ".node-v6-log-toolbar");
+    if !present(&toolbar) {
+        return JsValue::UNDEFINED;
+    }
+
+    let selector = format!(".kgw-copy-log-status-v1[data-net=\"{net}\"]");
+    let existing = query(&toolbar, &selector);
+    if present(&existing) {
+        return existing;
+    }
+
+    let status = call1(&document(), "createElement", &JsValue::from_str("span"))
+        .unwrap_or(JsValue::UNDEFINED);
+    if !present(&status) {
+        return JsValue::UNDEFINED;
+    }
+    copy_log_set_attr(&status, "class", "kgw-copy-log-status-v1");
+    set(
+        &property(&status, "dataset"),
+        "net",
+        &JsValue::from_str(net),
+    );
+    copy_log_set_attr(&status, "data-net", net);
+    copy_log_set_attr(&status, "role", "status");
+    copy_log_set_attr(&status, "aria-live", "polite");
+    let _ = call1(&toolbar, "appendChild", &status);
+    status
+}
+
+fn set_copy_log_status(net: &str, message: &str, state: &str) -> bool {
+    let status = copy_log_status_element(net);
+    if !present(&status) {
+        return false;
+    }
+    set(&status, "textContent", &JsValue::from_str(message));
+    set(
+        &property(&status, "dataset"),
+        "state",
+        &JsValue::from_str(state),
+    );
+    let _ = crate::apply_status_tone_js(status.clone(), JsValue::from_str(state));
+    set(&status, "hidden", &JsValue::from_bool(message.is_empty()));
+    true
+}
+
+fn read_copy_log_buffer(net: &str) -> NodeClipboardBuffer {
+    let out = copy_log_output(net);
+    let tag = crate::js_string_owned(&property(&out, "tagName")).to_uppercase();
+    let raw_text = if present(&out) {
+        if tag == "TEXTAREA" || tag == "INPUT" {
+            crate::js_string_owned(&property(&out, "value"))
+        } else {
+            crate::js_string_owned(&property(&out, "textContent"))
+        }
+    } else {
+        String::new()
+    };
+    let placeholder = clipboard_placeholder_text(net);
+    let is_placeholder = raw_text.trim() == placeholder.trim();
+    let normalized_text = normalize_clipboard_line_endings_text(&raw_text);
+    NodeClipboardBuffer {
+        out,
+        is_placeholder,
+        character_count: clipboard_character_count_text(&normalized_text) as u32,
+        line_count: clipboard_line_count_text(&normalized_text) as u32,
+        normalized_text,
+    }
+}
+
+fn translate_copy_log_text(key: &str, fallback: &str) -> String {
+    for name in ["kgwT", "kgwI18n", "__kgwT"] {
+        let candidate = property(&window(), name);
+        if let Ok(function) = candidate.dyn_into::<Function>()
+            && let Ok(value) = function.call2(
+                &window(),
+                &JsValue::from_str(key),
+                &JsValue::from_str(fallback),
+            )
+        {
+            let text = crate::js_string_owned(&value);
+            if !text.is_empty() && text != key {
+                return text;
+            }
+        }
+    }
+    fallback.to_owned()
+}
+
+fn restore_copy_log_button_label(button: &JsValue) {
+    if !present(button) {
+        return;
+    }
+    let dataset = property(button, "dataset");
+    let original = crate::js_string_owned(&property(&dataset, "kgwLogOriginalLabelV29"));
+    if !original.is_empty() {
+        set(button, "textContent", &JsValue::from_str(&original));
+    }
+    let class_list = property(button, "classList");
+    let _ = call1(
+        &class_list,
+        "remove",
+        &JsValue::from_str("kgw-log-action-feedback"),
+    );
+    if let Ok(dataset_object) = dataset.dyn_into::<Object>() {
+        let _ = Reflect::delete_property(&dataset_object, &JsValue::from_str("kgwDoneLabel"));
+    }
+}
+
+fn flash_copy_log_button(button: &JsValue, done_label: &str) {
+    if !present(button) {
+        return;
+    }
+    let dataset = property(button, "dataset");
+    let original = crate::js_string_owned(&property(&dataset, "kgwLogOriginalLabelV29"));
+    if original.is_empty() {
+        let text = crate::js_string_owned(&property(button, "textContent"));
+        let value = if text.trim().is_empty() {
+            "Log Action"
+        } else {
+            text.trim()
+        };
+        set(
+            &dataset,
+            "kgwLogOriginalLabelV29",
+            &JsValue::from_str(value),
+        );
+    }
+
+    let old_timer = property(button, "__kgwLogActionFeedbackTimerV29");
+    if present(&old_timer) {
+        let _ = call1(&window(), "clearTimeout", &old_timer);
+    }
+
+    set(button, "textContent", &JsValue::from_str(done_label));
+    set(&dataset, "kgwDoneLabel", &JsValue::from_str(done_label));
+    let class_list = property(button, "classList");
+    let _ = call1(
+        &class_list,
+        "add",
+        &JsValue::from_str("kgw-log-action-feedback"),
+    );
+
+    let button_for_timer = button.clone();
+    let callback = Closure::wrap(Box::new(move || {
+        restore_copy_log_button_label(&button_for_timer);
+    }) as Box<dyn FnMut()>);
+    if let Some(timer) = copy_log_call2(
+        &window(),
+        "setTimeout",
+        callback.as_ref(),
+        &JsValue::from_f64(1600.0),
+    ) {
+        set(button, "__kgwLogActionFeedbackTimerV29", &timer);
+    }
+    callback.forget();
+}
+
+fn clone_object(value: &JsValue) -> JsValue {
+    let output = Object::new();
+    if value.is_object() && !value.is_null() && !Array::is_array(value) {
+        for entry in Object::entries(&Object::from(value.clone())).iter() {
+            let pair = Array::from(&entry);
+            if pair.length() >= 2 {
+                let key = crate::js_string_owned(&pair.get(0));
+                set(output.as_ref(), &key, &pair.get(1));
+            }
+        }
+    }
+    output.into()
+}
+
+fn copy_log_failure_impl(net: &str, button: &JsValue, error: &JsValue, details: &JsValue) -> bool {
+    let message = property(error, "message");
+    let source = if crate::js_boolean(&message) {
+        crate::js_string_owned(&message)
+    } else if crate::js_boolean(error) {
+        crate::js_string_owned(error)
+    } else {
+        "clipboard write failed".to_owned()
+    };
+    let safe_error = clipboard_safe_error_text(&source);
+    let _ = set_copy_log_status(net, &safe_error, "error");
+    flash_copy_log_button(
+        button,
+        &translate_copy_log_text("log.copyFailed", "Copy failed"),
+    );
+
+    let merged = clone_object(details);
+    set(&merged, "safeError", &JsValue::from_str(&safe_error));
+    set(&merged, "userFeedbackDisplayed", &JsValue::TRUE);
+    emit_start_trace("frontend.copy_log_failed", net, "copy-log", "error", merged);
+    false
+}
+
+async fn copy_log_sha256_hex(text: &str) -> String {
+    let crypto = {
+        let from_window = property(&window(), "crypto");
+        if present(&from_window) {
+            from_window
+        } else {
+            property(&global(), "crypto")
+        }
+    };
+    let subtle = property(&crypto, "subtle");
+    let Some(digest) = function(&subtle, "digest") else {
+        return String::new();
+    };
+    let bytes = Uint8Array::from(text.as_bytes());
+    let Ok(result) = digest.call2(&subtle, &JsValue::from_str("SHA-256"), bytes.as_ref()) else {
+        return String::new();
+    };
+    let Ok(resolved) = JsFuture::from(Promise::resolve(&result)).await else {
+        return String::new();
+    };
+    let bytes = Uint8Array::new(&resolved).to_vec();
+    let mut output = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        output.push_str(&format!("{byte:02x}"));
+    }
+    output
+}
+
+fn metadata_text(metadata: &JsValue, name: &str, fallback: &str) -> String {
+    let value = property(metadata, name);
+    if crate::js_boolean(&value) {
+        crate::js_string_owned(&value)
+    } else {
+        fallback.to_owned()
+    }
+}
+
+fn metadata_number(metadata: &JsValue, name: &str) -> f64 {
+    let value = property(metadata, name);
+    let number = crate::js_number(&value);
+    if number.is_finite() { number } else { 0.0 }
+}
+
+async fn await_with_timeout(value: JsValue, timeout_ms: u32) -> Result<JsValue, JsValue> {
+    let timeout = Promise::new(&mut |_resolve, reject| {
+        let reject_for_timer = reject.clone();
+        let callback = Closure::wrap(Box::new(move || {
+            let _ = reject_for_timer.call1(
+                &JsValue::UNDEFINED,
+                &JsValue::from_str("Tauri invoke timed out."),
+            );
+        }) as Box<dyn FnMut()>);
+        let _ = copy_log_call2(
+            &window(),
+            "setTimeout",
+            callback.as_ref(),
+            &JsValue::from_f64(timeout_ms as f64),
+        );
+        callback.forget();
+    });
+    let values = Array::new();
+    values.push(Promise::resolve(&value).as_ref());
+    values.push(timeout.as_ref());
+    JsFuture::from(Promise::race(values.as_ref())).await
+}
+
+async fn dispatch_clipboard_write_impl(
+    net: &str,
+    text: &str,
+    metadata: &JsValue,
+) -> Result<JsValue, JsValue> {
+    let resolved = resolved_invoke();
+    let Some(invoke) = property(&resolved, "invoke").dyn_into::<Function>().ok() else {
+        return Err(JsValue::from_str(
+            "Tauri invoke API is not available. Expected window.__TAURI__.core.invoke from Tauri 2 with withGlobalTauri enabled.",
+        ));
+    };
+    let runtime_role = metadata_text(metadata, "runtimeRole", "node");
+    let bridge_instance_id = metadata_text(metadata, "bridgeInstanceId", "");
+    let character_count = metadata_number(metadata, "characterCount");
+    let line_count = metadata_number(metadata, "lineCount");
+    let sha256 = metadata_text(metadata, "sha256", "");
+
+    let trace_details = Object::new();
+    for (key, value) in [
+        (
+            "commandName",
+            JsValue::from_str("kgw_copy_text_to_clipboard_v1"),
+        ),
+        ("implementation", JsValue::from_str("native-tauri-command")),
+        ("runtimeRole", JsValue::from_str(&runtime_role)),
+        ("bridgeInstanceId", JsValue::from_str(&bridge_instance_id)),
+        ("characterCount", JsValue::from_f64(character_count)),
+        ("lineCount", JsValue::from_f64(line_count)),
+        ("sha256", JsValue::from_str(&sha256)),
+        ("payloadFieldCount", JsValue::from_f64(7.0)),
+    ] {
+        set(trace_details.as_ref(), key, &value);
+    }
+    emit_start_trace(
+        "frontend.copy_log_dispatched",
+        net,
+        "copy-log",
+        "dispatched",
+        trace_details.into(),
+    );
+
+    let payload = Object::new();
+    set(payload.as_ref(), "network", &JsValue::from_str(net));
+    set(
+        payload.as_ref(),
+        "runtimeRole",
+        &JsValue::from_str(&runtime_role),
+    );
+    set(
+        payload.as_ref(),
+        "bridgeInstanceId",
+        &JsValue::from_str(&bridge_instance_id),
+    );
+    set(payload.as_ref(), "text", &JsValue::from_str(text));
+    set(
+        payload.as_ref(),
+        "characterCount",
+        &JsValue::from_f64(character_count),
+    );
+    set(
+        payload.as_ref(),
+        "lineCount",
+        &JsValue::from_f64(line_count),
+    );
+    set(payload.as_ref(), "sha256", &JsValue::from_str(&sha256));
+
+    let result = invoke.call2(
+        &JsValue::UNDEFINED,
+        &JsValue::from_str("kgw_copy_text_to_clipboard_v1"),
+        payload.as_ref(),
+    )?;
+    await_with_timeout(result, 110_000).await
+}
+
+async fn handle_copy_log_impl(net: &str, button: &JsValue) -> bool {
+    let root = node_root(&JsValue::UNDEFINED);
+    let active_network = trace_active_network(&root);
+    let belongs_to_live_node_monitor = present(&closest(button, "[data-node-inner-panel=\"log\"]"));
+    let copy_network = net.trim().to_owned();
+
+    if copy_network.is_empty() {
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "reason",
+            &JsValue::from_str("missing-network"),
+        );
+        set(
+            details.as_ref(),
+            "activeNetwork",
+            &JsValue::from_str(&active_network),
+        );
+        set(
+            details.as_ref(),
+            "belongsToLiveNodeMonitor",
+            &JsValue::from_bool(belongs_to_live_node_monitor),
+        );
+        return copy_log_failure_impl(
+            net,
+            button,
+            &JsValue::from_str("Copy Log could not resolve the active network."),
+            details.as_ref(),
+        );
+    }
+
+    let network_result = if !active_network.is_empty() && active_network != copy_network {
+        "error"
+    } else {
+        "ok"
+    };
+    let network_details = Object::new();
+    set(
+        network_details.as_ref(),
+        "activeNetwork",
+        &JsValue::from_str(&active_network),
+    );
+    set(
+        network_details.as_ref(),
+        "buttonNetwork",
+        &JsValue::from_str(&copy_network),
+    );
+    set(
+        network_details.as_ref(),
+        "belongsToLiveNodeMonitor",
+        &JsValue::from_bool(belongs_to_live_node_monitor),
+    );
+    emit_start_trace(
+        "frontend.copy_log_network_resolved",
+        &copy_network,
+        "copy-log",
+        network_result,
+        network_details.into(),
+    );
+
+    if network_result == "error" {
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "reason",
+            &JsValue::from_str("network-mismatch"),
+        );
+        set(
+            details.as_ref(),
+            "activeNetwork",
+            &JsValue::from_str(&active_network),
+        );
+        set(
+            details.as_ref(),
+            "buttonNetwork",
+            &JsValue::from_str(&copy_network),
+        );
+        set(
+            details.as_ref(),
+            "belongsToLiveNodeMonitor",
+            &JsValue::from_bool(belongs_to_live_node_monitor),
+        );
+        return copy_log_failure_impl(
+            &copy_network,
+            button,
+            &JsValue::from_str(
+                "Copy Log network mismatch; active network changed before copy started.",
+            ),
+            details.as_ref(),
+        );
+    }
+
+    let button_dataset = property(button, "dataset");
+    if crate::js_string_owned(&property(&button_dataset, "kgwCopyLogInFlightV1")) == "1" {
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "reason",
+            &JsValue::from_str("duplicate-copy"),
+        );
+        set(
+            details.as_ref(),
+            "activeNetwork",
+            &JsValue::from_str(&active_network),
+        );
+        set(
+            details.as_ref(),
+            "belongsToLiveNodeMonitor",
+            &JsValue::from_bool(belongs_to_live_node_monitor),
+        );
+        return copy_log_failure_impl(
+            &copy_network,
+            button,
+            &JsValue::from_str("Copy Log is already in progress for this network."),
+            details.as_ref(),
+        );
+    }
+
+    let original_disabled = present(button) && crate::js_boolean(&property(button, "disabled"));
+    if present(button) {
+        set(
+            &button_dataset,
+            "kgwCopyLogInFlightV1",
+            &JsValue::from_str("1"),
+        );
+        set(button, "disabled", &JsValue::TRUE);
+    }
+
+    let outcome: Result<(), JsValue> = async {
+        let buffer = read_copy_log_buffer(&copy_network);
+        if !present(&buffer.out)
+            || buffer.is_placeholder
+            || buffer.normalized_text.trim().is_empty()
+        {
+            let details = Object::new();
+            set(
+                details.as_ref(),
+                "rawLogBufferSelected",
+                &JsValue::from_bool(present(&buffer.out)),
+            );
+            set(
+                details.as_ref(),
+                "placeholderRejected",
+                &JsValue::from_bool(buffer.is_placeholder),
+            );
+            set(details.as_ref(), "runtimeRole", &JsValue::from_str("node"));
+            set(details.as_ref(), "bridgeInstanceId", &JsValue::from_str(""));
+            set(
+                details.as_ref(),
+                "characterCount",
+                &JsValue::from_f64(buffer.character_count as f64),
+            );
+            set(
+                details.as_ref(),
+                "lineCount",
+                &JsValue::from_f64(buffer.line_count as f64),
+            );
+            set(details.as_ref(), "sha256", &JsValue::from_str(""));
+            emit_start_trace(
+                "frontend.copy_log_content_prepared",
+                &copy_network,
+                "copy-log",
+                "error",
+                details.into(),
+            );
+            return Err(JsValue::from_str(&format!(
+                "Copy Log requires a non-empty raw log buffer for {copy_network}."
+            )));
+        }
+
+        let sha256 = copy_log_sha256_hex(&buffer.normalized_text).await;
+        let metadata = Object::new();
+        set(metadata.as_ref(), "runtimeRole", &JsValue::from_str("node"));
+        set(
+            metadata.as_ref(),
+            "bridgeInstanceId",
+            &JsValue::from_str(""),
+        );
+        set(
+            metadata.as_ref(),
+            "characterCount",
+            &JsValue::from_f64(buffer.character_count as f64),
+        );
+        set(
+            metadata.as_ref(),
+            "lineCount",
+            &JsValue::from_f64(buffer.line_count as f64),
+        );
+        set(metadata.as_ref(), "sha256", &JsValue::from_str(&sha256));
+
+        let prepared = Object::new();
+        set(prepared.as_ref(), "rawLogBufferSelected", &JsValue::TRUE);
+        set(prepared.as_ref(), "placeholderRejected", &JsValue::FALSE);
+        for key in [
+            "runtimeRole",
+            "bridgeInstanceId",
+            "characterCount",
+            "lineCount",
+            "sha256",
+        ] {
+            set(prepared.as_ref(), key, &property(metadata.as_ref(), key));
+        }
+        emit_start_trace(
+            "frontend.copy_log_content_prepared",
+            &copy_network,
+            "copy-log",
+            "ok",
+            prepared.into(),
+        );
+
+        let _ = dispatch_clipboard_write_impl(
+            &copy_network,
+            &buffer.normalized_text,
+            metadata.as_ref(),
+        )
+        .await?;
+
+        let copied_text = translate_copy_log_text("log.copied", "Copied");
+        flash_copy_log_button(button, &copied_text);
+        let _ = set_copy_log_status(&copy_network, &copied_text, "ok");
+
+        let succeeded = Object::new();
+        for key in [
+            "runtimeRole",
+            "bridgeInstanceId",
+            "characterCount",
+            "lineCount",
+            "sha256",
+        ] {
+            set(succeeded.as_ref(), key, &property(metadata.as_ref(), key));
+        }
+        set(succeeded.as_ref(), "userFeedbackDisplayed", &JsValue::TRUE);
+        emit_start_trace(
+            "frontend.copy_log_succeeded",
+            &copy_network,
+            "copy-log",
+            "ok",
+            succeeded.into(),
+        );
+        Ok(())
+    }
+    .await;
+
+    if let Err(error) = &outcome {
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "activeNetwork",
+            &JsValue::from_str(&active_network),
+        );
+        set(
+            details.as_ref(),
+            "belongsToLiveNodeMonitor",
+            &JsValue::from_bool(belongs_to_live_node_monitor),
+        );
+        let _ = copy_log_failure_impl(&copy_network, button, error, details.as_ref());
+    }
+
+    if present(button) {
+        set(button, "disabled", &JsValue::from_bool(original_disabled));
+        if let Ok(dataset_object) = property(button, "dataset").dyn_into::<Object>() {
+            let _ = Reflect::delete_property(
+                &dataset_object,
+                &JsValue::from_str("kgwCopyLogInFlightV1"),
+            );
+        }
+    }
+
+    outcome.is_ok()
+}
+
+#[wasm_bindgen(js_name = nodeDispatchClipboardWrite)]
+pub async fn node_dispatch_clipboard_write(
+    net: String,
+    text: String,
+    metadata: JsValue,
+) -> Result<JsValue, JsValue> {
+    dispatch_clipboard_write_impl(&net, &text, &metadata).await
+}
+
+#[wasm_bindgen(js_name = nodeCopyLogFailure)]
+pub fn node_copy_log_failure(
+    net: String,
+    button: JsValue,
+    error: JsValue,
+    details: JsValue,
+) -> bool {
+    copy_log_failure_impl(&net, &button, &error, &details)
+}
+
+#[wasm_bindgen(js_name = nodeHandleCopyLog)]
+pub async fn node_handle_copy_log(net: String, button: JsValue) -> bool {
+    handle_copy_log_impl(&net, &button).await
+}
+
 #[wasm_bindgen(js_name = nodeClipboardCharacterCount)]
 pub fn node_clipboard_character_count(text: JsValue) -> u32 {
     clipboard_character_count_text(&crate::js_string_owned(&text)) as u32

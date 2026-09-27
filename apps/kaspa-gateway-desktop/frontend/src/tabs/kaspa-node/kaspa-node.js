@@ -2,11 +2,9 @@ import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { NODE_ENDPOINTS, NODE_MANAGED, NODE_REQUIRED, NODE_OPTIONAL, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, endpoint, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initNodeRust, {
-  nodeClipboardCharacterCount as wasmNodeClipboardCharacterCount,
-  nodeClipboardLineCount as wasmNodeClipboardLineCount,
-  nodeClipboardPlaceholderText as wasmNodeClipboardPlaceholderText,
-  nodeClipboardSafeError as wasmNodeClipboardSafeError,
-  nodeNormalizeClipboardLineEndings as wasmNodeNormalizeClipboardLineEndings,
+  nodeCopyLogFailure as wasmNodeCopyLogFailure,
+  nodeDispatchClipboardWrite as wasmNodeDispatchClipboardWrite,
+  nodeHandleCopyLog as wasmNodeHandleCopyLog,
   nodeInstallStartTraceDocumentClickObserver as wasmNodeInstallStartTraceDocumentClickObserver,
   nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
   nodeRuntimeActionForCommand as wasmNodeRuntimeActionForCommand,
@@ -659,130 +657,12 @@ function kgwResolvePublicTauriInvokeR1() {
 function kgwStartTraceFrontendR1(stage, options = {}) {
   return wasmNodeStartTraceFrontend(stage, options || {});
 }
-function kgwNodeClipboardCharacterCountV1(text) {
-  return wasmNodeClipboardCharacterCount(text ?? "");
-}
-
-function kgwNodeClipboardLineCountV1(text) {
-  return wasmNodeClipboardLineCount(text ?? "");
-}
-
-function kgwNodeNormalizeClipboardLineEndingsV1(text) {
-  return wasmNodeNormalizeClipboardLineEndings(text ?? "");
-}
-
-async function kgwNodeSha256HexV1(text) {
-  try {
-    const cryptoApi = window.crypto || globalThis.crypto;
-    const Encoder = window.TextEncoder || globalThis.TextEncoder;
-    if (!cryptoApi?.subtle?.digest || typeof Encoder !== "function") return "";
-
-    const bytes = new Encoder().encode(String(text ?? ""));
-    const digest = await cryptoApi.subtle.digest("SHA-256", bytes);
-    return Array.from(new Uint8Array(digest))
-      .map((value) => value.toString(16).padStart(2, "0"))
-      .join("");
-  } catch (_) {
-    return "";
-  }
-}
-
-function kgwNodeClipboardSafeErrorV1(error) {
-  return wasmNodeClipboardSafeError(error);
-}
-
-function kgwNodeClipboardPlaceholderTextV1(net) {
-  return wasmNodeClipboardPlaceholderText(String(net || ""));
-}
-
 function kgwNodeLogEmptyStateV1(net) {
   return document.getElementById("node-" + net + "-logEmpty");
 }
 
-function kgwNodeClipboardStatusElementV1(net) {
-  const out = kgwNodeLogOutputV29(net);
-  const toolbar = out?.closest?.('[data-node-inner-panel="log"]')?.querySelector?.(".node-v6-log-toolbar");
-  if (!toolbar) return null;
-
-  let status = toolbar.querySelector('.kgw-copy-log-status-v1[data-net="' + net + '"]');
-  if (!status) {
-    status = document.createElement("span");
-    status.setAttribute("class", "kgw-copy-log-status-v1");
-    status.dataset.net = net;
-    status.setAttribute("data-net", net);
-    status.setAttribute("role", "status");
-    status.setAttribute("aria-live", "polite");
-    toolbar.appendChild(status);
-  }
-  return status;
-}
-
-function kgwNodeSetClipboardStatusV1(net, message, state = "info") {
-  const status = kgwNodeClipboardStatusElementV1(net);
-  if (!status) return false;
-
-  status.textContent = String(message || "");
-  status.dataset.state = String(state || "info");
-  applyStatusTone(status, state);
-  status.hidden = !status.textContent;
-  return true;
-}
-
-function kgwNodeReadClipboardRawLogBufferV1(net) {
-  const out = kgwNodeLogOutputV29(net);
-  const tag = String(out?.tagName || "").toUpperCase();
-  const readsValue = tag === "TEXTAREA" || tag === "INPUT";
-  const rawText = String(out ? (readsValue ? out.value : out.textContent) : "");
-  const placeholder = kgwNodeClipboardPlaceholderTextV1(net);
-  const isPlaceholder = rawText.trim() === placeholder.trim();
-  const normalizedText = kgwNodeNormalizeClipboardLineEndingsV1(rawText);
-
-  return {
-    out,
-    rawText,
-    normalizedText,
-    isPlaceholder,
-    characterCount: kgwNodeClipboardCharacterCountV1(normalizedText),
-    lineCount: kgwNodeClipboardLineCountV1(normalizedText)
-  };
-}
-
-async function kgwNodeDispatchClipboardWriteV1(net, text, metadata) {
-  const resolved = kgwResolvePublicTauriInvokeR1();
-  if (typeof resolved.invoke !== "function") {
-    throw new Error("Tauri invoke API is not available. Expected window.__TAURI__.core.invoke from Tauri 2 with withGlobalTauri enabled.");
-  }
-
-  kgwStartTraceFrontendR1("frontend.copy_log_dispatched", {
-    network: net,
-    action: "copy-log",
-    result: "dispatched",
-    details: {
-      commandName: "kgw_copy_text_to_clipboard_v1",
-      implementation: "native-tauri-command",
-      runtimeRole: metadata.runtimeRole || "node",
-      bridgeInstanceId: metadata.bridgeInstanceId || "",
-      characterCount: metadata.characterCount,
-      lineCount: metadata.lineCount,
-      sha256: metadata.sha256 || "",
-      payloadFieldCount: 7
-    }
-  });
-
-  return await invokeWithTimeout(
-    resolved.invoke,
-    "kgw_copy_text_to_clipboard_v1",
-    {
-      network: net,
-      runtimeRole: metadata.runtimeRole || "node",
-      bridgeInstanceId: metadata.bridgeInstanceId || "",
-      text,
-      characterCount: metadata.characterCount,
-      lineCount: metadata.lineCount,
-      sha256: metadata.sha256 || ""
-    },
-    KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS
-  );
+async function kgwNodeDispatchClipboardWriteV1(net, text, metadata = {}) {
+  return await wasmNodeDispatchClipboardWrite(String(net || ""), String(text ?? ""), metadata || {});
 }
 
 /* KGW_NODE_TRACE_OBSERVER_R1 is Rust-owned in node_start_trace.rs. */
@@ -2940,19 +2820,7 @@ function kgwNodeFlashLogActionButtonV29(button, doneLabel) {
 }
 
 function kgwNodeCopyLogFailureV1(net, button, error, details = {}) {
-  const safeError = kgwNodeClipboardSafeErrorV1(error);
-  kgwNodeSetClipboardStatusV1(net, safeError, "error");
-  kgwNodeFlashLogActionButtonV29(button, kgwNodeTranslateRuntimeV29("log.copyFailed", "Copy failed"));
-  kgwStartTraceFrontendR1("frontend.copy_log_failed", {
-    network: net,
-    action: "copy-log",
-    result: "error",
-    details: {
-      ...details,
-      safeError,
-      userFeedbackDisplayed: true
-    }
-  });
+  return wasmNodeCopyLogFailure(String(net || ""), button || null, error, details || {});
 }
 
 async function kgwNodeHandleLogActionV29(action, net, button) {
@@ -2968,129 +2836,7 @@ async function kgwNodeHandleLogActionV29(action, net, button) {
   if (!out && action !== "copy-log") return;
 
   if (action === "copy-log") {
-    const nodeRoot = document.getElementById("kaspa-node");
-    const activeNetwork = kgwNodeTraceActiveNetworkR1(nodeRoot);
-    const belongsToLiveNodeMonitor = Boolean(button?.closest?.('[data-node-inner-panel="log"]'));
-    const copyNetwork = String(net || "").trim();
-
-    if (!copyNetwork) {
-      kgwNodeCopyLogFailureV1(net, button, "Copy Log could not resolve the active network.", {
-        reason: "missing-network",
-        activeNetwork,
-        belongsToLiveNodeMonitor
-      });
-      return;
-    }
-
-    kgwStartTraceFrontendR1("frontend.copy_log_network_resolved", {
-      network: copyNetwork,
-      action: "copy-log",
-      result: activeNetwork && activeNetwork !== copyNetwork ? "error" : "ok",
-      details: {
-        activeNetwork,
-        buttonNetwork: copyNetwork,
-        belongsToLiveNodeMonitor
-      }
-    });
-
-    if (activeNetwork && activeNetwork !== copyNetwork) {
-      kgwNodeCopyLogFailureV1(copyNetwork, button, "Copy Log network mismatch; active network changed before copy started.", {
-        reason: "network-mismatch",
-        activeNetwork,
-        buttonNetwork: copyNetwork,
-        belongsToLiveNodeMonitor
-      });
-      return;
-    }
-
-    if (button?.dataset?.kgwCopyLogInFlightV1 === "1") {
-      kgwNodeCopyLogFailureV1(copyNetwork, button, "Copy Log is already in progress for this network.", {
-        reason: "duplicate-copy",
-        activeNetwork,
-        belongsToLiveNodeMonitor
-      });
-      return;
-    }
-
-    const originalDisabled = Boolean(button && button.disabled);
-    if (button) {
-      button.dataset.kgwCopyLogInFlightV1 = "1";
-      button.disabled = true;
-    }
-
-    try {
-      const buffer = kgwNodeReadClipboardRawLogBufferV1(copyNetwork);
-
-      if (!buffer.out || buffer.isPlaceholder || !buffer.normalizedText.trim()) {
-        kgwStartTraceFrontendR1("frontend.copy_log_content_prepared", {
-          network: copyNetwork,
-          action: "copy-log",
-          result: "error",
-          details: {
-            rawLogBufferSelected: Boolean(buffer.out),
-            placeholderRejected: Boolean(buffer.isPlaceholder),
-            runtimeRole: "node",
-            bridgeInstanceId: "",
-            characterCount: buffer.characterCount,
-            lineCount: buffer.lineCount,
-            sha256: ""
-          }
-        });
-        throw new Error("Copy Log requires a non-empty raw log buffer for " + copyNetwork + ".");
-      }
-
-      const sha256 = await kgwNodeSha256HexV1(buffer.normalizedText);
-      const metadata = {
-        runtimeRole: "node",
-        bridgeInstanceId: "",
-        characterCount: buffer.characterCount,
-        lineCount: buffer.lineCount,
-        sha256
-      };
-
-      kgwStartTraceFrontendR1("frontend.copy_log_content_prepared", {
-        network: copyNetwork,
-        action: "copy-log",
-        result: "ok",
-        details: {
-          rawLogBufferSelected: true,
-          placeholderRejected: false,
-          runtimeRole: metadata.runtimeRole,
-          bridgeInstanceId: metadata.bridgeInstanceId,
-          characterCount: metadata.characterCount,
-          lineCount: metadata.lineCount,
-          sha256: metadata.sha256 || ""
-        }
-      });
-
-      await kgwNodeDispatchClipboardWriteV1(copyNetwork, buffer.normalizedText, metadata);
-
-      kgwNodeFlashLogActionButtonV29(button, kgwNodeTranslateRuntimeV29("log.copied", "Copied"));
-      kgwNodeSetClipboardStatusV1(copyNetwork, kgwNodeTranslateRuntimeV29("log.copied", "Copied"), "ok");
-      kgwStartTraceFrontendR1("frontend.copy_log_succeeded", {
-        network: copyNetwork,
-        action: "copy-log",
-        result: "ok",
-        details: {
-          runtimeRole: metadata.runtimeRole,
-          bridgeInstanceId: metadata.bridgeInstanceId,
-          characterCount: metadata.characterCount,
-          lineCount: metadata.lineCount,
-          sha256: metadata.sha256 || "",
-          userFeedbackDisplayed: true
-        }
-      });
-    } catch (error) {
-      kgwNodeCopyLogFailureV1(copyNetwork, button, error, {
-        activeNetwork,
-        belongsToLiveNodeMonitor
-      });
-    } finally {
-      if (button) {
-        button.disabled = originalDisabled;
-        delete button.dataset.kgwCopyLogInFlightV1;
-      }
-    }
+    await wasmNodeHandleCopyLog(String(net || ""), button || null);
     return;
   }
 
