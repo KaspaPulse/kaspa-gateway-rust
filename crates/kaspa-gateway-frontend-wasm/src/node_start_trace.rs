@@ -210,6 +210,472 @@ fn clipboard_placeholder_text(net: &str) -> String {
     format!("{label} log is empty.")
 }
 
+fn document() -> JsValue {
+    property(&global(), "document")
+}
+
+fn call1(target: &JsValue, name: &str, arg: &JsValue) -> Option<JsValue> {
+    function(target, name)?.call1(target, arg).ok()
+}
+
+fn call3(
+    target: &JsValue,
+    name: &str,
+    first: &JsValue,
+    second: &JsValue,
+    third: &JsValue,
+) -> Option<JsValue> {
+    function(target, name)?
+        .call3(target, first, second, third)
+        .ok()
+}
+
+fn query(target: &JsValue, selector: &str) -> JsValue {
+    call1(target, "querySelector", &JsValue::from_str(selector)).unwrap_or(JsValue::UNDEFINED)
+}
+
+fn query_all(target: &JsValue, selector: &str) -> Vec<JsValue> {
+    let list = call1(target, "querySelectorAll", &JsValue::from_str(selector))
+        .unwrap_or(JsValue::UNDEFINED);
+    if !present(&list) {
+        return Vec::new();
+    }
+    let length = crate::js_number(&property(&list, "length"));
+    if !length.is_finite() || length <= 0.0 {
+        return Vec::new();
+    }
+    (0..length as u32)
+        .filter_map(|index| {
+            Reflect::get(&list, &JsValue::from_f64(index as f64))
+                .ok()
+                .filter(present)
+        })
+        .collect()
+}
+
+fn closest(target: &JsValue, selector: &str) -> JsValue {
+    call1(target, "closest", &JsValue::from_str(selector)).unwrap_or(JsValue::UNDEFINED)
+}
+
+fn contains(root: &JsValue, node: &JsValue) -> bool {
+    call1(root, "contains", node).is_some_and(|value| crate::js_boolean(&value))
+}
+
+fn class_contains(target: &JsValue, class_name: &str) -> bool {
+    let class_list = property(target, "classList");
+    call1(&class_list, "contains", &JsValue::from_str(class_name))
+        .is_some_and(|value| crate::js_boolean(&value))
+}
+
+fn attribute(target: &JsValue, name: &str) -> String {
+    call1(target, "getAttribute", &JsValue::from_str(name))
+        .filter(present)
+        .map(|value| crate::js_string_owned(&value))
+        .unwrap_or_default()
+}
+
+fn dataset_value(target: &JsValue, name: &str) -> String {
+    crate::js_string_owned(&property(&property(target, "dataset"), name))
+}
+
+fn node_root(root: &JsValue) -> JsValue {
+    if present(root) {
+        root.clone()
+    } else {
+        call1(
+            &document(),
+            "getElementById",
+            &JsValue::from_str("kaspa-node"),
+        )
+        .unwrap_or(JsValue::UNDEFINED)
+    }
+}
+
+fn network_from_trace_text(raw: &str) -> Option<&'static str> {
+    let raw = raw.to_ascii_lowercase();
+    if raw.contains("testnet13") || raw.contains("tn13") {
+        Some("testnet13")
+    } else if raw.contains("testnet10") || raw.contains("tn10") {
+        Some("testnet10")
+    } else if raw.contains("mainnet") {
+        Some("mainnet")
+    } else {
+        None
+    }
+}
+
+fn trace_active_network(root: &JsValue) -> String {
+    let root = node_root(root);
+    if !present(&root) {
+        return String::new();
+    }
+
+    for panel in query_all(&root, "[data-node-network-panel]") {
+        let active = !crate::js_boolean(&property(&panel, "hidden"))
+            && (class_contains(&panel, "active") || dataset_value(&panel, "active") == "true");
+        if active {
+            let value = dataset_value(&panel, "nodeNetworkPanel");
+            if !value.is_empty() {
+                return value;
+            }
+        }
+    }
+
+    for tab in query_all(&root, "[data-node-network-tab]") {
+        let active = class_contains(&tab, "active")
+            || attribute(&tab, "aria-selected") == "true"
+            || dataset_value(&tab, "active") == "true";
+        if active {
+            let value = dataset_value(&tab, "nodeNetworkTab");
+            if !value.is_empty() {
+                return value;
+            }
+        }
+    }
+    String::new()
+}
+
+fn trace_network_from_element(element: &JsValue, root: &JsValue) -> String {
+    let carrier = closest(
+        element,
+        "[data-net], [data-network], [data-node-network-panel], [data-node-inner-panel]",
+    );
+    let fields = [
+        dataset_value(element, "net"),
+        dataset_value(element, "network"),
+        dataset_value(&carrier, "net"),
+        dataset_value(&carrier, "network"),
+        dataset_value(&carrier, "nodeNetworkPanel"),
+        crate::js_string_owned(&property(&carrier, "id")),
+        crate::js_string_owned(&property(&carrier, "className")),
+    ];
+    let raw = fields
+        .into_iter()
+        .filter(|value| !value.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    network_from_trace_text(&raw)
+        .map(str::to_owned)
+        .or_else(|| {
+            let active = trace_active_network(root);
+            (!active.is_empty()).then_some(active)
+        })
+        .unwrap_or_else(|| "mainnet".to_owned())
+}
+
+fn trace_start_button_state(net: &str) -> JsValue {
+    let panel = query(&document(), &format!("[data-node-network-panel=\"{net}\"]"));
+    let start = query(
+        &panel,
+        &format!("[data-node-action=\"start\"][data-net=\"{net}\"]"),
+    );
+    let stop = query(
+        &panel,
+        &format!("[data-node-action=\"stop\"][data-net=\"{net}\"]"),
+    );
+    let output = Object::new();
+    set(
+        output.as_ref(),
+        "startRendered",
+        &JsValue::from_bool(present(&start)),
+    );
+    set(
+        output.as_ref(),
+        "startDisabled",
+        &JsValue::from_bool(present(&start) && crate::js_boolean(&property(&start, "disabled"))),
+    );
+    set(
+        output.as_ref(),
+        "stopRendered",
+        &JsValue::from_bool(present(&stop)),
+    );
+    set(
+        output.as_ref(),
+        "stopDisabled",
+        &JsValue::from_bool(present(&stop) && crate::js_boolean(&property(&stop, "disabled"))),
+    );
+    output.into()
+}
+
+fn emit_start_trace(stage: &str, network: &str, action: &str, result: &str, details: JsValue) {
+    let options = Object::new();
+    set(options.as_ref(), "network", &JsValue::from_str(network));
+    set(options.as_ref(), "action", &JsValue::from_str(action));
+    set(options.as_ref(), "result", &JsValue::from_str(result));
+    set(options.as_ref(), "details", &details);
+    let _ = node_start_trace_frontend(JsValue::from_str(stage), options.into());
+}
+
+fn install_start_trace_document_click_observer(root: &JsValue) -> bool {
+    let win = window();
+    if crate::js_boolean(&property(&win, "__kgwStartTraceDocumentClickObserverR1")) {
+        return false;
+    }
+    set(
+        &win,
+        "__kgwStartTraceDocumentClickObserverR1",
+        &JsValue::TRUE,
+    );
+
+    let root_for_click = root.clone();
+    let callback = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+        let button = closest(&target, "[data-node-action]");
+        let node_root = node_root(&root_for_click);
+        if !present(&button) || !present(&node_root) || !contains(&node_root, &button) {
+            return;
+        }
+
+        let action = dataset_value(&button, "nodeAction").trim().to_owned();
+        let network = trace_network_from_element(&button, &node_root);
+        let active_network = trace_active_network(&node_root);
+        let belongs_to_settings =
+            present(&closest(&button, "[data-node-inner-panel=\"settings\"]"));
+        let belongs_to_log = present(&closest(&button, "[data-node-inner-panel=\"log\"]"));
+
+        if action == "copy-log" {
+            let details = Object::new();
+            set(
+                details.as_ref(),
+                "trusted",
+                &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+            );
+            set(
+                details.as_ref(),
+                "belongsToSettings",
+                &JsValue::from_bool(belongs_to_settings),
+            );
+            set(
+                details.as_ref(),
+                "belongsToLiveNodeMonitor",
+                &JsValue::from_bool(belongs_to_log),
+            );
+            set(
+                details.as_ref(),
+                "selectedNetwork",
+                &JsValue::from_str(&active_network),
+            );
+            set(
+                details.as_ref(),
+                "buttonDisabled",
+                &JsValue::from_bool(crate::js_boolean(&property(&button, "disabled"))),
+            );
+            set(
+                details.as_ref(),
+                "inFlight",
+                &JsValue::from_bool(dataset_value(&button, "kgwCopyLogInFlightV1") == "1"),
+            );
+            emit_start_trace(
+                "frontend.copy_log_click_observed",
+                &network,
+                "copy-log",
+                "observed",
+                details.into(),
+            );
+            return;
+        }
+
+        if action != "start" && action != "stop" {
+            return;
+        }
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "trusted",
+            &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+        );
+        set(
+            details.as_ref(),
+            "belongsToSettings",
+            &JsValue::from_bool(belongs_to_settings),
+        );
+        set(
+            details.as_ref(),
+            "belongsToLiveNodeMonitor",
+            &JsValue::from_bool(belongs_to_log),
+        );
+        set(
+            details.as_ref(),
+            "selectedNetwork",
+            &JsValue::from_str(&active_network),
+        );
+        set(
+            details.as_ref(),
+            "buttonDisabled",
+            &JsValue::from_bool(crate::js_boolean(&property(&button, "disabled"))),
+        );
+        set(
+            details.as_ref(),
+            "buttonAction",
+            &JsValue::from_str(&action),
+        );
+        emit_start_trace(
+            "frontend.capture_click_observed",
+            &network,
+            &action,
+            "observed",
+            details.into(),
+        );
+    }) as Box<dyn FnMut(JsValue)>);
+
+    let _ = call3(
+        &document(),
+        "addEventListener",
+        &JsValue::from_str("click"),
+        callback.as_ref(),
+        &JsValue::TRUE,
+    );
+    callback.forget();
+    true
+}
+
+fn trace_rendered_start_controls(root: &JsValue) -> bool {
+    let root = node_root(root);
+    if !present(&root) {
+        return false;
+    }
+    for net in ["mainnet", "testnet10", "testnet13"] {
+        let settings_panel = query(
+            &root,
+            &format!("[data-node-network-panel=\"{net}\"] [data-node-inner-panel=\"settings\"]"),
+        );
+        let start = query(
+            &settings_panel,
+            &format!("[data-node-action=\"start\"][data-net=\"{net}\"]"),
+        );
+        let render_details = Object::new();
+        set(
+            render_details.as_ref(),
+            "belongsToSettings",
+            &JsValue::from_bool(present(&settings_panel)),
+        );
+        set(
+            render_details.as_ref(),
+            "selectedNetwork",
+            &JsValue::from_str(&trace_active_network(&root)),
+        );
+        emit_start_trace(
+            "frontend.settings_subtab_rendered",
+            net,
+            "render",
+            if present(&settings_panel) {
+                "ok"
+            } else {
+                "missing"
+            },
+            render_details.into(),
+        );
+
+        let start_details = Object::new();
+        set(
+            start_details.as_ref(),
+            "belongsToSettings",
+            &JsValue::from_bool(
+                present(&start) && present(&settings_panel) && contains(&settings_panel, &start),
+            ),
+        );
+        set(
+            start_details.as_ref(),
+            "startDisabled",
+            &JsValue::from_bool(
+                present(&start) && crate::js_boolean(&property(&start, "disabled")),
+            ),
+        );
+        emit_start_trace(
+            "frontend.start_control_rendered",
+            net,
+            "start",
+            if present(&start) { "ok" } else { "missing" },
+            start_details.into(),
+        );
+    }
+    true
+}
+
+fn runtime_action_for_command_text(command: &str) -> &'static str {
+    match command {
+        "kgw_kgw_apply_node_settings_v1" => "start",
+        "kgw_kgw_disable_network_v1" => "stop",
+        _ => "runtime",
+    }
+}
+
+fn truthy_text_or(value: &JsValue, fallback: &str) -> String {
+    if crate::js_boolean(value) {
+        crate::js_string_owned(value)
+    } else {
+        fallback.to_owned()
+    }
+}
+
+fn small_owner_invoke() -> Option<Function> {
+    let tauri = property(&window(), "__TAURI__");
+    let core = property(&tauri, "core");
+    if let Some(invoke) = bound_invoke(&core, property(&core, "invoke")) {
+        return Some(invoke);
+    }
+    if let Some(invoke) = bound_invoke(&tauri, property(&tauri, "invoke")) {
+        return Some(invoke);
+    }
+    property(&window(), "__TAURI_INVOKE__")
+        .dyn_into::<Function>()
+        .ok()
+}
+
+fn small_owner_trace(net: JsValue, action: JsValue, phase: JsValue, details: JsValue) -> bool {
+    let safe_net = truthy_text_or(&net, "unknown");
+    let safe_action = truthy_text_or(&action, "small-owner");
+    let safe_phase = truthy_text_or(&phase, "unknown");
+    let safe_details = if details.is_object() {
+        details
+    } else {
+        Object::new().into()
+    };
+
+    let nested = Object::new();
+    set(
+        nested.as_ref(),
+        "patch",
+        &JsValue::from_str("KGW_SMALL_NODE_BRIDGE_TRACE_PATCH_R44D"),
+    );
+    set(
+        nested.as_ref(),
+        "existingOwner",
+        &JsValue::from_str("node-small-owner-functions"),
+    );
+    set(nested.as_ref(), "network", &JsValue::from_str(&safe_net));
+    set(nested.as_ref(), "action", &JsValue::from_str(&safe_action));
+    set(nested.as_ref(), "phase", &JsValue::from_str(&safe_phase));
+    set(nested.as_ref(), "details", &safe_details);
+
+    let args = Object::new();
+    set(args.as_ref(), "scope", &JsValue::from_str("node"));
+    set(args.as_ref(), "net", &JsValue::from_str(&safe_net));
+    set(args.as_ref(), "action", &JsValue::from_str(&safe_action));
+    set(args.as_ref(), "phase", &JsValue::from_str(&safe_phase));
+    let serialized = JSON::stringify(nested.as_ref())
+        .ok()
+        .map(|value| crate::js_string_owned(value.as_ref()))
+        .unwrap_or_else(|| "{}".to_owned());
+    set(args.as_ref(), "details", &JsValue::from_str(&serialized));
+
+    let Some(invoke) = small_owner_invoke() else {
+        return false;
+    };
+    if let Ok(result) = invoke.call2(
+        &JsValue::UNDEFINED,
+        &JsValue::from_str("kgw_frontend_button_trace_v1"),
+        args.as_ref(),
+    ) {
+        let promise = Promise::resolve(&result);
+        let catch = Closure::wrap(Box::new(move |_error: JsValue| {}) as Box<dyn FnMut(JsValue)>);
+        let _ = promise.catch(&catch);
+        catch.forget();
+    }
+    true
+}
+
 fn resolved_invoke() -> JsValue {
     let tauri = property(&window(), "__TAURI__");
     for (adapter, owner, candidate) in [
@@ -274,6 +740,46 @@ pub fn node_clipboard_safe_error(error: JsValue) -> String {
 #[wasm_bindgen(js_name = nodeClipboardPlaceholderText)]
 pub fn node_clipboard_placeholder_text(net: String) -> String {
     clipboard_placeholder_text(&net)
+}
+
+#[wasm_bindgen(js_name = nodeTraceNetworkFromElement)]
+pub fn node_trace_network_from_element(element: JsValue, root: JsValue) -> String {
+    trace_network_from_element(&element, &root)
+}
+
+#[wasm_bindgen(js_name = nodeTraceActiveNetwork)]
+pub fn node_trace_active_network(root: JsValue) -> String {
+    trace_active_network(&root)
+}
+
+#[wasm_bindgen(js_name = nodeTraceStartButtonState)]
+pub fn node_trace_start_button_state(net: String) -> JsValue {
+    trace_start_button_state(&net)
+}
+
+#[wasm_bindgen(js_name = nodeInstallStartTraceDocumentClickObserver)]
+pub fn node_install_start_trace_document_click_observer(root: JsValue) -> bool {
+    install_start_trace_document_click_observer(&root)
+}
+
+#[wasm_bindgen(js_name = nodeTraceRenderedStartControls)]
+pub fn node_trace_rendered_start_controls(root: JsValue) -> bool {
+    trace_rendered_start_controls(&root)
+}
+
+#[wasm_bindgen(js_name = nodeRuntimeActionForCommand)]
+pub fn node_runtime_action_for_command(command: String) -> String {
+    runtime_action_for_command_text(&command).to_owned()
+}
+
+#[wasm_bindgen(js_name = nodeSmallOwnerTrace)]
+pub fn node_small_owner_trace(
+    net: JsValue,
+    action: JsValue,
+    phase: JsValue,
+    details: JsValue,
+) -> bool {
+    small_owner_trace(net, action, phase, details)
 }
 
 #[wasm_bindgen(js_name = nodeStartTraceTauriShape)]
@@ -390,6 +896,33 @@ mod tests {
         assert_eq!(safe_text_str("", "fallback"), "fallback");
         let long = "x".repeat(300);
         assert_eq!(safe_text_str(&long, "").len(), 220);
+    }
+
+    #[test]
+    fn trace_network_tokens_preserve_legacy_precedence() {
+        assert_eq!(network_from_trace_text("mainnet"), Some("mainnet"));
+        assert_eq!(
+            network_from_trace_text("panel tn10 active"),
+            Some("testnet10")
+        );
+        assert_eq!(
+            network_from_trace_text("testnet13 tn10 mainnet"),
+            Some("testnet13")
+        );
+        assert_eq!(network_from_trace_text("unknown"), None);
+    }
+
+    #[test]
+    fn runtime_action_mapping_matches_legacy_contract() {
+        assert_eq!(
+            runtime_action_for_command_text("kgw_kgw_apply_node_settings_v1"),
+            "start"
+        );
+        assert_eq!(
+            runtime_action_for_command_text("kgw_kgw_disable_network_v1"),
+            "stop"
+        );
+        assert_eq!(runtime_action_for_command_text("other"), "runtime");
     }
 
     #[test]

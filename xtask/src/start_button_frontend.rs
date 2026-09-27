@@ -605,6 +605,111 @@ const wasmNodeStartTraceFrontend = (stage, options = {}) => {
   Promise.resolve(resolved.invoke("kgw_start_trace_frontend_v1", { stage: safeText(stage, "frontend.unknown"), network: safeText(options.network || options.net, "unknown"), action: safeText(options.action, "unknown"), result: safeText(options.result, "observed"), details: JSON.stringify(details) })).catch(() => {});
   return true;
 };
+const wasmNodeTraceActiveNetwork = (root = document.getElementById("kaspa-node")) => {
+  if (!root) return "";
+  const panel = Array.from(root.querySelectorAll("[data-node-network-panel]")).find((item) =>
+    !item.hidden && (item.classList.contains("active") || item.dataset.active === "true"));
+  if (panel && panel.dataset.nodeNetworkPanel) return panel.dataset.nodeNetworkPanel;
+  const tab = Array.from(root.querySelectorAll("[data-node-network-tab]")).find((item) =>
+    item.classList.contains("active") || item.getAttribute("aria-selected") === "true" || item.dataset.active === "true");
+  return tab && tab.dataset.nodeNetworkTab || "";
+};
+const wasmNodeTraceNetworkFromElement = (element, root = document.getElementById("kaspa-node")) => {
+  const carrier = element && element.closest &&
+    element.closest("[data-net], [data-network], [data-node-network-panel], [data-node-inner-panel]");
+  const raw = [
+    element && element.dataset && element.dataset.net,
+    element && element.dataset && element.dataset.network,
+    carrier && carrier.dataset && carrier.dataset.net,
+    carrier && carrier.dataset && carrier.dataset.network,
+    carrier && carrier.dataset && carrier.dataset.nodeNetworkPanel,
+    carrier && carrier.id,
+    carrier && carrier.className,
+  ].filter(Boolean).join(" ").toLowerCase();
+  if (raw.includes("testnet13") || raw.includes("tn13")) return "testnet13";
+  if (raw.includes("testnet10") || raw.includes("tn10")) return "testnet10";
+  if (raw.includes("mainnet")) return "mainnet";
+  return wasmNodeTraceActiveNetwork(root) || "mainnet";
+};
+const wasmNodeTraceStartButtonState = (net) => {
+  const panel = document.querySelector('[data-node-network-panel="' + net + '"]');
+  const start = panel && panel.querySelector('[data-node-action="start"][data-net="' + net + '"]');
+  const stop = panel && panel.querySelector('[data-node-action="stop"][data-net="' + net + '"]');
+  return { startRendered: Boolean(start), startDisabled: Boolean(start && start.disabled), stopRendered: Boolean(stop), stopDisabled: Boolean(stop && stop.disabled) };
+};
+const wasmNodeInstallStartTraceDocumentClickObserver = (root) => {
+  if (window.__kgwStartTraceDocumentClickObserverR1 === true) return false;
+  window.__kgwStartTraceDocumentClickObserverR1 = true;
+  document.addEventListener("click", (event) => {
+    const button = event.target && event.target.closest && event.target.closest("[data-node-action]");
+    const nodeRoot = root || document.getElementById("kaspa-node");
+    if (!button || !nodeRoot || !nodeRoot.contains(button)) return;
+    const action = String(button.dataset.nodeAction || "").trim();
+    const network = wasmNodeTraceNetworkFromElement(button, nodeRoot);
+    const activeNetwork = wasmNodeTraceActiveNetwork(nodeRoot);
+    const belongsToSettings = Boolean(button.closest('[data-node-inner-panel="settings"]'));
+    const belongsToLiveNodeMonitor = Boolean(button.closest('[data-node-inner-panel="log"]'));
+    if (action === "copy-log") {
+      wasmNodeStartTraceFrontend("frontend.copy_log_click_observed", {
+        network,
+        action: "copy-log",
+        result: "observed",
+        details: { trusted: Boolean(event && event.isTrusted), belongsToSettings, belongsToLiveNodeMonitor, selectedNetwork: activeNetwork, buttonDisabled: Boolean(button.disabled), inFlight: button.dataset.kgwCopyLogInFlightV1 === "1" },
+      });
+      return;
+    }
+    if (action !== "start" && action !== "stop") return;
+    wasmNodeStartTraceFrontend("frontend.capture_click_observed", {
+      network,
+      action,
+      result: "observed",
+      details: { trusted: Boolean(event && event.isTrusted), belongsToSettings, belongsToLiveNodeMonitor, selectedNetwork: activeNetwork, buttonDisabled: Boolean(button.disabled), buttonAction: action },
+    });
+  }, true);
+  return true;
+};
+const wasmNodeTraceRenderedStartControls = (root) => {
+  for (const net of ["mainnet", "testnet10", "testnet13"]) {
+    const settingsPanel = root && root.querySelector('[data-node-network-panel="' + net + '"] [data-node-inner-panel="settings"]');
+    const start = settingsPanel && settingsPanel.querySelector('[data-node-action="start"][data-net="' + net + '"]');
+    wasmNodeStartTraceFrontend("frontend.settings_subtab_rendered", {
+      network: net,
+      action: "render",
+      result: settingsPanel ? "ok" : "missing",
+      details: { belongsToSettings: Boolean(settingsPanel), selectedNetwork: wasmNodeTraceActiveNetwork(root) },
+    });
+    wasmNodeStartTraceFrontend("frontend.start_control_rendered", {
+      network: net,
+      action: "start",
+      result: start ? "ok" : "missing",
+      details: { belongsToSettings: Boolean(start && settingsPanel && settingsPanel.contains(start)), startDisabled: Boolean(start && start.disabled) },
+    });
+  }
+  return true;
+};
+const wasmNodeRuntimeActionForCommand = (command) =>
+  command === "kgw_kgw_apply_node_settings_v1" ? "start" :
+    command === "kgw_kgw_disable_network_v1" ? "stop" : "runtime";
+const wasmNodeSmallOwnerTrace = (net, action, phase, details) => {
+  const safeNet = String(net || "unknown");
+  const safeAction = String(action || "small-owner");
+  const safePhase = String(phase || "unknown");
+  const tauri = window.__TAURI__;
+  const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
+    ? tauri.core.invoke.bind(tauri.core)
+    : tauri && typeof tauri.invoke === "function"
+      ? tauri.invoke.bind(tauri)
+      : window.__TAURI_INVOKE__;
+  if (typeof invoke !== "function") return false;
+  Promise.resolve(invoke("kgw_frontend_button_trace_v1", {
+    scope: "node",
+    net: safeNet,
+    action: safeAction,
+    phase: safePhase,
+    details: JSON.stringify({ patch: "KGW_SMALL_NODE_BRIDGE_TRACE_PATCH_R44D", existingOwner: "node-small-owner-functions", network: safeNet, action: safeAction, phase: safePhase, details: details && typeof details === "object" ? details : {} }),
+  })).catch(() => {});
+  return true;
+};
 `;
   const executable = importPrelude + source
     .replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "")

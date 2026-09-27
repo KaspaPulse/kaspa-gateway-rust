@@ -7,9 +7,16 @@ import initNodeRust, {
   nodeClipboardPlaceholderText as wasmNodeClipboardPlaceholderText,
   nodeClipboardSafeError as wasmNodeClipboardSafeError,
   nodeNormalizeClipboardLineEndings as wasmNodeNormalizeClipboardLineEndings,
+  nodeInstallStartTraceDocumentClickObserver as wasmNodeInstallStartTraceDocumentClickObserver,
   nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
+  nodeRuntimeActionForCommand as wasmNodeRuntimeActionForCommand,
+  nodeSmallOwnerTrace as wasmNodeSmallOwnerTrace,
   nodeStartTraceFrontend as wasmNodeStartTraceFrontend,
   nodeStartTraceTauriShape as wasmNodeStartTraceTauriShape,
+  nodeTraceActiveNetwork as wasmNodeTraceActiveNetwork,
+  nodeTraceNetworkFromElement as wasmNodeTraceNetworkFromElement,
+  nodeTraceRenderedStartControls as wasmNodeTraceRenderedStartControls,
+  nodeTraceStartButtonState as wasmNodeTraceStartButtonState,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
 await initNodeRust();
@@ -779,174 +786,34 @@ async function kgwNodeDispatchClipboardWriteV1(net, text, metadata) {
   );
 }
 
+/* KGW_NODE_TRACE_OBSERVER_R1 is Rust-owned in node_start_trace.rs. */
 function kgwNodeTraceNetworkFromElementR1(element, root = document.getElementById("kaspa-node")) {
-  const carrier = element?.closest?.("[data-net], [data-network], [data-node-network-panel], [data-node-inner-panel]");
-  const raw = [
-    element?.dataset?.net,
-    element?.dataset?.network,
-    carrier?.dataset?.net,
-    carrier?.dataset?.network,
-    carrier?.dataset?.nodeNetworkPanel,
-    carrier?.id,
-    carrier?.className
-  ].filter(Boolean).join(" ").toLowerCase();
-
-  if (raw.includes("testnet13") || raw.includes("tn13")) return "testnet13";
-  if (raw.includes("testnet10") || raw.includes("tn10")) return "testnet10";
-  if (raw.includes("mainnet")) return "mainnet";
-
-  const active = kgwNodeTraceActiveNetworkR1(root);
-  return active || "mainnet";
+  return wasmNodeTraceNetworkFromElement(element, root);
 }
 
 function kgwNodeTraceActiveNetworkR1(root = document.getElementById("kaspa-node")) {
-  if (!root) return "";
-
-  const panels = Array.from(root.querySelectorAll("[data-node-network-panel]"));
-  const activePanel = panels.find((panel) =>
-    !panel.hidden &&
-    (panel.classList.contains("active") || panel.dataset.active === "true")
-  );
-  if (activePanel?.dataset?.nodeNetworkPanel) return activePanel.dataset.nodeNetworkPanel;
-
-  const tab = Array.from(root.querySelectorAll("[data-node-network-tab]")).find((item) =>
-    item.classList.contains("active") ||
-    item.getAttribute("aria-selected") === "true" ||
-    item.dataset.active === "true"
-  );
-  return tab?.dataset?.nodeNetworkTab || "";
+  return wasmNodeTraceActiveNetwork(root);
 }
 
 function kgwNodeTraceStartButtonStateR1(net) {
-  const panel = kgwNodeR51Panel(net);
-  const start = panel?.querySelector?.('[data-node-action="start"][data-net="' + net + '"]');
-  const stop = panel?.querySelector?.('[data-node-action="stop"][data-net="' + net + '"]');
-
-  return {
-    startRendered: Boolean(start),
-    startDisabled: Boolean(start?.disabled),
-    stopRendered: Boolean(stop),
-    stopDisabled: Boolean(stop?.disabled)
-  };
+  return wasmNodeTraceStartButtonState(String(net || ""));
 }
 
 function kgwNodeInstallStartTraceDocumentClickObserverR1(root) {
-  if (window.__kgwStartTraceDocumentClickObserverR1 === true) return;
-  window.__kgwStartTraceDocumentClickObserverR1 = true;
-
-  document.addEventListener("click", function (event) {
-    const button = event.target?.closest?.("[data-node-action]");
-    const nodeRoot = root || document.getElementById("kaspa-node");
-    if (!button || !nodeRoot || !nodeRoot.contains(button)) return;
-
-    const action = String(button.dataset.nodeAction || "").trim();
-    const network = kgwNodeTraceNetworkFromElementR1(button, nodeRoot);
-    const activeNetwork = kgwNodeTraceActiveNetworkR1(nodeRoot);
-    const belongsToSettings = Boolean(button.closest('[data-node-inner-panel="settings"]'));
-    const belongsToLiveNodeMonitor = Boolean(button.closest('[data-node-inner-panel="log"]'));
-
-    if (action === "copy-log") {
-      kgwStartTraceFrontendR1("frontend.copy_log_click_observed", {
-        network,
-        action: "copy-log",
-        result: "observed",
-        details: {
-          trusted: Boolean(event && event.isTrusted),
-          belongsToSettings,
-          belongsToLiveNodeMonitor,
-          selectedNetwork: activeNetwork,
-          buttonDisabled: Boolean(button.disabled),
-          inFlight: button.dataset.kgwCopyLogInFlightV1 === "1"
-        }
-      });
-      return;
-    }
-
-    if (action !== "start" && action !== "stop") return;
-
-    kgwStartTraceFrontendR1("frontend.capture_click_observed", {
-      network,
-      action,
-      result: "observed",
-      details: {
-        trusted: Boolean(event && event.isTrusted),
-        belongsToSettings,
-        belongsToLiveNodeMonitor,
-        selectedNetwork: activeNetwork,
-        buttonDisabled: Boolean(button.disabled),
-        buttonAction: action
-      }
-    });
-  }, true);
+  return wasmNodeInstallStartTraceDocumentClickObserver(root);
 }
 
 function kgwNodeTraceRenderedStartControlsR1(root) {
-  for (const profile of NODE_NETWORKS) {
-    const net = profile.key;
-    const settingsPanel = root.querySelector('[data-node-network-panel="' + net + '"] [data-node-inner-panel="settings"]');
-    const start = settingsPanel?.querySelector?.('[data-node-action="start"][data-net="' + net + '"]');
-
-    kgwStartTraceFrontendR1("frontend.settings_subtab_rendered", {
-      network: net,
-      action: "render",
-      result: settingsPanel ? "ok" : "missing",
-      details: {
-        belongsToSettings: Boolean(settingsPanel),
-        selectedNetwork: kgwNodeTraceActiveNetworkR1(root)
-      }
-    });
-    kgwStartTraceFrontendR1("frontend.start_control_rendered", {
-      network: net,
-      action: "start",
-      result: start ? "ok" : "missing",
-      details: {
-        belongsToSettings: Boolean(start && settingsPanel && settingsPanel.contains(start)),
-        startDisabled: Boolean(start?.disabled)
-      }
-    });
-  }
+  return wasmNodeTraceRenderedStartControls(root);
 }
 
 function kgwNodeRuntimeActionForCommandR1(command) {
-  if (command === "kgw_kgw_apply_node_settings_v1") return "start";
-  if (command === "kgw_kgw_disable_network_v1") return "stop";
-  return "runtime";
+  return wasmNodeRuntimeActionForCommand(String(command || ""));
 }
 
 function kgwNodeSmallOwnerTraceR44D(net, action, phase, details) {
-  try {
-    const safeNet = String(net || "unknown");
-    const safeAction = String(action || "small-owner");
-    const safePhase = String(phase || "unknown");
-    const safeDetails = details && typeof details === "object" ? details : {};
-    const args = {
-      scope: "node",
-      net: safeNet,
-      action: safeAction,
-      phase: safePhase,
-      details: JSON.stringify({
-        patch: "KGW_SMALL_NODE_BRIDGE_TRACE_PATCH_R44D",
-        existingOwner: "node-small-owner-functions",
-        network: safeNet,
-        action: safeAction,
-        phase: safePhase,
-        details: safeDetails
-      })
-    };
-    const tauri = window.__TAURI__;
-    const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
-      ? tauri.core.invoke.bind(tauri.core)
-      : tauri && typeof tauri.invoke === "function"
-        ? tauri.invoke.bind(tauri)
-        : window.__TAURI_INVOKE__;
-    if (typeof invoke === "function") {
-      invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
-    }
-  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
+  return wasmNodeSmallOwnerTrace(net, action, phase, details);
 }
-
-
-
 
 function kgwI18nTextR41(key, fallback) {
   try {
