@@ -162,9 +162,9 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.css",
     )?;
-    let settings = read(
+    let settings_paths = read(
         root,
-        "apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js",
+        "crates/kaspa-gateway-frontend-wasm/src/settings_paths.rs",
     )?;
     let top_js = read(
         root,
@@ -185,7 +185,7 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
     validate_functional_ui(
         &explorer_js,
         &explorer_css,
-        &settings,
+        &settings_paths,
         &top_js,
         &top_rust,
         &top_html,
@@ -195,7 +195,7 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
 fn validate_functional_ui(
     explorer_js: &str,
     explorer_css: &str,
-    settings: &str,
+    settings_paths: &str,
     top_js: &str,
     top_rust: &str,
     top_html: &str,
@@ -228,15 +228,17 @@ fn validate_functional_ui(
             "All active Explorer filter/fetch owners must use canonical validation".to_owned(),
         );
     }
-    require_contains(
-        settings,
-        r#"dialog.open({ title: "Choose directory", directory: true, multiple: false })"#,
-        "Settings Browse must invoke native directory dialog",
-    )?;
-    if !settings.contains("settings_validate_custom_path")
-        || !settings.contains("Browse cancelled; path unchanged.")
-    {
-        return Err("Settings Browse selected/cancel contract missing".to_owned());
+    for needle in [
+        r#"function(&dialog, "open")"#,
+        r#""Choose directory""#,
+        r#""settings_validate_custom_path""#,
+        r#""Browse cancelled; path unchanged.""#,
+    ] {
+        require_contains(
+            settings_paths,
+            needle,
+            "Settings Browse Rust-owner contract missing",
+        )?;
     }
     if !top_html.contains(r#"id="topAddressesStatus""#)
         || !top_template.contains("topAddressesStatus")
@@ -292,9 +294,21 @@ fn validate_functional_ui(
     Ok(())
 }
 fn settings_workflow_contract(root: &Path) -> Result<(), String> {
-    let settings = read(
+    let settings_adapter = read(
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js",
+    )?;
+    let settings_ui = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/settings_ui.rs",
+    )?;
+    let settings_profiles = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/settings_profiles.rs",
+    )?;
+    let settings_addresses = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/settings_addresses.rs",
     )?;
     let backend = read(
         root,
@@ -304,28 +318,36 @@ fn settings_workflow_contract(root: &Path) -> Result<(), String> {
         root,
         "apps/kaspa-gateway-desktop/src-tauri/src/address_book.rs",
     )?;
-    validate_settings_workflow(&settings, &backend, &address_book)
+    validate_settings_workflow(
+        &settings_adapter,
+        &settings_ui,
+        &settings_profiles,
+        &settings_addresses,
+        &backend,
+        &address_book,
+    )
 }
 
 fn validate_settings_workflow(
-    settings: &str,
+    settings_adapter: &str,
+    settings_ui: &str,
+    settings_profiles: &str,
+    settings_addresses: &str,
     backend: &str,
     address_book: &str,
 ) -> Result<(), String> {
-    let placeholder = isolate_optional(settings, "const placeholderActions = [", "];");
-    for id in [
-        "settingsProfileAdd",
-        "settingsProfileRename",
-        "settingsProfileDelete",
-        "settingsResetSelectedEndpoint",
-        "settingsExportAddresses",
-        "settingsImportAddresses",
+    for needle in [
+        "@generated",
+        "wasmSettingsUiInitTab()",
+        "wasmAddressesInstallAll()",
     ] {
-        if placeholder.contains(id) {
-            return Err(format!("{id} must not remain placeholder-owned"));
-        }
+        require_contains(
+            settings_adapter,
+            needle,
+            "generated Settings adapter wiring contract missing",
+        )?;
     }
-    for command in [
+    for forbidden in [
         "settings_profile_add",
         "settings_profile_rename",
         "settings_profile_delete",
@@ -333,19 +355,64 @@ fn validate_settings_workflow(
         "settings_reset_selected_endpoint",
         "address_book_export_json",
         "address_book_import_json",
+        "dialog.save",
+        "dialog.open",
+        "placeholderActions",
     ] {
-        if !settings.contains(command) {
-            return Err(format!("frontend missing real command {command}"));
-        }
+        forbid_contains(
+            settings_adapter,
+            forbidden,
+            "generated Settings adapter must not regain workflow implementation",
+        )?;
     }
-    if !settings.contains("dialog.save") || !settings.contains("dialog.open") {
-        return Err("native dialog open/save flows must be present".to_owned());
+    for needle in [
+        "crate::settings_profiles::install();",
+        "crate::settings_paths::browse(target_id).await",
+        "crate::settings_addresses::install_io()",
+    ] {
+        require_contains(settings_ui, needle, "Settings Rust UI owner wiring missing")?;
     }
-    require_contains(
-        settings,
-        "kgwSettingsUpdateEndpointResetAvailability",
-        "reset availability must be explicit",
-    )?;
+    for command in [
+        "settings_profile_add",
+        "settings_profile_rename",
+        "settings_profile_delete",
+        "settings_profile_select",
+        "settings_reset_selected_endpoint",
+    ] {
+        require_contains(
+            settings_profiles,
+            command,
+            "Settings profile Rust-owner command missing",
+        )?;
+    }
+    for needle in [
+        "fn update_reset_availability(",
+        r#""settingsResetSelectedEndpoint""#,
+        r#""settings_reset_selected_endpoint""#,
+    ] {
+        require_contains(
+            settings_profiles,
+            needle,
+            "Settings endpoint-reset Rust-owner contract missing",
+        )?;
+    }
+    for command in ["address_book_export_json", "address_book_import_json"] {
+        require_contains(
+            settings_addresses,
+            command,
+            "Settings address IO Rust-owner command missing",
+        )?;
+    }
+    for needle in [
+        r#"function(&dialog, "save")"#,
+        r#"function(&dialog, "open")"#,
+    ] {
+        require_contains(
+            settings_addresses,
+            needle,
+            "Settings address IO native dialog contract missing",
+        )?;
+    }
     for function in [
         "settings_profile_add",
         "settings_profile_rename",
@@ -362,17 +429,6 @@ fn validate_settings_workflow(
         "import will not overwrite it",
         "address import must preserve conflicting saved data",
     )
-}
-
-fn isolate_optional<'a>(source: &'a str, start: &str, end: &str) -> &'a str {
-    let Some(begin) = source.find(start) else {
-        return "";
-    };
-    let tail = &source[begin + start.len()..];
-    let Some(length) = tail.find(end) else {
-        return "";
-    };
-    &source[begin..begin + start.len() + length]
 }
 
 fn aud010_contract(root: &Path) -> Result<(), String> {
@@ -687,9 +743,9 @@ mod tests {
             "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.css",
         )
         .unwrap();
-        let settings = read(
+        let settings_paths = read(
             &root,
-            "apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js",
+            "crates/kaspa-gateway-frontend-wasm/src/settings_paths.rs",
         )
         .unwrap();
         let top_js = read(
@@ -716,7 +772,7 @@ mod tests {
             validate_functional_ui(
                 &explorer_js,
                 &explorer_css,
-                &settings,
+                &settings_paths,
                 &top_js,
                 &top_rust,
                 &top_html,
@@ -734,12 +790,27 @@ mod tests {
     #[test]
     fn settings_workflow_missing_real_command_fails_closed() {
         let root = root();
-        let settings = read(
+        let settings_adapter = read(
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js",
         )
+        .unwrap();
+        let settings_ui = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/settings_ui.rs",
+        )
+        .unwrap();
+        let settings_profiles = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/settings_profiles.rs",
+        )
         .unwrap()
         .replace("settings_profile_add", "profile_add_removed");
+        let settings_addresses = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/settings_addresses.rs",
+        )
+        .unwrap();
         let backend = read(
             &root,
             "apps/kaspa-gateway-desktop/src-tauri/src/settings_commands.rs",
@@ -750,7 +821,17 @@ mod tests {
             "apps/kaspa-gateway-desktop/src-tauri/src/address_book.rs",
         )
         .unwrap();
-        assert!(validate_settings_workflow(&settings, &backend, &address_book).is_err());
+        assert!(
+            validate_settings_workflow(
+                &settings_adapter,
+                &settings_ui,
+                &settings_profiles,
+                &settings_addresses,
+                &backend,
+                &address_book,
+            )
+            .is_err()
+        );
     }
 
     #[test]
