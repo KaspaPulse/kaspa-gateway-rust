@@ -1,6 +1,5 @@
 import { applyStatusTone } from "../../status.js";
 import {
-  confirmUserAction,
   settingsDisplayChecksWithDefaults,
   settingsDisplayPreferences,
   settingsAddressesInstallAll,
@@ -13,6 +12,8 @@ import {
   settingsDatabaseRefresh,
   settingsPathsLoadDefaults,
   settingsPathsRepairBeforeSave,
+  settingsProfilesInstall,
+  settingsProfilesSelectEndpoint,
   settingsSelectedDisplayKeys,
   settingsToWesternDigits
 } from "../../settings-contract.js";
@@ -216,21 +217,7 @@ function combineUrl() {
 }
 
 function selectEndpoint(row) {
-  qa(".tree-row").forEach((node) => node.classList.remove("is-selected"));
-  row.classList.add("is-selected");
-
-  const key = q("#settingsApiKey");
-  const desc = q("#settingsApiDescription");
-  const base = q("#settingsApiBase");
-  const path = q("#settingsApiPath");
-
-  if (key) key.value = row.dataset.apiKey || "";
-  if (desc) desc.value = row.dataset.apiDesc || "";
-  if (base) base.value = row.dataset.apiBase || "";
-  if (path) path.value = row.dataset.apiPath || "";
-
-  combineUrl();
-  kgwSettingsUpdateEndpointResetAvailability(row);
+  return settingsProfilesSelectEndpoint(row);
 }
 
 
@@ -641,188 +628,13 @@ function kgwSettingsBackendInvokeR4(command, payload = {}) {
   return invoke(command, payload);
 }
 
-const KGW_SETTINGS_WORKFLOW_STATE = {
-  backendSettings: null,
-  busy: false
-};
-
 function kgwSettingsDialogApi() {
   return window.__TAURI__?.dialog || null;
 }
 
-function kgwSettingsProfileSetStatus(message, kind = "info") {
-  let status = q("#settingsProfileStatus");
-  const profile = q("#settingsApiProfile");
-  if (!status && profile) {
-    status = document.createElement("div");
-    status.id = "settingsProfileStatus";
-    status.setAttribute("role", "status");
-    status.setAttribute("aria-live", "polite");
-    profile.parentElement?.appendChild(status);
-  }
-
-  if (status) {
-    status.textContent = String(message || "");
-    status.dataset.kind = kind;
-    applyStatusTone(status, kind);
-  }
-}
-
-function kgwSettingsActiveBackendProfile(settings) {
-  const list = Array.isArray(settings?.api_profiles) ? settings.api_profiles : [];
-  return list.find((profile) => profile?.name === settings?.active_api_profile) || list[0] || null;
-}
-
-function kgwSettingsUpdateEndpointResetAvailability(row) {
-  const button = q("#settingsResetSelectedEndpoint");
-  if (!button) return;
-  const key = String(row?.dataset?.apiKey || "");
-  const supported = key === "base_url" || row?.dataset?.kgwPersistedEndpoint === "true";
-  button.disabled = !supported;
-  button.setAttribute("aria-disabled", String(!supported));
-  button.title = supported ? "Reset the selected persisted endpoint to its canonical default." : "This endpoint is not stored by the current Settings contract.";
-}
-
-function kgwSettingsApplyBackendProfiles(settings) {
-  if (!settings || typeof settings !== "object") return;
-  KGW_SETTINGS_WORKFLOW_STATE.backendSettings = settings;
-  const select = q("#settingsApiProfile");
-  const profiles = Array.isArray(settings.api_profiles) ? settings.api_profiles : [];
-  if (select) {
-    select.innerHTML = "";
-    profiles.forEach((profile) => {
-      const option = document.createElement("option");
-      option.value = profile.name;
-      option.textContent = profile.name;
-      select.appendChild(option);
-    });
-    select.value = settings.active_api_profile || profiles[0]?.name || "";
-  }
-
-  const active = kgwSettingsActiveBackendProfile(settings);
-  const endpointMap = new Map((active?.endpoints || []).map((endpoint) => [endpoint.name, endpoint]));
-  qa(".tree-row[data-api-key]").forEach((row) => {
-    const key = String(row.dataset.apiKey || "");
-    row.dataset.kgwPersistedEndpoint = "false";
-    if (key === "base_url" && active) {
-      row.dataset.apiBase = active.base_url || "";
-      row.dataset.apiPath = "";
-      row.dataset.kgwPersistedEndpoint = "true";
-      return;
-    }
-    const endpoint = endpointMap.get(key);
-    if (endpoint && active) {
-      row.dataset.apiBase = active.base_url || "";
-      row.dataset.apiPath = endpoint.path || "";
-      row.dataset.kgwPersistedEndpoint = "true";
-    }
-  });
-  const selected = q(".tree-row.is-selected") || q(".tree-row");
-  if (selected) selectEndpoint(selected);
-}
-
-async function kgwSettingsRefreshBackendProfiles(reason = "refresh") {
-  try {
-    const settings = await kgwSettingsBackendInvokeR4("settings_load");
-    kgwSettingsApplyBackendProfiles(settings);
-    settingsLogger().log("settings backend profiles refreshed", { reason });
-    return settings;
-  } catch (error) {
-    kgwSettingsProfileSetStatus(`Profile load failed: ${error?.message || error}`, "error");
-    throw error;
-  }
-}
-
-async function kgwSettingsRunProfileMutation(command, payload, successMessage) {
-  if (KGW_SETTINGS_WORKFLOW_STATE.busy) return null;
-  KGW_SETTINGS_WORKFLOW_STATE.busy = true;
-  kgwSettingsProfileSetStatus("Working...", "loading");
-  try {
-    const settings = await kgwSettingsBackendInvokeR4(command, payload);
-    kgwSettingsApplyBackendProfiles(settings);
-    kgwSettingsProfileSetStatus(successMessage, "success");
-    return settings;
-  } catch (error) {
-    kgwSettingsProfileSetStatus(`Action failed: ${error?.message || error}`, "error");
-    return null;
-  } finally {
-    KGW_SETTINGS_WORKFLOW_STATE.busy = false;
-  }
-}
-
-async function kgwSettingsProfileAddAction() {
-  const name = window.prompt("New API profile name (letters, numbers, dot, dash or underscore):", "");
-  if (name == null) return;
-  await kgwSettingsRunProfileMutation("settings_profile_add", { name }, "API profile added and saved.");
-}
-
-async function kgwSettingsProfileRenameAction() {
-  const select = q("#settingsApiProfile");
-  const current = String(select?.value || "");
-  if (!current) return kgwSettingsProfileSetStatus("Select an API profile first.", "error");
-  const newName = window.prompt("New API profile name:", current);
-  if (newName == null || newName === current) return;
-  await kgwSettingsRunProfileMutation("settings_profile_rename", { name: current, newName }, "API profile renamed and saved.");
-}
-
-async function kgwSettingsProfileDeleteAction() {
-  const select = q("#settingsApiProfile");
-  const name = String(select?.value || "");
-  if (!name) return kgwSettingsProfileSetStatus("Select an API profile first.", "error");
-  if (!await confirmUserAction(`Delete API profile "${name}"?`)) return;
-  await kgwSettingsRunProfileMutation("settings_profile_delete", { name }, "API profile deleted and saved.");
-}
-
-async function kgwSettingsProfileSelectAction() {
-  const select = q("#settingsApiProfile");
-  const name = String(select?.value || "");
-  if (!name) return;
-  await kgwSettingsRunProfileMutation("settings_profile_select", { name }, "Active API profile saved.");
-}
-
-async function kgwSettingsResetSelectedEndpointAction() {
-  const row = q(".tree-row.is-selected");
-  const profileName = String(q("#settingsApiProfile")?.value || "");
-  const endpointName = String(row?.dataset?.apiKey || "");
-  if (!row || !profileName || !endpointName) {
-    kgwSettingsProfileSetStatus("Select a persisted endpoint first.", "error");
-    return;
-  }
-  await kgwSettingsRunProfileMutation(
-    "settings_reset_selected_endpoint",
-    { profileName, endpointName },
-    "Selected endpoint reset to its canonical default and saved."
-  );
-}
-
 function kgwInstallSettingsRealWorkflowActions() {
-  if (window.__kgwSettingsRealWorkflowActionsInstalled) return;
-  window.__kgwSettingsRealWorkflowActionsInstalled = true;
-
   settingsAddressesInstallIo();
-
-  const bindings = [
-    ["settingsProfileAdd", kgwSettingsProfileAddAction],
-    ["settingsProfileRename", kgwSettingsProfileRenameAction],
-    ["settingsProfileDelete", kgwSettingsProfileDeleteAction],
-    ["settingsResetSelectedEndpoint", kgwSettingsResetSelectedEndpointAction]
-  ];
-  bindings.forEach(([id, handler]) => {
-    const button = q(`#${CSS.escape(id)}`);
-    if (!button || button.dataset.kgwRealWorkflowBound === "true") return;
-    button.dataset.kgwRealWorkflowBound = "true";
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      void handler();
-    });
-  });
-
-  const select = q("#settingsApiProfile");
-  if (select && select.dataset.kgwProfileSelectBound !== "true") {
-    select.dataset.kgwProfileSelectBound = "true";
-    select.addEventListener("change", () => void kgwSettingsProfileSelectAction());
-  }
-  void kgwSettingsRefreshBackendProfiles("workflow-install");
+  settingsProfilesInstall();
 }
 
 async function kgwSettingsLoadDynamicPathDefaultsR4(reason = "settings") {

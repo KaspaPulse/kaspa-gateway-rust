@@ -268,6 +268,9 @@ import init, {
   settingsPathsApply as wasmPathsApply,
   settingsPathsLoadDefaults as wasmPathsLoadDefaults,
   settingsPathsRepairBeforeSave as wasmPathsRepairBeforeSave,
+  settingsProfilesInstall as wasmProfilesInstall,
+  settingsProfilesRefresh as wasmProfilesRefresh,
+  settingsProfilesSelectEndpoint as wasmProfilesSelectEndpoint,
   settingsRenderFieldErrors as wasmRenderFieldErrors,
   settingsSelectedDisplayKeys as wasmSelectedDisplayKeys,
   settingsSplitEndpoint as wasmSplitEndpoint,
@@ -377,6 +380,18 @@ export async function settingsPathsLoadDefaults(reason = "settings") {
 
 export async function settingsPathsRepairBeforeSave() {
   return await wasmPathsRepairBeforeSave();
+}
+
+export function settingsProfilesInstall() {
+  return wasmProfilesInstall();
+}
+
+export async function settingsProfilesRefresh() {
+  return await wasmProfilesRefresh();
+}
+
+export function settingsProfilesSelectEndpoint(row) {
+  return wasmProfilesSelectEndpoint(row);
 }
 
 export function settingsDbKindFromFileName(value) {
@@ -1058,6 +1073,9 @@ mod tests {
         assert!(settings.contains("wasmPathsApply(paths, force)"));
         assert!(settings.contains("await wasmPathsLoadDefaults(reason)"));
         assert!(settings.contains("await wasmPathsRepairBeforeSave()"));
+        assert!(settings.contains("wasmProfilesInstall()"));
+        assert!(settings.contains("await wasmProfilesRefresh()"));
+        assert!(settings.contains("wasmProfilesSelectEndpoint(row)"));
         assert!(settings.contains("wasmExplorerAddress(value)"));
         assert!(settings.contains("wasmExplorerUrl(value)"));
         assert!(settings.contains("new Set(wasmNodeOptional())"));
