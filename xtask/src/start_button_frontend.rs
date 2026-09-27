@@ -126,21 +126,31 @@ function staticPlacementTests() {
     "Node command-composer schema policy must not remain implemented in hand-maintained JS",
   );
   assert.ok(
-    source.includes("nodeCommandOptionsKey as wasmNodeCommandOptionsKey")
-      && source.includes("nodeReadCommandOptions as wasmNodeReadCommandOptions")
-      && source.includes("nodeApplyCommandOptions as wasmNodeApplyCommandOptions"),
-    "Node command-option persistence must be delegated to Rust/WASM",
+    source.includes("nodeR51Keys as wasmNodeR51Keys")
+      && source.includes("nodeR51Panel as wasmNodeR51Panel")
+      && source.includes("nodeR51Fields as wasmNodeR51Fields")
+      && source.includes("nodeR51ReadSettings as wasmNodeR51ReadSettings")
+      && source.includes("nodeR51WriteSettings as wasmNodeR51WriteSettings")
+      && source.includes("nodeR51Store as wasmNodeR51Store")
+      && source.includes("nodeR51Load as wasmNodeR51Load")
+      && source.includes("nodeR51CaptureFactoryDefaults as wasmNodeR51CaptureFactoryDefaults")
+      && source.includes("nodeR51LoadSavedSettings as wasmNodeR51LoadSavedSettings"),
+    "Node R51 persistence core must be delegated to the Rust/WASM owner",
   );
   assert.ok(
     source.includes("const KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C = wasmNodeCommandOptionsKey();")
-      && source.includes("wasmNodeReadCommandOptions(String(net ||")
-      && source.includes("wasmNodeApplyCommandOptions(String(net ||"),
-    "Node R38C persistence wrappers must remain thin Rust/WASM adapters",
+      && /function kgwNodeR51ReadSettings\(net\)\s*\{\s*const values = wasmNodeR51ReadSettings/.test(source)
+      && /function kgwNodeR51WriteSettings\(net, values\)[\s\S]*?wasmNodeR51WriteSettings/.test(source)
+      && source.includes('return wasmNodeR51Store(String(key || ""), value);')
+      && source.includes('return wasmNodeR51Load(String(key || ""));'),
+    "Node R51 wrappers must remain thin Rust/WASM adapters with JS-only trace/update glue",
   );
   assert.ok(
     !source.includes("const commandOptions = values && values[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C];")
-      && !source.includes("state[String(name)] = Boolean(enabled) && (!NODE_OPTIONAL.has(name)"),
-    "Node R38C persistence implementation must not return to hand-maintained JS",
+      && !source.includes("state[String(name)] = Boolean(enabled) && (!NODE_OPTIONAL.has(name)")
+      && !source.includes('const KGW_NODE_R51_STORAGE_PREFIX = "kgw.node.direct.v51.";')
+      && !source.includes("localStorage.setItem(KGW_NODE_R51_STORAGE_PREFIX"),
+    "Node R51 persistence implementation must not return to hand-maintained JS",
   );
 }
 
@@ -708,6 +718,80 @@ const wasmNodeApplyCommandOptions = (net, values) => {
   wasmNodeRefreshInlineCommandToggles(net);
   result.applied = true;
   return result;
+};
+const wasmNodeR51Keys = () => wasmNodeNetworkProfiles().map((item) => item.key);
+const wasmNodeR51Panel = (net) =>
+  document.querySelector('[data-node-network-panel="' + String(net || "") + '"]');
+const wasmNodeR51Fields = (net) => {
+  const panel = wasmNodeR51Panel(net);
+  if (!panel) return [];
+  const prefix = "node-" + String(net || "") + "-";
+  return Array.from(panel.querySelectorAll("input, select, textarea")).filter((field) => {
+    if (!field.id || !field.id.startsWith(prefix)) return false;
+    if (field.id.endsWith("-commandPreview") || field.id.endsWith("-logOutput")) return false;
+    return !field.closest(".node-v6-log-toolbar");
+  });
+};
+const wasmNodeR51ReadSettings = (net) => {
+  const values = {};
+  values[wasmNodeCommandOptionsKey()] = wasmNodeReadCommandOptions(net);
+  const prefix = "node-" + String(net || "") + "-";
+  for (const field of wasmNodeR51Fields(net)) {
+    const name = String(field.id || "").slice(prefix.length);
+    if (!field.id || NODE_MANAGED[name]) continue;
+    values[field.id] = field.type === "checkbox"
+      ? { type: "checkbox", checked: Boolean(field.checked) }
+      : { type: "value", value: String(field.value ?? "") };
+  }
+  return values;
+};
+const wasmNodeR51WriteSettings = (net, values) => {
+  const result = { applied: false, commandOptionsApplied: false, commandOptionsCount: 0 };
+  if (!values || typeof values !== "object") return result;
+  const prefix = "node-" + String(net || "") + "-";
+  for (const field of wasmNodeR51Fields(net)) {
+    const name = String(field.id || "").slice(prefix.length);
+    if (!field.id || NODE_MANAGED[name]) continue;
+    const item = values[field.id];
+    if (!item) continue;
+    if (field.type === "checkbox") field.checked = Boolean(item.checked);
+    else if (Object.hasOwn(item, "value")) field.value = String(item.value ?? "");
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    field.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  const command = wasmNodeApplyCommandOptions(net, values);
+  result.commandOptionsApplied = Boolean(command && command.applied);
+  result.commandOptionsCount = Number(command && command.count || 0);
+  result.applied = true;
+  return result;
+};
+const wasmNodeR51StoragePrefix = "kgw.node.direct.v51.";
+const wasmNodeR51Store = (key, value) =>
+  localStorage.setItem(wasmNodeR51StoragePrefix + String(key || ""), JSON.stringify(value));
+const wasmNodeR51Load = (key) => {
+  try { return JSON.parse(localStorage.getItem(wasmNodeR51StoragePrefix + String(key || "")) || "null"); }
+  catch { return null; }
+};
+const wasmNodeR51CaptureFactoryDefaults = () => {
+  for (const net of wasmNodeR51Keys()) {
+    if (!wasmNodeR51Load("factory:" + net)) {
+      wasmNodeR51Store("factory:" + net, wasmNodeR51ReadSettings(net));
+    }
+  }
+};
+const wasmNodeR51LoadSavedSettings = () => {
+  const applied = [];
+  for (const net of wasmNodeR51Keys()) {
+    const saved = wasmNodeR51Load("saved:" + net);
+    if (!saved) continue;
+    const result = wasmNodeR51WriteSettings(net, saved);
+    applied.push({
+      net,
+      commandOptionsApplied: Boolean(result.commandOptionsApplied),
+      commandOptionsCount: Number(result.commandOptionsCount || 0),
+    });
+  }
+  return applied;
 };
 const wasmNodeCardInput = (net, name, label, value = "", placeholder = "", span2 = false, toggle = "") =>
   '\\n    <div class="node-v6-card' + (span2 ? ' span2' : '') + '">'

@@ -2,7 +2,6 @@ import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { NODE_ENDPOINTS, NODE_MANAGED, NODE_REQUIRED, NODE_OPTIONAL, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, endpoint, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initNodeRust, {
-  nodeApplyCommandOptions as wasmNodeApplyCommandOptions,
   nodeBackendInvoke as wasmNodeBackendInvoke,
   nodeById as wasmNodeById,
   nodeCardCheck as wasmNodeCardCheck,
@@ -35,8 +34,16 @@ import initNodeRust, {
   nodeNormalizeNetwork as wasmNodeNormalizeNetwork,
   nodeNormalizeRuntimeError as wasmNodeNormalizeRuntimeError,
   nodeParseRuntimeFields as wasmNodeParseRuntimeFields,
-  nodeReadCommandOptions as wasmNodeReadCommandOptions,
   nodeReadLastNetwork as wasmNodeReadLastNetwork,
+  nodeR51CaptureFactoryDefaults as wasmNodeR51CaptureFactoryDefaults,
+  nodeR51Fields as wasmNodeR51Fields,
+  nodeR51Keys as wasmNodeR51Keys,
+  nodeR51Load as wasmNodeR51Load,
+  nodeR51LoadSavedSettings as wasmNodeR51LoadSavedSettings,
+  nodeR51Panel as wasmNodeR51Panel,
+  nodeR51ReadSettings as wasmNodeR51ReadSettings,
+  nodeR51Store as wasmNodeR51Store,
+  nodeR51WriteSettings as wasmNodeR51WriteSettings,
   nodeResolveInnerTab as wasmNodeResolveInnerTab,
   nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
   nodeRuntimeActionForCommand as wasmNodeRuntimeActionForCommand,
@@ -1962,7 +1969,6 @@ async function runNodeIntegratedAction(action, net) {
   }
 }
 /* KGW_R51_DIRECT_NODE_LOG_RUNTIME_SETTINGS_OWNER */
-const KGW_NODE_R51_STORAGE_PREFIX = "kgw.node.direct.v51.";
 const KGW_NODE_R51_LAST_STATUS = {};
 const KGW_NODE_R51_LAST_LOGS = {};
 const KGW_NODE_R51_LAST_ACTIVITY_NOTICE = {};
@@ -1972,24 +1978,15 @@ const KGW_NODE_R51_LOGS_IN_FLIGHT = new Map();
 let KGW_NODE_R51_TIMER = null;
 
 function kgwNodeR51Keys() {
-  return NODE_NETWORKS.map((item) => item.key);
+  return Array.from(wasmNodeR51Keys());
 }
 
 function kgwNodeR51Panel(net) {
-  return document.querySelector(`[data-node-network-panel="${net}"]`);
+  return wasmNodeR51Panel(String(net || ""));
 }
 
 function kgwNodeR51Fields(net) {
-  const panel = kgwNodeR51Panel(net);
-  if (!panel) return [];
-
-  return Array.from(panel.querySelectorAll("input, select, textarea")).filter((field) => {
-    if (!field.id || !field.id.startsWith(`node-${net}-`)) return false;
-    if (field.id.endsWith("-commandPreview")) return false;
-    if (field.id.endsWith("-logOutput")) return false;
-    if (field.closest(".node-v6-log-toolbar")) return false;
-    return true;
-  });
+  return Array.from(wasmNodeR51Fields(String(net || "")));
 }
 
 
@@ -2009,23 +2006,12 @@ function kgwNodeR51Fields(net) {
 /* KGW_SETTINGS_FEEDBACK_LOCK_OWNER_R11_END */
 
 function kgwNodeR51ReadSettings(net) {
-  const values = {};
-  values[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C] = kgwNodeR51ReadCommandOptionsR38C(net);
-
-  for (const field of kgwNodeR51Fields(net)) {
-    if (!field.id || NODE_MANAGED[field.id.slice(("node-" + net + "-").length)]) continue;
-
-    values[field.id] = field.type === "checkbox"
-      ? { type: "checkbox", checked: Boolean(field.checked) }
-      : { type: "value", value: String(field.value ?? "") };
-  }
-
+  const values = wasmNodeR51ReadSettings(String(net || ""));
   kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-read-settings-command-options", {
     patch: "R38C",
     owner: "node-r51-settings-owner",
-    commandOptionCount: Object.keys(values[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C] || {}).length
+    commandOptionCount: Object.keys(values?.[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C] || {}).length
   });
-
   return values;
 }
 
@@ -2036,83 +2022,60 @@ function kgwNodeR51ReadSettings(net) {
  */
 const KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C = wasmNodeCommandOptionsKey();
 
-function kgwNodeR51ReadCommandOptionsR38C(net) {
-  return wasmNodeReadCommandOptions(String(net || ""));
-}
-
-function kgwNodeR51ApplyCommandOptionsR38C(net, values) {
+function kgwNodeR51WriteSettings(net, values) {
+  if (!values || typeof values !== "object") return null;
   try {
-    const result = wasmNodeApplyCommandOptions(String(net || ""), values || {});
-    if (result && result.applied) updateCommand(net);
-
-    kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-command-options-restored", {
-      patch: "R38C",
-      owner: "node-r51-settings-owner",
-      commandOptionCount: Number(result && result.count || 0)
-    });
+    const result = wasmNodeR51WriteSettings(String(net || ""), values);
+    if (result?.commandOptionsApplied) {
+      kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-command-options-restored", {
+        patch: "R38C",
+        owner: "node-r51-settings-owner",
+        commandOptionCount: Number(result.commandOptionsCount || 0)
+      });
+    }
+    if (result?.applied) updateCommand(net);
+    return result;
   } catch (error) {
     kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-command-options-restore-failed", {
       patch: "R38C",
       owner: "node-r51-settings-owner",
       message: error && error.message ? error.message : String(error)
     });
+    throw error;
   }
-}
-
-
-function kgwNodeR51WriteSettings(net, values) {
-  if (!values || typeof values !== "object") return;
-
-  for (const field of kgwNodeR51Fields(net)) {
-    if (!field.id) continue;
-
-    const name = field.id.slice(("node-" + net + "-").length);
-    if (NODE_MANAGED[name]) continue;
-    const item = values[field.id];
-    if (!item) continue;
-
-    if (field.type === "checkbox") {
-      field.checked = Boolean(item.checked);
-    } else if ("value" in item) {
-      field.value = String(item.value ?? "");
-    }
-
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-    field.dispatchEvent(new Event("change", { bubbles: true }));
-  }
-
-  kgwNodeR51ApplyCommandOptionsR38C(net, values);
-
-  updateCommand(net);
 }
 
 function kgwNodeR51Store(key, value) {
-  localStorage.setItem(KGW_NODE_R51_STORAGE_PREFIX + key, JSON.stringify(value));
+  return wasmNodeR51Store(String(key || ""), value);
 }
 
 function kgwNodeR51Load(key) {
   try {
-    return JSON.parse(localStorage.getItem(KGW_NODE_R51_STORAGE_PREFIX + key) || "null");
+    return wasmNodeR51Load(String(key || ""));
   } catch {
     return null;
   }
 }
 
 function kgwNodeR51CaptureFactoryDefaults() {
-  for (const net of kgwNodeR51Keys()) {
-    if (!kgwNodeR51Load("factory:" + net)) {
-      kgwNodeR51Store("factory:" + net, kgwNodeR51ReadSettings(net));
-    }
-  }
+  return wasmNodeR51CaptureFactoryDefaults();
 }
 
 function kgwNodeR51LoadSavedSettings() {
-  for (const net of kgwNodeR51Keys()) {
-    const saved = kgwNodeR51Load("saved:" + net);
-    if (saved) {
-      kgwNodeR51WriteSettings(net, saved);
+  const applied = Array.from(wasmNodeR51LoadSavedSettings() || []);
+  for (const item of applied) {
+    const net = String(item?.net || "");
+    if (!net) continue;
+    if (item?.commandOptionsApplied) {
+      kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-command-options-restored", {
+        patch: "R38C",
+        owner: "node-r51-settings-owner",
+        commandOptionCount: Number(item.commandOptionsCount || 0)
+      });
     }
+    updateCommand(net);
   }
+  return applied;
 }
 
 /* KGW_NODE_DIRTY_SETTINGS_BUTTONS_FIX_R2
