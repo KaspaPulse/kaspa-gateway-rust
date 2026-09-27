@@ -98,11 +98,13 @@ function staticPlacementTests() {
   assert.ok(source.includes("Stop required FORCED termination."), "forced Stop must be visible outside raw logs");
   assert.ok(!/appendLog\([^\n]*(FORCED|graceful|stop_outcome|Stopping)/i.test(source), "Stop control diagnostics must remain outside raw Node logs");
   assert.ok(
-    source.includes("nodeRuntimeIsRunning as wasmNodeRuntimeIsRunning") && /function kgwNodeR51IsRunning\(text\)\s*\{\s*return wasmNodeRuntimeIsRunning\(text\);\s*\}/.test(source),
+    source.includes("nodeRuntimeIsRunning as kgwNodeR51IsRunning") && !source.includes("function kgwNodeR51IsRunning("),
     "Node status polling must delegate READY/running classification to the Rust/WASM owner",
   );
   assert.ok(
-    source.includes("nodeRuntimeErrorFromStatus as wasmNodeRuntimeErrorFromStatus") && source.includes("kgwNodeRuntimeErrorFromStatus(status)"),
+    source.includes("nodeRuntimeErrorFromStatus as kgwNodeRuntimeErrorFromStatus")
+      && !source.includes("function kgwNodeRuntimeErrorFromStatus(")
+      && source.includes("kgwNodeRuntimeErrorFromStatus(status)"),
     "Node status polling must surface typed post-READY runtime failures through the Rust/WASM owner",
   );
   assert.ok(
@@ -1425,6 +1427,8 @@ const normalizeRuntimeError = wasmNodeNormalizeRuntimeError;
 const parseRuntimeFields = wasmNodeParseRuntimeFields;
 const kgwNodeRuntimeEvidence = wasmNodeRuntimeEvidence;
 const kgwNodeR51CaptureFactoryDefaults = wasmNodeR51CaptureFactoryDefaults;
+const kgwNodeR51IsRunning = wasmNodeRuntimeIsRunning;
+const kgwNodeRuntimeErrorFromStatus = wasmNodeRuntimeErrorFromStatus;
 `;
   const executable = importPrelude + source
     .replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "")

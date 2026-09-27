@@ -49,8 +49,8 @@ import initNodeRust, {
   nodeResolvePublicTauriInvoke as kgwResolvePublicTauriInvokeR1,
   nodeRuntimeActionForCommand as kgwNodeRuntimeActionForCommandR1,
   nodeRuntimeArgs as wasmNodeRuntimeArgs,
-  nodeRuntimeErrorFromStatus as wasmNodeRuntimeErrorFromStatus,
-  nodeRuntimeIsRunning as wasmNodeRuntimeIsRunning,
+  nodeRuntimeErrorFromStatus as kgwNodeRuntimeErrorFromStatus,
+  nodeRuntimeIsRunning as kgwNodeR51IsRunning,
   nodeSaveInnerTab as wasmNodeSaveInnerTab,
   nodeSaveLastNetwork as kgwNodeSaveLastNetworkR101W2,
   nodeSetNetworkEnabled as kgwNodeSetNetworkEnabled,
@@ -1721,14 +1721,6 @@ function kgwNodeR51RestoreDefaults(net) {
     owner: "node-r51-settings-owner"
   });
   return result;
-}
-
-function kgwNodeR51IsRunning(text) {
-  return wasmNodeRuntimeIsRunning(text);
-}
-
-function kgwNodeRuntimeErrorFromStatus(text) {
-  return wasmNodeRuntimeErrorFromStatus(text);
 }
 
 function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false, runtimeError = "", statusText = "") {
