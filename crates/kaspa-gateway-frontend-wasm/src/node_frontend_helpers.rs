@@ -1,4 +1,4 @@
-use js_sys::{Array, Function, Object, Promise, Reflect};
+use js_sys::{Array, Function, JSON, Object, Promise, Reflect};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -299,6 +299,168 @@ pub fn node_checked(net: String, name: String) -> bool {
     present(&element) && crate::js_boolean(&property(&element, "checked"))
 }
 
+fn inner_tab_storage_key_text(net: &str) -> String {
+    format!(
+        "kgw.node.innerTab.{}",
+        if net.is_empty() { "unknown" } else { net }
+    )
+}
+
+fn normalize_inner_tab_text(value: &str) -> &'static str {
+    match value {
+        "settings" => "settings",
+        "log" => "log",
+        _ => "log",
+    }
+}
+
+#[wasm_bindgen(js_name = nodeNormalizeInnerTab)]
+pub fn node_normalize_inner_tab(value: JsValue) -> String {
+    normalize_inner_tab_text(&crate::js_string_owned(&value)).to_owned()
+}
+
+#[wasm_bindgen(js_name = nodeResolveInnerTab)]
+pub fn node_resolve_inner_tab(net: String) -> String {
+    let stored = storage_get(&inner_tab_storage_key_text(&net)).unwrap_or_default();
+    normalize_inner_tab_text(&stored).to_owned()
+}
+
+#[wasm_bindgen(js_name = nodeSaveInnerTab)]
+pub fn node_save_inner_tab(net: String, selected: JsValue) -> String {
+    let normalized = node_normalize_inner_tab(selected);
+    storage_set(&inner_tab_storage_key_text(&net), &normalized);
+    normalized
+}
+
+fn normalize_network_text(value: &str) -> String {
+    let normalized = value.trim();
+    match normalized {
+        "mainnet" | "testnet10" | "testnet13" => normalized.to_owned(),
+        _ => String::new(),
+    }
+}
+
+const LAST_NETWORK_KEY: &str = "kgw.node.lastNetwork";
+
+#[wasm_bindgen(js_name = nodeNormalizeNetwork)]
+pub fn node_normalize_network(value: JsValue) -> String {
+    normalize_network_text(&crate::js_string_owned(&value))
+}
+
+#[wasm_bindgen(js_name = nodeReadLastNetwork)]
+pub fn node_read_last_network() -> String {
+    storage_get(LAST_NETWORK_KEY)
+        .map(|value| normalize_network_text(&value))
+        .unwrap_or_default()
+}
+
+#[wasm_bindgen(js_name = nodeSaveLastNetwork)]
+pub fn node_save_last_network(net: JsValue) -> String {
+    let normalized = node_normalize_network(net);
+    if !normalized.is_empty() {
+        storage_set(LAST_NETWORK_KEY, &normalized);
+    }
+    normalized
+}
+
+fn stringify_runtime_result_value(value: &JsValue) -> String {
+    if value.is_null() || value.is_undefined() {
+        return "No response".to_owned();
+    }
+    if let Some(text) = value.as_string() {
+        return text;
+    }
+    JSON::stringify(value)
+        .ok()
+        .map(|text| crate::js_string_owned(text.as_ref()))
+        .unwrap_or_else(|| crate::js_string_owned(value))
+}
+
+#[wasm_bindgen(js_name = nodeStringifyRuntimeResult)]
+pub fn node_stringify_runtime_result(value: JsValue) -> String {
+    stringify_runtime_result_value(&value)
+}
+
+fn normalize_runtime_error_value(error: &JsValue) -> String {
+    if error.is_null() || error.is_undefined() {
+        return "Unknown backend error".to_owned();
+    }
+    if let Some(text) = error.as_string() {
+        return text;
+    }
+    let message = property(error, "message");
+    if crate::js_boolean(&message) {
+        return crate::js_string_owned(&message);
+    }
+    JSON::stringify(error)
+        .ok()
+        .map(|text| crate::js_string_owned(text.as_ref()))
+        .unwrap_or_else(|| crate::js_string_owned(error))
+}
+
+#[wasm_bindgen(js_name = nodeNormalizeRuntimeError)]
+pub fn node_normalize_runtime_error(error: JsValue) -> String {
+    normalize_runtime_error_value(&error)
+}
+
+fn parse_runtime_fields_text(raw: &str) -> Vec<(String, String)> {
+    raw.split(';')
+        .filter_map(|part| {
+            let index = part.find('=')?;
+            if index == 0 {
+                return None;
+            }
+            let key = part[..index].trim();
+            if key.is_empty() {
+                return None;
+            }
+            Some((key.to_owned(), part[index + 1..].trim().to_owned()))
+        })
+        .collect()
+}
+
+#[wasm_bindgen(js_name = nodeParseRuntimeFields)]
+pub fn node_parse_runtime_fields(value: JsValue) -> JsValue {
+    let raw = stringify_runtime_result_value(&value);
+    let output = Object::new();
+    for (key, value) in parse_runtime_fields_text(&raw) {
+        set(output.as_ref(), &key, &JsValue::from_str(&value));
+    }
+    output.into()
+}
+
+fn running_status_text(value: &str) -> bool {
+    value.to_ascii_lowercase().contains("readiness=ready")
+        && (value.contains("running=true")
+            || value.contains("node_running=true")
+            || value.contains("official_core_running=true"))
+}
+
+#[wasm_bindgen(js_name = nodeRuntimeIsRunning)]
+pub fn node_runtime_is_running(value: JsValue) -> bool {
+    running_status_text(&crate::js_string_owned(&value))
+}
+
+fn runtime_error_from_status_text(value: &str) -> String {
+    let fields = parse_runtime_fields_text(value);
+    let candidate = fields
+        .iter()
+        .find(|(key, _)| key == "runtime_error")
+        .or_else(|| fields.iter().find(|(key, _)| key == "runtimeError"))
+        .map(|(_, value)| value.trim())
+        .unwrap_or("");
+    if candidate.is_empty() || candidate.eq_ignore_ascii_case("none") {
+        String::new()
+    } else {
+        candidate.to_owned()
+    }
+}
+
+#[wasm_bindgen(js_name = nodeRuntimeErrorFromStatus)]
+pub fn node_runtime_error_from_status(value: JsValue) -> String {
+    runtime_error_from_status_text(&crate::js_string_owned(&value))
+}
+
 fn log_auto_scroll_key_text(net: &str) -> String {
     format!("kgw.node.log.autoscroll.{net}")
 }
@@ -495,6 +657,44 @@ mod tests {
         assert!(policy_message_text("mainnet").contains("Official Rusty Kaspa"));
         assert!(policy_message_text("testnet13").contains("no DNS seeders"));
         assert_eq!(policy_message_text("missing"), "");
+    }
+
+    #[test]
+    fn tab_and_network_normalization_match_legacy_contract() {
+        assert_eq!(inner_tab_storage_key_text(""), "kgw.node.innerTab.unknown");
+        assert_eq!(
+            inner_tab_storage_key_text("mainnet"),
+            "kgw.node.innerTab.mainnet"
+        );
+        assert_eq!(normalize_inner_tab_text("settings"), "settings");
+        assert_eq!(normalize_inner_tab_text("log"), "log");
+        assert_eq!(normalize_inner_tab_text("unknown"), "log");
+        assert_eq!(normalize_network_text(" mainnet "), "mainnet");
+        assert_eq!(normalize_network_text("testnet10"), "testnet10");
+        assert_eq!(normalize_network_text("testnet13"), "testnet13");
+        assert_eq!(normalize_network_text("devnet"), "");
+    }
+
+    #[test]
+    fn runtime_field_parsing_and_running_predicates_match_legacy_contract() {
+        assert_eq!(
+            parse_runtime_fields_text("role=node; running=true; x=a=b ;bad"),
+            vec![
+                ("role".to_owned(), "node".to_owned()),
+                ("running".to_owned(), "true".to_owned()),
+                ("x".to_owned(), "a=b".to_owned()),
+            ]
+        );
+        assert!(running_status_text("readiness=READY;running=true"));
+        assert!(running_status_text("READINESS=ready;node_running=true"));
+        assert!(!running_status_text("readiness=READY;running=TRUE"));
+        assert!(!running_status_text("running=true"));
+        assert_eq!(
+            runtime_error_from_status_text("runtime_error=boom;running=false"),
+            "boom"
+        );
+        assert_eq!(runtime_error_from_status_text("runtimeError=None"), "");
+        assert_eq!(runtime_error_from_status_text("runtime_error=  none "), "");
     }
 
     #[test]

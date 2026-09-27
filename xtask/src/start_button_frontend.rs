@@ -98,12 +98,12 @@ function staticPlacementTests() {
   assert.ok(source.includes("Stop required FORCED termination."), "forced Stop must be visible outside raw logs");
   assert.ok(!/appendLog\([^\n]*(FORCED|graceful|stop_outcome|Stopping)/i.test(source), "Stop control diagnostics must remain outside raw Node logs");
   assert.ok(
-    /function kgwNodeR51IsRunning[\s\S]*readiness=READY/.test(source),
-    "Node status polling must require READY before displaying Running",
+    source.includes("nodeRuntimeIsRunning as wasmNodeRuntimeIsRunning") && /function kgwNodeR51IsRunning\(text\)\s*\{\s*return wasmNodeRuntimeIsRunning\(text\);\s*\}/.test(source),
+    "Node status polling must delegate READY/running classification to the Rust/WASM owner",
   );
   assert.ok(
-    source.includes("kgwNodeRuntimeErrorFromStatus(status)"),
-    "Node status polling must surface typed post-READY runtime failures",
+    source.includes("nodeRuntimeErrorFromStatus as wasmNodeRuntimeErrorFromStatus") && source.includes("kgwNodeRuntimeErrorFromStatus(status)"),
+    "Node status polling must surface typed post-READY runtime failures through the Rust/WASM owner",
   );
   assert.ok(
     source.includes('kgwNodeTranslateRuntimeV29("runtime.failed", "Failed")'),
@@ -607,6 +607,62 @@ const wasmNodeValue = (net, name) => {
 const wasmNodeChecked = (net, name) => {
   const element = wasmNodeById(wasmNodeElementId(net, name));
   return Boolean(element && element.checked);
+};
+const wasmNodeNormalizeInnerTab = (value) => value === "settings" || value === "log" ? value : "log";
+const wasmNodeResolveInnerTab = (net) => {
+  try { return wasmNodeNormalizeInnerTab(localStorage.getItem("kgw.node.innerTab." + String(net || "unknown"))); }
+  catch { return "log"; }
+};
+const wasmNodeSaveInnerTab = (net, selected) => {
+  const normalized = wasmNodeNormalizeInnerTab(selected);
+  try { localStorage.setItem("kgw.node.innerTab." + String(net || "unknown"), normalized); } catch {}
+  return normalized;
+};
+const wasmNodeNormalizeNetwork = (value) => {
+  const normalized = String(value ?? "").trim();
+  return ["mainnet", "testnet10", "testnet13"].includes(normalized) ? normalized : "";
+};
+const wasmNodeReadLastNetwork = () => {
+  try { return wasmNodeNormalizeNetwork(localStorage.getItem("kgw.node.lastNetwork")); } catch { return ""; }
+};
+const wasmNodeSaveLastNetwork = (net) => {
+  const normalized = wasmNodeNormalizeNetwork(net);
+  if (!normalized) return "";
+  try { localStorage.setItem("kgw.node.lastNetwork", normalized); } catch {}
+  return normalized;
+};
+const wasmNodeStringifyRuntimeResult = (result) => {
+  if (result == null) return "No response";
+  if (typeof result === "string") return result;
+  try { return JSON.stringify(result); } catch { return String(result); }
+};
+const wasmNodeNormalizeRuntimeError = (error) => {
+  if (error == null) return "Unknown backend error";
+  if (typeof error === "string") return error;
+  if (error.message) return error.message;
+  try { return JSON.stringify(error); } catch { return String(error); }
+};
+const wasmNodeParseRuntimeFields = (result) => {
+  const raw = wasmNodeStringifyRuntimeResult(result);
+  const fields = {};
+  for (const part of raw.split(";")) {
+    const index = part.indexOf("=");
+    if (index <= 0) continue;
+    const key = part.slice(0, index).trim();
+    const value = part.slice(index + 1).trim();
+    if (key) fields[key] = value;
+  }
+  return fields;
+};
+const wasmNodeRuntimeIsRunning = (text) => {
+  const value = String(text || "");
+  return /readiness=READY/i.test(value)
+    && (/running=true/.test(value) || /node_running=true/.test(value) || /official_core_running=true/.test(value));
+};
+const wasmNodeRuntimeErrorFromStatus = (text) => {
+  const fields = wasmNodeParseRuntimeFields(text);
+  const error = String(fields.runtime_error || fields.runtimeError || "").trim();
+  return error && error.toLowerCase() !== "none" ? error : "";
 };
 const wasmNodeLogAutoScrollEnabled = (net) =>
   localStorage.getItem("kgw.node.log.autoscroll." + String(net || "")) !== "0";

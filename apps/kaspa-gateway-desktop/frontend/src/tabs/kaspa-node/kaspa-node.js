@@ -19,10 +19,21 @@ import initNodeRust, {
   nodeNetworkPolicyMessage as wasmNodeNetworkPolicyMessage,
   nodeNetworkProfile as wasmNodeNetworkProfile,
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
+  nodeNormalizeInnerTab as wasmNodeNormalizeInnerTab,
+  nodeNormalizeNetwork as wasmNodeNormalizeNetwork,
+  nodeNormalizeRuntimeError as wasmNodeNormalizeRuntimeError,
+  nodeParseRuntimeFields as wasmNodeParseRuntimeFields,
+  nodeReadLastNetwork as wasmNodeReadLastNetwork,
+  nodeResolveInnerTab as wasmNodeResolveInnerTab,
   nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
   nodeRuntimeActionForCommand as wasmNodeRuntimeActionForCommand,
+  nodeRuntimeErrorFromStatus as wasmNodeRuntimeErrorFromStatus,
+  nodeRuntimeIsRunning as wasmNodeRuntimeIsRunning,
+  nodeSaveInnerTab as wasmNodeSaveInnerTab,
+  nodeSaveLastNetwork as wasmNodeSaveLastNetwork,
   nodeSetLogAutoScroll as wasmNodeSetLogAutoScroll,
   nodeSetNetworkEnabled as wasmNodeSetNetworkEnabled,
+  nodeStringifyRuntimeResult as wasmNodeStringifyRuntimeResult,
   nodeSmallOwnerTrace as wasmNodeSmallOwnerTrace,
   nodeStartTraceFrontend as wasmNodeStartTraceFrontend,
   nodeStartTraceTauriShape as wasmNodeStartTraceTauriShape,
@@ -1170,28 +1181,17 @@ function renderSections(net) {
   return renderSettingsTabs("node", net.key, groups);
 }
 
-function kgwNodeInnerTabStorageKeyR101U(net) {
-  return `kgw.node.innerTab.${String(net || "unknown")}`;
-}
-
+/* R101U inner-tab persistence is Rust-owned in node_frontend_helpers.rs. */
 function kgwNodeNormalizeInnerTabR101U(value) {
-  return value === "settings" || value === "log" ? value : "log";
+  return wasmNodeNormalizeInnerTab(value);
 }
 
 function kgwNodeResolveInnerTabR101U(net) {
-  try {
-    return kgwNodeNormalizeInnerTabR101U(localStorage.getItem(kgwNodeInnerTabStorageKeyR101U(net)));
-  } catch (_) {
-    return "log";
-  }
+  return wasmNodeResolveInnerTab(String(net || ""));
 }
 
 function kgwNodeSaveInnerTabR101U(net, selected) {
-  const normalized = kgwNodeNormalizeInnerTabR101U(selected);
-  try {
-    localStorage.setItem(kgwNodeInnerTabStorageKeyR101U(net), normalized);
-  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
-  return normalized;
+  return wasmNodeSaveInnerTab(String(net || ""), selected);
 }
 
 function renderNetworkPanel(net, index) {
@@ -1481,19 +1481,15 @@ function kgwNodeExplicitTraceR27D(net, action, phase, details) {
   } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
 }
 /* KGW_NODE_LAST_NETWORK_RESTORE_R101W2 */
-const KGW_NODE_LAST_NETWORK_KEY_R101W2 = "kgw.node.lastNetwork";
+/* R101W2 last-network persistence is Rust-owned in node_frontend_helpers.rs. */
 function kgwNodeNormalizeNetworkR101W2(value) {
-  const normalized = String(value || "").trim();
-  return normalized === "mainnet" || normalized === "testnet10" || normalized === "testnet13" ? normalized : "";
+  return wasmNodeNormalizeNetwork(value);
 }
 function kgwNodeReadLastNetworkR101W2() {
-  try { return kgwNodeNormalizeNetworkR101W2(localStorage.getItem(KGW_NODE_LAST_NETWORK_KEY_R101W2)); } catch (_) { return ""; }
+  return wasmNodeReadLastNetwork();
 }
 function kgwNodeSaveLastNetworkR101W2(net) {
-  const normalized = kgwNodeNormalizeNetworkR101W2(net);
-  if (!normalized) return "";
-  try { localStorage.setItem(KGW_NODE_LAST_NETWORK_KEY_R101W2, normalized); } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
-  return normalized;
+  return wasmNodeSaveLastNetwork(net);
 }
 
 function installNetworkTabs(root) {
@@ -1618,41 +1614,17 @@ function getTauriInvoke() {
   return kgwResolvePublicTauriInvokeR1().invoke;
 }
 
+/* Runtime result/error/field parsing is Rust-owned in node_frontend_helpers.rs. */
 function stringifyRuntimeResult(result) {
-  if (result == null) return "No response";
-  if (typeof result === "string") return result;
-  try {
-    return JSON.stringify(result);
-  } catch {
-    return String(result);
-  }
+  return wasmNodeStringifyRuntimeResult(result);
 }
 
 function normalizeRuntimeError(error) {
-  if (error == null) return "Unknown backend error";
-  if (typeof error === "string") return error;
-  if (error.message) return error.message;
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
+  return wasmNodeNormalizeRuntimeError(error);
 }
 
 function parseRuntimeFields(result) {
-  const raw = stringifyRuntimeResult(result);
-  const fields = {};
-
-  for (const part of raw.split(";")) {
-    const index = part.indexOf("=");
-    if (index <= 0) continue;
-
-    const key = part.slice(0, index).trim();
-    const value = part.slice(index + 1).trim();
-    if (key) fields[key] = value;
-  }
-
-  return fields;
+  return wasmNodeParseRuntimeFields(result);
 }
 
 function kgwNodeSetRuntimeNotice(net, state, evidence = "", errorText = null, errorSource = "") {
@@ -2268,15 +2240,11 @@ function kgwNodeR51RestoreDefaults(net) {
 }
 
 function kgwNodeR51IsRunning(text) {
-  const value = String(text || "");
-  return /readiness=READY/i.test(value) &&
-    (/running=true/.test(value) || /node_running=true/.test(value) || /official_core_running=true/.test(value));
+  return wasmNodeRuntimeIsRunning(text);
 }
 
 function kgwNodeRuntimeErrorFromStatus(text) {
-  const fields = parseRuntimeFields(text);
-  const error = String(fields.runtime_error || fields.runtimeError || "").trim();
-  return error && error.toLowerCase() !== "none" ? error : "";
+  return wasmNodeRuntimeErrorFromStatus(text);
 }
 
 function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false, runtimeError = "", statusText = "") {
