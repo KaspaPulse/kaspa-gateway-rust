@@ -7,10 +7,6 @@ import initNodeRust, {
   nodeClipboardPlaceholderText as wasmNodeClipboardPlaceholderText,
   nodeClipboardSafeError as wasmNodeClipboardSafeError,
   nodeNormalizeClipboardLineEndings as wasmNodeNormalizeClipboardLineEndings,
-  nodeExtractUserLocalAppData as wasmNodeExtractUserLocalAppData,
-  nodeIsEmptyOrGeneratedPath as wasmNodeIsEmptyOrGeneratedPath,
-  nodeJoinPath as wasmNodeJoinPath,
-  nodeRustyKaspaLocalAppDataRoot as wasmNodeRustyKaspaLocalAppDataRoot,
   nodeInstallStartTraceDocumentClickObserver as wasmNodeInstallStartTraceDocumentClickObserver,
   nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
   nodeRuntimeActionForCommand as wasmNodeRuntimeActionForCommand,
@@ -18,7 +14,6 @@ import initNodeRust, {
   nodeStartTraceFrontend as wasmNodeStartTraceFrontend,
   nodeStartTraceTauriShape as wasmNodeStartTraceTauriShape,
   nodeTraceActiveNetwork as wasmNodeTraceActiveNetwork,
-  nodeTraceNetworkFromElement as wasmNodeTraceNetworkFromElement,
   nodeTraceRenderedStartControls as wasmNodeTraceRenderedStartControls,
   nodeTraceStartButtonState as wasmNodeTraceStartButtonState,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
@@ -791,9 +786,7 @@ async function kgwNodeDispatchClipboardWriteV1(net, text, metadata) {
 }
 
 /* KGW_NODE_TRACE_OBSERVER_R1 is Rust-owned in node_start_trace.rs. */
-function kgwNodeTraceNetworkFromElementR1(element, root = document.getElementById("kaspa-node")) {
-  return wasmNodeTraceNetworkFromElement(element, root);
-}
+
 
 function kgwNodeTraceActiveNetworkR1(root = document.getElementById("kaspa-node")) {
   return wasmNodeTraceActiveNetwork(root);
@@ -828,20 +821,7 @@ function kgwI18nTextR41(key, fallback) {
   return fallback;
 }
 
-function kgwGuardBlockReasonV3(fields, raw) {
-  const direct = fields && (fields.block_reason || fields.reason || fields.required_feature_reason);
-  if (direct && String(direct).trim()) {
-    return String(direct).trim();
-  }
 
-  const text = stringifyRuntimeResult(raw);
-  const match = text.match(/(?:^|;)reason=([^;]+)/);
-  if (match && match[1] && match[1].trim()) {
-    return match[1].trim();
-  }
-
-  return "guard blocked without detailed reason";
-}
 
 /* Canonical isolated node runtime paths.
  * Each network owns a separate database below:
@@ -861,30 +841,15 @@ function kgwNodeBackendInvokeR5(command, payload = {}) {
 }
 
 /* KGW_NODE_PATH_HELPERS_R5 are Rust-owned in node_path_helpers.rs. */
-function kgwNodeJoinPathR5(root, child) {
-  return wasmNodeJoinPath(String(root || ""), String(child || ""));
-}
 
-function kgwNodeExtractUserLocalAppDataR5(paths) {
-  return wasmNodeExtractUserLocalAppData(paths || {});
-}
 
-function kgwNodeRustyKaspaLocalAppDataRootR5(paths = {}, net = "mainnet") {
-  return wasmNodeRustyKaspaLocalAppDataRoot(paths || {}, String(net || "mainnet"));
-}
 
-function kgwNodeIsEmptyOrGeneratedPathR5(value) {
-  return wasmNodeIsEmptyOrGeneratedPath(String(value || ""));
-}
 
-async function kgwNodeLoadEnvironmentPathHintsR5() {
-  try {
-    const defaults = await kgwNodeBackendInvokeR5("settings_defaults");
-    return defaults && defaults.paths ? defaults.paths : {};
-  } catch (_) {
-    return {};
-  }
-}
+
+
+
+
+
 
 async function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsR5(net, _options = {}) {
   const context = await kgwNodeBackendInvokeR5("kgw_settings_context_v1", {network: net});
@@ -956,9 +921,7 @@ function id(net, name) {
   return `node-${net}-${name}`;
 }
 
-function kgwDefaultRustyKaspaRootR41() {
-  return "";
-}
+
 
 function v(net, name) {
   const el = byId(id(net, name));
@@ -995,7 +958,7 @@ function addHostPort(lines, net, enabledName, flag, hostName, portName) {
 
 
 // KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
-const KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7 = "KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7";
+
 
 function kgwNodeCommandInlineStateKeyR7(net) {
   return String(net || "mainnet");
@@ -1086,20 +1049,7 @@ function cardCheck(net, name, label, checked = false, span2 = false) {
 }
 
 
-function nodeLogLineBelongsToNode(line) {
-  const text = String(line || "");
 
-  if (!text.trim()) return false;
-
-  if (/\[self-worker\]\[bridge\]/i.test(text)) return false;
-  if (/\brole=bridge\b/i.test(text)) return false;
-  if (/^Bridge\s+(status|logs)\s*\[/i.test(text)) return false;
-  if (/^KGW bridge\b/i.test(text)) return false;
-  if (/\bstratum-bridge\b/i.test(text)) return false;
-  if (/\b(start-official-external-node|stratum_listen|kaspa_rpc_endpoint)\b/i.test(text)) return false;
-
-  return true;
-}
 
 
 // KGW_NODE_LOG_AUTOSCROLL_CONTROLS_R27_START
@@ -1566,60 +1516,7 @@ function renderAllNetworks(root) {
 }
 
 
-function buildCommandLines(net) {
-  const profile = NODE_NETWORKS.find((item) => item.key === net);
-  const lines = ["kaspad"];
 
-  if (profile?.testnet) {
-    addFlag(lines, net, "testnet", "--testnet");
-    addValue(lines, net, "netsuffix", "--netsuffix");
-  }
-
-  addValue(lines, net, "logLevel", "--loglevel");
-  addValue(lines, net, "asyncThreads", "--async-threads");
-  addValue(lines, net, "ramScale", "--ram-scale");
-  addFlag(lines, net, "yes", "--yes");
-  addFlag(lines, net, "noLogFiles", "--nologfiles");
-  addFlag(lines, net, "sanity", "--sanity");
-  addFlag(lines, net, "enableUnsyncedMining", "--enable-unsynced-mining");
-
-  addHostPort(lines, net, "listenEnabled", "--listen", "listenHost", "listenPort");
-  addHostPort(lines, net, "externalIpEnabled", "--externalip", "externalIpHost", "externalIpPort");
-  addFlag(lines, net, "disableUpnp", "--disable-upnp");
-  addFlag(lines, net, "noDnsSeed", "--nodnsseed");
-  addValue(lines, net, "uaComment", "--uacomment");
-
-  addHostPort(lines, net, "rpcListenEnabled", "--rpclisten", "rpcListenHost", "rpcListenPort");
-  addHostPort(lines, net, "rpcBorshEnabled", "--rpclisten-borsh", "rpcBorshHost", "rpcBorshPort");
-  addHostPort(lines, net, "rpcJsonEnabled", "--rpclisten-json", "rpcJsonHost", "rpcJsonPort");
-  addValue(lines, net, "rpcMaxClients", "--rpcmaxclients");
-  addFlag(lines, net, "unsafeRpc", "--unsaferpc");
-  addFlag(lines, net, "noGrpc", "--nogrpc");
-
-  addHostPort(lines, net, "connectEnabled", "--connect", "connectHost", "connectPort");
-  addHostPort(lines, net, "addPeerEnabled", "--addpeer", "addPeerHost", "addPeerPort");
-  addValue(lines, net, "outPeers", "--outpeers");
-  addValue(lines, net, "maxInPeers", "--maxinpeers");
-
-  addFlag(lines, net, "utxoIndex", "--utxoindex");
-  addFlag(lines, net, "archival", "--archival");
-  addFlag(lines, net, "resetDb", "--reset-db");
-  addFlag(lines, net, "perfMetrics", "--perf-metrics");
-  addValue(lines, net, "maxTrackedAddresses", "--max-tracked-addresses");
-  addValue(lines, net, "retentionDays", "--retention-period-days");
-  addValue(lines, net, "perfMetricsInterval", "--perf-metrics-interval-sec");
-
-  addValue(lines, net, "rocksDbPreset", "--rocksdb-preset");
-  addValue(lines, net, "rocksDbCacheSize", "--rocksdb-cache-size");
-  addValue(lines, net, "rocksDbWalDir", "--rocksdb-wal-dir");
-  addValue(lines, net, "overrideParamsFile", "--override-params-file");
-
-  addValue(lines, net, "configFile", "--configfile");
-  addValue(lines, net, "appDir", "--appdir");
-  addValue(lines, net, "logDir", "--logdir");
-
-  return lines;
-}
 
 function kgwNodeEffectiveNumber(net, name, fallback, integer = false) {
   if (!kgwNodeSettingActive(net, name)) return fallback;
@@ -1729,24 +1626,7 @@ function kgwExtractNodeOwnerFlags(result) {
   return fields.flags || "";
 }
 
-async function kgwLoadNodeOwnerCommandPreview(net, fallbackText) {
-  const invoke = getTauriInvoke();
-  if (!invoke) return fallbackText;
 
-  try {
-    const result = await invokeWithTimeout(
-      invoke,
-      KGW_NODE_RUNTIME_FLAGS_OWNER_COMMAND,
-      { network: net },
-      KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS
-    );
-
-    const flags = kgwExtractNodeOwnerFlags(result);
-    return flags ? "kaspad " + flags : fallbackText;
-  } catch (_) {
-    return fallbackText;
-  }
-}
 
 const KGW_NODE_PREVIEWS = new Map();
 function updateCommand(net) {
@@ -2388,37 +2268,16 @@ function kgwNodeR51Fields(net) {
 
 
 /* KGW_NODE_SETTINGS_LIFECYCLE_FIX_R6_START */
-function kgwNodeSettingsActionIsR6(action) {
-  return action === "save-settings" || action === "restore-defaults" || action === "set-defaults";
-}
 
-function kgwNodeNetFromSettingsEventR6(event, fallbackNet = "") {
-  const target = event?.target;
-  const carrier = target?.closest?.("[data-net], [data-network], [data-node-settings-panel], [id*='mainnet' i], [id*='testnet10' i], [id*='testnet13' i]");
 
-  const raw = [
-    target?.dataset?.net,
-    target?.dataset?.network,
-    carrier?.dataset?.net,
-    carrier?.dataset?.network,
-    target?.id,
-    carrier?.id,
-    carrier?.className,
-    fallbackNet,
-  ].filter(Boolean).join(" ").toLowerCase();
 
-  if (raw.includes("testnet13") || raw.includes("tn13")) return "testnet13";
-  if (raw.includes("testnet10") || raw.includes("tn10")) return "testnet10";
-  if (raw.includes("mainnet")) return "mainnet";
-  return fallbackNet || "";
-}
 
 
 /* KGW_NODE_SETTINGS_LIFECYCLE_FIX_R6_END */
 
 
 /* KGW_SETTINGS_FEEDBACK_LOCK_OWNER_R11_START */
-const kgwNodeSettingsFeedbackLocksR11 = new Map();
+
 
 
 /* KGW_SETTINGS_FEEDBACK_LOCK_OWNER_R11_END */
@@ -2787,15 +2646,7 @@ function kgwNodeR51SetRuntimeUnknown(net, message = "Runtime status is temporari
     preserveActionError ? null : message, errorSource);
 }
 
-function kgwNodeR51Delta(previous, current) {
-  const before = String(previous || "");
-  const after = String(current || "");
 
-  if (!after || before === after) return "";
-  if (after.startsWith(before)) return after.slice(before.length).trim();
-
-  return after.trim();
-}
 
 function kgwNodeR51MaybeActivityNotice(net, statusText) {
   const now = Date.now();
@@ -3885,19 +3736,7 @@ if (typeof window !== "undefined") {
   window.initKaspaNodeTab = initKaspaNodeTab;
 }
 
-function kgwNodeParseKeyValueResponse(text) {
-  return String(text || "")
-    .split(";")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .reduce((acc, part) => {
-      const index = part.indexOf("=");
-      if (index > 0) {
-        acc[part.slice(0, index)] = part.slice(index + 1);
-      }
-      return acc;
-    }, {});
-}
+
 
 /* kgwSuperMegaIsolatedAdapterStatusPreviewV1
  * Phase V42-V48 SuperMega:
