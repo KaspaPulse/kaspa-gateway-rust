@@ -10,6 +10,7 @@ mod settings_database;
 mod settings_diagnostics;
 mod settings_layout;
 mod settings_paths;
+mod settings_persistence;
 mod settings_profiles;
 mod settings_runtime;
 mod settings_schema;

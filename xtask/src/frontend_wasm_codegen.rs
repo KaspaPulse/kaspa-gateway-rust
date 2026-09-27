@@ -270,6 +270,9 @@ import init, {
   settingsPathsBrowse as wasmPathsBrowse,
   settingsPathsLoadDefaults as wasmPathsLoadDefaults,
   settingsPathsRepairBeforeSave as wasmPathsRepairBeforeSave,
+  settingsPersistenceLoadSaved as wasmPersistenceLoadSaved,
+  settingsPersistenceResetDefaults as wasmPersistenceResetDefaults,
+  settingsPersistenceSave as wasmPersistenceSave,
   settingsProfilesInstall as wasmProfilesInstall,
   settingsProfilesRefresh as wasmProfilesRefresh,
   settingsProfilesSelectEndpoint as wasmProfilesSelectEndpoint,
@@ -397,6 +400,18 @@ export async function settingsPathsLoadDefaults(reason = "settings") {
 
 export async function settingsPathsRepairBeforeSave() {
   return await wasmPathsRepairBeforeSave();
+}
+
+export async function settingsPersistenceSave() {
+  return await wasmPersistenceSave();
+}
+
+export async function settingsPersistenceResetDefaults(options = {}) {
+  return await wasmPersistenceResetDefaults(options);
+}
+
+export function settingsPersistenceLoadSaved() {
+  return wasmPersistenceLoadSaved();
 }
 
 export function settingsProfilesInstall() {
@@ -1152,6 +1167,9 @@ mod tests {
         assert!(settings.contains("await wasmPathsBrowse(targetId)"));
         assert!(settings.contains("await wasmPathsLoadDefaults(reason)"));
         assert!(settings.contains("await wasmPathsRepairBeforeSave()"));
+        assert!(settings.contains("await wasmPersistenceSave()"));
+        assert!(settings.contains("await wasmPersistenceResetDefaults(options)"));
+        assert!(settings.contains("wasmPersistenceLoadSaved()"));
         assert!(settings.contains("wasmProfilesInstall()"));
         assert!(settings.contains("await wasmProfilesRefresh()"));
         assert!(settings.contains("wasmProfilesSelectEndpoint(row)"));

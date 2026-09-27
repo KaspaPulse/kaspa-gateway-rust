@@ -7,28 +7,21 @@ import {
   settingsDatabaseInstallMaintenance,
   settingsDatabaseRefresh,
   settingsDiagnosticsInstall,
-  settingsDisplayApplyShellFromState,
   settingsDisplayBindMinimumGuards,
-  settingsDisplayBuildCanonicalDefaultState,
   settingsDisplayEnsureDefaults,
-  settingsDisplayReapplyState,
-  settingsDisplayStateLooksLegacyAllSelected,
-  settingsDisplayValidateForSave,
   settingsStateActivateInner,
   settingsStateActivateOuter,
-  settingsStateApply,
-  settingsStateCollect,
   settingsStateCombineUrl,
   settingsPathsBrowse,
   settingsPathsLoadDefaults,
-  settingsPathsRepairBeforeSave,
+  settingsPersistenceLoadSaved,
+  settingsPersistenceResetDefaults,
+  settingsPersistenceSave,
   settingsProfilesInstall,
   settingsProfilesSelectEndpoint,
   settingsToWesternDigits
 } from "../../settings-contract.js";
 import { installGlobalSettingsLayout, installManageAddressesCleanLayout, installSettingsI18nBindings } from "../../settings-layout.js";
-const SETTINGS_STORAGE_KEY = "kgw-settings-python-exact-state";
-
 function kgwSettingsToWesternDigits(value) {
   return settingsToWesternDigits(value);
 }
@@ -208,37 +201,10 @@ function kgwDisplaySelectionEnsureDefaultsR1(reason = "default") {
   return settingsDisplayEnsureDefaults(reason);
 }
 
-function kgwDisplaySelectionValidateForSaveR1() {
-  return settingsDisplayValidateForSave();
-}
-
 function kgwDisplaySelectionBindMinimumGuardsR1() {
   return settingsDisplayBindMinimumGuards();
 }
 
-function kgwSettingsDisplayStateLooksLegacyAllSelectedR65(state) {
-  return settingsDisplayStateLooksLegacyAllSelected(state);
-}
-
-function kgwSettingsBuildCanonicalDefaultStateR65(reason = "display-defaults-r65", persist = false) {
-  return settingsDisplayBuildCanonicalDefaultState(reason, persist);
-}
-
-function kgwSettingsReapplyDisplayStateR65(state, reason = "display-state-r65") {
-  return settingsDisplayReapplyState(state, reason);
-}
-
-function collectState() {
-  return settingsStateCollect();
-}
-
-function applyState(state) {
-  return settingsStateApply(state);
-}
-
-function kgwSettingsApplyShellDisplayFromState(state, reason = "settings") {
-  return settingsDisplayApplyShellFromState(state, reason);
-}
 function kgwInstallSettingsRealWorkflowActions() {
   settingsAddressesInstallIo();
   settingsProfilesInstall();
@@ -248,129 +214,13 @@ async function kgwSettingsLoadDynamicPathDefaultsR4(reason = "settings") {
   return await settingsPathsLoadDefaults(reason);
 }
 
-async function kgwSettingsRepairDynamicPathsBeforeSaveR4() {
-  return await settingsPathsRepairBeforeSave();
-}
-/* KGW_SETTINGS_SINGLE_SAVE_FLIGHT_R75 */
-let kgwSettingsSaveInFlightR75 = false;
-
 async function saveState() {
-  if (kgwSettingsSaveInFlightR75) {
-    kgwSettingsUiTraceR48B3("settings-action", "r75-save-skip-busy", {
-      targetId: "settingsSaveSettings"
-    });
-    return false;
-  }
-
-  kgwSettingsSaveInFlightR75 = true;
-
-  kgwSettingsUiTraceR48B3("settings-action", "r75-save-begin", {
-    targetId: "settingsSaveSettings"
-  });
-
-  try {
-    await kgwSettingsRepairDynamicPathsBeforeSaveR4();
-
-    if (!kgwDisplaySelectionValidateForSaveR1()) {
-      kgwSettingsUiTraceR48B3("settings-action", "r75-save-validation-failed", {
-        targetId: "settingsSaveSettings"
-      });
-      setSaveEnabled(true);
-      return false;
-    }
-
-    const collected = collectState();
-    const state = kgwSettingsReapplyDisplayStateR65(collected, "settings-save-r75");
-
-    try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state, null, 2));
-    } catch (error) {
-      kgwSettingsUiTraceR48B3("settings-action", "r75-save-storage-error", {
-        message: String(error && error.message || error)
-      });
-    }
-
-    const prefs = kgwSettingsApplyShellDisplayFromState(state, "settings-save-r75");
-
-    setSaveEnabled(false);
-    settingsLogger().log("settings saved", {
-      patch: "R75",
-      owner: "settings-single-save-direct-shell"
-    });
-
-    kgwSettingsUiTraceR48B3("settings-action", "r75-save-complete", {
-      targetId: "settingsSaveSettings",
-      hasPrefs: Boolean(prefs),
-      languages: prefs && Array.isArray(prefs.languages) ? prefs.languages.join(",") : "",
-      currencies: prefs && Array.isArray(prefs.currencies) ? prefs.currencies.join(",") : "",
-      tabs: prefs && Array.isArray(prefs.tabs) ? prefs.tabs.join(",") : ""
-    });
-
-    return true;
-  } catch (error) {
-    kgwSettingsUiTraceR48B3("settings-action", "r75-save-error", {
-      targetId: "settingsSaveSettings",
-      message: String(error && error.message || error)
-    });
-    try {
-      console.error("[settings] save failed", error);
-    } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
-    setSaveEnabled(true);
-    return false;
-  } finally {
-    kgwSettingsSaveInFlightR75 = false;
-  }
+  return await settingsPersistenceSave();
 }
 
 async function resetDefaults(options = {}) {
-  const shouldClearStorage = options.clearStorage !== false;
-  const shouldApplyShell = options.applyShell !== false;
-
-  if (shouldClearStorage) {
-    try {
-      localStorage.removeItem(SETTINGS_STORAGE_KEY);
-    } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
-  }
-
-  qa("input[type='checkbox']").forEach((node) => {
-    node.checked = node.id !== "settingsStartWindows" && node.id !== "settingsEnableAutoRefresh";
-  });
-
-  const defaults = {
-    settingsLoggingLevel: "INFO",
-    settingsDatabasePath: "",
-    settingsExportPath: "",
-    settingsLogPath: "",
-    settingsBackupPath: "",
-    settingsApiProfile: "default",
-    settingsApiTimeout: "30",
-    settingsApiRetries: "3",
-    settingsApiRateLimit: "60",
-    settingsCacheTtl: "300",
-    settingsMaxConnections: "10",
-    settingsRequestTimeout: "30"
-  };
-
-  Object.entries(defaults).forEach(([id, value]) => {
-    const node = q(`#${CSS.escape(id)}`);
-    if (node) node.value = value;
-  });
-
-  activateOuter("api-performance");
-  activateInner("general");
-
-  const state = kgwSettingsBuildCanonicalDefaultStateR65("settings-reset-defaults-r69", shouldClearStorage);
-  kgwDisplaySelectionEnsureDefaultsR1("reset-defaults-r69-guard");
-
-  if (shouldApplyShell) {
-    kgwSettingsApplyShellDisplayFromState(state, "settings-reset-defaults-r69");
-  }
-
-  setSaveEnabled(false);
-
-  await kgwSettingsLoadDynamicPathDefaultsR4("reset-defaults");
+  return await settingsPersistenceResetDefaults(options);
 }
-
 function bindStaticActions() {
   qa("[data-settings-tab]").forEach((button) => {
     if (button.dataset.bound === "true") return;
@@ -563,41 +413,9 @@ function bindStaticActions() {
   });
 }
 
-/* KGW_SETTINGS_STALE_DISPLAY_STATE_NORMALIZER_R63F
- * Normalizes stale saved display selections that predate the canonical R59C shell owner.
- */
 function loadSavedState() {
-  /* KGW_SETTINGS_FULL_PERSISTENCE_CONTRACT_FIX_R104
-   * Valid user-saved state is authoritative.
-   * Do not collapse all-selected choices into defaults.
-   */
-  try {
-    const saved = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || "null");
-    if (saved) {
-      if (kgwSettingsDisplayStateLooksLegacyAllSelectedR65(saved)) {
-        const state = kgwSettingsBuildCanonicalDefaultStateR65("settings-load-missing-display-contract-r104", true);
-        window.setTimeout(() => kgwSettingsApplyShellDisplayFromState(state, "settings-load-missing-display-contract-r104"), 0);
-        void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-missing-display-contract-r104");
-        return;
-      }
-
-      applyState(saved);
-      const state = kgwSettingsReapplyDisplayStateR65(saved, "settings-load-r104");
-
-      window.setTimeout(() => kgwSettingsApplyShellDisplayFromState(state, "settings-load-r104"), 0);
-      void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-r104");
-      return;
-    }
-
-    kgwSettingsBuildCanonicalDefaultStateR65("settings-load-defaults-r104", true);
-    void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-defaults-r104");
-  } catch (_) {
-    kgwSettingsBuildCanonicalDefaultStateR65("settings-load-error-defaults-r104", false);
-    void kgwSettingsLoadDynamicPathDefaultsR4("settings-load-error-r104");
-  }
+  return settingsPersistenceLoadSaved();
 }
-
-
 export async function initSettingsTab() {
   const node = root();
 
