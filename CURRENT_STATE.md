@@ -4,9 +4,9 @@
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest committed local checkpoint is OP113 `5c52ca8aa1d837d5fc58456ec6a84b60d4639b3b`, tree `918eac46d1e89776f997c5280660add58d1b0fa4`. OP114 is a locally qualified dirty candidate pending checkpoint.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest committed local checkpoint is OP114 `97aea4fef21919874d4bfb2027388493eebd13c1`, tree `9cbb8824a78a77ffb380ba3d0f1db1434b97d491`. OP115 is a locally qualified dirty candidate pending checkpoint.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **DIRTY / QUALIFIED OP114 CANDIDATE**. The diff contains the generated `windows.mjs` adoption, Rust clipboard preflight enforcement, retirement of the legacy PowerShell clipboard helper, generated E2E WASM artifacts, policy/debt updates, and canonical state updates.
+- Working tree: **DIRTY / QUALIFIED OP115 CANDIDATE**. The diff converts `tauri-app.mjs` into deterministic Rust-generated WebDriver/Tauri external-integration glue with exact legacy body parity, plus codegen/policy/state updates.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -15,10 +15,10 @@
 - OP101 Header live metrics Rust/WASM ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `a1f71cb804b8155fb93d4892193a679eab59870c`.
 - OP102 Top Addresses Rust/WASM ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `dbdd0681cb57b017768d988175f7736d6481e571`.
 - OP103 Desktop diagnostic launcher Rust ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `ec23f1fc9b162724b2a90e648e917227d74dfbf0`.
-- Owned non-Rust programming source debt: 9.
+- Owned non-Rust programming source debt: 8.
 - Non-Rust execution-wiring debt: 8.
-- Technical exceptions: 33.
-- Rust source inventory: 176.
+- Technical exceptions: 34.
+- Rust source inventory: 177.
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
 
@@ -77,11 +77,11 @@
 
 ## DO NOT REPEAT
 
-- Do not replay OP090-OP114 successful checks while their validity predicates remain unchanged.
+- Do not replay OP090-OP115 successful checks while their validity predicates remain unchanged.
 - Do not reset, clean, stash, discard, overwrite, or replace newer local work with remote state.
 - Do not force unsafe clipboard mutation, protected file unlocking, or broad requalification for reassurance.
 - Do not push merely to discover locally detectable failures.
 
 ## NEXT ACTION
 
-Persist the OP114 qualification receipt, create a coherent local checkpoint for the qualified candidate, verify exact commit/tree/status, then audit the remaining 9-source / 8-execution debt inventory and select the smallest independent unblocked next boundary. No push yet.
+Persist the OP115 qualification receipt, create a coherent local checkpoint for the qualified candidate, verify exact commit/tree/status, then audit the remaining 8-source / 8-execution debt inventory and select the smallest independent unblocked next boundary. No push yet.

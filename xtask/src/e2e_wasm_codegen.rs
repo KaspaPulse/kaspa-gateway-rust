@@ -1,3 +1,4 @@
+use crate::e2e_wasm_codegen_tauri_app::tauri_app_adapter_source;
 use crate::e2e_wasm_codegen_windows::windows_adapter_source;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -10,6 +11,7 @@ const RUNTIME_PORTS_ADAPTER_RELATIVE: &str = "e2e/helpers/runtime-ports.mjs";
 const ASSERTIONS_ADAPTER_RELATIVE: &str = "e2e/helpers/assertions.mjs";
 const PATHS_ADAPTER_RELATIVE: &str = "e2e/helpers/paths.mjs";
 const WINDOWS_ADAPTER_RELATIVE: &str = "e2e/helpers/windows.mjs";
+const TAURI_APP_ADAPTER_RELATIVE: &str = "e2e/helpers/tauri-app.mjs";
 const JS_NAME: &str = "kgw_e2e_wasm.js";
 const WASM_NAME: &str = "kgw_e2e_wasm_bg.wasm";
 const PACKAGE_NAME: &str = "package.json";
@@ -283,6 +285,7 @@ fn check(root: &Path) -> Result<String, String> {
         (ASSERTIONS_ADAPTER_RELATIVE, assertions_adapter_source()),
         (PATHS_ADAPTER_RELATIVE, paths_adapter_source()),
         (WINDOWS_ADAPTER_RELATIVE, windows_adapter_source()),
+        (TAURI_APP_ADAPTER_RELATIVE, tauri_app_adapter_source()),
     ] {
         let adapter = root.join(relative);
         let actual = fs::read_to_string(&adapter).unwrap_or_default();
@@ -293,7 +296,7 @@ fn check(root: &Path) -> Result<String, String> {
 
     if drift.is_empty() {
         Ok(format!(
-            "E2E_WASM_CODEGEN=PASS\nWASM_PACK_VERSION={}\nARTIFACT_COUNT=7",
+            "E2E_WASM_CODEGEN=PASS\nWASM_PACK_VERSION={}\nARTIFACT_COUNT=8",
             WASM_PACK_VERSION.trim_start_matches("wasm-pack ")
         ))
     } else {
@@ -341,6 +344,7 @@ fn write(root: &Path) -> Result<String, String> {
         (ASSERTIONS_ADAPTER_RELATIVE, assertions_adapter_source()),
         (PATHS_ADAPTER_RELATIVE, paths_adapter_source()),
         (WINDOWS_ADAPTER_RELATIVE, windows_adapter_source()),
+        (TAURI_APP_ADAPTER_RELATIVE, tauri_app_adapter_source()),
     ] {
         let adapter = root.join(relative);
         let actual = fs::read_to_string(&adapter).unwrap_or_default();
@@ -352,7 +356,7 @@ fn write(root: &Path) -> Result<String, String> {
     }
 
     Ok(format!(
-        "E2E_WASM_CODEGEN=WRITE_PASS\nWASM_PACK_VERSION={}\nARTIFACT_COUNT=7\nCHANGED={changed}",
+        "E2E_WASM_CODEGEN=WRITE_PASS\nWASM_PACK_VERSION={}\nARTIFACT_COUNT=8\nCHANGED={changed}",
         WASM_PACK_VERSION.trim_start_matches("wasm-pack ")
     ))
 }
@@ -429,6 +433,12 @@ mod tests {
         assert!(ASSERTIONS_ADAPTER_RELATIVE.ends_with("assertions.mjs"));
         assert!(WINDOWS_ADAPTER_RELATIVE.starts_with("e2e/helpers/"));
         assert!(WINDOWS_ADAPTER_RELATIVE.ends_with("windows.mjs"));
+        assert!(TAURI_APP_ADAPTER_RELATIVE.starts_with("e2e/helpers/"));
+        assert!(TAURI_APP_ADAPTER_RELATIVE.ends_with("tauri-app.mjs"));
+        let tauri_app = tauri_app_adapter_source();
+        assert!(tauri_app.contains("@generated"));
+        assert!(tauri_app.contains("export async function clickTestId"));
+        assert!(tauri_app.contains("export async function shutdownAllRuntimeWorkers"));
         let windows = windows_adapter_source();
         assert!(windows.contains("@generated"));
         assert!(windows.contains(r#""e2e-clipboard", "write""#));
