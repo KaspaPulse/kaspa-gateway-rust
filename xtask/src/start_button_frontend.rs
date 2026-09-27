@@ -115,13 +115,16 @@ function staticPlacementTests() {
     "Node post-READY failure must remain visible outside raw logs",
   );
   assert.ok(
-    source.includes("nodeCommandInlineState as wasmNodeCommandInlineState")
-      && source.includes("nodeCommandInlineToggle as wasmNodeCommandInlineToggle")
-      && source.includes("nodeRefreshInlineCommandToggles as wasmNodeRefreshInlineCommandToggles")
+    source.includes("nodeCommandInlineState as kgwNodeCommandInlineStateR7")
+      && source.includes("nodeCommandInlineToggle as kgwNodeCommandInlineToggleR7")
+      && source.includes("nodeRefreshInlineCommandToggles as kgwNodeRefreshInlineCommandTogglesR7")
       && source.includes("nodeToggleCommandOption as wasmNodeToggleCommandOption")
+      && !source.includes("function kgwNodeCommandInlineStateR7(")
+      && !source.includes("function kgwNodeCommandInlineToggleR7(")
+      && !source.includes("function kgwNodeRefreshInlineCommandTogglesR7(")
       && !source.includes("nodeCommandShouldInclude as wasmNodeCommandShouldInclude")
       && !source.includes("function kgwNodeCommandShouldIncludeR7("),
-    "Active Node command-composer adapters must delegate to Rust/WASM and the retired unused wrapper must stay absent",
+    "Active Node command-composer adapters must bind directly to Rust/WASM where no JS behavior remains, and retired wrappers must stay absent",
   );
   assert.ok(
     !source.includes("window.__kgwNodeCommandComposerInlineR7 = window.__kgwNodeCommandComposerInlineR7 || {}"),
@@ -1393,6 +1396,25 @@ const wasmNodeSmallOwnerTrace = (net, action, phase, details) => {
   })).catch(() => {});
   return true;
 };
+const kgwNodeTraceStartButtonStateR1 = wasmNodeTraceStartButtonState;
+const kgwNodeInstallStartTraceDocumentClickObserverR1 = wasmNodeInstallStartTraceDocumentClickObserver;
+const kgwNodeTraceRenderedStartControlsR1 = wasmNodeTraceRenderedStartControls;
+const kgwNodeRuntimeActionForCommandR1 = wasmNodeRuntimeActionForCommand;
+const kgwNodeSmallOwnerTraceR44D = wasmNodeSmallOwnerTrace;
+const kgwI18nTextR41 = wasmNodeI18nText;
+const kgwNodeNetworkProfile = wasmNodeNetworkProfile;
+const kgwNodeNetworkEnabled = wasmNodeNetworkEnabled;
+const kgwNodeSetNetworkEnabled = wasmNodeSetNetworkEnabled;
+const kgwNodeNetworkPolicyMessage = wasmNodeNetworkPolicyMessage;
+const byId = wasmNodeById;
+const esc = wasmNodeEscapeHtml;
+const id = wasmNodeElementId;
+const v = wasmNodeValue;
+const c = wasmNodeChecked;
+const kgwNodeCommandInlineStateR7 = wasmNodeCommandInlineState;
+const kgwNodeCommandInlineToggleR7 = wasmNodeCommandInlineToggle;
+const kgwNodeRefreshInlineCommandTogglesR7 = wasmNodeRefreshInlineCommandToggles;
+const kgwInstallNodeLogAutoScrollControlsR27 = wasmNodeInstallLogAutoScrollControls;
 `;
   const executable = importPrelude + source
     .replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "")

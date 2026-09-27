@@ -3,15 +3,15 @@ import { NODE_MANAGED, NODE_REQUIRED, NODE_DANGEROUS, nodeFieldEnabled, validate
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initNodeRust, {
   nodeBackendInvoke as wasmNodeBackendInvoke,
-  nodeById as wasmNodeById,
+  nodeById as byId,
   nodeCardCheck as wasmNodeCardCheck,
   nodeCardInput as wasmNodeCardInput,
   nodeCardSelect as wasmNodeCardSelect,
-  nodeChecked as wasmNodeChecked,
-  nodeCommandInlineState as wasmNodeCommandInlineState,
-  nodeCommandInlineToggle as wasmNodeCommandInlineToggle,
+  nodeChecked as c,
+  nodeCommandInlineState as kgwNodeCommandInlineStateR7,
+  nodeCommandInlineToggle as kgwNodeCommandInlineToggleR7,
   nodeCommandOptionsKey as wasmNodeCommandOptionsKey,
-  nodeRefreshInlineCommandToggles as wasmNodeRefreshInlineCommandToggles,
+  nodeRefreshInlineCommandToggles as kgwNodeRefreshInlineCommandTogglesR7,
   nodeToggleCommandOption as wasmNodeToggleCommandOption,
   nodeApplyRuntimeLogReport as wasmNodeApplyRuntimeLogReport,
   nodeClearRawLogBuffer as wasmNodeClearRawLogBuffer,
@@ -19,15 +19,15 @@ import initNodeRust, {
   nodeDispatchClipboardWrite as kgwNodeDispatchClipboardWriteV1,
   nodeDispatchRuntimeLogClear as wasmNodeDispatchRuntimeLogClear,
   nodeEffectiveNodeSettings as wasmNodeEffectiveNodeSettings,
-  nodeElementId as wasmNodeElementId,
-  nodeEscapeHtml as wasmNodeEscapeHtml,
+  nodeElementId as id,
+  nodeEscapeHtml as esc,
   nodeHandleCopyLog as wasmNodeHandleCopyLog,
-  nodeI18nText as wasmNodeI18nText,
-  nodeInstallLogAutoScrollControls as wasmNodeInstallLogAutoScrollControls,
-  nodeInstallStartTraceDocumentClickObserver as wasmNodeInstallStartTraceDocumentClickObserver,
-  nodeNetworkEnabled as wasmNodeNetworkEnabled,
-  nodeNetworkPolicyMessage as wasmNodeNetworkPolicyMessage,
-  nodeNetworkProfile as wasmNodeNetworkProfile,
+  nodeI18nText as kgwI18nTextR41,
+  nodeInstallLogAutoScrollControls as kgwInstallNodeLogAutoScrollControlsR27,
+  nodeInstallStartTraceDocumentClickObserver as kgwNodeInstallStartTraceDocumentClickObserverR1,
+  nodeNetworkEnabled as kgwNodeNetworkEnabled,
+  nodeNetworkPolicyMessage as kgwNodeNetworkPolicyMessage,
+  nodeNetworkProfile as kgwNodeNetworkProfile,
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
   nodeNormalizeNetwork as wasmNodeNormalizeNetwork,
   nodeAssertStartEvidence as wasmNodeAssertStartEvidence,
@@ -47,20 +47,20 @@ import initNodeRust, {
   nodeR51SetDefaultsAction as wasmNodeR51SetDefaultsAction,
   nodeResolveInnerTab as wasmNodeResolveInnerTab,
   nodeResolvePublicTauriInvoke as kgwResolvePublicTauriInvokeR1,
-  nodeRuntimeActionForCommand as wasmNodeRuntimeActionForCommand,
+  nodeRuntimeActionForCommand as kgwNodeRuntimeActionForCommandR1,
   nodeRuntimeArgs as wasmNodeRuntimeArgs,
   nodeRuntimeErrorFromStatus as wasmNodeRuntimeErrorFromStatus,
   nodeRuntimeIsRunning as wasmNodeRuntimeIsRunning,
   nodeSaveInnerTab as wasmNodeSaveInnerTab,
   nodeSaveLastNetwork as wasmNodeSaveLastNetwork,
-  nodeSetNetworkEnabled as wasmNodeSetNetworkEnabled,
+  nodeSetNetworkEnabled as kgwNodeSetNetworkEnabled,
   nodeStringifyRuntimeResult as wasmNodeStringifyRuntimeResult,
-  nodeSmallOwnerTrace as wasmNodeSmallOwnerTrace,
+  nodeSmallOwnerTrace as kgwNodeSmallOwnerTraceR44D,
   nodeStartTraceFrontend as kgwStartTraceFrontendR1,
   nodeTraceActiveNetwork as wasmNodeTraceActiveNetwork,
-  nodeTraceRenderedStartControls as wasmNodeTraceRenderedStartControls,
-  nodeTraceStartButtonState as wasmNodeTraceStartButtonState,
-  nodeValue as wasmNodeValue,
+  nodeTraceRenderedStartControls as kgwNodeTraceRenderedStartControlsR1,
+  nodeTraceStartButtonState as kgwNodeTraceStartButtonStateR1,
+  nodeValue as v,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
 await initNodeRust();
@@ -700,32 +700,6 @@ function kgwNodeTraceActiveNetworkR1(root = document.getElementById("kaspa-node"
   return wasmNodeTraceActiveNetwork(root);
 }
 
-function kgwNodeTraceStartButtonStateR1(net) {
-  return wasmNodeTraceStartButtonState(String(net || ""));
-}
-
-function kgwNodeInstallStartTraceDocumentClickObserverR1(root) {
-  return wasmNodeInstallStartTraceDocumentClickObserver(root);
-}
-
-function kgwNodeTraceRenderedStartControlsR1(root) {
-  return wasmNodeTraceRenderedStartControls(root);
-}
-
-function kgwNodeRuntimeActionForCommandR1(command) {
-  return wasmNodeRuntimeActionForCommand(String(command || ""));
-}
-
-function kgwNodeSmallOwnerTraceR44D(net, action, phase, details) {
-  return wasmNodeSmallOwnerTrace(net, action, phase, details);
-}
-
-function kgwI18nTextR41(key, fallback) {
-  return wasmNodeI18nText(String(key || ""), String(fallback || ""));
-}
-
-
-
 /* Canonical isolated node runtime paths.
  * Each network owns a separate database below:
  * %LOCALAPPDATA%\KaspaGateway\nodes\<network>
@@ -761,63 +735,8 @@ function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
 
 const NODE_NETWORKS = wasmNodeNetworkProfiles();
 
-function kgwNodeNetworkProfile(net) {
-  return wasmNodeNetworkProfile(String(net || ""));
-}
-
-function kgwNodeNetworkEnabled(net) {
-  return wasmNodeNetworkEnabled(String(net || ""));
-}
-
-function kgwNodeSetNetworkEnabled(net, enabled) {
-  wasmNodeSetNetworkEnabled(String(net || ""), Boolean(enabled));
-}
-
-function kgwNodeNetworkPolicyMessage(net) {
-  return wasmNodeNetworkPolicyMessage(String(net || ""));
-}
-
-function byId(id) {
-  return wasmNodeById(String(id || ""));
-}
-
-function esc(value) {
-  return wasmNodeEscapeHtml(value);
-}
-
-function id(net, name) {
-  return wasmNodeElementId(String(net || ""), String(name || ""));
-}
-
-function v(net, name) {
-  return wasmNodeValue(String(net || ""), String(name || ""));
-}
-
-function c(net, name) {
-  return wasmNodeChecked(String(net || ""), String(name || ""));
-}
-
-
-
-
-
-
-
-
 // KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
 /* Command-composer state/policy/toggle ownership is Rust/WASM-owned. */
-function kgwNodeCommandInlineStateR7(net) {
-  return wasmNodeCommandInlineState(String(net || ""));
-}
-
-function kgwNodeCommandInlineToggleR7(net, name) {
-  return wasmNodeCommandInlineToggle(String(net || ""), String(name || ""));
-}
-
-function kgwNodeRefreshInlineCommandTogglesR7(net) {
-  wasmNodeRefreshInlineCommandToggles(String(net || ""));
-}
-
 function kgwNodeToggleCommandOptionR7(net, name) {
   wasmNodeToggleCommandOption(String(net || ""), String(name || ""));
   updateCommand(net);
@@ -864,9 +783,6 @@ function cardCheck(net, name, label, checked = false, span2 = false) {
 
 
 // KGW_NODE_LOG_AUTOSCROLL_CONTROLS_R27 is Rust-owned in node_frontend_helpers.rs.
-function kgwInstallNodeLogAutoScrollControlsR27() {
-  wasmNodeInstallLogAutoScrollControls();
-}
 
 /* KGW_NODE_RAW_LOG_OWNER_V2 is Rust-owned in node_start_trace.rs. */
 function kgwNodeApplyRuntimeLogReportV1(net, role, report) {
