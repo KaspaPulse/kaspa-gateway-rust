@@ -236,7 +236,10 @@ import init, {
   settingsDisplayChecksWithDefaults as wasmDisplayChecksWithDefaults,
   settingsDisplayPreferences as wasmDisplayPreferences,
   settingsDisplayStateMissingContract as wasmDisplayStateMissingContract,
+  settingsDbKindFromFileName as wasmDbKindFromFileName,
   settingsEndpoint as wasmEndpoint,
+  settingsExplorerAddress as wasmExplorerAddress,
+  settingsExplorerUrl as wasmExplorerUrl,
   settingsIsHost as wasmIsHost,
   settingsIsKaspaAddress as wasmIsKaspaAddress,
   settingsIsLoopback as wasmIsLoopback,
@@ -305,6 +308,18 @@ export function settingsIsKaspaAddress(value) {
 
 export function settingsAddressNormalize(record) {
   return wasmAddressNormalize(record);
+}
+
+export function settingsDbKindFromFileName(value) {
+  return wasmDbKindFromFileName(value);
+}
+
+export function settingsExplorerAddress(value) {
+  return wasmExplorerAddress(value);
+}
+
+export function settingsExplorerUrl(value) {
+  return wasmExplorerUrl(value);
 }
 
 export function bridgeFieldEnabled(name, values, options = {}) {
@@ -944,6 +959,9 @@ mod tests {
         assert!(settings.contains("wasmAddressShort(value)"));
         assert!(settings.contains("wasmIsKaspaAddress(value)"));
         assert!(settings.contains("wasmAddressNormalize(record)"));
+        assert!(settings.contains("wasmDbKindFromFileName(value)"));
+        assert!(settings.contains("wasmExplorerAddress(value)"));
+        assert!(settings.contains("wasmExplorerUrl(value)"));
         assert!(settings.contains("new Set(wasmNodeOptional())"));
         assert!(settings.contains("new Set(wasmBridgeRequired())"));
         for forbidden in [

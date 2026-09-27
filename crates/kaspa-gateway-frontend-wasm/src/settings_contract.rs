@@ -997,6 +997,56 @@ pub fn settings_address_normalize(record: JsValue) -> JsValue {
     output.into()
 }
 
+fn settings_db_kind_text(value: &str) -> &'static str {
+    let text = value.trim().to_lowercase();
+    if text.contains("address") {
+        "addresses"
+    } else if text.contains("transaction") {
+        "transactions"
+    } else if text.contains("appdata") || text.contains("app data") || text.contains("app_data") {
+        "app_data"
+    } else {
+        ""
+    }
+}
+
+fn validated_explorer_address(value: &str) -> String {
+    let text = value.trim();
+    let lower = text.to_ascii_lowercase();
+    let suffix = lower
+        .strip_prefix("kaspa:")
+        .or_else(|| lower.strip_prefix("kaspatest:"));
+    match suffix {
+        Some(rest) if rest.len() >= 50 && rest.bytes().all(|byte| byte.is_ascii_alphanumeric()) => {
+            text.to_owned()
+        }
+        _ => String::new(),
+    }
+}
+
+#[wasm_bindgen(js_name = settingsDbKindFromFileName)]
+pub fn settings_db_kind_from_file_name(value: JsValue) -> String {
+    settings_db_kind_text(&raw_string(&value)).to_owned()
+}
+
+#[wasm_bindgen(js_name = settingsExplorerAddress)]
+pub fn settings_explorer_address(value: JsValue) -> String {
+    validated_explorer_address(&raw_string(&value))
+}
+
+#[wasm_bindgen(js_name = settingsExplorerUrl)]
+pub fn settings_explorer_url(value: JsValue) -> String {
+    let address = validated_explorer_address(&raw_string(&value));
+    if address.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "https://explorer.kaspa.org/addresses/{}",
+            address.replacen(':', "%3A", 1)
+        )
+    }
+}
+
 fn western_digits_text(value: &str) -> String {
     value
         .chars()
@@ -1200,6 +1250,22 @@ mod tests {
         assert!(settings_is_kaspa_address_text("kaspatest:qabc"));
         assert!(!settings_is_kaspa_address_text("kaspa-dev:qabc"));
         assert!(!settings_is_kaspa_address_text("btc:qabc"));
+    }
+
+    #[test]
+    fn db_kind_and_explorer_address_contracts_match_legacy() {
+        assert_eq!(settings_db_kind_text("addresses.sqlite"), "addresses");
+        assert_eq!(settings_db_kind_text("TRANSACTIONS.db"), "transactions");
+        assert_eq!(settings_db_kind_text("app data.sqlite"), "app_data");
+        assert_eq!(settings_db_kind_text("other.db"), "");
+        let main = format!("kaspa:{}", "a".repeat(50));
+        let test = format!("kaspatest:{}", "b".repeat(50));
+        assert_eq!(validated_explorer_address(&format!("  {main}  ")), main);
+        assert_eq!(validated_explorer_address(&test), test);
+        let upper = format!("KASPA:{}", "C".repeat(50));
+        assert_eq!(validated_explorer_address(&upper), upper);
+        assert!(validated_explorer_address("kaspa:short").is_empty());
+        assert!(validated_explorer_address(&format!("kaspa:{}-", "a".repeat(50))).is_empty());
     }
 
     #[test]

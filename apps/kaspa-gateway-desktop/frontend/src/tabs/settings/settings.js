@@ -5,6 +5,9 @@ import {
   settingsDisplayPreferences,
   settingsAddressNormalize,
   settingsDisplayStateMissingContract,
+  settingsDbKindFromFileName,
+  settingsExplorerAddress,
+  settingsExplorerUrl,
   settingsIsKaspaAddress,
   settingsSelectedDisplayKeys,
   settingsToWesternDigits
@@ -2012,19 +2015,15 @@ kgwInstallSettingsManageAddressesCleanLayout();
 /* KGW settings address explorer open binding */
 function kgwSettingsAddressOpenValue() {
   const addressInput = document.getElementById("settingsAddressValue");
-  const value = String(addressInput?.value || "").trim();
-  return /^kaspa(test)?:[a-z0-9]{50,}$/i.test(value) ? value : "";
+  return settingsExplorerAddress(addressInput?.value || "");
 }
 
 function kgwOpenKaspaAddressInBrowser(address) {
-  const clean = String(address || "").trim();
-
-  if (!/^kaspa(test)?:[a-z0-9]{50,}$/i.test(clean)) {
-    console.warn("[KGW Settings Addresses] invalid address for explorer open", clean);
+  const url = settingsExplorerUrl(address);
+  if (!url) {
+    console.warn("[KGW Settings Addresses] invalid address for explorer open", String(address || "").trim());
     return;
   }
-
-  const url = `https://explorer.kaspa.org/addresses/${encodeURIComponent(clean)}`;
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
@@ -2297,13 +2296,7 @@ const KGW_SETTINGS_DB_ACTION_STATE = {
 };
 
 function kgwSettingsDbKindFromFileName(value) {
-  const text = String(value || "").trim().toLowerCase();
-
-  if (text.includes("address")) return "addresses";
-  if (text.includes("transaction")) return "transactions";
-  if (text.includes("appdata") || text.includes("app data") || text.includes("app_data")) return "app_data";
-
-  return "";
+  return settingsDbKindFromFileName(value);
 }
 
 function kgwSettingsDbStatus(message) {
