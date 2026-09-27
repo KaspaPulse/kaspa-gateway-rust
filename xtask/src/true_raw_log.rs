@@ -229,11 +229,6 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
             "Bridge UI must consume typed raw log reports.",
         ),
         (
-            &s.node,
-            "kgwNodeRawLogTextHasTransportWrapperV1",
-            "Node UI must reject transport wrapper text before display or copy.",
-        ),
-        (
             &s.bridge,
             "kgwBridgeRawLogTextHasTransportWrapperV1",
             "Bridge UI must reject transport wrapper text before display or copy.",
@@ -265,6 +260,31 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
         ),
     ] {
         require(failures, source, needle, message);
+    }
+
+    for (needle, message) in [
+        (
+            "kgwNodeRawLogTextHasTransportWrapperV1",
+            "Node transport-wrapper rejection must be Rust-owned without a JavaScript compatibility wrapper.",
+        ),
+        (
+            "kgwNodeNormalizeRawLogEntryV1",
+            "Node raw-log normalization must be Rust-owned without a JavaScript compatibility wrapper.",
+        ),
+        (
+            "kgwNodeLegacyTransportReportTextV1",
+            "Node legacy transport extraction must be Rust-owned without a JavaScript compatibility wrapper.",
+        ),
+        (
+            "kgwNodeVisibleRawLogTextV1",
+            "Node visible raw-log text must be Rust-owned without a JavaScript compatibility wrapper.",
+        ),
+        (
+            "kgwNodeRenderRawLogBufferV1",
+            "Node raw-log rendering must be Rust-owned without a JavaScript compatibility wrapper.",
+        ),
+    ] {
+        forbid(failures, &s.node, needle, message);
     }
 
     for (needle, message) in [
@@ -556,11 +576,7 @@ mod tests {
 
     fn sources() -> Sources {
         Sources {
-            node: [
-                "kgwNodeApplyRuntimeLogReportV1",
-                "kgwNodeRawLogTextHasTransportWrapperV1",
-            ]
-            .join("\n"),
+            node: ["kgwNodeApplyRuntimeLogReportV1"].join("\n"),
             node_raw_log: [
                 "if raw_log_transport_wrapper_text(&legacy)",
                 r#"metadata_text(metadata, "runtimeRole", "node")"#,

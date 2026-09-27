@@ -25,12 +25,7 @@ import initNodeRust, {
   nodeI18nText as wasmNodeI18nText,
   nodeInstallLogAutoScrollControls as wasmNodeInstallLogAutoScrollControls,
   nodeInstallStartTraceDocumentClickObserver as wasmNodeInstallStartTraceDocumentClickObserver,
-  nodeLegacyTransportReportText as wasmNodeLegacyTransportReportText,
-  nodeLogAutoScrollEnabled as wasmNodeLogAutoScrollEnabled,
   nodeNetworkEnabled as wasmNodeNetworkEnabled,
-  nodeNormalizeRawLogEntry as wasmNodeNormalizeRawLogEntry,
-  nodeRawLogTextHasTransportWrapper as wasmNodeRawLogTextHasTransportWrapper,
-  nodeRenderRawLogBuffer as wasmNodeRenderRawLogBuffer,
   nodeNetworkPolicyMessage as wasmNodeNetworkPolicyMessage,
   nodeNetworkProfile as wasmNodeNetworkProfile,
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
@@ -66,7 +61,6 @@ import initNodeRust, {
   nodeTraceRenderedStartControls as wasmNodeTraceRenderedStartControls,
   nodeTraceStartButtonState as wasmNodeTraceStartButtonState,
   nodeValue as wasmNodeValue,
-  nodeVisibleRawLogText as wasmNodeVisibleRawLogText,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
 await initNodeRust();
@@ -881,35 +875,11 @@ function cardCheck(net, name, label, checked = false, span2 = false) {
 
 
 // KGW_NODE_LOG_AUTOSCROLL_CONTROLS_R27 is Rust-owned in node_frontend_helpers.rs.
-function kgwNodeLogAutoScrollEnabledR27(net) {
-  return wasmNodeLogAutoScrollEnabled(String(net || ""));
-}
-
 function kgwInstallNodeLogAutoScrollControlsR27() {
   wasmNodeInstallLogAutoScrollControls();
 }
 
 /* KGW_NODE_RAW_LOG_OWNER_V2 is Rust-owned in node_start_trace.rs. */
-function kgwNodeRawLogTextHasTransportWrapperV1(value) {
-  return wasmNodeRawLogTextHasTransportWrapper(value);
-}
-
-function kgwNodeLegacyTransportReportTextV1(report) {
-  return wasmNodeLegacyTransportReportText(report);
-}
-
-function kgwNodeNormalizeRawLogEntryV1(entry, expectedNet, expectedRole = "node") {
-  return wasmNodeNormalizeRawLogEntry(entry, String(expectedNet || ""), String(expectedRole || "node"));
-}
-
-function kgwNodeVisibleRawLogTextV1(net, role = "node") {
-  return wasmNodeVisibleRawLogText(String(net || ""), String(role || "node"));
-}
-
-function kgwNodeRenderRawLogBufferV1(net, role = "node") {
-  return wasmNodeRenderRawLogBuffer(String(net || ""), String(role || "node"));
-}
-
 function kgwNodeApplyRuntimeLogReportV1(net, role, report) {
   return wasmNodeApplyRuntimeLogReport(String(net || ""), String(role || "node"), report);
 }

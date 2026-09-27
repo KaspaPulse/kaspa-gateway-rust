@@ -298,7 +298,6 @@ fn evaluate(s: &Sources) -> Result<Vec<Check>, String> {
             .all(|marker| s.integrated.contains(marker)),
     );
     let node_normalizer = function_body(&s.node_frontend_rust, "raw_log_normalize_entry")?;
-    let node_wrapper = function_body(&s.node_frontend, "kgwNodeNormalizeRawLogEntryV1")?;
     check(
         &mut checks,
         "Node Rust raw normalizer has no raw content blacklist",
@@ -307,10 +306,9 @@ fn evaluate(s: &Sources) -> Result<Vec<Check>, String> {
     );
     check(
         &mut checks,
-        "Node frontend raw normalizer is thin Rust/WASM glue",
-        node_wrapper.contains("wasmNodeNormalizeRawLogEntry")
-            && !node_wrapper.contains("rawTextValue")
-            && !node_wrapper.contains("Number.isSafeInteger"),
+        "Node frontend raw normalizer compatibility wrapper is retired",
+        !s.node_frontend.contains("kgwNodeNormalizeRawLogEntryV1")
+            && !s.node_frontend.contains("wasmNodeNormalizeRawLogEntry"),
     );
 
     let bridge_normalizer = function_body(&s.bridge_frontend, "kgwBridgeNormalizeRawLogEntryV1")?;
