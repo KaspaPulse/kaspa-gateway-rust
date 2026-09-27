@@ -4,12 +4,16 @@ use std::path::Path;
 use std::process::Command;
 
 const NODE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
+const NODE_RENDER_RUST: &str = "crates/kaspa-gateway-frontend-wasm/src/node_frontend_helpers.rs";
+#[cfg(test)]
 const TEMPLATE_TICK: char = '\u{0060}';
 
 pub fn run(root: &Path) -> Result<String, String> {
     let node_js = fs::read_to_string(root.join(NODE_JS))
         .map_err(|_| format!("Missing required file: {NODE_JS}"))?;
-    let mut failures = static_failures(&node_js);
+    let node_render_rust = fs::read_to_string(root.join(NODE_RENDER_RUST))
+        .map_err(|_| format!("Missing required file: {NODE_RENDER_RUST}"))?;
+    let mut failures = production_static_failures(&node_js, &node_render_rust);
 
     println!("Running: Rust-owned frontend start button regression bridge");
     match crate::start_button_frontend::run(root) {
@@ -64,6 +68,7 @@ fn run_local_command(
     }
 }
 
+#[cfg(test)]
 fn static_failures(node_js: &str) -> Vec<String> {
     let mut failures = Vec::new();
 
@@ -150,6 +155,136 @@ fn static_failures(node_js: &str) -> Vec<String> {
         r"appendLog\([^)]*Node defaults restored successfully",
     ] {
         let regex = Regex::new(pattern).expect("static start-button regex must compile");
+        if regex.is_match(node_js) {
+            failures.push(format!(
+                "Synthetic raw-log message detected by pattern: {pattern}"
+            ));
+        }
+    }
+
+    failures
+}
+
+fn production_static_failures(node_js: &str, node_render_rust: &str) -> Vec<String> {
+    let mut failures = Vec::new();
+
+    if !node_js.contains("nodeRenderNetworkPanelsHtml as wasmNodeRenderNetworkPanelsHtml")
+        || !node_js.contains("host.innerHTML = wasmNodeRenderNetworkPanelsHtml();")
+    {
+        failures.push(
+            "Node network panels must be rendered through the Rust/WASM ownership seam.".to_owned(),
+        );
+    }
+
+    for forbidden in [
+        "function cardInput(",
+        "function cardSelect(",
+        "function cardCheck(",
+        "function renderRuntime(",
+        "function renderNetwork(",
+        "function renderRpc(",
+        "function renderPeers(",
+        "function renderDatabase(",
+        "function renderRocksDb(",
+        "function renderPaths(",
+        "function renderSections(",
+        "function renderNetworkPanel(",
+    ] {
+        if node_js.contains(forbidden) {
+            failures.push(format!(
+                "Hand-maintained Node rendering owner remains in JavaScript: {forbidden}"
+            ));
+        }
+    }
+
+    let render_start = node_render_rust.find("fn render_node_network_panel(");
+    let render_end = render_start.and_then(|start| {
+        node_render_rust[start..]
+            .find("#[wasm_bindgen(js_name = nodeRenderNetworkPanelsHtml)]")
+            .map(|offset| start + offset)
+    });
+
+    if let (Some(start), Some(end)) = (render_start, render_end) {
+        let render = &node_render_rust[start..end];
+        let settings_index = render.find(r#"data-node-inner-panel="settings""#);
+        let log_index = render.find(r#"data-node-inner-panel="log""#);
+        match (settings_index, log_index) {
+            (Some(settings), Some(log)) if settings < log => {
+                let settings_block = &render[settings..log];
+                let log_block = &render[log..];
+                if !settings_block.contains(r#"data-node-action="start""#) {
+                    failures.push("Settings panel is missing Start.".to_owned());
+                }
+                if !settings_block.contains(r#"data-node-action="stop""#) {
+                    failures.push("Settings panel is missing Stop.".to_owned());
+                }
+                if !settings_block.contains("data-node-network-enabled") {
+                    failures.push("Settings panel is missing network enable control.".to_owned());
+                }
+                if log_block.contains(r#"data-node-action="start""#) {
+                    failures.push("Live Node Monitor contains Start.".to_owned());
+                }
+                if log_block.contains(r#"data-node-action="stop""#) {
+                    failures.push("Live Node Monitor contains Stop.".to_owned());
+                }
+                if log_block.contains("data-node-network-enabled") {
+                    failures.push("Live Node Monitor contains network enable control.".to_owned());
+                }
+            }
+            _ => failures.push(
+                "Could not verify Rust-owned Settings and Live Node Monitor panel ordering."
+                    .to_owned(),
+            ),
+        }
+
+        let start_count = Regex::new(r#"<button[^>]+data-node-action="start""#)
+            .unwrap()
+            .find_iter(render)
+            .count();
+        let stop_count = Regex::new(r#"<button[^>]+data-node-action="stop""#)
+            .unwrap()
+            .find_iter(render)
+            .count();
+        if start_count != 1 {
+            failures.push(format!(
+                "Expected exactly one Rust-owned Start control template, found {start_count}."
+            ));
+        }
+        if stop_count != 1 {
+            failures.push(format!(
+                "Expected exactly one Rust-owned Stop control template, found {stop_count}."
+            ));
+        }
+
+        let start_id_before =
+            Regex::new(r#"<button[^>]*\sid\s*=[^>]+data-node-action="start""#).unwrap();
+        let start_id_after =
+            Regex::new(r#"<button[^>]+data-node-action="start"[^>]*\sid\s*="#).unwrap();
+        if start_id_before.is_match(render) || start_id_after.is_match(render) {
+            failures
+                .push("Start control uses an ID that can duplicate across networks.".to_owned());
+        }
+        let stop_id_before =
+            Regex::new(r#"<button[^>]*\sid\s*=[^>]+data-node-action="stop""#).unwrap();
+        let stop_id_after =
+            Regex::new(r#"<button[^>]+data-node-action="stop"[^>]*\sid\s*="#).unwrap();
+        if stop_id_before.is_match(render) || stop_id_after.is_match(render) {
+            failures.push("Stop control uses an ID that can duplicate across networks.".to_owned());
+        }
+    } else {
+        failures.push("Could not locate authoritative Rust Node panel renderer.".to_owned());
+    }
+
+    for pattern in [
+        r"appendLog\([^)]*initialized",
+        r"appendLog\([^)]*start response",
+        r"appendLog\([^)]*started successfully",
+        r"appendLog\([^)]*synchronized",
+        r"appendLog\([^)]*connected",
+        r"appendLog\([^)]*Node settings saved successfully",
+        r"appendLog\([^)]*Node defaults restored successfully",
+    ] {
+        let regex = Regex::new(pattern).expect("production start-button regex must compile");
         if regex.is_match(node_js) {
             failures.push(format!(
                 "Synthetic raw-log message detected by pattern: {pattern}"
@@ -296,7 +431,11 @@ mod tests {
     fn id_attribute_boundary_current_node_markup_has_no_static_violation() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
         let source = fs::read_to_string(root.join(NODE_JS)).unwrap();
-        let failures = static_failures(&source);
-        assert!(failures.is_empty(), "current Node source: {failures:?}");
+        let renderer = fs::read_to_string(root.join(NODE_RENDER_RUST)).unwrap();
+        let failures = production_static_failures(&source, &renderer);
+        assert!(
+            failures.is_empty(),
+            "current Node/Rust source: {failures:?}"
+        );
     }
 }

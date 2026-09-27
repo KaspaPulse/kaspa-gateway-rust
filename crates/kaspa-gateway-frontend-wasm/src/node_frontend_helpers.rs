@@ -4,6 +4,7 @@ use super::settings_contract::{
 };
 use super::settings_schema::{NODE_ENDPOINTS, NODE_MANAGED, NODE_OPTIONAL, NODE_REQUIRED};
 use js_sys::{Array, Error, Function, JSON, Object, Promise, Reflect};
+use std::collections::BTreeMap;
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1456,6 +1457,720 @@ fn card_check_html(net: &str, name: &str, label: &str, checked: bool, span2: boo
     )
 }
 
+fn render_input_card(
+    net: &str,
+    name: &str,
+    label: &str,
+    value: &str,
+    placeholder: &str,
+    span2: bool,
+) -> String {
+    let toggle = command_inline_toggle_html(net, name);
+    card_input_html(net, name, label, value, placeholder, span2, &toggle)
+}
+
+fn render_select_card(
+    net: &str,
+    name: &str,
+    label: &str,
+    options: &[&str],
+    value: &str,
+    span2: bool,
+) -> String {
+    let options = options
+        .iter()
+        .map(|value| (*value).to_owned())
+        .collect::<Vec<_>>();
+    let toggle = command_inline_toggle_html(net, name);
+    card_select_html(net, name, label, &options, value, span2, &toggle)
+}
+
+fn render_check_card(net: &str, name: &str, label: &str, checked: bool, span2: bool) -> String {
+    card_check_html(net, name, label, checked, span2)
+}
+
+fn insert_input_card(
+    cards: &mut BTreeMap<String, String>,
+    net: &str,
+    name: &str,
+    label: &str,
+    value: &str,
+    placeholder: &str,
+    span2: bool,
+) {
+    cards.insert(
+        name.to_owned(),
+        render_input_card(net, name, label, value, placeholder, span2),
+    );
+}
+
+fn node_render_cards(profile: &NetworkProfile) -> BTreeMap<String, String> {
+    let net = profile.key;
+    let mut cards = BTreeMap::new();
+    if profile.testnet {
+        cards.insert(
+            "testnet".to_owned(),
+            render_check_card(net, "testnet", "--testnet", true, false),
+        );
+        insert_input_card(
+            &mut cards,
+            net,
+            "netsuffix",
+            "--netsuffix",
+            profile.netsuffix,
+            "required",
+            false,
+        );
+    }
+    cards.insert(
+        "logLevel".to_owned(),
+        render_select_card(
+            net,
+            "logLevel",
+            "--loglevel",
+            &["off", "error", "warn", "info", "debug", "trace"],
+            "info",
+            false,
+        ),
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "asyncThreads",
+        "--async-threads",
+        "16",
+        "",
+        false,
+    );
+    insert_input_card(&mut cards, net, "ramScale", "--ram-scale", "1", "", false);
+    cards.insert(
+        "yes".to_owned(),
+        render_check_card(net, "yes", "--yes", true, false),
+    );
+    cards.insert(
+        "noLogFiles".to_owned(),
+        render_check_card(net, "noLogFiles", "--nologfiles", true, false),
+    );
+    cards.insert(
+        "sanity".to_owned(),
+        render_check_card(net, "sanity", "--sanity", false, false),
+    );
+    cards.insert(
+        "enableUnsyncedMining".to_owned(),
+        render_check_card(
+            net,
+            "enableUnsyncedMining",
+            "--enable-unsynced-mining",
+            false,
+            true,
+        ),
+    );
+
+    let p2p_port = match net {
+        "mainnet" => "16111",
+        "testnet10" => "16211",
+        _ => "16711",
+    };
+    cards.insert(
+        "listenEnabled".to_owned(),
+        render_check_card(net, "listenEnabled", "--listen", false, false),
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "listenHost",
+        "listen host",
+        "0.0.0.0",
+        "",
+        false,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "listenPort",
+        "listen port",
+        p2p_port,
+        "",
+        false,
+    );
+    cards.insert(
+        "externalIpEnabled".to_owned(),
+        render_check_card(net, "externalIpEnabled", "--externalip", false, false),
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "externalIpHost",
+        "external host",
+        "",
+        "ip",
+        false,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "externalIpPort",
+        "external port",
+        "",
+        "port",
+        false,
+    );
+    cards.insert(
+        "disableUpnp".to_owned(),
+        render_check_card(net, "disableUpnp", "--disable-upnp", true, false),
+    );
+    cards.insert(
+        "noDnsSeed".to_owned(),
+        render_check_card(net, "noDnsSeed", "--nodnsseed", false, false),
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "uaComment",
+        "--uacomment",
+        "",
+        "comment",
+        true,
+    );
+
+    let rpc_base = match net {
+        "mainnet" => 16_110,
+        _ => 16_210,
+    };
+    cards.insert(
+        "rpcListenEnabled".to_owned(),
+        render_check_card(net, "rpcListenEnabled", "--rpclisten", true, false),
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "rpcListenHost",
+        "RPC host",
+        "127.0.0.1",
+        "",
+        false,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "rpcListenPort",
+        "RPC port",
+        &rpc_base.to_string(),
+        "",
+        false,
+    );
+    cards.insert(
+        "rpcBorshEnabled".to_owned(),
+        render_check_card(net, "rpcBorshEnabled", "--rpclisten-borsh", false, false),
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "rpcBorshHost",
+        "Borsh host",
+        "127.0.0.1",
+        "",
+        false,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "rpcBorshPort",
+        "Borsh port",
+        &(rpc_base + 1000).to_string(),
+        "",
+        false,
+    );
+    cards.insert(
+        "rpcJsonEnabled".to_owned(),
+        render_check_card(net, "rpcJsonEnabled", "--rpclisten-json", false, false),
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "rpcJsonHost",
+        "JSON host",
+        "127.0.0.1",
+        "",
+        false,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "rpcJsonPort",
+        "JSON port",
+        &(rpc_base + 2000).to_string(),
+        "",
+        false,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "rpcMaxClients",
+        "--rpcmaxclients (managed max 16)",
+        "16",
+        "",
+        false,
+    );
+    cards.insert(
+        "unsafeRpc".to_owned(),
+        render_check_card(net, "unsafeRpc", "--unsaferpc", false, false),
+    );
+    cards.insert(
+        "noGrpc".to_owned(),
+        render_check_card(net, "noGrpc", "--nogrpc", false, false),
+    );
+
+    cards.insert(
+        "connectEnabled".to_owned(),
+        render_check_card(net, "connectEnabled", "--connect", false, false),
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "connectHost",
+        "connect host",
+        "",
+        "host",
+        false,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "connectPort",
+        "connect port",
+        "",
+        "port",
+        false,
+    );
+    cards.insert(
+        "addPeerEnabled".to_owned(),
+        render_check_card(net, "addPeerEnabled", "--addpeer", false, false),
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "addPeerHost",
+        "peer host",
+        "",
+        "host",
+        false,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "addPeerPort",
+        "peer port",
+        "",
+        "port",
+        false,
+    );
+    insert_input_card(&mut cards, net, "outPeers", "--outpeers", "8", "", false);
+    insert_input_card(
+        &mut cards,
+        net,
+        "maxInPeers",
+        "--maxinpeers (managed max 32)",
+        "32",
+        "",
+        false,
+    );
+
+    cards.insert(
+        "utxoIndex".to_owned(),
+        render_check_card(net, "utxoIndex", "--utxoindex", true, false),
+    );
+    cards.insert(
+        "archival".to_owned(),
+        render_check_card(net, "archival", "--archival", false, false),
+    );
+    cards.insert(
+        "resetDb".to_owned(),
+        render_check_card(net, "resetDb", "--reset-db", false, false),
+    );
+    cards.insert(
+        "perfMetrics".to_owned(),
+        render_check_card(net, "perfMetrics", "--perf-metrics", true, false),
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "maxTrackedAddresses",
+        "--max-tracked-addresses",
+        "",
+        "0",
+        false,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "retentionDays",
+        "--retention-period-days",
+        "",
+        "optional",
+        false,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "perfMetricsInterval",
+        "--perf-metrics-interval-sec",
+        "",
+        "optional",
+        true,
+    );
+
+    cards.insert(
+        "rocksDbPreset".to_owned(),
+        render_select_card(
+            net,
+            "rocksDbPreset",
+            "--rocksdb-preset",
+            &["", "default", "hdd"],
+            "",
+            false,
+        ),
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "rocksDbCacheSize",
+        "--rocksdb-cache-size",
+        "",
+        "MB",
+        false,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "rocksDbWalDir",
+        "--rocksdb-wal-dir",
+        "",
+        "path",
+        true,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "overrideParamsFile",
+        "--override-params-file (unsupported: managed network)",
+        "",
+        "not supported",
+        true,
+    );
+
+    insert_input_card(
+        &mut cards,
+        net,
+        "configFile",
+        "--configfile (unsupported: managed ownership)",
+        "",
+        "not supported",
+        false,
+    );
+    insert_input_card(
+        &mut cards,
+        net,
+        "appDir",
+        "--appdir (managed per network)",
+        "",
+        "managed by desktop",
+        false,
+    );
+    insert_input_card(&mut cards, net, "logDir", "--logdir", "", "log dir", false);
+    cards
+}
+
+const NODE_RENDER_GROUPS: [(&str, &str, &str, &[&str]); 12] = [
+    (
+        "general",
+        "basic",
+        "Basic",
+        &["testnet", "netsuffix", "utxoIndex", "yes"],
+    ),
+    (
+        "general",
+        "networking",
+        "Networking",
+        &[
+            "listenEnabled",
+            "listenHost",
+            "listenPort",
+            "externalIpEnabled",
+            "externalIpHost",
+            "externalIpPort",
+            "disableUpnp",
+            "noDnsSeed",
+            "uaComment",
+        ],
+    ),
+    (
+        "general",
+        "rpc",
+        "RPC",
+        &["rpcListenEnabled", "rpcListenHost", "rpcListenPort"],
+    ),
+    (
+        "general",
+        "performance",
+        "Performance",
+        &["asyncThreads", "ramScale", "outPeers", "maxInPeers"],
+    ),
+    (
+        "general",
+        "storage",
+        "Storage",
+        &["appDir", "rocksDbPreset", "rocksDbCacheSize"],
+    ),
+    (
+        "general",
+        "logging",
+        "Logging",
+        &["logLevel", "noLogFiles", "logDir"],
+    ),
+    (
+        "advanced",
+        "p2p",
+        "P2P",
+        &[
+            "connectEnabled",
+            "connectHost",
+            "connectPort",
+            "addPeerEnabled",
+            "addPeerHost",
+            "addPeerPort",
+        ],
+    ),
+    (
+        "advanced",
+        "rpc-advanced",
+        "RPC Advanced",
+        &[
+            "rpcBorshEnabled",
+            "rpcBorshHost",
+            "rpcBorshPort",
+            "rpcJsonEnabled",
+            "rpcJsonHost",
+            "rpcJsonPort",
+            "rpcMaxClients",
+            "noGrpc",
+        ],
+    ),
+    (
+        "advanced",
+        "database",
+        "Database",
+        &[
+            "archival",
+            "maxTrackedAddresses",
+            "retentionDays",
+            "rocksDbWalDir",
+            "configFile",
+            "sanity",
+        ],
+    ),
+    (
+        "advanced",
+        "metrics",
+        "Metrics",
+        &["perfMetrics", "perfMetricsInterval"],
+    ),
+    (
+        "advanced",
+        "experimental",
+        "Experimental",
+        &["overrideParamsFile"],
+    ),
+    (
+        "advanced",
+        "dangerous",
+        "Dangerous",
+        &["resetDb", "unsafeRpc", "enableUnsyncedMining"],
+    ),
+];
+
+fn render_node_sections(profile: &NetworkProfile) -> Result<String, String> {
+    let mut cards = node_render_cards(profile);
+    let mut groups = Vec::with_capacity(NODE_RENDER_GROUPS.len());
+    for (section, key, label, names) in NODE_RENDER_GROUPS {
+        let mut fields = String::new();
+        for name in names {
+            if let Some(card) = cards.remove(*name) {
+                fields.push_str(&card);
+            }
+        }
+        let note = match key {
+            "dangerous" => "<p class=\"kgw-danger-warning\">Reset DB removes network data. Unsafe RPC can expose privileged methods. Unsynced mining bypasses synchronization. Existing confirmations and network restrictions still apply.</p>".to_owned(),
+            "experimental" => format!(
+                "<p class=\"kgw-settings-info\">{}</p>",
+                escape_html_text(&policy_message_text(profile.key))
+            ),
+            _ => String::new(),
+        };
+        groups.push((
+            section,
+            key,
+            label,
+            format!("{note}<div class=\"kgw-settings-grid\">{fields}</div>"),
+        ));
+    }
+    if !cards.is_empty() {
+        return Err(format!(
+            "Ungrouped node settings: {}",
+            cards.keys().cloned().collect::<Vec<_>>().join(", ")
+        ));
+    }
+    Ok(crate::settings_layout::render_tabs_native(
+        "node",
+        profile.key,
+        &groups,
+    ))
+}
+
+fn render_node_network_panel(
+    profile: &NetworkProfile,
+    index: usize,
+    active_inner_tab: &str,
+    enabled: bool,
+) -> Result<String, String> {
+    let net = profile.key;
+    let panel_active = if index == 0 { " active" } else { "" };
+    let panel_hidden = if index == 0 { "" } else { " hidden" };
+    let log_active = active_inner_tab == "log";
+    let settings_active = active_inner_tab == "settings";
+    let log_class = if log_active { " active" } else { "" };
+    let settings_class = if settings_active { " active" } else { "" };
+    let log_hidden = if log_active { "" } else { " hidden" };
+    let settings_hidden = if settings_active { "" } else { " hidden" };
+    let experimental_class = if profile.experimental {
+        " is-experimental"
+    } else {
+        ""
+    };
+    let experimental_badge = if profile.experimental {
+        "<span class=\"kgw-experimental-badge\">Experimental - opt-in required</span>"
+    } else {
+        ""
+    };
+    let enabled_attr = if enabled { " checked" } else { "" };
+    let policy_message = escape_html_text(&policy_message_text(net));
+    let sections = render_node_sections(profile)?;
+    let id = |name: &str| format!("node-{net}-{name}");
+
+    Ok(format!(
+        r#"
+    <div class="node-v6-network-panel{panel_active}" data-node-network-panel="{net}" data-testid="kgw-node-panel-{net}"{panel_hidden}>
+      <div class="node-v6-inner-tabs">
+        <button type="button" class="node-v6-inner-tab{log_class}" data-net="{net}" data-node-inner-tab="log" data-testid="kgw-node-live-monitor-{net}">Live Node Monitor</button>
+        <button type="button" class="node-v6-inner-tab{settings_class}" data-net="{net}" data-node-inner-tab="settings" data-testid="kgw-node-settings-{net}">Settings</button>
+      </div>
+
+      <div class="node-v6-inner-panel{settings_class}" data-net="{net}" data-node-inner-panel="settings" data-node-settings-panel="{net}"{settings_hidden}>
+        <div class="kgw-settings-scroll">
+        <section class="kgw-network-policy{experimental_class}" data-net="{net}" data-testid="kgw-node-policy-{net}">
+          <div>
+            <strong>{label}</strong>{experimental_badge}
+            <span>{policy_message}</span>
+          </div>
+          <div class="kgw-network-policy-controls">
+            <span id="{policy_status}" class="kgw-network-policy-status">Stopped</span>
+            <label>
+              <input type="checkbox" data-node-network-enabled="{net}" data-testid="kgw-node-policy-enabled-{net}" data-net="{net}"{enabled_attr}>
+              Profile enabled
+            </label>
+          </div>
+        </section>
+
+        <section class="node-v6-command kgw-effective-preview">
+          <div class="kgw-preview-row">
+            <strong>Effective node settings</strong>
+            <button type="button" data-settings-preview-toggle aria-expanded="false" aria-controls="{preview_body}">Expand</button>
+            <button type="button" class="node-v6-copy" data-node-action="copy-command" data-net="{net}" title="Copy effective settings">Copy command</button>
+            <button type="button" data-node-action="copy-path" data-net="{net}">Copy data directory</button>
+          </div>
+          <p id="{preview_message}" class="kgw-preview-message" role="status" aria-live="polite"></p>
+          <div class="kgw-preview-body" id="{preview_body}" hidden>
+            <p class="kgw-preview-help">The embedded node library consumes these equivalent arguments inside KaspaGateway self-workers.</p>
+            <textarea id="{command_preview}" aria-label="Effective node settings preview" readonly spellcheck="false" wrap="soft"></textarea>
+            <details class="kgw-arguments"><summary>Argument list</summary><pre id="{argument_list}"></pre></details>
+          </div>
+        </section>
+
+        <section class="node-v6-toolbar">
+          <div class="node-v6-buttons">
+            <button type="button" class="good" data-node-action="start" data-testid="kgw-node-start-{net}" data-net="{net}">Start</button>
+            <button type="button" data-node-action="stop" data-testid="kgw-node-stop-{net}" data-net="{net}">Stop</button>
+          </div>
+
+          <div class="node-v6-status">
+            <span id="{runtime_status}" class="node-v6-runtime-status-pill" data-state="stopped">Stopped</span>
+            <span id="{runtime_evidence}" class="node-v6-runtime-evidence">No process owner</span>
+            <span id="{settings_authority}" class="node-v6-runtime-evidence">Effective settings apply on next Start</span>
+          </div>
+
+          <div id="{runtime_error}" class="node-v6-runtime-error" role="status" aria-live="polite" hidden></div>
+        </section>
+
+        {sections}
+        </div>
+
+        <div class="settings-bottom-actions node-settings-bottom-actions">
+        <button type="button" data-node-action="save-settings" data-net="{net}">Save Settings</button>
+        <button type="button" data-node-action="restore-defaults" data-net="{net}">Restore Defaults</button>
+        <button type="button" data-node-action="set-defaults" data-net="{net}">Set as Defaults</button>
+        <p class="kgw-settings-help" data-settings-defaults-context="{net}">Restore uses KaspaGateway defaults. Settings apply on the next Start.</p>
+        </div>
+
+      </div>
+
+      <div class="node-v6-inner-panel{log_class}" data-net="{net}" data-node-inner-panel="log" data-testid="kgw-node-live-panel-{net}"{log_hidden}>
+        <p id="{monitor_state}" class="kgw-monitor-state" role="status">Node: Stopped</p>
+        <div class="node-v6-log-toolbar">
+          <button type="button" data-node-action="monitor-start" data-net="{net}">Start Node</button>
+          <span class="node-v6-log-metadata" data-net="{net}">Network: {label} | Source: self-worker | Streams: stdout/stderr</span>
+          <button type="button" data-node-action="copy-log" data-testid="kgw-node-copy-log-{net}" data-net="{net}">Copy Log</button>
+          <button type="button" data-node-action="clear-log" data-testid="kgw-node-clear-log-{net}" data-net="{net}">Clear Log</button>
+        </div>
+        <div id="{log_empty}" class="node-v6-log-empty" data-node-log-empty="{net}">Node is stopped. Start the node to view its logs.</div>
+        <pre id="{log_output}" class="node-v6-log" data-testid="kgw-node-log-output-{net}"></pre>
+      </div>
+</div>"#,
+        label = profile.label,
+        policy_status = id("policyStatus"),
+        preview_body = id("previewBody"),
+        preview_message = id("previewMessage"),
+        command_preview = id("commandPreview"),
+        argument_list = id("argumentList"),
+        runtime_status = id("runtimeStatus"),
+        runtime_evidence = id("runtimeEvidence"),
+        settings_authority = id("settingsAuthority"),
+        runtime_error = id("runtimeError"),
+        monitor_state = id("monitorState"),
+        log_empty = id("logEmpty"),
+        log_output = id("logOutput"),
+    ))
+}
+
+fn render_node_network_panels_browser() -> Result<String, String> {
+    let mut output = String::new();
+    for (index, profile) in NETWORKS.iter().enumerate() {
+        let active_inner_tab = node_resolve_inner_tab(profile.key.to_owned());
+        let enabled = node_network_enabled(profile.key.to_owned());
+        output.push_str(&render_node_network_panel(
+            profile,
+            index,
+            &active_inner_tab,
+            enabled,
+        )?);
+    }
+    Ok(output)
+}
+
+#[wasm_bindgen(js_name = nodeRenderNetworkPanelsHtml)]
+pub fn node_render_network_panels_html() -> Result<String, JsValue> {
+    render_node_network_panels_browser().map_err(|error| JsValue::from_str(&error))
+}
+
 #[wasm_bindgen(js_name = nodeCardInput)]
 pub fn node_card_input(
     net: String,
@@ -2149,6 +2864,101 @@ mod tests {
         let check = card_check_html("mainnet", "yes", "<Yes>", true, false);
         assert!(check.contains("type=\"checkbox\" checked"));
         assert!(check.contains("<span>&lt;Yes&gt;</span>"));
+    }
+
+    #[test]
+    fn node_renderer_group_and_panel_ownership_contract_is_complete() {
+        let expected = [
+            "testnet",
+            "netsuffix",
+            "utxoIndex",
+            "yes",
+            "listenEnabled",
+            "listenHost",
+            "listenPort",
+            "externalIpEnabled",
+            "externalIpHost",
+            "externalIpPort",
+            "disableUpnp",
+            "noDnsSeed",
+            "uaComment",
+            "rpcListenEnabled",
+            "rpcListenHost",
+            "rpcListenPort",
+            "asyncThreads",
+            "ramScale",
+            "outPeers",
+            "maxInPeers",
+            "appDir",
+            "rocksDbPreset",
+            "rocksDbCacheSize",
+            "logLevel",
+            "noLogFiles",
+            "logDir",
+            "connectEnabled",
+            "connectHost",
+            "connectPort",
+            "addPeerEnabled",
+            "addPeerHost",
+            "addPeerPort",
+            "rpcBorshEnabled",
+            "rpcBorshHost",
+            "rpcBorshPort",
+            "rpcJsonEnabled",
+            "rpcJsonHost",
+            "rpcJsonPort",
+            "rpcMaxClients",
+            "noGrpc",
+            "archival",
+            "maxTrackedAddresses",
+            "retentionDays",
+            "rocksDbWalDir",
+            "configFile",
+            "sanity",
+            "perfMetrics",
+            "perfMetricsInterval",
+            "overrideParamsFile",
+            "resetDb",
+            "unsafeRpc",
+            "enableUnsyncedMining",
+        ];
+        let mut grouped = std::collections::BTreeSet::new();
+        for (_, _, _, names) in NODE_RENDER_GROUPS {
+            for name in names {
+                assert!(grouped.insert(*name), "duplicate renderer field: {name}");
+            }
+        }
+        assert_eq!(
+            grouped,
+            expected
+                .into_iter()
+                .collect::<std::collections::BTreeSet<_>>()
+        );
+
+        let source = include_str!("node_frontend_helpers.rs");
+        let start = source
+            .find("fn render_node_network_panel(")
+            .expect("Rust panel renderer");
+        let end = source[start..]
+            .find("#[wasm_bindgen(js_name = nodeRenderNetworkPanelsHtml)]")
+            .map(|offset| start + offset)
+            .expect("Rust renderer export");
+        let render = &source[start..end];
+        let settings_start = render
+            .find("data-node-inner-panel=\"settings\"")
+            .expect("settings panel");
+        let log_start = render
+            .find("data-node-inner-panel=\"log\"")
+            .expect("log panel");
+        let settings = &render[settings_start..log_start];
+        let log = &render[log_start..];
+        assert_eq!(settings.matches("data-node-action=\"start\"").count(), 1);
+        assert_eq!(settings.matches("data-node-action=\"stop\"").count(), 1);
+        assert!(settings.contains("data-node-network-enabled"));
+        assert!(!log.contains("data-node-action=\"start\""));
+        assert!(!log.contains("data-node-action=\"stop\""));
+        assert!(log.contains("data-node-action=\"copy-log\""));
+        assert!(log.contains("data-node-action=\"clear-log\""));
     }
 
     #[test]

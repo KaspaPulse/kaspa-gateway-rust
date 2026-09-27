@@ -1,15 +1,11 @@
 import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { NODE_MANAGED, NODE_REQUIRED, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
-import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
+import { installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initNodeRust, {
   nodeBackendInvoke as kgwNodeBackendInvokeR5,
   nodeById as byId,
-  nodeCardCheck as wasmNodeCardCheck,
-  nodeCardInput as wasmNodeCardInput,
-  nodeCardSelect as wasmNodeCardSelect,
   nodeChecked as c,
   nodeCommandInlineState as kgwNodeCommandInlineStateR7,
-  nodeCommandInlineToggle as kgwNodeCommandInlineToggleR7,
   nodeCommandOptionsKey as wasmNodeCommandOptionsKey,
   nodeRefreshInlineCommandToggles as kgwNodeRefreshInlineCommandTogglesR7,
   nodeToggleCommandOption as wasmNodeToggleCommandOption,
@@ -20,13 +16,11 @@ import initNodeRust, {
   nodeDispatchRuntimeLogClear as kgwNodeDispatchRuntimeLogClearV1,
   nodeEffectiveNodeSettings as wasmNodeEffectiveNodeSettings,
   nodeElementId as id,
-  nodeEscapeHtml as esc,
   nodeHandleCopyLog as wasmNodeHandleCopyLog,
   nodeI18nText as kgwI18nTextR41,
   nodeInstallLogAutoScrollControls as kgwInstallNodeLogAutoScrollControlsR27,
   nodeInstallStartTraceDocumentClickObserver as kgwNodeInstallStartTraceDocumentClickObserverR1,
   nodeNetworkEnabled as kgwNodeNetworkEnabled,
-  nodeNetworkPolicyMessage as kgwNodeNetworkPolicyMessage,
   nodeNetworkProfile as kgwNodeNetworkProfile,
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
   nodeNormalizeNetwork as kgwNodeNormalizeNetworkR101W2,
@@ -42,10 +36,10 @@ import initNodeRust, {
   nodeR51LoadSavedSettings as wasmNodeR51LoadSavedSettings,
   nodeR51Panel as kgwNodeR51Panel,
   nodeR51ReadSettings as wasmNodeR51ReadSettings,
+  nodeRenderNetworkPanelsHtml as wasmNodeRenderNetworkPanelsHtml,
   nodeR51RestoreDefaultsAction as wasmNodeR51RestoreDefaultsAction,
   nodeR51SaveSettingsAction as wasmNodeR51SaveSettingsAction,
   nodeR51SetDefaultsAction as wasmNodeR51SetDefaultsAction,
-  nodeResolveInnerTab as kgwNodeResolveInnerTabR101U,
   nodeResolvePublicTauriInvoke as kgwResolvePublicTauriInvokeR1,
   nodeRuntimeActionForCommand as kgwNodeRuntimeActionForCommandR1,
   nodeRuntimeArgs as nodeRuntimeArgs,
@@ -736,43 +730,6 @@ function kgwNodeToggleCommandOptionR7(net, name) {
 
 
 /* Node card markup rendering is Rust-owned in node_frontend_helpers.rs. */
-function cardInput(net, name, label, value = "", placeholder = "", span2 = false) {
-  return wasmNodeCardInput(
-    String(net || ""),
-    String(name || ""),
-    String(label || ""),
-    String(value ?? ""),
-    String(placeholder ?? ""),
-    Boolean(span2),
-    kgwNodeCommandInlineToggleR7(net, name)
-  );
-}
-
-function cardSelect(net, name, label, options, value = "", span2 = false) {
-  return wasmNodeCardSelect(
-    String(net || ""),
-    String(name || ""),
-    String(label || ""),
-    Array.from(options || [], (item) => String(item ?? "")),
-    String(value ?? ""),
-    Boolean(span2),
-    kgwNodeCommandInlineToggleR7(net, name)
-  );
-}
-
-function cardCheck(net, name, label, checked = false, span2 = false) {
-  return wasmNodeCardCheck(
-    String(net || ""),
-    String(name || ""),
-    String(label || ""),
-    Boolean(checked),
-    Boolean(span2)
-  );
-}
-
-
-
-
 
 // KGW_NODE_LOG_AUTOSCROLL_CONTROLS_R27 is Rust-owned in node_frontend_helpers.rs.
 
@@ -784,239 +741,12 @@ function appendLog(net, message) {
   void message;
 }
 
-function renderRuntime(net) {
-  const networkIdentityControls = net.testnet
-    ? `
-      ${cardCheck(net.key, "testnet", "--testnet", true)}
-      ${cardInput(net.key, "netsuffix", "--netsuffix", net.netsuffix, "required")}`
-    : "";
-
-  return `
-    <div class="node-v6-grid">
-      ${networkIdentityControls}
-      ${cardSelect(net.key, "logLevel", "--loglevel", ["off", "error", "warn", "info", "debug", "trace"], "info")}
-      ${cardInput(net.key, "asyncThreads", "--async-threads", "16")}
-      ${cardInput(net.key, "ramScale", "--ram-scale", "1")}
-      ${cardCheck(net.key, "yes", "--yes", true)}
-      ${cardCheck(net.key, "noLogFiles", "--nologfiles", true)}
-      ${cardCheck(net.key, "sanity", "--sanity", false)}
-      ${cardCheck(net.key, "enableUnsyncedMining", "--enable-unsynced-mining", false, true)}
-    </div>`;
-}
-
-
-function renderNetwork(net) {
-  const p2pPort = net.key === "mainnet" ? "16111" : net.key === "testnet10" ? "16211" : "16711";
-  return `
-    <div class="node-v6-grid">
-      ${cardCheck(net.key, "listenEnabled", "--listen", false)}
-      ${cardInput(net.key, "listenHost", "listen host", "0.0.0.0")}
-      ${cardInput(net.key, "listenPort", "listen port", p2pPort)}
-      ${cardCheck(net.key, "externalIpEnabled", "--externalip", false)}
-      ${cardInput(net.key, "externalIpHost", "external host", "", "ip")}
-      ${cardInput(net.key, "externalIpPort", "external port", "", "port")}
-      ${cardCheck(net.key, "disableUpnp", "--disable-upnp", true)}
-      ${cardCheck(net.key, "noDnsSeed", "--nodnsseed", false)}
-      ${cardInput(net.key, "uaComment", "--uacomment", "", "comment", true)}
-    </div>`;
-}
-
-function renderRpc(net) {
-  const base = net.key === "mainnet" ? 16110 : net.key === "testnet10" ? 16210 : 16210;
-  return `
-    <div class="node-v6-grid">
-      ${cardCheck(net.key, "rpcListenEnabled", "--rpclisten", true)}
-      ${cardInput(net.key, "rpcListenHost", "RPC host", "127.0.0.1")}
-      ${cardInput(net.key, "rpcListenPort", "RPC port", String(base))}
-      ${cardCheck(net.key, "rpcBorshEnabled", "--rpclisten-borsh", false)}
-      ${cardInput(net.key, "rpcBorshHost", "Borsh host", "127.0.0.1")}
-      ${cardInput(net.key, "rpcBorshPort", "Borsh port", String(base + 1000))}
-      ${cardCheck(net.key, "rpcJsonEnabled", "--rpclisten-json", false)}
-      ${cardInput(net.key, "rpcJsonHost", "JSON host", "127.0.0.1")}
-      ${cardInput(net.key, "rpcJsonPort", "JSON port", String(base + 2000))}
-      ${cardInput(net.key, "rpcMaxClients", "--rpcmaxclients (managed max 16)", "16")}
-      ${cardCheck(net.key, "unsafeRpc", "--unsaferpc", false)}
-      ${cardCheck(net.key, "noGrpc", "--nogrpc", false)}
-    </div>`;
-}
-
-function renderPeers(net) {
-  return `
-    <div class="node-v6-grid">
-      ${cardCheck(net.key, "connectEnabled", "--connect", false)}
-      ${cardInput(net.key, "connectHost", "connect host", "", "host")}
-      ${cardInput(net.key, "connectPort", "connect port", "", "port")}
-      ${cardCheck(net.key, "addPeerEnabled", "--addpeer", false)}
-      ${cardInput(net.key, "addPeerHost", "peer host", "", "host")}
-      ${cardInput(net.key, "addPeerPort", "peer port", "", "port")}
-      ${cardInput(net.key, "outPeers", "--outpeers", "8")}
-      ${cardInput(net.key, "maxInPeers", "--maxinpeers (managed max 32)", "32")}
-    </div>`;
-}
-
-function renderDatabase(net) {
-  return `
-    <div class="node-v6-grid">
-      ${cardCheck(net.key, "utxoIndex", "--utxoindex", true)}
-      ${cardCheck(net.key, "archival", "--archival", false)}
-      ${cardCheck(net.key, "resetDb", "--reset-db", false)}
-      ${cardCheck(net.key, "perfMetrics", "--perf-metrics", true)}
-      ${cardInput(net.key, "maxTrackedAddresses", "--max-tracked-addresses", "", "0")}
-      ${cardInput(net.key, "retentionDays", "--retention-period-days", "", "optional")}
-      ${cardInput(net.key, "perfMetricsInterval", "--perf-metrics-interval-sec", "", "optional", true)}
-    </div>`;
-}
-
-function renderRocksDb(net) {
-  return `
-    <div class="node-v6-grid">
-      ${cardSelect(net.key, "rocksDbPreset", "--rocksdb-preset", ["", "default", "hdd"], "")}
-      ${cardInput(net.key, "rocksDbCacheSize", "--rocksdb-cache-size", "", "MB")}
-      ${cardInput(net.key, "rocksDbWalDir", "--rocksdb-wal-dir", "", "path", true)}
-      ${cardInput(net.key, "overrideParamsFile", "--override-params-file (unsupported: managed network)", "", "not supported", true)}
-    </div>`;
-}
-
-function renderPaths(net) {
-  return `
-    <div class="node-v6-grid">
-      ${cardInput(net.key, "configFile", "--configfile (unsupported: managed ownership)", "", "not supported")}
-      ${cardInput(net.key, "appDir", "--appdir (managed per network)", "", "managed by desktop")}
-      ${cardInput(net.key, "logDir", "--logdir", "", "log dir")}
-    </div>`;
-}
-
-function renderSections(net) {
-  const template = document.createElement("template");
-  template.innerHTML = [renderRuntime(net), renderNetwork(net), renderRpc(net), renderPeers(net),
-    renderDatabase(net), renderRocksDb(net), renderPaths(net)].join("");
-  const cards = new Map();
-  template.content.querySelectorAll(".node-v6-card").forEach(card => {
-    const field = card.querySelector("[id]");
-    if (field) cards.set(field.id.slice(("node-" + net.key + "-").length), card.outerHTML);
-  });
-  const definitions = [
-    ["general", "basic", "Basic", "testnet netsuffix utxoIndex yes"],
-    ["general", "networking", "Networking", "listenEnabled listenHost listenPort externalIpEnabled externalIpHost externalIpPort disableUpnp noDnsSeed uaComment"],
-    ["general", "rpc", "RPC", "rpcListenEnabled rpcListenHost rpcListenPort"],
-    ["general", "performance", "Performance", "asyncThreads ramScale outPeers maxInPeers"],
-    ["general", "storage", "Storage", "appDir rocksDbPreset rocksDbCacheSize"],
-    ["general", "logging", "Logging", "logLevel noLogFiles logDir"],
-    ["advanced", "p2p", "P2P", "connectEnabled connectHost connectPort addPeerEnabled addPeerHost addPeerPort"],
-    ["advanced", "rpc-advanced", "RPC Advanced", "rpcBorshEnabled rpcBorshHost rpcBorshPort rpcJsonEnabled rpcJsonHost rpcJsonPort rpcMaxClients noGrpc"],
-    ["advanced", "database", "Database", "archival maxTrackedAddresses retentionDays rocksDbWalDir configFile sanity"],
-    ["advanced", "metrics", "Metrics", "perfMetrics perfMetricsInterval"],
-    ["advanced", "experimental", "Experimental", "overrideParamsFile"],
-    ["advanced", "dangerous", "Dangerous", "resetDb unsafeRpc enableUnsyncedMining"]
-  ];
-  const groups = definitions.map(([section, key, label, names]) => {
-    const fields = names.split(" ").map(name => { const card = cards.get(name) || ""; cards.delete(name); return card; }).join("");
-    const note = key === "dangerous"
-      ? '<p class="kgw-danger-warning">Reset DB removes network data. Unsafe RPC can expose privileged methods. Unsynced mining bypasses synchronization. Existing confirmations and network restrictions still apply.</p>'
-      : key === "experimental" ? '<p class="kgw-settings-info">' + esc(kgwNodeNetworkPolicyMessage(net.key)) + "</p>" : "";
-    return [section, key, label, note + '<div class="kgw-settings-grid">' + fields + "</div>"];
-  });
-  if (cards.size) throw new Error("Ungrouped node settings: " + [...cards.keys()].join(", "));
-  return renderSettingsTabs("node", net.key, groups);
-}
-
-/* R101U inner-tab persistence is Rust-owned in node_frontend_helpers.rs. */
-function renderNetworkPanel(net, index) {
-  /* KGW_NODE_LIVE_MONITOR_TAB_LABEL_ORDER_R101S */
-  /* KGW_NODE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U
-   * Settings is no longer the default inner panel.
-   * Default is Live Node Monitor unless a valid saved tab exists for this network.
-   */
-  const activeInnerTab = kgwNodeResolveInnerTabR101U(net.key);
-  const logActive = activeInnerTab === "log";
-  const settingsActive = activeInnerTab === "settings";
-
-  return `
-    <div class="node-v6-network-panel${index === 0 ? " active" : ""}" data-node-network-panel="${net.key}" data-testid="kgw-node-panel-${net.key}"${index === 0 ? "" : " hidden"}>
-      <div class="node-v6-inner-tabs">
-        <button type="button" class="node-v6-inner-tab${logActive ? " active" : ""}" data-net="${net.key}" data-node-inner-tab="log" data-testid="kgw-node-live-monitor-${net.key}">Live Node Monitor</button>
-        <button type="button" class="node-v6-inner-tab${settingsActive ? " active" : ""}" data-net="${net.key}" data-node-inner-tab="settings" data-testid="kgw-node-settings-${net.key}">Settings</button>
-      </div>
-
-      <div class="node-v6-inner-panel${settingsActive ? " active" : ""}" data-net="${net.key}" data-node-inner-panel="settings" data-node-settings-panel="${net.key}"${settingsActive ? "" : " hidden"}>
-        <div class="kgw-settings-scroll">
-        <section class="kgw-network-policy${net.experimental ? " is-experimental" : ""}" data-net="${net.key}" data-testid="kgw-node-policy-${net.key}">
-          <div>
-            <strong>${net.label}</strong>${net.experimental ? '<span class="kgw-experimental-badge">Experimental - opt-in required</span>' : ""}
-            <span>${esc(kgwNodeNetworkPolicyMessage(net.key))}</span>
-          </div>
-          <div class="kgw-network-policy-controls">
-            <span id="${id(net.key, "policyStatus")}" class="kgw-network-policy-status">Stopped</span>
-            <label>
-              <input type="checkbox" data-node-network-enabled="${net.key}" data-testid="kgw-node-policy-enabled-${net.key}" data-net="${net.key}"${kgwNodeNetworkEnabled(net.key) ? " checked" : ""}>
-              Profile enabled
-            </label>
-          </div>
-        </section>
-
-        <section class="node-v6-command kgw-effective-preview">
-          <div class="kgw-preview-row">
-            <strong>Effective node settings</strong>
-            <button type="button" data-settings-preview-toggle aria-expanded="false" aria-controls="${id(net.key, "previewBody")}">Expand</button>
-            <button type="button" class="node-v6-copy" data-node-action="copy-command" data-net="${net.key}" title="Copy effective settings">Copy command</button>
-            <button type="button" data-node-action="copy-path" data-net="${net.key}">Copy data directory</button>
-          </div>
-          <p id="${id(net.key, "previewMessage")}" class="kgw-preview-message" role="status" aria-live="polite"></p>
-          <div class="kgw-preview-body" id="${id(net.key, "previewBody")}" hidden>
-            <p class="kgw-preview-help">The embedded node library consumes these equivalent arguments inside KaspaGateway self-workers.</p>
-            <textarea id="${id(net.key, "commandPreview")}" aria-label="Effective node settings preview" readonly spellcheck="false" wrap="soft"></textarea>
-            <details class="kgw-arguments"><summary>Argument list</summary><pre id="${id(net.key, "argumentList")}"></pre></details>
-          </div>
-        </section>
-
-        <section class="node-v6-toolbar">
-          <div class="node-v6-buttons">
-            <button type="button" class="good" data-node-action="start" data-testid="kgw-node-start-${net.key}" data-net="${net.key}">Start</button>
-            <button type="button" data-node-action="stop" data-testid="kgw-node-stop-${net.key}" data-net="${net.key}">Stop</button>
-          </div>
-
-          <div class="node-v6-status">
-            <span id="${id(net.key, "runtimeStatus")}" class="node-v6-runtime-status-pill" data-state="stopped">Stopped</span>
-            <span id="${id(net.key, "runtimeEvidence")}" class="node-v6-runtime-evidence">No process owner</span>
-            <span id="${id(net.key, "settingsAuthority")}" class="node-v6-runtime-evidence">Effective settings apply on next Start</span>
-          </div>
-
-          <div id="${id(net.key, "runtimeError")}" class="node-v6-runtime-error" role="status" aria-live="polite" hidden></div>
-        </section>
-
-        ${renderSections(net)}
-        </div>
-
-        <div class="settings-bottom-actions node-settings-bottom-actions">
-        <button type="button" data-node-action="save-settings" data-net="${net.key}">Save Settings</button>
-        <button type="button" data-node-action="restore-defaults" data-net="${net.key}">Restore Defaults</button>
-        <button type="button" data-node-action="set-defaults" data-net="${net.key}">Set as Defaults</button>
-        <p class="kgw-settings-help" data-settings-defaults-context="${net.key}">Restore uses KaspaGateway defaults. Settings apply on the next Start.</p>
-        </div>
-
-      </div>
-
-      <div class="node-v6-inner-panel${logActive ? " active" : ""}" data-net="${net.key}" data-node-inner-panel="log" data-testid="kgw-node-live-panel-${net.key}"${logActive ? "" : " hidden"}>
-        <p id="${id(net.key, "monitorState")}" class="kgw-monitor-state" role="status">Node: Stopped</p>
-        <div class="node-v6-log-toolbar">
-          <button type="button" data-node-action="monitor-start" data-net="${net.key}">Start Node</button>
-          <span class="node-v6-log-metadata" data-net="${net.key}">Network: ${net.label} | Source: self-worker | Streams: stdout/stderr</span>
-          <button type="button" data-node-action="copy-log" data-testid="kgw-node-copy-log-${net.key}" data-net="${net.key}">Copy Log</button>
-          <button type="button" data-node-action="clear-log" data-testid="kgw-node-clear-log-${net.key}" data-net="${net.key}">Clear Log</button>
-        </div>
-        <div id="${id(net.key, "logEmpty")}" class="node-v6-log-empty" data-node-log-empty="${net.key}">Node is stopped. Start the node to view its logs.</div>
-        <pre id="${id(net.key, "logOutput")}" class="node-v6-log" data-testid="kgw-node-log-output-${net.key}"></pre>
-      </div>
-</div>`;
-}
-
+/* Node settings/network panel HTML is Rust/WASM-owned in node_frontend_helpers.rs. */
 function renderAllNetworks(root) {
   const host = root.querySelector("#nodeNetworkPanels");
   if (!host) return;
-  host.innerHTML = NODE_NETWORKS.map(renderNetworkPanel).join("");
+  host.innerHTML = wasmNodeRenderNetworkPanelsHtml();
   installSettingsLayout(root);
-
-
   setTimeout(kgwInstallNodeLogAutoScrollControlsR27, 0);
   setTimeout(window.kgwInstallNodeLogScopedControlsV29, 0);
 }

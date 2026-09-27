@@ -1093,6 +1093,24 @@ fn render_settings_tabs_from(scope: &str, net: &str, groups: &[SettingsGroup]) -
         "<div class=\"{prefix}-section-tabs\" role=\"tablist\" aria-label=\"Settings level\">{tabs}</div><div class=\"{prefix}-sections kgw-settings-sections\">{panels}</div>"
     )
 }
+
+pub(crate) fn render_tabs_native(
+    scope: &str,
+    net: &str,
+    groups: &[(&str, &str, &str, String)],
+) -> String {
+    let groups = groups
+        .iter()
+        .map(|(section, name, label, html)| SettingsGroup {
+            section: (*section).to_owned(),
+            name: (*name).to_owned(),
+            label: (*label).to_owned(),
+            html: html.clone(),
+        })
+        .collect::<Vec<_>>();
+    render_settings_tabs_from(scope, net, &groups)
+}
+
 fn strip_managed_suffixes(text: &str) -> String {
     let mut current = text.to_owned();
     loop {
