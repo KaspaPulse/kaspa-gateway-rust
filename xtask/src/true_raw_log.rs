@@ -11,7 +11,7 @@ const BRIDGE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-brid
 const RUNTIME_RS: &str = "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs";
 const ZERO_TOUCH_E2E: &str = "tools/kgw_zero_touch_e2e.ps1";
 const ZERO_TOUCH_EVIDENCE: &str = "tools/kgw_zero_touch_evidence.ps1";
-const FULL_LOCAL_GATE: &str = "tools/kgw_full_local_gate.ps1";
+const FULL_LOCAL_GATE: &str = "xtask/src/full_local_gate.rs";
 const E2E_WINDOWS_HELPER: &str = "e2e/helpers/windows.mjs";
 
 #[derive(Debug)]
@@ -338,8 +338,8 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
     require(
         failures,
         &s.full_local_gate,
-        "$RequiredPowerShellPath",
-        "Full local gate must launch remaining PowerShell scripts with resolved pwsh.",
+        "powershell_parser_checks",
+        "Full local gate must validate remaining PowerShell helpers through Rust-owned orchestration.",
     );
     require(
         failures,
@@ -522,7 +522,6 @@ fn run_powershell_parser_checks(root: &Path, failures: &mut Vec<String>) {
     for (relative, label) in [
         (ZERO_TOUCH_E2E, "Zero-touch E2E launcher"),
         (ZERO_TOUCH_EVIDENCE, "Zero-touch evidence helper"),
-        (FULL_LOCAL_GATE, "Full local gate"),
         (
             "e2e/helpers/kgw_windows_clipboard.ps1",
             "E2E clipboard helper",
@@ -592,9 +591,9 @@ mod tests {
             ]
             .join("\n"),
             full_local_gate: [
-                "$RequiredPowerShellPath",
-                "cargo run --locked -p xtask -- true-raw-log-gate",
-                "cargo run --locked -p xtask -- zero-touch-result-writer-tests",
+                "powershell_parser_checks",
+                "true-raw-log-gate",
+                "zero-touch-result-writer-tests",
             ]
             .join("\n"),
             e2e_windows_helper: "KGW_REQUIRED_PWSH_PATH".to_owned(),

@@ -60,7 +60,7 @@ fn load_sources(root: &Path) -> Result<Sources, String> {
         node_frontend: read(root, NODE_FRONTEND)?,
         bridge_frontend: read(root, BRIDGE_FRONTEND)?,
         true_raw_gate_rust: read(root, "xtask/src/true_raw_log.rs")?,
-        full_local_gate: read(root, "tools/kgw_full_local_gate.ps1")?,
+        full_local_gate: read(root, "xtask/src/full_local_gate.rs")?,
     })
 }
 fn read(root: &Path, relative: &str) -> Result<String, String> {

@@ -23,6 +23,7 @@ mod effective_bridge_settings_frontend;
 mod effective_node_settings;
 mod frontend_template_codegen;
 mod frontend_wasm_codegen;
+mod full_local_gate;
 mod fuzz_build;
 mod global_owner;
 mod i18n_contracts;
@@ -110,6 +111,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- e2e-windows-evidence --repository <path> --output-directory <path> [--ports <csv>] [--desktop-pid <pid>]
   cargo run -p xtask -- frontend-template-codegen <check|write>
   cargo run -p xtask -- frontend-wasm-codegen <check|write>
+  cargo run -p xtask -- full-local-gate [--repository <path>] [--reuse-successful-e2e-artifact <path>] [--commit-on-success]
   cargo run -p xtask -- global-owner-gate [--strict] [--json] [--owner <name>] [--changed-files <files...>]
   cargo run -p xtask -- i18n-contract-gate
   cargo run -p xtask -- i18n-locale-coverage-gate
@@ -378,6 +380,12 @@ fn run() -> Result<(), CliError> {
         "frontend-wasm-codegen" => {
             let message = frontend_wasm_codegen::run_cli(&mut args, &repo_root()?)
                 .map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "full-local-gate" => {
+            let root = repo_root()?;
+            let message = full_local_gate::run_cli(&mut args, &root).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
