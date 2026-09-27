@@ -608,6 +608,37 @@ const wasmNodeChecked = (net, name) => {
   const element = wasmNodeById(wasmNodeElementId(net, name));
   return Boolean(element && element.checked);
 };
+const wasmNodeLogAutoScrollEnabled = (net) =>
+  localStorage.getItem("kgw.node.log.autoscroll." + String(net || "")) !== "0";
+const wasmNodeSetLogAutoScroll = (net, enabled) => {
+  localStorage.setItem("kgw.node.log.autoscroll." + String(net || ""), enabled ? "1" : "0");
+  const out = document.getElementById("node-" + String(net || "") + "-logOutput");
+  if (enabled && out) out.scrollTop = out.scrollHeight;
+};
+const wasmNodeInstallLogAutoScrollControls = () => {
+  for (const profile of wasmNodeNetworkProfiles()) {
+    const net = profile.key;
+    const out = document.getElementById("node-" + net + "-logOutput");
+    if (!out) continue;
+    const controlId = "node-" + net + "-logAutoScrollR27";
+    if (document.getElementById(controlId)) continue;
+    const label = document.createElement("label");
+    label.className = "kgw-log-autoscroll-toggle";
+    label.setAttribute("data-kgw-log-autoscroll", "node");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.id = controlId;
+    checkbox.checked = wasmNodeLogAutoScrollEnabled(net);
+    checkbox.addEventListener("change", () => wasmNodeSetLogAutoScroll(net, checkbox.checked));
+    const span = document.createElement("span");
+    span.textContent = "Auto-scroll";
+    label.appendChild(checkbox);
+    label.appendChild(span);
+    const panel = out.closest('[data-node-inner-panel="log"]') || out.parentElement;
+    const toolbar = panel && panel.querySelector(".node-v6-log-toolbar");
+    if (toolbar) toolbar.appendChild(label);
+  }
+};
 const wasmNodeClipboardCharacterCount = (text) => Array.from(String(text ?? "")).length;
 const wasmNodeClipboardLineCount = (text) => {
   const value = String(text ?? "");

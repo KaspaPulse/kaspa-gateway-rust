@@ -11,7 +11,9 @@ import initNodeRust, {
   nodeEscapeHtml as wasmNodeEscapeHtml,
   nodeHandleCopyLog as wasmNodeHandleCopyLog,
   nodeI18nText as wasmNodeI18nText,
+  nodeInstallLogAutoScrollControls as wasmNodeInstallLogAutoScrollControls,
   nodeInstallStartTraceDocumentClickObserver as wasmNodeInstallStartTraceDocumentClickObserver,
+  nodeLogAutoScrollEnabled as wasmNodeLogAutoScrollEnabled,
   nodeNetworkEnabled as wasmNodeNetworkEnabled,
   nodeNetworkPolicyKey as wasmNodeNetworkPolicyKey,
   nodeNetworkPolicyMessage as wasmNodeNetworkPolicyMessage,
@@ -19,6 +21,7 @@ import initNodeRust, {
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
   nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
   nodeRuntimeActionForCommand as wasmNodeRuntimeActionForCommand,
+  nodeSetLogAutoScroll as wasmNodeSetLogAutoScroll,
   nodeSetNetworkEnabled as wasmNodeSetNetworkEnabled,
   nodeSmallOwnerTrace as wasmNodeSmallOwnerTrace,
   nodeStartTraceFrontend as wasmNodeStartTraceFrontend,
@@ -888,78 +891,18 @@ function cardCheck(net, name, label, checked = false, span2 = false) {
 
 
 
-// KGW_NODE_LOG_AUTOSCROLL_CONTROLS_R27_START
-function kgwNodeLogAutoScrollKeyR27(net) {
-  return `kgw.node.log.autoscroll.${net}`;
-}
-
+// KGW_NODE_LOG_AUTOSCROLL_CONTROLS_R27 is Rust-owned in node_frontend_helpers.rs.
 function kgwNodeLogAutoScrollEnabledR27(net) {
-  try {
-    return localStorage.getItem(kgwNodeLogAutoScrollKeyR27(net)) !== "0";
-  } catch (_) {
-    return true;
-  }
+  return wasmNodeLogAutoScrollEnabled(String(net || ""));
 }
 
 function kgwNodeSetLogAutoScrollR27(net, enabled) {
-  try {
-    localStorage.setItem(kgwNodeLogAutoScrollKeyR27(net), enabled ? "1" : "0");
-  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
-
-  const out = byId(id(net, "logOutput"));
-  if (enabled && out) out.scrollTop = out.scrollHeight;
+  wasmNodeSetLogAutoScroll(String(net || ""), Boolean(enabled));
 }
 
 function kgwInstallNodeLogAutoScrollControlsR27() {
-  if (typeof document === "undefined") return;
-  if (!Array.isArray(NODE_NETWORKS)) return;
-
-  for (const profile of NODE_NETWORKS) {
-    const net = profile.key;
-    const out = byId(id(net, "logOutput"));
-    if (!out) continue;
-
-    const controlId = id(net, "logAutoScrollR27");
-    if (byId(controlId)) continue;
-
-    const label = document.createElement("label");
-    label.className = "kgw-log-autoscroll-toggle";
-    label.setAttribute("data-kgw-log-autoscroll", "node");
-    label.setAttribute("title", "Keep the log pinned to the newest raw line.");
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.id = controlId;
-    checkbox.checked = kgwNodeLogAutoScrollEnabledR27(net);
-    checkbox.addEventListener("change", (event) => {
-      kgwNodeSmallOwnerTraceR44D(net, "log-autoscroll", "r51b3-node-log-autoscroll-change", {
-        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
-        trusted: Boolean(event && event.isTrusted),
-        controlId: String(controlId || ""),
-        checked: Boolean(checkbox.checked)
-      });
-      kgwNodeSetLogAutoScrollR27(net, checkbox.checked);
-    });
-
-    const span = document.createElement("span");
-    span.textContent = kgwI18nTextR41("common.autoScroll", "Auto-scroll");
-
-    label.appendChild(checkbox);
-    label.appendChild(span);
-
-    const panel = out.closest(".node-v6-inner-panel, [data-node-inner-panel], [data-inner-panel], [data-node-panel], [data-panel]") || out.parentElement;
-    const toolbar =
-      panel?.querySelector(".node-v6-log-toolbar, .node-log-toolbar, [data-node-log-toolbar]") ||
-      out.parentElement?.querySelector(".node-v6-log-toolbar, .node-log-toolbar, [data-node-log-toolbar]");
-
-    if (toolbar) {
-      toolbar.appendChild(label);
-    } else {
-      out.parentElement?.insertBefore(label, out);
-    }
-  }
+  wasmNodeInstallLogAutoScrollControls();
 }
-// KGW_NODE_LOG_AUTOSCROLL_CONTROLS_R27_END
 
 const KGW_NODE_RAW_LOG_BUFFER_LIMIT_V1 = 4096;
 const KGW_NODE_RAW_LOG_BUFFERS_V1 = new Map();

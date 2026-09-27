@@ -1,5 +1,5 @@
 use js_sys::{Array, Function, Object, Promise, Reflect};
-use wasm_bindgen::{JsCast, prelude::*};
+use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct NetworkProfile {
@@ -299,6 +299,176 @@ pub fn node_checked(net: String, name: String) -> bool {
     present(&element) && crate::js_boolean(&property(&element, "checked"))
 }
 
+fn log_auto_scroll_key_text(net: &str) -> String {
+    format!("kgw.node.log.autoscroll.{net}")
+}
+
+#[wasm_bindgen(js_name = nodeLogAutoScrollEnabled)]
+pub fn node_log_auto_scroll_enabled(net: String) -> bool {
+    storage_get(&log_auto_scroll_key_text(&net)).as_deref() != Some("0")
+}
+
+#[wasm_bindgen(js_name = nodeSetLogAutoScroll)]
+pub fn node_set_log_auto_scroll(net: String, enabled: bool) {
+    storage_set(
+        &log_auto_scroll_key_text(&net),
+        if enabled { "1" } else { "0" },
+    );
+    if !enabled {
+        return;
+    }
+    let output = node_by_id(node_element_id(net, "logOutput".to_owned()));
+    if present(&output) {
+        let height = property(&output, "scrollHeight");
+        set(&output, "scrollTop", &height);
+    }
+}
+
+fn create_element(tag: &str) -> JsValue {
+    call1(&document(), "createElement", &JsValue::from_str(tag)).unwrap_or(JsValue::UNDEFINED)
+}
+
+fn append_child(parent: &JsValue, child: &JsValue) {
+    let _ = call1(parent, "appendChild", child);
+}
+
+fn query(target: &JsValue, selector: &str) -> JsValue {
+    call1(target, "querySelector", &JsValue::from_str(selector)).unwrap_or(JsValue::UNDEFINED)
+}
+
+#[wasm_bindgen(js_name = nodeInstallLogAutoScrollControls)]
+pub fn node_install_log_auto_scroll_controls() {
+    let doc = document();
+    if !present(&doc) {
+        return;
+    }
+
+    for profile in NETWORKS {
+        let net = profile.key.to_owned();
+        let output = node_by_id(node_element_id(net.clone(), "logOutput".to_owned()));
+        if !present(&output) {
+            continue;
+        }
+
+        let control_id = node_element_id(net.clone(), "logAutoScrollR27".to_owned());
+        if present(&node_by_id(control_id.clone())) {
+            continue;
+        }
+
+        let label = create_element("label");
+        if !present(&label) {
+            continue;
+        }
+        set(
+            &label,
+            "className",
+            &JsValue::from_str("kgw-log-autoscroll-toggle"),
+        );
+        let _ = call2(
+            &label,
+            "setAttribute",
+            &JsValue::from_str("data-kgw-log-autoscroll"),
+            &JsValue::from_str("node"),
+        );
+        let _ = call2(
+            &label,
+            "setAttribute",
+            &JsValue::from_str("title"),
+            &JsValue::from_str("Keep the log pinned to the newest raw line."),
+        );
+
+        let checkbox = create_element("input");
+        set(&checkbox, "type", &JsValue::from_str("checkbox"));
+        set(&checkbox, "id", &JsValue::from_str(&control_id));
+        set(
+            &checkbox,
+            "checked",
+            &JsValue::from_bool(node_log_auto_scroll_enabled(net.clone())),
+        );
+
+        let net_for_change = net.clone();
+        let checkbox_for_change = checkbox.clone();
+        let control_for_change = control_id.clone();
+        let callback = Closure::wrap(Box::new(move |event: JsValue| {
+            let checked = crate::js_boolean(&property(&checkbox_for_change, "checked"));
+            let details = Object::new();
+            set(
+                details.as_ref(),
+                "patch",
+                &JsValue::from_str("KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3"),
+            );
+            set(
+                details.as_ref(),
+                "trusted",
+                &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+            );
+            set(
+                details.as_ref(),
+                "controlId",
+                &JsValue::from_str(&control_for_change),
+            );
+            set(details.as_ref(), "checked", &JsValue::from_bool(checked));
+            let _ = crate::node_start_trace::node_small_owner_trace(
+                JsValue::from_str(&net_for_change),
+                JsValue::from_str("log-autoscroll"),
+                JsValue::from_str("r51b3-node-log-autoscroll-change"),
+                details.into(),
+            );
+            node_set_log_auto_scroll(net_for_change.clone(), checked);
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &checkbox,
+            "addEventListener",
+            &JsValue::from_str("change"),
+            callback.as_ref().unchecked_ref(),
+        );
+        callback.forget();
+
+        let span = create_element("span");
+        set(
+            &span,
+            "textContent",
+            &translate_raw("common.autoScroll", "Auto-scroll"),
+        );
+        append_child(&label, &checkbox);
+        append_child(&label, &span);
+
+        let panel = {
+            let candidate = call1(
+                &output,
+                "closest",
+                &JsValue::from_str(
+                    ".node-v6-inner-panel, [data-node-inner-panel], [data-inner-panel], [data-node-panel], [data-panel]",
+                ),
+            )
+            .unwrap_or(JsValue::UNDEFINED);
+            if present(&candidate) {
+                candidate
+            } else {
+                property(&output, "parentElement")
+            }
+        };
+        let toolbar_selector = ".node-v6-log-toolbar, .node-log-toolbar, [data-node-log-toolbar]";
+        let toolbar = {
+            let candidate = query(&panel, toolbar_selector);
+            if present(&candidate) {
+                candidate
+            } else {
+                query(&property(&output, "parentElement"), toolbar_selector)
+            }
+        };
+
+        if present(&toolbar) {
+            append_child(&toolbar, &label);
+        } else {
+            let parent = property(&output, "parentElement");
+            if present(&parent) {
+                let _ = call2(&parent, "insertBefore", &label, &output);
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -325,6 +495,18 @@ mod tests {
         assert!(policy_message_text("mainnet").contains("Official Rusty Kaspa"));
         assert!(policy_message_text("testnet13").contains("no DNS seeders"));
         assert_eq!(policy_message_text("missing"), "");
+    }
+
+    #[test]
+    fn log_auto_scroll_keys_match_legacy_contract() {
+        assert_eq!(
+            log_auto_scroll_key_text("mainnet"),
+            "kgw.node.log.autoscroll.mainnet"
+        );
+        assert_eq!(
+            log_auto_scroll_key_text("testnet10"),
+            "kgw.node.log.autoscroll.testnet10"
+        );
     }
 
     #[test]
