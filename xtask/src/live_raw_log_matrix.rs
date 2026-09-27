@@ -8,7 +8,6 @@ use std::thread;
 use std::time::{Duration, Instant};
 use time::OffsetDateTime;
 
-const CLIPBOARD_CAPTURE: &str = "tools/kgw_raw_log_clipboard_capture.ps1";
 const DEFAULT_TIMEOUT_SECONDS: u64 = 600;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -452,39 +451,18 @@ fn validate_stage_capture(stage: Stage, capture: &Value) -> Value {
 
 #[cfg(windows)]
 fn capture_from_clipboard(
-    repository: &Path,
+    _repository: &Path,
     payload_directory: &Path,
     trace_line: &str,
     stage: Stage,
 ) -> Result<Value, String> {
-    let helper = repository.join(CLIPBOARD_CAPTURE);
-    let script = r#"$ErrorActionPreference='Stop'; . $env:KGW_CLIPBOARD_HELPER; $c=New-KgwRawLogClipboardCaptureFromClipboardV1 -TraceLine $env:KGW_TRACE_LINE -OutputDirectory $env:KGW_CAPTURE_DIR -Reason $env:KGW_CAPTURE_REASON; $payload=''; if($c.payload_file -and (Test-Path -LiteralPath $c.payload_file)){ $payload=[IO.File]::ReadAllText($c.payload_file,[Text.Encoding]::UTF8) }; $a=Test-KgwRawLogPayloadAcceptanceV1 -Text $payload -Network $env:KGW_EXPECTED_NETWORK -RuntimeRole $env:KGW_EXPECTED_ROLE -BridgeInstanceId $c.bridge_instance_id; [pscustomobject]@{capture=$c;acceptance_errors=@($a.errors);acceptance_warnings=@($a.warnings)} | ConvertTo-Json -Depth 10 -Compress"#;
-
-    let output = Command::new("pwsh")
-        .current_dir(repository)
-        .env("KGW_CLIPBOARD_HELPER", helper)
-        .env("KGW_TRACE_LINE", trace_line)
-        .env("KGW_CAPTURE_DIR", payload_directory)
-        .env("KGW_CAPTURE_REASON", format!("matrix-{}", stage.slug))
-        .env("KGW_EXPECTED_NETWORK", stage.network)
-        .env("KGW_EXPECTED_ROLE", stage.runtime_role)
-        .args(["-NoLogo", "-NoProfile", "-Command", script])
-        .output()
-        .map_err(|error| format!("failed to launch clipboard capture helper: {error}"))?;
-
-    if !output.status.success() {
-        return Err(format!(
-            "clipboard capture helper failed: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-
-    let wrapper: Value = serde_json::from_slice(&output.stdout)
-        .map_err(|error| format!("clipboard capture helper returned invalid JSON: {error}"))?;
-    let mut capture = wrapper["capture"].clone();
-    capture["acceptance_errors"] = wrapper["acceptance_errors"].clone();
-    capture["acceptance_warnings"] = wrapper["acceptance_warnings"].clone();
-    Ok(capture)
+    crate::raw_log_clipboard_capture::capture_with_acceptance_from_clipboard(
+        trace_line,
+        payload_directory,
+        &format!("matrix-{}", stage.slug),
+        stage.network,
+        stage.runtime_role,
+    )
 }
 
 fn read_new_lines(path: &Path, line_count: &mut usize) -> Result<Vec<String>, String> {

@@ -24,6 +24,7 @@ time.workspace = true
 flate2 = { workspace = true, optional = true }
 pyo3 = { workspace = true, optional = true }
 sha2.workspace = true
+unicode-segmentation.workspace = true
 sysinfo = "0.39.6"
 tar = { workspace = true, optional = true }
 tempfile.workspace = true

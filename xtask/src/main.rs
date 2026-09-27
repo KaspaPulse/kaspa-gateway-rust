@@ -35,6 +35,7 @@ mod npm_dependency_policy;
 mod parallel_self_worker;
 mod program_unified;
 mod project_continuity;
+mod raw_log_clipboard_capture;
 mod raw_log_provenance;
 mod restore_latest_frontend_regressions;
 mod runtime_automation_claims;

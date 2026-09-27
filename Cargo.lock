@@ -12341,6 +12341,7 @@ dependencies = [
  "tempfile",
  "time",
  "tokio",
+ "unicode-segmentation",
  "windows-sys 0.61.2",
  "xml-rs",
 ]

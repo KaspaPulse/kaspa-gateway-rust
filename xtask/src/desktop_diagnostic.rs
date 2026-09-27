@@ -622,30 +622,15 @@ fn clipboard_snapshot(
 
 #[cfg(windows)]
 fn clipboard_event_capture(
-    repository: &Path,
+    _repository: &Path,
     output_directory: &Path,
     trace_line: &str,
 ) -> Result<Value, String> {
-    let helper = repository
-        .join("tools")
-        .join("kgw_raw_log_clipboard_capture.ps1");
-    let script = "$ErrorActionPreference='Stop'; . $env:KGW_CLIPBOARD_HELPER; $r=New-KgwRawLogClipboardCaptureFromClipboardV1 -TraceLine $env:KGW_TRACE_LINE -OutputDirectory $env:KGW_CAPTURE_DIR -Reason 'clipboard-success-trace'; $r | ConvertTo-Json -Depth 6 -Compress";
-    let output = Command::new("pwsh")
-        .args(["-NoLogo", "-NoProfile", "-Command", script])
-        .env("KGW_CLIPBOARD_HELPER", &helper)
-        .env("KGW_TRACE_LINE", trace_line)
-        .env("KGW_CAPTURE_DIR", output_directory)
-        .current_dir(repository)
-        .output()
-        .map_err(|error| format!("failed to launch clipboard helper: {error}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "clipboard helper failed: {}",
-            safe_diagnostic_text(&String::from_utf8_lossy(&output.stderr))
-        ));
-    }
-    serde_json::from_slice(&output.stdout)
-        .map_err(|error| format!("clipboard helper returned invalid JSON: {error}"))
+    crate::raw_log_clipboard_capture::capture_from_clipboard(
+        trace_line,
+        output_directory,
+        "clipboard-success-trace",
+    )
 }
 
 #[cfg(windows)]

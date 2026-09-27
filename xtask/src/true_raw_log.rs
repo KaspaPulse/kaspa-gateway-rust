@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-const CLIPBOARD_CAPTURE: &str = "tools/kgw_raw_log_clipboard_capture.ps1";
+const CLIPBOARD_CAPTURE: &str = "xtask/src/raw_log_clipboard_capture.rs";
 const LIVE_MATRIX: &str = "xtask/src/live_raw_log_matrix.rs";
 const NODE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
 const BRIDGE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
@@ -266,20 +266,20 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
 
     for (needle, message) in [
         (
-            "New-KgwRawLogClipboardCaptureFromClipboardV1",
-            "PowerShell tooling must capture clipboard payloads at event time.",
+            "capture_from_clipboard",
+            "Rust tooling must capture clipboard payloads at event time.",
         ),
         (
             "expected_sha256",
-            "PowerShell clipboard capture metadata must record expected SHA256.",
+            "Rust clipboard capture metadata must record expected SHA256.",
         ),
         (
             "actual_sha256",
-            "PowerShell clipboard capture metadata must record actual SHA256.",
+            "Rust clipboard capture metadata must record actual SHA256.",
         ),
         (
             "sha256_match",
-            "PowerShell clipboard capture must compare expected and actual SHA256.",
+            "Rust clipboard capture must compare expected and actual SHA256.",
         ),
     ] {
         require(failures, &s.clipboard_capture, needle, message);
@@ -509,32 +509,17 @@ fn pwsh_command(root: &Path, script: &str) -> Result<ProcessResult, String> {
     )
 }
 
-fn run_clipboard_self_test(root: &Path, failures: &mut Vec<String>) {
-    let script = r#"$ErrorActionPreference='Stop'; . (Resolve-Path -LiteralPath 'tools/kgw_raw_log_clipboard_capture.ps1').Path; $r=Test-KgwRawLogClipboardCaptureSelfTestV1; if(-not $r.passed){foreach($e in $r.errors){Write-Error ('Event-time clipboard capture deterministic self-test failed: ' + [string]$e)}; exit 1}; Write-Output 'KGW clipboard capture self-test PASS'"#;
-    match pwsh_command(root, script) {
-        Ok(result) => {
-            if !result.text.trim().is_empty() {
-                print!("{}", result.text);
-                if !result.text.ends_with('\n') {
-                    println!();
-                }
-            }
-            if result.code != 0 {
-                failures.push(format!(
-                    "Event-time clipboard capture deterministic self-test failed with exit code {}",
-                    result.code
-                ));
-            }
-        }
+fn run_clipboard_self_test(_root: &Path, failures: &mut Vec<String>) {
+    match crate::raw_log_clipboard_capture::self_test() {
+        Ok(message) => println!("{message}"),
         Err(error) => failures.push(format!(
-            "Event-time clipboard capture deterministic self-test failed to launch: {error}"
+            "Event-time clipboard capture deterministic self-test failed: {error}"
         )),
     }
 }
 
 fn run_powershell_parser_checks(root: &Path, failures: &mut Vec<String>) {
     for (relative, label) in [
-        (CLIPBOARD_CAPTURE, "Raw clipboard capture helper"),
         (ZERO_TOUCH_E2E, "Zero-touch E2E launcher"),
         (ZERO_TOUCH_EVIDENCE, "Zero-touch evidence helper"),
         (FULL_LOCAL_GATE, "Full local gate"),
@@ -582,7 +567,7 @@ mod tests {
             .join("\n"),
             runtime: ["KgwRuntimeRawLogEntryV1", "sequence", "raw_text"].join("\n"),
             clipboard_capture: [
-                "New-KgwRawLogClipboardCaptureFromClipboardV1",
+                "capture_from_clipboard",
                 "expected_sha256",
                 "actual_sha256",
                 "sha256_match",

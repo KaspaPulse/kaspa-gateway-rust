@@ -251,6 +251,11 @@ pub(crate) fn write_text_after_preflight(text: &str) -> Result<(), String> {
 }
 
 #[cfg(windows)]
+pub(crate) fn read_text() -> Result<String, String> {
+    read_clipboard_text()
+}
+
+#[cfg(windows)]
 fn read_clipboard_text() -> Result<String, String> {
     let _clipboard = open_clipboard_with_retry("Get-Clipboard")?;
     if unsafe { IsClipboardFormatAvailable(CF_UNICODETEXT) } == 0 {

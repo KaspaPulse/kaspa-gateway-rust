@@ -91,6 +91,7 @@ directories = "6.0.0"
 uuid = { version = "1", features = ["v4", "serde"] }
 time = { version = "0.3", features = ["serde", "formatting"] }
 sha2 = "0.10.9"
+unicode-segmentation = "1.13.3"
 flate2 = "1.1.9"
 tar = "0.4.46"
 tempfile = "3.27.0"

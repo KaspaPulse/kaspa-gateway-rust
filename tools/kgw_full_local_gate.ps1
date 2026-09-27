@@ -69,7 +69,6 @@ function Restore-GeneratedTauriSchemasIfNewlyDirty {
 function Invoke-PowerShellParserChecks {
     $paths = @(
         "tools/kgw_full_local_gate.ps1",
-        "tools/kgw_raw_log_clipboard_capture.ps1",
         "tools/kgw_zero_touch_e2e.ps1",
         "tools/kgw_zero_touch_evidence.ps1",
         "e2e/helpers/kgw_windows_clipboard.ps1"
@@ -131,7 +130,7 @@ function Commit-ScopedChanges {
         "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs",
         "apps/kaspa-gateway-desktop/src-tauri/tests/integrated_runtime_ipc_smoke_tests.rs",
         "xtask/src/live_raw_log_matrix.rs",
-        "tools/kgw_raw_log_clipboard_capture.ps1",
+        "xtask/src/raw_log_clipboard_capture.rs",
         "xtask/src/true_raw_log.rs",
         "xtask/src/true_raw_log_frontend.rs",
         "xtask/src/main.rs",
