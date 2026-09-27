@@ -10,6 +10,7 @@ import init, {
   settingsLayoutHelpI18nKeys as wasmHelpKeys,
   settingsLayoutInstall as wasmInstall,
   settingsLayoutInstallGlobal as wasmInstallGlobal,
+  settingsLayoutInstallManageAddressesClean as wasmInstallManageAddressesClean,
   settingsLayoutRenderTabs as wasmRenderTabs,
   settingsLayoutRevealField as wasmRevealField,
   settingsLayoutSetFieldState as wasmSetFieldState,
@@ -50,4 +51,8 @@ export function decorateGlobalSettings(root) {
 
 export function installGlobalSettingsLayout(root) {
   return wasmInstallGlobal(root);
+}
+
+export function installManageAddressesCleanLayout() {
+  return wasmInstallManageAddressesClean();
 }

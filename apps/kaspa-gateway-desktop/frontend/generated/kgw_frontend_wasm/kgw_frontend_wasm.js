@@ -642,6 +642,13 @@ export function topAddressesContractSetPrices(value) {
     wasm.topAddressesContractSetPrices(value);
 }
 
+export function settingsLayoutInstallManageAddressesClean() {
+    const ret = wasm.settingsLayoutInstallManageAddressesClean();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
 /**
  * @returns {any}
  */
@@ -1387,11 +1394,11 @@ function __wbg_adapter_34(arg0, arg1) {
 }
 
 function __wbg_adapter_37(arg0, arg1, arg2) {
-    wasm.closure284_externref_shim(arg0, arg1, arg2);
+    wasm.closure286_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_228(arg0, arg1, arg2, arg3) {
-    wasm.closure308_externref_shim(arg0, arg1, arg2, arg3);
+function __wbg_adapter_229(arg0, arg1, arg2, arg3) {
+    wasm.closure310_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 async function __wbg_load(module, imports) {
@@ -1597,7 +1604,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_228(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_229(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -1733,11 +1740,11 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1056 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 285, __wbg_adapter_37);
+    imports.wbg.__wbindgen_closure_wrapper1061 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 287, __wbg_adapter_37);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper630 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper633 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 170, __wbg_adapter_34);
         return ret;
     };

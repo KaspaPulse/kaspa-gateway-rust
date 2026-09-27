@@ -1436,6 +1436,85 @@ fn install_global_settings_layout(root: &JsValue) -> Result<(), JsValue> {
     Ok(())
 }
 
+fn set_style_value(target: &JsValue, name: &str, value: &str) {
+    let style = property(target, "style");
+    if is_present(&style) {
+        let _ = set_property(&style, name, &JsValue::from_str(value));
+    }
+}
+
+#[wasm_bindgen(js_name = settingsLayoutInstallManageAddressesClean)]
+pub fn install_manage_addresses_clean_layout() -> Result<(), JsValue> {
+    let win = window();
+    if boolean(&property(
+        &win,
+        "__kgwSettingsManageAddressesCleanLayoutInstalled",
+    )) {
+        return Ok(());
+    }
+    set_property(
+        &win,
+        "__kgwSettingsManageAddressesCleanLayoutInstalled",
+        &JsValue::TRUE,
+    )?;
+
+    let doc = document();
+    let old_style = call1(
+        &doc,
+        "getElementById",
+        &JsValue::from_str("kgw-settings-manage-addresses-clean-layout-style"),
+    )
+    .unwrap_or(JsValue::UNDEFINED);
+    if is_present(&old_style) {
+        optional_call0(&old_style, "remove");
+    }
+
+    let style = create_element("style")?;
+    set_property(
+        &style,
+        "id",
+        &JsValue::from_str("kgw-settings-manage-addresses-clean-layout-style"),
+    )?;
+    let css = r#".manage-addresses-panel{display:flex!important;flex-direction:column!important;gap:12px!important;width:100%!important;min-width:0!important}.manage-addresses-panel .address-form-row{display:grid!important;grid-template-columns:auto minmax(170px,.75fr) auto minmax(520px,1.85fr)!important;gap:10px!important;align-items:center!important;width:100%!important}.manage-addresses-panel .address-form-row label{white-space:nowrap!important;margin:0!important}#settingsAddressName{width:100%!important;min-width:170px!important;max-width:340px!important}#settingsAddressValue{width:100%!important;min-width:520px!important;font-size:14px!important;direction:ltr!important}.manage-addresses-panel .address-action-row{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:10px!important;width:100%!important}#settingsAddressLastUpdated{margin-left:8px!important;white-space:nowrap!important}.manage-addresses-panel .address-table-shell,.manage-addresses-panel .settings-table-shell{width:100%!important;min-width:0!important;overflow-x:hidden!important;overflow-y:auto!important;flex:1 1 auto!important}.manage-addresses-panel table[aria-label="Managed addresses"],.manage-addresses-panel .python-table{table-layout:fixed!important;width:100%!important;min-width:0!important}.manage-addresses-panel th,.manage-addresses-panel td{vertical-align:middle!important;overflow:hidden!important;text-overflow:ellipsis!important}.manage-addresses-panel table[aria-label="Managed addresses"] th:nth-child(1),.manage-addresses-panel table[aria-label="Managed addresses"] td:nth-child(1){width:11%!important}.manage-addresses-panel table[aria-label="Managed addresses"] th:nth-child(2),.manage-addresses-panel table[aria-label="Managed addresses"] td:nth-child(2){width:45%!important}.manage-addresses-panel table[aria-label="Managed addresses"] th:nth-child(3),.manage-addresses-panel table[aria-label="Managed addresses"] td:nth-child(3){width:12%!important}.manage-addresses-panel table[aria-label="Managed addresses"] th:nth-child(4),.manage-addresses-panel table[aria-label="Managed addresses"] td:nth-child(4){width:14%!important;text-align:right!important;white-space:nowrap!important}.manage-addresses-panel table[aria-label="Managed addresses"] th:nth-child(5),.manage-addresses-panel table[aria-label="Managed addresses"] td:nth-child(5){width:18%!important;text-align:right!important;white-space:nowrap!important}#settingsAddressRows td:nth-child(2){direction:ltr!important;font-family:Consolas,"Courier New",monospace!important;font-size:13px!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-word!important;line-height:1.25!important}#settingsAddressRows td:nth-child(1),#settingsAddressRows td:nth-child(3){white-space:nowrap!important}.manage-addresses-panel .address-export-row{display:flex!important;justify-content:flex-end!important;gap:10px!important;width:100%!important}"#;
+    set_property(&style, "textContent", &JsValue::from_str(css))?;
+    append(&property(&doc, "head"), &style)?;
+
+    let callback = Closure::<dyn FnMut()>::new(move || {
+        let doc = document();
+        let rows = call1(
+            &doc,
+            "getElementById",
+            &JsValue::from_str("settingsAddressRows"),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        if !is_present(&rows) {
+            return;
+        }
+        let table = closest(&rows, "table");
+        if is_present(&table) {
+            set_style_value(&table, "width", "100%");
+            set_style_value(&table, "tableLayout", "fixed");
+            set_style_value(&table, "minWidth", "0");
+        }
+        let address_shell = closest(&rows, ".address-table-shell");
+        let shell = if is_present(&address_shell) {
+            address_shell
+        } else {
+            closest(&rows, ".settings-table-shell")
+        };
+        if is_present(&shell) {
+            set_style_value(&shell, "overflowX", "hidden");
+        }
+    });
+    function(&win, "setTimeout")?.call2(
+        &win,
+        callback.as_ref().unchecked_ref(),
+        &JsValue::from_f64(80.0),
+    )?;
+    callback.forget();
+    Ok(())
+}
+
 #[wasm_bindgen(js_name = settingsLayoutHelpI18nKeys)]
 pub fn help_i18n_keys() -> JsValue {
     let object = Object::new();
