@@ -4,6 +4,9 @@ import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, reve
 import initNodeRust, {
   nodeBackendInvoke as wasmNodeBackendInvoke,
   nodeById as wasmNodeById,
+  nodeCardCheck as wasmNodeCardCheck,
+  nodeCardInput as wasmNodeCardInput,
+  nodeCardSelect as wasmNodeCardSelect,
   nodeChecked as wasmNodeChecked,
   nodeCopyLogFailure as wasmNodeCopyLogFailure,
   nodeDispatchClipboardWrite as wasmNodeDispatchClipboardWrite,
@@ -863,39 +866,39 @@ function kgwNodeToggleCommandOptionR7(net, name) {
 }
 
 
+/* Node card markup rendering is Rust-owned in node_frontend_helpers.rs. */
 function cardInput(net, name, label, value = "", placeholder = "", span2 = false) {
-  return `
-    <div class="node-v6-card${span2 ? " span2" : ""}">
-      <span class="kgw-command-option-title-row-r8e">
-        ${kgwNodeCommandInlineToggleR7(net, name)}
-        <label for="${id(net, name)}" class="kgw-command-option-title-text-r8e">${esc(label)}</label>
-      </span> <!-- KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->
-      <input id="${id(net, name)}" data-testid="kgw-node-field-${esc(net)}-${esc(name)}" type="text" value="${esc(value)}" placeholder="${esc(placeholder)}">
-    </div>`;
+  return wasmNodeCardInput(
+    String(net || ""),
+    String(name || ""),
+    String(label || ""),
+    String(value ?? ""),
+    String(placeholder ?? ""),
+    Boolean(span2),
+    kgwNodeCommandInlineToggleR7(net, name)
+  );
 }
 
 function cardSelect(net, name, label, options, value = "", span2 = false) {
-  const opts = options.map((item) => {
-    const selected = item === value ? " selected" : "";
-    return `<option value="${esc(item)}"${selected}>${esc(item || "not set")}</option>`;
-  }).join("");
-
-  return `
-    <div class="node-v6-card${span2 ? " span2" : ""}">
-      <span class="kgw-command-option-title-row-r8e">
-        ${kgwNodeCommandInlineToggleR7(net, name)}
-        <label for="${id(net, name)}" class="kgw-command-option-title-text-r8e">${esc(label)}</label>
-      </span> <!-- KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->
-      <select id="${id(net, name)}" data-testid="kgw-node-field-${esc(net)}-${esc(name)}">${opts}</select>
-    </div>`;
+  return wasmNodeCardSelect(
+    String(net || ""),
+    String(name || ""),
+    String(label || ""),
+    Array.from(options || [], (item) => String(item ?? "")),
+    String(value ?? ""),
+    Boolean(span2),
+    kgwNodeCommandInlineToggleR7(net, name)
+  );
 }
 
 function cardCheck(net, name, label, checked = false, span2 = false) {
-  return `
-    <label class="node-v6-card check${span2 ? " span2" : ""}">
-      <input id="${id(net, name)}" data-testid="kgw-node-field-${esc(net)}-${esc(name)}" type="checkbox"${checked ? " checked" : ""}>
-      <span>${esc(label)}</span>
-    </label>`;
+  return wasmNodeCardCheck(
+    String(net || ""),
+    String(name || ""),
+    String(label || ""),
+    Boolean(checked),
+    Boolean(span2)
+  );
 }
 
 

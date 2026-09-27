@@ -608,6 +608,32 @@ const wasmNodeChecked = (net, name) => {
   const element = wasmNodeById(wasmNodeElementId(net, name));
   return Boolean(element && element.checked);
 };
+const wasmNodeCardInput = (net, name, label, value = "", placeholder = "", span2 = false, toggle = "") =>
+  '\\n    <div class="node-v6-card' + (span2 ? ' span2' : '') + '">'
+  + '\\n      <span class="kgw-command-option-title-row-r8e">'
+  + '\\n        ' + toggle
+  + '\\n        <label for="' + wasmNodeElementId(net, name) + '" class="kgw-command-option-title-text-r8e">' + wasmNodeEscapeHtml(label) + '</label>'
+  + '\\n      </span> <!-- KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->'
+  + '\\n      <input id="' + wasmNodeElementId(net, name) + '" data-testid="kgw-node-field-' + wasmNodeEscapeHtml(net) + '-' + wasmNodeEscapeHtml(name) + '" type="text" value="' + wasmNodeEscapeHtml(value) + '" placeholder="' + wasmNodeEscapeHtml(placeholder) + '">'
+  + '\\n    </div>';
+const wasmNodeCardSelect = (net, name, label, options, value = "", span2 = false, toggle = "") => {
+  const opts = Array.from(options || [], (item) => String(item ?? "")).map((item) => {
+    const selected = item === String(value ?? "") ? ' selected' : '';
+    return '<option value="' + wasmNodeEscapeHtml(item) + '"' + selected + '>' + wasmNodeEscapeHtml(item || "not set") + '</option>';
+  }).join('');
+  return '\\n    <div class="node-v6-card' + (span2 ? ' span2' : '') + '">'
+    + '\\n      <span class="kgw-command-option-title-row-r8e">'
+    + '\\n        ' + toggle
+    + '\\n        <label for="' + wasmNodeElementId(net, name) + '" class="kgw-command-option-title-text-r8e">' + wasmNodeEscapeHtml(label) + '</label>'
+    + '\\n      </span> <!-- KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->'
+    + '\\n      <select id="' + wasmNodeElementId(net, name) + '" data-testid="kgw-node-field-' + wasmNodeEscapeHtml(net) + '-' + wasmNodeEscapeHtml(name) + '">' + opts + '</select>'
+    + '\\n    </div>';
+};
+const wasmNodeCardCheck = (net, name, label, checked = false, span2 = false) =>
+  '\\n    <label class="node-v6-card check' + (span2 ? ' span2' : '') + '">'
+  + '\\n      <input id="' + wasmNodeElementId(net, name) + '" data-testid="kgw-node-field-' + wasmNodeEscapeHtml(net) + '-' + wasmNodeEscapeHtml(name) + '" type="checkbox"' + (checked ? ' checked' : '') + '>'
+  + '\\n      <span>' + wasmNodeEscapeHtml(label) + '</span>'
+  + '\\n    </label>';
 const wasmNodeNormalizeInnerTab = (value) => value === "settings" || value === "log" ? value : "log";
 const wasmNodeResolveInnerTab = (net) => {
   try { return wasmNodeNormalizeInnerTab(localStorage.getItem("kgw.node.innerTab." + String(net || "unknown"))); }

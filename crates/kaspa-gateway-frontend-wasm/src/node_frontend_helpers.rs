@@ -299,6 +299,111 @@ pub fn node_checked(net: String, name: String) -> bool {
     present(&element) && crate::js_boolean(&property(&element, "checked"))
 }
 
+fn card_input_html(
+    net: &str,
+    name: &str,
+    label: &str,
+    value: &str,
+    placeholder: &str,
+    span2: bool,
+    toggle: &str,
+) -> String {
+    let span = if span2 { " span2" } else { "" };
+    let id = format!("node-{net}-{name}");
+    format!(
+        "\n    <div class=\"node-v6-card{span}\">\n      <span class=\"kgw-command-option-title-row-r8e\">\n        {toggle}\n        <label for=\"{id}\" class=\"kgw-command-option-title-text-r8e\">{}</label>\n      </span> <!-- KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->\n      <input id=\"{id}\" data-testid=\"kgw-node-field-{}-{}\" type=\"text\" value=\"{}\" placeholder=\"{}\">\n    </div>",
+        escape_html_text(label),
+        escape_html_text(net),
+        escape_html_text(name),
+        escape_html_text(value),
+        escape_html_text(placeholder),
+    )
+}
+
+fn card_select_html(
+    net: &str,
+    name: &str,
+    label: &str,
+    options: &[String],
+    value: &str,
+    span2: bool,
+    toggle: &str,
+) -> String {
+    let span = if span2 { " span2" } else { "" };
+    let id = format!("node-{net}-{name}");
+    let opts = options
+        .iter()
+        .map(|item| {
+            let selected = if item == value { " selected" } else { "" };
+            let text = if item.is_empty() { "not set" } else { item };
+            format!(
+                "<option value=\"{}\"{selected}>{}</option>",
+                escape_html_text(item),
+                escape_html_text(text)
+            )
+        })
+        .collect::<String>();
+    format!(
+        "\n    <div class=\"node-v6-card{span}\">\n      <span class=\"kgw-command-option-title-row-r8e\">\n        {toggle}\n        <label for=\"{id}\" class=\"kgw-command-option-title-text-r8e\">{}</label>\n      </span> <!-- KGW_NODE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->\n      <select id=\"{id}\" data-testid=\"kgw-node-field-{}-{}\">{opts}</select>\n    </div>",
+        escape_html_text(label),
+        escape_html_text(net),
+        escape_html_text(name),
+    )
+}
+
+fn card_check_html(net: &str, name: &str, label: &str, checked: bool, span2: bool) -> String {
+    let span = if span2 { " span2" } else { "" };
+    let checked = if checked { " checked" } else { "" };
+    let id = format!("node-{net}-{name}");
+    format!(
+        "\n    <label class=\"node-v6-card check{span}\">\n      <input id=\"{id}\" data-testid=\"kgw-node-field-{}-{}\" type=\"checkbox\"{checked}>\n      <span>{}</span>\n    </label>",
+        escape_html_text(net),
+        escape_html_text(name),
+        escape_html_text(label),
+    )
+}
+
+#[wasm_bindgen(js_name = nodeCardInput)]
+pub fn node_card_input(
+    net: String,
+    name: String,
+    label: String,
+    value: String,
+    placeholder: String,
+    span2: bool,
+    toggle: String,
+) -> String {
+    card_input_html(&net, &name, &label, &value, &placeholder, span2, &toggle)
+}
+
+#[wasm_bindgen(js_name = nodeCardSelect)]
+pub fn node_card_select(
+    net: String,
+    name: String,
+    label: String,
+    options: Array,
+    value: String,
+    span2: bool,
+    toggle: String,
+) -> String {
+    let options = options
+        .iter()
+        .map(|value| crate::js_string_owned(&value))
+        .collect::<Vec<_>>();
+    card_select_html(&net, &name, &label, &options, &value, span2, &toggle)
+}
+
+#[wasm_bindgen(js_name = nodeCardCheck)]
+pub fn node_card_check(
+    net: String,
+    name: String,
+    label: String,
+    checked: bool,
+    span2: bool,
+) -> String {
+    card_check_html(&net, &name, &label, checked, span2)
+}
+
 fn inner_tab_storage_key_text(net: &str) -> String {
     format!(
         "kgw.node.innerTab.{}",
@@ -695,6 +800,43 @@ mod tests {
         );
         assert_eq!(runtime_error_from_status_text("runtimeError=None"), "");
         assert_eq!(runtime_error_from_status_text("runtime_error=  none "), "");
+    }
+
+    #[test]
+    fn card_renderers_preserve_markup_and_escaping_contract() {
+        let input = card_input_html(
+            "mainnet",
+            "uaComment",
+            "<Label>",
+            "A&B",
+            "\"hint\"",
+            true,
+            "<input checked>",
+        );
+        assert!(input.contains("node-v6-card span2"));
+        assert!(input.contains("<input checked>"));
+        assert!(input.contains("&lt;Label&gt;"));
+        assert!(input.contains("value=\"A&amp;B\""));
+        assert!(input.contains("placeholder=\"&quot;hint&quot;\""));
+        assert!(input.contains("data-testid=\"kgw-node-field-mainnet-uaComment\""));
+
+        let options = vec![String::new(), "info".to_owned()];
+        let select = card_select_html(
+            "testnet10",
+            "logLevel",
+            "--loglevel",
+            &options,
+            "info",
+            false,
+            "",
+        );
+        assert!(select.contains("<option value=\"\">not set</option>"));
+        assert!(select.contains("<option value=\"info\" selected>info</option>"));
+        assert!(select.contains("id=\"node-testnet10-logLevel\""));
+
+        let check = card_check_html("mainnet", "yes", "<Yes>", true, false);
+        assert!(check.contains("type=\"checkbox\" checked"));
+        assert!(check.contains("<span>&lt;Yes&gt;</span>"));
     }
 
     #[test]
