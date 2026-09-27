@@ -562,6 +562,52 @@ const installSettingsLayout = () => {};
 const decorateSettingsFields = () => {};
 const revealSettingsField = () => {};
 const setSettingFieldState = () => {};
+const wasmNodeI18nText = (_key, fallback) => String(fallback ?? "");
+const wasmNodeBackendInvoke = (command, payload = {}) => {
+  const tauri = window.__TAURI__;
+  const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
+    ? tauri.core.invoke
+    : tauri && tauri.tauri && typeof tauri.tauri.invoke === "function"
+      ? tauri.tauri.invoke
+      : window.__TAURI_INVOKE__;
+  if (typeof invoke !== "function") return Promise.reject(new Error("Tauri invoke is not available"));
+  return invoke(command, payload);
+};
+const wasmNodeNetworkProfiles = () => [
+  { key: "mainnet", label: "Mainnet", testnet: false, netsuffix: "", enabledByDefault: true, runtime: "Official Rusty Kaspa" },
+  { key: "testnet10", label: "Testnet 10", testnet: true, netsuffix: "10", enabledByDefault: true, runtime: "Official Rusty Kaspa" },
+  { key: "testnet13", label: "Testnet 13", testnet: true, netsuffix: "13", enabledByDefault: false, experimental: true, runtime: "DAGKnight - Experimental" },
+];
+const wasmNodeNetworkPolicyKey = (net) => "kgw.node.network.enabled." + String(net || "unknown");
+const wasmNodeNetworkProfile = (net) => wasmNodeNetworkProfiles().find((item) => item.key === String(net || "")) || null;
+const wasmNodeNetworkEnabled = (net) => {
+  const stored = localStorage.getItem(wasmNodeNetworkPolicyKey(net));
+  if (stored === "1") return true;
+  if (stored === "0") return false;
+  const profile = wasmNodeNetworkProfile(net);
+  return profile ? profile.enabledByDefault !== false : false;
+};
+const wasmNodeSetNetworkEnabled = (net, enabled) => localStorage.setItem(wasmNodeNetworkPolicyKey(net), enabled ? "1" : "0");
+const wasmNodeNetworkPolicyMessage = (net) => {
+  const profile = wasmNodeNetworkProfile(net);
+  if (!profile) return "";
+  if (profile.experimental) {
+    return "Experimental network. Disabled by default and requires explicit opt-in."
+      + (String(net) === "testnet13" ? " This Testnet13 build has no DNS seeders. For public sync, set a trusted Testnet13 peer in Connect or Add Peer." : "");
+  }
+  return String(profile.runtime) + ". RPC remains loopback-only and data is isolated per network.";
+};
+const wasmNodeById = (id) => document.getElementById(String(id || ""));
+const wasmNodeEscapeHtml = (value) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+const wasmNodeElementId = (net, name) => "node-" + String(net || "") + "-" + String(name || "");
+const wasmNodeValue = (net, name) => {
+  const element = wasmNodeById(wasmNodeElementId(net, name));
+  return element ? String(element.value || "").trim() : "";
+};
+const wasmNodeChecked = (net, name) => {
+  const element = wasmNodeById(wasmNodeElementId(net, name));
+  return Boolean(element && element.checked);
+};
 const wasmNodeClipboardCharacterCount = (text) => Array.from(String(text ?? "")).length;
 const wasmNodeClipboardLineCount = (text) => {
   const value = String(text ?? "");

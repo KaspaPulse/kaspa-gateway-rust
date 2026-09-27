@@ -2,18 +2,31 @@ import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { NODE_ENDPOINTS, NODE_MANAGED, NODE_REQUIRED, NODE_OPTIONAL, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, endpoint, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initNodeRust, {
+  nodeBackendInvoke as wasmNodeBackendInvoke,
+  nodeById as wasmNodeById,
+  nodeChecked as wasmNodeChecked,
   nodeCopyLogFailure as wasmNodeCopyLogFailure,
   nodeDispatchClipboardWrite as wasmNodeDispatchClipboardWrite,
+  nodeElementId as wasmNodeElementId,
+  nodeEscapeHtml as wasmNodeEscapeHtml,
   nodeHandleCopyLog as wasmNodeHandleCopyLog,
+  nodeI18nText as wasmNodeI18nText,
   nodeInstallStartTraceDocumentClickObserver as wasmNodeInstallStartTraceDocumentClickObserver,
+  nodeNetworkEnabled as wasmNodeNetworkEnabled,
+  nodeNetworkPolicyKey as wasmNodeNetworkPolicyKey,
+  nodeNetworkPolicyMessage as wasmNodeNetworkPolicyMessage,
+  nodeNetworkProfile as wasmNodeNetworkProfile,
+  nodeNetworkProfiles as wasmNodeNetworkProfiles,
   nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
   nodeRuntimeActionForCommand as wasmNodeRuntimeActionForCommand,
+  nodeSetNetworkEnabled as wasmNodeSetNetworkEnabled,
   nodeSmallOwnerTrace as wasmNodeSmallOwnerTrace,
   nodeStartTraceFrontend as wasmNodeStartTraceFrontend,
   nodeStartTraceTauriShape as wasmNodeStartTraceTauriShape,
   nodeTraceActiveNetwork as wasmNodeTraceActiveNetwork,
   nodeTraceRenderedStartControls as wasmNodeTraceRenderedStartControls,
   nodeTraceStartButtonState as wasmNodeTraceStartButtonState,
+  nodeValue as wasmNodeValue,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
 await initNodeRust();
@@ -693,12 +706,7 @@ function kgwNodeSmallOwnerTraceR44D(net, action, phase, details) {
 }
 
 function kgwI18nTextR41(key, fallback) {
-  try {
-    if (window.kgwT && typeof window.kgwT === "function") return window.kgwT(key, fallback);
-    if (window.KGW_I18N && typeof window.KGW_I18N.t === "function") return window.KGW_I18N.t(key, fallback);
-    if (window.i18n && typeof window.i18n.t === "function") return window.i18n.t(key, fallback);
-  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
-  return fallback;
+  return wasmNodeI18nText(String(key || ""), String(fallback || ""));
 }
 
 
@@ -708,16 +716,7 @@ function kgwI18nTextR41(key, fallback) {
  * %LOCALAPPDATA%\KaspaGateway\nodes\<network>
  */
 function kgwNodeBackendInvokeR5(command, payload = {}) {
-  const invoke =
-    window.__TAURI__?.core?.invoke ||
-    window.__TAURI__?.tauri?.invoke ||
-    window.__TAURI_INVOKE__;
-
-  if (typeof invoke !== "function") {
-    return Promise.reject(new Error("Tauri invoke is not available"));
-  }
-
-  return invoke(command, payload);
+  return wasmNodeBackendInvoke(String(command || ""), payload || {});
 }
 
 /* KGW_NODE_PATH_HELPERS_R5 are Rust-owned in node_path_helpers.rs. */
@@ -745,72 +744,46 @@ function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
   });
 }
 
-const NODE_NETWORKS = [
-  { key: "mainnet", label: "Mainnet", testnet: false, netsuffix: "", enabledByDefault: true, runtime: "Official Rusty Kaspa" },
-  { key: "testnet10", label: "Testnet 10", testnet: true, netsuffix: "10", enabledByDefault: true, runtime: "Official Rusty Kaspa" },
-  { key: "testnet13", label: "Testnet 13", testnet: true, netsuffix: "13", enabledByDefault: false, experimental: true, runtime: "DAGKnight - Experimental" }
-];
+const NODE_NETWORKS = wasmNodeNetworkProfiles();
 
 function kgwNodeNetworkPolicyKey(net) {
-  return `kgw.node.network.enabled.${String(net || "unknown")}`;
+  return wasmNodeNetworkPolicyKey(String(net || ""));
 }
 
 function kgwNodeNetworkProfile(net) {
-  return NODE_NETWORKS.find((item) => item.key === net) || null;
+  return wasmNodeNetworkProfile(String(net || ""));
 }
 
 function kgwNodeNetworkEnabled(net) {
-  const profile = kgwNodeNetworkProfile(net);
-  try {
-    const stored = localStorage.getItem(kgwNodeNetworkPolicyKey(net));
-    if (stored === "1") return true;
-    if (stored === "0") return false;
-  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
-  return profile ? profile.enabledByDefault !== false : false;
+  return wasmNodeNetworkEnabled(String(net || ""));
 }
 
 function kgwNodeSetNetworkEnabled(net, enabled) {
-  try {
-    localStorage.setItem(kgwNodeNetworkPolicyKey(net), enabled ? "1" : "0");
-  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
+  wasmNodeSetNetworkEnabled(String(net || ""), Boolean(enabled));
 }
 
 function kgwNodeNetworkPolicyMessage(net) {
-  const profile = kgwNodeNetworkProfile(net);
-  if (!profile) return "";
-  if (profile.experimental) {
-    return "Experimental network. Disabled by default and requires explicit opt-in."
-      + (net === "testnet13" ? " This Testnet13 build has no DNS seeders. For public sync, set a trusted Testnet13 peer in Connect or Add Peer." : "");
-  }
-  return `${profile.runtime}. RPC remains loopback-only and data is isolated per network.`;
+  return wasmNodeNetworkPolicyMessage(String(net || ""));
 }
 
 function byId(id) {
-  return document.getElementById(id);
+  return wasmNodeById(String(id || ""));
 }
 
 function esc(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+  return wasmNodeEscapeHtml(value);
 }
 
 function id(net, name) {
-  return `node-${net}-${name}`;
+  return wasmNodeElementId(String(net || ""), String(name || ""));
 }
 
-
-
 function v(net, name) {
-  const el = byId(id(net, name));
-  return el ? String(el.value || "").trim() : "";
+  return wasmNodeValue(String(net || ""), String(name || ""));
 }
 
 function c(net, name) {
-  const el = byId(id(net, name));
-  return Boolean(el && el.checked);
+  return wasmNodeChecked(String(net || ""), String(name || ""));
 }
 
 

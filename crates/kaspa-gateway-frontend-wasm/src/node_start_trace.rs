@@ -710,6 +710,7 @@ fn resolved_invoke() -> JsValue {
     set(output.as_ref(), "shape", &tauri_shape("missing"));
     output.into()
 }
+
 #[derive(Clone)]
 struct NodeClipboardBuffer {
     out: JsValue,

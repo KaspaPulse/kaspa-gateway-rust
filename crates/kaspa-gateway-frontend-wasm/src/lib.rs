@@ -4,6 +4,7 @@ mod analysis_view;
 mod explorer_export;
 mod header_live_metrics;
 mod log_tab;
+mod node_frontend_helpers;
 mod node_path_helpers;
 mod node_start_trace;
 mod settings_addresses;
