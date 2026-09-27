@@ -106,7 +106,8 @@ function staticPlacementTests() {
     "Node status polling must surface typed post-READY runtime failures through the Rust/WASM owner",
   );
   assert.ok(
-    source.includes("nodeRuntimeEvidence as wasmNodeRuntimeEvidence")
+    source.includes("nodeRuntimeEvidence as kgwNodeRuntimeEvidence")
+      && !source.includes("function kgwNodeRuntimeEvidence(")
       && source.includes("nodeAssertStartEvidence as wasmNodeAssertStartEvidence"),
     "Node runtime evidence and Start attestation must be delegated to the Rust/WASM owner",
   );
@@ -140,7 +141,8 @@ function staticPlacementTests() {
       && source.includes("nodeR51Fields as wasmNodeR51Fields")
       && source.includes("nodeR51ReadSettings as wasmNodeR51ReadSettings")
       && source.includes("nodeR51Load as wasmNodeR51Load")
-      && source.includes("nodeR51CaptureFactoryDefaults as wasmNodeR51CaptureFactoryDefaults")
+      && source.includes("nodeR51CaptureFactoryDefaults as kgwNodeR51CaptureFactoryDefaults")
+      && !source.includes("function kgwNodeR51CaptureFactoryDefaults(")
       && source.includes("nodeR51LoadSavedSettings as wasmNodeR51LoadSavedSettings"),
     "Node R51 persistence core must be delegated to the Rust/WASM owner",
   );
@@ -1415,6 +1417,14 @@ const kgwNodeCommandInlineStateR7 = wasmNodeCommandInlineState;
 const kgwNodeCommandInlineToggleR7 = wasmNodeCommandInlineToggle;
 const kgwNodeRefreshInlineCommandTogglesR7 = wasmNodeRefreshInlineCommandToggles;
 const kgwInstallNodeLogAutoScrollControlsR27 = wasmNodeInstallLogAutoScrollControls;
+const kgwNodeNormalizeNetworkR101W2 = wasmNodeNormalizeNetwork;
+const kgwNodeReadLastNetworkR101W2 = wasmNodeReadLastNetwork;
+const kgwNodeSaveLastNetworkR101W2 = wasmNodeSaveLastNetwork;
+const stringifyRuntimeResult = wasmNodeStringifyRuntimeResult;
+const normalizeRuntimeError = wasmNodeNormalizeRuntimeError;
+const parseRuntimeFields = wasmNodeParseRuntimeFields;
+const kgwNodeRuntimeEvidence = wasmNodeRuntimeEvidence;
+const kgwNodeR51CaptureFactoryDefaults = wasmNodeR51CaptureFactoryDefaults;
 `;
   const executable = importPrelude + source
     .replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "")

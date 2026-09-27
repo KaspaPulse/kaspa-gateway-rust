@@ -29,13 +29,13 @@ import initNodeRust, {
   nodeNetworkPolicyMessage as kgwNodeNetworkPolicyMessage,
   nodeNetworkProfile as kgwNodeNetworkProfile,
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
-  nodeNormalizeNetwork as wasmNodeNormalizeNetwork,
+  nodeNormalizeNetwork as kgwNodeNormalizeNetworkR101W2,
   nodeAssertStartEvidence as wasmNodeAssertStartEvidence,
-  nodeNormalizeRuntimeError as wasmNodeNormalizeRuntimeError,
-  nodeParseRuntimeFields as wasmNodeParseRuntimeFields,
-  nodeRuntimeEvidence as wasmNodeRuntimeEvidence,
-  nodeReadLastNetwork as wasmNodeReadLastNetwork,
-  nodeR51CaptureFactoryDefaults as wasmNodeR51CaptureFactoryDefaults,
+  nodeNormalizeRuntimeError as normalizeRuntimeError,
+  nodeParseRuntimeFields as parseRuntimeFields,
+  nodeRuntimeEvidence as kgwNodeRuntimeEvidence,
+  nodeReadLastNetwork as kgwNodeReadLastNetworkR101W2,
+  nodeR51CaptureFactoryDefaults as kgwNodeR51CaptureFactoryDefaults,
   nodeR51Fields as wasmNodeR51Fields,
   nodeR51Keys as wasmNodeR51Keys,
   nodeR51Load as wasmNodeR51Load,
@@ -52,9 +52,9 @@ import initNodeRust, {
   nodeRuntimeErrorFromStatus as wasmNodeRuntimeErrorFromStatus,
   nodeRuntimeIsRunning as wasmNodeRuntimeIsRunning,
   nodeSaveInnerTab as wasmNodeSaveInnerTab,
-  nodeSaveLastNetwork as wasmNodeSaveLastNetwork,
+  nodeSaveLastNetwork as kgwNodeSaveLastNetworkR101W2,
   nodeSetNetworkEnabled as kgwNodeSetNetworkEnabled,
-  nodeStringifyRuntimeResult as wasmNodeStringifyRuntimeResult,
+  nodeStringifyRuntimeResult as stringifyRuntimeResult,
   nodeSmallOwnerTrace as kgwNodeSmallOwnerTraceR44D,
   nodeStartTraceFrontend as kgwStartTraceFrontendR1,
   nodeTraceActiveNetwork as wasmNodeTraceActiveNetwork,
@@ -1147,16 +1147,6 @@ function kgwNodeExplicitTraceR27D(net, action, phase, details) {
 }
 /* KGW_NODE_LAST_NETWORK_RESTORE_R101W2 */
 /* R101W2 last-network persistence is Rust-owned in node_frontend_helpers.rs. */
-function kgwNodeNormalizeNetworkR101W2(value) {
-  return wasmNodeNormalizeNetwork(value);
-}
-function kgwNodeReadLastNetworkR101W2() {
-  return wasmNodeReadLastNetwork();
-}
-function kgwNodeSaveLastNetworkR101W2(net) {
-  return wasmNodeSaveLastNetwork(net);
-}
-
 function installNetworkTabs(root) {
   /* KGW_NODE_LAST_NETWORK_RESTORE_R101W2 */
   const tabs = Array.from(root.querySelectorAll("[data-node-network-tab]"));
@@ -1280,18 +1270,6 @@ function getTauriInvoke() {
 }
 
 /* Runtime result/error/field parsing is Rust-owned in node_frontend_helpers.rs. */
-function stringifyRuntimeResult(result) {
-  return wasmNodeStringifyRuntimeResult(result);
-}
-
-function normalizeRuntimeError(error) {
-  return wasmNodeNormalizeRuntimeError(error);
-}
-
-function parseRuntimeFields(result) {
-  return wasmNodeParseRuntimeFields(result);
-}
-
 function kgwNodeSetRuntimeNotice(net, state, evidence = "", errorText = null, errorSource = "") {
   const status = byId(id(net, "runtimeStatus"));
   const evidenceNode = byId(id(net, "runtimeEvidence"));
@@ -1326,11 +1304,6 @@ function kgwNodeMarkRestartRequired(net) {
     ? "Restart required to apply changed effective settings"
     : "Effective settings apply on next Start";
   authority.dataset.restartRequired = running ? "true" : "false";
-}
-
-/* Runtime evidence/start attestation is Rust-owned in node_frontend_helpers.rs. */
-function kgwNodeRuntimeEvidence(result) {
-  return wasmNodeRuntimeEvidence(result);
 }
 
 function kgwNodeAssertStartEvidence(net, result) {
@@ -1642,10 +1615,6 @@ function kgwNodeR51Load(key) {
   } catch {
     return null;
   }
-}
-
-function kgwNodeR51CaptureFactoryDefaults() {
-  return wasmNodeR51CaptureFactoryDefaults();
 }
 
 function kgwNodeR51LoadSavedSettings() {
