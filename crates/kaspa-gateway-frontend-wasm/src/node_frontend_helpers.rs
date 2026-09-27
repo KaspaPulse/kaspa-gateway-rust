@@ -1,5 +1,5 @@
 use super::settings_schema::{NODE_ENDPOINTS, NODE_MANAGED, NODE_OPTIONAL, NODE_REQUIRED};
-use js_sys::{Array, Function, JSON, Object, Promise, Reflect};
+use js_sys::{Array, Error, Function, JSON, Object, Promise, Reflect};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1211,6 +1211,136 @@ pub fn node_parse_runtime_fields(value: JsValue) -> JsValue {
     output.into()
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct RuntimeEvidenceText {
+    text: String,
+    fields: Vec<(String, String)>,
+    pid: String,
+    owner: String,
+    role: String,
+    state: String,
+}
+
+fn last_runtime_field<'a>(fields: &'a [(String, String)], key: &str) -> Option<&'a str> {
+    fields
+        .iter()
+        .rev()
+        .find(|(candidate, _)| candidate == key)
+        .map(|(_, value)| value.as_str())
+}
+
+fn truthy_runtime_field<'a>(fields: &'a [(String, String)], key: &str) -> Option<&'a str> {
+    last_runtime_field(fields, key).filter(|value| !value.is_empty())
+}
+
+fn runtime_evidence_text(raw: &str) -> RuntimeEvidenceText {
+    let fields = parse_runtime_fields_text(raw);
+    let pid = last_runtime_field(&fields, "pid")
+        .unwrap_or("")
+        .trim()
+        .to_owned();
+    let owner = truthy_runtime_field(&fields, "owner")
+        .or_else(|| truthy_runtime_field(&fields, "source"))
+        .unwrap_or("self-worker")
+        .to_owned();
+    let role = truthy_runtime_field(&fields, "role")
+        .or_else(|| truthy_runtime_field(&fields, "runtime_role"))
+        .or_else(|| truthy_runtime_field(&fields, "runtimeRole"))
+        .unwrap_or("node")
+        .to_owned();
+    let state = truthy_runtime_field(&fields, "runtime_state")
+        .or_else(|| truthy_runtime_field(&fields, "runtimeState"))
+        .unwrap_or(if pid.is_empty() { "" } else { "running" })
+        .to_owned();
+    RuntimeEvidenceText {
+        text: raw.to_owned(),
+        fields,
+        pid,
+        owner,
+        role,
+        state,
+    }
+}
+
+fn runtime_fields_object(fields: &[(String, String)]) -> JsValue {
+    let output = Object::new();
+    for (key, value) in fields {
+        set(output.as_ref(), key, &JsValue::from_str(value));
+    }
+    output.into()
+}
+
+fn runtime_evidence_object(evidence: &RuntimeEvidenceText) -> JsValue {
+    let output = Object::new();
+    set(output.as_ref(), "text", &JsValue::from_str(&evidence.text));
+    set(
+        output.as_ref(),
+        "fields",
+        &runtime_fields_object(&evidence.fields),
+    );
+    set(output.as_ref(), "pid", &JsValue::from_str(&evidence.pid));
+    set(
+        output.as_ref(),
+        "owner",
+        &JsValue::from_str(&evidence.owner),
+    );
+    set(output.as_ref(), "role", &JsValue::from_str(&evidence.role));
+    set(
+        output.as_ref(),
+        "state",
+        &JsValue::from_str(&evidence.state),
+    );
+    output.into()
+}
+
+fn assert_start_evidence_text(net: &str, raw: &str) -> Result<RuntimeEvidenceText, String> {
+    let evidence = runtime_evidence_text(raw);
+    let lower = evidence.text.to_ascii_lowercase();
+    if lower.contains("start_blocked=true") || lower.contains("start_allowed=false") {
+        return Err(evidence.text.clone());
+    }
+
+    let response_network = last_runtime_field(&evidence.fields, "network")
+        .unwrap_or("")
+        .trim();
+    if !response_network.is_empty() && response_network != net {
+        return Err(format!(
+            "Backend start response used the wrong network: {}",
+            evidence.text
+        ));
+    }
+
+    if evidence.pid.is_empty() || !evidence.pid.bytes().all(|byte| byte.is_ascii_digit()) {
+        return Err(format!(
+            "Backend start response did not include process ID evidence: {}",
+            evidence.text
+        ));
+    }
+
+    let readiness = last_runtime_field(&evidence.fields, "readiness").unwrap_or("");
+    if !readiness.eq_ignore_ascii_case("READY") {
+        return Err(format!(
+            "Backend Start did not provide role readiness evidence: {}",
+            evidence.text
+        ));
+    }
+    Ok(evidence)
+}
+
+#[wasm_bindgen(js_name = nodeRuntimeEvidence)]
+pub fn node_runtime_evidence(value: JsValue) -> JsValue {
+    let raw = stringify_runtime_result_value(&value);
+    runtime_evidence_object(&runtime_evidence_text(&raw))
+}
+
+#[wasm_bindgen(js_name = nodeAssertStartEvidence)]
+pub fn node_assert_start_evidence(net: String, value: JsValue) -> Result<JsValue, JsValue> {
+    let raw = stringify_runtime_result_value(&value);
+    assert_start_evidence_text(&net, &raw)
+        .map(|evidence| runtime_evidence_object(&evidence))
+        .map_err(|message| Error::new(&message).into())
+}
+
 fn running_status_text(value: &str) -> bool {
     value.to_ascii_lowercase().contains("readiness=ready")
         && (value.contains("running=true")
@@ -1477,6 +1607,60 @@ mod tests {
         );
         assert_eq!(runtime_error_from_status_text("runtimeError=None"), "");
         assert_eq!(runtime_error_from_status_text("runtime_error=  none "), "");
+    }
+
+    #[test]
+    fn runtime_evidence_defaults_and_aliases_match_legacy_contract() {
+        let evidence = runtime_evidence_text(
+            "network=mainnet;pid=123;source=worker;runtime_role=node;runtimeState=ready",
+        );
+        assert_eq!(evidence.pid, "123");
+        assert_eq!(evidence.owner, "worker");
+        assert_eq!(evidence.role, "node");
+        assert_eq!(evidence.state, "ready");
+
+        let fallback = runtime_evidence_text("pid=42");
+        assert_eq!(fallback.owner, "self-worker");
+        assert_eq!(fallback.role, "node");
+        assert_eq!(fallback.state, "running");
+
+        let empty = runtime_evidence_text("");
+        assert_eq!(empty.pid, "");
+        assert_eq!(empty.state, "");
+    }
+
+    #[test]
+    fn start_evidence_validation_matches_legacy_contract() {
+        let ok = assert_start_evidence_text(
+            "mainnet",
+            "network=mainnet;pid=123;readiness=READY;running=true",
+        )
+        .expect("valid evidence");
+        assert_eq!(ok.pid, "123");
+
+        let wrong_network = "network=testnet10;pid=123;readiness=READY;running=true";
+        assert_eq!(
+            assert_start_evidence_text("mainnet", wrong_network).unwrap_err(),
+            format!("Backend start response used the wrong network: {wrong_network}")
+        );
+
+        let bad_pid = "network=mainnet;pid=abc;readiness=READY";
+        assert_eq!(
+            assert_start_evidence_text("mainnet", bad_pid).unwrap_err(),
+            format!("Backend start response did not include process ID evidence: {bad_pid}")
+        );
+
+        let not_ready = "network=mainnet;pid=123;readiness=STARTING";
+        assert_eq!(
+            assert_start_evidence_text("mainnet", not_ready).unwrap_err(),
+            format!("Backend Start did not provide role readiness evidence: {not_ready}")
+        );
+
+        let blocked = "start_blocked=true;network=mainnet;pid=123;readiness=READY";
+        assert_eq!(
+            assert_start_evidence_text("mainnet", blocked).unwrap_err(),
+            blocked
+        );
     }
 
     #[test]

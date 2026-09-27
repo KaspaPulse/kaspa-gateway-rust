@@ -106,6 +106,11 @@ function staticPlacementTests() {
     "Node status polling must surface typed post-READY runtime failures through the Rust/WASM owner",
   );
   assert.ok(
+    source.includes("nodeRuntimeEvidence as wasmNodeRuntimeEvidence")
+      && source.includes("nodeAssertStartEvidence as wasmNodeAssertStartEvidence"),
+    "Node runtime evidence and Start attestation must be delegated to the Rust/WASM owner",
+  );
+  assert.ok(
     source.includes('kgwNodeTranslateRuntimeV29("runtime.failed", "Failed")'),
     "Node post-READY failure must remain visible outside raw logs",
   );
@@ -905,6 +910,28 @@ const wasmNodeParseRuntimeFields = (result) => {
     if (key) fields[key] = value;
   }
   return fields;
+};
+const wasmNodeRuntimeEvidence = (result) => {
+  const text = wasmNodeStringifyRuntimeResult(result);
+  const fields = wasmNodeParseRuntimeFields(text);
+  const pid = String(fields.pid || "").trim();
+  return {
+    text,
+    fields,
+    pid,
+    owner: fields.owner || fields.source || "self-worker",
+    role: fields.role || fields.runtime_role || fields.runtimeRole || "node",
+    state: fields.runtime_state || fields.runtimeState || (pid ? "running" : ""),
+  };
+};
+const wasmNodeAssertStartEvidence = (net, result) => {
+  const evidence = wasmNodeRuntimeEvidence(result);
+  const responseNetwork = String(evidence.fields.network || "").trim();
+  if (/start_blocked=true|start_allowed=false/i.test(evidence.text)) throw new Error(evidence.text);
+  if (responseNetwork && responseNetwork !== String(net || "")) throw new Error("Backend start response used the wrong network: " + evidence.text);
+  if (!/^[0-9]+$/.test(evidence.pid)) throw new Error("Backend start response did not include process ID evidence: " + evidence.text);
+  if (String(evidence.fields.readiness || "").toUpperCase() !== "READY") throw new Error("Backend Start did not provide role readiness evidence: " + evidence.text);
+  return evidence;
 };
 const wasmNodeRuntimeIsRunning = (text) => {
   const value = String(text || "");

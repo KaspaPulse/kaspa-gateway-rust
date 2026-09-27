@@ -28,8 +28,10 @@ import initNodeRust, {
   nodeNetworkProfile as wasmNodeNetworkProfile,
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
   nodeNormalizeNetwork as wasmNodeNormalizeNetwork,
+  nodeAssertStartEvidence as wasmNodeAssertStartEvidence,
   nodeNormalizeRuntimeError as wasmNodeNormalizeRuntimeError,
   nodeParseRuntimeFields as wasmNodeParseRuntimeFields,
+  nodeRuntimeEvidence as wasmNodeRuntimeEvidence,
   nodeReadLastNetwork as wasmNodeReadLastNetwork,
   nodeR51CaptureFactoryDefaults as wasmNodeR51CaptureFactoryDefaults,
   nodeR51Fields as wasmNodeR51Fields,
@@ -1630,47 +1632,14 @@ function kgwNodeMarkRestartRequired(net) {
   authority.dataset.restartRequired = running ? "true" : "false";
 }
 
+/* Runtime evidence/start attestation is Rust-owned in node_frontend_helpers.rs. */
 function kgwNodeRuntimeEvidence(result) {
-  const text = stringifyRuntimeResult(result);
-  const fields = parseRuntimeFields(text);
-  const pid = String(fields.pid || "").trim();
-  const owner = fields.owner || fields.source || "self-worker";
-  const role = fields.role || fields.runtime_role || fields.runtimeRole || "node";
-  const state = fields.runtime_state || fields.runtimeState || (pid ? "running" : "");
-
-  return {
-    text,
-    fields,
-    pid,
-    owner,
-    role,
-    state,
-  };
+  return wasmNodeRuntimeEvidence(result);
 }
 
 function kgwNodeAssertStartEvidence(net, result) {
-  const evidence = kgwNodeRuntimeEvidence(result);
-  const responseNetwork = String(evidence.fields.network || "").trim();
-
-  if (/start_blocked=true|start_allowed=false/i.test(evidence.text)) {
-    throw new Error(evidence.text);
-  }
-
-  if (responseNetwork && responseNetwork !== String(net || "")) {
-    throw new Error("Backend start response used the wrong network: " + evidence.text);
-  }
-
-  if (!/^[0-9]+$/.test(evidence.pid)) {
-    throw new Error("Backend start response did not include process ID evidence: " + evidence.text);
-  }
-
-  if (String(evidence.fields.readiness || "").toUpperCase() !== "READY") {
-    throw new Error("Backend Start did not provide role readiness evidence: " + evidence.text);
-  }
-
-  return evidence;
+  return wasmNodeAssertStartEvidence(String(net || ""), result);
 }
-
 
 function nodeRuntimeArgs(net, command) {
   if (command === "kgw_kgw_apply_node_settings_v1") {
