@@ -562,6 +562,27 @@ const installSettingsLayout = () => {};
 const decorateSettingsFields = () => {};
 const revealSettingsField = () => {};
 const setSettingFieldState = () => {};
+const wasmNodeClipboardCharacterCount = (text) => Array.from(String(text ?? "")).length;
+const wasmNodeClipboardLineCount = (text) => {
+  const value = String(text ?? "");
+  return value ? value.split("\\n").length : 0;
+};
+const wasmNodeNormalizeClipboardLineEndings = (text) =>
+  String(text ?? "").replace(/\\r\\n/g, "\\n").replace(/\\r/g, "\\n").replace(/\\n/g, "\\r\\n");
+const wasmNodeClipboardSafeError = (error) => {
+  const text = String(error && error.message ? error.message : error || "clipboard write failed")
+    .replace(/[\\r\\n\\t]+/g, " ")
+    .trim();
+  if (/(secret|token|private|mnemonic|wallet|address)/i.test(text)) {
+    return "clipboard write failed with a sensitive error";
+  }
+  return (text || "clipboard write failed").slice(0, 360);
+};
+const wasmNodeClipboardPlaceholderText = (net) => {
+  const key = String(net || "");
+  const labels = { mainnet: "Mainnet", testnet10: "Testnet 10", testnet13: "Testnet 13" };
+  return String(labels[key] || key) + " log is empty.";
+};
 const wasmNodeStartTraceTauriShape = (adapterName = "") => {
   const tauri = window.__TAURI__;
   const keys = (value) => value && typeof value === "object" ? Object.keys(value).sort().slice(0, 24) : [];

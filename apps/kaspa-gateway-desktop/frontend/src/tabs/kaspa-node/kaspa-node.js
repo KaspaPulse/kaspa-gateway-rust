@@ -2,6 +2,11 @@ import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { NODE_ENDPOINTS, NODE_MANAGED, NODE_REQUIRED, NODE_OPTIONAL, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, endpoint, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initNodeRust, {
+  nodeClipboardCharacterCount as wasmNodeClipboardCharacterCount,
+  nodeClipboardLineCount as wasmNodeClipboardLineCount,
+  nodeClipboardPlaceholderText as wasmNodeClipboardPlaceholderText,
+  nodeClipboardSafeError as wasmNodeClipboardSafeError,
+  nodeNormalizeClipboardLineEndings as wasmNodeNormalizeClipboardLineEndings,
   nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
   nodeStartTraceFrontend as wasmNodeStartTraceFrontend,
   nodeStartTraceTauriShape as wasmNodeStartTraceTauriShape,
@@ -649,16 +654,15 @@ function kgwStartTraceFrontendR1(stage, options = {}) {
   return wasmNodeStartTraceFrontend(stage, options || {});
 }
 function kgwNodeClipboardCharacterCountV1(text) {
-  return Array.from(String(text ?? "")).length;
+  return wasmNodeClipboardCharacterCount(text ?? "");
 }
 
 function kgwNodeClipboardLineCountV1(text) {
-  const value = String(text ?? "");
-  return value ? value.split("\n").length : 0;
+  return wasmNodeClipboardLineCount(text ?? "");
 }
 
 function kgwNodeNormalizeClipboardLineEndingsV1(text) {
-  return String(text ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\n/g, "\r\n");
+  return wasmNodeNormalizeClipboardLineEndings(text ?? "");
 }
 
 async function kgwNodeSha256HexV1(text) {
@@ -678,18 +682,11 @@ async function kgwNodeSha256HexV1(text) {
 }
 
 function kgwNodeClipboardSafeErrorV1(error) {
-  const text = String(error && error.message ? error.message : error || "clipboard write failed")
-    .replace(/[\r\n\t]+/g, " ")
-    .trim();
-  if (/(secret|token|private|mnemonic|wallet|address)/i.test(text)) {
-    return "clipboard write failed with a sensitive error";
-  }
-  return (text || "clipboard write failed").slice(0, 360);
+  return wasmNodeClipboardSafeError(error);
 }
 
 function kgwNodeClipboardPlaceholderTextV1(net) {
-  const profile = NODE_NETWORKS.find((item) => item.key === net);
-  return `${profile?.label || net} log is empty.`;
+  return wasmNodeClipboardPlaceholderText(String(net || ""));
 }
 
 function kgwNodeLogEmptyStateV1(net) {

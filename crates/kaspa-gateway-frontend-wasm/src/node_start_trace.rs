@@ -163,6 +163,53 @@ fn bound_invoke(owner: &JsValue, invoke: JsValue) -> Option<Function> {
         .ok()
 }
 
+fn clipboard_character_count_text(text: &str) -> usize {
+    text.chars().count()
+}
+
+fn clipboard_line_count_text(text: &str) -> usize {
+    if text.is_empty() {
+        0
+    } else {
+        text.split('\n').count()
+    }
+}
+
+fn normalize_clipboard_line_endings_text(text: &str) -> String {
+    text.replace("\r\n", "\n")
+        .replace('\r', "\n")
+        .replace('\n', "\r\n")
+}
+
+fn clipboard_safe_error_text(text: &str) -> String {
+    let normalized = text.replace(['\r', '\n', '\t'], " ").trim().to_owned();
+    let source = if normalized.is_empty() {
+        "clipboard write failed"
+    } else {
+        normalized.as_str()
+    };
+    let lower = source.to_ascii_lowercase();
+    if [
+        "secret", "token", "private", "mnemonic", "wallet", "address",
+    ]
+    .iter()
+    .any(|needle| lower.contains(needle))
+    {
+        return "clipboard write failed with a sensitive error".to_owned();
+    }
+    source.chars().take(360).collect()
+}
+
+fn clipboard_placeholder_text(net: &str) -> String {
+    let label = match net {
+        "mainnet" => "Mainnet",
+        "testnet10" => "Testnet 10",
+        "testnet13" => "Testnet 13",
+        other => other,
+    };
+    format!("{label} log is empty.")
+}
+
 fn resolved_invoke() -> JsValue {
     let tauri = property(&window(), "__TAURI__");
     for (adapter, owner, candidate) in [
@@ -196,6 +243,39 @@ fn resolved_invoke() -> JsValue {
     set(output.as_ref(), "shape", &tauri_shape("missing"));
     output.into()
 }
+#[wasm_bindgen(js_name = nodeClipboardCharacterCount)]
+pub fn node_clipboard_character_count(text: JsValue) -> u32 {
+    clipboard_character_count_text(&crate::js_string_owned(&text)) as u32
+}
+
+#[wasm_bindgen(js_name = nodeClipboardLineCount)]
+pub fn node_clipboard_line_count(text: JsValue) -> u32 {
+    clipboard_line_count_text(&crate::js_string_owned(&text)) as u32
+}
+
+#[wasm_bindgen(js_name = nodeNormalizeClipboardLineEndings)]
+pub fn node_normalize_clipboard_line_endings(text: JsValue) -> String {
+    normalize_clipboard_line_endings_text(&crate::js_string_owned(&text))
+}
+
+#[wasm_bindgen(js_name = nodeClipboardSafeError)]
+pub fn node_clipboard_safe_error(error: JsValue) -> String {
+    let message = property(&error, "message");
+    let source = if crate::js_boolean(&message) {
+        crate::js_string_owned(&message)
+    } else if crate::js_boolean(&error) {
+        crate::js_string_owned(&error)
+    } else {
+        "clipboard write failed".to_owned()
+    };
+    clipboard_safe_error_text(&source)
+}
+
+#[wasm_bindgen(js_name = nodeClipboardPlaceholderText)]
+pub fn node_clipboard_placeholder_text(net: String) -> String {
+    clipboard_placeholder_text(&net)
+}
+
 #[wasm_bindgen(js_name = nodeStartTraceTauriShape)]
 pub fn node_start_trace_tauri_shape(adapter: String) -> JsValue {
     tauri_shape(&adapter)
@@ -310,5 +390,51 @@ mod tests {
         assert_eq!(safe_text_str("", "fallback"), "fallback");
         let long = "x".repeat(300);
         assert_eq!(safe_text_str(&long, "").len(), 220);
+    }
+
+    #[test]
+    fn clipboard_counts_match_legacy_contract() {
+        assert_eq!(clipboard_character_count_text("A😀B"), 3);
+        assert_eq!(clipboard_line_count_text(""), 0);
+        assert_eq!(clipboard_line_count_text("a"), 1);
+        assert_eq!(clipboard_line_count_text("a\nb\n"), 3);
+    }
+
+    #[test]
+    fn clipboard_line_endings_match_legacy_contract() {
+        assert_eq!(
+            normalize_clipboard_line_endings_text("a\r\nb\rc\nd"),
+            "a\r\nb\r\nc\r\nd"
+        );
+    }
+
+    #[test]
+    fn clipboard_safe_error_matches_sensitive_policy() {
+        assert_eq!(
+            clipboard_safe_error_text(" token leaked\n"),
+            "clipboard write failed with a sensitive error"
+        );
+        assert_eq!(
+            clipboard_safe_error_text("  ordinary\t failure  "),
+            "ordinary  failure"
+        );
+        assert_eq!(clipboard_safe_error_text(""), "clipboard write failed");
+    }
+
+    #[test]
+    fn clipboard_placeholder_labels_match_node_profiles() {
+        assert_eq!(
+            clipboard_placeholder_text("mainnet"),
+            "Mainnet log is empty."
+        );
+        assert_eq!(
+            clipboard_placeholder_text("testnet10"),
+            "Testnet 10 log is empty."
+        );
+        assert_eq!(
+            clipboard_placeholder_text("testnet13"),
+            "Testnet 13 log is empty."
+        );
+        assert_eq!(clipboard_placeholder_text("custom"), "custom log is empty.");
     }
 }
