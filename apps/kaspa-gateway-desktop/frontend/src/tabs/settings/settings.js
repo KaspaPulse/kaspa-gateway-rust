@@ -1,21 +1,29 @@
 import {
-  settingsDisplayChecksWithDefaults,
-  settingsDisplayPreferences,
   settingsAddressesInstallAll,
   settingsAddressesInstallIo,
   settingsAddressesOpenExplorer,
   settingsAddressesRefresh,
-  settingsDisplayStateMissingContract,
   settingsDatabaseInstall,
   settingsDatabaseInstallMaintenance,
   settingsDatabaseRefresh,
   settingsDiagnosticsInstall,
+  settingsDisplayApplyShellFromState,
+  settingsDisplayBindMinimumGuards,
+  settingsDisplayBuildCanonicalDefaultState,
+  settingsDisplayEnsureDefaults,
+  settingsDisplayReapplyState,
+  settingsDisplayStateLooksLegacyAllSelected,
+  settingsDisplayValidateForSave,
+  settingsStateActivateInner,
+  settingsStateActivateOuter,
+  settingsStateApply,
+  settingsStateCollect,
+  settingsStateCombineUrl,
   settingsPathsBrowse,
   settingsPathsLoadDefaults,
   settingsPathsRepairBeforeSave,
   settingsProfilesInstall,
   settingsProfilesSelectEndpoint,
-  settingsSelectedDisplayKeys,
   settingsToWesternDigits
 } from "../../settings-contract.js";
 import { installGlobalSettingsLayout, installManageAddressesCleanLayout, installSettingsI18nBindings } from "../../settings-layout.js";
@@ -129,29 +137,12 @@ function markDirty() {
 }
 
 function activateOuter(tab) {
-  qa("[data-settings-tab]").forEach((button) => {
-    const active = button.dataset.settingsTab === tab;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-selected", String(active));
-  });
-
-  qa("[data-settings-panel]").forEach((panel) => {
-    panel.classList.toggle("active", panel.dataset.settingsPanel === tab);
-  });
+  return settingsStateActivateOuter(tab);
 }
 
 function activateInner(tab) {
-  qa("[data-settings-inner-tab]").forEach((button) => {
-    const active = button.dataset.settingsInnerTab === tab;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-selected", String(active));
-  });
-
-  qa("[data-settings-inner-panel]").forEach((panel) => {
-    panel.classList.toggle("active", panel.dataset.settingsInnerPanel === tab);
-  });
+  return settingsStateActivateInner(tab);
 }
-
 function updateSelectAll(masterSelector, childSelector) {
   const master = q(masterSelector);
   const children = qa(childSelector);
@@ -205,417 +196,49 @@ function bindSelectAll(masterSelector, childSelector) {
 }
 
 function combineUrl() {
-  const base = q("#settingsApiBase");
-  const path = q("#settingsApiPath");
-  const preview = q("#settingsApiPreview");
-
-  if (!base || !path || !preview) return;
-
-  const left = String(base.value || "").replace(/\/+$/, "");
-  const right = String(path.value || "").replace(/^\/+/, "");
-
-  preview.value = left && right ? `${left}/${right}` : left || right;
+  return settingsStateCombineUrl();
 }
-
 function selectEndpoint(row) {
   return settingsProfilesSelectEndpoint(row);
 }
 
 
-/* KGW_SETTINGS_DISPLAY_MINIMUM_SELECTION_OWNER_FIX_R1
- * settings.js owns Display Settings checkbox validity.
- * main.js remains the only owner of top-tab DOM visibility.
- * A display group must never have zero selected entries.
- */
-/* KGW_SETTINGS_DISPLAY_SILENT_DEFAULT_FALLBACK_FIX_R3
- * Zero-selected Display Settings groups are repaired silently.
- * Fixed fallback: English / USD / Explorer.
- */
-const KGW_DISPLAY_SELECTION_GROUPS_R1 = [
-  {
-    name: "languages",
-    selector: "[data-settings-language]",
-    attr: "data-settings-language",
-    selectAll: "#settingsLangSelectAll",
-    label: "Displayed Languages",
-    fallbackValue: "en"
-  },
-  {
-    name: "currencies",
-    selector: "[data-settings-currency]",
-    attr: "data-settings-currency",
-    selectAll: "#settingsCurrencySelectAll",
-    label: "Displayed Currencies",
-    fallbackValue: "USD"
-  },
-  {
-    name: "tabs",
-    selector: "[data-settings-visible-tab]",
-    attr: "data-settings-visible-tab",
-    selectAll: "#settingsTabSelectAll",
-    label: "Displayed Tabs",
-    fallbackValue: "explorer"
-  }
-]
-
-function kgwDisplaySelectionNodesR1(group) {
-  return qa(group.selector).filter((node) => node && node.type === "checkbox");
-}
-
-function kgwDisplaySelectionCheckedCountR1(group) {
-  return kgwDisplaySelectionNodesR1(group).filter((node) => node.checked).length;
-}
-
-function kgwDisplaySelectionSetAllR1(group, checked) {
-  kgwDisplaySelectionNodesR1(group).forEach((node) => {
-    node.checked = checked;
-  });
-  updateSelectAll(group.selectAll, group.selector);
-}
-
-function kgwDisplaySelectionSetFallbackR1(group) {
-  const nodes = kgwDisplaySelectionNodesR1(group);
-  let fallbackApplied = false;
-
-  nodes.forEach((node) => {
-    const value = node.getAttribute(group.attr) || node.value || "";
-    const checked = value === group.fallbackValue;
-    node.checked = checked;
-    fallbackApplied = fallbackApplied || checked;
-  });
-
-  if (!fallbackApplied && nodes[0]) {
-    nodes[0].checked = true;
-  }
-
-  updateSelectAll(group.selectAll, group.selector);
-}
-
-function kgwDisplaySelectionZeroGroupsR1() {
-  return KGW_DISPLAY_SELECTION_GROUPS_R1.filter((group) => {
-    const nodes = kgwDisplaySelectionNodesR1(group);
-    return nodes.length > 0 && nodes.filter((node) => node.checked).length === 0;
-  });
-}
-
-function kgwDisplaySelectionWarnR1(groups) {
-  if (!Array.isArray(groups) || groups.length === 0) return;
-
-  settingsLogger().warn("display selection repaired silently to fixed fallback", {
-    groups: groups.map((group) => group.name),
-    fallback: groups.reduce((acc, group) => {
-      acc[group.name] = group.fallbackValue;
-      return acc;
-    }, {})
-  });
-}
-
+/* Settings display/state DOM ownership is Rust/WASM-owned. */
 function kgwDisplaySelectionEnsureDefaultsR1(reason = "default") {
-  const repaired = [];
-
-  KGW_DISPLAY_SELECTION_GROUPS_R1.forEach((group) => {
-    const nodes = kgwDisplaySelectionNodesR1(group);
-    if (nodes.length === 0) return;
-
-    if (nodes.filter((node) => node.checked).length === 0) {
-      kgwDisplaySelectionSetFallbackR1(group);
-      repaired.push(group.name);
-    }
-  });
-
-  if (repaired.length) {
-    settingsLogger().warn("display selection repaired from zero-selected state", { reason, repaired });
-  }
-
-  return repaired;
+  return settingsDisplayEnsureDefaults(reason);
 }
 
 function kgwDisplaySelectionValidateForSaveR1() {
-  const zeroGroups = kgwDisplaySelectionZeroGroupsR1();
-  if (zeroGroups.length === 0) return true;
-
-  zeroGroups.forEach((group) => kgwDisplaySelectionSetFallbackR1(group));
-  kgwDisplaySelectionWarnR1(zeroGroups);
-  return true;
+  return settingsDisplayValidateForSave();
 }
 
 function kgwDisplaySelectionBindMinimumGuardsR1() {
-  KGW_DISPLAY_SELECTION_GROUPS_R1.forEach((group) => {
-    const master = q(group.selectAll);
-
-    if (master && master.dataset.kgwMinimumSelectionBound !== "true") {
-      master.dataset.kgwMinimumSelectionBound = "true";
-      master.addEventListener("change", () => {
-        window.setTimeout(() => {
-          if (kgwDisplaySelectionCheckedCountR1(group) === 0) {
-            kgwDisplaySelectionSetFallbackR1(group);
-            kgwDisplaySelectionWarnR1([group]);
-            markDirty();
-          }
-        }, 0);
-      });
-    }
-
-    kgwDisplaySelectionNodesR1(group).forEach((node) => {
-      if (node.dataset.kgwMinimumSelectionBound === "true") return;
-      node.dataset.kgwMinimumSelectionBound = "true";
-      node.addEventListener("change", () => {
-        window.setTimeout(() => {
-          if (kgwDisplaySelectionCheckedCountR1(group) === 0) {
-            kgwDisplaySelectionSetFallbackR1(group);
-            kgwDisplaySelectionWarnR1([group]);
-            markDirty();
-          }
-        }, 0);
-      });
-    });
-  });
-}
-
-/* KGW_SHELL_DISPLAY_AND_ACTIVE_TAB_OWNER_R59C
- * Canonical settings adapter.
- * Settings prepares state and delegates shell decisions to the canonical owner in main.js.
- */
-function kgwSettingsDisplayKeyForNodeR65(node) {
-  if (!node || !node.dataset) return "";
-
-  if (node.dataset.settingsLanguage) {
-    return "language:" + node.dataset.settingsLanguage;
-  }
-
-  if (node.dataset.settingsCurrency) {
-    return "currency:" + node.dataset.settingsCurrency;
-  }
-
-  if (node.dataset.settingsVisibleTab) {
-    return "tab:" + node.dataset.settingsVisibleTab;
-  }
-
-  return "";
-}
-
-function kgwSettingsDisplayNodesR65() {
-  return qa("[data-settings-language], [data-settings-currency], [data-settings-visible-tab]")
-    .filter((node) => node && node.type === "checkbox");
-}
-
-function kgwSettingsKnownDisplayEntriesR65() {
-  return kgwSettingsDisplayNodesR65().map((node) => ({
-    key: kgwSettingsDisplayKeyForNodeR65(node),
-    id: node.id || ""
-  }));
-}
-
-function kgwSettingsDisplayChecksWithDefaultsR65(checks) {
-  return settingsDisplayChecksWithDefaults(checks, kgwSettingsKnownDisplayEntriesR65());
-}
-
-function kgwSettingsSelectedDisplayKeysR65(checks, prefix) {
-  return settingsSelectedDisplayKeys(checks, prefix);
+  return settingsDisplayBindMinimumGuards();
 }
 
 function kgwSettingsDisplayStateLooksLegacyAllSelectedR65(state) {
-  const checks = state && typeof state === "object" ? state.checks : null;
-  return settingsDisplayStateMissingContract(checks);
-}
-
-function kgwSettingsApplyDisplayChecksR65(checks, reason = "display-checks") {
-  const source = checks && typeof checks === "object" ? checks : {};
-
-  kgwSettingsDisplayNodesR65().forEach((node) => {
-    const key = kgwSettingsDisplayKeyForNodeR65(node);
-    if (!key) return;
-
-    const checked = source[key] === true;
-    node.checked = checked;
-
-    if (node.id) {
-      source[node.id] = checked;
-    }
-  });
-
-  updateSelectAll("#settingsLangSelectAll", "[data-settings-language]");
-  updateSelectAll("#settingsCurrencySelectAll", "[data-settings-currency]");
-  updateSelectAll("#settingsTabSelectAll", "[data-settings-visible-tab]");
-
-  try {
-    settingsLogger().log("display checkboxes applied", {
-      patch: "R69",
-      reason
-    });
-  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
-
-  try {
-    kgwSettingsUiTraceR48B3("settings-display", "r69-display-checks-applied", {
-      reason: String(reason || ""),
-      languages: kgwSettingsSelectedDisplayKeysR65(source, "language:").join(","),
-      currencies: kgwSettingsSelectedDisplayKeysR65(source, "currency:").join(","),
-      tabs: kgwSettingsSelectedDisplayKeysR65(source, "tab:").join(",")
-    });
-  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
+  return settingsDisplayStateLooksLegacyAllSelected(state);
 }
 
 function kgwSettingsBuildCanonicalDefaultStateR65(reason = "display-defaults-r65", persist = false) {
-  const baseState = collectState();
-  baseState.checks = kgwSettingsDisplayChecksWithDefaultsR65(baseState.checks);
-
-  kgwSettingsApplyDisplayChecksR65(baseState.checks, reason);
-
-  const state = collectState();
-  state.checks = kgwSettingsDisplayChecksWithDefaultsR65(state.checks);
-  kgwSettingsApplyDisplayChecksR65(state.checks, reason + "-verified");
-
-  const finalState = collectState();
-  finalState.checks = kgwSettingsDisplayChecksWithDefaultsR65(finalState.checks);
-
-  if (persist) {
-    try {
-      localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(finalState, null, 2));
-    } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
-  }
-
-  kgwSettingsApplyShellDisplayFromState(finalState, reason);
-  return finalState;
+  return settingsDisplayBuildCanonicalDefaultState(reason, persist);
 }
 
 function kgwSettingsReapplyDisplayStateR65(state, reason = "display-state-r65") {
-  const checks = state && typeof state === "object" && state.checks && typeof state.checks === "object"
-    ? state.checks
-    : null;
-
-  if (!checks) {
-    return kgwSettingsBuildCanonicalDefaultStateR65(reason + "-fallback", true);
-  }
-
-  kgwSettingsApplyDisplayChecksR65(checks, reason);
-  return collectState();
-}
-
-
-function kgwSettingsApplyDisplayDefaultsR59C(reason = "startup-defaults", persist = false) {
-  return kgwSettingsBuildCanonicalDefaultStateR65(reason, persist);
+  return settingsDisplayReapplyState(state, reason);
 }
 
 function collectState() {
-  const state = {
-    inputs: {},
-    checks: {},
-    activeOuter: qa("[data-settings-tab].active")[0]?.dataset.settingsTab || "api-performance",
-    activeInner: qa("[data-settings-inner-tab].active")[0]?.dataset.settingsInnerTab || "general"
-  };
-
-  qa("input, select").forEach((node) => {
-    if (!node.id) return;
-
-    if (node.type === "checkbox") {
-      state.checks[node.id] = node.checked;
-    } else {
-      state.inputs[node.id] = node.value;
-    }
-  });
-
-  qa("[data-settings-language], [data-settings-currency], [data-settings-visible-tab]").forEach((node, index) => {
-    const key =
-      node.dataset.settingsLanguage ? `language:${node.dataset.settingsLanguage}` :
-      node.dataset.settingsCurrency ? `currency:${node.dataset.settingsCurrency}` :
-      node.dataset.settingsVisibleTab ? `tab:${node.dataset.settingsVisibleTab}` :
-      `check:${index}`;
-
-    state.checks[key] = node.checked;
-  });
-
-  return state;
+  return settingsStateCollect();
 }
 
 function applyState(state) {
-  if (!state || typeof state !== "object") return;
-
-  Object.entries(state.inputs || {}).forEach(([id, value]) => {
-    const node = q(`#${CSS.escape(id)}`);
-    if (node) node.value = value;
-  });
-
-  Object.entries(state.checks || {}).forEach(([id, value]) => {
-    let node = q(`#${CSS.escape(id)}`);
-
-    if (!node && id.startsWith("language:")) {
-      node = q(`[data-settings-language="${CSS.escape(id.slice(9))}"]`);
-    }
-
-    if (!node && id.startsWith("currency:")) {
-      node = q(`[data-settings-currency="${CSS.escape(id.slice(9))}"]`);
-    }
-
-    if (!node && id.startsWith("tab:")) {
-      node = q(`[data-settings-visible-tab="${CSS.escape(id.slice(4))}"]`);
-    }
-
-    if (node && node.type === "checkbox") {
-      node.checked = !!value;
-    }
-  });
-
-  updateSelectAll("#settingsLangSelectAll", "[data-settings-language]");
-  updateSelectAll("#settingsCurrencySelectAll", "[data-settings-currency]");
-  updateSelectAll("#settingsTabSelectAll", "[data-settings-visible-tab]");
-
-  if (state.activeOuter) activateOuter(state.activeOuter);
-  if (state.activeInner) activateInner(state.activeInner);
-
-  combineUrl();
-}
-
-
-/* KGW_SETTINGS_DISPLAY_SOURCE_BASED_FIX_R2
- * settings.js remains the canonical Settings state owner.
- * main.js remains the shell display application owner.
- */
-function kgwSettingsDisplayPrefsFromCanonicalState(state) {
-  const checks = state && typeof state === "object" ? state.checks : null;
-  return settingsDisplayPreferences(checks);
+  return settingsStateApply(state);
 }
 
 function kgwSettingsApplyShellDisplayFromState(state, reason = "settings") {
-  /* KGW_SETTINGS_DIRECT_VISUAL_ONLY_R76B */
-  const prefs = kgwSettingsDisplayPrefsFromCanonicalState(state);
-  if (!prefs) {
-    kgwSettingsUiTraceR48B3("settings-display-apply", "r76b-apply-no-prefs", {
-      reason: String(reason || "")
-    });
-    return null;
-  }
-
-  const applied = [];
-  const errors = [];
-
-  try {
-    if (window.kgwShellApplyDisplayPreferencesDirectR73 && typeof window.kgwShellApplyDisplayPreferencesDirectR73 === "function") {
-      window.kgwShellApplyDisplayPreferencesDirectR73(prefs, reason);
-      applied.push("direct-r76b");
-    } else {
-      errors.push("direct-r76b:missing-window-owner");
-    }
-  } catch (error) {
-    errors.push("direct-r76b:" + String(error && error.message || error));
-  }
-
-  kgwSettingsUiTraceR48B3("settings-display-apply", "r76b-direct-shell-apply", {
-    reason: String(reason || ""),
-    languages: Array.isArray(prefs.languages) ? prefs.languages.join(",") : "",
-    currencies: Array.isArray(prefs.currencies) ? prefs.currencies.join(",") : "",
-    tabs: Array.isArray(prefs.tabs) ? prefs.tabs.join(",") : "",
-    applied: applied.join(","),
-    errors: errors.join(" | ")
-  });
-
-  return prefs;
+  return settingsDisplayApplyShellFromState(state, reason);
 }
-
-
-/* KGW_DYNAMIC_PATHS_BACKEND_OWNER_FIX_R4
- * Rust owns environment-specific default paths.
- * settings.js may display and save path values, but path field defaults must not hard-code a Windows user path.
- */
 function kgwInstallSettingsRealWorkflowActions() {
   settingsAddressesInstallIo();
   settingsProfilesInstall();

@@ -51,8 +51,19 @@ import init, {
   settingsProfilesInstall as wasmProfilesInstall,
   settingsProfilesRefresh as wasmProfilesRefresh,
   settingsProfilesSelectEndpoint as wasmProfilesSelectEndpoint,
+  settingsDisplayApplyShellFromState as wasmDisplayApplyShellFromState,
+  settingsDisplayBindMinimumGuards as wasmDisplayBindMinimumGuards,
+  settingsDisplayBuildCanonicalDefaultState as wasmDisplayBuildCanonicalDefaultState,
+  settingsDisplayEnsureDefaults as wasmDisplayEnsureDefaults,
+  settingsDisplayReapplyState as wasmDisplayReapplyState,
+  settingsDisplayStateLooksLegacyAllSelected as wasmDisplayStateLooksLegacyAllSelected,
+  settingsDisplayValidateForSave as wasmDisplayValidateForSave,
   settingsRenderFieldErrors as wasmRenderFieldErrors,
-  settingsSelectedDisplayKeys as wasmSelectedDisplayKeys,
+  settingsStateActivateInner as wasmStateActivateInner,
+  settingsStateActivateOuter as wasmStateActivateOuter,
+  settingsStateApply as wasmStateApply,
+  settingsStateCollect as wasmStateCollect,
+  settingsStateCombineUrl as wasmStateCombineUrl,  settingsSelectedDisplayKeys as wasmSelectedDisplayKeys,
   settingsSplitEndpoint as wasmSplitEndpoint,
   settingsToWesternDigits as wasmToWesternDigits,
   settingsValidateBridgeForm as wasmValidateBridgeForm,
@@ -200,6 +211,54 @@ export function settingsDatabaseInstallMaintenance() {
 
 export function settingsDiagnosticsInstall() {
   return wasmDiagnosticsInstall();
+}
+
+export function settingsStateActivateOuter(tab) {
+  return wasmStateActivateOuter(tab);
+}
+
+export function settingsStateActivateInner(tab) {
+  return wasmStateActivateInner(tab);
+}
+
+export function settingsStateCombineUrl() {
+  return wasmStateCombineUrl();
+}
+
+export function settingsStateCollect() {
+  return wasmStateCollect();
+}
+
+export function settingsStateApply(state) {
+  return wasmStateApply(state);
+}
+
+export function settingsDisplayEnsureDefaults(reason = "default") {
+  return wasmDisplayEnsureDefaults(reason);
+}
+
+export function settingsDisplayValidateForSave() {
+  return wasmDisplayValidateForSave();
+}
+
+export function settingsDisplayBindMinimumGuards() {
+  return wasmDisplayBindMinimumGuards();
+}
+
+export function settingsDisplayBuildCanonicalDefaultState(reason = "display-defaults-r65", persist = false) {
+  return wasmDisplayBuildCanonicalDefaultState(reason, persist);
+}
+
+export function settingsDisplayReapplyState(state, reason = "display-state-r65") {
+  return wasmDisplayReapplyState(state, reason);
+}
+
+export function settingsDisplayStateLooksLegacyAllSelected(state) {
+  return wasmDisplayStateLooksLegacyAllSelected(state);
+}
+
+export function settingsDisplayApplyShellFromState(state, reason = "settings") {
+  return wasmDisplayApplyShellFromState(state, reason);
 }
 
 export function settingsExplorerAddress(value) {
