@@ -3,15 +3,19 @@ import {
   confirmUserAction,
   settingsDisplayChecksWithDefaults,
   settingsDisplayPreferences,
-  settingsAddressNormalize,
+  settingsAddressesClearFields,
+  settingsAddressesIncrementRestoreEpoch,
+  settingsAddressesInstallAll,
+  settingsAddressesNow,
+  settingsAddressesOpenExplorer,
+  settingsAddressesRefresh,
+  settingsAddressesRenderRows,
+  settingsAddressesSetStatus,
   settingsDisplayStateMissingContract,
   settingsDatabaseInstall,
   settingsDatabaseRefresh,
   settingsDatabaseRenderRows,
   settingsDbKindFromFileName,
-  settingsExplorerAddress,
-  settingsExplorerUrl,
-  settingsIsKaspaAddress,
   settingsSelectedDisplayKeys,
   settingsToWesternDigits
 } from "../../settings-contract.js";
@@ -1491,424 +1495,39 @@ window.kgwInstallSettingsDatabaseStatus = kgwInstallSettingsDatabaseStatus;
 
 kgwInstallSettingsDatabaseStatus();
 
-/* KGW real settings manage addresses binding: DB-backed. */
-const KGW_SETTINGS_ADDRESS_STATE = {
-  knownNames: new Map(),
-  priceUsd: 0,
-  balances: new Map(),
-  loading: false,
-  restoreEpoch: 0
-};
-
+/* KGW settings managed-address compatibility surface: implementation is Rust/WASM-owned. */
 function kgwSettingsAddressInvoke() {
   return window.__TAURI__?.core?.invoke || window.__TAURI__?.tauri?.invoke || window.__TAURI_INVOKE__;
 }
 
 function kgwSettingsAddressNow() {
-  const date = new Date();
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  const ss = String(date.getSeconds()).padStart(2, "0");
-  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
-}
-
-function kgwSettingsIsKaspaAddress(value) {
-  return settingsIsKaspaAddress(value);
-}
-
-function kgwSettingsAddressElements() {
-  return {
-    name: document.getElementById("settingsAddressName"),
-    address: document.getElementById("settingsAddressValue"),
-    rows: document.getElementById("settingsAddressRows"),
-    lastUpdated: document.getElementById("settingsAddressLastUpdated"),
-    explorer: document.getElementById("settingsAddressExplorer")
-  };
+  return settingsAddressesNow();
 }
 
 function kgwSettingsAddressSetStatus(message, state = "info") {
-  const { lastUpdated } = kgwSettingsAddressElements();
-  if (lastUpdated) lastUpdated.textContent = message;
-  applyStatusTone(lastUpdated, state);
-  console.log("[KGW Settings Addresses]", message);
-}
-
-function kgwSettingsAddressNormalize(record) {
-  return settingsAddressNormalize(record);
-}
-
-function kgwSettingsAddressFormatNumber(value, digits = 2) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return "--";
-
-  return number.toLocaleString(undefined, {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits
-  });
-}
-
-async function kgwLoadSettingsKnownNames() {
-  const invoke = kgwSettingsAddressInvoke();
-  if (!invoke) return;
-
-  try {
-    const json = await invoke("settings_fetch_address_names");
-    const items = Array.isArray(json)
-      ? json
-      : Array.isArray(json?.addresses)
-        ? json.addresses
-        : Array.isArray(json?.items)
-          ? json.items
-          : [];
-
-    const map = new Map();
-
-    for (const item of items) {
-      const address = String(item?.address || item?.Address || "").trim();
-      const name = String(
-        item?.name ||
-        item?.Name ||
-        item?.known_name ||
-        item?.knownName ||
-        item?.label ||
-        item?.Label ||
-        ""
-      ).trim();
-
-      if (kgwSettingsIsKaspaAddress(address) && name) {
-        map.set(address, name);
-      }
-    }
-
-    KGW_SETTINGS_ADDRESS_STATE.knownNames = map;
-  } catch (error) {
-    console.warn("[KGW Settings Addresses] known names load failed", error);
-  }
-}
-
-async function kgwLoadSettingsKaspaPrice() {
-  const invoke = kgwSettingsAddressInvoke();
-  if (!invoke) return;
-
-  try {
-    const prices = await invoke("kgw_get_kaspa_prices");
-    const usd = Number(
-      prices?.prices?.usd ||
-      prices?.usd ||
-      prices?.values?.USD ||
-      prices?.values?.usd ||
-      0
-    );
-
-    KGW_SETTINGS_ADDRESS_STATE.priceUsd = Number.isFinite(usd) ? usd : 0;
-  } catch (error) {
-    console.warn("[KGW Settings Addresses] price load failed", error);
-  }
-}
-
-async function kgwLoadSettingsAddressBalance(address) {
-  if (!kgwSettingsIsKaspaAddress(address)) return null;
-
-  const invoke = kgwSettingsAddressInvoke();
-  if (!invoke) return null;
-
-  if (KGW_SETTINGS_ADDRESS_STATE.balances.has(address)) {
-    return KGW_SETTINGS_ADDRESS_STATE.balances.get(address);
-  }
-
-  try {
-    const result = await invoke("explorer_fetch_balance", { address });
-
-    const balanceKas = Number(
-      result?.balance_kas ??
-      result?.balanceKas ??
-      result?.kas ??
-      result?.balance ??
-      0
-    );
-
-    const normalized = Number.isFinite(balanceKas) ? balanceKas : 0;
-    KGW_SETTINGS_ADDRESS_STATE.balances.set(address, normalized);
-    return normalized;
-  } catch (error) {
-    console.warn("[KGW Settings Addresses] balance fetch failed", address, error);
-    KGW_SETTINGS_ADDRESS_STATE.balances.set(address, null);
-    return null;
-  }
-}
-
-async function kgwEnrichSettingsAddressRows(records) {
-  await Promise.allSettled([
-    kgwLoadSettingsKnownNames(),
-    kgwLoadSettingsKaspaPrice()
-  ]);
-
-  const list = Array.isArray(records)
-    ? records.map(kgwSettingsAddressNormalize).filter((item) => kgwSettingsIsKaspaAddress(item.address))
-    : [];
-
-  for (const item of list) {
-    item.knownName = KGW_SETTINGS_ADDRESS_STATE.knownNames.get(item.address) || "";
-    item.balanceKas = await kgwLoadSettingsAddressBalance(item.address);
-    item.valueUsd = item.balanceKas == null
-      ? null
-      : item.balanceKas * KGW_SETTINGS_ADDRESS_STATE.priceUsd;
-  }
-
-  return list;
-}
-
-function kgwSettingsAddressSelect(row) {
-  const { name, address, explorer } = kgwSettingsAddressElements();
-
-  if (name) name.value = row.name || "";
-  if (address) address.value = row.address || "";
-
-  if (explorer) {
-    explorer.disabled = !row.address;
-    explorer.classList.toggle("disabled-btn", !row.address);
-  }
+  return settingsAddressesSetStatus(message, state);
 }
 
 async function kgwRenderSettingsAddressRows(records, options = {}) {
-  const { rows } = kgwSettingsAddressElements();
-  if (!rows) return false;
-
-  const restoreEpoch = options.restoreEpoch ?? KGW_SETTINGS_ADDRESS_STATE.restoreEpoch;
-  const list = options.localOnly === true
-    ? records.map(kgwSettingsAddressNormalize).filter((item) => kgwSettingsIsKaspaAddress(item.address))
-    : await kgwEnrichSettingsAddressRows(records);
-  if (restoreEpoch !== KGW_SETTINGS_ADDRESS_STATE.restoreEpoch) return false;
-  rows.innerHTML = "";
-
-  if (!list.length) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 5;
-    td.textContent = (window.kgwT ? window.kgwT("settings.noSavedAddresses") : "No saved addresses.");
-    tr.appendChild(td);
-    rows.appendChild(tr);
-    return true;
-  }
-
-  for (const item of list) {
-    const tr = document.createElement("tr");
-    tr.dataset.address = item.address;
-    tr.style.cursor = "pointer";
-
-    const balanceText = item.balanceKas == null
-      ? "--"
-      : kgwSettingsAddressFormatNumber(item.balanceKas, 2);
-
-    const valueText = item.valueUsd == null
-      ? "--"
-      : `${kgwSettingsAddressFormatNumber(item.valueUsd, 2)} USD`;
-
-    const cells = [
-      item.name || "",
-      item.address,
-      item.knownName || "",
-      balanceText,
-      valueText
-    ];
-
-    for (const value of cells) {
-      const td = document.createElement("td");
-      td.textContent = String(value);
-      tr.appendChild(td);
-    }
-
-    tr.addEventListener("click", () => {
-      Array.from(rows.querySelectorAll("tr")).forEach((node) => node.classList.remove("is-selected"));
-      tr.classList.add("is-selected");
-      kgwSettingsAddressSelect(item);
-    });
-
-    rows.appendChild(tr);
-  }
-  return true;
+  return await settingsAddressesRenderRows(records, options);
 }
 
 async function kgwRefreshSettingsAddresses() {
-  if (KGW_SETTINGS_ADDRESS_STATE.loading) return [];
-
-  const invoke = kgwSettingsAddressInvoke();
-
-  if (!invoke) {
-    kgwSettingsAddressSetStatus("Last Updated: Tauri invoke API is not available.", "error");
-    return [];
-  }
-
-  const restoreEpoch = KGW_SETTINGS_ADDRESS_STATE.restoreEpoch;
-  KGW_SETTINGS_ADDRESS_STATE.loading = true;
-  kgwSettingsAddressSetStatus("Last Updated: loading...", "loading");
-
-  try {
-    const records = await invoke("get_all_addresses");
-    if (restoreEpoch !== KGW_SETTINGS_ADDRESS_STATE.restoreEpoch) return [];
-    if (!await kgwRenderSettingsAddressRows(records, { restoreEpoch })) return [];
-    kgwSettingsAddressSetStatus(`Last Updated: ${kgwSettingsAddressNow()}`, "success");
-
-    if (typeof window.kgwRefreshSavedAddresses === "function") {
-      window.kgwRefreshSavedAddresses().catch(console.error);
-    }
-
-    return records;
-  } catch (error) {
-    if (restoreEpoch !== KGW_SETTINGS_ADDRESS_STATE.restoreEpoch) return [];
-    await kgwRenderSettingsAddressRows([], { restoreEpoch });
-    kgwSettingsAddressSetStatus(`Last Updated: failed - ${error?.message || error}`, "error");
-    return [];
-  } finally {
-    KGW_SETTINGS_ADDRESS_STATE.loading = false;
-  }
-}
-
-function kgwNotifySavedAddressesChanged() {
-  try {
-    window.dispatchEvent(new CustomEvent("kgw:saved-addresses-changed"));
-  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
-}
-
-async function kgwSaveSettingsAddress() {
-  const invoke = kgwSettingsAddressInvoke();
-  const { name, address } = kgwSettingsAddressElements();
-
-  if (!invoke) {
-    kgwSettingsAddressSetStatus("Last Updated: Tauri invoke API is not available.", "error");
-    return;
-  }
-
-  const cleanAddress = String(address?.value || "").trim();
-  const cleanName = String(name?.value || "").trim();
-
-  if (!kgwSettingsIsKaspaAddress(cleanAddress)) {
-    kgwSettingsAddressSetStatus("Last Updated: invalid Kaspa address.", "error");
-    return;
-  }
-
-  kgwSettingsAddressSetStatus("Last Updated: saving...", "loading");
-
-  try {
-    await invoke("save_address", {
-      address: cleanAddress,
-      name: cleanName
-    });
-
-    KGW_SETTINGS_ADDRESS_STATE.balances.delete(cleanAddress);
-    await kgwRefreshSettingsAddresses();
-    kgwNotifySavedAddressesChanged();
-  } catch (error) {
-    kgwSettingsAddressSetStatus(`Last Updated: save failed - ${error?.message || error}`, "error");
-  }
-}
-
-async function kgwDeleteSettingsAddress() {
-  const invoke = kgwSettingsAddressInvoke();
-  const { address } = kgwSettingsAddressElements();
-
-  if (!invoke) {
-    kgwSettingsAddressSetStatus("Last Updated: Tauri invoke API is not available.", "error");
-    return;
-  }
-
-  const cleanAddress = String(address?.value || "").trim();
-
-  if (!kgwSettingsIsKaspaAddress(cleanAddress)) {
-    kgwSettingsAddressSetStatus("Last Updated: select a saved Kaspa address first.");
-    return;
-  }
-
-  kgwSettingsAddressSetStatus("Last Updated: deleting...", "loading");
-
-  try {
-    await invoke("delete_saved_address", {
-      address: cleanAddress
-    });
-
-    KGW_SETTINGS_ADDRESS_STATE.balances.delete(cleanAddress);
-
-    const elements = kgwSettingsAddressElements();
-    if (elements.name) elements.name.value = "";
-    if (elements.address) elements.address.value = "";
-
-    await kgwRefreshSettingsAddresses();
-    kgwNotifySavedAddressesChanged();
-  } catch (error) {
-    kgwSettingsAddressSetStatus(`Last Updated: delete failed - ${error?.message || error}`, "error");
-  }
+  return await settingsAddressesRefresh();
 }
 
 function kgwClearSettingsAddressFields() {
-  const { name, address, explorer } = kgwSettingsAddressElements();
-
-  if (name) name.value = "";
-  if (address) address.value = "";
-  if (explorer) {
-    explorer.disabled = true;
-    explorer.classList.add("disabled-btn");
-  }
+  return settingsAddressesClearFields();
 }
 
-function kgwInstallSettingsManageAddresses() {
-  if (window.__kgwSettingsManageAddressesInstalled) return;
-  window.__kgwSettingsManageAddressesInstalled = true;
-
-  document.addEventListener("click", (event) => {
-    const add = event.target.closest && event.target.closest("#settingsAddressAdd");
-    const del = event.target.closest && event.target.closest("#settingsAddressDelete");
-    const clear = event.target.closest && event.target.closest("#settingsAddressClear");
-    const refresh = event.target.closest && event.target.closest("#settingsAddressRefresh");
-
-    if (!add && !del && !clear && !refresh) return;
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-
-    kgwSettingsUiTraceR48B3("settings-addresses", "r48b3-address-action-click", {
-      trusted: Boolean(event && event.isTrusted),
-      action: add ? "add" : del ? "delete" : clear ? "clear" : refresh ? "refresh" : "unknown",
-      text: String((add || del || clear || refresh)?.textContent || "").trim()
-    });
-
-    if (add) {
-      kgwSaveSettingsAddress();
-      return;
-    }
-
-    if (del) {
-      kgwDeleteSettingsAddress();
-      return;
-    }
-
-    if (clear) {
-      kgwClearSettingsAddressFields();
-      return;
-    }
-
-    if (refresh) {
-      KGW_SETTINGS_ADDRESS_STATE.balances.clear();
-      kgwRefreshSettingsAddresses();
-    }
-  }, true);
-
-  document.addEventListener("click", (event) => {
-    const tab = event.target.closest && event.target.closest('[data-settings-tab="manage-addresses"]');
-    if (!tab) return;
-
-    window.setTimeout(kgwRefreshSettingsAddresses, 100);
-  }, true);
-
-  window.setTimeout(kgwRefreshSettingsAddresses, 500);
+function kgwOpenKaspaAddressInBrowser(address) {
+  return settingsAddressesOpenExplorer(address);
 }
 
 window.kgwRefreshSettingsAddresses = kgwRefreshSettingsAddresses;
-window.kgwInstallSettingsManageAddresses = kgwInstallSettingsManageAddresses;
+window.kgwOpenKaspaAddressInBrowser = kgwOpenKaspaAddressInBrowser;
 
-kgwInstallSettingsManageAddresses();
+settingsAddressesInstallAll();
 
 /* KGW fixed Manage Addresses layout: clean, no horizontal scroll by default. */
 function kgwInstallSettingsManageAddressesCleanLayout() {
@@ -1917,116 +1536,6 @@ function kgwInstallSettingsManageAddressesCleanLayout() {
 
 window.kgwInstallSettingsManageAddressesCleanLayout = kgwInstallSettingsManageAddressesCleanLayout;
 kgwInstallSettingsManageAddressesCleanLayout();
-
-/* KGW settings address explorer open binding */
-function kgwSettingsAddressOpenValue() {
-  const addressInput = document.getElementById("settingsAddressValue");
-  return settingsExplorerAddress(addressInput?.value || "");
-}
-
-function kgwOpenKaspaAddressInBrowser(address) {
-  const url = settingsExplorerUrl(address);
-  if (!url) {
-    console.warn("[KGW Settings Addresses] invalid address for explorer open", String(address || "").trim());
-    return;
-  }
-  window.open(url, "_blank", "noopener,noreferrer");
-}
-
-function kgwInstallSettingsAddressExplorerOpen() {
-  if (window.__kgwSettingsAddressExplorerOpenInstalled) return;
-  window.__kgwSettingsAddressExplorerOpenInstalled = true;
-
-  document.addEventListener("click", (event) => {
-    const button = event.target.closest && event.target.closest("#settingsAddressExplorer");
-    if (!button) return;
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-
-    const address = kgwSettingsAddressOpenValue();
-
-    if (!address) return;
-
-    kgwOpenKaspaAddressInBrowser(address);
-  }, true);
-}
-
-window.kgwOpenKaspaAddressInBrowser = kgwOpenKaspaAddressInBrowser;
-window.kgwInstallSettingsAddressExplorerOpen = kgwInstallSettingsAddressExplorerOpen;
-
-kgwInstallSettingsAddressExplorerOpen();
-
-async function kgwDeleteSettingsAddressTransactions() {
-  const input =
-    document.querySelector("#settingsAddressValue") ||
-    document.querySelector("#settingsAddressAddress") ||
-    document.querySelector("#settingsAddressInput");
-
-  const address = String(input?.value || "").trim();
-
-  if (!address) {
-    if (typeof kgwSettingsAddressSetStatus === "function") {
-      kgwSettingsAddressSetStatus("Last Updated: select an address first");
-    } else {
-      alert("Select an address first.");
-    }
-    return;
-  }
-
-  const ok = await confirmUserAction(
-    `Clear all cached transactions for this address?\n\n${address}\n\nThe saved address will remain.`
-  );
-
-  if (!ok) return;
-
-  const button = document.querySelector("#settingsAddressDeleteTransactions");
-  if (button) button.disabled = true;
-
-  try {
-    const invoke =
-      (typeof kgwSettingsAddressInvoke === "function" && kgwSettingsAddressInvoke()) ||
-      window.__TAURI__?.core?.invoke ||
-      window.__TAURI__?.tauri?.invoke ||
-      window.__TAURI_INVOKE__;
-
-    if (!invoke) {
-      throw new Error("Tauri invoke API is not available.");
-    }
-
-    const deleted = await invoke("explorer_delete_transactions_for_address", { address });
-
-    if (typeof kgwSettingsAddressSetStatus === "function") {
-      kgwSettingsAddressSetStatus(`Last Updated: cleared ${deleted} cached transactions`, "success");
-    } else {
-      alert(`Cleared ${deleted} cached transactions.`);
-    }
-
-    const refresh = document.querySelector("#settingsAddressRefresh");
-    if (refresh) refresh.click();
-  } catch (error) {
-    const message = error?.message || String(error);
-
-    if (typeof kgwSettingsAddressSetStatus === "function") {
-      kgwSettingsAddressSetStatus(`Last Updated: clear transactions failed - ${message}`, "error");
-    } else {
-      alert(`Clear transactions failed: ${message}`);
-    }
-
-    console.error("[settings] clear transactions failed", error);
-  } finally {
-    if (button) button.disabled = false;
-  }
-}
-
-document.addEventListener("click", (event) => {
-  const button = event.target?.closest && event.target.closest("#settingsAddressDeleteTransactions");
-  if (!button) return;
-
-  event.preventDefault();
-  kgwDeleteSettingsAddressTransactions();
-});
-
 installSettingsI18nBindings();
 
 /* KGW_SETTINGS_DB_MAINTENANCE_ACTIONS_OWNER_V1 */
@@ -2128,7 +1637,7 @@ async function kgwSettingsRestoreLatest() {
       kgwSettingsRestoreStatus("Restore cancelled. No data changed.", "cancelled");
       return null;
     }
-    KGW_SETTINGS_ADDRESS_STATE.restoreEpoch += 1;
+    const addressRestoreEpoch = settingsAddressesIncrementRestoreEpoch();
     kgwSettingsRestoreStatus("Restoring the selected backup...", "running");
     const invoke = kgwSettingsDbInvoke();
     if (typeof invoke !== "function") throw new Error("Tauri invoke API is not available.");
@@ -2140,7 +1649,7 @@ async function kgwSettingsRestoreLatest() {
     const records = await invoke("get_all_addresses", {});
     if (!Array.isArray(records)) throw new Error("Restored address state could not be read.");
     kgwRenderSettingsDatabaseRows(result.rows);
-    const rendered = await kgwRenderSettingsAddressRows(records, { localOnly: true, restoreEpoch: KGW_SETTINGS_ADDRESS_STATE.restoreEpoch });
+    const rendered = await kgwRenderSettingsAddressRows(records, { localOnly: true, restoreEpoch: addressRestoreEpoch });
     if (!rendered) throw new Error("Restored address rows were not rendered.");
     kgwClearSettingsAddressFields();
     kgwSettingsAddressSetStatus(`Last Updated: ${kgwSettingsAddressNow()}`, "success");

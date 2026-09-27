@@ -230,6 +230,15 @@ import init, {
   settingsBridgeManaged as wasmBridgeManaged,
   settingsAddressNormalize as wasmAddressNormalize,
   settingsAddressShort as wasmAddressShort,
+  settingsAddressesClearFields as wasmAddressesClearFields,
+  settingsAddressesIncrementRestoreEpoch as wasmAddressesIncrementRestoreEpoch,
+  settingsAddressesInstallAll as wasmAddressesInstallAll,
+  settingsAddressesNow as wasmAddressesNow,
+  settingsAddressesOpenExplorer as wasmAddressesOpenExplorer,
+  settingsAddressesRefresh as wasmAddressesRefresh,
+  settingsAddressesRenderRows as wasmAddressesRenderRows,
+  settingsAddressesRestoreEpoch as wasmAddressesRestoreEpoch,
+  settingsAddressesSetStatus as wasmAddressesSetStatus,
   settingsBridgeOptional as wasmBridgeOptional,
   settingsBridgeRequired as wasmBridgeRequired,
   settingsConfirmUserAction as wasmConfirmUserAction,
@@ -311,6 +320,42 @@ export function settingsIsKaspaAddress(value) {
 
 export function settingsAddressNormalize(record) {
   return wasmAddressNormalize(record);
+}
+
+export function settingsAddressesInstallAll() {
+  return wasmAddressesInstallAll();
+}
+
+export async function settingsAddressesRefresh() {
+  return await wasmAddressesRefresh();
+}
+
+export async function settingsAddressesRenderRows(records, options = {}) {
+  return await wasmAddressesRenderRows(records, options);
+}
+
+export function settingsAddressesClearFields() {
+  return wasmAddressesClearFields();
+}
+
+export function settingsAddressesSetStatus(message, state = "info") {
+  return wasmAddressesSetStatus(message, state);
+}
+
+export function settingsAddressesNow() {
+  return wasmAddressesNow();
+}
+
+export function settingsAddressesIncrementRestoreEpoch() {
+  return wasmAddressesIncrementRestoreEpoch();
+}
+
+export function settingsAddressesRestoreEpoch() {
+  return wasmAddressesRestoreEpoch();
+}
+
+export function settingsAddressesOpenExplorer(address) {
+  return wasmAddressesOpenExplorer(address);
 }
 
 export function settingsDbKindFromFileName(value) {
