@@ -1,6 +1,13 @@
 import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { NODE_ENDPOINTS, NODE_MANAGED, NODE_REQUIRED, NODE_OPTIONAL, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, endpoint, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
+import initNodeRust, {
+  nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
+  nodeStartTraceFrontend as wasmNodeStartTraceFrontend,
+  nodeStartTraceTauriShape as wasmNodeStartTraceTauriShape,
+} from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
+
+await initNodeRust();
 
 // KGW_SETTINGS_OWNER_V19
 (function installKgwSettingsOwnerV19() {
@@ -629,105 +636,18 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
 })();
 // END_KGW_SETTINGS_OWNER_V19
 
-const KGW_START_TRACE_COMMAND_V1 = "kgw_start_trace_frontend_v1";
-
-function kgwStartTraceSafeTextR1(value, fallback = "") {
-  const text = String(value ?? "").replace(/[\r\n\t]+/g, " ").trim();
-  return (text || fallback).slice(0, 220);
-}
-
-function kgwStartTraceSafeDetailsR1(details) {
-  const source = details && typeof details === "object" ? details : {};
-  const blocked = /(secret|token|private|mnemonic|wallet|address|commandPreview|completeCommand|arguments|appDir|path|rpcEndpoint|stratum)/i;
-  const out = {};
-
-  for (const [key, value] of Object.entries(source)) {
-    if (blocked.test(key)) {
-      out[key] = "[redacted]";
-      continue;
-    }
-
-    if (Array.isArray(value)) {
-      out[key] = value.slice(0, 24).map((item) => kgwStartTraceSafeTextR1(item));
-    } else if (value && typeof value === "object") {
-      out[key] = kgwStartTraceSafeDetailsR1(value);
-    } else if (typeof value === "boolean" || typeof value === "number") {
-      out[key] = value;
-    } else {
-      out[key] = kgwStartTraceSafeTextR1(value);
-    }
-  }
-
-  return out;
-}
-
+/* KGW_START_TRACE_R1 is Rust-owned in node_start_trace.rs. */
 function kgwStartTraceTauriShapeR1(adapterName = "") {
-  const tauri = window.__TAURI__;
-  const keys = (value) => value && typeof value === "object" ? Object.keys(value).sort().slice(0, 24) : [];
-
-  return {
-    adapter: kgwStartTraceSafeTextR1(adapterName, "missing"),
-    hasGlobalTauri: Boolean(tauri),
-    globalKeys: keys(tauri),
-    coreKeys: keys(tauri?.core),
-    tauriKeys: keys(tauri?.tauri),
-    hasCoreInvoke: typeof tauri?.core?.invoke === "function",
-    hasTauriInvoke: typeof tauri?.tauri?.invoke === "function",
-    hasRootInvoke: typeof tauri?.invoke === "function",
-    expectedConfiguredGlobal: "window.__TAURI__.core.invoke"
-  };
+  return wasmNodeStartTraceTauriShape(String(adapterName || ""));
 }
 
 function kgwResolvePublicTauriInvokeR1() {
-  const tauri = window.__TAURI__;
-  const candidates = [
-    { adapter: "window.__TAURI__.core.invoke", owner: tauri?.core, invoke: tauri?.core?.invoke },
-    { adapter: "window.__TAURI__.tauri.invoke", owner: tauri?.tauri, invoke: tauri?.tauri?.invoke },
-    { adapter: "window.__TAURI__.invoke", owner: tauri, invoke: tauri?.invoke }
-  ];
-
-  for (const candidate of candidates) {
-    if (typeof candidate.invoke === "function") {
-      return {
-        adapter: candidate.adapter,
-        invoke: candidate.invoke.bind(candidate.owner),
-        shape: kgwStartTraceTauriShapeR1(candidate.adapter)
-      };
-    }
-  }
-
-  return {
-    adapter: "missing",
-    invoke: null,
-    shape: kgwStartTraceTauriShapeR1("missing")
-  };
+  return wasmNodeResolvePublicTauriInvoke();
 }
 
 function kgwStartTraceFrontendR1(stage, options = {}) {
-  const resolved = kgwResolvePublicTauriInvokeR1();
-  if (typeof resolved.invoke !== "function") return false;
-
-  const network = kgwStartTraceSafeTextR1(options.network || options.net, "unknown");
-  const action = kgwStartTraceSafeTextR1(options.action, "unknown");
-  const result = kgwStartTraceSafeTextR1(options.result, "observed");
-  const details = kgwStartTraceSafeDetailsR1({
-    ...(options.details && typeof options.details === "object" ? options.details : {}),
-    invokeAdapter: resolved.adapter
-  });
-
-  resolved.invoke(KGW_START_TRACE_COMMAND_V1, {
-    stage: kgwStartTraceSafeTextR1(stage, "frontend.unknown"),
-    network,
-    action,
-    result,
-    details: JSON.stringify(details)
-  }).catch(function (error) {
-    console.error("[KGW_START_TRACE_FRONTEND_FAILED]", error && error.message ? error.message : String(error));
-  });
-
-  return true;
+  return wasmNodeStartTraceFrontend(stage, options || {});
 }
-
 function kgwNodeClipboardCharacterCountV1(text) {
   return Array.from(String(text ?? "")).length;
 }

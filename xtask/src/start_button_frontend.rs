@@ -562,9 +562,33 @@ const installSettingsLayout = () => {};
 const decorateSettingsFields = () => {};
 const revealSettingsField = () => {};
 const setSettingFieldState = () => {};
+const wasmNodeStartTraceTauriShape = (adapterName = "") => {
+  const tauri = window.__TAURI__;
+  const keys = (value) => value && typeof value === "object" ? Object.keys(value).sort().slice(0, 24) : [];
+  return { adapter: String(adapterName || "missing"), hasGlobalTauri: Boolean(tauri), globalKeys: keys(tauri), coreKeys: keys(tauri && tauri.core), tauriKeys: keys(tauri && tauri.tauri), hasCoreInvoke: typeof (tauri && tauri.core && tauri.core.invoke) === "function", hasTauriInvoke: typeof (tauri && tauri.tauri && tauri.tauri.invoke) === "function", hasRootInvoke: typeof (tauri && tauri.invoke) === "function", expectedConfiguredGlobal: "window.__TAURI__.core.invoke" };
+};
+const wasmNodeResolvePublicTauriInvoke = () => {
+  const tauri = window.__TAURI__;
+  for (const [adapter, owner, invoke] of [["window.__TAURI__.core.invoke", tauri && tauri.core, tauri && tauri.core && tauri.core.invoke], ["window.__TAURI__.tauri.invoke", tauri && tauri.tauri, tauri && tauri.tauri && tauri.tauri.invoke], ["window.__TAURI__.invoke", tauri, tauri && tauri.invoke]]) {
+    if (typeof invoke === "function") return { adapter, invoke: invoke.bind(owner), shape: wasmNodeStartTraceTauriShape(adapter) };
+  }
+  return { adapter: "missing", invoke: null, shape: wasmNodeStartTraceTauriShape("missing") };
+};
+const wasmNodeStartTraceFrontend = (stage, options = {}) => {
+  const resolved = wasmNodeResolvePublicTauriInvoke();
+  if (typeof resolved.invoke !== "function") return false;
+  const blocked = /(secret|token|private|mnemonic|wallet|address|commandPreview|completeCommand|arguments|appDir|path|rpcEndpoint|stratum)/i;
+  const safeText = (value, fallback = "") => String(value ?? "").replace(/[\\r\\n\\t]+/g, " ").trim().slice(0, 220) || fallback;
+  const sanitize = (value) => Object.fromEntries(Object.entries(value && typeof value === "object" ? value : {}).map(([key, item]) => [key, blocked.test(key) ? "[redacted]" : Array.isArray(item) ? item.slice(0,24).map(v => safeText(v)) : item && typeof item === "object" ? sanitize(item) : typeof item === "boolean" || typeof item === "number" ? item : safeText(item)]));
+  const details = sanitize({ ...(options.details && typeof options.details === "object" ? options.details : {}), invokeAdapter: resolved.adapter });
+  Promise.resolve(resolved.invoke("kgw_start_trace_frontend_v1", { stage: safeText(stage, "frontend.unknown"), network: safeText(options.network || options.net, "unknown"), action: safeText(options.action, "unknown"), result: safeText(options.result, "observed"), details: JSON.stringify(details) })).catch(() => {});
+  return true;
+};
 `;
   const executable = importPrelude + source
-    .replace(/^import[^\n]*\n/gm, "")
+    .replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "")
+    .replace(/^import\s+["'][^"']+["'];\s*/gm, "")
+    .replace(/^await\s+initNodeRust\(\);\s*/gm, "")
     .replace(/export\s+async\s+function\s+initKaspaNodeTab/, "async function initKaspaNodeTab")
     .replace(/export\s*\{[^}]+\}\s*;?/g, "")
     .replace(/export\s+default\s+initKaspaNodeTab\s*;/, "")
