@@ -42,6 +42,9 @@ import initNodeRust, {
   nodeR51LoadSavedSettings as wasmNodeR51LoadSavedSettings,
   nodeR51Panel as wasmNodeR51Panel,
   nodeR51ReadSettings as wasmNodeR51ReadSettings,
+  nodeR51RestoreDefaultsAction as wasmNodeR51RestoreDefaultsAction,
+  nodeR51SaveSettingsAction as wasmNodeR51SaveSettingsAction,
+  nodeR51SetDefaultsAction as wasmNodeR51SetDefaultsAction,
   nodeR51Store as wasmNodeR51Store,
   nodeR51WriteSettings as wasmNodeR51WriteSettings,
   nodeResolveInnerTab as wasmNodeResolveInnerTab,
@@ -2091,27 +2094,24 @@ function kgwNodeR51SaveSettings(net) {
     owner: "node-r51-settings-owner"
   });
 
-  const values = kgwNodeR51ReadSettings(net);
+  const result = wasmNodeR51SaveSettingsAction(String(net || ""));
   kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-read-settings", {
     patch: "R29B",
     owner: "node-r51-settings-owner",
-    keyCount: Object.keys(values || {}).length,
-    checkboxCount: Object.keys(values || {}).filter((key) => values[key] && values[key].type === "checkbox").length,
-    valueCount: Object.keys(values || {}).filter((key) => values[key] && values[key].type === "value").length,
-    structuredInstanceCount: (values && values.__kgwBridgeStructuredInstancesR26B && Array.isArray(values.__kgwBridgeStructuredInstancesR26B.instances)) ? values.__kgwBridgeStructuredInstancesR26B.instances.length : 0,
-    hasActiveStructuredInstance: Boolean(values && values.__kgwBridgeActiveInstanceR26B)
+    keyCount: Number(result?.keyCount || 0),
+    checkboxCount: Number(result?.checkboxCount || 0),
+    valueCount: Number(result?.valueCount || 0),
+    structuredInstanceCount: Number(result?.structuredInstanceCount || 0),
+    hasActiveStructuredInstance: Boolean(result?.hasActiveStructuredInstance)
   });
-
-  kgwNodeR51Store("saved:" + net, values);
-
-  const saved = kgwNodeR51Load("saved:" + net);
   kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-complete", {
     patch: "R29B",
     owner: "node-r51-settings-owner",
-    savedKey: "saved:" + String(net || ""),
-    persisted: Boolean(saved),
-    persistedKeyCount: saved && typeof saved === "object" ? Object.keys(saved).length : 0
+    savedKey: String(result?.storageKey || ("saved:" + String(net || ""))),
+    persisted: Boolean(result?.persisted),
+    persistedKeyCount: Number(result?.persistedKeyCount || 0)
   });
+  return result;
 }
 
 function kgwNodeR51SetAsDefaults(net) {
@@ -2121,27 +2121,24 @@ function kgwNodeR51SetAsDefaults(net) {
     owner: "node-r51-settings-owner"
   });
 
-  const values = kgwNodeR51ReadSettings(net);
+  const result = wasmNodeR51SetDefaultsAction(String(net || ""));
   kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-read-settings", {
     patch: "R29B",
     owner: "node-r51-settings-owner",
-    keyCount: Object.keys(values || {}).length,
-    checkboxCount: Object.keys(values || {}).filter((key) => values[key] && values[key].type === "checkbox").length,
-    valueCount: Object.keys(values || {}).filter((key) => values[key] && values[key].type === "value").length,
-    structuredInstanceCount: (values && values.__kgwBridgeStructuredInstancesR26B && Array.isArray(values.__kgwBridgeStructuredInstancesR26B.instances)) ? values.__kgwBridgeStructuredInstancesR26B.instances.length : 0,
-    hasActiveStructuredInstance: Boolean(values && values.__kgwBridgeActiveInstanceR26B)
+    keyCount: Number(result?.keyCount || 0),
+    checkboxCount: Number(result?.checkboxCount || 0),
+    valueCount: Number(result?.valueCount || 0),
+    structuredInstanceCount: Number(result?.structuredInstanceCount || 0),
+    hasActiveStructuredInstance: Boolean(result?.hasActiveStructuredInstance)
   });
-
-  kgwNodeR51Store("default:" + net, values);
-
-  const stored = kgwNodeR51Load("default:" + net);
   kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-complete", {
     patch: "R29B",
     owner: "node-r51-settings-owner",
-    defaultKey: "default:" + String(net || ""),
-    persisted: Boolean(stored),
-    persistedKeyCount: stored && typeof stored === "object" ? Object.keys(stored).length : 0
+    defaultKey: String(result?.storageKey || ("default:" + String(net || ""))),
+    persisted: Boolean(result?.persisted),
+    persistedKeyCount: Number(result?.persistedKeyCount || 0)
   });
+  return result;
 }
 
 /* R9B compatibility boundary: current input/change owners identify programmatic writes via Event.isTrusted. */
@@ -2154,22 +2151,23 @@ function kgwNodeR51RestoreDefaults(net) {
     owner: "node-r51-settings-owner"
   });
 
-  kgwNodeSettingsWithProgrammaticWriteR9B(() => {
-    const defaults = kgwNodeR51Load("default:" + net) || kgwNodeR51Load("factory:" + net);
+  const result = kgwNodeSettingsWithProgrammaticWriteR9B(() => {
+    const restored = wasmNodeR51RestoreDefaultsAction(String(net || ""));
     kgwNodeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-loaded", {
       patch: "R29B",
       owner: "node-r51-settings-owner",
-      hasDefaults: Boolean(defaults),
-      defaultKeyCount: defaults && typeof defaults === "object" ? Object.keys(defaults).length : 0
+      hasDefaults: Boolean(restored?.hasDefaults),
+      defaultKeyCount: Number(restored?.defaultKeyCount || 0)
     });
-    kgwNodeR51WriteSettings(net, defaults);
     kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, { force: true });
+    return restored;
   });
 
   kgwNodeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-complete", {
     patch: "R29B",
     owner: "node-r51-settings-owner"
   });
+  return result;
 }
 
 function kgwNodeR51IsRunning(text) {

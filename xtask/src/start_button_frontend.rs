@@ -146,10 +146,25 @@ function staticPlacementTests() {
     "Node R51 wrappers must remain thin Rust/WASM adapters with JS-only trace/update glue",
   );
   assert.ok(
+    source.includes("nodeR51SaveSettingsAction as wasmNodeR51SaveSettingsAction")
+      && source.includes("nodeR51SetDefaultsAction as wasmNodeR51SetDefaultsAction")
+      && source.includes("nodeR51RestoreDefaultsAction as wasmNodeR51RestoreDefaultsAction"),
+    "Node R51 Save/Set Defaults/Restore action ownership must be delegated to Rust/WASM",
+  );
+  assert.ok(
+    /function kgwNodeR51SaveSettings\(net\)[\s\S]*?wasmNodeR51SaveSettingsAction/.test(source)
+      && /function kgwNodeR51SetAsDefaults\(net\)[\s\S]*?wasmNodeR51SetDefaultsAction/.test(source)
+      && /function kgwNodeR51RestoreDefaults\(net\)[\s\S]*?wasmNodeR51RestoreDefaultsAction/.test(source),
+    "Node R51 settings action wrappers must call the Rust/WASM owner",
+  );
+  assert.ok(
     !source.includes("const commandOptions = values && values[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C];")
       && !source.includes("state[String(name)] = Boolean(enabled) && (!NODE_OPTIONAL.has(name)")
       && !source.includes('const KGW_NODE_R51_STORAGE_PREFIX = "kgw.node.direct.v51.";')
-      && !source.includes("localStorage.setItem(KGW_NODE_R51_STORAGE_PREFIX"),
+      && !source.includes("localStorage.setItem(KGW_NODE_R51_STORAGE_PREFIX")
+      && !source.includes('kgwNodeR51Store("saved:" + net, values)')
+      && !source.includes('kgwNodeR51Store("default:" + net, values)')
+      && !source.includes('const defaults = kgwNodeR51Load("default:" + net) || kgwNodeR51Load("factory:" + net)'),
     "Node R51 persistence implementation must not return to hand-maintained JS",
   );
 }
@@ -792,6 +807,34 @@ const wasmNodeR51LoadSavedSettings = () => {
     });
   }
   return applied;
+};
+const wasmNodeR51Summary = (values) => {
+  const source = values && typeof values === "object" ? values : {};
+  const structured = source.__kgwBridgeStructuredInstancesR26B;
+  return {
+    keyCount: Object.keys(source).length,
+    checkboxCount: Object.values(source).filter((item) => item && item.type === "checkbox").length,
+    valueCount: Object.values(source).filter((item) => item && item.type === "value").length,
+    structuredInstanceCount: structured && Array.isArray(structured.instances) ? structured.instances.length : 0,
+    hasActiveStructuredInstance: Boolean(source.__kgwBridgeActiveInstanceR26B),
+  };
+};
+const wasmNodeR51PersistAction = (net, kind) => {
+  const values = wasmNodeR51ReadSettings(net);
+  const storageKey = kind + ":" + String(net || "");
+  wasmNodeR51Store(storageKey, values);
+  const persisted = wasmNodeR51Load(storageKey);
+  return { ...wasmNodeR51Summary(values), storageKey, persisted: Boolean(persisted), persistedKeyCount: persisted && typeof persisted === "object" ? Object.keys(persisted).length : 0 };
+};
+const wasmNodeR51SaveSettingsAction = (net) => wasmNodeR51PersistAction(net, "saved");
+const wasmNodeR51SetDefaultsAction = (net) => wasmNodeR51PersistAction(net, "default");
+const wasmNodeR51RestoreDefaultsAction = (net) => {
+  const defaults = wasmNodeR51Load("default:" + net) || wasmNodeR51Load("factory:" + net);
+  return {
+    hasDefaults: Boolean(defaults),
+    defaultKeyCount: defaults && typeof defaults === "object" ? Object.keys(defaults).length : 0,
+    writeResult: wasmNodeR51WriteSettings(net, defaults),
+  };
 };
 const wasmNodeCardInput = (net, name, label, value = "", placeholder = "", span2 = false, toggle = "") =>
   '\\n    <div class="node-v6-card' + (span2 ? ' span2' : '') + '">'

@@ -810,6 +810,112 @@ fn r51_load_saved_settings() -> Array {
     applied
 }
 
+fn r51_object_key_count(value: &JsValue) -> u32 {
+    if !value.is_object() || value.is_null() {
+        return 0;
+    }
+    Object::keys(&Object::from(value.clone())).length()
+}
+
+fn r51_settings_summary(values: &JsValue) -> JsValue {
+    let result = Object::new();
+    let mut checkbox_count = 0_u32;
+    let mut value_count = 0_u32;
+    if values.is_object() && !values.is_null() {
+        for entry in Object::entries(&Object::from(values.clone())).iter() {
+            let pair = Array::from(&entry);
+            if pair.length() < 2 {
+                continue;
+            }
+            match crate::js_string_owned(&property(&pair.get(1), "type")).as_str() {
+                "checkbox" => checkbox_count += 1,
+                "value" => value_count += 1,
+                _ => {}
+            }
+        }
+    }
+    let structured = property(values, "__kgwBridgeStructuredInstancesR26B");
+    let instances = property(&structured, "instances");
+    set(
+        result.as_ref(),
+        "keyCount",
+        &JsValue::from_f64(f64::from(r51_object_key_count(values))),
+    );
+    set(
+        result.as_ref(),
+        "checkboxCount",
+        &JsValue::from_f64(f64::from(checkbox_count)),
+    );
+    set(
+        result.as_ref(),
+        "valueCount",
+        &JsValue::from_f64(f64::from(value_count)),
+    );
+    set(
+        result.as_ref(),
+        "structuredInstanceCount",
+        &JsValue::from_f64(if Array::is_array(&instances) {
+            Array::from(&instances).length() as f64
+        } else {
+            0.0
+        }),
+    );
+    set(
+        result.as_ref(),
+        "hasActiveStructuredInstance",
+        &JsValue::from_bool(crate::js_boolean(&property(
+            values,
+            "__kgwBridgeActiveInstanceR26B",
+        ))),
+    );
+    result.into()
+}
+
+fn r51_persist_action(net: &str, kind: &str) -> Result<JsValue, JsValue> {
+    let values = r51_read_settings(net);
+    let key = format!("{kind}:{net}");
+    r51_store(&key, &values)?;
+    let persisted = r51_load(&key);
+    let result = Object::from(r51_settings_summary(&values));
+    set(result.as_ref(), "storageKey", &JsValue::from_str(&key));
+    set(
+        result.as_ref(),
+        "persisted",
+        &JsValue::from_bool(crate::js_boolean(&persisted)),
+    );
+    set(
+        result.as_ref(),
+        "persistedKeyCount",
+        &JsValue::from_f64(f64::from(r51_object_key_count(&persisted))),
+    );
+    Ok(result.into())
+}
+
+fn r51_restore_action(net: &str) -> JsValue {
+    let defaults = {
+        let stored = r51_load(&format!("default:{net}"));
+        if crate::js_boolean(&stored) {
+            stored
+        } else {
+            r51_load(&format!("factory:{net}"))
+        }
+    };
+    let result = Object::new();
+    set(
+        result.as_ref(),
+        "hasDefaults",
+        &JsValue::from_bool(crate::js_boolean(&defaults)),
+    );
+    set(
+        result.as_ref(),
+        "defaultKeyCount",
+        &JsValue::from_f64(f64::from(r51_object_key_count(&defaults))),
+    );
+    let write_result = r51_write_settings(net, &defaults);
+    set(result.as_ref(), "writeResult", &write_result);
+    result.into()
+}
+
 #[wasm_bindgen(js_name = nodeR51Keys)]
 pub fn node_r51_keys() -> Array {
     r51_keys_array()
@@ -853,6 +959,21 @@ pub fn node_r51_capture_factory_defaults() -> Result<(), JsValue> {
 #[wasm_bindgen(js_name = nodeR51LoadSavedSettings)]
 pub fn node_r51_load_saved_settings() -> Array {
     r51_load_saved_settings()
+}
+
+#[wasm_bindgen(js_name = nodeR51SaveSettingsAction)]
+pub fn node_r51_save_settings_action(net: String) -> Result<JsValue, JsValue> {
+    r51_persist_action(&net, "saved")
+}
+
+#[wasm_bindgen(js_name = nodeR51SetDefaultsAction)]
+pub fn node_r51_set_defaults_action(net: String) -> Result<JsValue, JsValue> {
+    r51_persist_action(&net, "default")
+}
+
+#[wasm_bindgen(js_name = nodeR51RestoreDefaultsAction)]
+pub fn node_r51_restore_defaults_action(net: String) -> JsValue {
+    r51_restore_action(&net)
 }
 
 fn card_input_html(

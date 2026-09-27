@@ -538,7 +538,11 @@ fn settings_programmatic_restore_contract(root: &Path) -> Result<(), String> {
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
     )?;
-    validate_programmatic_restore(&node, &bridge)
+    let node_owner = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/node_frontend_helpers.rs",
+    )?;
+    validate_programmatic_restore(&node, &bridge, &node_owner)
 }
 
 fn function_block<'a>(source: &'a str, start: &str, next: &str) -> Result<&'a str, String> {
@@ -555,7 +559,7 @@ fn function_block<'a>(source: &'a str, start: &str, next: &str) -> Result<&'a st
     Ok(&source[begin..end])
 }
 
-fn validate_programmatic_restore(node: &str, bridge: &str) -> Result<(), String> {
+fn validate_programmatic_restore(node: &str, bridge: &str, node_owner: &str) -> Result<(), String> {
     if !regex_is_match(
         node,
         r"function kgwNodeSettingsWithProgrammaticWriteR9B\(callback\)\s*\{\s*return callback\(\);\s*\}",
@@ -573,8 +577,8 @@ fn validate_programmatic_restore(node: &str, bridge: &str) -> Result<(), String>
             "Node Restore Defaults must use the programmatic boundary",
         ),
         (
-            "kgwNodeR51WriteSettings(net, defaults)",
-            "Node Restore Defaults must write restored settings",
+            "wasmNodeR51RestoreDefaultsAction(String(net || \"\"))",
+            "Node Restore Defaults must delegate restored-settings application to Rust/WASM",
         ),
         (
             "kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, { force: true })",
@@ -583,6 +587,11 @@ fn validate_programmatic_restore(node: &str, bridge: &str) -> Result<(), String>
     ] {
         require_contains(node_restore, needle, message)?;
     }
+    require_contains(
+        node_owner,
+        "let write_result = r51_write_settings(net, &defaults);",
+        "Rust/WASM Node Restore Defaults owner must apply restored settings",
+    )?;
 
     if !regex_is_match(
         bridge,
@@ -859,22 +868,27 @@ mod tests {
     }
 
     #[test]
-    fn programmatic_restore_missing_node_write_fails_closed() {
+    fn programmatic_restore_missing_node_rust_write_fails_closed() {
         let root = root();
         let node = read(
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js",
         )
-        .unwrap()
-        .replace(
-            "kgwNodeR51WriteSettings(net, defaults)",
-            "kgwNodeR51WriteSettingsRemoved(net, defaults)",
-        );
+        .unwrap();
         let bridge = read(
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
         )
         .unwrap();
-        assert!(validate_programmatic_restore(&node, &bridge).is_err());
+        let node_owner = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/node_frontend_helpers.rs",
+        )
+        .unwrap()
+        .replace(
+            "let write_result = r51_write_settings(net, &defaults);",
+            "let write_result = r51_write_settings_removed(net, &defaults);",
+        );
+        assert!(validate_programmatic_restore(&node, &bridge, &node_owner).is_err());
     }
 }
