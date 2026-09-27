@@ -13,8 +13,11 @@ import initNodeRust, {
   nodeCommandOptionsKey as wasmNodeCommandOptionsKey,
   nodeRefreshInlineCommandToggles as wasmNodeRefreshInlineCommandToggles,
   nodeToggleCommandOption as wasmNodeToggleCommandOption,
+  nodeApplyRuntimeLogReport as wasmNodeApplyRuntimeLogReport,
+  nodeClearRawLogBuffer as wasmNodeClearRawLogBuffer,
   nodeCopyLogFailure as wasmNodeCopyLogFailure,
   nodeDispatchClipboardWrite as wasmNodeDispatchClipboardWrite,
+  nodeDispatchRuntimeLogClear as wasmNodeDispatchRuntimeLogClear,
   nodeEffectiveNodeSettings as wasmNodeEffectiveNodeSettings,
   nodeElementId as wasmNodeElementId,
   nodeEscapeHtml as wasmNodeEscapeHtml,
@@ -22,8 +25,12 @@ import initNodeRust, {
   nodeI18nText as wasmNodeI18nText,
   nodeInstallLogAutoScrollControls as wasmNodeInstallLogAutoScrollControls,
   nodeInstallStartTraceDocumentClickObserver as wasmNodeInstallStartTraceDocumentClickObserver,
+  nodeLegacyTransportReportText as wasmNodeLegacyTransportReportText,
   nodeLogAutoScrollEnabled as wasmNodeLogAutoScrollEnabled,
   nodeNetworkEnabled as wasmNodeNetworkEnabled,
+  nodeNormalizeRawLogEntry as wasmNodeNormalizeRawLogEntry,
+  nodeRawLogTextHasTransportWrapper as wasmNodeRawLogTextHasTransportWrapper,
+  nodeRenderRawLogBuffer as wasmNodeRenderRawLogBuffer,
   nodeNetworkPolicyMessage as wasmNodeNetworkPolicyMessage,
   nodeNetworkProfile as wasmNodeNetworkProfile,
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
@@ -59,6 +66,7 @@ import initNodeRust, {
   nodeTraceRenderedStartControls as wasmNodeTraceRenderedStartControls,
   nodeTraceStartButtonState as wasmNodeTraceStartButtonState,
   nodeValue as wasmNodeValue,
+  nodeVisibleRawLogText as wasmNodeVisibleRawLogText,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
 await initNodeRust();
@@ -698,10 +706,6 @@ function kgwResolvePublicTauriInvokeR1() {
 function kgwStartTraceFrontendR1(stage, options = {}) {
   return wasmNodeStartTraceFrontend(stage, options || {});
 }
-function kgwNodeLogEmptyStateV1(net) {
-  return document.getElementById("node-" + net + "-logEmpty");
-}
-
 async function kgwNodeDispatchClipboardWriteV1(net, text, metadata = {}) {
   return await wasmNodeDispatchClipboardWrite(String(net || ""), String(text ?? ""), metadata || {});
 }
@@ -885,127 +889,37 @@ function kgwInstallNodeLogAutoScrollControlsR27() {
   wasmNodeInstallLogAutoScrollControls();
 }
 
-const KGW_NODE_RAW_LOG_BUFFER_LIMIT_V1 = 4096;
-const KGW_NODE_RAW_LOG_BUFFERS_V1 = new Map();
-
-function kgwNodeRawLogBufferKeyV1(net, role = "node") {
-  return String(net || "").trim().toLowerCase() + ":" + String(role || "node").trim().toLowerCase();
-}
-
-function kgwNodeRawLogBufferV1(net, role = "node") {
-  const key = kgwNodeRawLogBufferKeyV1(net, role);
-  if (!KGW_NODE_RAW_LOG_BUFFERS_V1.has(key)) {
-    KGW_NODE_RAW_LOG_BUFFERS_V1.set(key, { records: new Map() });
-  }
-  return KGW_NODE_RAW_LOG_BUFFERS_V1.get(key);
-}
-
+/* KGW_NODE_RAW_LOG_OWNER_V2 is Rust-owned in node_start_trace.rs. */
 function kgwNodeRawLogTextHasTransportWrapperV1(value) {
-  const text = typeof value === "string" ? value.trim() : "";
-  if (!text) return false;
-  if (/^kgw_raw_process_log_v1(?:;|$)/i.test(text)) return true;
-  return /^(?:\[KGW_CHILD_STD(?:OUT|ERR)\]\s*)?\{[\s\S]*["']eventKind["']\s*:\s*["']diagnostic_transport_record["']/i.test(text);
+  return wasmNodeRawLogTextHasTransportWrapper(value);
 }
 
 function kgwNodeLegacyTransportReportTextV1(report) {
-  if (typeof report === "string") return report;
-  if (!report || typeof report !== "object" || Array.isArray(report) || Array.isArray(report.entries)) return "";
-  return String(report.rawText ?? report.raw_text ?? report.line ?? "");
+  return wasmNodeLegacyTransportReportText(report);
 }
 
 function kgwNodeNormalizeRawLogEntryV1(entry, expectedNet, expectedRole = "node") {
-  if (!entry || typeof entry !== "object") return null;
-
-  const rawTextValue = entry.rawText ?? entry.raw_text ?? entry.line;
-  if (rawTextValue === undefined || rawTextValue === null) return null;
-  const sequence = Number(entry.sequence);
-  if (!Number.isSafeInteger(sequence) || sequence < 0) return null;
-
-  const network = String(entry.network || expectedNet || "").trim().toLowerCase();
-  const runtimeRole = String(entry.runtimeRole || entry.runtime_role || expectedRole || "node").trim().toLowerCase();
-  const stream = String(entry.stream || "").trim().toLowerCase();
-
-  if (network !== String(expectedNet || "").trim().toLowerCase()) return null;
-  if (runtimeRole !== String(expectedRole || "node").trim().toLowerCase()) return null;
-  if (stream !== "stdout" && stream !== "stderr") return null;
-
-  return Object.freeze({
-    sequence,
-    network,
-    runtimeRole,
-    stream,
-    receivedMs: Number(entry.receivedMs ?? entry.received_ms ?? 0) || 0,
-    rawText: String(rawTextValue)
-  });
-}
-
-function kgwNodeTrimRawLogBufferV1(buffer) {
-  const ordered = Array.from(buffer.records.keys()).sort((a, b) => a - b);
-  while (ordered.length > KGW_NODE_RAW_LOG_BUFFER_LIMIT_V1) {
-    const sequence = ordered.shift();
-    buffer.records.delete(sequence);
-  }
+  return wasmNodeNormalizeRawLogEntry(entry, String(expectedNet || ""), String(expectedRole || "node"));
 }
 
 function kgwNodeVisibleRawLogTextV1(net, role = "node") {
-  const buffer = kgwNodeRawLogBufferV1(net, role);
-  return Array.from(buffer.records.values())
-    .sort((a, b) => a.sequence - b.sequence)
-    .map((entry) => entry.rawText)
-    .join("\n");
+  return wasmNodeVisibleRawLogText(String(net || ""), String(role || "node"));
 }
 
 function kgwNodeRenderRawLogBufferV1(net, role = "node") {
-  const out = byId(id(net, "logOutput"));
-  if (!out) return false;
-
-  const text = kgwNodeVisibleRawLogTextV1(net, role);
-  out.textContent = text;
-
-  const empty = kgwNodeLogEmptyStateV1(net);
-  if (empty) empty.hidden = text.length > 0;
-
-  if (kgwNodeLogAutoScrollEnabledR27(net)) out.scrollTop = out.scrollHeight;
-  return true;
+  return wasmNodeRenderRawLogBuffer(String(net || ""), String(role || "node"));
 }
 
 function kgwNodeApplyRuntimeLogReportV1(net, role, report) {
-  const legacyTransportText = kgwNodeLegacyTransportReportTextV1(report);
-  if (kgwNodeRawLogTextHasTransportWrapperV1(legacyTransportText)) return 0;
-  const entries = Array.isArray(report?.entries) ? report.entries : [];
-  const buffer = kgwNodeRawLogBufferV1(net, role);
-  let accepted = 0;
-
-  for (const entry of entries) {
-    const normalized = kgwNodeNormalizeRawLogEntryV1(entry, net, role);
-    if (!normalized || buffer.records.has(normalized.sequence)) continue;
-    buffer.records.set(normalized.sequence, normalized);
-    accepted += 1;
-  }
-
-  if (accepted > 0) {
-    kgwNodeTrimRawLogBufferV1(buffer);
-  }
-
-  kgwNodeRenderRawLogBufferV1(net, role);
-  return accepted;
+  return wasmNodeApplyRuntimeLogReport(String(net || ""), String(role || "node"), report);
 }
 
 function kgwNodeClearRawLogBufferV1(net, role = "node") {
-  kgwNodeRawLogBufferV1(net, role).records.clear();
-  kgwNodeRenderRawLogBufferV1(net, role);
+  return wasmNodeClearRawLogBuffer(String(net || ""), String(role || "node"));
 }
 
 async function kgwNodeDispatchRuntimeLogClearV1(net, role = "node") {
-  const resolved = kgwResolvePublicTauriInvokeR1();
-  if (typeof resolved.invoke !== "function") return null;
-
-  return await invokeWithTimeout(
-    resolved.invoke,
-    "kgw_kgw_runtime_clear_logs_v1",
-    { network: net, runtimeRole: role },
-    KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS
-  );
+  return await wasmNodeDispatchRuntimeLogClear(String(net || ""), String(role || "node"));
 }
 
 function appendLog(net, message) {

@@ -9,8 +9,11 @@ const BRIDGE_SOURCE: &str =
 
 const NODE_BRIDGE: &str = r##"
 const fs = require("node:fs");
+const path = require("node:path");
 const vm = require("node:vm");
+const { pathToFileURL } = require("node:url");
 const { webcrypto } = require("node:crypto");
+let frontendWasm = null;
 const [nodePath, bridgePath, requestPath, resultPath] = process.argv.slice(2);
 const request = JSON.parse(fs.readFileSync(requestPath, "utf8"));
 
@@ -205,7 +208,9 @@ function createWindow(calls) {
   return window;
 }
 function stripModuleSyntax(source) {
-  source = source.replace(/^import\s+.*?;\s*$/gm, "");
+  source = source.replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "");
+  source = source.replace(/^import\s+["'][^"']+["'];\s*/gm, "");
+  source = source.replace(/^await\s+initNodeRust\(\);\s*/gm, "");
   source = source.replace(/export\s+async\s+function\s+initKaspaNodeTab/, "async function initKaspaNodeTab");
   source = source.replace(/export\s+async\s+function\s+initKaspaBridgeTab/, "async function initKaspaBridgeTab");
   source = source.replace(/export\s+default\s+initKaspaNodeTab\s*;/, "");
@@ -214,7 +219,8 @@ function stripModuleSyntax(source) {
   return source;
 }
 function evalFrontend(sourcePath, window, exposeSource) {
-  const source = stripModuleSyntax(fs.readFileSync(sourcePath, "utf8"));
+  const originalSource = fs.readFileSync(sourcePath, "utf8");
+  const source = stripModuleSyntax(originalSource);
   const noop = () => {};
   const sandbox = {
     window,
@@ -270,6 +276,12 @@ function evalFrontend(sourcePath, window, exposeSource) {
     revealSettingsField: noop,
     setSettingFieldState: noop,
   };
+  if (frontendWasm) {
+    for (const match of originalSource.matchAll(/\b([A-Za-z_$][\w$]*)\s+as\s+([A-Za-z_$][\w$]*)/g)) {
+      const exported = frontendWasm[match[1]];
+      if (typeof exported === "function") sandbox[match[2]] = exported;
+    }
+  }
   sandbox.globalThis = sandbox;
   vm.runInNewContext(source + "\n" + exposeSource, sandbox, { filename: sourcePath });
 }
@@ -306,11 +318,29 @@ function callCount(calls, command, stage = "") {
 function copyPayload(calls) {
   return calls.find((call) => call.command === "kgw_copy_text_to_clipboard_v1")?.payload || null;
 }
+async function waitForCondition(predicate, label, attempts = 80) {
+  for (let index = 0; index < attempts; index += 1) {
+    if (predicate()) return;
+    await new Promise(setImmediate);
+  }
+  throw new Error("timed out waiting for " + label);
+}
 function prepare(kind) {
   const calls = [];
   const window = createWindow(calls);
+  globalThis.__TAURI__ = window.__TAURI__;
+  globalThis.document = window.document;
+  globalThis.localStorage = window.localStorage;
+  globalThis.CustomEvent = window.CustomEvent;
+  globalThis.Event = window.Event;
+  globalThis.window = globalThis;
+  globalThis.self = globalThis;
   installRawLogDom(window, kind, "mainnet");
   installRawLogDom(window, kind, "testnet10");
+  if (kind === "node" && frontendWasm) {
+    frontendWasm.nodeClearRawLogBuffer("mainnet", "node");
+    frontendWasm.nodeClearRawLogBuffer("testnet10", "node");
+  }
   if (kind === "node") {
     evalFrontend(nodePath, window,
       "window.__kgwRaw = { apply: kgwNodeApplyRuntimeLogReportV1, action: kgwNodeHandleLogActionV29, refresh: kgwNodeR51RefreshOne, setButtons: kgwNodeR51SetRuntimeButtons, appendLog };");
@@ -392,15 +422,18 @@ async function lifecycleScenario(kind) {
   };
   const first = api.refresh("mainnet", "rust-regression-blocked-status");
   const second = api.refresh("mainnet", "rust-regression-overlap");
-  await Promise.resolve();
-  await Promise.resolve();
-  await new Promise(setImmediate);
+  await waitForCondition(
+    () => callCount(calls, "kgw_kgw_runtime_logs_v1") >= 1 && output.textContent.length > 0,
+    kind + " first raw log before blocked status"
+  );
   const firstRaw = output.textContent;
   const statusCalls1 = callCount(calls, "kgw_runtime_owner_status_v1");
   const logCalls1 = callCount(calls, "kgw_kgw_runtime_logs_v1");
-  await new Promise(setImmediate);
   const third = api.refresh("mainnet", "rust-regression-status-still-blocked");
-  await new Promise(setImmediate);
+  await waitForCondition(
+    () => callCount(calls, "kgw_kgw_runtime_logs_v1") >= 2,
+    kind + " second log poll while status remains blocked"
+  );
   const statusCalls2 = callCount(calls, "kgw_runtime_owner_status_v1");
   const logCalls2 = callCount(calls, "kgw_kgw_runtime_logs_v1");
   releaseStatus("parallel-owned-self-worker status;role=" + kind + ";network=mainnet;pid=123;running=true;readiness=READY;runtime_error=none");
@@ -422,6 +455,13 @@ async function lifecycleScenario(kind) {
   };
 }
 (async () => {
+  const frontendRoot = path.resolve(path.dirname(nodePath), "..", "..", "..");
+  const generatedDir = path.join(frontendRoot, "generated", "kgw_frontend_wasm");
+  const generatedJs = path.join(generatedDir, "kgw_frontend_wasm.js");
+  const generatedWasm = path.join(generatedDir, "kgw_frontend_wasm_bg.wasm");
+  frontendWasm = await import(pathToFileURL(generatedJs).href);
+  frontendWasm.initSync({ module: fs.readFileSync(generatedWasm) });
+
   const result = {
     node: await rawScenario("node"),
     bridge: await rawScenario("bridge"),

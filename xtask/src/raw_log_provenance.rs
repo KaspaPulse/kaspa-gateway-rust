@@ -8,6 +8,7 @@ const NODE_OWNER: &str = "crates/kaspa-gateway-rk-node/src/kgw_real_owner_runtim
 const BRIDGE_OWNER: &str = "crates/kaspa-gateway-rk-bridge/src/lib.rs";
 const SMOKE: &str = "apps/kaspa-gateway-desktop/src-tauri/src/bin/kgw-provenance-smoke.rs";
 const NODE_FRONTEND: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
+const NODE_FRONTEND_RUST: &str = "crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs";
 const BRIDGE_FRONTEND: &str =
     "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
 
@@ -24,6 +25,7 @@ struct Sources {
     bridge_owner: String,
     smoke: String,
     node_frontend: String,
+    node_frontend_rust: String,
     bridge_frontend: String,
     true_raw_gate_rust: String,
     full_local_gate: String,
@@ -58,6 +60,7 @@ fn load_sources(root: &Path) -> Result<Sources, String> {
         bridge_owner: read(root, BRIDGE_OWNER)?,
         smoke: read(root, SMOKE)?,
         node_frontend: read(root, NODE_FRONTEND)?,
+        node_frontend_rust: read(root, NODE_FRONTEND_RUST)?,
         bridge_frontend: read(root, BRIDGE_FRONTEND)?,
         true_raw_gate_rust: read(root, "xtask/src/true_raw_log.rs")?,
         full_local_gate: read(root, "xtask/src/full_local_gate.rs")?,
@@ -294,12 +297,20 @@ fn evaluate(s: &Sources) -> Result<Vec<Check>, String> {
             .iter()
             .all(|marker| s.integrated.contains(marker)),
     );
-    let node_normalizer = function_body(&s.node_frontend, "kgwNodeNormalizeRawLogEntryV1")?;
+    let node_normalizer = function_body(&s.node_frontend_rust, "raw_log_normalize_entry")?;
+    let node_wrapper = function_body(&s.node_frontend, "kgwNodeNormalizeRawLogEntryV1")?;
     check(
         &mut checks,
-        "Node frontend has no raw content blacklist",
-        !s.node_frontend.contains("RawLogTextHasTransportWrapper")
-            && !node_normalizer.contains("rawTextValue).includes"),
+        "Node Rust raw normalizer has no raw content blacklist",
+        !node_normalizer.contains("raw_log_transport_wrapper_text")
+            && !node_normalizer.contains("raw_text.contains"),
+    );
+    check(
+        &mut checks,
+        "Node frontend raw normalizer is thin Rust/WASM glue",
+        node_wrapper.contains("wasmNodeNormalizeRawLogEntry")
+            && !node_wrapper.contains("rawTextValue")
+            && !node_wrapper.contains("Number.isSafeInteger"),
     );
 
     let bridge_normalizer = function_body(&s.bridge_frontend, "kgwBridgeNormalizeRawLogEntryV1")?;
@@ -413,13 +424,7 @@ function after() { return 1; }
             .filter(|check| !check.ok)
             .map(|check| check.name.as_str())
             .collect();
-        assert_eq!(
-            failed,
-            vec![
-                "Node frontend has no raw content blacklist",
-                "Bridge frontend has no raw content blacklist",
-            ]
-        );
-        assert_eq!(checks.len(), 26);
+        assert_eq!(failed, vec!["Bridge frontend has no raw content blacklist"]);
+        assert_eq!(checks.len(), 27);
     }
 }

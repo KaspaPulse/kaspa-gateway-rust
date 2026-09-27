@@ -7,6 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const CLIPBOARD_CAPTURE: &str = "xtask/src/raw_log_clipboard_capture.rs";
 const LIVE_MATRIX: &str = "xtask/src/live_raw_log_matrix.rs";
 const NODE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
+const NODE_RAW_LOG_RS: &str = "crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs";
 const BRIDGE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
 const RUNTIME_RS: &str = "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs";
 const ZERO_TOUCH_E2E: &str = "xtask/src/zero_touch_e2e.rs";
@@ -17,6 +18,7 @@ const E2E_WINDOWS_HELPER: &str = "e2e/helpers/windows.mjs";
 #[derive(Debug)]
 struct Sources {
     node: String,
+    node_raw_log: String,
     bridge: String,
     runtime: String,
     clipboard_capture: String,
@@ -154,6 +156,7 @@ pub fn run(root: &Path) -> Result<String, String> {
 fn load_sources(root: &Path) -> Result<Sources, String> {
     Ok(Sources {
         node: read(root, NODE_JS)?,
+        node_raw_log: read(root, NODE_RAW_LOG_RS)?,
         bridge: read(root, BRIDGE_JS)?,
         runtime: read(root, RUNTIME_RS)?,
         clipboard_capture: read(root, CLIPBOARD_CAPTURE)?,
@@ -236,9 +239,9 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
             "Bridge UI must reject transport wrapper text before display or copy.",
         ),
         (
-            &s.node,
-            "kgwNodeRawLogTextHasTransportWrapperV1(legacyTransportText)",
-            "Node UI must apply transport rejection only at the untyped report boundary.",
+            &s.node_raw_log,
+            "if raw_log_transport_wrapper_text(&legacy)",
+            "Node Rust owner must apply transport rejection only at the untyped report boundary.",
         ),
         (
             &s.bridge,
@@ -246,9 +249,9 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
             "Bridge UI must apply transport rejection only at the untyped report boundary.",
         ),
         (
-            &s.node,
-            r#"runtimeRole: metadata.runtimeRole || "node""#,
-            "Node Copy Log must carry runtime role metadata to native clipboard traces.",
+            &s.node_raw_log,
+            r#"metadata_text(metadata, "runtimeRole", "node")"#,
+            "Node Rust Copy Log owner must carry runtime role metadata to native clipboard traces.",
         ),
         (
             &s.bridge,
@@ -556,8 +559,11 @@ mod tests {
             node: [
                 "kgwNodeApplyRuntimeLogReportV1",
                 "kgwNodeRawLogTextHasTransportWrapperV1",
-                "kgwNodeRawLogTextHasTransportWrapperV1(legacyTransportText)",
-                r#"runtimeRole: metadata.runtimeRole || "node""#,
+            ]
+            .join("\n"),
+            node_raw_log: [
+                "if raw_log_transport_wrapper_text(&legacy)",
+                r#"metadata_text(metadata, "runtimeRole", "node")"#,
             ]
             .join("\n"),
             bridge: [

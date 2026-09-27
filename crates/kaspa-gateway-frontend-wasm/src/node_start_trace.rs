@@ -1,4 +1,6 @@
 use js_sys::{Array, Function, JSON, Object, Promise, Reflect, Uint8Array};
+use std::cell::RefCell;
+use std::collections::{BTreeMap, HashMap};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 use wasm_bindgen_futures::JsFuture;
 
@@ -711,6 +713,202 @@ fn resolved_invoke() -> JsValue {
     output.into()
 }
 
+const NODE_RAW_LOG_BUFFER_LIMIT: usize = 4096;
+const NODE_RUNTIME_INVOKE_TIMEOUT_MS: u32 = 110_000;
+
+#[derive(Clone)]
+struct NodeRawLogEntry {
+    sequence: u64,
+    network: String,
+    runtime_role: String,
+    stream: String,
+    received_ms: f64,
+    raw_text: String,
+}
+
+thread_local! {
+    static NODE_RAW_LOG_BUFFERS: RefCell<HashMap<String, BTreeMap<u64, NodeRawLogEntry>>> =
+        RefCell::new(HashMap::new());
+}
+
+fn normalized_lower(value: &str, fallback: &str) -> String {
+    let value = value.trim().to_lowercase();
+    if value.is_empty() {
+        fallback.to_owned()
+    } else {
+        value
+    }
+}
+
+fn raw_log_buffer_key_text(net: &str, role: &str) -> String {
+    format!(
+        "{}:{}",
+        normalized_lower(net, ""),
+        normalized_lower(role, "node")
+    )
+}
+
+fn raw_log_transport_wrapper_text(value: &str) -> bool {
+    let text = value.trim();
+    if text.is_empty() {
+        return false;
+    }
+    let lower = text.to_ascii_lowercase();
+    if let Some(rest) = lower.strip_prefix("kgw_raw_process_log_v1")
+        && (rest.is_empty() || rest.starts_with(';'))
+    {
+        return true;
+    }
+
+    let body = if lower.starts_with("[kgw_child_stdout]") {
+        text["[KGW_CHILD_STDOUT]".len()..].trim_start()
+    } else if lower.starts_with("[kgw_child_stderr]") {
+        text["[KGW_CHILD_STDERR]".len()..].trim_start()
+    } else {
+        text
+    };
+    let compact = body
+        .chars()
+        .filter(|ch| !ch.is_whitespace())
+        .collect::<String>()
+        .to_ascii_lowercase();
+    compact.starts_with('{')
+        && [
+            "\"eventkind\":\"diagnostic_transport_record\"",
+            "'eventkind':'diagnostic_transport_record'",
+            "\"eventkind\":'diagnostic_transport_record'",
+            "'eventkind':\"diagnostic_transport_record\"",
+        ]
+        .iter()
+        .any(|needle| compact.contains(needle))
+}
+
+fn raw_log_legacy_transport_text(report: &JsValue) -> String {
+    if let Some(text) = report.as_string() {
+        return text;
+    }
+    if !report.is_object() || report.is_null() || Array::is_array(report) {
+        return String::new();
+    }
+    if Array::is_array(&property(report, "entries")) {
+        return String::new();
+    }
+    for name in ["rawText", "raw_text", "line"] {
+        let value = property(report, name);
+        if present(&value) {
+            return crate::js_string_owned(&value);
+        }
+    }
+    String::new()
+}
+
+fn first_present(target: &JsValue, names: &[&str]) -> JsValue {
+    for name in names {
+        let value = property(target, name);
+        if present(&value) {
+            return value;
+        }
+    }
+    JsValue::UNDEFINED
+}
+
+fn raw_log_sequence_is_valid(sequence: f64) -> bool {
+    sequence.is_finite()
+        && sequence >= 0.0
+        && sequence.fract() == 0.0
+        && sequence <= 9_007_199_254_740_991.0
+}
+
+fn raw_log_normalize_entry(
+    entry: &JsValue,
+    expected_net: &str,
+    expected_role: &str,
+) -> Option<NodeRawLogEntry> {
+    if !entry.is_object() || entry.is_null() {
+        return None;
+    }
+
+    let raw_text = first_present(entry, &["rawText", "raw_text", "line"]);
+    if !present(&raw_text) {
+        return None;
+    }
+
+    let sequence = crate::js_number(&property(entry, "sequence"));
+    if !raw_log_sequence_is_valid(sequence) {
+        return None;
+    }
+
+    let network_value = property(entry, "network");
+    let network = if crate::js_boolean(&network_value) {
+        normalized_lower(&crate::js_string_owned(&network_value), "")
+    } else {
+        normalized_lower(expected_net, "")
+    };
+
+    let runtime_role_value = first_present(entry, &["runtimeRole", "runtime_role"]);
+    let runtime_role = if crate::js_boolean(&runtime_role_value) {
+        normalized_lower(&crate::js_string_owned(&runtime_role_value), "node")
+    } else {
+        normalized_lower(expected_role, "node")
+    };
+
+    let stream = normalized_lower(&crate::js_string_owned(&property(entry, "stream")), "");
+    if network != normalized_lower(expected_net, "")
+        || runtime_role != normalized_lower(expected_role, "node")
+        || (stream != "stdout" && stream != "stderr")
+    {
+        return None;
+    }
+
+    let received_value = first_present(entry, &["receivedMs", "received_ms"]);
+    let received_number = crate::js_number(&received_value);
+    let received_ms = if received_number.is_nan() || received_number == 0.0 {
+        0.0
+    } else {
+        received_number
+    };
+
+    Some(NodeRawLogEntry {
+        sequence: sequence as u64,
+        network,
+        runtime_role,
+        stream,
+        received_ms,
+        raw_text: crate::js_string_owned(&raw_text),
+    })
+}
+
+fn raw_log_entry_js(entry: &NodeRawLogEntry) -> JsValue {
+    let output = Object::new();
+    set(
+        output.as_ref(),
+        "sequence",
+        &JsValue::from_f64(entry.sequence as f64),
+    );
+    set(
+        output.as_ref(),
+        "network",
+        &JsValue::from_str(&entry.network),
+    );
+    set(
+        output.as_ref(),
+        "runtimeRole",
+        &JsValue::from_str(&entry.runtime_role),
+    );
+    set(output.as_ref(), "stream", &JsValue::from_str(&entry.stream));
+    set(
+        output.as_ref(),
+        "receivedMs",
+        &JsValue::from_f64(entry.received_ms),
+    );
+    set(
+        output.as_ref(),
+        "rawText",
+        &JsValue::from_str(&entry.raw_text),
+    );
+    Object::freeze(&output).into()
+}
+
 #[derive(Clone)]
 struct NodeClipboardBuffer {
     out: JsValue,
@@ -823,6 +1021,113 @@ fn read_copy_log_buffer(net: &str) -> NodeClipboardBuffer {
         line_count: clipboard_line_count_text(&normalized_text) as u32,
         normalized_text,
     }
+}
+
+fn raw_log_visible_text(net: &str, role: &str) -> String {
+    let key = raw_log_buffer_key_text(net, role);
+    NODE_RAW_LOG_BUFFERS.with(|buffers| {
+        buffers
+            .borrow()
+            .get(&key)
+            .map(|records| {
+                records
+                    .values()
+                    .map(|entry| entry.raw_text.as_str())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            })
+            .unwrap_or_default()
+    })
+}
+
+fn raw_log_render(net: &str, role: &str) -> bool {
+    let out = copy_log_output(net);
+    if !present(&out) {
+        return false;
+    }
+
+    let text = raw_log_visible_text(net, role);
+    set(&out, "textContent", &JsValue::from_str(&text));
+
+    let empty = call1(
+        &document(),
+        "getElementById",
+        &JsValue::from_str(&format!("node-{net}-logEmpty")),
+    )
+    .unwrap_or(JsValue::UNDEFINED);
+    if present(&empty) {
+        set(&empty, "hidden", &JsValue::from_bool(!text.is_empty()));
+    }
+
+    if crate::node_frontend_helpers::node_log_auto_scroll_enabled(net.to_owned()) {
+        set(&out, "scrollTop", &property(&out, "scrollHeight"));
+    }
+    true
+}
+
+fn raw_log_apply_report(net: &str, role: &str, report: &JsValue) -> u32 {
+    let legacy = raw_log_legacy_transport_text(report);
+    if raw_log_transport_wrapper_text(&legacy) {
+        return 0;
+    }
+
+    let entries_value = property(report, "entries");
+    let entries = if Array::is_array(&entries_value) {
+        Array::from(&entries_value)
+    } else {
+        Array::new()
+    };
+    let key = raw_log_buffer_key_text(net, role);
+    let mut accepted = 0_u32;
+
+    NODE_RAW_LOG_BUFFERS.with(|buffers| {
+        let mut buffers = buffers.borrow_mut();
+        let records = buffers.entry(key).or_insert_with(BTreeMap::new);
+        for entry in entries.iter() {
+            let Some(normalized) = raw_log_normalize_entry(&entry, net, role) else {
+                continue;
+            };
+            if records.contains_key(&normalized.sequence) {
+                continue;
+            }
+            records.insert(normalized.sequence, normalized);
+            accepted += 1;
+        }
+        while records.len() > NODE_RAW_LOG_BUFFER_LIMIT {
+            let Some(first) = records.keys().next().copied() else {
+                break;
+            };
+            records.remove(&first);
+        }
+    });
+
+    let _ = raw_log_render(net, role);
+    accepted
+}
+
+fn raw_log_clear(net: &str, role: &str) {
+    let key = raw_log_buffer_key_text(net, role);
+    NODE_RAW_LOG_BUFFERS.with(|buffers| {
+        buffers.borrow_mut().remove(&key);
+    });
+    let _ = raw_log_render(net, role);
+}
+
+async fn dispatch_runtime_log_clear_impl(net: &str, role: &str) -> Result<JsValue, JsValue> {
+    let resolved = resolved_invoke();
+    let Some(invoke) = property(&resolved, "invoke").dyn_into::<Function>().ok() else {
+        return Ok(JsValue::NULL);
+    };
+
+    let payload = Object::new();
+    set(payload.as_ref(), "network", &JsValue::from_str(net));
+    set(payload.as_ref(), "runtimeRole", &JsValue::from_str(role));
+    let value = invoke.call2(
+        &JsValue::UNDEFINED,
+        &JsValue::from_str("kgw_kgw_runtime_clear_logs_v1"),
+        payload.as_ref(),
+    )?;
+    await_with_timeout(value, NODE_RUNTIME_INVOKE_TIMEOUT_MS).await
 }
 
 fn translate_copy_log_text(key: &str, fallback: &str) -> String {
@@ -1361,6 +1666,55 @@ async fn handle_copy_log_impl(net: &str, button: &JsValue) -> bool {
     outcome.is_ok()
 }
 
+#[wasm_bindgen(js_name = nodeRawLogTextHasTransportWrapper)]
+pub fn node_raw_log_text_has_transport_wrapper(value: JsValue) -> bool {
+    raw_log_transport_wrapper_text(&crate::js_string_owned(&value))
+}
+
+#[wasm_bindgen(js_name = nodeLegacyTransportReportText)]
+pub fn node_legacy_transport_report_text(report: JsValue) -> String {
+    raw_log_legacy_transport_text(&report)
+}
+
+#[wasm_bindgen(js_name = nodeNormalizeRawLogEntry)]
+pub fn node_normalize_raw_log_entry(
+    entry: JsValue,
+    expected_net: String,
+    expected_role: String,
+) -> JsValue {
+    raw_log_normalize_entry(&entry, &expected_net, &expected_role)
+        .map(|entry| raw_log_entry_js(&entry))
+        .unwrap_or(JsValue::NULL)
+}
+
+#[wasm_bindgen(js_name = nodeVisibleRawLogText)]
+pub fn node_visible_raw_log_text(net: String, role: String) -> String {
+    raw_log_visible_text(&net, &role)
+}
+
+#[wasm_bindgen(js_name = nodeRenderRawLogBuffer)]
+pub fn node_render_raw_log_buffer(net: String, role: String) -> bool {
+    raw_log_render(&net, &role)
+}
+
+#[wasm_bindgen(js_name = nodeApplyRuntimeLogReport)]
+pub fn node_apply_runtime_log_report(net: String, role: String, report: JsValue) -> u32 {
+    raw_log_apply_report(&net, &role, &report)
+}
+
+#[wasm_bindgen(js_name = nodeClearRawLogBuffer)]
+pub fn node_clear_raw_log_buffer(net: String, role: String) {
+    raw_log_clear(&net, &role);
+}
+
+#[wasm_bindgen(js_name = nodeDispatchRuntimeLogClear)]
+pub async fn node_dispatch_runtime_log_clear(
+    net: String,
+    role: String,
+) -> Result<JsValue, JsValue> {
+    dispatch_runtime_log_clear_impl(&net, &role).await
+}
+
 #[wasm_bindgen(js_name = nodeDispatchClipboardWrite)]
 pub async fn node_dispatch_clipboard_write(
     net: String,
@@ -1645,5 +1999,42 @@ mod tests {
             "Testnet 13 log is empty."
         );
         assert_eq!(clipboard_placeholder_text("custom"), "custom log is empty.");
+    }
+
+    #[test]
+    fn raw_log_transport_wrapper_policy_matches_legacy_boundary() {
+        assert!(raw_log_transport_wrapper_text(
+            "kgw_raw_process_log_v1;payload"
+        ));
+        assert!(raw_log_transport_wrapper_text(
+            "[KGW_CHILD_STDOUT] {\"eventKind\":\"diagnostic_transport_record\"}"
+        ));
+        assert!(raw_log_transport_wrapper_text(
+            "{'eventKind':'diagnostic_transport_record'}"
+        ));
+        assert!(!raw_log_transport_wrapper_text("ordinary child stdout"));
+        assert!(!raw_log_transport_wrapper_text(
+            "{\"eventKind\":\"ordinary_record\"}"
+        ));
+    }
+
+    #[test]
+    fn raw_log_buffer_key_is_process_role_scoped() {
+        assert_eq!(
+            raw_log_buffer_key_text(" MainNet ", " NODE "),
+            "mainnet:node"
+        );
+        assert_eq!(raw_log_buffer_key_text("testnet10", ""), "testnet10:node");
+    }
+
+    #[test]
+    fn raw_log_sequence_requires_nonnegative_safe_integer() {
+        assert!(raw_log_sequence_is_valid(0.0));
+        assert!(raw_log_sequence_is_valid(42.0));
+        assert!(raw_log_sequence_is_valid(9_007_199_254_740_991.0));
+        assert!(!raw_log_sequence_is_valid(-1.0));
+        assert!(!raw_log_sequence_is_valid(1.5));
+        assert!(!raw_log_sequence_is_valid(f64::NAN));
+        assert!(!raw_log_sequence_is_valid(9_007_199_254_740_992.0));
     }
 }
