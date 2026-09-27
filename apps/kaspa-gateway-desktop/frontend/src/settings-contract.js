@@ -24,6 +24,7 @@ import init, {
   settingsDisplayPreferences as wasmDisplayPreferences,
   settingsDisplayStateMissingContract as wasmDisplayStateMissingContract,
   settingsDatabaseInstall as wasmDatabaseInstall,
+  settingsDatabaseInstallMaintenance as wasmDatabaseInstallMaintenance,
   settingsDatabaseRefresh as wasmDatabaseRefresh,
   settingsDatabaseRenderRows as wasmDatabaseRenderRows,
   settingsDbKindFromFileName as wasmDbKindFromFileName,
@@ -150,6 +151,10 @@ export async function settingsDatabaseRefresh() {
 
 export function settingsDatabaseInstall() {
   return wasmDatabaseInstall();
+}
+
+export function settingsDatabaseInstallMaintenance() {
+  return wasmDatabaseInstallMaintenance();
 }
 
 export function settingsExplorerAddress(value) {

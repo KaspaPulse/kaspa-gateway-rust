@@ -3,19 +3,15 @@ import {
   confirmUserAction,
   settingsDisplayChecksWithDefaults,
   settingsDisplayPreferences,
-  settingsAddressesClearFields,
-  settingsAddressesIncrementRestoreEpoch,
   settingsAddressesInstallAll,
-  settingsAddressesNow,
   settingsAddressesOpenExplorer,
   settingsAddressesRefresh,
   settingsAddressesRenderRows,
   settingsAddressesSetStatus,
   settingsDisplayStateMissingContract,
   settingsDatabaseInstall,
+  settingsDatabaseInstallMaintenance,
   settingsDatabaseRefresh,
-  settingsDatabaseRenderRows,
-  settingsDbKindFromFileName,
   settingsSelectedDisplayKeys,
   settingsToWesternDigits
 } from "../../settings-contract.js";
@@ -1474,14 +1470,6 @@ export async function initSettingsTab() {
 }
 
 /* KGW real database maintenance binding: DB status comes from Rust, not static HTML. */
-function kgwSettingsDbInvoke() {
-  return window.__TAURI__?.core?.invoke || window.__TAURI__?.tauri?.invoke || window.__TAURI_INVOKE__;
-}
-
-function kgwRenderSettingsDatabaseRows(rows) {
-  return settingsDatabaseRenderRows(rows);
-}
-
 async function kgwRefreshSettingsDatabaseStatus() {
   return await settingsDatabaseRefresh();
 }
@@ -1500,10 +1488,6 @@ function kgwSettingsAddressInvoke() {
   return window.__TAURI__?.core?.invoke || window.__TAURI__?.tauri?.invoke || window.__TAURI_INVOKE__;
 }
 
-function kgwSettingsAddressNow() {
-  return settingsAddressesNow();
-}
-
 function kgwSettingsAddressSetStatus(message, state = "info") {
   return settingsAddressesSetStatus(message, state);
 }
@@ -1514,10 +1498,6 @@ async function kgwRenderSettingsAddressRows(records, options = {}) {
 
 async function kgwRefreshSettingsAddresses() {
   return await settingsAddressesRefresh();
-}
-
-function kgwClearSettingsAddressFields() {
-  return settingsAddressesClearFields();
 }
 
 function kgwOpenKaspaAddressInBrowser(address) {
@@ -1538,210 +1518,13 @@ window.kgwInstallSettingsManageAddressesCleanLayout = kgwInstallSettingsManageAd
 kgwInstallSettingsManageAddressesCleanLayout();
 installSettingsI18nBindings();
 
-/* KGW_SETTINGS_DB_MAINTENANCE_ACTIONS_OWNER_V1 */
-const KGW_SETTINGS_DB_ACTION_STATE = {
-  selectedKind: "",
-  restoring: false
-};
-
-function kgwSettingsDbKindFromFileName(value) {
-  return settingsDbKindFromFileName(value);
-}
-
-function kgwSettingsDbStatus(message) {
-  const row = document.querySelector("#settingsDatabaseRows");
-  if (!row) return;
-  row.dataset.kgwLastStatus = String(message || "");
-  console.log("[KGW Settings DB]", message);
-}
-
-function kgwSettingsDbSelectedKind() {
-  if (KGW_SETTINGS_DB_ACTION_STATE.selectedKind) return KGW_SETTINGS_DB_ACTION_STATE.selectedKind;
-
-  const selected = document.querySelector("#settingsDatabaseRows tr.is-selected");
-  if (!selected) return "";
-
-  return selected.dataset.databaseKind || kgwSettingsDbKindFromFileName(selected.cells?.[0]?.textContent || "");
-}
-
-function kgwSettingsDbInstallRowSelection() {
-  if (window.__kgwSettingsDbRowSelectionInstalled) return;
-  window.__kgwSettingsDbRowSelectionInstalled = true;
-
-  document.addEventListener("click", (event) => {
-    const row = event.target.closest && event.target.closest("#settingsDatabaseRows tr");
-    if (!row) return;
-
-    const kind = kgwSettingsDbKindFromFileName(row.cells?.[0]?.textContent || "");
-    if (!kind) return;
-
-    Array.from(document.querySelectorAll("#settingsDatabaseRows tr")).forEach((node) => node.classList.remove("is-selected"));
-    row.classList.add("is-selected");
-    row.dataset.databaseKind = kind;
-    KGW_SETTINGS_DB_ACTION_STATE.selectedKind = kind;
-    kgwSettingsUiTraceR48B3("settings-database", "r48b3-database-row-select", {
-      trusted: Boolean(event && event.isTrusted),
-      database: String(kind || ""),
-      text: String(row.textContent || "").trim()
-    });
-    kgwSettingsDbStatus("Selected database: " + kind);
-  }, true);
-}
-
-async function kgwSettingsDbInvokeAction(command, args) {
-  const invoke = kgwSettingsDbInvoke();
-  if (!invoke) {
-    kgwSettingsDbStatus("Tauri invoke API is not available.");
-    return null;
-  }
-
-  const result = await invoke(command, args || {});
-
-  if (result && Array.isArray(result.rows)) {
-    kgwRenderSettingsDatabaseRows(result.rows);
-  } else if (typeof window.kgwRefreshSettingsDatabaseStatus === "function") {
-    await window.kgwRefreshSettingsDatabaseStatus();
-  }
-
-  if (result && result.message) {
-    kgwSettingsDbStatus(result.message);
-  }
-
-  return result;
-}
-
-// AUD-001: one restore flight owns its visible result and post-restore refresh.
-function kgwSettingsRestoreStatus(message, state) {
-  let node = document.getElementById("settingsRestoreStatus");
-  if (!node) {
-    node = document.createElement("p");
-    node.id = "settingsRestoreStatus";
-    node.setAttribute("aria-live", "polite");
-    document.querySelector("#settings [data-settings-panel='database-maintenance'] .database-panel")?.appendChild(node);
-  }
-  node.setAttribute("role", state === "error" ? "alert" : "status");
-  node.dataset.state = state;
-  node.textContent = String(message);
-  applyStatusTone(node, state);
-  kgwSettingsDbStatus(message);
-}
-async function kgwSettingsRestoreLatest() {
-  if (KGW_SETTINGS_DB_ACTION_STATE.restoring) return null;
-  KGW_SETTINGS_DB_ACTION_STATE.restoring = true;
-  const controls = Array.from(document.querySelectorAll("#settingsDbRefresh,#settingsDbCompact,#settingsDbClearCaches,#settingsDbBackup,#settingsDbRestore,#settingsDbDelete"));
-  const disabled = controls.map((node) => node.disabled);
-  controls.forEach((node) => { node.disabled = true; });
-  let restored = false;
-  try {
-    if (!confirm("Restore the latest database backup? The current data will be kept in a safety backup.")) {
-      kgwSettingsRestoreStatus("Restore cancelled. No data changed.", "cancelled");
-      return null;
-    }
-    const addressRestoreEpoch = settingsAddressesIncrementRestoreEpoch();
-    kgwSettingsRestoreStatus("Restoring the selected backup...", "running");
-    const invoke = kgwSettingsDbInvoke();
-    if (typeof invoke !== "function") throw new Error("Tauri invoke API is not available.");
-    const result = await invoke("kgw_settings_database_restore_latest", {});
-    if (result?.ok !== true || !result.backup_path || !Array.isArray(result.rows)) {
-      throw new Error(result?.message || "Restore did not return a verified result.");
-    }
-    restored = true;
-    const records = await invoke("get_all_addresses", {});
-    if (!Array.isArray(records)) throw new Error("Restored address state could not be read.");
-    kgwRenderSettingsDatabaseRows(result.rows);
-    const rendered = await kgwRenderSettingsAddressRows(records, { localOnly: true, restoreEpoch: addressRestoreEpoch });
-    if (!rendered) throw new Error("Restored address rows were not rendered.");
-    kgwClearSettingsAddressFields();
-    kgwSettingsAddressSetStatus(`Last Updated: ${kgwSettingsAddressNow()}`, "success");
-    kgwSettingsRestoreStatus(result.message, "success");
-    return result;
-  } catch (error) {
-    const prefix = restored ? "Restore data completed, but UI verification failed: " : "Restore failed: ";
-    kgwSettingsRestoreStatus(prefix + (error?.message || error), "error");
-    console.error("[KGW Settings DB] restore failed", error);
-    return null;
-  } finally {
-    controls.forEach((node, index) => { node.disabled = disabled[index]; });
-    KGW_SETTINGS_DB_ACTION_STATE.restoring = false;
-  }
-}
-
+/* KGW Settings database maintenance compatibility surface: implementation is Rust/WASM-owned. */
 function kgwInstallSettingsDbMaintenanceActions() {
-  if (window.__kgwSettingsDbMaintenanceActionsInstalled) return;
-  window.__kgwSettingsDbMaintenanceActionsInstalled = true;
-
-  kgwSettingsDbInstallRowSelection();
-
-  document.addEventListener("click", (event) => {
-    const button = event.target.closest && event.target.closest(
-      "#settingsDbRefresh,#settingsDbCompact,#settingsDbClearCaches,#settingsDbBackup,#settingsDbRestore,#settingsDbDelete"
-    );
-
-    if (!button) return;
-
-    event.preventDefault();
-    event.stopImmediatePropagation();
-
-    const id = button.id;
-    if (KGW_SETTINGS_DB_ACTION_STATE.restoring) return;
-
-    kgwSettingsUiTraceR48B3("settings-database", "r48b3-database-action-click", {
-      trusted: Boolean(event && event.isTrusted),
-      actionId: String(id || ""),
-      text: String(button.textContent || "").trim()
-    });
-
-    (async () => {
-      if (id === "settingsDbRefresh") {
-        if (typeof window.kgwRefreshSettingsDatabaseStatus === "function") {
-          await window.kgwRefreshSettingsDatabaseStatus();
-        }
-        return;
-      }
-
-      if (id === "settingsDbCompact") {
-        await kgwSettingsDbInvokeAction("kgw_settings_database_compact");
-        return;
-      }
-
-      if (id === "settingsDbClearCaches") {
-        if (!confirm("Clear application cache rows?")) return;
-        await kgwSettingsDbInvokeAction("kgw_settings_database_clear_caches");
-        return;
-      }
-
-      if (id === "settingsDbBackup") {
-        await kgwSettingsDbInvokeAction("kgw_settings_database_backup");
-        return;
-      }
-
-      if (id === "settingsDbRestore") {
-        await kgwSettingsRestoreLatest();
-        return;
-      }
-
-      if (id === "settingsDbDelete") {
-        const database = kgwSettingsDbSelectedKind();
-        if (!database) {
-          alert("Select a database row first.");
-          return;
-        }
-
-        const typed = prompt("Type DELETE to delete and reinitialize: " + database);
-        if (typed !== "DELETE") return;
-
-        await kgwSettingsDbInvokeAction("kgw_settings_database_delete", { database });
-      }
-    })().catch((error) => {
-      kgwSettingsDbStatus("Database action failed: " + (error?.message || error));
-      console.error("[KGW Settings DB] action failed", error);
-    });
-  }, true);
+  return settingsDatabaseInstallMaintenance();
 }
 
 window.kgwInstallSettingsDbMaintenanceActions = kgwInstallSettingsDbMaintenanceActions;
 kgwInstallSettingsDbMaintenanceActions();
-
 
 /* KGW_SETTING_FIELD_V2: presentation-only contextual help for Global Settings. */
 const kgwGlobalSettingsRootV2 = root();

@@ -246,6 +246,7 @@ import init, {
   settingsDisplayPreferences as wasmDisplayPreferences,
   settingsDisplayStateMissingContract as wasmDisplayStateMissingContract,
   settingsDatabaseInstall as wasmDatabaseInstall,
+  settingsDatabaseInstallMaintenance as wasmDatabaseInstallMaintenance,
   settingsDatabaseRefresh as wasmDatabaseRefresh,
   settingsDatabaseRenderRows as wasmDatabaseRenderRows,
   settingsDbKindFromFileName as wasmDbKindFromFileName,
@@ -372,6 +373,10 @@ export async function settingsDatabaseRefresh() {
 
 export function settingsDatabaseInstall() {
   return wasmDatabaseInstall();
+}
+
+export function settingsDatabaseInstallMaintenance() {
+  return wasmDatabaseInstallMaintenance();
 }
 
 export function settingsExplorerAddress(value) {
@@ -1028,6 +1033,7 @@ mod tests {
         assert!(settings.contains("wasmDatabaseRenderRows(rows)"));
         assert!(settings.contains("await wasmDatabaseRefresh()"));
         assert!(settings.contains("wasmDatabaseInstall()"));
+        assert!(settings.contains("wasmDatabaseInstallMaintenance()"));
         assert!(settings.contains("wasmExplorerAddress(value)"));
         assert!(settings.contains("wasmExplorerUrl(value)"));
         assert!(settings.contains("new Set(wasmNodeOptional())"));
