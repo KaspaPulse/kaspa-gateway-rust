@@ -1238,7 +1238,7 @@ const wasmNodeSmallOwnerTrace = (net, action, phase, details) => {
     .replace(/export\s+async\s+function\s+initKaspaNodeTab/, "async function initKaspaNodeTab")
     .replace(/export\s*\{[^}]+\}\s*;?/g, "")
     .replace(/export\s+default\s+initKaspaNodeTab\s*;/, "")
-    + "\nwindow.__kgwStartButtonTest = { initKaspaNodeTab, getTauriInvoke, kgwResolvePublicTauriInvokeR1, kgwStartTraceTauriShapeR1, kgwNodeR51SetRuntimeButtons, KGW_NODE_R51_TRANSITIONS };\n";
+    + "\nwindow.__kgwStartButtonTest = { initKaspaNodeTab, getTauriInvoke, kgwResolvePublicTauriInvokeR1, kgwNodeR51SetRuntimeButtons, KGW_NODE_R51_TRANSITIONS };\n";
   vm.runInNewContext(executable, sandbox, { filename: nodeJsPath });
 
   return { window, document, root };

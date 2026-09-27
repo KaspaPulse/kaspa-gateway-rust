@@ -52,7 +52,6 @@ import initNodeRust, {
   nodeStringifyRuntimeResult as wasmNodeStringifyRuntimeResult,
   nodeSmallOwnerTrace as wasmNodeSmallOwnerTrace,
   nodeStartTraceFrontend as wasmNodeStartTraceFrontend,
-  nodeStartTraceTauriShape as wasmNodeStartTraceTauriShape,
   nodeTraceActiveNetwork as wasmNodeTraceActiveNetwork,
   nodeTraceRenderedStartControls as wasmNodeTraceRenderedStartControls,
   nodeTraceStartButtonState as wasmNodeTraceStartButtonState,
@@ -689,10 +688,6 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
 // END_KGW_SETTINGS_OWNER_V19
 
 /* KGW_START_TRACE_R1 is Rust-owned in node_start_trace.rs. */
-function kgwStartTraceTauriShapeR1(adapterName = "") {
-  return wasmNodeStartTraceTauriShape(String(adapterName || ""));
-}
-
 function kgwResolvePublicTauriInvokeR1() {
   return wasmNodeResolvePublicTauriInvoke();
 }
