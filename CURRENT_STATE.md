@@ -4,9 +4,9 @@
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest committed local checkpoint is OP114 `97aea4fef21919874d4bfb2027388493eebd13c1`, tree `9cbb8824a78a77ffb380ba3d0f1db1434b97d491`. OP115 is a locally qualified dirty candidate pending checkpoint.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest committed local checkpoint is OP115 `d5be516cd7235d5a9f0837c0b2b0e98ce508dc43`, tree `7aab2f2a232d376247b7ba48667390921d124186`. OP116 is a locally qualified dirty candidate pending checkpoint.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **DIRTY / QUALIFIED OP115 CANDIDATE**. The diff converts `tauri-app.mjs` into deterministic Rust-generated WebDriver/Tauri external-integration glue with exact legacy body parity, plus codegen/policy/state updates.
+- Working tree: **DIRTY / QUALIFIED OP116 CANDIDATE**. The diff makes the WebDriverIO zero-touch matrix a deterministic Rust-generated test-harness artifact with exact frozen legacy body parity, plus codegen/policy/state updates.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -15,10 +15,10 @@
 - OP101 Header live metrics Rust/WASM ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `a1f71cb804b8155fb93d4892193a679eab59870c`.
 - OP102 Top Addresses Rust/WASM ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `dbdd0681cb57b017768d988175f7736d6481e571`.
 - OP103 Desktop diagnostic launcher Rust ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `ec23f1fc9b162724b2a90e648e917227d74dfbf0`.
-- Owned non-Rust programming source debt: 8.
+- Owned non-Rust programming source debt: 7.
 - Non-Rust execution-wiring debt: 8.
-- Technical exceptions: 34.
-- Rust source inventory: 177.
+- Technical exceptions: 35.
+- Rust source inventory: 178.
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
 
@@ -71,17 +71,17 @@
 
 - Full-local wrapper retirement is complete; the live zero-touch branch remains externally gated by a current integrity-valid artifact or a safe live E2E environment.
 - Rust clipboard caller adoption is complete and the legacy PowerShell clipboard helper is retired. Live text mutation remains blocked by the read-only Rust preflight while non-text/OLE clipboard formats are present; OP114 performed no clipboard write.
-- Zero-touch live matrix and its `tauri-app.mjs` / `windows.mjs` helpers remain coupled to real clipboard SHA evidence.
+- Zero-touch matrix, `tauri-app.mjs`, and `windows.mjs` are now deterministic Rust-generated external/tool adapters; executing the live zero-touch scenario remains coupled to real clipboard SHA/evidence predicates.
 - `tools/kgw_zero_touch_evidence.ps1` retains its recorded external file-use/access-denied blocker; do not force-delete or force-unlock it.
 - OP100 browser DOM headless dump is non-evidentiary; final frontend/native qualification remains required after migration.
 
 ## DO NOT REPEAT
 
-- Do not replay OP090-OP115 successful checks while their validity predicates remain unchanged.
+- Do not replay OP090-OP116 successful checks while their validity predicates remain unchanged.
 - Do not reset, clean, stash, discard, overwrite, or replace newer local work with remote state.
 - Do not force unsafe clipboard mutation, protected file unlocking, or broad requalification for reassurance.
 - Do not push merely to discover locally detectable failures.
 
 ## NEXT ACTION
 
-Persist the OP115 qualification receipt, create a coherent local checkpoint for the qualified candidate, verify exact commit/tree/status, then audit the remaining 8-source / 8-execution debt inventory and select the smallest independent unblocked next boundary. No push yet.
+Persist the OP116 qualification receipt, create a coherent local checkpoint for the qualified candidate, verify exact commit/tree/status, then audit the remaining 7-source / 8-execution debt inventory and select the smallest independent unblocked next boundary. No push yet.

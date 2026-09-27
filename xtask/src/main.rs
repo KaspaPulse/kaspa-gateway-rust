@@ -20,6 +20,7 @@ mod e2e_static_smokes;
 mod e2e_wasm_codegen;
 mod e2e_wasm_codegen_tauri_app;
 mod e2e_wasm_codegen_windows;
+mod e2e_wasm_codegen_zero_touch_matrix;
 mod e2e_windows_evidence;
 mod effective_bridge_settings_frontend;
 mod effective_node_settings;
