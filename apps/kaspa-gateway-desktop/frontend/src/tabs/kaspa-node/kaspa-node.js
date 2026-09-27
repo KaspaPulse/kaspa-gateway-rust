@@ -933,28 +933,11 @@ function c(net, name) {
   return Boolean(el && el.checked);
 }
 
-function addFlag(lines, net, name, flag) {
-  if (!kgwNodeCommandShouldIncludeR7(net, name)) return; // KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
 
-  if (c(net, name)) lines.push(flag);
-}
 
-function addValue(lines, net, name, flag) {
-  if (!kgwNodeCommandShouldIncludeR7(net, name)) return; // KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
 
-  const value = v(net, name);
-  if (value) lines.push(`${flag}=${value}`);
-}
 
-function addHostPort(lines, net, enabledName, flag, hostName, portName) {
-  if (!c(net, enabledName)) return;
 
-  const host = v(net, hostName);
-  const port = v(net, portName);
-
-  if (host && port) lines.push(`${flag}=${host}:${port}`);
-  else if (host) lines.push(`${flag}=${host}`);
-}
 
 
 // KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
@@ -1529,7 +1512,7 @@ function kgwNodeEffectiveNumber(net, name, fallback, integer = false) {
   return value;
 }
 
-function kgwNodeEffectiveEndpoint(net, enabledName, hostName, portName, fallback = null) {
+function kgwNodeEffectiveEndpoint(net, enabledName, hostName, portName, _fallback = null) {
   if (!c(net, enabledName)) return null;
   const host = v(net, hostName);
   const port = v(net, portName);
@@ -1610,21 +1593,7 @@ function kgwNodeEffectiveNodeSettings(net) {
 }
 
 
-function kgwExtractNodeOwnerFlags(result) {
-  const raw = stringifyRuntimeResult(result);
-  const fields = {};
 
-  for (const part of raw.split(";")) {
-    const index = part.indexOf("=");
-    if (index <= 0) continue;
-
-    const key = part.slice(0, index).trim();
-    const value = part.slice(index + 1).trim();
-    if (key) fields[key] = value;
-  }
-
-  return fields.flags || "";
-}
 
 
 
@@ -1847,7 +1816,7 @@ function installDelegatedTabs(root) {
 // 100 seconds. Keep the UI request strictly above both terminal-result boundaries.
 const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 110000;
 const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 0;
-const KGW_NODE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_node_runtime_flags_v1";
+
 
 function getTauriInvoke() {
   return kgwResolvePublicTauriInvokeR1().invoke;
@@ -2784,7 +2753,7 @@ async function kgwNodeR51BridgeInprocessLockedV7(net) {
 }
 
 
-async function kgwNodeR51RefreshOne(net, reason = "live") {
+async function kgwNodeR51RefreshOne(net, _reason = "live") {
   const transition = String(KGW_NODE_R51_TRANSITIONS[net] || "");
   const transitionActive = transition === "starting" || transition === "stopping";
 
@@ -2878,7 +2847,7 @@ function kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2(reason = "hydrate") {
   }
 }
 
-function kgwNodeInstallBridgeOwnedDisplayOnlyHydrationR65H2(root) {
+function kgwNodeInstallBridgeOwnedDisplayOnlyHydrationR65H2(_root) {
   if (window.__KGW_NODE_BRIDGE_OWNED_DISPLAY_ONLY_HYDRATION_R65H2_INSTALLED) return;
   window.__KGW_NODE_BRIDGE_OWNED_DISPLAY_ONLY_HYDRATION_R65H2_INSTALLED = true;
 
