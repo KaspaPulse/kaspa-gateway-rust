@@ -36,21 +36,21 @@ fn analysis_contract(root: &Path) -> Result<(), String> {
         root,
         "crates/kaspa-gateway-frontend-wasm/src/analysis_binding.rs",
     )?;
-    let settings = read(
+    let settings_owner = read(
         root,
-        "apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js",
+        "crates/kaspa-gateway-frontend-wasm/src/settings_addresses.rs",
     )?;
     let backend = read(
         root,
         "apps/kaspa-gateway-desktop/src-tauri/src/analysis_commands.rs",
     )?;
-    validate_analysis(&binding, &rust_owner, &settings, &backend)
+    validate_analysis(&binding, &rust_owner, &settings_owner, &backend)
 }
 
 fn validate_analysis(
     binding: &str,
     rust_owner: &str,
-    settings: &str,
+    settings_owner: &str,
     backend: &str,
 ) -> Result<(), String> {
     for needle in [
@@ -82,9 +82,11 @@ fn validate_analysis(
         return Err("Rust frontend range aliases missing".to_owned());
     }
     if !rust_owner.contains("kgw:saved-addresses-changed")
-        || !settings.contains("kgwNotifySavedAddressesChanged")
+        || !settings_owner.contains("fn notify_saved_addresses_changed()")
+        || !settings_owner.contains("kgw:saved-addresses-changed")
+        || !settings_owner.contains(r#"call1(&window(), "dispatchEvent", &event)"#)
     {
-        return Err("saved-address invalidation contract missing".to_owned());
+        return Err("saved-address invalidation Rust-owner contract missing".to_owned());
     }
     if !backend.contains("fn select_latest_records")
         || !backend.contains("select_latest_records(&mut records, request.limit)")
@@ -606,9 +608,9 @@ mod tests {
         )
         .unwrap()
         .replace(r#""30d" => "last_month""#, r#""30d" => "wrong""#);
-        let settings = read(
+        let settings_owner = read(
             &root,
-            "apps/kaspa-gateway-desktop/frontend/src/tabs/settings/settings.js",
+            "crates/kaspa-gateway-frontend-wasm/src/settings_addresses.rs",
         )
         .unwrap();
         let backend = read(
@@ -616,7 +618,34 @@ mod tests {
             "apps/kaspa-gateway-desktop/src-tauri/src/analysis_commands.rs",
         )
         .unwrap();
-        assert!(validate_analysis(&binding, &rust_owner, &settings, &backend).is_err());
+        assert!(validate_analysis(&binding, &rust_owner, &settings_owner, &backend).is_err());
+    }
+
+    #[test]
+    fn analysis_saved_address_owner_drift_fails_closed() {
+        let root = root();
+        let binding = read(
+            &root,
+            "apps/kaspa-gateway-desktop/frontend/src/tabs/analysis/analysis-rust-binding.js",
+        )
+        .unwrap();
+        let rust_owner = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/analysis_binding.rs",
+        )
+        .unwrap();
+        let settings_owner = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/settings_addresses.rs",
+        )
+        .unwrap()
+        .replace("kgw:saved-addresses-changed", "kgw:saved-addresses-removed");
+        let backend = read(
+            &root,
+            "apps/kaspa-gateway-desktop/src-tauri/src/analysis_commands.rs",
+        )
+        .unwrap();
+        assert!(validate_analysis(&binding, &rust_owner, &settings_owner, &backend).is_err());
     }
 
     #[test]
