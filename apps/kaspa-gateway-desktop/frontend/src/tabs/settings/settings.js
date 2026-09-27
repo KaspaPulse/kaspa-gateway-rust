@@ -1,4 +1,3 @@
-import { applyStatusTone } from "../../status.js";
 import {
   settingsDisplayChecksWithDefaults,
   settingsDisplayPreferences,
@@ -10,6 +9,7 @@ import {
   settingsDatabaseInstall,
   settingsDatabaseInstallMaintenance,
   settingsDatabaseRefresh,
+  settingsPathsBrowse,
   settingsPathsLoadDefaults,
   settingsPathsRepairBeforeSave,
   settingsProfilesInstall,
@@ -615,23 +615,6 @@ function kgwSettingsApplyShellDisplayFromState(state, reason = "settings") {
  * Rust owns environment-specific default paths.
  * settings.js may display and save path values, but path field defaults must not hard-code a Windows user path.
  */
-function kgwSettingsBackendInvokeR4(command, payload = {}) {
-  const invoke =
-    window.__TAURI__?.core?.invoke ||
-    window.__TAURI__?.tauri?.invoke ||
-    window.__TAURI_INVOKE__;
-
-  if (typeof invoke !== "function") {
-    return Promise.reject(new Error("Tauri invoke is not available"));
-  }
-
-  return invoke(command, payload);
-}
-
-function kgwSettingsDialogApi() {
-  return window.__TAURI__?.dialog || null;
-}
-
 function kgwInstallSettingsRealWorkflowActions() {
   settingsAddressesInstallIo();
   settingsProfilesInstall();
@@ -764,53 +747,6 @@ async function resetDefaults(options = {}) {
   await kgwSettingsLoadDynamicPathDefaultsR4("reset-defaults");
 }
 
-function kgwSettingsPathStatus(targetId, message, state = "info") {
-  const target = q(`#${CSS.escape(targetId)}`);
-  if (!target) return;
-  let status = target.parentElement?.querySelector(`[data-settings-path-status="${targetId}"]`);
-  if (!status) {
-    status = document.createElement("span");
-    status.dataset.settingsPathStatus = targetId;
-    status.setAttribute("role", state === "error" ? "alert" : "status");
-    status.setAttribute("aria-live", state === "error" ? "assertive" : "polite");
-    target.parentElement?.appendChild(status);
-  }
-  status.dataset.state = state;
-  status.textContent = String(message || "");
-  applyStatusTone(status, state);
-}
-
-async function kgwSettingsBrowsePath(targetId) {
-  const target = q(`#${CSS.escape(targetId)}`);
-  const dialog = kgwSettingsDialogApi();
-  if (!target || !dialog || typeof dialog.open !== "function") {
-    kgwSettingsPathStatus(targetId, "Native directory chooser is unavailable.", "error");
-    return false;
-  }
-  const before = String(target.value || "");
-  try {
-    const selected = await dialog.open({ title: "Choose directory", directory: true, multiple: false });
-    const path = Array.isArray(selected) ? selected[0] : selected;
-    if (!path) {
-      kgwSettingsPathStatus(targetId, "Browse cancelled; path unchanged.", "info");
-      return false;
-    }
-    const report = await kgwSettingsBackendInvokeR4("settings_validate_custom_path", {
-      key: targetId,
-      path: String(path),
-      createIfMissing: false
-    });
-    target.value = String(report?.path || path);
-    kgwSettingsPathStatus(targetId, "Directory selected.", "success");
-    markDirty();
-    return true;
-  } catch (error) {
-    target.value = before;
-    kgwSettingsPathStatus(targetId, `Browse failed: ${error?.message || error}`, "error");
-    return false;
-  }
-}
-
 function bindStaticActions() {
   qa("[data-settings-tab]").forEach((button) => {
     if (button.dataset.bound === "true") return;
@@ -918,7 +854,7 @@ function bindStaticActions() {
         target: String(button.dataset.browseFor || ""),
         text: String(button.textContent || "").trim()
       });
-      void kgwSettingsBrowsePath(String(button.dataset.browseFor || ""));
+      void settingsPathsBrowse(String(button.dataset.browseFor || ""));
     });
   });
 

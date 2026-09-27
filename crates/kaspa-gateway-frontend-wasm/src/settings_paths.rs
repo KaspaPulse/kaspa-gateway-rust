@@ -1,4 +1,4 @@
-use js_sys::{Function, Promise, Reflect};
+use js_sys::{Array, Function, Object, Promise, Reflect};
 use wasm_bindgen::{JsCast, prelude::*};
 use wasm_bindgen_futures::JsFuture;
 
@@ -121,6 +121,156 @@ fn console(method: &str, message: &str, reason: &str, error: Option<&JsValue>) {
     let _ = call.call2(&target, &JsValue::from_str(message), details.as_ref());
 }
 
+fn set_attr(target: &JsValue, name: &str, value: &str) {
+    if let Some(call) = function(target, "setAttribute") {
+        let _ = call.call2(target, &JsValue::from_str(name), &JsValue::from_str(value));
+    }
+}
+
+fn append_child(parent: &JsValue, child: &JsValue) {
+    if let Some(call) = function(parent, "appendChild") {
+        let _ = call.call1(parent, child);
+    }
+}
+
+fn error_text(error: &JsValue) -> String {
+    let message = text(&property(error, "message"));
+    if message.is_empty() {
+        text(error)
+    } else {
+        message
+    }
+}
+
+async fn invoke_command(command: &str, args: Option<&JsValue>) -> Result<JsValue, JsValue> {
+    let invoke = invoke_api().ok_or_else(|| JsValue::from_str("Tauri invoke is not available"))?;
+    let value = match args {
+        Some(args) => invoke.call2(&JsValue::UNDEFINED, &JsValue::from_str(command), args)?,
+        None => invoke.call1(&JsValue::UNDEFINED, &JsValue::from_str(command))?,
+    };
+    JsFuture::from(Promise::resolve(&value)).await
+}
+
+fn path_status(target_id: &str, message: &str, state: &str) {
+    let target = by_id(target_id);
+    if !is_present(&target) {
+        return;
+    }
+    let parent = property(&target, "parentElement");
+    if !is_present(&parent) {
+        return;
+    }
+    let selector = format!("[data-settings-path-status=\"{target_id}\"]");
+    let mut status = function(&parent, "querySelector")
+        .and_then(|call| call.call1(&parent, &JsValue::from_str(&selector)).ok())
+        .unwrap_or(JsValue::UNDEFINED);
+    if !is_present(&status) {
+        status = function(&document(), "createElement")
+            .and_then(|call| call.call1(&document(), &JsValue::from_str("span")).ok())
+            .unwrap_or(JsValue::UNDEFINED);
+        if !is_present(&status) {
+            return;
+        }
+        set_property(
+            &property(&status, "dataset"),
+            "settingsPathStatus",
+            &JsValue::from_str(target_id),
+        );
+        append_child(&parent, &status);
+    }
+    set_attr(
+        &status,
+        "role",
+        if state == "error" { "alert" } else { "status" },
+    );
+    set_attr(
+        &status,
+        "aria-live",
+        if state == "error" {
+            "assertive"
+        } else {
+            "polite"
+        },
+    );
+    set_property(
+        &property(&status, "dataset"),
+        "state",
+        &JsValue::from_str(state),
+    );
+    set_property(&status, "textContent", &JsValue::from_str(message));
+    let _ = crate::apply_status_tone(status, JsValue::from_str(state));
+}
+
+fn mark_dirty() {
+    let save = by_id("settingsSaveSettings");
+    if is_present(&save) {
+        set_property(&save, "disabled", &JsValue::FALSE);
+    }
+}
+
+async fn browse_path(target_id: &str) -> Result<bool, JsValue> {
+    let target = by_id(target_id);
+    let dialog = property(&property(&window(), "__TAURI__"), "dialog");
+    let Some(open) = function(&dialog, "open") else {
+        path_status(
+            target_id,
+            "Native directory chooser is unavailable.",
+            "error",
+        );
+        return Ok(false);
+    };
+    if !is_present(&target) {
+        return Ok(false);
+    }
+    let before = text(&property(&target, "value"));
+    let options = Object::new();
+    set_property(
+        options.as_ref(),
+        "title",
+        &JsValue::from_str("Choose directory"),
+    );
+    set_property(options.as_ref(), "directory", &JsValue::TRUE);
+    set_property(options.as_ref(), "multiple", &JsValue::FALSE);
+    let selected = open.call1(&dialog, options.as_ref())?;
+    let selected = JsFuture::from(Promise::resolve(&selected)).await?;
+    let path_value = if Array::is_array(&selected) {
+        Array::from(&selected).get(0)
+    } else {
+        selected
+    };
+    if !is_present(&path_value) || text(&path_value).is_empty() {
+        path_status(target_id, "Browse cancelled; path unchanged.", "info");
+        return Ok(false);
+    }
+    let path = text(&path_value);
+    let args = Object::new();
+    set_property(args.as_ref(), "key", &JsValue::from_str(target_id));
+    set_property(args.as_ref(), "path", &JsValue::from_str(&path));
+    set_property(args.as_ref(), "createIfMissing", &JsValue::FALSE);
+    match invoke_command("settings_validate_custom_path", Some(args.as_ref())).await {
+        Ok(report) => {
+            let reported = property(&report, "path");
+            let final_path = if crate::js_boolean(&reported) {
+                text(&reported)
+            } else {
+                path
+            };
+            set_property(&target, "value", &JsValue::from_str(&final_path));
+            path_status(target_id, "Directory selected.", "success");
+            mark_dirty();
+            Ok(true)
+        }
+        Err(error) => {
+            set_property(&target, "value", &JsValue::from_str(&before));
+            path_status(
+                target_id,
+                &format!("Browse failed: {}", error_text(&error)),
+                "error",
+            );
+            Ok(false)
+        }
+    }
+}
 #[wasm_bindgen(js_name = settingsPathsApply)]
 pub fn apply(paths: JsValue, force: bool) {
     apply_paths(&paths, force);
@@ -160,6 +310,10 @@ pub async fn repair_before_save() {
     let _ = load_defaults("save-repair".to_owned()).await;
 }
 
+#[wasm_bindgen(js_name = settingsPathsBrowse)]
+pub async fn browse(target_id: String) -> Result<bool, JsValue> {
+    browse_path(&target_id).await
+}
 #[cfg(test)]
 mod tests {
     use super::*;

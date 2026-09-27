@@ -266,6 +266,7 @@ import init, {
   settingsNodeOptional as wasmNodeOptional,
   settingsNodeRequired as wasmNodeRequired,
   settingsPathsApply as wasmPathsApply,
+  settingsPathsBrowse as wasmPathsBrowse,
   settingsPathsLoadDefaults as wasmPathsLoadDefaults,
   settingsPathsRepairBeforeSave as wasmPathsRepairBeforeSave,
   settingsProfilesInstall as wasmProfilesInstall,
@@ -372,6 +373,10 @@ export function settingsAddressesOpenExplorer(address) {
 
 export function settingsPathsApply(paths, force = false) {
   return wasmPathsApply(paths, force);
+}
+
+export async function settingsPathsBrowse(targetId) {
+  return await wasmPathsBrowse(targetId);
 }
 
 export async function settingsPathsLoadDefaults(reason = "settings") {
@@ -1071,6 +1076,7 @@ mod tests {
         assert!(settings.contains("wasmDatabaseInstall()"));
         assert!(settings.contains("wasmDatabaseInstallMaintenance()"));
         assert!(settings.contains("wasmPathsApply(paths, force)"));
+        assert!(settings.contains("await wasmPathsBrowse(targetId)"));
         assert!(settings.contains("await wasmPathsLoadDefaults(reason)"));
         assert!(settings.contains("await wasmPathsRepairBeforeSave()"));
         assert!(settings.contains("wasmProfilesInstall()"));

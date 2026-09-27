@@ -44,6 +44,7 @@ import init, {
   settingsNodeOptional as wasmNodeOptional,
   settingsNodeRequired as wasmNodeRequired,
   settingsPathsApply as wasmPathsApply,
+  settingsPathsBrowse as wasmPathsBrowse,
   settingsPathsLoadDefaults as wasmPathsLoadDefaults,
   settingsPathsRepairBeforeSave as wasmPathsRepairBeforeSave,
   settingsProfilesInstall as wasmProfilesInstall,
@@ -150,6 +151,10 @@ export function settingsAddressesOpenExplorer(address) {
 
 export function settingsPathsApply(paths, force = false) {
   return wasmPathsApply(paths, force);
+}
+
+export async function settingsPathsBrowse(targetId) {
+  return await wasmPathsBrowse(targetId);
 }
 
 export async function settingsPathsLoadDefaults(reason = "settings") {
