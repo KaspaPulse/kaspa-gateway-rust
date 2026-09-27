@@ -233,6 +233,7 @@ import init, {
   settingsAddressesClearFields as wasmAddressesClearFields,
   settingsAddressesIncrementRestoreEpoch as wasmAddressesIncrementRestoreEpoch,
   settingsAddressesInstallAll as wasmAddressesInstallAll,
+  settingsAddressesInstallIo as wasmAddressesInstallIo,
   settingsAddressesNow as wasmAddressesNow,
   settingsAddressesOpenExplorer as wasmAddressesOpenExplorer,
   settingsAddressesRefresh as wasmAddressesRefresh,
@@ -325,6 +326,10 @@ export function settingsAddressNormalize(record) {
 
 export function settingsAddressesInstallAll() {
   return wasmAddressesInstallAll();
+}
+
+export function settingsAddressesInstallIo() {
+  return wasmAddressesInstallIo();
 }
 
 export async function settingsAddressesRefresh() {
@@ -1029,6 +1034,7 @@ mod tests {
         assert!(settings.contains("wasmAddressShort(value)"));
         assert!(settings.contains("wasmIsKaspaAddress(value)"));
         assert!(settings.contains("wasmAddressNormalize(record)"));
+        assert!(settings.contains("wasmAddressesInstallIo()"));
         assert!(settings.contains("wasmDbKindFromFileName(value)"));
         assert!(settings.contains("wasmDatabaseRenderRows(rows)"));
         assert!(settings.contains("await wasmDatabaseRefresh()"));

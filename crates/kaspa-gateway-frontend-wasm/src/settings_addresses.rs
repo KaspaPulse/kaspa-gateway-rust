@@ -1057,6 +1057,264 @@ pub fn install_all() -> Result<(), JsValue> {
     Ok(())
 }
 
+fn dialog_api() -> JsValue {
+    property(&property(&window(), "__TAURI__"), "dialog")
+}
+
+async fn await_method1(target: &JsValue, name: &str, arg: &JsValue) -> Result<JsValue, JsValue> {
+    let callback = function(target, name)
+        .ok_or_else(|| JsValue::from_str(&format!("{name} is unavailable")))?;
+    let value = callback.call1(target, arg)?;
+    JsFuture::from(Promise::resolve(&value)).await
+}
+
+fn report_count(value: &JsValue, key: &str) -> u64 {
+    let number = crate::js_number(&property(value, key));
+    if number.is_finite() && number > 0.0 {
+        number as u64
+    } else {
+        0
+    }
+}
+
+fn io_status(report: &JsValue, action: &str) {
+    let warnings_value = property(report, "warnings");
+    let warnings = if Array::is_array(&warnings_value) {
+        Array::from(&warnings_value)
+            .iter()
+            .map(|value| text(&value))
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+    let count = if action == "import" {
+        format!(
+            "{} imported, {} skipped",
+            report_count(report, "imported"),
+            report_count(report, "skipped")
+        )
+    } else {
+        format!("{} exported", report_count(report, "exported"))
+    };
+    let suffix = if warnings.is_empty() {
+        String::new()
+    } else {
+        format!("; {}", warnings.join(" | "))
+    };
+    set_status(
+        &format!("Last Updated: {count}{suffix}"),
+        if warnings.is_empty() {
+            "success"
+        } else {
+            "warning"
+        },
+    );
+}
+
+async fn refresh_local_only() -> Result<JsValue, JsValue> {
+    let records = invoke_command("get_all_addresses", None).await?;
+    let options = Object::new();
+    set_property(options.as_ref(), "localOnly", &JsValue::TRUE);
+    let _ = render_rows_internal(records.clone(), options.into()).await;
+
+    let callback = property(&window(), "kgwRefreshSavedAddresses");
+    if let Ok(callback) = callback.dyn_into::<Function>()
+        && let Ok(value) = callback.call0(&window())
+    {
+        let _ = JsFuture::from(Promise::resolve(&value)).await;
+    }
+    notify_saved_addresses_changed();
+    Ok(records)
+}
+
+fn io_request(path: &str) -> JsValue {
+    let request = Object::new();
+    set_property(request.as_ref(), "path", &JsValue::from_str(path));
+    set_property(request.as_ref(), "network", &JsValue::from_str("mainnet"));
+    let args = Object::new();
+    set_property(args.as_ref(), "request", request.as_ref());
+    args.into()
+}
+
+fn dialog_filter(name: &str, extensions: &[&str]) -> JsValue {
+    let filter = Object::new();
+    set_property(filter.as_ref(), "name", &JsValue::from_str(name));
+    let values = Array::new();
+    for extension in extensions {
+        values.push(&JsValue::from_str(extension));
+    }
+    set_property(filter.as_ref(), "extensions", values.as_ref());
+    filter.into()
+}
+
+async fn export_addresses() {
+    let dialog = dialog_api();
+    if function(&dialog, "save").is_none() || invoke_api().is_none() {
+        set_status("Last Updated: native save dialog is unavailable.", "error");
+        return;
+    }
+
+    let result = async {
+        let stats = invoke_command("address_book_stats", None).await?;
+        let default_path = {
+            let value = property(&stats, "default_export_json_path");
+            if crate::js_boolean(&value) {
+                text(&value)
+            } else {
+                "kaspa_gateway_addresses.json".to_owned()
+            }
+        };
+        let options = Object::new();
+        set_property(
+            options.as_ref(),
+            "title",
+            &JsValue::from_str("Export saved Kaspa addresses"),
+        );
+        set_property(
+            options.as_ref(),
+            "defaultPath",
+            &JsValue::from_str(&default_path),
+        );
+        let filters = Array::new();
+        filters.push(&dialog_filter("JSON", &["json"]));
+        filters.push(&dialog_filter("CSV", &["csv"]));
+        set_property(options.as_ref(), "filters", filters.as_ref());
+        let selected = await_method1(&dialog, "save", options.as_ref()).await?;
+        if !crate::js_boolean(&selected) {
+            set_status("Last Updated: export cancelled.", "info");
+            return Ok::<(), JsValue>(());
+        }
+        let path = text(&selected);
+        let command = if path.to_lowercase().ends_with(".csv") {
+            "address_book_export_csv"
+        } else {
+            "address_book_export_json"
+        };
+        let args = io_request(&path);
+        let report = invoke_command(command, Some(&args)).await?;
+        io_status(&report, "export");
+        Ok(())
+    }
+    .await;
+
+    if let Err(error) = result {
+        set_status(
+            &format!("Last Updated: export failed - {}", error_text(&error)),
+            "error",
+        );
+    }
+}
+
+async fn import_addresses() {
+    let dialog = dialog_api();
+    if function(&dialog, "open").is_none() || invoke_api().is_none() {
+        set_status("Last Updated: native open dialog is unavailable.", "error");
+        return;
+    }
+
+    let result = async {
+        let options = Object::new();
+        set_property(
+            options.as_ref(),
+            "title",
+            &JsValue::from_str("Import saved Kaspa addresses"),
+        );
+        set_property(options.as_ref(), "multiple", &JsValue::FALSE);
+        set_property(options.as_ref(), "directory", &JsValue::FALSE);
+        let filters = Array::new();
+        filters.push(&dialog_filter("Address files", &["json", "csv"]));
+        set_property(options.as_ref(), "filters", filters.as_ref());
+
+        let selected = await_method1(&dialog, "open", options.as_ref()).await?;
+        let path_value = if Array::is_array(&selected) {
+            Array::from(&selected).get(0)
+        } else {
+            selected
+        };
+        if !crate::js_boolean(&path_value) {
+            set_status("Last Updated: import cancelled.", "info");
+            return Ok::<(), JsValue>(());
+        }
+        let path = text(&path_value);
+        let command = if path.to_lowercase().ends_with(".csv") {
+            "address_book_import_csv"
+        } else {
+            "address_book_import_json"
+        };
+        let args = io_request(&path);
+        let report = invoke_command(command, Some(&args)).await?;
+        let _ = refresh_local_only().await?;
+        io_status(&report, "import");
+        Ok(())
+    }
+    .await;
+
+    if let Err(error) = result {
+        set_status(
+            &format!("Last Updated: import failed - {}", error_text(&error)),
+            "error",
+        );
+    }
+}
+
+fn bind_io_button(id: &str, export: bool) -> Result<(), JsValue> {
+    let button = by_id(id);
+    if !is_present(&button) {
+        return Ok(());
+    }
+    set_property(
+        &property(&button, "dataset"),
+        "kgwRealWorkflowBound",
+        &JsValue::from_str("true"),
+    );
+    let callback = Closure::<dyn FnMut(JsValue)>::new(move |event| {
+        let _ = call0(&event, "preventDefault");
+        if export {
+            spawn_local(export_addresses());
+        } else {
+            spawn_local(import_addresses());
+        }
+    });
+    function(&button, "addEventListener")
+        .ok_or_else(|| JsValue::from_str("button.addEventListener unavailable"))?
+        .call2(
+            &button,
+            &JsValue::from_str("click"),
+            callback.as_ref().unchecked_ref(),
+        )?;
+    callback.forget();
+    Ok(())
+}
+
+#[wasm_bindgen(js_name = settingsAddressesInstallIo)]
+pub fn install_io() -> Result<(), JsValue> {
+    let win = window();
+    if crate::js_boolean(&property(&win, "__kgwSettingsAddressIoInstalled")) {
+        return Ok(());
+    }
+    set_property(&win, "__kgwSettingsAddressIoInstalled", &JsValue::TRUE);
+
+    bind_io_button("settingsExportAddresses", true)?;
+    bind_io_button("settingsImportAddresses", false)?;
+
+    let status = by_id("settingsAddressLastUpdated");
+    if is_present(&status)
+        && let Some(set) = function(&status, "setAttribute")
+    {
+        let _ = set.call2(
+            &status,
+            &JsValue::from_str("role"),
+            &JsValue::from_str("status"),
+        );
+        let _ = set.call2(
+            &status,
+            &JsValue::from_str("aria-live"),
+            &JsValue::from_str("polite"),
+        );
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

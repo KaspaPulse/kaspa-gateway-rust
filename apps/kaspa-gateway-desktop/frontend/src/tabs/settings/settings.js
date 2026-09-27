@@ -4,10 +4,9 @@ import {
   settingsDisplayChecksWithDefaults,
   settingsDisplayPreferences,
   settingsAddressesInstallAll,
+  settingsAddressesInstallIo,
   settingsAddressesOpenExplorer,
   settingsAddressesRefresh,
-  settingsAddressesRenderRows,
-  settingsAddressesSetStatus,
   settingsDisplayStateMissingContract,
   settingsDatabaseInstall,
   settingsDatabaseInstallMaintenance,
@@ -794,104 +793,17 @@ async function kgwSettingsResetSelectedEndpointAction() {
   );
 }
 
-async function kgwSettingsRefreshAddressesLocalOnly() {
-  const invoke = kgwSettingsAddressInvoke();
-  if (!invoke) throw new Error("Tauri invoke API is not available.");
-  const records = await invoke("get_all_addresses");
-  await kgwRenderSettingsAddressRows(records, { localOnly: true });
-  if (typeof window.kgwRefreshSavedAddresses === "function") {
-    await window.kgwRefreshSavedAddresses();
-  }
-  try {
-    window.dispatchEvent(new CustomEvent("kgw:saved-addresses-changed"));
-  } catch (_) { /* Best-effort secondary operation; primary behavior is preserved. */ }
-  return records;
-}
-
-function kgwSettingsAddressIoStatus(report, action) {
-  const warnings = Array.isArray(report?.warnings) ? report.warnings : [];
-  const imported = Number(report?.imported || 0);
-  const exported = Number(report?.exported || 0);
-  const skipped = Number(report?.skipped || 0);
-  const count = action === "import" ? `${imported} imported, ${skipped} skipped` : `${exported} exported`;
-  const warningText = warnings.length ? `; ${warnings.join(" | ")}` : "";
-  kgwSettingsAddressSetStatus(`Last Updated: ${count}${warningText}`, warnings.length ? "warning" : "success");
-}
-
-async function kgwSettingsExportAddressesAction() {
-  const dialog = kgwSettingsDialogApi();
-  const invoke = kgwSettingsAddressInvoke();
-  if (!dialog || typeof dialog.save !== "function" || !invoke) {
-    kgwSettingsAddressSetStatus("Last Updated: native save dialog is unavailable.", "error");
-    return;
-  }
-
-  try {
-    const stats = await invoke("address_book_stats");
-    const selected = await dialog.save({
-      title: "Export saved Kaspa addresses",
-      defaultPath: stats?.default_export_json_path || "kaspa_gateway_addresses.json",
-      filters: [
-        { name: "JSON", extensions: ["json"] },
-        { name: "CSV", extensions: ["csv"] }
-      ]
-    });
-    if (!selected) {
-      kgwSettingsAddressSetStatus("Last Updated: export cancelled.");
-      return;
-    }
-    const isCsv = String(selected).toLowerCase().endsWith(".csv");
-    const command = isCsv ? "address_book_export_csv" : "address_book_export_json";
-    const report = await invoke(command, { request: { path: String(selected), network: "mainnet" } });
-    kgwSettingsAddressIoStatus(report, "export");
-  } catch (error) {
-    kgwSettingsAddressSetStatus(`Last Updated: export failed - ${error?.message || error}`, "error");
-  }
-}
-
-async function kgwSettingsImportAddressesAction() {
-  const dialog = kgwSettingsDialogApi();
-  const invoke = kgwSettingsAddressInvoke();
-  if (!dialog || typeof dialog.open !== "function" || !invoke) {
-    kgwSettingsAddressSetStatus("Last Updated: native open dialog is unavailable.", "error");
-    return;
-  }
-
-  try {
-    const selected = await dialog.open({
-      title: "Import saved Kaspa addresses",
-      multiple: false,
-      directory: false,
-      filters: [
-        { name: "Address files", extensions: ["json", "csv"] }
-      ]
-    });
-    const path = Array.isArray(selected) ? selected[0] : selected;
-    if (!path) {
-      kgwSettingsAddressSetStatus("Last Updated: import cancelled.");
-      return;
-    }
-    const isCsv = String(path).toLowerCase().endsWith(".csv");
-    const command = isCsv ? "address_book_import_csv" : "address_book_import_json";
-    const report = await invoke(command, { request: { path: String(path), network: "mainnet" } });
-    await kgwSettingsRefreshAddressesLocalOnly();
-    kgwSettingsAddressIoStatus(report, "import");
-  } catch (error) {
-    kgwSettingsAddressSetStatus(`Last Updated: import failed - ${error?.message || error}`, "error");
-  }
-}
-
 function kgwInstallSettingsRealWorkflowActions() {
   if (window.__kgwSettingsRealWorkflowActionsInstalled) return;
   window.__kgwSettingsRealWorkflowActionsInstalled = true;
+
+  settingsAddressesInstallIo();
 
   const bindings = [
     ["settingsProfileAdd", kgwSettingsProfileAddAction],
     ["settingsProfileRename", kgwSettingsProfileRenameAction],
     ["settingsProfileDelete", kgwSettingsProfileDeleteAction],
-    ["settingsResetSelectedEndpoint", kgwSettingsResetSelectedEndpointAction],
-    ["settingsExportAddresses", kgwSettingsExportAddressesAction],
-    ["settingsImportAddresses", kgwSettingsImportAddressesAction]
+    ["settingsResetSelectedEndpoint", kgwSettingsResetSelectedEndpointAction]
   ];
   bindings.forEach(([id, handler]) => {
     const button = q(`#${CSS.escape(id)}`);
@@ -907,11 +819,6 @@ function kgwInstallSettingsRealWorkflowActions() {
   if (select && select.dataset.kgwProfileSelectBound !== "true") {
     select.dataset.kgwProfileSelectBound = "true";
     select.addEventListener("change", () => void kgwSettingsProfileSelectAction());
-  }
-  const addressStatus = q("#settingsAddressLastUpdated");
-  if (addressStatus) {
-    addressStatus.setAttribute("role", "status");
-    addressStatus.setAttribute("aria-live", "polite");
   }
   void kgwSettingsRefreshBackendProfiles("workflow-install");
 }
@@ -1484,18 +1391,6 @@ window.kgwInstallSettingsDatabaseStatus = kgwInstallSettingsDatabaseStatus;
 kgwInstallSettingsDatabaseStatus();
 
 /* KGW settings managed-address compatibility surface: implementation is Rust/WASM-owned. */
-function kgwSettingsAddressInvoke() {
-  return window.__TAURI__?.core?.invoke || window.__TAURI__?.tauri?.invoke || window.__TAURI_INVOKE__;
-}
-
-function kgwSettingsAddressSetStatus(message, state = "info") {
-  return settingsAddressesSetStatus(message, state);
-}
-
-async function kgwRenderSettingsAddressRows(records, options = {}) {
-  return await settingsAddressesRenderRows(records, options);
-}
-
 async function kgwRefreshSettingsAddresses() {
   return await settingsAddressesRefresh();
 }
