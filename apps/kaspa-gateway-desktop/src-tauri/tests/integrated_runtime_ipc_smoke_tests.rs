@@ -1869,6 +1869,8 @@ fn unsupported_network_is_rejected() {
 fn start_command_is_registered_and_payload_matches_frontend() {
     let lib_rs = include_str!("../src/lib.rs");
     let node_js = include_str!("../../frontend/src/tabs/kaspa-node/kaspa-node.js");
+    let node_frontend_helpers =
+        include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/node_frontend_helpers.rs");
 
     assert!(
         lib_rs.contains("integrated_runtime_commands::kgw_kgw_apply_node_settings_v1"),
@@ -1882,6 +1884,22 @@ fn start_command_is_registered_and_payload_matches_frontend() {
         lib_rs.contains("kgw_start_trace_frontend_v1"),
         "start trace frontend command must be registered in tauri generate_handler"
     );
+    assert!(
+        node_js.contains("nodeRuntimeArgs as wasmNodeRuntimeArgs")
+            && node_js.contains(
+                "return wasmNodeRuntimeArgs(String(net || \"\"), String(command || \"\"));"
+            ),
+        "frontend must delegate runtime IPC argument construction to the Rust/WASM owner"
+    );
+
+    let runtime_args_start = node_frontend_helpers
+        .find("#[wasm_bindgen(js_name = nodeRuntimeArgs)]")
+        .expect("Rust nodeRuntimeArgs export must exist");
+    let runtime_args_end = node_frontend_helpers[runtime_args_start..]
+        .find("fn dispatch_bubbling_event")
+        .expect("Rust nodeRuntimeArgs source boundary must exist");
+    let runtime_args_source =
+        &node_frontend_helpers[runtime_args_start..runtime_args_start + runtime_args_end];
 
     for field in [
         "network",
@@ -1894,8 +1912,8 @@ fn start_command_is_registered_and_payload_matches_frontend() {
         "experimentalNetworkOptIn",
     ] {
         assert!(
-            node_js.contains(field),
-            "frontend start payload must contain `{field}`"
+            runtime_args_source.contains(&format!("\"{field}\"")),
+            "Rust-owned frontend start payload must contain `{field}`"
         );
     }
 }

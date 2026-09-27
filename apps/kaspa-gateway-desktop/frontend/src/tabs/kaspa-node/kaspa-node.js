@@ -1,5 +1,5 @@
 import { applyStatusTone, renderStatusSummary } from "../../status.js";
-import { NODE_MANAGED, NODE_REQUIRED, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, endpoint, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
+import { NODE_MANAGED, NODE_REQUIRED, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initNodeRust, {
   nodeBackendInvoke as wasmNodeBackendInvoke,
@@ -16,6 +16,7 @@ import initNodeRust, {
   nodeToggleCommandOption as wasmNodeToggleCommandOption,
   nodeCopyLogFailure as wasmNodeCopyLogFailure,
   nodeDispatchClipboardWrite as wasmNodeDispatchClipboardWrite,
+  nodeEffectiveNodeSettings as wasmNodeEffectiveNodeSettings,
   nodeElementId as wasmNodeElementId,
   nodeEscapeHtml as wasmNodeEscapeHtml,
   nodeHandleCopyLog as wasmNodeHandleCopyLog,
@@ -46,6 +47,7 @@ import initNodeRust, {
   nodeResolveInnerTab as wasmNodeResolveInnerTab,
   nodeResolvePublicTauriInvoke as wasmNodeResolvePublicTauriInvoke,
   nodeRuntimeActionForCommand as wasmNodeRuntimeActionForCommand,
+  nodeRuntimeArgs as wasmNodeRuntimeArgs,
   nodeRuntimeErrorFromStatus as wasmNodeRuntimeErrorFromStatus,
   nodeRuntimeIsRunning as wasmNodeRuntimeIsRunning,
   nodeSaveInnerTab as wasmNodeSaveInnerTab,
@@ -1266,101 +1268,11 @@ function renderAllNetworks(root) {
 
 
 
-function kgwNodeEffectiveNumber(net, name, fallback, integer = false) {
-  if (!kgwNodeSettingActive(net, name)) return fallback;
-  const raw = v(net, name);
-  if (!raw) return fallback;
-  const value = Number(raw);
-  if (!Number.isFinite(value) || (integer && !Number.isInteger(value))) {
-    throw new Error(`${name} must be ${integer ? "an integer" : "a finite number"}.`);
-  }
-  return value;
-}
-
-function kgwNodeEffectiveEndpoint(net, enabledName, hostName, portName, _fallback = null) {
-  if (!c(net, enabledName)) return null;
-  const host = v(net, hostName);
-  const port = v(net, portName);
-  if (!host && !port) throw new Error(enabledName + " requires a host and port.");
-  if (!host || !/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
-    throw new Error(`${enabledName} requires a host and a port between 1 and 65535.`);
-  }
-  return endpoint(host, port);
-}
-
+/* Effective Node settings construction is Rust/WASM-owned in node_frontend_helpers.rs. */
 function kgwNodeEffectiveNodeSettings(net) {
-  const errors = kgwNodeValidateForm(net);
-  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-  const profile = kgwNodeNetworkProfile(net);
-  const rpcBase = net === "mainnet" ? 16110 : net === "testnet10" ? 16210 : 16210;
-  const grpc = kgwNodeEffectiveEndpoint(
-    net,
-    "rpcListenEnabled",
-    "rpcListenHost",
-    "rpcListenPort",
-    `127.0.0.1:${rpcBase}`
-  );
-  if (!grpc) throw new Error("The managed desktop owner requires gRPC RPC to remain enabled.");
-
-  if (v(net, "configFile")) {
-    throw new Error("--configfile is not supported by the managed desktop owner because network and database ownership must remain authoritative.");
-  }
-  if (v(net, "overrideParamsFile")) {
-    throw new Error("--override-params-file is not supported because the desktop owns the selected network identity.");
-  }
-  if (c(net, "noLogFiles") && kgwNodeSettingActive(net, "logDir") && v(net, "logDir")) {
-    throw new Error("--logdir and --nologfiles cannot be used together.");
-  }
-  const connect = kgwNodeEffectiveEndpoint(net, "connectEnabled", "connectHost", "connectPort");
-  const addPeer = kgwNodeEffectiveEndpoint(net, "addPeerEnabled", "addPeerHost", "addPeerPort");
-  const userAgentComment = kgwNodeCommandShouldIncludeR7(net, "uaComment") ? v(net, "uaComment") : "";
-
-  return {
-    logLevel: kgwNodeCommandShouldIncludeR7(net, "logLevel") ? v(net, "logLevel") || "info" : "info",
-    asyncThreads: kgwNodeEffectiveNumber(net, "asyncThreads", 16, true),
-    ramScale: kgwNodeEffectiveNumber(net, "ramScale", 1),
-    yes: c(net, "yes"),
-    noLogFiles: c(net, "noLogFiles"),
-    sanity: c(net, "sanity"),
-    enableUnsyncedMining: c(net, "enableUnsyncedMining") && Boolean(profile?.testnet),
-    p2pListen: kgwNodeEffectiveEndpoint(net, "listenEnabled", "listenHost", "listenPort"),
-    externalIp: kgwNodeEffectiveEndpoint(net, "externalIpEnabled", "externalIpHost", "externalIpPort"),
-    disableUpnp: c(net, "disableUpnp"),
-    disableDnsSeeding: c(net, "noDnsSeed"),
-    userAgentComments: userAgentComment ? [userAgentComment] : [],
-    rpcListen: grpc,
-    rpcListenBorsh: kgwNodeEffectiveEndpoint(net, "rpcBorshEnabled", "rpcBorshHost", "rpcBorshPort"),
-    rpcListenJson: kgwNodeEffectiveEndpoint(net, "rpcJsonEnabled", "rpcJsonHost", "rpcJsonPort"),
-    rpcMaxClients: kgwNodeEffectiveNumber(net, "rpcMaxClients", 16, true),
-    unsafeRpc: c(net, "unsafeRpc"),
-    disableGrpc: c(net, "noGrpc"),
-    connectPeers: connect ? [connect] : [],
-    addPeers: addPeer ? [addPeer] : [],
-    outboundTarget: kgwNodeEffectiveNumber(net, "outPeers", 8, true),
-    inboundLimit: kgwNodeEffectiveNumber(net, "maxInPeers", 32, true),
-    utxoIndex: c(net, "utxoIndex"),
-    archival: c(net, "archival"),
-    resetDb: c(net, "resetDb"),
-    perfMetrics: c(net, "perfMetrics"),
-    maxTrackedAddresses: kgwNodeEffectiveNumber(net, "maxTrackedAddresses", 0, true),
-    retentionPeriodDays: kgwNodeCommandShouldIncludeR7(net, "retentionDays") && v(net, "retentionDays")
-      ? kgwNodeEffectiveNumber(net, "retentionDays", null)
-      : null,
-    perfMetricsIntervalSec: kgwNodeEffectiveNumber(net, "perfMetricsInterval", 10, true),
-    rocksDbPreset: kgwNodeCommandShouldIncludeR7(net, "rocksDbPreset") ? v(net, "rocksDbPreset") || null : null,
-    rocksDbCacheSize: kgwNodeSettingActive(net, "rocksDbCacheSize") && v(net, "rocksDbCacheSize")
-      ? kgwNodeEffectiveNumber(net, "rocksDbCacheSize", null, true)
-      : null,
-    rocksDbWalDir: kgwNodeCommandShouldIncludeR7(net, "rocksDbWalDir") ? v(net, "rocksDbWalDir") || null : null,
-    overrideParamsFile: null,
-    logDir: kgwNodeSettingActive(net, "logDir") ? v(net, "logDir") || null : null,
-  };
+  kgwNodeValidateForm(net);
+  return wasmNodeEffectiveNodeSettings(String(net || ""));
 }
-
-
-
-
-
 
 const KGW_NODE_PREVIEWS = new Map();
 function updateCommand(net) {
@@ -1641,31 +1553,9 @@ function kgwNodeAssertStartEvidence(net, result) {
   return wasmNodeAssertStartEvidence(String(net || ""), result);
 }
 
+/* Runtime IPC argument construction is Rust/WASM-owned in node_frontend_helpers.rs. */
 function nodeRuntimeArgs(net, command) {
-  if (command === "kgw_kgw_apply_node_settings_v1") {
-    const preview = byId(id(net, "commandPreview"))?.value || "";
-
-    return {
-      network: net,
-      nodeKind: "integrated-as-daemon",
-      bridgeKind: "disable",
-      nodeCommandPreview: preview,
-      bridgeCommandPreview: "",
-      effectiveNodeSettings: kgwNodeEffectiveNodeSettings(net),
-      runtimeRole: "node",
-      experimentalNetworkOptIn: net === "testnet13" && kgwNodeNetworkEnabled(net),
-    };
-  }
-
-  if (
-    command === "kgw_kgw_disable_network_v1" ||
-    command === "kgw_runtime_owner_status_v1" ||
-    command === "kgw_kgw_runtime_logs_v1"
-  ) {
-    return { network: net, runtimeRole: "node" };
-  }
-
-  return { network: net };
+  return wasmNodeRuntimeArgs(String(net || ""), String(command || ""));
 }
 function invokeWithTimeout(invoke, command, args, timeoutMs) {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {

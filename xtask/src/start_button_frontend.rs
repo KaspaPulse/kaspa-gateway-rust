@@ -170,6 +170,25 @@ function staticPlacementTests() {
       && !source.includes('const defaults = kgwNodeR51Load("default:" + net) || kgwNodeR51Load("factory:" + net)'),
     "Node R51 persistence implementation must not return to hand-maintained JS",
   );
+  assert.ok(
+    source.includes("nodeEffectiveNodeSettings as wasmNodeEffectiveNodeSettings")
+      && /function kgwNodeEffectiveNodeSettings\(net\)\s*\{[\s\S]*?return wasmNodeEffectiveNodeSettings\(String\(net \|\| \"\"\)\);\s*\}/.test(source),
+    "Node effective settings must delegate to the Rust/WASM owner",
+  );
+  assert.ok(
+    source.includes("nodeRuntimeArgs as wasmNodeRuntimeArgs")
+      && /function nodeRuntimeArgs\(net, command\)\s*\{\s*return wasmNodeRuntimeArgs\(String\(net \|\| \"\"\), String\(command \|\| \"\"\)\);\s*\}/.test(source),
+    "Node runtime args must delegate to the Rust/WASM owner",
+  );
+  for (const retired of [
+    "function kgwNodeEffectiveNumber(",
+    "function kgwNodeEffectiveEndpoint(",
+    "const rpcBase = net ===",
+    "asyncThreads: kgwNodeEffectiveNumber",
+    'nodeKind: "integrated-as-daemon"',
+  ]) {
+    assert.ok(!source.includes(retired), "Retired Node effective-settings implementation must stay out of hand-maintained JS: " + retired);
+  }
 }
 
 class ClassList {
@@ -710,6 +729,111 @@ const wasmNodeToggleCommandOption = (net, name) => {
   state[key] = state[key] === false;
   wasmNodeRefreshInlineCommandToggles(net);
   return state[key];
+};
+const wasmNodeEffectiveForm = (net) => new Proxy({}, {
+  get(_target, name) {
+    if (typeof name !== "string") return undefined;
+    const field = document.getElementById("node-" + String(net || "") + "-" + name);
+    if (!field) return undefined;
+    return field.type === "checkbox" ? Boolean(field.checked) : String(field.value ?? "");
+  },
+});
+const wasmNodeEffectiveNumber = (net, name, fallback, integer = false) => {
+  const values = wasmNodeEffectiveForm(net);
+  if (!nodeFieldEnabled(name, values, wasmNodeCommandInlineState(net))) return fallback;
+  const raw = String(values[name] ?? "").trim();
+  if (!raw) return fallback;
+  const number = Number(raw);
+  if (!Number.isFinite(number) || (integer && !Number.isInteger(number))) {
+    throw new Error(String(name) + " must be " + (integer ? "an integer" : "a finite number") + ".");
+  }
+  return number;
+};
+const wasmNodeEffectiveEndpoint = (net, enabledName, hostName, portName) => {
+  const values = wasmNodeEffectiveForm(net);
+  if (!values[enabledName]) return null;
+  const host = String(values[hostName] ?? "").trim();
+  const port = String(values[portName] ?? "").trim();
+  if (!host && !port) throw new Error(String(enabledName) + " requires a host and port.");
+  if (!host || !/^\\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
+    throw new Error(String(enabledName) + " requires a host and a port between 1 and 65535.");
+  }
+  return endpoint(host, port);
+};
+const wasmNodeEffectiveNodeSettings = (net) => {
+  const values = wasmNodeEffectiveForm(net);
+  const options = wasmNodeCommandInlineState(net);
+  const errors = validateNodeForm(values, options, net);
+  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
+  const profile = wasmNodeNetworkProfile(net);
+  const grpc = wasmNodeEffectiveEndpoint(net, "rpcListenEnabled", "rpcListenHost", "rpcListenPort");
+  if (!grpc) throw new Error("The managed desktop owner requires gRPC RPC to remain enabled.");
+  if (values.configFile) throw new Error("--configfile is not supported by the managed desktop owner because network and database ownership must remain authoritative.");
+  if (values.overrideParamsFile) throw new Error("--override-params-file is not supported because the desktop owns the selected network identity.");
+  if (values.noLogFiles && nodeFieldEnabled("logDir", values, options) && values.logDir) {
+    throw new Error("--logdir and --nologfiles cannot be used together.");
+  }
+  const connect = wasmNodeEffectiveEndpoint(net, "connectEnabled", "connectHost", "connectPort");
+  const addPeer = wasmNodeEffectiveEndpoint(net, "addPeerEnabled", "addPeerHost", "addPeerPort");
+  const logLevel = wasmNodeCommandShouldInclude(net, "logLevel") ? String(values.logLevel || "info") : "info";
+  const ua = wasmNodeCommandShouldInclude(net, "uaComment") ? String(values.uaComment || "") : "";
+  return {
+    logLevel,
+    asyncThreads: wasmNodeEffectiveNumber(net, "asyncThreads", 16, true),
+    ramScale: wasmNodeEffectiveNumber(net, "ramScale", 1, false),
+    yes: Boolean(values.yes),
+    noLogFiles: Boolean(values.noLogFiles),
+    sanity: Boolean(values.sanity),
+    enableUnsyncedMining: Boolean(values.enableUnsyncedMining) && Boolean(profile && profile.testnet),
+    p2pListen: wasmNodeEffectiveEndpoint(net, "listenEnabled", "listenHost", "listenPort"),
+    externalIp: wasmNodeEffectiveEndpoint(net, "externalIpEnabled", "externalIpHost", "externalIpPort"),
+    disableUpnp: Boolean(values.disableUpnp),
+    disableDnsSeeding: Boolean(values.noDnsSeed),
+    userAgentComments: ua ? [ua] : [],
+    rpcListen: grpc,
+    rpcListenBorsh: wasmNodeEffectiveEndpoint(net, "rpcBorshEnabled", "rpcBorshHost", "rpcBorshPort"),
+    rpcListenJson: wasmNodeEffectiveEndpoint(net, "rpcJsonEnabled", "rpcJsonHost", "rpcJsonPort"),
+    rpcMaxClients: wasmNodeEffectiveNumber(net, "rpcMaxClients", 16, true),
+    unsafeRpc: Boolean(values.unsafeRpc),
+    disableGrpc: Boolean(values.noGrpc),
+    connectPeers: connect ? [connect] : [],
+    addPeers: addPeer ? [addPeer] : [],
+    outboundTarget: wasmNodeEffectiveNumber(net, "outPeers", 8, true),
+    inboundLimit: wasmNodeEffectiveNumber(net, "maxInPeers", 32, true),
+    utxoIndex: Boolean(values.utxoIndex),
+    archival: Boolean(values.archival),
+    resetDb: Boolean(values.resetDb),
+    perfMetrics: Boolean(values.perfMetrics),
+    maxTrackedAddresses: wasmNodeEffectiveNumber(net, "maxTrackedAddresses", 0, true),
+    retentionPeriodDays: wasmNodeCommandShouldInclude(net, "retentionDays") && values.retentionDays
+      ? wasmNodeEffectiveNumber(net, "retentionDays", null, false) : null,
+    perfMetricsIntervalSec: wasmNodeEffectiveNumber(net, "perfMetricsInterval", 10, true),
+    rocksDbPreset: wasmNodeCommandShouldInclude(net, "rocksDbPreset") ? values.rocksDbPreset || null : null,
+    rocksDbCacheSize: nodeFieldEnabled("rocksDbCacheSize", values, options) && values.rocksDbCacheSize
+      ? wasmNodeEffectiveNumber(net, "rocksDbCacheSize", null, true) : null,
+    rocksDbWalDir: wasmNodeCommandShouldInclude(net, "rocksDbWalDir") ? values.rocksDbWalDir || null : null,
+    overrideParamsFile: null,
+    logDir: nodeFieldEnabled("logDir", values, options) ? values.logDir || null : null,
+  };
+};
+const wasmNodeRuntimeArgs = (net, command) => {
+  if (command === "kgw_kgw_apply_node_settings_v1") {
+    const preview = document.getElementById("node-" + String(net || "") + "-commandPreview");
+    return {
+      network: net,
+      nodeKind: "integrated-as-daemon",
+      bridgeKind: "disable",
+      nodeCommandPreview: preview ? String(preview.value || "") : "",
+      bridgeCommandPreview: "",
+      effectiveNodeSettings: wasmNodeEffectiveNodeSettings(net),
+      runtimeRole: "node",
+      experimentalNetworkOptIn: String(net) === "testnet13" && wasmNodeNetworkEnabled(net),
+    };
+  }
+  if (["kgw_kgw_disable_network_v1", "kgw_runtime_owner_status_v1", "kgw_kgw_runtime_logs_v1"].includes(command)) {
+    return { network: net, runtimeRole: "node" };
+  }
+  return { network: net };
 };
 const wasmNodeCommandOptionsKey = () => "__kgwNodeCommandOptionsR38C";
 const wasmNodeReadCommandOptions = (net) => {

@@ -1,3 +1,7 @@
+use super::settings_contract::{
+    endpoint as settings_endpoint, node_field_enabled as settings_node_field_enabled,
+    validate_node_form as settings_validate_node_form,
+};
 use super::settings_schema::{NODE_ENDPOINTS, NODE_MANAGED, NODE_OPTIONAL, NODE_REQUIRED};
 use js_sys::{Array, Error, Function, JSON, Object, Promise, Reflect};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
@@ -663,6 +667,418 @@ fn r51_read_settings(net: &str) -> JsValue {
         set(values.as_ref(), &id, item.as_ref());
     }
     values.into()
+}
+
+fn node_form_values(net: &str) -> JsValue {
+    let values = Object::new();
+    let panel = r51_panel(net);
+    if !present(&panel) {
+        return values.into();
+    }
+    let Some(list) = call1(
+        &panel,
+        "querySelectorAll",
+        &JsValue::from_str(".node-v6-card input[id], .node-v6-card select[id]"),
+    ) else {
+        return values.into();
+    };
+    let length = crate::js_number(&property(&list, "length"));
+    let prefix = format!("node-{net}-");
+    for index in 0..length.max(0.0) as u32 {
+        let Ok(field) = Reflect::get(&list, &JsValue::from_f64(index as f64)) else {
+            continue;
+        };
+        let id = crate::js_string_owned(&property(&field, "id"));
+        let Some(name) = id.strip_prefix(&prefix) else {
+            continue;
+        };
+        let value = if crate::js_string_owned(&property(&field, "type")) == "checkbox" {
+            JsValue::from_bool(crate::js_boolean(&property(&field, "checked")))
+        } else {
+            property(&field, "value")
+        };
+        set(values.as_ref(), name, &value);
+    }
+    values.into()
+}
+
+fn form_text(values: &JsValue, name: &str) -> String {
+    crate::js_string_owned(&property(values, name))
+        .trim()
+        .to_owned()
+}
+
+fn form_checked(values: &JsValue, name: &str) -> bool {
+    crate::js_boolean(&property(values, name))
+}
+
+fn first_node_validation_error(net: &str, values: &JsValue, options: &JsValue) -> Option<String> {
+    let errors = settings_validate_node_form(values.clone(), options.clone(), net.to_owned());
+    if !errors.is_object() || errors.is_null() {
+        return None;
+    }
+    let keys = Object::keys(&Object::from(errors.clone()));
+    if keys.length() == 0 {
+        return None;
+    }
+    let key = crate::js_string_owned(&keys.get(0));
+    let message = crate::js_string_owned(&property(&errors, &key));
+    (!message.is_empty()).then_some(message)
+}
+
+fn effective_number_value(
+    name: &str,
+    fallback: JsValue,
+    integer: bool,
+    values: &JsValue,
+    options: &JsValue,
+) -> Result<JsValue, JsValue> {
+    if !settings_node_field_enabled(name.to_owned(), values.clone(), options.clone()) {
+        return Ok(fallback);
+    }
+    let raw = form_text(values, name);
+    if raw.is_empty() {
+        return Ok(fallback);
+    }
+    let number = crate::js_number(&JsValue::from_str(&raw));
+    if !number.is_finite() || (integer && number.fract() != 0.0) {
+        let kind = if integer {
+            "an integer"
+        } else {
+            "a finite number"
+        };
+        return Err(Error::new(&format!("{name} must be {kind}.")).into());
+    }
+    Ok(JsValue::from_f64(number))
+}
+
+fn effective_endpoint_value(
+    enabled_name: &str,
+    host_name: &str,
+    port_name: &str,
+    values: &JsValue,
+) -> Result<JsValue, JsValue> {
+    if !form_checked(values, enabled_name) {
+        return Ok(JsValue::NULL);
+    }
+    let host = form_text(values, host_name);
+    let port = form_text(values, port_name);
+    if host.is_empty() && port.is_empty() {
+        return Err(Error::new(&format!("{enabled_name} requires a host and port.")).into());
+    }
+    let port_number = crate::js_number(&JsValue::from_str(&port));
+    if host.is_empty()
+        || port.is_empty()
+        || !port.bytes().all(|byte| byte.is_ascii_digit())
+        || !port_number.is_finite()
+        || !(1.0..=65_535.0).contains(&port_number)
+    {
+        return Err(Error::new(&format!(
+            "{enabled_name} requires a host and a port between 1 and 65535."
+        ))
+        .into());
+    }
+    Ok(JsValue::from_str(&settings_endpoint(
+        JsValue::from_str(&host),
+        JsValue::from_str(&port),
+    )))
+}
+
+fn optional_text_value(text: String) -> JsValue {
+    if text.is_empty() {
+        JsValue::NULL
+    } else {
+        JsValue::from_str(&text)
+    }
+}
+
+fn text_array(value: Option<String>) -> JsValue {
+    let array = Array::new();
+    if let Some(value) = value.filter(|value| !value.is_empty()) {
+        array.push(&JsValue::from_str(&value));
+    }
+    array.into()
+}
+
+fn node_effective_node_settings_inner(net: &str) -> Result<JsValue, JsValue> {
+    let values = node_form_values(net);
+    let options = command_state_object(net);
+
+    if let Some(message) = first_node_validation_error(net, &values, &options) {
+        return Err(Error::new(&message).into());
+    }
+
+    let rpc_listen = effective_endpoint_value(
+        "rpcListenEnabled",
+        "rpcListenHost",
+        "rpcListenPort",
+        &values,
+    )?;
+    if rpc_listen.is_null() || rpc_listen.is_undefined() {
+        return Err(
+            Error::new("The managed desktop owner requires gRPC RPC to remain enabled.").into(),
+        );
+    }
+
+    if !form_text(&values, "configFile").is_empty() {
+        return Err(Error::new(
+            "--configfile is not supported by the managed desktop owner because network and database ownership must remain authoritative.",
+        )
+        .into());
+    }
+    if !form_text(&values, "overrideParamsFile").is_empty() {
+        return Err(Error::new(
+            "--override-params-file is not supported because the desktop owns the selected network identity.",
+        )
+        .into());
+    }
+    if form_checked(&values, "noLogFiles")
+        && settings_node_field_enabled("logDir".to_owned(), values.clone(), options.clone())
+        && !form_text(&values, "logDir").is_empty()
+    {
+        return Err(Error::new("--logdir and --nologfiles cannot be used together.").into());
+    }
+
+    let connect =
+        effective_endpoint_value("connectEnabled", "connectHost", "connectPort", &values)?;
+    let add_peer =
+        effective_endpoint_value("addPeerEnabled", "addPeerHost", "addPeerPort", &values)?;
+    let p2p_listen =
+        effective_endpoint_value("listenEnabled", "listenHost", "listenPort", &values)?;
+    let external_ip = effective_endpoint_value(
+        "externalIpEnabled",
+        "externalIpHost",
+        "externalIpPort",
+        &values,
+    )?;
+    let rpc_borsh =
+        effective_endpoint_value("rpcBorshEnabled", "rpcBorshHost", "rpcBorshPort", &values)?;
+    let rpc_json =
+        effective_endpoint_value("rpcJsonEnabled", "rpcJsonHost", "rpcJsonPort", &values)?;
+
+    let output = Object::new();
+    let log_level = if command_option_enabled_inner(net, "logLevel") {
+        let value = form_text(&values, "logLevel");
+        if value.is_empty() {
+            "info".to_owned()
+        } else {
+            value
+        }
+    } else {
+        "info".to_owned()
+    };
+    set(output.as_ref(), "logLevel", &JsValue::from_str(&log_level));
+    set(
+        output.as_ref(),
+        "asyncThreads",
+        &effective_number_value(
+            "asyncThreads",
+            JsValue::from_f64(16.0),
+            true,
+            &values,
+            &options,
+        )?,
+    );
+    set(
+        output.as_ref(),
+        "ramScale",
+        &effective_number_value("ramScale", JsValue::from_f64(1.0), false, &values, &options)?,
+    );
+    for (key, source) in [
+        ("yes", "yes"),
+        ("noLogFiles", "noLogFiles"),
+        ("sanity", "sanity"),
+        ("disableUpnp", "disableUpnp"),
+        ("disableDnsSeeding", "noDnsSeed"),
+        ("unsafeRpc", "unsafeRpc"),
+        ("disableGrpc", "noGrpc"),
+        ("utxoIndex", "utxoIndex"),
+        ("archival", "archival"),
+        ("resetDb", "resetDb"),
+        ("perfMetrics", "perfMetrics"),
+    ] {
+        set(
+            output.as_ref(),
+            key,
+            &JsValue::from_bool(form_checked(&values, source)),
+        );
+    }
+    let testnet = profile(net).is_some_and(|profile| profile.testnet);
+    set(
+        output.as_ref(),
+        "enableUnsyncedMining",
+        &JsValue::from_bool(form_checked(&values, "enableUnsyncedMining") && testnet),
+    );
+    set(output.as_ref(), "p2pListen", &p2p_listen);
+    set(output.as_ref(), "externalIp", &external_ip);
+    let ua_comment = command_option_enabled_inner(net, "uaComment")
+        .then(|| form_text(&values, "uaComment"))
+        .filter(|value| !value.is_empty());
+    set(
+        output.as_ref(),
+        "userAgentComments",
+        &text_array(ua_comment),
+    );
+    set(output.as_ref(), "rpcListen", &rpc_listen);
+    set(output.as_ref(), "rpcListenBorsh", &rpc_borsh);
+    set(output.as_ref(), "rpcListenJson", &rpc_json);
+    set(
+        output.as_ref(),
+        "rpcMaxClients",
+        &effective_number_value(
+            "rpcMaxClients",
+            JsValue::from_f64(16.0),
+            true,
+            &values,
+            &options,
+        )?,
+    );
+    set(
+        output.as_ref(),
+        "connectPeers",
+        &text_array((!connect.is_null()).then(|| crate::js_string_owned(&connect))),
+    );
+    set(
+        output.as_ref(),
+        "addPeers",
+        &text_array((!add_peer.is_null()).then(|| crate::js_string_owned(&add_peer))),
+    );
+    set(
+        output.as_ref(),
+        "outboundTarget",
+        &effective_number_value("outPeers", JsValue::from_f64(8.0), true, &values, &options)?,
+    );
+    set(
+        output.as_ref(),
+        "inboundLimit",
+        &effective_number_value(
+            "maxInPeers",
+            JsValue::from_f64(32.0),
+            true,
+            &values,
+            &options,
+        )?,
+    );
+    set(
+        output.as_ref(),
+        "maxTrackedAddresses",
+        &effective_number_value(
+            "maxTrackedAddresses",
+            JsValue::from_f64(0.0),
+            true,
+            &values,
+            &options,
+        )?,
+    );
+
+    let retention = if command_option_enabled_inner(net, "retentionDays")
+        && !form_text(&values, "retentionDays").is_empty()
+    {
+        effective_number_value("retentionDays", JsValue::NULL, false, &values, &options)?
+    } else {
+        JsValue::NULL
+    };
+    set(output.as_ref(), "retentionPeriodDays", &retention);
+    set(
+        output.as_ref(),
+        "perfMetricsIntervalSec",
+        &effective_number_value(
+            "perfMetricsInterval",
+            JsValue::from_f64(10.0),
+            true,
+            &values,
+            &options,
+        )?,
+    );
+
+    let rocks_preset = if command_option_enabled_inner(net, "rocksDbPreset") {
+        optional_text_value(form_text(&values, "rocksDbPreset"))
+    } else {
+        JsValue::NULL
+    };
+    set(output.as_ref(), "rocksDbPreset", &rocks_preset);
+
+    let rocks_cache = if settings_node_field_enabled(
+        "rocksDbCacheSize".to_owned(),
+        values.clone(),
+        options.clone(),
+    ) && !form_text(&values, "rocksDbCacheSize").is_empty()
+    {
+        effective_number_value("rocksDbCacheSize", JsValue::NULL, true, &values, &options)?
+    } else {
+        JsValue::NULL
+    };
+    set(output.as_ref(), "rocksDbCacheSize", &rocks_cache);
+
+    let rocks_wal = if command_option_enabled_inner(net, "rocksDbWalDir") {
+        optional_text_value(form_text(&values, "rocksDbWalDir"))
+    } else {
+        JsValue::NULL
+    };
+    set(output.as_ref(), "rocksDbWalDir", &rocks_wal);
+    set(output.as_ref(), "overrideParamsFile", &JsValue::NULL);
+
+    let log_dir =
+        if settings_node_field_enabled("logDir".to_owned(), values.clone(), options.clone()) {
+            optional_text_value(form_text(&values, "logDir"))
+        } else {
+            JsValue::NULL
+        };
+    set(output.as_ref(), "logDir", &log_dir);
+
+    Ok(output.into())
+}
+
+#[wasm_bindgen(js_name = nodeEffectiveNodeSettings)]
+pub fn node_effective_node_settings(net: String) -> Result<JsValue, JsValue> {
+    node_effective_node_settings_inner(&net)
+}
+
+#[wasm_bindgen(js_name = nodeRuntimeArgs)]
+pub fn node_runtime_args(net: String, command: String) -> Result<JsValue, JsValue> {
+    let output = Object::new();
+    set(output.as_ref(), "network", &JsValue::from_str(&net));
+
+    if command == "kgw_kgw_apply_node_settings_v1" {
+        let preview = property(
+            &node_by_id(node_element_id(net.clone(), "commandPreview".to_owned())),
+            "value",
+        );
+        set(
+            output.as_ref(),
+            "nodeKind",
+            &JsValue::from_str("integrated-as-daemon"),
+        );
+        set(output.as_ref(), "bridgeKind", &JsValue::from_str("disable"));
+        set(
+            output.as_ref(),
+            "nodeCommandPreview",
+            &JsValue::from_str(&crate::js_string_owned(&preview)),
+        );
+        set(
+            output.as_ref(),
+            "bridgeCommandPreview",
+            &JsValue::from_str(""),
+        );
+        set(
+            output.as_ref(),
+            "effectiveNodeSettings",
+            &node_effective_node_settings_inner(&net)?,
+        );
+        set(output.as_ref(), "runtimeRole", &JsValue::from_str("node"));
+        set(
+            output.as_ref(),
+            "experimentalNetworkOptIn",
+            &JsValue::from_bool(net == "testnet13" && node_network_enabled(net.clone())),
+        );
+    } else if matches!(
+        command.as_str(),
+        "kgw_kgw_disable_network_v1" | "kgw_runtime_owner_status_v1" | "kgw_kgw_runtime_logs_v1"
+    ) {
+        set(output.as_ref(), "runtimeRole", &JsValue::from_str("node"));
+    }
+
+    Ok(output.into())
 }
 
 fn dispatch_bubbling_event(target: &JsValue, name: &str) {
