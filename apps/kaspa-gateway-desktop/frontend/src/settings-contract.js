@@ -28,6 +28,7 @@ import init, {
   settingsDatabaseInstallMaintenance as wasmDatabaseInstallMaintenance,
   settingsDatabaseRefresh as wasmDatabaseRefresh,
   settingsDatabaseRenderRows as wasmDatabaseRenderRows,
+  settingsDiagnosticsInstall as wasmDiagnosticsInstall,
   settingsDbKindFromFileName as wasmDbKindFromFileName,
   settingsEndpoint as wasmEndpoint,
   settingsExplorerAddress as wasmExplorerAddress,
@@ -195,6 +196,10 @@ export function settingsDatabaseInstall() {
 
 export function settingsDatabaseInstallMaintenance() {
   return wasmDatabaseInstallMaintenance();
+}
+
+export function settingsDiagnosticsInstall() {
+  return wasmDiagnosticsInstall();
 }
 
 export function settingsExplorerAddress(value) {

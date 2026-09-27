@@ -250,6 +250,7 @@ import init, {
   settingsDatabaseInstallMaintenance as wasmDatabaseInstallMaintenance,
   settingsDatabaseRefresh as wasmDatabaseRefresh,
   settingsDatabaseRenderRows as wasmDatabaseRenderRows,
+  settingsDiagnosticsInstall as wasmDiagnosticsInstall,
   settingsDbKindFromFileName as wasmDbKindFromFileName,
   settingsEndpoint as wasmEndpoint,
   settingsExplorerAddress as wasmExplorerAddress,
@@ -417,6 +418,10 @@ export function settingsDatabaseInstall() {
 
 export function settingsDatabaseInstallMaintenance() {
   return wasmDatabaseInstallMaintenance();
+}
+
+export function settingsDiagnosticsInstall() {
+  return wasmDiagnosticsInstall();
 }
 
 export function settingsExplorerAddress(value) {
@@ -1075,6 +1080,7 @@ mod tests {
         assert!(settings.contains("await wasmDatabaseRefresh()"));
         assert!(settings.contains("wasmDatabaseInstall()"));
         assert!(settings.contains("wasmDatabaseInstallMaintenance()"));
+        assert!(settings.contains("wasmDiagnosticsInstall()"));
         assert!(settings.contains("wasmPathsApply(paths, force)"));
         assert!(settings.contains("await wasmPathsBrowse(targetId)"));
         assert!(settings.contains("await wasmPathsLoadDefaults(reason)"));

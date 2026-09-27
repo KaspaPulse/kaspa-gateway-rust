@@ -945,64 +945,63 @@ export function settingsLayoutInstallGlobal(root) {
 }
 
 /**
- * @param {any} line
+ * @param {any} state
+ * @returns {any}
+ */
+export function runtimePresentation(state) {
+    const ret = wasm.runtimePresentation(state);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {any} fields
+ * @param {any} running
+ * @param {any} cpu_only
  * @returns {string}
  */
-export function kgwLogParseLevel(line) {
-    let deferred1_0;
-    let deferred1_1;
+export function runtimeObservationSummary(fields, running, cpu_only) {
+    let deferred2_0;
+    let deferred2_1;
     try {
-        const ret = wasm.kgwLogParseLevel(line);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
+        const ret = wasm.runtimeObservationSummary(fields, running, cpu_only);
+        var ptr1 = ret[0];
+        var len1 = ret[1];
+        if (ret[3]) {
+            ptr1 = 0; len1 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred2_0 = ptr1;
+        deferred2_1 = len1;
+        return getStringFromWasm0(ptr1, len1);
     } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
     }
 }
 
+export function settingsProfilesInstall() {
+    wasm.settingsProfilesInstall();
+}
+
 /**
- * @param {any} text
- * @param {any} env
- * @returns {Promise<boolean>}
+ * @param {any} row
  */
-export function kgwLogCopyTextToClipboard(text, env) {
-    const ret = wasm.kgwLogCopyTextToClipboard(text, env);
+export function settingsProfilesSelectEndpoint(row) {
+    wasm.settingsProfilesSelectEndpoint(row);
+}
+
+/**
+ * @returns {Promise<any>}
+ */
+export function settingsProfilesRefresh() {
+    const ret = wasm.settingsProfilesRefresh();
     return ret;
 }
 
-export function kgwLogInitTab() {
-    const ret = wasm.kgwLogInitTab();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} payload
- */
-export function analysisViewSetData(payload) {
-    wasm.analysisViewSetData(payload);
-}
-
-export function analysisViewRenderRows() {
-    wasm.analysisViewRenderRows();
-}
-
-export function analysisViewApplyFilter() {
-    wasm.analysisViewApplyFilter();
-}
-
-/**
- * @returns {Array<any>}
- */
-export function analysisViewFilteredRows() {
-    const ret = wasm.analysisViewFilteredRows();
-    return ret;
-}
-
-export function analysisViewResetExpansion() {
-    wasm.analysisViewResetExpansion();
+export function settingsDiagnosticsInstall() {
+    wasm.settingsDiagnosticsInstall();
 }
 
 export function explorerExportInstall() {
@@ -1035,6 +1034,156 @@ export function explorerExportHtml(section) {
  */
 export function explorerExportPdf(section) {
     wasm.explorerExportPdf(section);
+}
+
+/**
+ * @param {any} paths
+ * @param {boolean} force
+ */
+export function settingsPathsApply(paths, force) {
+    wasm.settingsPathsApply(paths, force);
+}
+
+/**
+ * @param {string} reason
+ * @returns {Promise<any>}
+ */
+export function settingsPathsLoadDefaults(reason) {
+    const ptr0 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsPathsLoadDefaults(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @returns {Promise<void>}
+ */
+export function settingsPathsRepairBeforeSave() {
+    const ret = wasm.settingsPathsRepairBeforeSave();
+    return ret;
+}
+
+/**
+ * @param {string} target_id
+ * @returns {Promise<boolean>}
+ */
+export function settingsPathsBrowse(target_id) {
+    const ptr0 = passStringToWasm0(target_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsPathsBrowse(ptr0, len0);
+    return ret;
+}
+
+export function settingsAddressesInstallManage() {
+    const ret = wasm.settingsAddressesInstallManage();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @returns {Promise<any>}
+ */
+export function settingsAddressesRefresh() {
+    const ret = wasm.settingsAddressesRefresh();
+    return ret;
+}
+
+/**
+ * @param {any} records
+ * @param {any} options
+ * @returns {Promise<boolean>}
+ */
+export function settingsAddressesRenderRows(records, options) {
+    const ret = wasm.settingsAddressesRenderRows(records, options);
+    return ret;
+}
+
+export function settingsAddressesInstallExplorerOpen() {
+    const ret = wasm.settingsAddressesInstallExplorerOpen();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+export function settingsAddressesInstallIo() {
+    const ret = wasm.settingsAddressesInstallIo();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+export function settingsAddressesInstallDeleteTransactions() {
+    const ret = wasm.settingsAddressesInstallDeleteTransactions();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+export function settingsAddressesClearFields() {
+    wasm.settingsAddressesClearFields();
+}
+
+/**
+ * @param {string} message
+ * @param {string} state
+ */
+export function settingsAddressesSetStatus(message, state) {
+    const ptr0 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(state, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    wasm.settingsAddressesSetStatus(ptr0, len0, ptr1, len1);
+}
+
+/**
+ * @returns {string}
+ */
+export function settingsAddressesNow() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.settingsAddressesNow();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @returns {bigint}
+ */
+export function settingsAddressesIncrementRestoreEpoch() {
+    const ret = wasm.settingsAddressesIncrementRestoreEpoch();
+    return BigInt.asUintN(64, ret);
+}
+
+/**
+ * @returns {bigint}
+ */
+export function settingsAddressesRestoreEpoch() {
+    const ret = wasm.settingsAddressesRestoreEpoch();
+    return BigInt.asUintN(64, ret);
+}
+
+/**
+ * @param {string} address
+ * @returns {boolean}
+ */
+export function settingsAddressesOpenExplorer(address) {
+    const ptr0 = passStringToWasm0(address, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsAddressesOpenExplorer(ptr0, len0);
+    return ret !== 0;
+}
+
+export function settingsAddressesInstallAll() {
+    const ret = wasm.settingsAddressesInstallAll();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
 }
 
 export function topAddressesInitTab() {
@@ -1239,6 +1388,53 @@ export function shellLoggerInstall() {
 }
 
 /**
+ * @param {any} payload
+ */
+export function analysisViewSetData(payload) {
+    wasm.analysisViewSetData(payload);
+}
+
+export function analysisViewRenderRows() {
+    wasm.analysisViewRenderRows();
+}
+
+export function analysisViewApplyFilter() {
+    wasm.analysisViewApplyFilter();
+}
+
+/**
+ * @returns {Array<any>}
+ */
+export function analysisViewFilteredRows() {
+    const ret = wasm.analysisViewFilteredRows();
+    return ret;
+}
+
+export function analysisViewResetExpansion() {
+    wasm.analysisViewResetExpansion();
+}
+
+export function analysisCalendarInstall() {
+    wasm.analysisCalendarInstall();
+}
+
+/**
+ * @returns {string}
+ */
+export function analysisCalendarResetToToday() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.analysisCalendarResetToToday();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
  * @param {any} rows
  */
 export function settingsDatabaseRenderRows(rows) {
@@ -1264,232 +1460,6 @@ export function settingsDatabaseInstallMaintenance() {
     const ret = wasm.settingsDatabaseInstallMaintenance();
     if (ret[1]) {
         throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-export function settingsProfilesInstall() {
-    wasm.settingsProfilesInstall();
-}
-
-/**
- * @param {any} row
- */
-export function settingsProfilesSelectEndpoint(row) {
-    wasm.settingsProfilesSelectEndpoint(row);
-}
-
-/**
- * @returns {Promise<any>}
- */
-export function settingsProfilesRefresh() {
-    const ret = wasm.settingsProfilesRefresh();
-    return ret;
-}
-
-export function analysisCalendarInstall() {
-    wasm.analysisCalendarInstall();
-}
-
-/**
- * @returns {string}
- */
-export function analysisCalendarResetToToday() {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.analysisCalendarResetToToday();
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-export function settingsAddressesInstallManage() {
-    const ret = wasm.settingsAddressesInstallManage();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @returns {Promise<any>}
- */
-export function settingsAddressesRefresh() {
-    const ret = wasm.settingsAddressesRefresh();
-    return ret;
-}
-
-/**
- * @param {any} records
- * @param {any} options
- * @returns {Promise<boolean>}
- */
-export function settingsAddressesRenderRows(records, options) {
-    const ret = wasm.settingsAddressesRenderRows(records, options);
-    return ret;
-}
-
-export function settingsAddressesInstallExplorerOpen() {
-    const ret = wasm.settingsAddressesInstallExplorerOpen();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-export function settingsAddressesInstallIo() {
-    const ret = wasm.settingsAddressesInstallIo();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-export function settingsAddressesInstallDeleteTransactions() {
-    const ret = wasm.settingsAddressesInstallDeleteTransactions();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-export function settingsAddressesClearFields() {
-    wasm.settingsAddressesClearFields();
-}
-
-/**
- * @param {string} message
- * @param {string} state
- */
-export function settingsAddressesSetStatus(message, state) {
-    const ptr0 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(state, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    wasm.settingsAddressesSetStatus(ptr0, len0, ptr1, len1);
-}
-
-/**
- * @returns {string}
- */
-export function settingsAddressesNow() {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.settingsAddressesNow();
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @returns {bigint}
- */
-export function settingsAddressesIncrementRestoreEpoch() {
-    const ret = wasm.settingsAddressesIncrementRestoreEpoch();
-    return BigInt.asUintN(64, ret);
-}
-
-/**
- * @returns {bigint}
- */
-export function settingsAddressesRestoreEpoch() {
-    const ret = wasm.settingsAddressesRestoreEpoch();
-    return BigInt.asUintN(64, ret);
-}
-
-/**
- * @param {string} address
- * @returns {boolean}
- */
-export function settingsAddressesOpenExplorer(address) {
-    const ptr0 = passStringToWasm0(address, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.settingsAddressesOpenExplorer(ptr0, len0);
-    return ret !== 0;
-}
-
-export function settingsAddressesInstallAll() {
-    const ret = wasm.settingsAddressesInstallAll();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} paths
- * @param {boolean} force
- */
-export function settingsPathsApply(paths, force) {
-    wasm.settingsPathsApply(paths, force);
-}
-
-/**
- * @param {string} reason
- * @returns {Promise<any>}
- */
-export function settingsPathsLoadDefaults(reason) {
-    const ptr0 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.settingsPathsLoadDefaults(ptr0, len0);
-    return ret;
-}
-
-/**
- * @returns {Promise<void>}
- */
-export function settingsPathsRepairBeforeSave() {
-    const ret = wasm.settingsPathsRepairBeforeSave();
-    return ret;
-}
-
-/**
- * @param {string} target_id
- * @returns {Promise<boolean>}
- */
-export function settingsPathsBrowse(target_id) {
-    const ptr0 = passStringToWasm0(target_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.settingsPathsBrowse(ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {any} state
- * @returns {any}
- */
-export function runtimePresentation(state) {
-    const ret = wasm.runtimePresentation(state);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * @param {any} fields
- * @param {any} running
- * @param {any} cpu_only
- * @returns {string}
- */
-export function runtimeObservationSummary(fields, running, cpu_only) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ret = wasm.runtimeObservationSummary(fields, running, cpu_only);
-        var ptr1 = ret[0];
-        var len1 = ret[1];
-        if (ret[3]) {
-            ptr1 = 0; len1 = 0;
-            throw takeFromExternrefTable0(ret[2]);
-        }
-        deferred2_0 = ptr1;
-        deferred2_1 = len1;
-        return getStringFromWasm0(ptr1, len1);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
     }
 }
 
@@ -1680,16 +1650,50 @@ export function headerLiveMetricsSelectedCurrencyValue(metric_value, current_tex
     }
 }
 
+/**
+ * @param {any} line
+ * @returns {string}
+ */
+export function kgwLogParseLevel(line) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.kgwLogParseLevel(line);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} text
+ * @param {any} env
+ * @returns {Promise<boolean>}
+ */
+export function kgwLogCopyTextToClipboard(text, env) {
+    const ret = wasm.kgwLogCopyTextToClipboard(text, env);
+    return ret;
+}
+
+export function kgwLogInitTab() {
+    const ret = wasm.kgwLogInitTab();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
 function __wbg_adapter_34(arg0, arg1) {
     wasm._dyn_core_ed718c3d60ebd546___ops__function__FnMut_____Output______as_wasm_bindgen_1ba7c375a52abd4d___closure__WasmClosure___describe__invoke______(arg0, arg1);
 }
 
 function __wbg_adapter_37(arg0, arg1, arg2) {
-    wasm.closure388_externref_shim(arg0, arg1, arg2);
+    wasm.closure393_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_260(arg0, arg1, arg2, arg3) {
-    wasm.closure412_externref_shim(arg0, arg1, arg2, arg3);
+function __wbg_adapter_261(arg0, arg1, arg2, arg3) {
+    wasm.closure417_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 async function __wbg_load(module, imports) {
@@ -1895,7 +1899,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_260(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_261(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -2031,12 +2035,12 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1380 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 389, __wbg_adapter_37);
+    imports.wbg.__wbindgen_closure_wrapper1394 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 394, __wbg_adapter_37);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper818 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 184, __wbg_adapter_34);
+    imports.wbg.__wbindgen_closure_wrapper957 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 211, __wbg_adapter_34);
         return ret;
     };
     imports.wbg.__wbindgen_init_externref_table = function() {

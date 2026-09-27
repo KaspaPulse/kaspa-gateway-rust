@@ -9,6 +9,7 @@ import {
   settingsDatabaseInstall,
   settingsDatabaseInstallMaintenance,
   settingsDatabaseRefresh,
+  settingsDiagnosticsInstall,
   settingsPathsBrowse,
   settingsPathsLoadDefaults,
   settingsPathsRepairBeforeSave,
@@ -974,85 +975,6 @@ function loadSavedState() {
 }
 
 
-function installLogDiagnosticsSettings() {
-  if (q("#settingsClearLogOnStartup") || q("#settingsDeveloperOperationLogs")) return;
-
-  const clearKey = "kgw.clearLogOnStartup";
-  const devKey = "kgw.developerOperationLogs";
-
-  function makeRow(id, text, key) {
-    const label = document.createElement("label");
-    label.style.display = "flex";
-    label.style.alignItems = "center";
-    label.style.gap = "10px";
-    label.style.margin = "8px 0";
-    label.style.cursor = "pointer";
-
-    const input = document.createElement("input");
-    input.id = id;
-    input.type = "checkbox";
-    input.checked = localStorage.getItem(key) === "1";
-
-    input.addEventListener("change", function (event) {
-      kgwSettingsUiTraceR48B3("settings-log-diagnostics", "r48b3-log-diagnostics-change", {
-        trusted: Boolean(event && event.isTrusted),
-        targetId: String(id || ""),
-        key: String(key || ""),
-        checked: Boolean(input.checked)
-      });
-      localStorage.setItem(key, input.checked ? "1" : "0");
-      setSaveEnabled(true);
-      settingsLogger().log(`${text}: ${input.checked ? "enabled" : "disabled"}`);
-    });
-
-    const span = document.createElement("span");
-    span.textContent = text;
-
-    label.appendChild(input);
-    label.appendChild(span);
-    return label;
-  }
-
-  const block = document.createElement("div");
-  block.id = "settingsLogDiagnostics";
-  block.style.marginTop = "12px";
-  block.style.paddingTop = "10px";
-  block.style.borderTop = "1px solid rgba(120,160,210,0.35)";
-
-  const title = document.createElement("div");
-  title.textContent = (window.kgwT ? window.kgwT("settings.logDiagnostics") : "Log & Diagnostics");
-  title.style.fontWeight = "700";
-  title.style.marginBottom = "8px";
-
-  block.appendChild(title);
-  block.appendChild(makeRow("settingsClearLogOnStartup", "Clear log on startup", clearKey));
-  block.appendChild(makeRow("settingsDeveloperOperationLogs", "Developer operation logs", devKey));
-
-  const settingsRoot = root();
-  if (!settingsRoot) return;
-
-  const loggingControl =
-    q("#settingsLoggingLevel") ||
-    Array.from(settingsRoot.querySelectorAll("select, input")).find((node) =>
-      String(node.id || node.name || "").toLowerCase().includes("logging")
-    );
-
-  const advancedBox =
-    loggingControl?.closest("fieldset") ||
-    loggingControl?.closest(".settings-section") ||
-    loggingControl?.closest("div") ||
-    Array.from(settingsRoot.querySelectorAll("fieldset, section, div")).find((node) => {
-      const text = String(node.textContent || "");
-      return text.includes("Logging Level") ||
-        text.includes("Check for updates on startup") ||
-        text.includes("Start with Windows");
-    }) ||
-    settingsRoot;
-
-  advancedBox.appendChild(block);
-  advancedBox.style.overflow = "visible";
-  advancedBox.style.minHeight = "250px";
-}
 export async function initSettingsTab() {
   const node = root();
 
@@ -1080,7 +1002,7 @@ export async function initSettingsTab() {
     selectEndpoint(firstEndpoint);
   }
 
-  installLogDiagnosticsSettings();
+  settingsDiagnosticsInstall();
 
   setSaveEnabled(false);
   settingsLogger().log("settings python exact ui initialized");

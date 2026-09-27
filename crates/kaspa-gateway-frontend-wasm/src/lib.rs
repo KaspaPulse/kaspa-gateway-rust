@@ -7,6 +7,7 @@ mod log_tab;
 mod settings_addresses;
 mod settings_contract;
 mod settings_database;
+mod settings_diagnostics;
 mod settings_layout;
 mod settings_paths;
 mod settings_profiles;
