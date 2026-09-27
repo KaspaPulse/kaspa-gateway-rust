@@ -109,30 +109,26 @@ fn path_dirty(root: &Path, relative: &str) -> Result<bool, String> {
 
 fn powershell_parser_checks(root: &Path) -> Result<(), String> {
     let script = r#"$e=$null; [void][System.Management.Automation.Language.Parser]::ParseFile($args[0],[ref]$null,[ref]$e); if($e -and $e.Count){$e | ForEach-Object { [Console]::Error.WriteLine($_.Message) }; exit 1}"#;
-    for relative in [
-        "tools/kgw_zero_touch_e2e.ps1",
-        "tools/kgw_zero_touch_evidence.ps1",
-    ] {
-        let absolute = root.join(relative);
-        if !absolute.is_file() {
-            return Err(format!(
-                "Missing PowerShell script for parser check: {relative}"
-            ));
-        }
-        let args = vec![
-            "-NoLogo".to_owned(),
-            "-NoProfile".to_owned(),
-            "-Command".to_owned(),
-            script.to_owned(),
-            absolute.to_string_lossy().into_owned(),
-        ];
-        let output = command_output(root, "pwsh", &args)?;
-        emit_output(&output);
-        if !output.status.success() {
-            return Err(format!("PowerShell parser check failed for {relative}"));
-        }
-        println!("PowerShell parser PASS: {relative}");
+    let relative = "tools/kgw_zero_touch_evidence.ps1";
+    let absolute = root.join(relative);
+    if !absolute.is_file() {
+        return Err(format!(
+            "Missing PowerShell script for parser check: {relative}"
+        ));
     }
+    let args = vec![
+        "-NoLogo".to_owned(),
+        "-NoProfile".to_owned(),
+        "-Command".to_owned(),
+        script.to_owned(),
+        absolute.to_string_lossy().into_owned(),
+    ];
+    let output = command_output(root, "pwsh", &args)?;
+    emit_output(&output);
+    if !output.status.success() {
+        return Err(format!("PowerShell parser check failed for {relative}"));
+    }
+    println!("PowerShell parser PASS: {relative}");
     Ok(())
 }
 fn validate_reused_e2e_artifact(root: &Path, artifact: &Path) -> Result<(), String> {
@@ -243,20 +239,9 @@ fn restore_generated_schemas_if_newly_dirty(
 }
 
 fn run_live_zero_touch(root: &Path) -> Result<(), String> {
-    let script = root.join("tools/kgw_zero_touch_e2e.ps1");
-    let repository = root.to_string_lossy().into_owned();
-    let script = script.to_string_lossy().into_owned();
-    let args = [
-        "-NoLogo",
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        script.as_str(),
-        "-Repository",
-        repository.as_str(),
-    ];
-    run_checked(root, "Zero-touch live E2E suite", "pwsh", &args)
+    crate::zero_touch_e2e::run(root).map(|message| {
+        println!("{message}");
+    })
 }
 fn run(root: &Path, reuse: Option<&Path>, commit_on_success: bool) -> Result<String, String> {
     powershell_parser_checks(root)?;
@@ -410,7 +395,6 @@ fn commit_scoped_changes(root: &Path) -> Result<(), String> {
         "xtask/src/true_raw_log.rs",
         "xtask/src/true_raw_log_frontend.rs",
         "xtask/src/main.rs",
-        "tools/kgw_zero_touch_e2e.ps1",
         "tools/kgw_zero_touch_evidence.ps1",
         "e2e/package.json",
         "e2e/package-lock.json",

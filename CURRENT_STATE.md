@@ -4,9 +4,9 @@
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest committed local checkpoint is OP115 `d5be516cd7235d5a9f0837c0b2b0e98ce508dc43`, tree `7aab2f2a232d376247b7ba48667390921d124186`. OP116 is a locally qualified dirty candidate pending checkpoint.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest committed local checkpoint is OP116 `3201c1948ff4969a5dde062c92a290dd9abd19f1`, tree `66be7fb623925df4c55861559464cfa2ae1f3164`. OP117 is a locally qualified dirty candidate pending checkpoint.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **DIRTY / QUALIFIED OP116 CANDIDATE**. The diff makes the WebDriverIO zero-touch matrix a deterministic Rust-generated test-harness artifact with exact frozen legacy body parity, plus codegen/policy/state updates.
+- Working tree: **DIRTY / QUALIFIED OP117 CANDIDATE**. The diff retires `tools/kgw_zero_touch_e2e.ps1` and moves zero-touch orchestration, process ownership/cleanup, command logging, evidence/result integration, and report production into Rust `xtask`, while preserving the externally locked evidence helper as a separate blocker.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -15,10 +15,10 @@
 - OP101 Header live metrics Rust/WASM ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `a1f71cb804b8155fb93d4892193a679eab59870c`.
 - OP102 Top Addresses Rust/WASM ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `dbdd0681cb57b017768d988175f7736d6481e571`.
 - OP103 Desktop diagnostic launcher Rust ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `ec23f1fc9b162724b2a90e648e917227d74dfbf0`.
-- Owned non-Rust programming source debt: 7.
+- Owned non-Rust programming source debt: 6.
 - Non-Rust execution-wiring debt: 8.
 - Technical exceptions: 35.
-- Rust source inventory: 178.
+- Rust source inventory: 179.
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
 
@@ -77,11 +77,11 @@
 
 ## DO NOT REPEAT
 
-- Do not replay OP090-OP116 successful checks while their validity predicates remain unchanged.
+- Do not replay OP090-OP117 successful checks while their validity predicates remain unchanged.
 - Do not reset, clean, stash, discard, overwrite, or replace newer local work with remote state.
 - Do not force unsafe clipboard mutation, protected file unlocking, or broad requalification for reassurance.
 - Do not push merely to discover locally detectable failures.
 
 ## NEXT ACTION
 
-Persist the OP116 qualification receipt, create a coherent local checkpoint for the qualified candidate, verify exact commit/tree/status, then audit the remaining 7-source / 8-execution debt inventory and select the smallest independent unblocked next boundary. No push yet.
+Persist the OP117 qualification receipt, create a coherent local checkpoint for the qualified candidate, verify exact commit/tree/status, then audit the remaining 6-source / 8-execution debt inventory and select the smallest independent unblocked frontend boundary. The locked `tools/kgw_zero_touch_evidence.ps1` remains deferred; no push yet.

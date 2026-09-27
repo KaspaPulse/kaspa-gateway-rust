@@ -55,6 +55,7 @@ mod true_raw_log;
 mod true_raw_log_frontend;
 mod trufflehog_policy;
 mod windows_runtime_dependencies;
+mod zero_touch_e2e;
 mod zero_touch_result_writer;
 
 use language_policy::{Mode, run_language_policy};
@@ -134,6 +135,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- static-contract-regressions
   cargo run -p xtask -- true-raw-log-gate
   cargo run -p xtask -- verify-windows-runtime-dependencies --executable <path> [--dumpbin-path <path>] [--report-path <path>]
+  cargo run -p xtask -- zero-touch-e2e
   cargo run -p xtask -- zero-touch-result-writer-tests
   cargo run -p xtask -- fuzz-build
   cargo run -p xtask --features ksss -- ksss <check|trust-verify|evaluate|knowledge|release-check|materialize> [options]"
@@ -623,6 +625,12 @@ fn run() -> Result<(), CliError> {
         "verify-windows-runtime-dependencies" => {
             let message =
                 windows_runtime_dependencies::run_cli(&mut args).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "zero-touch-e2e" => {
+            let message =
+                zero_touch_e2e::run_cli(&mut args, &repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
