@@ -2,12 +2,12 @@ import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { NODE_DANGEROUS, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { installSettingsLayout } from "../../settings-layout.js";
 import initNodeRust, {
-  nodeBackendInvoke as kgwNodeBackendInvokeR5,
+  nodeApplyRootDefaultPath as wasmNodeApplyRootDefaultPath,
   nodeById as byId,
   nodeChecked as c,
   nodeCommandInlineState as kgwNodeCommandInlineStateR7,
   nodeRefreshInlineCommandToggles as kgwNodeRefreshInlineCommandTogglesR7,
-  nodeToggleCommandOption as wasmNodeToggleCommandOption,
+  nodeToggleCommandOptionAndUpdate as wasmNodeToggleCommandOptionAndUpdate,
   nodeApplyRuntimeLogReport as kgwNodeApplyRuntimeLogReportV1,
   nodeClearRawLogBuffer as kgwNodeClearRawLogBufferV1,
   nodeCopyLogFailure as kgwNodeCopyLogFailureV1,
@@ -32,19 +32,21 @@ import initNodeRust, {
   nodeExplicitOwnerTrace as kgwNodeExplicitOwnerTraceR27D,
   nodeHandleCopyLog as wasmNodeHandleCopyLog,
   nodeI18nText as kgwI18nTextR41,
+  nodeInstallDelegatedTabs as wasmNodeInstallDelegatedTabs,
   nodeInstallLogAutoScrollControls as kgwInstallNodeLogAutoScrollControlsR27,
+  nodeInstallNetworkTabs as wasmNodeInstallNetworkTabs,
   nodeInstallStartTraceDocumentClickObserver as kgwNodeInstallStartTraceDocumentClickObserverR1,
   nodeNetworkEnabled as kgwNodeNetworkEnabled,
   nodeNetworkProfile as kgwNodeNetworkProfile,
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
-  nodeNormalizeNetwork as kgwNodeNormalizeNetworkR101W2,
   nodePanelStartFromMonitor as panelStartFromMonitor,
+  nodePreparePreview as wasmNodePreparePreview,
   nodePreviewMessage as kgwNodePreviewMessage,
+  nodePreviewSequence as wasmNodePreviewSequence,
   nodeAssertStartEvidence as kgwNodeAssertStartEvidence,
   nodeNormalizeRuntimeError as normalizeRuntimeError,
   nodeParseRuntimeFields as parseRuntimeFields,
   nodeRuntimeEvidence as kgwNodeRuntimeEvidence,
-  nodeReadLastNetwork as kgwNodeReadLastNetworkR101W2,
   nodeR51CaptureFactoryDefaults as kgwNodeR51CaptureFactoryDefaults,
   nodeR51Fields as kgwNodeR51Fields,
   nodeR51Keys as kgwNodeR51Keys,
@@ -61,8 +63,6 @@ import initNodeRust, {
   nodeRuntimeArgs as nodeRuntimeArgs,
   nodeRuntimeErrorFromStatus as kgwNodeRuntimeErrorFromStatus,
   nodeRuntimeIsRunning as kgwNodeR51IsRunning,
-  nodeSaveInnerTab as kgwNodeSaveInnerTabR101U,
-  nodeSaveLastNetwork as kgwNodeSaveLastNetworkR101W2,
   nodeSetNetworkEnabled as kgwNodeSetNetworkEnabled,
   nodeStringifyRuntimeResult as stringifyRuntimeResult,
   nodeSyncDependencies as wasmNodeSyncDependencies,
@@ -71,6 +71,7 @@ import initNodeRust, {
   nodeTraceActiveNetwork as kgwNodeTraceActiveNetworkR1,
   nodeTraceRenderedStartControls as kgwNodeTraceRenderedStartControlsR1,
   nodeTraceStartButtonState as kgwNodeTraceStartButtonStateR1,
+  nodeUpdateCommand as wasmNodeUpdateCommand,
   nodeValue as v,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
@@ -722,41 +723,17 @@ function kgwSettingsTraceButtonDetailsR29B(root, event, button, network, action,
 
 
 
-async function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsR5(net, _options = {}) {
-  const context = await kgwNodeBackendInvokeR5("kgw_settings_context_v1", {network: net});
-  const field = byId(id(net, "appDir"));
-  if (field) { field.value = context.appDir; field.title = context.appDir; }
-  updateCommand(net);
-  return {appDir: context.appDir};
-}
-
-function kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
-  void kgwNodeApplyRustyKaspaRootOnlyDefaultPathsR5(net, options).catch((error) => {
-    appendLog(net, "Rusty Kaspa root-only default path restore failed: " + normalizeRuntimeError(error));
-  });
-}
-
 const NODE_NETWORKS = wasmNodeNetworkProfiles();
 
 // KGW_NODE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
-/* Command-composer state/policy/toggle ownership is Rust/WASM-owned. */
-function kgwNodeToggleCommandOptionR7(net, name) {
-  wasmNodeToggleCommandOption(String(net || ""), String(name || ""));
-  updateCommand(net);
-}
-
+// Root-path restore, command preview debounce/sequence, and option-toggle refresh
+// are Rust/WASM-owned in node_frontend_helpers.rs.
 
 /* Node card markup rendering is Rust-owned in node_frontend_helpers.rs. */
 
 // KGW_NODE_LOG_AUTOSCROLL_CONTROLS_R27 is Rust-owned in node_frontend_helpers.rs.
 
 /* KGW_NODE_RAW_LOG_OWNER_V2 is Rust-owned in node_start_trace.rs. */
-function appendLog(net, message) {
-  // Raw monitor text is driven by typed runtime log reports. This legacy hook is
-  // intentionally inert so UI status strings cannot become fabricated raw lines.
-  void net;
-  void message;
-}
 
 /* Node settings/network panel HTML is Rust/WASM-owned in node_frontend_helpers.rs. */
 function renderAllNetworks(root) {
@@ -768,171 +745,15 @@ function renderAllNetworks(root) {
   setTimeout(window.kgwInstallNodeLogScopedControlsV29, 0);
 }
 
-
-
-
-/* Effective Node settings + validation rendering are Rust/WASM-owned in node_frontend_helpers.rs. */
-
-const KGW_NODE_PREVIEWS = new Map();
-function updateCommand(net) {
-  const preview = byId(id(net, "commandPreview"));
-  if (!preview) return;
-  wasmNodeSyncDependencies(net, kgwIsBridgeOwnedNodeLockedR65E(net));
-  const errors = kgwNodeValidateForm(net);
-  const state = KGW_NODE_PREVIEWS.get(net) || {sequence:0};
-  clearTimeout(state.timer); state.sequence++;
-  KGW_NODE_PREVIEWS.set(net,state);
-  const sequence = state.sequence;
-  preview.value = "";
-  preview.dataset.effectiveSettingsAuthority = "validating";
-  if (Object.keys(errors).length) {
-    kgwNodePreviewMessage(net, "Correct the highlighted fields before saving or starting.", true);
-    return;
-  }
-  kgwNodePreviewMessage(net, "Validating effective settings...");
-  state.timer = setTimeout(async () => {
-    try {
-      const effective = kgwNodeEffectiveNodeSettings(net);
-      const result = await kgwNodePreparePreview(net, effective);
-      if (state.sequence !== sequence) return;
-      preview.value = result.command;
-      preview.dataset.effectiveSettingsAuthority = "validated-backend-settings";
-      preview.dataset.arguments = JSON.stringify(result.arguments);
-      const path = byId(id(net, "appDir")); if (path) { path.value = result.appDir; path.title = result.appDir; }
-      const args = byId(id(net, "argumentList")); if (args) args.textContent = result.arguments.join("\n");
-      kgwNodePreviewMessage(net, "Embedded kaspad - " + result.availableCpuThreads + " CPU threads available - configured " +
-        effective.asyncThreads + " threads, RAM scale " + effective.ramScale + ". The managed data directory is included.");
-    } catch (error) {
-      if (state.sequence === sequence) kgwNodePreviewMessage(net, normalizeRuntimeError(error), true);
-    }
-  }, 160);
-}
-async function kgwNodePreparePreview(net, effective) {
-  const invoke = kgwResolvePublicTauriInvokeR1().invoke;
-  if (!invoke) throw new Error("Connect to the desktop backend to validate these settings.");
-  return invokeWithTimeout(invoke, "kgw_node_settings_preview_v1",
-    {network:net,effectiveNodeSettings:effective}, 10000);
-}
-
-function updateAllCommands() {
-  NODE_NETWORKS.forEach((net) => updateCommand(net.key));
-}
+/* Effective Node settings + validation + preview orchestration are Rust/WASM-owned. */
 
 
 
 // KGW_NODE_EXPLICIT_TRACE_HELPER_VISIBILITY_R45F is Rust/WASM-owned in node_start_trace.rs.
 /* KGW_NODE_LAST_NETWORK_RESTORE_R101W2 */
 /* R101W2 last-network persistence is Rust-owned in node_frontend_helpers.rs. */
-function installNetworkTabs(root) {
-  /* KGW_NODE_LAST_NETWORK_RESTORE_R101W2 */
-  const tabs = Array.from(root.querySelectorAll("[data-node-network-tab]"));
-  const panels = Array.from(root.querySelectorAll("[data-node-network-panel]"));
-
-  function selectNodeNetwork(selected, reason = "manual", persist = false) {
-    const normalized = kgwNodeNormalizeNetworkR101W2(selected);
-    if (!normalized) return;
-    if (persist) kgwNodeSaveLastNetworkR101W2(normalized);
-
-    tabs.forEach((item) => {
-      const active = item.dataset.nodeNetworkTab === normalized;
-      item.classList.toggle("active", active);
-      item.setAttribute("aria-selected", active ? "true" : "false");
-      item.dataset.active = active ? "true" : "false";
-    });
-
-    panels.forEach((panel) => {
-      const active = panel.dataset.nodeNetworkPanel === normalized;
-      panel.classList.toggle("active", active);
-      panel.hidden = !active;
-      panel.dataset.active = active ? "true" : "false";
-    });
-
-    if (normalized && kgwIsBridgeOwnedNodeLockedR65E(normalized)) {
-      kgwNodeApplyBridgeOwnedDisplayOnlyR65E(normalized, true, "network-tab-select-" + reason);
-      kgwNodeR51SetRuntimeButtons(normalized, false, true);
-    }
-
-    kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2("network-tab-" + reason);
-  }
-
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", (event) => {
-      const selected = tab.dataset.nodeNetworkTab;
-      kgwNodeExplicitTraceR27D(selected || "unknown", "internal-navigation", "r45d-node-network-tab-click", {
-        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D+KGW_NODE_LAST_NETWORK_RESTORE_R101W2",
-        trusted: Boolean(event && event.isTrusted),
-        selected: String(selected || ""),
-        text: String(tab.textContent || "").trim(),
-        persisted: true
-      });
-      selectNodeNetwork(selected, "click", true);
-    });
-  });
-
-  const saved = kgwNodeReadLastNetworkR101W2();
-  const existingActiveTab = tabs.find((tab) => tab.classList.contains("active") || tab.getAttribute("aria-selected") === "true" || tab.dataset.active === "true");
-  const defaultTab = (saved && tabs.find((tab) => tab.dataset.nodeNetworkTab === saved)) || existingActiveTab || tabs.find((tab) => tab.dataset.nodeNetworkTab === "mainnet") || tabs[0];
-  if (defaultTab) selectNodeNetwork(defaultTab.dataset.nodeNetworkTab, saved ? "saved-initial" : "initial", false);
-
-  kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2("network-tabs-installed");
-  window.kgwNodeSelectNetworkTabR101W2 = (net) => selectNodeNetwork(net, "external", true);
-}
-
-function installDelegatedTabs(root) {
-  root.addEventListener("click", (event) => {
-    const innerTab = event.target.closest("[data-node-inner-tab]");
-    if (innerTab) {
-      const net = innerTab.dataset.net;
-      const selected = kgwNodeSaveInnerTabR101U(net, innerTab.dataset.nodeInnerTab);
-      const panel = root.querySelector(`[data-node-network-panel="${net}"]`);
-
-      kgwNodeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-node-inner-tab-click", {
-        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D+KGW_NODE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U",
-        trusted: Boolean(event && event.isTrusted),
-        selected: String(selected || ""),
-        text: String(innerTab.textContent || "").trim(),
-        persisted: true
-      });
-
-      panel.querySelectorAll("[data-node-inner-tab]").forEach((item) => {
-        item.classList.toggle("active", item === innerTab);
-      });
-
-      panel.querySelectorAll("[data-node-inner-panel]").forEach((item) => {
-        const active = item.dataset.nodeInnerPanel === selected;
-        item.classList.toggle("active", active);
-        item.hidden = !active;
-      });
-
-      return;
-    }
-
-    const sectionTab = event.target.closest("[data-node-section-tab]");
-    if (sectionTab) {
-      const net = sectionTab.dataset.net;
-      const selected = sectionTab.dataset.nodeSectionTab;
-      const panel = root.querySelector(`[data-node-network-panel="${net}"]`);
-
-      kgwNodeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-node-section-tab-click", {
-        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
-        trusted: Boolean(event && event.isTrusted),
-        selected: String(selected || ""),
-        text: String(sectionTab.textContent || "").trim()
-      });
-
-      panel.querySelectorAll("[data-node-section-tab]").forEach((item) => {
-        item.classList.toggle("active", item === sectionTab);
-        item.setAttribute("aria-selected", String(item === sectionTab));
-      });
-
-      panel.querySelectorAll("[data-node-section-panel]").forEach((item) => {
-        const active = item.dataset.nodeSectionPanel === selected;
-        item.classList.toggle("active", active);
-        item.hidden = !active;
-      });
-    }
-  });
-}
+// Network tabs plus delegated inner/section navigation are Rust/WASM-owned
+// by node_frontend_helpers.rs. Bridge/runtime callbacks remain explicit at init.
 
 // KGW_NODE_INTEGRATED_RUNTIME_LINKAGE_V1: crash-safe Node action owner calls registered Tauri integrated runtime commands.
 // The Node child contract is 90 seconds and the same-EXE parent is bounded at
@@ -1021,7 +842,7 @@ async function invokeNodeIntegratedRuntime(command, net) {
 
   const args = nodeRuntimeArgs(net, command);
   if (command === "kgw_kgw_apply_node_settings_v1") {
-    const prepared = await kgwNodePreparePreview(net, args.effectiveNodeSettings);
+    const prepared = await wasmNodePreparePreview(net, args.effectiveNodeSettings);
     args.nodeCommandPreview = prepared.command;
   }
   kgwStartTraceFrontendR1("frontend.invoke_dispatched", {
@@ -1256,7 +1077,7 @@ function kgwNodeR51LoadSavedSettings() {
         commandOptionCount: Number(item.commandOptionsCount || 0)
       });
     }
-    updateCommand(net);
+    wasmNodeUpdateCommand(net, kgwIsBridgeOwnedNodeLockedR65E(net));
   }
   return applied;
 }
@@ -1285,7 +1106,9 @@ function kgwNodeR51RestoreDefaults(net) {
       hasDefaults: Boolean(restored?.hasDefaults),
       defaultKeyCount: Number(restored?.defaultKeyCount || 0)
     });
-    kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, { force: true });
+    void wasmNodeApplyRootDefaultPath(String(net || ""), kgwIsBridgeOwnedNodeLockedR65E(net)).catch((error) => {
+      kgwNodePreviewMessage(net, "Rusty Kaspa root-only default path restore failed: " + normalizeRuntimeError(error), true);
+    });
     return restored;
   });
 
@@ -1820,12 +1643,12 @@ function installActions(root) {
         if (typeof kgwNodeCommandInlineStateR7 === "function") {
           const state = kgwNodeCommandInlineStateR7(net);
           state[String(option)] = enabled;
-          updateCommand(net);
+          wasmNodeUpdateCommand(net, kgwIsBridgeOwnedNodeLockedR65E(net));
           if (typeof kgwNodeRefreshInlineCommandTogglesR7 === "function") {
             kgwNodeRefreshInlineCommandTogglesR7(net);
           }
-        } else if (typeof kgwNodeToggleCommandOptionR7 === "function") {
-          kgwNodeToggleCommandOptionR7(net, option);
+        } else {
+          wasmNodeToggleCommandOptionAndUpdate(String(net || ""), String(option || ""), kgwIsBridgeOwnedNodeLockedR65E(net));
         }
 
         queueMicrotask(() => {
@@ -1877,7 +1700,7 @@ function installActions(root) {
 
         event.preventDefault();
         event.stopPropagation();
-        kgwNodeToggleCommandOptionR7(toggle.dataset.net, toggle.dataset.nodeCommandOptionToggleR7);
+        wasmNodeToggleCommandOptionAndUpdate(String(toggle.dataset.net || ""), String(toggle.dataset.nodeCommandOptionToggleR7 || ""), kgwIsBridgeOwnedNodeLockedR65E(toggle.dataset.net));
       }
     });
 
@@ -1887,7 +1710,7 @@ function installActions(root) {
       if (toggle && root.contains(toggle)) {
         event.preventDefault();
         event.stopPropagation();
-        kgwNodeToggleCommandOptionR7(toggle.dataset.net, toggle.dataset.nodeCommandOptionToggleR7);
+        wasmNodeToggleCommandOptionAndUpdate(String(toggle.dataset.net || ""), String(toggle.dataset.nodeCommandOptionToggleR7 || ""), kgwIsBridgeOwnedNodeLockedR65E(toggle.dataset.net));
       }
     });
   }
@@ -1937,9 +1760,7 @@ function installActions(root) {
 
   function scopedUpdate(net, reason) {
     if (!net) return;
-    if (typeof updateCommand === "function") {
-      updateCommand(net);
-    }
+    wasmNodeUpdateCommand(net, kgwIsBridgeOwnedNodeLockedR65E(net));
     kgwNodeExplicitOwnerTraceR27D(net, "settings-scope", "r27d-scoped-update", {
       previousPatch: "KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26",
       reason: reason || "unknown"
@@ -2105,9 +1926,9 @@ function installActions(root) {
         if (action === "copy-command") {
           const errors = kgwNodeValidateForm(net);
           if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-          const sequence = KGW_NODE_PREVIEWS.get(net)?.sequence;
-          const result = await kgwNodePreparePreview(net, kgwNodeEffectiveNodeSettings(net));
-          if (KGW_NODE_PREVIEWS.get(net)?.sequence !== sequence) throw new Error("Settings changed while copying. Try again.");
+          const sequence = wasmNodePreviewSequence(net);
+          const result = await wasmNodePreparePreview(net, kgwNodeEffectiveNodeSettings(net));
+          if (wasmNodePreviewSequence(net) !== sequence) throw new Error("Settings changed while copying. Try again.");
           value = result.command;
         }
         if (!value) throw new Error("There is no validated value to copy.");
@@ -2154,11 +1975,20 @@ const nodeRoot = root || document.getElementById("kaspa-node");
   kgwNodeR51CaptureFactoryDefaults();
   kgwNodeR51LoadSavedSettings();
   NODE_NETWORKS.forEach((net) => kgwNodeR51SetRuntimeButtons(net.key, false, false));
-  installNetworkTabs(nodeRoot);
-  installDelegatedTabs(nodeRoot);
+  wasmNodeInstallNetworkTabs(nodeRoot, {
+    isLocked: kgwIsBridgeOwnedNodeLockedR65E,
+    applyDisplayOnly: kgwNodeApplyBridgeOwnedDisplayOnlyR65E,
+    setRuntimeButtons: kgwNodeR51SetRuntimeButtons,
+    hydrate: kgwNodeHydrateBridgeOwnedDisplayOnlyR65H2
+  });
+  wasmNodeInstallDelegatedTabs(nodeRoot);
   installActions(nodeRoot);
-updateAllCommands();
-  NODE_NETWORKS.forEach((net) => kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net.key, { force: false })); /* KGW_NODE_DYNAMIC_PATHS_INIT_R3 */
+  NODE_NETWORKS.forEach((net) => wasmNodeUpdateCommand(net.key, kgwIsBridgeOwnedNodeLockedR65E(net.key)));
+  NODE_NETWORKS.forEach((net) => {
+    void wasmNodeApplyRootDefaultPath(net.key, kgwIsBridgeOwnedNodeLockedR65E(net.key)).catch((error) => {
+      kgwNodePreviewMessage(net.key, "Rusty Kaspa root-only default path restore failed: " + normalizeRuntimeError(error), true);
+    });
+  }); /* KGW_NODE_DYNAMIC_PATHS_INIT_R3 */
   kgwNodeR51StartLiveRefresh();
 
   setTimeout(kgwInstallNodeLogAutoScrollControlsR27, 0);

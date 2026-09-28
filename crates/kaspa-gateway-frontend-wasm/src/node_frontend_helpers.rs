@@ -11,9 +11,10 @@ use super::settings_schema::{
     NODE_DANGEROUS, NODE_ENDPOINTS, NODE_MANAGED, NODE_OPTIONAL, NODE_REQUIRED,
 };
 use js_sys::{Array, Error, Function, JSON, Object, Promise, Reflect};
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
-use wasm_bindgen_futures::JsFuture;
+use wasm_bindgen_futures::{JsFuture, spawn_local};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct NetworkProfile {
@@ -2894,6 +2895,271 @@ pub fn node_card_check(
     card_check_html(&net, &name, &label, checked, span2)
 }
 
+#[derive(Default)]
+struct NodePreviewState {
+    sequence: u64,
+    timer: Option<JsValue>,
+}
+
+thread_local! {
+    static NODE_PREVIEWS: RefCell<BTreeMap<String, NodePreviewState>> =
+        const { RefCell::new(BTreeMap::new()) };
+}
+
+fn clear_preview_timer(timer: Option<JsValue>) {
+    let Some(timer) = timer else {
+        return;
+    };
+    if let Some(clear) = function(&window(), "clearTimeout") {
+        let _ = clear.call1(&window(), &timer);
+    }
+}
+
+fn begin_preview_sequence(net: &str) -> u64 {
+    NODE_PREVIEWS.with(|states| {
+        let mut states = states.borrow_mut();
+        let state = states.entry(net.to_owned()).or_default();
+        clear_preview_timer(state.timer.take());
+        state.sequence = state.sequence.saturating_add(1);
+        state.sequence
+    })
+}
+
+fn store_preview_timer(net: &str, sequence: u64, timer: JsValue) {
+    NODE_PREVIEWS.with(|states| {
+        let mut states = states.borrow_mut();
+        let state = states.entry(net.to_owned()).or_default();
+        if state.sequence == sequence {
+            state.timer = Some(timer);
+        }
+    });
+}
+
+fn preview_sequence(net: &str) -> u64 {
+    NODE_PREVIEWS.with(|states| {
+        states
+            .borrow()
+            .get(net)
+            .map(|state| state.sequence)
+            .unwrap_or_default()
+    })
+}
+
+fn preview_sequence_is_current(net: &str, sequence: u64) -> bool {
+    preview_sequence(net) == sequence
+}
+
+async fn preview_invoke_with_timeout(
+    command: &str,
+    payload: JsValue,
+    timeout_ms: u32,
+) -> Result<JsValue, JsValue> {
+    let invoke = node_backend_invoke(command.to_owned(), payload)?;
+    if timeout_ms == 0 {
+        return JsFuture::from(invoke).await;
+    }
+
+    let command_for_timeout = command.to_owned();
+    let timeout = Promise::new(&mut move |_resolve, reject| {
+        let command_for_callback = command_for_timeout.clone();
+        let callback = Closure::wrap(Box::new(move || {
+            let _ = reject.call1(
+                &JsValue::UNDEFINED,
+                &JsValue::from_str(&format!(
+                    "{command_for_callback} timed out after {timeout_ms}ms"
+                )),
+            );
+        }) as Box<dyn FnMut()>);
+        if let Some(set_timeout) = function(&window(), "setTimeout") {
+            let _ = set_timeout.call2(
+                &window(),
+                callback.as_ref().unchecked_ref(),
+                &JsValue::from_f64(timeout_ms as f64),
+            );
+        }
+        callback.forget();
+    });
+
+    let candidates = Array::new();
+    candidates.push(invoke.as_ref());
+    candidates.push(timeout.as_ref());
+    JsFuture::from(Promise::race(candidates.as_ref())).await
+}
+
+async fn prepare_preview_inner(net: &str, effective: JsValue) -> Result<JsValue, JsValue> {
+    if backend_invoke_function().is_none() {
+        return Err(
+            Error::new("Connect to the desktop backend to validate these settings.").into(),
+        );
+    }
+    let payload = Object::new();
+    set(payload.as_ref(), "network", &JsValue::from_str(net));
+    set(payload.as_ref(), "effectiveNodeSettings", &effective);
+    preview_invoke_with_timeout("kgw_node_settings_preview_v1", payload.into(), 10_000).await
+}
+
+async fn finish_preview_update(net: String, sequence: u64) {
+    let result = async {
+        let effective = node_effective_node_settings_inner(&net)?;
+        let result = prepare_preview_inner(&net, effective.clone()).await?;
+        if !preview_sequence_is_current(&net, sequence) {
+            return Ok::<(), JsValue>(());
+        }
+
+        let preview = node_by_id(node_element_id(net.clone(), "commandPreview".to_owned()));
+        if !present(&preview) {
+            return Ok(());
+        }
+        let command = crate::js_string_owned(&property(&result, "command"));
+        set(&preview, "value", &JsValue::from_str(&command));
+        set(
+            &property(&preview, "dataset"),
+            "effectiveSettingsAuthority",
+            &JsValue::from_str("validated-backend-settings"),
+        );
+
+        let arguments = property(&result, "arguments");
+        let serialized = JSON::stringify(&arguments)
+            .ok()
+            .map(|value| crate::js_string_owned(value.as_ref()))
+            .unwrap_or_else(|| "[]".to_owned());
+        set(
+            &property(&preview, "dataset"),
+            "arguments",
+            &JsValue::from_str(&serialized),
+        );
+
+        let app_dir = crate::js_string_owned(&property(&result, "appDir"));
+        let path = node_by_id(node_element_id(net.clone(), "appDir".to_owned()));
+        if present(&path) {
+            set(&path, "value", &JsValue::from_str(&app_dir));
+            set(&path, "title", &JsValue::from_str(&app_dir));
+        }
+
+        let argument_list = node_by_id(node_element_id(net.clone(), "argumentList".to_owned()));
+        if present(&argument_list) {
+            let joined = if Array::is_array(&arguments) {
+                Array::from(&arguments)
+                    .iter()
+                    .map(|value| crate::js_string_owned(&value))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            } else {
+                String::new()
+            };
+            set(
+                &argument_list,
+                "textContent",
+                &JsValue::from_str(&joined),
+            );
+        }
+
+        let available_threads = crate::js_string_owned(&property(&result, "availableCpuThreads"));
+        let async_threads = crate::js_string_owned(&property(&effective, "asyncThreads"));
+        let ram_scale = crate::js_string_owned(&property(&effective, "ramScale"));
+        node_preview_message_inner(
+            &net,
+            &format!(
+                "Embedded kaspad - {available_threads} CPU threads available - configured {async_threads} threads, RAM scale {ram_scale}. The managed data directory is included."
+            ),
+            false,
+        );
+        Ok(())
+    }
+    .await;
+
+    if let Err(error) = result
+        && preview_sequence_is_current(&net, sequence)
+    {
+        node_preview_message_inner(&net, &normalize_runtime_error_value(&error), true);
+    }
+}
+
+fn update_command_inner(net: &str, locked: bool) -> u64 {
+    let preview = node_by_id(node_element_id(net.to_owned(), "commandPreview".to_owned()));
+    if !present(&preview) {
+        return preview_sequence(net);
+    }
+
+    node_sync_dependencies_inner(net, locked);
+    let errors = node_validate_form_inner(net, false);
+    let sequence = begin_preview_sequence(net);
+
+    set(&preview, "value", &JsValue::from_str(""));
+    set(
+        &property(&preview, "dataset"),
+        "effectiveSettingsAuthority",
+        &JsValue::from_str("validating"),
+    );
+
+    if errors.is_object() && Object::keys(&Object::from(errors)).length() > 0 {
+        node_preview_message_inner(
+            net,
+            "Correct the highlighted fields before saving or starting.",
+            true,
+        );
+        return sequence;
+    }
+
+    node_preview_message_inner(net, "Validating effective settings...", false);
+    let net_for_timer = net.to_owned();
+    let callback = Closure::once_into_js(move || {
+        let net_for_task = net_for_timer.clone();
+        spawn_local(async move {
+            finish_preview_update(net_for_task, sequence).await;
+        });
+    });
+    if let Some(set_timeout) = function(&window(), "setTimeout")
+        && let Ok(timer) = set_timeout.call2(&window(), &callback, &JsValue::from_f64(160.0))
+    {
+        store_preview_timer(net, sequence, timer);
+    }
+    sequence
+}
+
+#[wasm_bindgen(js_name = nodeUpdateCommand)]
+pub fn node_update_command(net: String, locked: bool) -> u64 {
+    update_command_inner(&net, locked)
+}
+
+#[wasm_bindgen(js_name = nodePreviewSequence)]
+pub fn node_preview_sequence(net: String) -> u64 {
+    preview_sequence(&net)
+}
+
+#[wasm_bindgen(js_name = nodePreparePreview)]
+pub async fn node_prepare_preview(net: String, effective: JsValue) -> Result<JsValue, JsValue> {
+    prepare_preview_inner(&net, effective).await
+}
+
+#[wasm_bindgen(js_name = nodeApplyRootDefaultPath)]
+pub async fn node_apply_root_default_path(net: String, locked: bool) -> Result<JsValue, JsValue> {
+    let payload = Object::new();
+    set(payload.as_ref(), "network", &JsValue::from_str(&net));
+    let context = JsFuture::from(node_backend_invoke(
+        "kgw_settings_context_v1".to_owned(),
+        payload.into(),
+    )?)
+    .await?;
+    let app_dir = crate::js_string_owned(&property(&context, "appDir"));
+    let field = node_by_id(node_element_id(net.clone(), "appDir".to_owned()));
+    if present(&field) {
+        set(&field, "value", &JsValue::from_str(&app_dir));
+        set(&field, "title", &JsValue::from_str(&app_dir));
+    }
+    update_command_inner(&net, locked);
+    let output = Object::new();
+    set(output.as_ref(), "appDir", &JsValue::from_str(&app_dir));
+    Ok(output.into())
+}
+
+#[wasm_bindgen(js_name = nodeToggleCommandOptionAndUpdate)]
+pub fn node_toggle_command_option_and_update(net: String, name: String, locked: bool) -> bool {
+    let enabled = node_toggle_command_option(net.clone(), name);
+    update_command_inner(&net, locked);
+    enabled
+}
+
 fn inner_tab_storage_key_text(net: &str) -> String {
     format!(
         "kgw.node.innerTab.{}",
@@ -2956,6 +3222,408 @@ pub fn node_save_last_network(net: JsValue) -> String {
         storage_set(LAST_NETWORK_KEY, &normalized);
     }
     normalized
+}
+
+fn query_all_values(target: &JsValue, selector: &str) -> Vec<JsValue> {
+    let Some(list) = call1(target, "querySelectorAll", &JsValue::from_str(selector)) else {
+        return Vec::new();
+    };
+    let length = crate::js_number(&property(&list, "length"));
+    (0..length.max(0.0) as u32)
+        .filter_map(|index| Reflect::get(&list, &JsValue::from_f64(index as f64)).ok())
+        .filter(present)
+        .collect()
+}
+
+fn dataset_text(target: &JsValue, name: &str) -> String {
+    crate::js_string_owned(&property(&property(target, "dataset"), name))
+}
+
+fn attribute_text(target: &JsValue, name: &str) -> String {
+    call1(target, "getAttribute", &JsValue::from_str(name))
+        .filter(present)
+        .map(|value| crate::js_string_owned(&value))
+        .unwrap_or_default()
+}
+
+fn set_attribute_text(target: &JsValue, name: &str, value: &str) {
+    let _ = call2(
+        target,
+        "setAttribute",
+        &JsValue::from_str(name),
+        &JsValue::from_str(value),
+    );
+}
+
+fn class_contains(target: &JsValue, name: &str) -> bool {
+    call1(
+        &property(target, "classList"),
+        "contains",
+        &JsValue::from_str(name),
+    )
+    .is_some_and(|value| crate::js_boolean(&value))
+}
+
+fn class_toggle(target: &JsValue, name: &str, active: bool) {
+    let _ = call2(
+        &property(target, "classList"),
+        "toggle",
+        &JsValue::from_str(name),
+        &JsValue::from_bool(active),
+    );
+}
+
+fn callback_function(callbacks: &JsValue, name: &str) -> Option<Function> {
+    property(callbacks, name).dyn_into::<Function>().ok()
+}
+
+fn callback_locked(callbacks: &JsValue, net: &str) -> bool {
+    callback_function(callbacks, "isLocked")
+        .and_then(|function| {
+            function
+                .call1(&JsValue::UNDEFINED, &JsValue::from_str(net))
+                .ok()
+        })
+        .is_some_and(|value| crate::js_boolean(&value))
+}
+
+fn callback_apply_display_only(callbacks: &JsValue, net: &str, locked: bool, reason: &str) {
+    if let Some(function) = callback_function(callbacks, "applyDisplayOnly") {
+        let _ = function.call3(
+            &JsValue::UNDEFINED,
+            &JsValue::from_str(net),
+            &JsValue::from_bool(locked),
+            &JsValue::from_str(reason),
+        );
+    }
+}
+
+fn callback_set_runtime_buttons(callbacks: &JsValue, net: &str, running: bool, locked: bool) {
+    if let Some(function) = callback_function(callbacks, "setRuntimeButtons") {
+        let _ = function.call3(
+            &JsValue::UNDEFINED,
+            &JsValue::from_str(net),
+            &JsValue::from_bool(running),
+            &JsValue::from_bool(locked),
+        );
+    }
+}
+
+fn callback_hydrate(callbacks: &JsValue, reason: &str) {
+    if let Some(function) = callback_function(callbacks, "hydrate") {
+        let _ = function.call1(&JsValue::UNDEFINED, &JsValue::from_str(reason));
+    }
+}
+
+fn trace_navigation(net: &str, phase: &str, selected: &str, text: &str, persisted: bool) {
+    let details = Object::new();
+    set(
+        details.as_ref(),
+        "patch",
+        &JsValue::from_str(
+            "KGW_INTERNAL_NAV_TRACE_OWNER_R45D+KGW_NODE_LAST_NETWORK_RESTORE_R101W2",
+        ),
+    );
+    set(details.as_ref(), "selected", &JsValue::from_str(selected));
+    set(details.as_ref(), "text", &JsValue::from_str(text));
+    set(
+        details.as_ref(),
+        "persisted",
+        &JsValue::from_bool(persisted),
+    );
+    let _ = crate::node_start_trace::node_explicit_trace(
+        JsValue::from_str(if net.is_empty() { "unknown" } else { net }),
+        JsValue::from_str("internal-navigation"),
+        JsValue::from_str(phase),
+        details.into(),
+    );
+}
+
+fn select_node_network(
+    tabs: &[JsValue],
+    panels: &[JsValue],
+    callbacks: &JsValue,
+    selected: &str,
+    reason: &str,
+    persist: bool,
+) -> String {
+    let normalized = normalize_network_text(selected);
+    if normalized.is_empty() {
+        return String::new();
+    }
+    if persist {
+        storage_set(LAST_NETWORK_KEY, &normalized);
+    }
+
+    for tab in tabs {
+        let active = dataset_text(tab, "nodeNetworkTab") == normalized;
+        class_toggle(tab, "active", active);
+        set_attribute_text(tab, "aria-selected", if active { "true" } else { "false" });
+        set(
+            &property(tab, "dataset"),
+            "active",
+            &JsValue::from_str(if active { "true" } else { "false" }),
+        );
+    }
+
+    for panel in panels {
+        let active = dataset_text(panel, "nodeNetworkPanel") == normalized;
+        class_toggle(panel, "active", active);
+        set(panel, "hidden", &JsValue::from_bool(!active));
+        set(
+            &property(panel, "dataset"),
+            "active",
+            &JsValue::from_str(if active { "true" } else { "false" }),
+        );
+    }
+
+    if callback_locked(callbacks, &normalized) {
+        callback_apply_display_only(
+            callbacks,
+            &normalized,
+            true,
+            &format!("network-tab-select-{reason}"),
+        );
+        callback_set_runtime_buttons(callbacks, &normalized, false, true);
+    }
+    callback_hydrate(callbacks, &format!("network-tab-{reason}"));
+    normalized
+}
+
+#[wasm_bindgen(js_name = nodeInstallNetworkTabs)]
+pub fn node_install_network_tabs(root: JsValue, callbacks: JsValue) -> bool {
+    if !present(&root) {
+        return false;
+    }
+    let tabs = query_all_values(&root, "[data-node-network-tab]");
+    let panels = query_all_values(&root, "[data-node-network-panel]");
+
+    for tab in tabs.clone() {
+        let tabs_for_click = tabs.clone();
+        let panels_for_click = panels.clone();
+        let callbacks_for_click = callbacks.clone();
+        let tab_for_click = tab.clone();
+        let callback = Closure::wrap(Box::new(move |event: JsValue| {
+            let selected = dataset_text(&tab_for_click, "nodeNetworkTab");
+            set(
+                &property(&event, "__kgwNodeNavigationObserved"),
+                "value",
+                &JsValue::TRUE,
+            );
+            let text = crate::js_string_owned(&property(&tab_for_click, "textContent"))
+                .trim()
+                .to_owned();
+            trace_navigation(
+                &selected,
+                "r45d-node-network-tab-click",
+                &selected,
+                &text,
+                true,
+            );
+            select_node_network(
+                &tabs_for_click,
+                &panels_for_click,
+                &callbacks_for_click,
+                &selected,
+                "click",
+                true,
+            );
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &tab,
+            "addEventListener",
+            &JsValue::from_str("click"),
+            callback.as_ref().unchecked_ref(),
+        );
+        callback.forget();
+    }
+
+    let saved = storage_get(LAST_NETWORK_KEY)
+        .map(|value| normalize_network_text(&value))
+        .unwrap_or_default();
+    let existing = tabs.iter().find(|tab| {
+        class_contains(tab, "active")
+            || attribute_text(tab, "aria-selected") == "true"
+            || dataset_text(tab, "active") == "true"
+    });
+    let default_tab = if !saved.is_empty() {
+        tabs.iter()
+            .find(|tab| dataset_text(tab, "nodeNetworkTab") == saved)
+            .cloned()
+    } else {
+        None
+    }
+    .or_else(|| existing.cloned())
+    .or_else(|| {
+        tabs.iter()
+            .find(|tab| dataset_text(tab, "nodeNetworkTab") == "mainnet")
+            .cloned()
+    })
+    .or_else(|| tabs.first().cloned());
+
+    if let Some(default_tab) = default_tab {
+        let selected = dataset_text(&default_tab, "nodeNetworkTab");
+        let reason = if saved.is_empty() {
+            "initial"
+        } else {
+            "saved-initial"
+        };
+        select_node_network(&tabs, &panels, &callbacks, &selected, reason, false);
+    }
+
+    callback_hydrate(&callbacks, "network-tabs-installed");
+
+    let tabs_for_external = tabs.clone();
+    let panels_for_external = panels.clone();
+    let callbacks_for_external = callbacks.clone();
+    let external = Closure::wrap(Box::new(move |net: JsValue| {
+        let selected = crate::js_string_owned(&net);
+        select_node_network(
+            &tabs_for_external,
+            &panels_for_external,
+            &callbacks_for_external,
+            &selected,
+            "external",
+            true,
+        );
+    }) as Box<dyn FnMut(JsValue)>);
+    set(
+        &window(),
+        "kgwNodeSelectNetworkTabR101W2",
+        external.as_ref().unchecked_ref(),
+    );
+    external.forget();
+    true
+}
+
+#[wasm_bindgen(js_name = nodeInstallDelegatedTabs)]
+pub fn node_install_delegated_tabs(root: JsValue) -> bool {
+    if !present(&root) {
+        return false;
+    }
+    let root_for_click = root.clone();
+    let callback = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+        let inner_tab = call1(
+            &target,
+            "closest",
+            &JsValue::from_str("[data-node-inner-tab]"),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        if present(&inner_tab) {
+            let net = dataset_text(&inner_tab, "net");
+            let selected = node_save_inner_tab(
+                net.clone(),
+                property(&property(&inner_tab, "dataset"), "nodeInnerTab"),
+            );
+            let panel = query(
+                &root_for_click,
+                &format!("[data-node-network-panel=\"{net}\"]"),
+            );
+            let details = Object::new();
+            set(
+                details.as_ref(),
+                "patch",
+                &JsValue::from_str(
+                    "KGW_INTERNAL_NAV_TRACE_OWNER_R45D+KGW_NODE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U",
+                ),
+            );
+            set(
+                details.as_ref(),
+                "trusted",
+                &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+            );
+            set(details.as_ref(), "selected", &JsValue::from_str(&selected));
+            set(
+                details.as_ref(),
+                "text",
+                &JsValue::from_str(
+                    crate::js_string_owned(&property(&inner_tab, "textContent")).trim(),
+                ),
+            );
+            set(details.as_ref(), "persisted", &JsValue::TRUE);
+            let _ = crate::node_start_trace::node_explicit_trace(
+                JsValue::from_str(if net.is_empty() { "unknown" } else { &net }),
+                JsValue::from_str("internal-navigation"),
+                JsValue::from_str("r45d-node-inner-tab-click"),
+                details.into(),
+            );
+
+            for item in query_all_values(&panel, "[data-node-inner-tab]") {
+                class_toggle(&item, "active", Object::is(&item, &inner_tab));
+            }
+            for item in query_all_values(&panel, "[data-node-inner-panel]") {
+                let active = dataset_text(&item, "nodeInnerPanel") == selected;
+                class_toggle(&item, "active", active);
+                set(&item, "hidden", &JsValue::from_bool(!active));
+            }
+            return;
+        }
+
+        let section_tab = call1(
+            &target,
+            "closest",
+            &JsValue::from_str("[data-node-section-tab]"),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        if !present(&section_tab) {
+            return;
+        }
+        let net = dataset_text(&section_tab, "net");
+        let selected = dataset_text(&section_tab, "nodeSectionTab");
+        let panel = query(
+            &root_for_click,
+            &format!("[data-node-network-panel=\"{net}\"]"),
+        );
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "patch",
+            &JsValue::from_str("KGW_INTERNAL_NAV_TRACE_OWNER_R45D"),
+        );
+        set(
+            details.as_ref(),
+            "trusted",
+            &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+        );
+        set(details.as_ref(), "selected", &JsValue::from_str(&selected));
+        set(
+            details.as_ref(),
+            "text",
+            &JsValue::from_str(
+                crate::js_string_owned(&property(&section_tab, "textContent")).trim(),
+            ),
+        );
+        let _ = crate::node_start_trace::node_explicit_trace(
+            JsValue::from_str(if net.is_empty() { "unknown" } else { &net }),
+            JsValue::from_str("internal-navigation"),
+            JsValue::from_str("r45d-node-section-tab-click"),
+            details.into(),
+        );
+
+        for item in query_all_values(&panel, "[data-node-section-tab]") {
+            let active = Object::is(&item, &section_tab);
+            class_toggle(&item, "active", active);
+            set_attribute_text(
+                &item,
+                "aria-selected",
+                if active { "true" } else { "false" },
+            );
+        }
+        for item in query_all_values(&panel, "[data-node-section-panel]") {
+            let active = dataset_text(&item, "nodeSectionPanel") == selected;
+            class_toggle(&item, "active", active);
+            set(&item, "hidden", &JsValue::from_bool(!active));
+        }
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call2(
+        &root,
+        "addEventListener",
+        &JsValue::from_str("click"),
+        callback.as_ref().unchecked_ref(),
+    );
+    callback.forget();
+    true
 }
 
 fn stringify_runtime_result_value(value: &JsValue) -> String {

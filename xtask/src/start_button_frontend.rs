@@ -446,7 +446,8 @@ function staticPlacementTests() {
     source.includes("nodeCommandInlineState as kgwNodeCommandInlineStateR7")
       && !source.includes("nodeCommandInlineToggle as kgwNodeCommandInlineToggleR7")
       && source.includes("nodeRefreshInlineCommandToggles as kgwNodeRefreshInlineCommandTogglesR7")
-      && source.includes("nodeToggleCommandOption as wasmNodeToggleCommandOption")
+      && source.includes("nodeToggleCommandOptionAndUpdate as wasmNodeToggleCommandOptionAndUpdate")
+      && !source.includes("nodeToggleCommandOption as wasmNodeToggleCommandOption")
       && source.includes("nodeRenderNetworkPanelsHtml as wasmNodeRenderNetworkPanelsHtml")
       && rustNodeHelpersSource.includes("fn command_inline_toggle_html(")
       && !source.includes("function kgwNodeCommandInlineStateR7(")
@@ -1898,6 +1899,114 @@ const wasmNodeExplicitOwnerTrace = (net, action, phase, details) => {
     phase: safePhase,
     details: JSON.stringify({ patch: "KGW_EXPLICIT_TRACE_EXACT_ANCHOR_PATCH_R27D", owner: "node-existing-owner", network: safeNet, action: safeAction, phase: safePhase, details: details && typeof details === "object" ? details : {} }),
   })).catch(() => {});
+  return true;
+};
+const __kgwNodePreviewSequences = {};
+const wasmNodePreviewSequence = (net) =>
+  Number(__kgwNodePreviewSequences[String(net || "")] || 0);
+const wasmNodeUpdateCommand = (net, _locked = false) => {
+  const key = String(net || "");
+  const next = wasmNodePreviewSequence(key) + 1;
+  __kgwNodePreviewSequences[key] = next;
+  const preview = document.getElementById("node-" + key + "-commandPreview");
+  if (preview) {
+    preview.value = "";
+    preview.dataset.effectiveSettingsAuthority = "validating";
+  }
+  return next;
+};
+const wasmNodePreparePreview = async (net, effective) => {
+  const key = String(net || "");
+  const preview = document.getElementById("node-" + key + "-commandPreview");
+  const appDir = document.getElementById("node-" + key + "-appDir");
+  return {
+    command: String(preview && preview.value ? preview.value : "kaspad --managed-preview"),
+    arguments: [],
+    appDir: String(appDir && appDir.value ? appDir.value : ""),
+    availableCpuThreads: "16",
+    effectiveNodeSettings: effective,
+  };
+};
+const wasmNodeApplyRootDefaultPath = async (net, locked = false) => {
+  const key = String(net || "");
+  wasmNodeUpdateCommand(key, Boolean(locked));
+  const appDir = document.getElementById("node-" + key + "-appDir");
+  return { appDir: String(appDir && appDir.value ? appDir.value : "") };
+};
+const wasmNodeToggleCommandOptionAndUpdate = (net, name, locked = false) => {
+  const enabled = wasmNodeToggleCommandOption(net, name);
+  wasmNodeUpdateCommand(net, Boolean(locked));
+  return enabled;
+};
+const wasmNodeInstallNetworkTabs = (root, callbacks = {}) => {
+  if (!root) return false;
+  const tabs = Array.from(root.querySelectorAll("[data-node-network-tab]"));
+  const panels = Array.from(root.querySelectorAll("[data-node-network-panel]"));
+  const select = (value, persist = true) => {
+    const selected = wasmNodeNormalizeNetwork(value) || "mainnet";
+    if (persist) wasmNodeSaveLastNetwork(selected);
+    for (const tab of tabs) {
+      const active = String(tab.dataset.nodeNetworkTab || "") === selected;
+      tab.classList.toggle("active", active);
+      tab.setAttribute("aria-selected", active ? "true" : "false");
+    }
+    for (const panel of panels) {
+      const active = String(panel.dataset.nodeNetworkPanel || "") === selected;
+      panel.classList.toggle("active", active);
+      panel.hidden = !active;
+      panel.dataset.active = active ? "true" : "false";
+    }
+    return selected;
+  };
+  for (const tab of tabs) {
+    tab.addEventListener("click", (event) => {
+      event.preventDefault();
+      select(tab.dataset.nodeNetworkTab, true);
+    });
+  }
+  const active = tabs.find((tab) => tab.classList.contains("active"));
+  select(wasmNodeReadLastNetwork() || (active && active.dataset.nodeNetworkTab) || "mainnet", false);
+  if (callbacks && typeof callbacks.hydrate === "function") callbacks.hydrate("network-tabs-installed");
+  return true;
+};
+const wasmNodeInstallDelegatedTabs = (root) => {
+  if (!root) return false;
+  root.addEventListener("click", (event) => {
+    const target = event && event.target;
+    if (!target || typeof target.closest !== "function") return;
+    const inner = target.closest("[data-node-inner-tab]");
+    if (inner) {
+      const net = String(inner.dataset.net || "");
+      const selected = wasmNodeSaveInnerTab(net, inner.dataset.nodeInnerTab);
+      const panel = root.querySelector('[data-node-network-panel="' + net + '"]');
+      if (!panel) return;
+      for (const item of panel.querySelectorAll("[data-node-inner-tab]")) {
+        item.classList.toggle("active", item === inner);
+      }
+      for (const item of panel.querySelectorAll("[data-node-inner-panel]")) {
+        const active = String(item.dataset.nodeInnerPanel || "") === selected;
+        item.classList.toggle("active", active);
+        item.hidden = !active;
+      }
+      return;
+    }
+    const section = target.closest("[data-node-section-tab]");
+    if (!section) return;
+    const net = String(section.dataset.net || "");
+    const selected = String(section.dataset.nodeSectionTab || "");
+    const panel = root.querySelector('[data-node-network-panel="' + net + '"]');
+    if (!panel) return;
+    for (const item of panel.querySelectorAll("[data-node-section-tab]")) {
+      const active = item === section;
+      item.classList.toggle("active", active);
+      item.setAttribute("aria-selected", active ? "true" : "false");
+    }
+    for (const item of panel.querySelectorAll("[data-node-section-panel]")) {
+      const active = String(item.dataset.nodeSectionPanel || "") === selected;
+      item.classList.toggle("active", active);
+      item.hidden = !active;
+    }
+  });
   return true;
 };
 const kgwNodeTraceStartButtonStateR1 = wasmNodeTraceStartButtonState;
