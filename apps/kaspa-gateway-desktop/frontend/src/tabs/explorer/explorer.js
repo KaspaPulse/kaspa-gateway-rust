@@ -32,7 +32,7 @@
  */
 
 import { parseHeaderUsdPrice } from "./explorer.header.js";
-import { openBlockExplorer, exportCsv, exportHtml, exportPdf } from "./explorer.export.js";
+import { openBlockExplorer, exportCsv, exportHtml, exportPdf, kgwExplorerExportNumberV2, kgwExplorerExportNormalizeRawTxV2 } from "./explorer.export.js";
 import { parseDateSeconds, kgwDayToEpochSeconds, kgwClean2DayToSeconds } from "./explorer.date.js";
 import { kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
 import { pick, toNumber, kgwClean2SafeText, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwRepairExplorerFilterSelects, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
@@ -1653,77 +1653,10 @@ async function kgwClean2LoadDayTransactions(section, address, day) {
 
 /* KGW_EXPORT_RAW_PAYLOAD_PARITY_EXPLORER_V2
    Export must use raw transaction rows, not the visible day-summary table.
-   This function is intentionally exposed to explorer.export.js through window
-   to keep the existing export_report route canonical and avoid a new export system.
+   Pure raw-transaction normalization/number formatting is Rust-owned in explorer_export.rs
+   and reached through deterministic explorer.export.js ABI glue.
+   Async day loading/table assembly remains here until its own migration boundary.
 */
-function kgwExplorerExportStringV2(value) {
-  return String(value ?? "").trim();
-}
-
-function kgwExplorerExportNumberV2(value, digits = 8) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return "";
-  return number.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: digits
-  });
-}
-
-function kgwExplorerExportTxUrlV2(txid) {
-  const clean = kgwExplorerExportStringV2(txid);
-  return /^[0-9a-f]{32,}$/i.test(clean) ? `https://explorer.kaspa.org/txs/${clean}` : "";
-}
-
-function kgwExplorerExportAddressUrlV2(address) {
-  const clean = kgwExplorerExportStringV2(address);
-  return clean.startsWith("kaspa:") ? `https://explorer.kaspa.org/addresses/${clean}` : "";
-}
-
-function kgwExplorerExportJoinAddressesV2(...values) {
-  const seen = new Set();
-  const out = [];
-
-  for (const value of values.flat()) {
-    const clean = kgwExplorerExportStringV2(value);
-    if (!clean || seen.has(clean)) continue;
-    seen.add(clean);
-    out.push(clean);
-  }
-
-  return out.join(" | ");
-}
-
-function kgwExplorerExportNormalizeRawTxV2(row) {
-  const txid = kgwExplorerExportStringV2(row?.txid || row?.transactionId || row?.transaction_id || row?.id || row?.hash);
-  const fromAddress = kgwExplorerExportJoinAddressesV2(row?.from_address, row?.fromAddress, row?.from);
-  const toAddress = kgwExplorerExportJoinAddressesV2(row?.to_address, row?.toAddress, row?.to);
-  const counterparty = kgwExplorerExportStringV2(row?.counterparty || row?.counterParty);
-  const timestampMs = Number(row?.timestamp_ms ?? row?.timestampMs ?? row?.timestamp ?? 0) || 0;
-  const amount = Number(row?.amount ?? row?.amount_kas ?? row?.amountKas ?? 0) || 0;
-  const value = Number(row?.value ?? row?.value_usd ?? row?.valueUsd ?? 0) || 0;
-
-  return {
-    datetime: kgwExplorerExportStringV2(row?.datetime || row?.date_time || row?.dateTime || ""),
-    txid,
-    direction: kgwExplorerExportStringV2(row?.direction || "unknown"),
-    fromAddress,
-    toAddress,
-    counterparty,
-    amount,
-    blockScore: kgwExplorerExportStringV2(row?.block_score || row?.blockScore || row?.block_height || row?.blockHeight || ""),
-    timestampMs,
-    type: kgwExplorerExportStringV2(row?.type || row?.tx_type || row?.txType || "transfer"),
-    value,
-    date: kgwExplorerExportStringV2(row?.date || row?.day || ""),
-    transactionUrl: kgwExplorerExportTxUrlV2(txid),
-    addressUrl: kgwExplorerExportJoinAddressesV2(
-      kgwExplorerExportAddressUrlV2(fromAddress),
-      kgwExplorerExportAddressUrlV2(toAddress),
-      kgwExplorerExportAddressUrlV2(counterparty)
-    )
-  };
-}
-
 async function kgwExplorerBuildRawExportTableV2(section) {
   const root = kgwClean2Section(section);
   const address = explorerState.selectedAddress || normalizeAddress(qs("#explorerAddress", root)?.value);

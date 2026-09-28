@@ -1,4 +1,4 @@
-use js_sys::{Array, Date, Function, JSON, Object, Promise, Reflect};
+use js_sys::{Array, Date, Function, Intl::NumberFormat, JSON, Object, Promise, Reflect};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 use wasm_bindgen_futures::{JsFuture, spawn_local};
 
@@ -434,6 +434,236 @@ fn unique_urls(values: Vec<String>) -> Vec<String> {
         }
     }
     output
+}
+
+fn raw_export_clean_text(value: &str) -> String {
+    value.trim().to_owned()
+}
+
+fn raw_export_string(value: &JsValue) -> String {
+    raw_export_clean_text(&js_string(value))
+}
+
+fn raw_export_number_string(value: &JsValue, digits: u32) -> String {
+    let number = number(value);
+    if !number.is_finite() {
+        return String::new();
+    }
+    let locales = Array::new();
+    let options = Object::new();
+    let _ = set_property(
+        options.as_ref(),
+        "minimumFractionDigits",
+        &JsValue::from_f64(0.0),
+    );
+    let _ = set_property(
+        options.as_ref(),
+        "maximumFractionDigits",
+        &JsValue::from_f64(digits as f64),
+    );
+    let formatter = NumberFormat::new(&locales, &options);
+    formatter
+        .format()
+        .call1(&JsValue::UNDEFINED, &JsValue::from_f64(number))
+        .map(|value| js_string(&value))
+        .unwrap_or_default()
+}
+
+fn raw_export_tx_url_text(value: &str) -> String {
+    let clean = raw_export_clean_text(value);
+    if clean.len() >= 32 && clean.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        format!("https://explorer.kaspa.org/txs/{clean}")
+    } else {
+        String::new()
+    }
+}
+
+fn raw_export_address_url_text(value: &str) -> String {
+    let clean = raw_export_clean_text(value);
+    if clean.starts_with("kaspa:") {
+        format!("https://explorer.kaspa.org/addresses/{clean}")
+    } else {
+        String::new()
+    }
+}
+
+fn push_raw_export_value(output: &mut Vec<String>, value: &JsValue) {
+    let clean = raw_export_string(value);
+    if !clean.is_empty() && !output.contains(&clean) {
+        output.push(clean);
+    }
+}
+
+fn raw_export_join_addresses(values: &Array) -> String {
+    let mut output = Vec::new();
+    for value in values.iter() {
+        if Array::is_array(&value) {
+            for item in Array::from(&value).iter() {
+                push_raw_export_value(&mut output, &item);
+            }
+        } else {
+            push_raw_export_value(&mut output, &value);
+        }
+    }
+    output.join(" | ")
+}
+
+fn first_truthy_value(target: &JsValue, names: &[&str], fallback: &str) -> JsValue {
+    for name in names {
+        let value = property(target, name);
+        if truthy(&value) {
+            return value;
+        }
+    }
+    JsValue::from_str(fallback)
+}
+
+fn first_nullish_value(target: &JsValue, names: &[&str]) -> JsValue {
+    for name in names {
+        let value = property(target, name);
+        if is_present(&value) {
+            return value;
+        }
+    }
+    JsValue::from_f64(0.0)
+}
+
+fn js_or_zero_number(value: &JsValue) -> f64 {
+    let value = number(value);
+    if value.is_nan() || value == 0.0 {
+        0.0
+    } else {
+        value
+    }
+}
+
+fn raw_export_normalize_tx(row: &JsValue) -> JsValue {
+    let txid = raw_export_string(&first_truthy_value(
+        row,
+        &["txid", "transactionId", "transaction_id", "id", "hash"],
+        "",
+    ));
+    let from_values = Array::new();
+    for name in ["from_address", "fromAddress", "from"] {
+        from_values.push(&property(row, name));
+    }
+    let from_address = raw_export_join_addresses(&from_values);
+    let to_values = Array::new();
+    for name in ["to_address", "toAddress", "to"] {
+        to_values.push(&property(row, name));
+    }
+    let to_address = raw_export_join_addresses(&to_values);
+    let counterparty = raw_export_string(&first_truthy_value(
+        row,
+        &["counterparty", "counterParty"],
+        "",
+    ));
+    let timestamp_ms = js_or_zero_number(&first_nullish_value(
+        row,
+        &["timestamp_ms", "timestampMs", "timestamp"],
+    ));
+    let amount = js_or_zero_number(&first_nullish_value(
+        row,
+        &["amount", "amount_kas", "amountKas"],
+    ));
+    let value = js_or_zero_number(&first_nullish_value(
+        row,
+        &["value", "value_usd", "valueUsd"],
+    ));
+    let transaction_url = raw_export_tx_url_text(&txid);
+    let address_urls = Array::new();
+    address_urls.push(&JsValue::from_str(&raw_export_address_url_text(
+        &from_address,
+    )));
+    address_urls.push(&JsValue::from_str(&raw_export_address_url_text(
+        &to_address,
+    )));
+    address_urls.push(&JsValue::from_str(&raw_export_address_url_text(
+        &counterparty,
+    )));
+    let address_url = raw_export_join_addresses(&address_urls);
+
+    object(&[
+        (
+            "datetime",
+            JsValue::from_str(&raw_export_string(&first_truthy_value(
+                row,
+                &["datetime", "date_time", "dateTime"],
+                "",
+            ))),
+        ),
+        ("txid", JsValue::from_str(&txid)),
+        (
+            "direction",
+            JsValue::from_str(&raw_export_string(&first_truthy_value(
+                row,
+                &["direction"],
+                "unknown",
+            ))),
+        ),
+        ("fromAddress", JsValue::from_str(&from_address)),
+        ("toAddress", JsValue::from_str(&to_address)),
+        ("counterparty", JsValue::from_str(&counterparty)),
+        ("amount", JsValue::from_f64(amount)),
+        (
+            "blockScore",
+            JsValue::from_str(&raw_export_string(&first_truthy_value(
+                row,
+                &["block_score", "blockScore", "block_height", "blockHeight"],
+                "",
+            ))),
+        ),
+        ("timestampMs", JsValue::from_f64(timestamp_ms)),
+        (
+            "type",
+            JsValue::from_str(&raw_export_string(&first_truthy_value(
+                row,
+                &["type", "tx_type", "txType"],
+                "transfer",
+            ))),
+        ),
+        ("value", JsValue::from_f64(value)),
+        (
+            "date",
+            JsValue::from_str(&raw_export_string(&first_truthy_value(
+                row,
+                &["date", "day"],
+                "",
+            ))),
+        ),
+        ("transactionUrl", JsValue::from_str(&transaction_url)),
+        ("addressUrl", JsValue::from_str(&address_url)),
+    ])
+}
+
+#[wasm_bindgen(js_name = explorerRawExportStringV2)]
+pub fn explorer_raw_export_string_v2(value: JsValue) -> String {
+    raw_export_string(&value)
+}
+
+#[wasm_bindgen(js_name = explorerRawExportNumberV2)]
+pub fn explorer_raw_export_number_v2(value: JsValue, digits: u32) -> String {
+    raw_export_number_string(&value, digits)
+}
+
+#[wasm_bindgen(js_name = explorerRawExportTxUrlV2)]
+pub fn explorer_raw_export_tx_url_v2(value: JsValue) -> String {
+    raw_export_tx_url_text(&raw_export_string(&value))
+}
+
+#[wasm_bindgen(js_name = explorerRawExportAddressUrlV2)]
+pub fn explorer_raw_export_address_url_v2(value: JsValue) -> String {
+    raw_export_address_url_text(&raw_export_string(&value))
+}
+
+#[wasm_bindgen(js_name = explorerRawExportJoinAddressesV2)]
+pub fn explorer_raw_export_join_addresses_v2(values: Array) -> String {
+    raw_export_join_addresses(&values)
+}
+
+#[wasm_bindgen(js_name = explorerRawExportNormalizeRawTxV2)]
+pub fn explorer_raw_export_normalize_raw_tx_v2(row: JsValue) -> JsValue {
+    raw_export_normalize_tx(&row)
 }
 
 fn build_client_table(section: &JsValue) -> Result<JsValue, JsValue> {
@@ -1305,6 +1535,35 @@ mod tests {
                 "https://x/txs/a".to_owned(),
                 "https://x/addresses/kaspa:q".to_owned(),
             ]
+        );
+    }
+
+    #[test]
+    fn raw_export_text_and_urls_match_legacy_contract() {
+        assert_eq!(raw_export_clean_text("  abc  "), "abc");
+        let txid = "ABCDEF0123456789abcdef0123456789";
+        assert_eq!(
+            raw_export_tx_url_text(txid),
+            format!("https://explorer.kaspa.org/txs/{txid}")
+        );
+        assert_eq!(raw_export_tx_url_text("abcd"), "");
+        assert_eq!(raw_export_tx_url_text(&"g".repeat(32)), "");
+        assert_eq!(
+            raw_export_address_url_text(" kaspa:qabc "),
+            "https://explorer.kaspa.org/addresses/kaspa:qabc"
+        );
+        assert_eq!(raw_export_address_url_text("KASPA:qabc"), "");
+    }
+
+    #[test]
+    fn raw_export_url_cleaning_keeps_internal_text_unchanged() {
+        assert_eq!(
+            raw_export_address_url_text("kaspa:q1 | kaspa:q2"),
+            "https://explorer.kaspa.org/addresses/kaspa:q1 | kaspa:q2"
+        );
+        assert_eq!(
+            raw_export_tx_url_text("0123456789abcdef0123456789abcdef "),
+            "https://explorer.kaspa.org/txs/0123456789abcdef0123456789abcdef"
         );
     }
 

@@ -1013,10 +1013,40 @@ import init, {
   explorerExportInstall as wasmInstall,
   explorerExportPdf as wasmExportPdf,
   explorerOpenBlockExplorer as wasmOpenBlockExplorer,
+  explorerRawExportAddressUrlV2 as wasmRawExportAddressUrlV2,
+  explorerRawExportJoinAddressesV2 as wasmRawExportJoinAddressesV2,
+  explorerRawExportNormalizeRawTxV2 as wasmRawExportNormalizeRawTxV2,
+  explorerRawExportNumberV2 as wasmRawExportNumberV2,
+  explorerRawExportStringV2 as wasmRawExportStringV2,
+  explorerRawExportTxUrlV2 as wasmRawExportTxUrlV2,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
 await init();
 wasmInstall();
+
+export function kgwExplorerExportStringV2(value) {
+  return wasmRawExportStringV2(value);
+}
+
+export function kgwExplorerExportNumberV2(value, digits = 8) {
+  return wasmRawExportNumberV2(value, digits);
+}
+
+export function kgwExplorerExportTxUrlV2(txid) {
+  return wasmRawExportTxUrlV2(txid);
+}
+
+export function kgwExplorerExportAddressUrlV2(address) {
+  return wasmRawExportAddressUrlV2(address);
+}
+
+export function kgwExplorerExportJoinAddressesV2(...values) {
+  return wasmRawExportJoinAddressesV2(values);
+}
+
+export function kgwExplorerExportNormalizeRawTxV2(row) {
+  return wasmRawExportNormalizeRawTxV2(row);
+}
 
 export function openBlockExplorer(section) {
   return wasmOpenBlockExplorer(section);
@@ -1662,6 +1692,12 @@ mod tests {
         assert!(explorer_export.contains("wasmExportCsv(section)"));
         assert!(explorer_export.contains("wasmExportHtml(section)"));
         assert!(explorer_export.contains("wasmExportPdf(section)"));
+        assert!(explorer_export.contains("wasmRawExportStringV2(value)"));
+        assert!(explorer_export.contains("wasmRawExportNumberV2(value, digits)"));
+        assert!(explorer_export.contains("wasmRawExportTxUrlV2(txid)"));
+        assert!(explorer_export.contains("wasmRawExportAddressUrlV2(address)"));
+        assert!(explorer_export.contains("wasmRawExportJoinAddressesV2(values)"));
+        assert!(explorer_export.contains("wasmRawExportNormalizeRawTxV2(row)"));
         for forbidden in [
             "export_default_path",
             "export_report",
