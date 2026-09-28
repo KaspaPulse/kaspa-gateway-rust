@@ -127,6 +127,10 @@ fn validate_explorer_lint(source: &str) -> Result<(), String> {
             "setInterval(tick, 2000)",
             "Explorer polling must not reference undefined tick",
         ),
+        (
+            "setInterval(kgwLiveDbPollingTick, 2000)",
+            "Explorer must not retain retired local DB polling after event-driven live core ownership",
+        ),
     ] {
         forbid_contains(source, needle, message)?;
     }
@@ -144,8 +148,12 @@ fn validate_explorer_lint(source: &str) -> Result<(), String> {
             "Explorer day end must use imported UTC day helper",
         ),
         (
-            "setInterval(kgwLiveDbPollingTick, 2000)",
-            "Explorer live DB polling must schedule its local owner",
+            "await kgwInstallTxLiveCoreListener();",
+            "Explorer fetch must install the event-driven live-core owner",
+        ),
+        (
+            "await listen(\"kgw://transactions/page-stored\"",
+            "Explorer live core must consume Rust page-stored events",
         ),
     ] {
         require_contains(source, needle, message)?;
@@ -276,11 +284,18 @@ fn validate_functional_ui(sources: FunctionalUiSources<'_>) -> Result<(), String
         "#explorer #explorerStatus {\n  display: none !important;",
         "Explorer status must not be permanently hidden",
     )?;
-    if count_regex(
+    let invalid_address_error_statuses = count_regex(
         explorer_js,
         r#"setStatus\((?:section|root), "Enter a valid Kaspa address\.", "error"\)"#,
-    ) < 4
-    {
+    );
+    let canonical_address_validations =
+        count_regex(explorer_js, r"await kgwCanonicalKaspaAddress\(address\)");
+    if canonical_address_validations < 3 {
+        return Err(
+            "Explorer must retain all active canonical address validation owners".to_owned(),
+        );
+    }
+    if invalid_address_error_statuses != canonical_address_validations {
         return Err("All invalid Explorer actions need visible error status".to_owned());
     }
     require_contains(
@@ -299,11 +314,6 @@ fn validate_functional_ui(sources: FunctionalUiSources<'_>) -> Result<(), String
         "Explorer canonical validation must remain exported by Rust/WASM",
     )?;
     validate_explorer_filter_ownership(explorer_js, explorer_filters_rust)?;
-    if count_regex(explorer_js, r"await kgwCanonicalKaspaAddress\(address\)") < 4 {
-        return Err(
-            "All active Explorer filter/fetch owners must use canonical validation".to_owned(),
-        );
-    }
     for needle in [
         r#"function(&dialog, "open")"#,
         r#""Choose directory""#,

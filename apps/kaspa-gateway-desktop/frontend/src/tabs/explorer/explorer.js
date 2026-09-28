@@ -33,9 +33,9 @@
 
 import { parseHeaderUsdPrice } from "./explorer.header.js";
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf } from "./explorer.export.js";
-import { parseDateSeconds, kgwDayToEpochSeconds, kgwTxDayToEpochSeconds, kgwClean2DayToSeconds, kgwTransactionDateKey } from "./explorer.date.js";
-import { formatKas, formatUsd, kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { pick, toNumber, kgwClean2SafeText, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwFilterValue, kgwFilterBuildRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwRepairExplorerFilterSelects, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, addressLookupKeys, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
+import { parseDateSeconds, kgwDayToEpochSeconds, kgwClean2DayToSeconds } from "./explorer.date.js";
+import { kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
+import { pick, toNumber, kgwClean2SafeText, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwRepairExplorerFilterSelects, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
 
 const SOMPI_PER_KAS = 100_000_000;
 
@@ -95,20 +95,7 @@ async function invokeCommand(command, args = {}) {
   return await invoke(command, args);
 }
 
-async function tryInvokeMany(candidates) {
-  let lastError = null;
 
-  for (const item of candidates) {
-    try {
-      return await invokeCommand(item.cmd, item.args || {});
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  if (lastError) throw lastError;
-  return null;
-}
 function setStatus(section, message, state = "info") {
   const cleanMessage = String(message || "");
 
@@ -307,56 +294,9 @@ function extractRowsFromUnifiedResult(result) {
   return rows;
 }
 
-function normalizeTransactionRow(tx, day, priceUsd) {
-  const amountKas = Number(
-    tx.amount_kas ??
-    tx.amountKas ??
-    tx.amount ??
-    (Number(tx.amount_sompi ?? tx.amountSompi ?? 0) / SOMPI_PER_KAS)
-  );
 
-  const valueUsd = Number(
-    tx.value_usd ??
-    tx.valueUsd ??
-    (priceUsd ? Math.abs(amountKas) * priceUsd : 0)
-  );
 
-  return {
-    date: String(tx.date || tx.day || day || "").slice(0, 10),
-    datetime: String(tx.datetime || tx.time || tx.timestamp || tx.date || tx.day || day || "").replace("T", " ").slice(0, 19),
-    txid: String(tx.txid || tx.id || tx.transaction_id || tx.transactionId || ""),
-    direction: String(tx.direction || "unknown"),
-    amount: Number.isFinite(amountKas) ? amountKas : 0,
-    value: Number.isFinite(valueUsd) ? valueUsd : 0,
-    type: String(tx.tx_type || tx.txType || tx.type || "transfer")
-  };
-}
 
-function applyFilters(section) {
-  const direction = String(qs("#explorerDirectionFilter", section)?.value || "ALL");
-  const type = String(qs("#explorerTypeFilter", section)?.value || "ALL");
-  const search = String(qs("#explorerSearch", section)?.value || "").trim().toLowerCase();
-
-  explorerState.filteredRows = explorerState.rows.filter((row) => {
-    if (direction !== "ALL" && row.direction !== direction) return false;
-    if (type !== "ALL" && row.type !== type) return false;
-
-    if (search) {
-      const haystack = [
-        row.datetime,
-        row.txid,
-        row.direction,
-        row.amount,
-        row.value,
-        row.type
-      ].join(" ").toLowerCase();
-
-      if (!haystack.includes(search)) return false;
-    }
-
-    return true;
-  });
-}
 
 
 /* KGW_TX_R4_GROUPED_COLLAPSED_RENDERER
@@ -369,27 +309,11 @@ if (!window.__kgwExplorerExpandedDateGroups) {
   window.__kgwExplorerExpandedDateGroups = new Set();
 }
 
-function kgwTransactionAmountNumber(row) {
-  const raw = row?.amountKas ?? row?.amount_kas ?? row?.amount ?? row?.kas ?? 0;
-  const value = Number(String(raw).replace(/,/g, ""));
-  return Number.isFinite(value) ? value : 0;
-}
 
-function kgwTransactionUsdNumber(row) {
-  const raw = row?.valueUsd ?? row?.value_usd ?? row?.value ?? row?.usd ?? 0;
-  const value = Number(String(raw).replace(/,/g, ""));
-  return Number.isFinite(value) ? value : 0;
-}
 
-function kgwFormatGroupNumber(value, digits = 8) {
-  const number = Number(value || 0);
-  if (!Number.isFinite(number)) return "0";
 
-  return number.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: digits
-  });
-}
+
+
 
 
 /* KGW_TX_UI_FAST_3B_DAY_SUMMARY_MODE
@@ -494,237 +418,7 @@ async function kgwLoadTransactionsForSingleDayFromDb(section, address, day) {
   return extractRowsFromUnifiedResult({ groups });
 }
 
-function kgwRenderGroupedCollapsedTransactions(section, rows) {
-  const body = qs("#explorerTransactionsBody", section);
 
-  if (!body) return;
-
-  const safeRows = Array.isArray(rows) ? rows : [];
-  body.innerHTML = "";
-
-  if (!safeRows.length) {
-    body.innerHTML = `
-      <tr>
-        <td colspan="6" class="muted" data-i18n="explorer.noTransactionsToDisplay">No transactions to display.</td>
-      </tr>
-    `;
-    return;
-  }
-
-  const summaryMode = safeRows.every((row) => row?.__kgwDaySummary === true);
-
-  if (summaryMode) {
-    const totalCount = safeRows.reduce((sum, row) => sum + (Number(row.count) || 0), 0);
-    const totalNetKas = safeRows.reduce((sum, row) => sum + (Number(row.net_kas) || 0), 0);
-
-    const totalTr = document.createElement("tr");
-    totalTr.className = "kgw-total-row";
-    totalTr.innerHTML = `
-      <td data-i18n="explorer.total">Total</td>
-      <td>${totalCount.toLocaleString()} transactions</td>
-      <td></td>
-      <td>${kgwSummaryFormatKas(totalNetKas)}</td>
-      <td></td>
-      <td></td>
-    `;
-    body.appendChild(totalTr);
-
-    const fragment = document.createDocumentFragment();
-
-    for (const summary of safeRows) {
-      const day = summary.day;
-      const expanded = window.__kgwExplorerExpandedDateGroups.has(day);
-      const sign = expanded ? "-" : "+";
-
-      const dayTr = document.createElement("tr");
-      dayTr.className = "kgw-day-group-row";
-      dayTr.dataset.kgwDateGroup = day;
-      dayTr.innerHTML = `
-        <td>${sign} ${day}</td>
-        <td>${Number(summary.count || 0).toLocaleString()} transactions</td>
-        <td></td>
-        <td>${kgwSummaryFormatKas(Number(summary.net_kas || 0) || 0)}</td>
-        <td></td>
-        <td></td>
-      `;
-
-      fragment.appendChild(dayTr);
-
-      if (!expanded) continue;
-
-      const cachedRows = window.__kgwExplorerDayTransactionCache.get(day);
-
-      if (!cachedRows) {
-        const loadingTr = document.createElement("tr");
-        loadingTr.className = "kgw-transaction-row";
-        loadingTr.innerHTML = `
-          <td colspan="6" class="muted">Loading transactions for ${day}...</td>
-        `;
-        fragment.appendChild(loadingTr);
-        continue;
-      }
-
-      for (const row of cachedRows) {
-        const txid = row?.txid || row?.transaction_id || row?.transactionId || "";
-
-        const txTr = document.createElement("tr");
-        txTr.className = "kgw-transaction-row";
-        txTr.dataset.kgwParentDateGroup = day;
-        txTr.innerHTML = `
-          <td>${row?.datetime || row?.date_time || row?.time || row?.timestamp || ""}</td>
-          <td>${txid}</td>
-          <td>${row?.direction || ""}</td>
-          <td>${kgwSummaryFormatKas(Number(row?.amount_kas ?? row?.amountKas ?? row?.amount ?? 0) || 0)}</td>
-          <td>${kgwSummaryFormatUsd(Number(row?.value_usd ?? row?.valueUsd ?? row?.usd_value ?? row?.usdValue ?? kgwSummaryUsdForKas(row?.amount_kas ?? row?.amountKas ?? row?.amount ?? 0)) || 0)}</td>
-          <td>${row?.tx_type || row?.type || ""}</td>
-        `;
-
-        fragment.appendChild(txTr);
-      }
-    }
-
-    body.appendChild(fragment);
-
-    qsa("[data-kgw-date-group]", body).forEach((row) => {
-      row.addEventListener("click", async () => {
-        const day = row.dataset.kgwDateGroup;
-
-        if (!day) return;
-
-        if (window.__kgwExplorerExpandedDateGroups.has(day)) {
-          window.__kgwExplorerExpandedDateGroups.delete(day);
-          kgwRenderGroupedCollapsedTransactions(section, explorerState.filteredRows || explorerState.rows || []);
-          return;
-        }
-
-        window.__kgwExplorerExpandedDateGroups.add(day);
-        kgwRenderGroupedCollapsedTransactions(section, explorerState.filteredRows || explorerState.rows || []);
-
-        if (!window.__kgwExplorerDayTransactionCache.has(day)) {
-          try {
-            const address = explorerState.selectedAddress || normalizeAddress(qs("#explorerAddress", section)?.value);
-            const dayRows = await kgwLoadTransactionsForSingleDayFromDb(section, address, day);
-
-            window.__kgwExplorerDayTransactionCache.set(day, dayRows);
-
-            microscopeLog("DAY TRANSACTIONS LOADED", {
-              day,
-              rows: dayRows.length
-            });
-          } catch (error) {
-            microscopeWarn("DAY TRANSACTIONS LOAD FAILED", {
-              day,
-              message: error?.message || String(error)
-            });
-
-            window.__kgwExplorerDayTransactionCache.set(day, []);
-          }
-
-          kgwRenderGroupedCollapsedTransactions(section, explorerState.filteredRows || explorerState.rows || []);
-        }
-      });
-    });
-
-    return;
-  }
-
-  const grouped = new Map();
-
-  for (const row of safeRows) {
-    const dayKey = kgwTransactionDateKey(row) || "Unknown date";
-
-    if (!grouped.has(dayKey)) {
-      grouped.set(dayKey, {
-        key: dayKey,
-        rows: [],
-        incoming: 0,
-        outgoing: 0,
-        usd: 0
-      });
-    }
-
-    const group = grouped.get(dayKey);
-    group.rows.push(row);
-
-    const amountKas = Number(row?.amount_kas ?? row?.amountKas ?? row?.amount ?? 0) || 0;
-    const usdValue = Number(row?.value_usd ?? row?.valueUsd ?? row?.usd_value ?? row?.usdValue ?? 0) || 0;
-    const direction = String(row?.direction || "").toLowerCase();
-
-    if (direction === "outgoing") {
-      group.outgoing += Math.abs(amountKas);
-    } else {
-      group.incoming += Math.abs(amountKas);
-    }
-
-    group.usd += Math.abs(usdValue);
-  }
-
-  const groups = Array.from(grouped.values()).sort((left, right) => {
-    return String(right.key).localeCompare(String(left.key));
-  });
-
-  const fragment = document.createDocumentFragment();
-
-  for (const group of groups) {
-    const expanded = window.__kgwExplorerExpandedDateGroups.has(group.key);
-    const sign = expanded ? "-" : "+";
-
-    const dayTr = document.createElement("tr");
-    dayTr.className = "kgw-day-group-row";
-    dayTr.dataset.kgwDateGroup = group.key;
-    dayTr.innerHTML = `
-      <td>${sign} ${group.key}</td>
-      <td>${group.rows.length.toLocaleString()} transactions</td>
-      <td></td>
-      <td>${kgwSummaryFormatKas(group.incoming - group.outgoing)}</td>
-      <td>${kgwSummaryFormatUsd(group.usd)}</td>
-      <td></td>
-    `;
-
-    fragment.appendChild(dayTr);
-
-    if (!expanded) continue;
-
-    for (const row of group.rows) {
-      const txid = row?.txid || row?.transaction_id || row?.transactionId || "";
-
-      const txTr = document.createElement("tr");
-      txTr.className = "kgw-transaction-row";
-      txTr.dataset.kgwParentDateGroup = group.key;
-      txTr.innerHTML = `
-        <td>${row?.datetime || row?.date_time || row?.time || row?.timestamp || ""}</td>
-        <td>${txid}</td>
-        <td>${row?.direction || ""}</td>
-        <td>${kgwSummaryFormatKas(Number(row?.amount_kas ?? row?.amountKas ?? row?.amount ?? 0) || 0)}</td>
-        <td>${kgwSummaryFormatUsd(Number(row?.value_usd ?? row?.valueUsd ?? row?.usd_value ?? row?.usdValue ?? 0) || 0)}</td>
-        <td>${row?.tx_type || row?.type || ""}</td>
-      `;
-
-      fragment.appendChild(txTr);
-    }
-  }
-
-  body.appendChild(fragment);
-
-  qsa("[data-kgw-date-group]", body).forEach((row) => {
-    row.addEventListener("click", () => {
-      const key = row.dataset.kgwDateGroup;
-
-      if (!key) return;
-
-      if (window.__kgwExplorerExpandedDateGroups.has(key)) {
-        window.__kgwExplorerExpandedDateGroups.delete(key);
-      } else {
-        window.__kgwExplorerExpandedDateGroups.add(key);
-      }
-
-      kgwRenderGroupedCollapsedTransactions(
-        section,
-        explorerState.filteredRows || explorerState.rows || []
-      );
-    });
-  });
-}
 
 
 /* KGW_TX_UI_CLEAN_1_DAY_SUMMARY_RENDERER
@@ -837,28 +531,7 @@ function kgwNormalizeDaySummaries(result) {
     .filter((item) => item.day);
 }
 
-async function kgwLoadTransactionDaySummaries(section, address, startTs, endTs) {
-  const request = kgwBuildExplorerListRequest(section, address, startTs, endTs, 10000);
 
-  const started = performance.now();
-
-  const result = await kgwInvokeExplorerDaySummaries(request);
-  const rows = kgwNormalizeDaySummaries(result);
-
-  const totalCount = rows.reduce((sum, row) => sum + (Number(row.count) || 0), 0);
-  const totalUsd = rows.reduce((sum, row) => sum + (Number(row.value_usd) || 0), 0);
-
-  kgwFilterTrace("day summaries response", {
-    elapsedMs: Math.round(performance.now() - started),
-    days: rows.length,
-    totalCount,
-    totalUsd,
-    first: rows[0] || null,
-    last: rows[rows.length - 1] || null
-  });
-
-  return rows;
-}
 
 async function kgwLoadTransactionsForDay(section, address, day) {
   const startTs = kgwDayToEpochSeconds(day, false);
@@ -1106,154 +779,30 @@ async function kgwRenderDaySummaries(section, rows, statusText = "") {
    Filter must not route through old client-side row filtering.
    Rust already returns matching day summaries. Render those directly.
 */
-function kgwFilterLog(label, payload = {}) {
-  try {
-    console.log(`[KGW Explorer][filter-owner] ${label}`, payload);
-  } catch (_) {
-    console.log(`[KGW Explorer][filter-owner] ${label}`);
-  }
-}
+
 
 /* Explorer single-owner filter value/request construction lives in Rust/WASM explorer_filters.rs. */
 
-function kgwFilterTbody(section) {
-  return qs("#explorerTransactionsBody", section) || document.querySelector("#explorerTransactionsBody");
-}
 
-async function kgwApplyFilterSingleOwner(section) {
-  let address = explorerState.selectedAddress || normalizeAddress(qs("#explorerAddress", section)?.value);
-  const startTs = parseDateSeconds(qs("#explorerFromDate", section)?.value, false);
-  const endTs = parseDateSeconds(qs("#explorerToDate", section)?.value, true);
 
-  kgwFilterLog("start", {
-    address,
-    selectedAddress: explorerState.selectedAddress,
-    type: kgwFilterValue("#explorerTypeFilter", section, "ALL"),
-    direction: kgwFilterValue("#explorerDirectionFilter", section, "ALL"),
-    search: String(qs("#explorerSearch", section)?.value || ""),
-    startTs,
-    endTs
-  });
 
-  address = await kgwCanonicalKaspaAddress(address);
-  if (!address) {
-    clearExplorerTransactionTable(section, "Enter a valid Kaspa address.");
-    setStatus(section, "Enter a valid Kaspa address.", "error");
-    kgwFilterLog("invalid address", { validated: false });
-    return;
-  }
 
-  setStatus(section, "Applying filter from local database...");
 
-  const request = kgwFilterBuildRequest(section, address, startTs, endTs, 10000);
-  const started = performance.now();
 
-  const result = await kgwInvokeExplorerDaySummaries(request);
-  const rows = kgwNormalizeDaySummaries(result);
 
-  kgwFilterLog("rust response normalized", {
-    elapsedMs: Math.round(performance.now() - started),
-    days: rows.length,
-    totalTransactions: rows.reduce((sum, row) => sum + (Number(row.count) || 0), 0),
-    first: rows[0] || null
-  });
-
-  explorerState.selectedAddress = address;
-  explorerState.rows = rows;
-  explorerState.filteredRows = rows.slice();
-
-  window.__kgwExplorerDayTransactionCache = new Map();
-  window.__kgwExplorerExpandedDateGroups = new Set();
-
-  await kgwRenderDaySummaries(
-    section,
-    rows,
-    rows.length
-      ? `Filter applied. Showing ${rows.length.toLocaleString()} days from local database. Click + to load one day.`
-      : "Filter applied. No matching transaction days found."
-  );
-
-  const body = kgwFilterTbody(section);
-
-  kgwFilterLog("render done", {
-    tbodyFound: Boolean(body),
-    childRows: body?.children?.length ?? null,
-    textPreview: body?.innerText?.slice(0, 300) ?? ""
-  });
-}
-
-function kgwRowsFromAnyGroupedResult(result) {
-  if (Array.isArray(result)) {
-    return extractRowsFromUnifiedResult({ groups: result });
-  }
-
-  return extractRowsFromUnifiedResult(result);
-}
-
-async function kgwLoadLocalTransactionsForAddress(section, address, startTs, endTs) {
-  const listRequest = {
-    address,
-    start_ts: startTs,
-    end_ts: endTs,
-    tx_type: qs("#explorerTypeFilter", section)?.value || "ALL",
-    direction: qs("#explorerDirectionFilter", section)?.value || "ALL",
-    search_query: qs("#explorerSearch", section)?.value || "",
-    limit: 1000000
-  };
-
-  const result = await kgwInvokeExplorerGroupedTransactions(listRequest);
-
-  return kgwRowsFromAnyGroupedResult(result);
-}
 
 
 /* KGW_DB_SOURCE_OF_TRUTH_TABLE
    Python parity rule:
    The table is rendered from Transactions DB, not from raw network results.
 */
-function kgwTransactionListRequestFromUi(section, address, startTs, endTs) {
-  return {
-    address,
-    start_ts: startTs,
-    end_ts: endTs,
-    tx_type: qs("#explorerTypeFilter", section)?.value || "ALL",
-    direction: qs("#explorerDirectionFilter", section)?.value || "ALL",
-    search_query: qs("#explorerSearch", section)?.value || "",
-    limit: 1000000
-  };
-}
 
-function kgwRowsFromDbGroupedResult(result) {
-  if (!result) return [];
 
-  if (Array.isArray(result)) {
-    return extractRowsFromUnifiedResult({ groups: result });
-  }
 
-  if (Array.isArray(result.groups)) {
-    return extractRowsFromUnifiedResult(result);
-  }
 
-  return extractRowsFromUnifiedResult(result);
-}
 
-async function kgwLoadRowsFromTransactionsDb(section, address, startTs, endTs) {
-  const request = kgwTransactionListRequestFromUi(section, address, startTs, endTs);
-  const result = await kgwInvokeExplorerGroupedTransactions(request);
-  return kgwRowsFromDbGroupedResult(result);
-}
 
-function kgwRenderRowsFromDb(section, rows, statusText) {
-  explorerState.rows = Array.isArray(rows) ? rows : [];
-  explorerState.filteredRows = explorerState.rows.slice();
 
-  renderTable(section);
-  syncActionState(section);
-
-  if (statusText) {
-    setStatus(section, statusText);
-  }
-}
 
 /* KGW_CLEAR_EXPLORER_TABLE_ON_CONTEXT_CHANGE */
 /* KGW_EXPLORER_CANCEL_STATE_OWNER_FIX_R56E
@@ -1297,97 +846,16 @@ function kgwExplorerListRequest(section, address, startTs, endTs) {
   };
 }
 
-async function kgwLoadExplorerRowsFromDb(section, address, startTs, endTs) {
-  window.__kgwExplorerDayTransactionCache = new Map();
 
-  const summaries = await kgwLoadTransactionDaySummariesFromDb(section, address, startTs, endTs);
 
-  microscopeLog("DAY SUMMARY LIST LOADED", {
-    address,
-    days: summaries.length
-  });
 
-  return summaries;
-}
-
-function kgwSetRowsAndRender(section, rows, statusText = "") {
-  explorerState.rows = Array.isArray(rows) ? rows : [];
-  explorerState.filteredRows = explorerState.rows.slice();
-
-  renderTable(section);
-  syncActionState(section);
-
-  if (statusText) {
-    setStatus(section, statusText);
-  }
-}
 
 /* KGW_TX_R2_LIVE_DB_POLLING
    Python parity:
    While backend fetch is still running, poll local DB and render rows in batches.
    This prevents the table from looking frozen until all pages finish.
 */
-function kgwStartLiveDbPollingDuringFetch(section, address, startTs, endTs, isForce) {
-  let stopped = false;
-  let lastRowCount = -1;
-  let inFlight = false;
 
-  async function kgwLiveDbPollingTick() {
-    if (stopped || inFlight) return;
-
-    inFlight = true;
-
-    try {
-      const rows = await kgwLoadExplorerRowsFromDb(section, address, startTs, endTs);
-
-      if (!stopped && Array.isArray(rows) && rows.length !== lastRowCount) {
-        lastRowCount = rows.length;
-
-        explorerState.selectedAddress = address;
-        explorerState.rows = rows;
-        explorerState.filteredRows = rows.slice();
-
-        renderTable(section);
-
-        setStatus(
-          section,
-          `${isForce ? "Force fetch" : "Fetch"} is running... showing ${rows.length.toLocaleString()} days from local database so far.`
-        );
-      }
-    } catch (error) {
-      microscopeWarn("LIVE DB POLL FAILED", {
-        message: error?.message || String(error)
-      });
-    } finally {
-      inFlight = false;
-    }
-  }
-
-  kgwLiveDbPollingTick();
-
-  const timer = window.setInterval(kgwLiveDbPollingTick, 2000);
-
-  return async function stopLiveDbPolling(finalRefresh = true) {
-    stopped = true;
-    window.clearInterval(timer);
-
-    if (finalRefresh) {
-      try {
-        const rows = await kgwLoadExplorerRowsFromDb(section, address, startTs, endTs);
-
-        explorerState.selectedAddress = address;
-        explorerState.rows = Array.isArray(rows) ? rows : [];
-        explorerState.filteredRows = explorerState.rows.slice();
-
-        renderTable(section);
-      } catch (error) {
-        microscopeWarn("LIVE DB FINAL REFRESH FAILED", {
-          message: error?.message || String(error)
-        });
-      }
-    }
-  };
-}
 
 
 /* KGW_TX_R3_LIVE_LOCAL_DATABASE_RENDER
@@ -1395,63 +863,7 @@ function kgwStartLiveDbPollingDuringFetch(section, address, startTs, endTs, isFo
    While backend fetch is still running, read saved local database transactions and render them.
    The backend keeps fetching pages; the UI does not wait for all pages to finish.
 */
-function kgwStartLiveLocalDatabaseRenderDuringFetch(section, address, startTs, endTs, isForce) {
-  let stopped = false;
-  let inFlight = false;
-  let lastRowCount = -1;
-  let lastRenderAt = 0;
 
-  async function kgwLiveLocalDatabaseRenderTick(forceRender = false) {
-    if (stopped || inFlight) return;
-
-    inFlight = true;
-
-    try {
-      const rows = await kgwLoadExplorerRowsFromDb(section, address, startTs, endTs);
-      const rowCount = Array.isArray(rows) ? rows.length : 0;
-      const now = Date.now();
-
-      if (
-        !stopped &&
-        (forceRender || rowCount !== lastRowCount || now - lastRenderAt > 5000)
-      ) {
-        lastRowCount = rowCount;
-        lastRenderAt = now;
-
-        explorerState.selectedAddress = address;
-        explorerState.rows = Array.isArray(rows) ? rows : [];
-        explorerState.filteredRows = explorerState.rows.slice();
-
-        renderTable(section);
-        syncActionState(section);
-
-        setStatus(
-          section,
-          `${isForce ? "Force fetch" : "Fetch"} is running... showing ${rowCount.toLocaleString()} days from local database so far.`
-        );
-      }
-    } catch (error) {
-      microscopeWarn("LIVE LOCAL_DATABASE RENDER FAILED", {
-        message: error?.message || String(error)
-      });
-    } finally {
-      inFlight = false;
-    }
-  }
-
-  kgwLiveLocalDatabaseRenderTick(true);
-
-  const timer = window.setInterval(() => kgwLiveLocalDatabaseRenderTick(false), 2000);
-
-  return async function stopLiveLocalDatabaseRender(finalRefresh = true) {
-    stopped = true;
-    window.clearInterval(timer);
-
-    if (finalRefresh) {
-      await kgwLiveLocalDatabaseRenderTick(true);
-    }
-  };
-}
 
 
 /* KGW_TX_UI_FAST_3D_DIRECT_DAY_SUMMARY_RENDERER
@@ -1655,238 +1067,13 @@ if (!window.__kgwExplorerExpandedDateGroups) {
   window.__kgwExplorerExpandedDateGroups = new Set();
 }
 
-function kgwNormalizeDaySummaryRows(result) {
-  const items = Array.isArray(result)
-    ? result
-    : Array.isArray(result?.days)
-      ? result.days
-      : Array.isArray(result?.summaries)
-        ? result.summaries
-        : [];
 
-  return items
-    .map((item) => ({
-      __kgwDaySummary: true,
-      day: String(item?.day || item?.date || "").slice(0, 10),
-      count: Number(item?.count ?? item?.tx_count ?? item?.transactions_count ?? 0) || 0,
-      incoming_kas: Number(item?.incoming_kas ?? item?.incomingKas ?? 0) || 0,
-      outgoing_kas: Number(item?.outgoing_kas ?? item?.outgoingKas ?? 0) || 0,
-      net_kas: Number(item?.net_kas ?? item?.netKas ?? 0) || 0
-    }))
-    .filter((item) => item.day);
-}
 
-async function kgwLoadDaySummariesOnly(section, address, startTs, endTs) {
-  const request = {
-    address,
-    start_ts: startTs,
-    end_ts: endTs,
-    tx_type: qs("#explorerTypeFilter", section)?.value || "ALL",
-    direction: qs("#explorerDirectionFilter", section)?.value || "ALL",
-    search_query: qs("#explorerSearch", section)?.value || "",
-    limit: 10000
-  };
 
-  const result = await kgwInvokeExplorerDaySummaries(request);
-  const rows = kgwNormalizeDaySummaryRows(result);
 
-  microscopeLog("TX-UI-FAST-3E DAY SUMMARIES LOADED", {
-    address,
-    days: rows.length,
-    first: rows[0] || null
-  });
 
-  return rows;
-}
 
-async function kgwLoadOneDayTransactionsOnly(section, address, day) {
-  const startTs = kgwTxDayToEpochSeconds(day, false);
-  const endTs = kgwTxDayToEpochSeconds(day, true);
 
-  if (!Number.isFinite(startTs) || !Number.isFinite(endTs)) {
-    return [];
-  }
-
-  const request = {
-    address,
-    start_ts: startTs,
-    end_ts: endTs,
-    tx_type: qs("#explorerTypeFilter", section)?.value || "ALL",
-    direction: qs("#explorerDirectionFilter", section)?.value || "ALL",
-    search_query: qs("#explorerSearch", section)?.value || "",
-    limit: 1000000
-  };
-
-  const groups = await kgwInvokeExplorerGroupedTransactions(request);
-  const rows = extractRowsFromUnifiedResult({ groups });
-
-  microscopeLog("TX-UI-FAST-3E ONE DAY TX LOADED", {
-    day,
-    rows: rows.length
-  });
-
-  return rows;
-}
-
-async function kgwRenderDaySummariesOnly(section, rows, statusText = "") {
-  const body = qs("#explorerTransactionsBody", section);
-
-  if (!body) {
-    microscopeWarn("TX-UI-FAST-3E BODY MISSING", {});
-    return;
-  }
-
-  const summaries = Array.isArray(rows)
-    ? rows.filter((row) => row && row.__kgwDaySummary === true && row.day)
-    : [];
-
-  explorerState.rows = summaries;
-  explorerState.filteredRows = summaries.slice();
-
-  body.innerHTML = "";
-
-  if (!summaries.length) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="6" class="muted" data-i18n="explorer.noTransactionsToDisplay">No transactions to display.</td>`;
-    body.appendChild(tr);
-
-    syncActionState(section);
-
-    if (statusText) {
-      setStatus(section, statusText);
-    }
-
-    microscopeWarn("TX-UI-FAST-3E EMPTY SUMMARY RENDER", {
-      inputIsArray: Array.isArray(rows),
-      inputLength: Array.isArray(rows) ? rows.length : null
-    });
-
-    return;
-  }
-
-  const totalCount = summaries.reduce((sum, row) => {
-    return sum + (Number(row.count) || 0);
-  }, 0);
-
-  const totalNetKas = summaries.reduce((sum, row) => {
-    return sum + (Number(row.net_kas) || 0);
-  }, 0);
-
-  const fragment = document.createDocumentFragment();
-
-  const totalTr = document.createElement("tr");
-  totalTr.className = "kgw-total-row";
-  totalTr.innerHTML = `
-    <td data-i18n="explorer.total">Total</td>
-    <td>${totalCount.toLocaleString()} transactions</td>
-    <td></td>
-    <td>${kgwSummaryFormatKas(totalNetKas)}</td>
-    <td></td>
-    <td></td>
-  `;
-  fragment.appendChild(totalTr);
-
-  for (const summary of summaries) {
-    const day = summary.day;
-    const expanded = window.__kgwExplorerExpandedDateGroups.has(day);
-    const sign = expanded ? "-" : "+";
-
-    const dayTr = document.createElement("tr");
-    dayTr.className = "kgw-day-group-row";
-    dayTr.dataset.kgwDateGroup = day;
-    dayTr.innerHTML = `
-      <td>${sign} ${day}</td>
-      <td>${Number(summary.count || 0).toLocaleString()} transactions</td>
-      <td></td>
-      <td>${kgwSummaryFormatKas(Number(summary.net_kas || 0) || 0)}</td>
-      <td></td>
-      <td></td>
-    `;
-
-    fragment.appendChild(dayTr);
-
-    if (!expanded) {
-      continue;
-    }
-
-    const cachedRows = window.__kgwExplorerDayTransactionCache.get(day);
-
-    if (!cachedRows) {
-      const loadingTr = document.createElement("tr");
-      loadingTr.className = "kgw-transaction-row";
-      loadingTr.innerHTML = `<td colspan="6" class="muted">Loading transactions for ${day}...</td>`;
-      fragment.appendChild(loadingTr);
-      continue;
-    }
-
-    for (const row of cachedRows) {
-      const txid = row?.txid || row?.transaction_id || row?.transactionId || "";
-
-      const txTr = document.createElement("tr");
-      txTr.className = "kgw-transaction-row";
-      txTr.dataset.kgwParentDateGroup = day;
-      txTr.innerHTML = `
-        <td>${row?.datetime || row?.date_time || row?.time || row?.timestamp || ""}</td>
-        <td>${txid}</td>
-        <td>${row?.direction || ""}</td>
-        <td>${kgwSummaryFormatKas(Number(row?.amount_kas ?? row?.amountKas ?? row?.amount ?? 0) || 0)}</td>
-        <td>${kgwSummaryFormatUsd(Number(row?.value_usd ?? row?.valueUsd ?? row?.usd_value ?? row?.usdValue ?? 0) || 0)}</td>
-        <td>${row?.tx_type || row?.type || ""}</td>
-      `;
-
-      fragment.appendChild(txTr);
-    }
-  }
-
-  body.appendChild(fragment);
-
-  qsa("[data-kgw-date-group]", body).forEach((row) => {
-    row.addEventListener("click", async () => {
-      const day = row.dataset.kgwDateGroup;
-
-      if (!day) {
-        return;
-      }
-
-      if (window.__kgwExplorerExpandedDateGroups.has(day)) {
-        window.__kgwExplorerExpandedDateGroups.delete(day);
-        await kgwRenderDaySummariesOnly(section, explorerState.rows || [], statusText);
-        return;
-      }
-
-      window.__kgwExplorerExpandedDateGroups.add(day);
-      await kgwRenderDaySummariesOnly(section, explorerState.rows || [], statusText);
-
-      if (!window.__kgwExplorerDayTransactionCache.has(day)) {
-        try {
-          const address = explorerState.selectedAddress || normalizeAddress(qs("#explorerAddress", section)?.value);
-          const dayRows = await kgwLoadOneDayTransactionsOnly(section, address, day);
-          window.__kgwExplorerDayTransactionCache.set(day, dayRows);
-        } catch (error) {
-          microscopeWarn("TX-UI-FAST-3E ONE DAY LOAD FAILED", {
-            day,
-            message: error?.message || String(error)
-          });
-
-          window.__kgwExplorerDayTransactionCache.set(day, []);
-        }
-
-        await kgwRenderDaySummariesOnly(section, explorerState.rows || [], statusText);
-      }
-    });
-  });
-
-  syncActionState(section);
-
-  if (statusText) {
-    setStatus(section, statusText);
-  }
-
-  microscopeLog("TX-UI-FAST-3E SUMMARY RENDER DONE", {
-    days: summaries.length,
-    totalCount
-  });
-}
 
 function resetFilters(section) {
   qs("#explorerDirectionFilter", section).value = "ALL";
@@ -1922,7 +1109,7 @@ async function applyExplorerFiltersFromDatabase(section) {
 
   setStatus(section, "Loading filtered transactions from database...");
 
-  const rows = await kgwLoadAndRenderDaySummaries(section, address, startTs, endTs, "Filter applied. Showing days from local database. Click + to load one day.");
+  await kgwLoadAndRenderDaySummaries(section, address, startTs, endTs, "Filter applied. Showing days from local database. Click + to load one day.");
 }
 function installEvents(section) {
   const addressInput = qs("#explorerAddress", section);
@@ -2099,7 +1286,7 @@ function microscopeSafeJson(value) {
       if (val instanceof Error) return { message: val.message, stack: val.stack };
       return val;
     });
-  } catch (error) {
+  } catch (_) {
     return String(value);
   }
 }
@@ -2266,12 +1453,7 @@ function microscopeApiShape(label, value) {
   });
 }
 
-function microscopeCheckAddressNameMatch(address) {
-  microscopeLog("ADDRESS NAME MATCH CHECK", {
-    address,
-    ...explorerAddressDiagnosticsSnapshot(address)
-  });
-}
+
 
 
 export async function initExplorerTab() {
@@ -3205,36 +2387,7 @@ async function kgwInstallTxLiveCoreListener() {
    Live-core is only a temporary view while pages are arriving.
    The official final table must always be loaded from local database after explorer_transactions returns.
 */
-async function kgwFinalLocalDatabaseRefreshAfterFetch(root, address, startTs, endTs, isForce) {
-  const started = performance.now();
 
-  const finalRows = await kgwClean2LoadSummaries(root, address, startTs, endTs);
-
-  window.__kgwLiveCoreDays = new Map();
-  window.__kgwLiveCoreAddress = "";
-
-  window.__kgwExplorerDayTransactionCache = new Map();
-  window.__kgwExplorerExpandedDateGroups = new Set();
-
-  await kgwClean2RenderSummaries(
-    root,
-    finalRows,
-    isForce
-      ? `Force fetch done. Showing ${finalRows.length.toLocaleString()} days from local database. Click + to load one day.`
-      : `Fetch done. Showing ${finalRows.length.toLocaleString()} days from local database. Click + to load one day.`
-  );
-
-  console.log("[KGW Explorer][final-refresh] local database final render done", {
-    force: Boolean(isForce),
-    days: finalRows.length,
-    totalTransactions: finalRows.reduce((sum, row) => sum + (Number(row.count) || 0), 0),
-    elapsedMs: Math.round(performance.now() - started),
-    first: finalRows[0] || null,
-    last: finalRows[finalRows.length - 1] || null
-  });
-
-  return finalRows;
-}
 
 async function fetchTransactions(section, forceMode) {
   const root = kgwClean2Section(section);
