@@ -126,6 +126,10 @@ fn explorer_lint_contract(root: &Path) -> Result<(), String> {
         root,
         "crates/kaspa-gateway-frontend-wasm/src/explorer_export.rs",
     )?;
+    let tab_owner = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/explorer_tab.rs",
+    )?;
     require_contains(
         &export_owner,
         "#[wasm_bindgen(js_name = explorerBuildRawExportTableV2)]",
@@ -157,6 +161,45 @@ fn explorer_lint_contract(root: &Path) -> Result<(), String> {
         "(function installKgwExplorerFilterBusyLockOwnerV1()",
         "Explorer filter busy lifecycle implementation must not return to JavaScript",
     )?;
+    for needle in [
+        "@generated",
+        "wasmInstallExplorerTab();",
+        "await wasmInitExplorerTab()",
+        "export async function initExplorerTab()",
+    ] {
+        require_contains(
+            &source,
+            needle,
+            "Explorer JavaScript must be deterministic Rust/WASM bootstrap only",
+        )?;
+    }
+    for legacy_definition in [
+        "async function applyExplorerFiltersFromDatabase(",
+        "function installEvents(",
+        "async function kgwInstallTxLiveCoreListener(",
+        "async function fetchTransactions(",
+        "async function applyFilter(",
+        "if (!window.__kgwClean2FilterCaptureInstalled)",
+        "window.__kgwExplorerAddressDiagnostics =",
+    ] {
+        forbid_contains(
+            &source,
+            legacy_definition,
+            "Explorer final tab orchestration must not return to JavaScript",
+        )?;
+    }
+    for needle in [
+        "#[wasm_bindgen(js_name = explorerInitTab)]",
+        "#[wasm_bindgen(js_name = explorerTabInstall)]",
+        "async fn install_tx_live_core_listener()",
+        "kgw://transactions/page-stored",
+    ] {
+        require_contains(
+            &tab_owner,
+            needle,
+            "Explorer final tab Rust-owner contract missing",
+        )?;
+    }
     validate_explorer_lint(&source, &runtime_owner, &render_owner)
 }
 
@@ -202,18 +245,6 @@ fn validate_explorer_lint(
             legacy_definition,
             "Explorer canonical renderer implementation must not return to JavaScript",
         )?;
-    }
-    for (needle, message) in [
-        (
-            "await kgwInstallTxLiveCoreListener();",
-            "Explorer fetch must install the event-driven live-core owner",
-        ),
-        (
-            "await listen(\"kgw://transactions/page-stored\"",
-            "Explorer live core must consume Rust page-stored events",
-        ),
-    ] {
-        require_contains(source, needle, message)?;
     }
     for export in [
         "#[wasm_bindgen(js_name = explorerRenderSummaries)]",
@@ -271,6 +302,10 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
         root,
         "crates/kaspa-gateway-frontend-wasm/src/explorer_runtime.rs",
     )?;
+    let explorer_tab_rust = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/explorer_tab.rs",
+    )?;
     let explorer_css = read(
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.css",
@@ -300,6 +335,7 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
         explorer_address_rust: &explorer_address_rust,
         explorer_filters_rust: &explorer_filters_rust,
         explorer_runtime_rust: &explorer_runtime_rust,
+        explorer_tab_rust: &explorer_tab_rust,
         explorer_css: &explorer_css,
         settings_paths: &settings_paths,
         top_js: &top_js,
@@ -314,6 +350,7 @@ struct FunctionalUiSources<'a> {
     explorer_address_rust: &'a str,
     explorer_filters_rust: &'a str,
     explorer_runtime_rust: &'a str,
+    explorer_tab_rust: &'a str,
     explorer_css: &'a str,
     settings_paths: &'a str,
     top_js: &'a str,
@@ -372,6 +409,7 @@ fn validate_functional_ui(sources: FunctionalUiSources<'_>) -> Result<(), String
         explorer_address_rust,
         explorer_filters_rust,
         explorer_runtime_rust,
+        explorer_tab_rust,
         explorer_css,
         settings_paths,
         top_js,
@@ -384,19 +422,23 @@ fn validate_functional_ui(sources: FunctionalUiSources<'_>) -> Result<(), String
         "#explorer #explorerStatus {\n  display: none !important;",
         "Explorer status must not be permanently hidden",
     )?;
-    let invalid_address_error_statuses = count_regex(
-        explorer_js,
-        r#"setStatus\((?:section|root), "Enter a valid Kaspa address\.", "error"\)"#,
-    );
-    let canonical_address_validations =
-        count_regex(explorer_js, r"await kgwCanonicalKaspaAddress\(address\)");
-    if canonical_address_validations < 3 {
-        return Err(
-            "Explorer must retain all active canonical address validation owners".to_owned(),
-        );
+    for needle in [
+        "async fn canonical_address_or_error(",
+        "explorer_canonical_kaspa_address(",
+        "\"Enter a valid Kaspa address.\"",
+        "set_status(section, \"Enter a valid Kaspa address.\", \"error\")",
+    ] {
+        require_contains(
+            explorer_tab_rust,
+            needle,
+            "Explorer final Rust owner must preserve canonical validation and visible invalid-address status",
+        )?;
     }
-    if invalid_address_error_statuses != canonical_address_validations {
-        return Err("All invalid Explorer actions need visible error status".to_owned());
+    if count_regex(explorer_tab_rust, r"canonical_address_or_error\(") < 4 {
+        return Err(
+            "Explorer final Rust owner must route all active address actions through canonical validation"
+                .to_owned(),
+        );
     }
     for needle in [
         "#[wasm_bindgen(js_name = explorerSetStatus)]",
@@ -985,6 +1027,11 @@ mod tests {
             "crates/kaspa-gateway-frontend-wasm/src/explorer_runtime.rs",
         )
         .unwrap();
+        let explorer_tab_rust = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/explorer_tab.rs",
+        )
+        .unwrap();
         let explorer_css = read(
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.css",
@@ -1021,6 +1068,7 @@ mod tests {
                 explorer_address_rust: &explorer_address_rust,
                 explorer_filters_rust: &explorer_filters_rust,
                 explorer_runtime_rust: &explorer_runtime_rust,
+                explorer_tab_rust: &explorer_tab_rust,
                 explorer_css: &explorer_css,
                 settings_paths: &settings_paths,
                 top_js: &top_js,

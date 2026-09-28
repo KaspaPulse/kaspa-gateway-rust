@@ -102,14 +102,27 @@ fn error_text(error: &JsValue) -> String {
     }
 }
 
-fn diagnostics() -> JsValue {
-    property(&window(), "__kgwExplorerAddressDiagnostics")
-}
-
 fn diagnostic(name: &str, label: &str, details: &JsValue) {
-    let hooks = diagnostics();
-    if let Some(callback) = function(&hooks, name) {
-        let _ = callback.call2(&hooks, &JsValue::from_str(label), details);
+    match name {
+        "log" => {
+            crate::explorer_microscope::explorer_microscope_log(label.to_owned(), details.clone())
+        }
+        "warn" => {
+            crate::explorer_microscope::explorer_microscope_warn(label.to_owned(), details.clone())
+        }
+        "error" => {
+            let message = js_text(&property(details, "message"));
+            crate::explorer_microscope::explorer_microscope_error(
+                label.to_owned(),
+                JsValue::from_str(&message),
+                details.clone(),
+            );
+        }
+        "apiShape" => crate::explorer_microscope::explorer_microscope_api_shape(
+            label.to_owned(),
+            details.clone(),
+        ),
+        _ => {}
     }
 }
 

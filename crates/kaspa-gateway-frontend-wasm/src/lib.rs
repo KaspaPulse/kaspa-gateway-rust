@@ -14,6 +14,7 @@ mod explorer_results;
 mod explorer_runtime;
 mod explorer_state;
 mod explorer_summary;
+mod explorer_tab;
 mod header_live_metrics;
 mod log_tab;
 mod node_frontend_helpers;
