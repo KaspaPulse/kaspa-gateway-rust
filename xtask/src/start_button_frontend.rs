@@ -314,6 +314,14 @@ const rustNodeHelpersPath = path.join(
   "node_frontend_helpers.rs",
 );
 const rustNodeHelpersSource = fs.readFileSync(rustNodeHelpersPath, "utf8");
+const rustNodeTracePath = path.join(
+  repo,
+  "crates",
+  "kaspa-gateway-frontend-wasm",
+  "src",
+  "node_start_trace.rs",
+);
+const rustNodeTraceSource = fs.readFileSync(rustNodeTracePath, "utf8");
 const renderFixturePath = process.env.KGW_NODE_RENDER_FIXTURE;
 if (!renderFixturePath) throw new Error("KGW_NODE_RENDER_FIXTURE is required");
 const renderFixture = fs.readFileSync(renderFixturePath, "utf8");
@@ -412,8 +420,15 @@ function staticPlacementTests() {
     "Node Start must wait through the backend readiness window",
   );
   assert.ok(
-    source.includes("const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 0"),
-    "Node Stop must defer terminality to the async backend without a JS wall-clock cutoff",
+    rustNodeTraceSource.includes("const NODE_STOP_INVOKE_TIMEOUT_MS: u32 = 0;"),
+    "Rust Node Stop owner must defer terminality to the async backend without a frontend wall-clock cutoff",
+  );
+  assert.ok(
+    source.includes("nodeInvokeIntegratedRuntime as invokeNodeIntegratedRuntime")
+      && !source.includes("async function invokeNodeIntegratedRuntime(")
+      && rustNodeTraceSource.includes("async fn invoke_integrated_runtime_impl(")
+      && rustNodeTraceSource.includes("pub async fn node_invoke_integrated_runtime("),
+    "Node integrated runtime invocation must remain Rust/WASM-owned",
   );
   assert.ok(source.includes('action === "start" ? "Starting" : "Stopping"'), "Stop click must enter Stopping before backend completion");
   assert.ok(source.includes('evidence.fields.running === "false"'), "Stopped requires terminal backend liveness evidence");
@@ -518,9 +533,11 @@ function staticPlacementTests() {
     "Node effective settings and validation must bind directly to the Rust/WASM owner",
   );
   assert.ok(
-    source.includes("nodeRuntimeArgs as nodeRuntimeArgs")
-      && !source.includes("function nodeRuntimeArgs("),
-    "Node runtime args must delegate to the Rust/WASM owner",
+    !source.includes("nodeRuntimeArgs as nodeRuntimeArgs")
+      && !source.includes("function nodeRuntimeArgs(")
+      && rustNodeTraceSource.includes("crate::node_frontend_helpers::node_runtime_args(")
+      && rustNodeHelpersSource.includes("pub fn node_runtime_args("),
+    "Node runtime args must stay Rust-owned and be consumed by the Rust integrated-invoke owner",
   );
   assert.ok(
     source.includes("nodeSyncDependencies as wasmNodeSyncDependencies")
@@ -2065,6 +2082,50 @@ const wasmNodeInstallDelegatedTabs = (root) => {
 const kgwNodeTraceStartButtonStateR1 = wasmNodeTraceStartButtonState;
 const kgwNodeInstallStartTraceDocumentClickObserverR1 = wasmNodeInstallStartTraceDocumentClickObserver;
 const kgwNodeTraceRenderedStartControlsR1 = wasmNodeTraceRenderedStartControls;
+const invokeNodeIntegratedRuntime = async (command, net) => {
+  const action = wasmNodeRuntimeActionForCommand(command);
+  const resolved = kgwResolvePublicTauriInvokeR1();
+  kgwStartTraceFrontendR1("frontend.invoke_adapter_selected", {
+    network: net,
+    action,
+    result: resolved.invoke ? "selected" : "missing",
+    details: { commandName: command, adapter: resolved.adapter, shape: resolved.shape },
+  });
+  if (!resolved.invoke) {
+    throw new Error("Tauri invoke API is not available. Expected window.__TAURI__.core.invoke from Tauri 2 with withGlobalTauri enabled.");
+  }
+  const args = nodeRuntimeArgs(net, command);
+  if (command === "kgw_kgw_apply_node_settings_v1") {
+    const prepared = await wasmNodePreparePreview(net, args.effectiveNodeSettings);
+    args.nodeCommandPreview = prepared.command;
+  }
+  const timeoutMs = action === "stop" ? 0 : 110000;
+  kgwStartTraceFrontendR1("frontend.invoke_dispatched", {
+    network: net,
+    action,
+    result: "dispatched",
+    details: { commandName: command, timeoutMs },
+  });
+  try {
+    const result = await invokeWithTimeout(resolved.invoke, command, args, timeoutMs);
+    const evidence = wasmNodeRuntimeEvidence(result);
+    kgwStartTraceFrontendR1("frontend.invoke_resolved", {
+      network: net,
+      action,
+      result: "resolved",
+      details: { commandName: command, owner: evidence.owner, role: evidence.role, state: evidence.state },
+    });
+    return result;
+  } catch (error) {
+    kgwStartTraceFrontendR1("frontend.invoke_rejected", {
+      network: net,
+      action,
+      result: "rejected",
+      details: { commandName: command, error: wasmNodeNormalizeRuntimeError(error) },
+    });
+    throw error;
+  }
+};
 const kgwNodeRuntimeActionForCommandR1 = wasmNodeRuntimeActionForCommand;
 const kgwNodeSmallOwnerTraceR44D = wasmNodeSmallOwnerTrace;
 const kgwNodeExplicitTraceR27D = wasmNodeExplicitTrace;

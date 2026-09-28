@@ -33,6 +33,7 @@ import initNodeRust, {
   nodeInstallDelegatedTabs as wasmNodeInstallDelegatedTabs,
   nodeInstallLogAutoScrollControls as kgwInstallNodeLogAutoScrollControlsR27,
   nodeInstallNetworkTabs as wasmNodeInstallNetworkTabs,
+  nodeInvokeIntegratedRuntime as invokeNodeIntegratedRuntime,
   nodeInstallStartTraceDocumentClickObserver as kgwNodeInstallStartTraceDocumentClickObserverR1,
   nodeNetworkEnabled as kgwNodeNetworkEnabled,
   nodeNetworkProfile as kgwNodeNetworkProfile,
@@ -58,8 +59,6 @@ import initNodeRust, {
   nodeR51SaveSettings as kgwNodeR51SaveSettings,
   nodeR51SetAsDefaults as kgwNodeR51SetAsDefaults,
   nodeResolvePublicTauriInvoke as kgwResolvePublicTauriInvokeR1,
-  nodeRuntimeActionForCommand as kgwNodeRuntimeActionForCommandR1,
-  nodeRuntimeArgs as nodeRuntimeArgs,
   nodeRuntimeErrorFromStatus as kgwNodeRuntimeErrorFromStatus,
   nodeRuntimeIsRunning as kgwNodeR51IsRunning,
   nodeSetNetworkEnabled as kgwNodeSetNetworkEnabled,
@@ -758,7 +757,6 @@ function renderAllNetworks(root) {
 // The Node child contract is 90 seconds and the same-EXE parent is bounded at
 // 100 seconds. Keep the UI request strictly above both terminal-result boundaries.
 const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 110000;
-const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 0;
 
 
 /* Runtime result/error/field parsing is Rust-owned in node_frontend_helpers.rs. */
@@ -786,77 +784,7 @@ function invokeWithTimeout(invoke, command, args, timeoutMs) {
   });
 }
 
-async function invokeNodeIntegratedRuntime(command, net) {
-  const action = kgwNodeRuntimeActionForCommandR1(command);
-  const resolved = kgwResolvePublicTauriInvokeR1();
-
-  kgwStartTraceFrontendR1("frontend.invoke_adapter_selected", {
-    network: net,
-    action,
-    result: resolved.invoke ? "selected" : "missing",
-    details: {
-      commandName: command,
-      adapter: resolved.adapter,
-      shape: resolved.shape
-    }
-  });
-
-  if (!resolved.invoke) {
-    throw new Error("Tauri invoke API is not available. Expected window.__TAURI__.core.invoke from Tauri 2 with withGlobalTauri enabled.");
-  }
-
-  const args = nodeRuntimeArgs(net, command);
-  if (command === "kgw_kgw_apply_node_settings_v1") {
-    const prepared = await wasmNodePreparePreview(net, args.effectiveNodeSettings);
-    args.nodeCommandPreview = prepared.command;
-  }
-  kgwStartTraceFrontendR1("frontend.invoke_dispatched", {
-    network: net,
-    action,
-    result: "dispatched",
-    details: {
-      commandName: command,
-      payloadFieldCount: Object.keys(args).length,
-      nodePreviewPresent: Boolean(args.nodeCommandPreview),
-      bridgePreviewPresent: Boolean(args.bridgeCommandPreview),
-      runtimeRolePresent: Boolean(args.runtimeRole),
-      timeoutMs: action === "stop" ? KGW_NODE_STOP_INVOKE_TIMEOUT_MS : KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS
-    }
-  });
-
-  try {
-    const invokeTimeoutMs = action === "stop"
-      ? KGW_NODE_STOP_INVOKE_TIMEOUT_MS
-      : KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS;
-    const result = await invokeWithTimeout(resolved.invoke, command, args, invokeTimeoutMs);
-    const evidence = kgwNodeRuntimeEvidence(result);
-    kgwStartTraceFrontendR1("frontend.invoke_resolved", {
-      network: net,
-      action,
-      result: "resolved",
-      details: {
-        commandName: command,
-        hasPid: /^[0-9]+$/.test(evidence.pid),
-        owner: evidence.owner,
-        role: evidence.role,
-        state: evidence.state
-      }
-    });
-    return result;
-  } catch (error) {
-    kgwStartTraceFrontendR1("frontend.invoke_rejected", {
-      network: net,
-      action,
-      result: "rejected",
-      details: {
-        commandName: command,
-        error: normalizeRuntimeError(error)
-      }
-    });
-    throw error;
-  }
-}
-
+/* Integrated runtime invoke/timeout/trace ownership is Rust/WASM-owned in node_start_trace.rs. */
 
 async function runNodeIntegratedAction(action, net) {
   const commandByAction = {

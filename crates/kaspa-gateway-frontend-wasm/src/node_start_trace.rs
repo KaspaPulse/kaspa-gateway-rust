@@ -823,6 +823,7 @@ fn resolved_invoke() -> JsValue {
 
 const NODE_RAW_LOG_BUFFER_LIMIT: usize = 4096;
 const NODE_RUNTIME_INVOKE_TIMEOUT_MS: u32 = 110_000;
+const NODE_STOP_INVOKE_TIMEOUT_MS: u32 = 0;
 
 #[derive(Clone)]
 struct NodeRawLogEntry {
@@ -1429,6 +1430,191 @@ async fn await_with_timeout(value: JsValue, timeout_ms: u32) -> Result<JsValue, 
     JsFuture::from(Promise::race(values.as_ref())).await
 }
 
+async fn await_command_with_timeout(
+    value: JsValue,
+    command: &str,
+    timeout_ms: u32,
+) -> Result<JsValue, JsValue> {
+    if timeout_ms == 0 {
+        return JsFuture::from(Promise::resolve(&value)).await;
+    }
+    let message = format!("{command} timed out after {timeout_ms}ms");
+    let timer = std::rc::Rc::new(RefCell::new(JsValue::UNDEFINED));
+    let timer_for_promise = timer.clone();
+    let timeout = Promise::new(&mut |_resolve, reject| {
+        let reject_for_timer = reject.clone();
+        let message_for_timer = message.clone();
+        let callback = Closure::wrap(Box::new(move || {
+            let _ =
+                reject_for_timer.call1(&JsValue::UNDEFINED, &JsValue::from_str(&message_for_timer));
+        }) as Box<dyn FnMut()>);
+        let scheduled = copy_log_call2(
+            &window(),
+            "setTimeout",
+            callback.as_ref(),
+            &JsValue::from_f64(timeout_ms as f64),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        *timer_for_promise.borrow_mut() = scheduled;
+        callback.forget();
+    });
+    let values = Array::new();
+    values.push(Promise::resolve(&value).as_ref());
+    values.push(timeout.as_ref());
+    let result = JsFuture::from(Promise::race(values.as_ref())).await;
+    let timer = timer.borrow().clone();
+    if present(&timer) {
+        let _ = call1(&window(), "clearTimeout", &timer);
+    }
+    result
+}
+
+async fn invoke_integrated_runtime_impl(command: &str, net: &str) -> Result<JsValue, JsValue> {
+    let action = runtime_action_for_command_text(command);
+    let resolved = resolved_invoke();
+    let invoke_value = property(&resolved, "invoke");
+    let selected = invoke_value.dyn_ref::<Function>().is_some();
+
+    let selected_details = Object::new();
+    set(
+        selected_details.as_ref(),
+        "commandName",
+        &JsValue::from_str(command),
+    );
+    set(
+        selected_details.as_ref(),
+        "adapter",
+        &property(&resolved, "adapter"),
+    );
+    set(
+        selected_details.as_ref(),
+        "shape",
+        &property(&resolved, "shape"),
+    );
+    emit_start_trace(
+        "frontend.invoke_adapter_selected",
+        net,
+        action,
+        if selected { "selected" } else { "missing" },
+        selected_details.into(),
+    );
+
+    let Some(invoke) = invoke_value.dyn_into::<Function>().ok() else {
+        return Err(JsValue::from_str(
+            "Tauri invoke API is not available. Expected window.__TAURI__.core.invoke from Tauri 2 with withGlobalTauri enabled.",
+        ));
+    };
+
+    let args = crate::node_frontend_helpers::node_runtime_args(net.to_owned(), command.to_owned())?;
+    if command == "kgw_kgw_apply_node_settings_v1" {
+        let prepared = crate::node_frontend_helpers::node_prepare_preview(
+            net.to_owned(),
+            property(&args, "effectiveNodeSettings"),
+        )
+        .await?;
+        set(&args, "nodeCommandPreview", &property(&prepared, "command"));
+    }
+
+    let timeout_ms = if action == "stop" {
+        NODE_STOP_INVOKE_TIMEOUT_MS
+    } else {
+        NODE_RUNTIME_INVOKE_TIMEOUT_MS
+    };
+    let dispatched = Object::new();
+    set(
+        dispatched.as_ref(),
+        "commandName",
+        &JsValue::from_str(command),
+    );
+    set(
+        dispatched.as_ref(),
+        "payloadFieldCount",
+        &JsValue::from_f64(Object::keys(&Object::from(args.clone())).length() as f64),
+    );
+    set(
+        dispatched.as_ref(),
+        "nodePreviewPresent",
+        &JsValue::from_bool(crate::js_boolean(&property(&args, "nodeCommandPreview"))),
+    );
+    set(
+        dispatched.as_ref(),
+        "bridgePreviewPresent",
+        &JsValue::from_bool(crate::js_boolean(&property(&args, "bridgeCommandPreview"))),
+    );
+    set(
+        dispatched.as_ref(),
+        "runtimeRolePresent",
+        &JsValue::from_bool(crate::js_boolean(&property(&args, "runtimeRole"))),
+    );
+    set(
+        dispatched.as_ref(),
+        "timeoutMs",
+        &JsValue::from_f64(timeout_ms as f64),
+    );
+    emit_start_trace(
+        "frontend.invoke_dispatched",
+        net,
+        action,
+        "dispatched",
+        dispatched.into(),
+    );
+
+    let value = invoke.call2(&JsValue::UNDEFINED, &JsValue::from_str(command), &args)?;
+    match await_command_with_timeout(value, command, timeout_ms).await {
+        Ok(result) => {
+            let evidence = crate::node_frontend_helpers::node_runtime_evidence(result.clone());
+            let pid = crate::js_string_owned(&property(&evidence, "pid"));
+            let resolved_details = Object::new();
+            set(
+                resolved_details.as_ref(),
+                "commandName",
+                &JsValue::from_str(command),
+            );
+            set(
+                resolved_details.as_ref(),
+                "hasPid",
+                &JsValue::from_bool(
+                    !pid.is_empty() && pid.bytes().all(|byte| byte.is_ascii_digit()),
+                ),
+            );
+            for key in ["owner", "role", "state"] {
+                set(resolved_details.as_ref(), key, &property(&evidence, key));
+            }
+            emit_start_trace(
+                "frontend.invoke_resolved",
+                net,
+                action,
+                "resolved",
+                resolved_details.into(),
+            );
+            Ok(result)
+        }
+        Err(error) => {
+            let rejected = Object::new();
+            set(
+                rejected.as_ref(),
+                "commandName",
+                &JsValue::from_str(command),
+            );
+            set(
+                rejected.as_ref(),
+                "error",
+                &JsValue::from_str(&crate::node_frontend_helpers::node_normalize_runtime_error(
+                    error.clone(),
+                )),
+            );
+            emit_start_trace(
+                "frontend.invoke_rejected",
+                net,
+                action,
+                "rejected",
+                rejected.into(),
+            );
+            Err(error)
+        }
+    }
+}
+
 async fn dispatch_clipboard_write_impl(
     net: &str,
     text: &str,
@@ -1974,6 +2160,14 @@ pub fn node_install_start_trace_document_click_observer(root: JsValue) -> bool {
 #[wasm_bindgen(js_name = nodeTraceRenderedStartControls)]
 pub fn node_trace_rendered_start_controls(root: JsValue) -> bool {
     trace_rendered_start_controls(&root)
+}
+
+#[wasm_bindgen(js_name = nodeInvokeIntegratedRuntime)]
+pub async fn node_invoke_integrated_runtime(
+    command: String,
+    net: String,
+) -> Result<JsValue, JsValue> {
+    invoke_integrated_runtime_impl(&command, &net).await
 }
 
 #[wasm_bindgen(js_name = nodeRuntimeActionForCommand)]
