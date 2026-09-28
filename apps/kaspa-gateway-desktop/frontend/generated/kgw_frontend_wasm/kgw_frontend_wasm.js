@@ -247,6 +247,32 @@ export function nodePreviewMessage(net, message, error) {
 
 /**
  * @param {string} net
+ * @param {any} state
+ * @param {any} evidence
+ * @param {any} error_text
+ * @param {any} error_source
+ * @returns {boolean}
+ */
+export function nodeSetRuntimeNotice(net, state, evidence, error_text, error_source) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.nodeSetRuntimeNotice(ptr0, len0, state, evidence, error_text, error_source);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @returns {boolean}
+ */
+export function nodeMarkRestartRequired(net) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.nodeMarkRestartRequired(ptr0, len0);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
  * @param {boolean} locked
  * @returns {boolean}
  */
@@ -295,37 +321,6 @@ export function nodeRequireValidSettings(net) {
     if (ret[1]) {
         throw takeFromExternrefTable0(ret[0]);
     }
-}
-
-/**
- * @param {string} net
- * @returns {any}
- */
-export function nodeEffectiveNodeSettings(net) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.nodeEffectiveNodeSettings(ptr0, len0);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * @param {string} net
- * @param {string} command
- * @returns {any}
- */
-export function nodeRuntimeArgs(net, command) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(command, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.nodeRuntimeArgs(ptr0, len0, ptr1, len1);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
 }
 
 /**
@@ -465,6 +460,37 @@ export function nodeCommandOptionsKey() {
  * @param {string} net
  * @returns {any}
  */
+export function nodeEffectiveNodeSettings(net) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.nodeEffectiveNodeSettings(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {string} net
+ * @param {string} command
+ * @returns {any}
+ */
+export function nodeRuntimeArgs(net, command) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(command, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.nodeRuntimeArgs(ptr0, len0, ptr1, len1);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {string} net
+ * @returns {any}
+ */
 export function nodeR51ReadSettingsTracked(net) {
     const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
@@ -472,32 +498,19 @@ export function nodeR51ReadSettingsTracked(net) {
     return ret;
 }
 
-/**
- * @param {string} net
- * @returns {any}
- */
-export function nodeR51SaveSettings(net) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.nodeR51SaveSettings(ptr0, len0);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
+export function nodeR51CaptureFactoryDefaults() {
+    const ret = wasm.nodeR51CaptureFactoryDefaults();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
     }
-    return takeFromExternrefTable0(ret[0]);
 }
 
 /**
- * @param {string} net
- * @returns {any}
+ * @returns {Array<any>}
  */
-export function nodeR51SetAsDefaults(net) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.nodeR51SetAsDefaults(ptr0, len0);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
+export function nodeR51LoadSavedSettings() {
+    const ret = wasm.nodeR51LoadSavedSettings();
+    return ret;
 }
 
 /**
@@ -631,41 +644,30 @@ export function nodeCardSelect(net, name, label, options, value, span2, toggle) 
 
 /**
  * @param {string} net
- * @param {string} name
- * @param {string} label
- * @param {boolean} checked
- * @param {boolean} span2
- * @returns {string}
+ * @returns {any}
  */
-export function nodeCardCheck(net, name, label, checked, span2) {
-    let deferred4_0;
-    let deferred4_1;
-    try {
-        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len2 = WASM_VECTOR_LEN;
-        const ret = wasm.nodeCardCheck(ptr0, len0, ptr1, len1, ptr2, len2, checked, span2);
-        deferred4_0 = ret[0];
-        deferred4_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
+export function nodeR51SaveSettings(net) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.nodeR51SaveSettings(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
     }
+    return takeFromExternrefTable0(ret[0]);
 }
 
 /**
  * @param {string} net
- * @param {boolean} locked
- * @returns {bigint}
+ * @returns {any}
  */
-export function nodeUpdateCommand(net, locked) {
+export function nodeR51SetAsDefaults(net) {
     const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.nodeUpdateCommand(ptr0, len0, locked);
-    return BigInt.asUintN(64, ret);
+    const ret = wasm.nodeR51SetAsDefaults(ptr0, len0);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
 }
 
 /**
@@ -745,19 +747,43 @@ export function nodeR51Load(key) {
     return ret;
 }
 
-export function nodeR51CaptureFactoryDefaults() {
-    const ret = wasm.nodeR51CaptureFactoryDefaults();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
+/**
+ * @param {string} net
+ * @param {string} name
+ * @param {string} label
+ * @param {boolean} checked
+ * @param {boolean} span2
+ * @returns {string}
+ */
+export function nodeCardCheck(net, name, label, checked, span2) {
+    let deferred4_0;
+    let deferred4_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ret = wasm.nodeCardCheck(ptr0, len0, ptr1, len1, ptr2, len2, checked, span2);
+        deferred4_0 = ret[0];
+        deferred4_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred4_0, deferred4_1, 1);
     }
 }
 
 /**
- * @returns {Array<any>}
+ * @param {string} net
+ * @param {boolean} locked
+ * @returns {bigint}
  */
-export function nodeR51LoadSavedSettings() {
-    const ret = wasm.nodeR51LoadSavedSettings();
-    return ret;
+export function nodeUpdateCommand(net, locked) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.nodeUpdateCommand(ptr0, len0, locked);
+    return BigInt.asUintN(64, ret);
 }
 
 /**
@@ -784,29 +810,21 @@ export function nodePreparePreview(net, effective) {
 }
 
 /**
- * @param {string} net
- * @param {boolean} locked
- * @returns {Promise<any>}
+ * @param {any} root
+ * @param {any} callbacks
+ * @returns {boolean}
  */
-export function nodeApplyRootDefaultPath(net, locked) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.nodeApplyRootDefaultPath(ptr0, len0, locked);
-    return ret;
+export function nodeInstallNetworkTabs(root, callbacks) {
+    const ret = wasm.nodeInstallNetworkTabs(root, callbacks);
+    return ret !== 0;
 }
 
 /**
- * @param {string} net
- * @param {string} name
- * @param {boolean} locked
+ * @param {any} root
  * @returns {boolean}
  */
-export function nodeToggleCommandOptionAndUpdate(net, name, locked) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.nodeToggleCommandOptionAndUpdate(ptr0, len0, ptr1, len1, locked);
+export function nodeInstallDelegatedTabs(root) {
+    const ret = wasm.nodeInstallDelegatedTabs(root);
     return ret !== 0;
 }
 
@@ -904,27 +922,6 @@ export function nodeRuntimeErrorFromStatus(value) {
 }
 
 /**
- * @param {string} net
- * @returns {boolean}
- */
-export function nodeLogAutoScrollEnabled(net) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.nodeLogAutoScrollEnabled(ptr0, len0);
-    return ret !== 0;
-}
-
-/**
- * @param {string} net
- * @param {boolean} enabled
- */
-export function nodeSetLogAutoScroll(net, enabled) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.nodeSetLogAutoScroll(ptr0, len0, enabled);
-}
-
-/**
  * @param {string} command
  * @param {any} payload
  * @returns {Promise<any>}
@@ -937,6 +934,33 @@ export function nodeBackendInvoke(command, payload) {
         throw takeFromExternrefTable0(ret[1]);
     }
     return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {string} net
+ * @param {boolean} locked
+ * @returns {Promise<any>}
+ */
+export function nodeApplyRootDefaultPath(net, locked) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.nodeApplyRootDefaultPath(ptr0, len0, locked);
+    return ret;
+}
+
+/**
+ * @param {string} net
+ * @param {string} name
+ * @param {boolean} locked
+ * @returns {boolean}
+ */
+export function nodeToggleCommandOptionAndUpdate(net, name, locked) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.nodeToggleCommandOptionAndUpdate(ptr0, len0, ptr1, len1, locked);
+    return ret !== 0;
 }
 
 /**
@@ -1046,22 +1070,24 @@ export function nodeSaveLastNetwork(net) {
 }
 
 /**
- * @param {any} root
- * @param {any} callbacks
+ * @param {string} net
  * @returns {boolean}
  */
-export function nodeInstallNetworkTabs(root, callbacks) {
-    const ret = wasm.nodeInstallNetworkTabs(root, callbacks);
+export function nodeLogAutoScrollEnabled(net) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.nodeLogAutoScrollEnabled(ptr0, len0);
     return ret !== 0;
 }
 
 /**
- * @param {any} root
- * @returns {boolean}
+ * @param {string} net
+ * @param {boolean} enabled
  */
-export function nodeInstallDelegatedTabs(root) {
-    const ret = wasm.nodeInstallDelegatedTabs(root);
-    return ret !== 0;
+export function nodeSetLogAutoScroll(net, enabled) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.nodeSetLogAutoScroll(ptr0, len0, enabled);
 }
 
 export function nodeInstallLogAutoScrollControls() {
@@ -3584,7 +3610,7 @@ function __wbg_adapter_51(arg0, arg1, arg2) {
     wasm.closure729_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_429(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_431(arg0, arg1, arg2, arg3) {
     wasm.closure753_externref_shim(arg0, arg1, arg2, arg3);
 }
 
@@ -3811,7 +3837,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_429(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_431(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -3970,27 +3996,27 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1908 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper1911 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 548, __wbg_adapter_36);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1944 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper1947 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 548, __wbg_adapter_39);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1946 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper1949 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 548, __wbg_adapter_42);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1948 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper1951 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 548, __wbg_adapter_45);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1950 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper1953 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 548, __wbg_adapter_48);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper2430 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper2433 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 730, __wbg_adapter_51);
         return ret;
     };

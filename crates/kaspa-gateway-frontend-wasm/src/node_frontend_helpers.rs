@@ -1540,9 +1540,138 @@ fn node_validate_form_inner(net: &str, focus: bool) -> JsValue {
     errors
 }
 
+fn runtime_notice_state_key(value: &str) -> String {
+    let mut out = String::new();
+    let mut pending_dash = false;
+    for ch in value.trim().to_lowercase().chars() {
+        if ch.is_ascii_alphanumeric() {
+            if pending_dash && !out.is_empty() {
+                out.push('-');
+            }
+            out.push(ch);
+            pending_dash = false;
+        } else if !out.is_empty() {
+            pending_dash = true;
+        }
+    }
+    if out.is_empty() {
+        "stopped".to_owned()
+    } else {
+        out
+    }
+}
+
+fn set_runtime_notice_inner(
+    net: &str,
+    state: &JsValue,
+    evidence: &JsValue,
+    error_text: &JsValue,
+    error_source: &JsValue,
+) -> bool {
+    let normalized_state = {
+        let value = crate::js_string_owned(state);
+        if value.is_empty() {
+            "Stopped".to_owned()
+        } else {
+            value
+        }
+    };
+    let state_key = runtime_notice_state_key(&normalized_state);
+
+    let status = node_by_id(node_element_id(net.to_owned(), "runtimeStatus".to_owned()));
+    if present(&status) {
+        set(
+            &status,
+            "textContent",
+            &JsValue::from_str(&normalized_state),
+        );
+        set(
+            &property(&status, "dataset"),
+            "state",
+            &JsValue::from_str(&state_key),
+        );
+        let _ = crate::apply_status_tone_js(status, JsValue::from_str(&state_key));
+    }
+
+    let evidence_node = node_by_id(node_element_id(
+        net.to_owned(),
+        "runtimeEvidence".to_owned(),
+    ));
+    if present(&evidence_node) {
+        let evidence_text = crate::js_string_owned(evidence);
+        set(
+            &evidence_node,
+            "textContent",
+            &JsValue::from_str(if evidence_text.is_empty() {
+                "No process owner"
+            } else {
+                &evidence_text
+            }),
+        );
+    }
+
+    let error_node = node_by_id(node_element_id(net.to_owned(), "runtimeError".to_owned()));
+    if present(&error_node) && !error_text.is_null() && !error_text.is_undefined() {
+        let text = crate::js_string_owned(error_text).trim().to_owned();
+        set(&error_node, "textContent", &JsValue::from_str(&text));
+        set(&error_node, "hidden", &JsValue::from_bool(text.is_empty()));
+        set(
+            &property(&error_node, "dataset"),
+            "runtimeErrorSource",
+            &JsValue::from_str(&crate::js_string_owned(error_source)),
+        );
+        let _ = crate::apply_status_tone_js(error_node, JsValue::from_str("error"));
+    }
+    true
+}
+
+fn mark_restart_required_inner(net: &str) -> bool {
+    let authority = node_by_id(node_element_id(
+        net.to_owned(),
+        "settingsAuthority".to_owned(),
+    ));
+    if !present(&authority) {
+        return false;
+    }
+    let status = node_by_id(node_element_id(net.to_owned(), "runtimeStatus".to_owned()));
+    let running =
+        crate::js_string_owned(&property(&property(&status, "dataset"), "state")) == "running";
+    set(
+        &authority,
+        "textContent",
+        &JsValue::from_str(if running {
+            "Restart required to apply changed effective settings"
+        } else {
+            "Effective settings apply on next Start"
+        }),
+    );
+    set(
+        &property(&authority, "dataset"),
+        "restartRequired",
+        &JsValue::from_str(if running { "true" } else { "false" }),
+    );
+    true
+}
+
 #[wasm_bindgen(js_name = nodePreviewMessage)]
 pub fn node_preview_message(net: String, message: String, error: bool) -> bool {
     node_preview_message_inner(&net, &message, error)
+}
+
+#[wasm_bindgen(js_name = nodeSetRuntimeNotice)]
+pub fn node_set_runtime_notice(
+    net: String,
+    state: JsValue,
+    evidence: JsValue,
+    error_text: JsValue,
+    error_source: JsValue,
+) -> bool {
+    set_runtime_notice_inner(&net, &state, &evidence, &error_text, &error_source)
+}
+
+#[wasm_bindgen(js_name = nodeMarkRestartRequired)]
+pub fn node_mark_restart_required(net: String) -> bool {
+    mark_restart_required_inner(&net)
 }
 
 #[wasm_bindgen(js_name = nodeSyncDependencies)]
@@ -4611,6 +4740,13 @@ mod tests {
             log_auto_scroll_key_text("testnet10"),
             "kgw.node.log.autoscroll.testnet10"
         );
+    }
+
+    #[test]
+    fn runtime_notice_state_key_matches_legacy_normalization() {
+        assert_eq!(runtime_notice_state_key(" Running "), "running");
+        assert_eq!(runtime_notice_state_key("Settings error"), "settings-error");
+        assert_eq!(runtime_notice_state_key("  "), "stopped");
     }
 
     #[test]

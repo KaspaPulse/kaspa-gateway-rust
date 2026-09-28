@@ -37,6 +37,7 @@ import initNodeRust, {
   nodeNetworkEnabled as kgwNodeNetworkEnabled,
   nodeNetworkProfile as kgwNodeNetworkProfile,
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
+  nodeMarkRestartRequired as kgwNodeMarkRestartRequired,
   nodePanelStartFromMonitor as panelStartFromMonitor,
   nodePreparePreview as wasmNodePreparePreview,
   nodePreviewMessage as kgwNodePreviewMessage,
@@ -65,6 +66,7 @@ import initNodeRust, {
   nodeStringifyRuntimeResult as stringifyRuntimeResult,
   nodeSyncDependencies as wasmNodeSyncDependencies,
   nodeSmallOwnerTrace as kgwNodeSmallOwnerTraceR44D,
+  nodeSetRuntimeNotice as kgwNodeSetRuntimeNotice,
   nodeStartTraceFrontend as kgwStartTraceFrontendR1,
   nodeTraceActiveNetwork as kgwNodeTraceActiveNetworkR1,
   nodeTraceRenderedStartControls as kgwNodeTraceRenderedStartControlsR1,
@@ -760,41 +762,7 @@ const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 0;
 
 
 /* Runtime result/error/field parsing is Rust-owned in node_frontend_helpers.rs. */
-function kgwNodeSetRuntimeNotice(net, state, evidence = "", errorText = null, errorSource = "") {
-  const status = byId(id(net, "runtimeStatus"));
-  const evidenceNode = byId(id(net, "runtimeEvidence"));
-  const errorNode = byId(id(net, "runtimeError"));
-  const normalizedState = String(state || "Stopped");
-  const stateKey = normalizedState.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "stopped";
-
-  if (status) {
-    status.textContent = normalizedState;
-    status.dataset.state = stateKey;
-    applyStatusTone(status, stateKey);
-  }
-
-  if (evidenceNode) {
-    evidenceNode.textContent = evidence || "No process owner";
-  }
-
-  if (errorNode && errorText !== null && errorText !== undefined) {
-    const text = String(errorText || "").trim();
-    errorNode.textContent = text;
-    errorNode.hidden = !text;
-    errorNode.dataset.runtimeErrorSource = errorSource;
-    applyStatusTone(errorNode, "error");
-  }
-}
-
-function kgwNodeMarkRestartRequired(net) {
-  const authority = byId(id(net, "settingsAuthority"));
-  if (!authority) return;
-  const running = byId(id(net, "runtimeStatus"))?.dataset?.state === "running";
-  authority.textContent = running
-    ? "Restart required to apply changed effective settings"
-    : "Effective settings apply on next Start";
-  authority.dataset.restartRequired = running ? "true" : "false";
-}
+/* Runtime notice and restart-required DOM ownership are Rust/WASM-owned in node_frontend_helpers.rs. */
 
 /* Runtime IPC argument construction is Rust/WASM-owned in node_frontend_helpers.rs. */
 function invokeWithTimeout(invoke, command, args, timeoutMs) {

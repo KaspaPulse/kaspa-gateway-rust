@@ -525,14 +525,20 @@ function staticPlacementTests() {
   assert.ok(
     source.includes("nodeSyncDependencies as wasmNodeSyncDependencies")
       && source.includes("nodePreviewMessage as kgwNodePreviewMessage")
+      && source.includes("nodeSetRuntimeNotice as kgwNodeSetRuntimeNotice")
+      && source.includes("nodeMarkRestartRequired as kgwNodeMarkRestartRequired")
       && source.includes("nodePanelStartFromMonitor as panelStartFromMonitor")
       && !source.includes("function kgwNodeForm(")
       && !source.includes("function kgwNodeSyncDependencies(")
       && !source.includes("function kgwNodePreviewMessage(")
+      && !source.includes("function kgwNodeSetRuntimeNotice(")
+      && !source.includes("function kgwNodeMarkRestartRequired(")
       && !source.includes("function panelStartFromMonitor(")
       && rustNodeHelpersSource.includes("fn node_sync_dependencies_inner(")
+      && rustNodeHelpersSource.includes("fn set_runtime_notice_inner(")
+      && rustNodeHelpersSource.includes("fn mark_restart_required_inner(")
       && rustNodeHelpersSource.includes("fn panel_start_from_monitor_inner("),
-    "Node form/dependency/preview/monitor-start ownership must remain in Rust/WASM",
+    "Node form/dependency/preview/runtime-notice/restart/monitor-start ownership must remain in Rust/WASM",
   );
   assert.ok(
     source.includes("nodeExplicitTrace as kgwNodeExplicitTraceR27D")
@@ -1213,6 +1219,40 @@ const wasmNodePreviewMessage = (net, message, error = false) => {
   applyStatusTone(el, error ? "error" : String(message || "").startsWith("Validating") ? "validating" : "verified");
   return true;
 };
+const wasmNodeSetRuntimeNotice = (net, state, evidence = "", errorText = null, errorSource = "") => {
+  const status = document.getElementById("node-" + String(net || "") + "-runtimeStatus");
+  const evidenceNode = document.getElementById("node-" + String(net || "") + "-runtimeEvidence");
+  const errorNode = document.getElementById("node-" + String(net || "") + "-runtimeError");
+  const normalizedState = String(state || "Stopped");
+  const stateKey = normalizedState.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "stopped";
+  if (status) {
+    status.textContent = normalizedState;
+    status.dataset.state = stateKey;
+    applyStatusTone(status, stateKey);
+  }
+  if (evidenceNode) evidenceNode.textContent = evidence || "No process owner";
+  if (errorNode && errorText !== null && errorText !== undefined) {
+    const text = String(errorText || "").trim();
+    errorNode.textContent = text;
+    errorNode.hidden = !text;
+    errorNode.dataset.runtimeErrorSource = String(errorSource || "");
+    applyStatusTone(errorNode, "error");
+  }
+  return true;
+};
+const kgwNodeSetRuntimeNotice = wasmNodeSetRuntimeNotice;
+const wasmNodeMarkRestartRequired = (net) => {
+  const authority = document.getElementById("node-" + String(net || "") + "-settingsAuthority");
+  if (!authority) return false;
+  const status = document.getElementById("node-" + String(net || "") + "-runtimeStatus");
+  const running = Boolean(status && status.dataset && status.dataset.state === "running");
+  authority.textContent = running
+    ? "Restart required to apply changed effective settings"
+    : "Effective settings apply on next Start";
+  authority.dataset.restartRequired = running ? "true" : "false";
+  return true;
+};
+const kgwNodeMarkRestartRequired = wasmNodeMarkRestartRequired;
 const wasmNodeSyncDependencies = (net, locked = false) => {
   const values = wasmNodeEffectiveForm(net);
   const options = wasmNodeCommandInlineState(net);
