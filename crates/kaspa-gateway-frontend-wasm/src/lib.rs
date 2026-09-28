@@ -11,6 +11,7 @@ mod explorer_live_core;
 mod explorer_microscope;
 mod explorer_results;
 mod explorer_runtime;
+mod explorer_state;
 mod explorer_summary;
 mod header_live_metrics;
 mod log_tab;

@@ -60,6 +60,7 @@ import init, {
   explorerInvokeGroupedTransactions as wasmExplorerInvokeGroupedTransactions,
   explorerInvokeUnifiedFetch as wasmExplorerInvokeUnifiedFetch,
   explorerSetStatus as wasmExplorerSetStatus,
+  explorerEnsureState as wasmExplorerEnsureState,
   explorerSyncActionState as wasmExplorerSyncActionState,
   explorerUiTrace as wasmExplorerUiTrace,
   explorerNormalizeUnifiedResult as wasmExplorerNormalizeUnifiedResult,
@@ -95,6 +96,10 @@ export function toNumber(value, fallback = 0) {
 
 export function kgwClean2SafeText(value) {
   return wasmKgwClean2SafeText(value);
+}
+
+export function kgwEnsureExplorerState() {
+  return wasmExplorerEnsureState();
 }
 
 export function kgwSummaryCurrentUsdPrice() {

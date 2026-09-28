@@ -34,15 +34,9 @@
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf, kgwExplorerExportNumberV2, kgwExplorerExportNormalizeRawTxV2 } from "./explorer.export.js";
 import { parseDateSeconds } from "./explorer.date.js";
 import { kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateLog, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot, kgwInvokeExplorerUnifiedFetch, kgwInvokeExplorerCancelTransactionsR57D4, setStatus, kgwExplorerSyncActionState, kgwExplorerUiTraceR53B3, kgwLoadTransactionDaySummariesFromDb, kgwLoadTransactionsForSingleDayFromDb, kgwLoadTransactionsForDay, kgwClean2Log, kgwClean2Section, kgwClean2Body, kgwClean2LoadSummaries, kgwClean2LoadDayTransactions } from "./explorer.utils.js";
+import { kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateLog, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot, kgwInvokeExplorerUnifiedFetch, kgwInvokeExplorerCancelTransactionsR57D4, setStatus, kgwExplorerSyncActionState, kgwExplorerUiTraceR53B3, kgwLoadTransactionDaySummariesFromDb, kgwLoadTransactionsForSingleDayFromDb, kgwLoadTransactionsForDay, kgwClean2Log, kgwClean2Section, kgwClean2Body, kgwClean2LoadSummaries, kgwClean2LoadDayTransactions, kgwEnsureExplorerState } from "./explorer.utils.js";
 
-const explorerState = {
-  rows: [],
-  filteredRows: [],
-  selectedAddress: "",
-  busy: false,
-  cancelRequested: false
-};
+const explorerState = kgwEnsureExplorerState();
 
 function root() {
   return document.getElementById("explorer") || document.querySelector(".explorer-python-root") || document;
