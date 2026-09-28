@@ -44,7 +44,7 @@ import { parseHeaderUsdPrice } from "./explorer.header.js";
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf } from "./explorer.export.js";
 import { normalizeDateInputValue, parseDateSeconds, kgwDayToEpochSeconds, kgwTxDayToEpochSeconds, kgwClean2DayToSeconds, kgwTransactionDateKey } from "./explorer.date.js";
 import { formatKas, formatUsd, kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { toEnglishDigits, pick, toNumber, kgwClean2SafeText } from "./explorer.utils.js";
+import { pick, toNumber, kgwClean2SafeText, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls } from "./explorer.utils.js";
 
 const SOMPI_PER_KAS = 100_000_000;
 
@@ -56,7 +56,6 @@ const explorerState = {
   addressNamesLoaded: false,
   selectedAddress: "",
   busy: false,
-  fontSize: 11,
   cancelRequested: false
 };
 
@@ -951,37 +950,7 @@ function kgwBindDateControl(section, textId, nativeId, buttonId, fallbackValue) 
 }
 /* KGW_CALENDAR_EXISTING_OWNER_REBUILD_R2_EXPLORER_OWNER_END */
 
-function kgwApplyExplorerFontSize(section, rawValue) {
-  const clean = toEnglishDigits(rawValue ?? "9").replace(/[^0-9]/g, "").slice(0, 2);
-  const value = Number(clean || "9");
-  explorerState.fontSize = Math.max(6, Math.min(24, Number.isFinite(value) ? value : 9));
-  setTableFontSize(section);
-}
-
-function kgwBindFontSpinbox(section) {
-  const input = qs("#explorerTableFontSize", section);
-  const dec = qs("#explorerTableFontDecrease", section);
-  const inc = qs("#explorerTableFontIncrease", section);
-
-  if (!input || input.dataset.kgwFontBound === "1") return;
-  input.dataset.kgwFontBound = "1";
-
-  input.addEventListener("input", () => {
-    kgwApplyExplorerFontSize(section, input.value);
-  });
-
-  input.addEventListener("blur", () => {
-    kgwApplyExplorerFontSize(section, input.value);
-  });
-
-  dec?.addEventListener("click", () => {
-    kgwApplyExplorerFontSize(section, Number(explorerState.fontSize || input.value || 11) - 1);
-  });
-
-  inc?.addEventListener("click", () => {
-    kgwApplyExplorerFontSize(section, Number(explorerState.fontSize || input.value || 11) + 1);
-  });
-}
+/* Explorer font sizing/spinbox ownership lives in Rust/WASM explorer_controls.rs. */
 
 function defaultDates(section) {
   const now = new Date();
@@ -1005,115 +974,7 @@ function defaultDates(section) {
 }
 
 
-/* KGW_EXPLORER_LOCAL_BUSY_CONTROLS_POLICY
-   Correct fetch busy policy:
-   - Only controls inside #explorer are disabled.
-   - Cancel remains enabled while fetch is running.
-   - Shell/top tab navigation is handled by shell, not here.
-*/
-function kgwExplorerControlKey(control) {
-  return [
-    control?.id || "",
-    control?.name || "",
-    control?.className || "",
-    control?.getAttribute?.("aria-label") || "",
-    control?.getAttribute?.("title") || "",
-    control?.textContent || ""
-  ].join(" ").toLowerCase();
-}
-
-function kgwIsExplorerBusyAllowedControl(control) {
-  if (!control) return false;
-
-  const key = kgwExplorerControlKey(control);
-
-  return (
-    control.id === "explorerCancel" ||
-    key.includes("cancel") ||
-    key.includes("إلغاء") ||
-    key.includes("الغاء")
-  );
-}
-
-function kgwSetControlLocked(control, locked) {
-  if (!control) return;
-
-  const canDisable = "disabled" in control;
-
-  if (locked) {
-    if (control.dataset.kgwPrevDisabled === undefined) {
-      control.dataset.kgwPrevDisabled = canDisable && control.disabled ? "true" : "false";
-    }
-
-    if (canDisable) {
-      control.disabled = true;
-    }
-
-    control.setAttribute("aria-disabled", "true");
-    control.classList.add("disabled");
-    control.style.pointerEvents = "none";
-    control.style.cursor = "not-allowed";
-    return;
-  }
-
-  const previous = control.dataset.kgwPrevDisabled;
-
-  if (previous !== undefined) {
-    if (canDisable) {
-      control.disabled = previous === "true";
-    }
-
-    delete control.dataset.kgwPrevDisabled;
-  } else if (canDisable) {
-    control.disabled = false;
-  }
-
-  control.removeAttribute("aria-disabled");
-  control.classList.remove("disabled");
-  control.classList.remove("is-disabled");
-  control.style.pointerEvents = "";
-  control.style.cursor = "";
-}
-
-function kgwApplyExplorerLocalBusyControls(section, busy) {
-  const rootNode = section || root();
-
-  if (!rootNode) return;
-
-  const controls = Array.from(
-    rootNode.querySelectorAll("button,input,select,textarea,a,[role='button']")
-  );
-
-  for (const control of controls) {
-    if (kgwIsExplorerBusyAllowedControl(control)) {
-      kgwSetControlLocked(control, false);
-
-      if ("disabled" in control) {
-        control.disabled = !busy;
-      }
-
-      continue;
-    }
-
-    kgwSetControlLocked(control, Boolean(busy));
-  }
-
-  const previousBusy = Boolean(window.__kgwExplorerFetchBusy);
-
-  window.__kgwExplorerFetchBusy = Boolean(busy);
-
-  if (previousBusy !== Boolean(busy)) {
-    window.dispatchEvent(
-      new CustomEvent("kgw:explorer-fetch-busy", {
-        detail: { busy: Boolean(busy) }
-      })
-    );
-  }
-
-  if (typeof window.kgwApplyShellExplorerFetchBusyPolicy === "function") {
-    window.kgwApplyShellExplorerFetchBusyPolicy(Boolean(busy));
-  }
-}
+/* Explorer local busy-control ownership lives in Rust/WASM explorer_controls.rs. */
 
 function syncActionState(section) {
   const busy = explorerState.busy;
@@ -3097,30 +2958,7 @@ function resetFilters(section) {
   renderTable(section);
 }
 
-function setTableFontSize(section) {
-  const table = qs("#explorerTransactionsTable", section);
-  const input = qs("#explorerTableFontSize", section);
-  const size = Math.max(6, Math.min(24, Number(explorerState.fontSize || input?.value || 9)));
-
-  if (input) {
-    input.value = String(size);
-  }
-
-  if (!table) return;
-
-  section.style.setProperty("--explorer-table-font-size", `${size}px`);
-  table.style.setProperty("font-size", `${size}px`, "important");
-
-  table.querySelectorAll("th, td").forEach((cell) => {
-    cell.style.setProperty("font-size", `${size}px`, "important");
-  });
-
-  microscopeLog("TABLE FONT SIZE APPLIED", {
-    size,
-    cssVariable: section.style.getPropertyValue("--explorer-table-font-size"),
-    tableFontSize: getComputedStyle(table).fontSize
-  });
-}
+/* Explorer table font-size ownership lives in Rust/WASM explorer_controls.rs. */
 
 
 /* KGW_DB_FILTER_ONLY
