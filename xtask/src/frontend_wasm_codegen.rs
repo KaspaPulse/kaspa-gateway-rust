@@ -66,18 +66,23 @@ import init, {
   explorerBindFontSpinbox as wasmExplorerBindFontSpinbox,
   explorerCanonicalKaspaAddress as wasmExplorerCanonicalKaspaAddress,
   explorerBuildListRequest as wasmExplorerBuildListRequest,
+  explorerClean2Request as wasmExplorerClean2Request,
   explorerDefaultDates as wasmExplorerDefaultDates,
   explorerEnsureFilterOptions as wasmExplorerEnsureFilterOptions,
   explorerFetchBalance as wasmExplorerFetchBalance,
   explorerFilterBuildRequest as wasmExplorerFilterBuildRequest,
   explorerFilterValue as wasmExplorerFilterValue,
+  explorerInstallFilterSelectRepair as wasmExplorerInstallFilterSelectRepair,
   explorerInstallManualAddressSave as wasmExplorerInstallManualAddressSave,
   explorerIsKaspaAddress as wasmExplorerIsKaspaAddress,
   explorerLoadKnownAddressNames as wasmExplorerLoadKnownAddressNames,
   explorerLoadSavedAddresses as wasmExplorerLoadSavedAddresses,
   explorerManualAddressValue as wasmExplorerManualAddressValue,
   explorerNormalizeAddress as wasmExplorerNormalizeAddress,
+  explorerNormalizeDirectionFilterValue as wasmExplorerNormalizeDirectionFilterValue,
+  explorerNormalizeTxTypeFilterValue as wasmExplorerNormalizeTxTypeFilterValue,
   explorerReadFilterState as wasmExplorerReadFilterState,
+  explorerRepairFilterSelects as wasmExplorerRepairFilterSelects,
   explorerRefreshAddressName as wasmExplorerRefreshAddressName,
   explorerSaveAddressToDatabase as wasmExplorerSaveAddressToDatabase,
   explorerSaveManualAddress as wasmExplorerSaveManualAddress,
@@ -89,6 +94,7 @@ import init, {
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
 await init();
+wasmExplorerInstallFilterSelectRepair();
 
 export function toEnglishDigits(value) {
   return wasmToEnglishDigits(value);
@@ -144,6 +150,22 @@ export function kgwFilterValue(selector, section, fallback = "ALL") {
 
 export function kgwFilterBuildRequest(section, address, startTs, endTs, limit = 10000) {
   return wasmExplorerFilterBuildRequest(section, address, startTs, endTs, limit);
+}
+
+export function kgwNormalizeTxTypeFilterValue(value) {
+  return wasmExplorerNormalizeTxTypeFilterValue(value);
+}
+
+export function kgwNormalizeDirectionFilterValue(value) {
+  return wasmExplorerNormalizeDirectionFilterValue(value);
+}
+
+export function kgwRepairExplorerFilterSelects(section) {
+  return wasmExplorerRepairFilterSelects(section);
+}
+
+export function kgwClean2Request(section, address, startTs, endTs, limit) {
+  return wasmExplorerClean2Request(section, address, startTs, endTs, limit);
 }
 
 export function normalizeAddress(value) {
@@ -1413,6 +1435,13 @@ mod tests {
             adapter.contains(
                 "wasmExplorerFilterBuildRequest(section, address, startTs, endTs, limit)"
             )
+        );
+        assert!(adapter.contains("wasmExplorerInstallFilterSelectRepair();"));
+        assert!(adapter.contains("wasmExplorerNormalizeTxTypeFilterValue(value)"));
+        assert!(adapter.contains("wasmExplorerNormalizeDirectionFilterValue(value)"));
+        assert!(adapter.contains("wasmExplorerRepairFilterSelects(section)"));
+        assert!(
+            adapter.contains("wasmExplorerClean2Request(section, address, startTs, endTs, limit)")
         );
         assert!(adapter.contains("wasmExplorerNormalizeAddress(value)"));
         assert!(adapter.contains("wasmExplorerIsKaspaAddress(value)"));

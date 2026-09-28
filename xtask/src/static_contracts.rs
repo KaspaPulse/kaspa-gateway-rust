@@ -225,6 +225,11 @@ fn validate_explorer_filter_ownership(
         "#[wasm_bindgen(js_name = explorerBuildListRequest)]",
         "#[wasm_bindgen(js_name = explorerFilterValue)]",
         "#[wasm_bindgen(js_name = explorerFilterBuildRequest)]",
+        "#[wasm_bindgen(js_name = explorerNormalizeTxTypeFilterValue)]",
+        "#[wasm_bindgen(js_name = explorerNormalizeDirectionFilterValue)]",
+        "#[wasm_bindgen(js_name = explorerRepairFilterSelects)]",
+        "#[wasm_bindgen(js_name = explorerInstallFilterSelectRepair)]",
+        "#[wasm_bindgen(js_name = explorerClean2Request)]",
     ] {
         require_contains(
             explorer_filters_rust,
@@ -238,6 +243,12 @@ fn validate_explorer_filter_ownership(
         "function kgwBuildExplorerListRequest(",
         "function kgwFilterValue(",
         "function kgwFilterBuildRequest(",
+        "function kgwNormalizeTxTypeFilterValue(",
+        "function kgwNormalizeDirectionFilterValue(",
+        "function kgwRepairExplorerFilterSelects(",
+        "function kgwRepairExplorerFilterSelectsNow(",
+        "function kgwClean2Request(",
+        "if (!window.__kgwFilterSelectsInitRepairInstalled)",
     ] {
         forbid_contains(
             explorer_js,

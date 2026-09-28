@@ -1,5 +1,5 @@
 use js_sys::{Array, Function, Object, Reflect};
-use wasm_bindgen::{JsCast, prelude::*};
+use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 
 const TYPE_OPTIONS_HTML: &str = r#"
       <option value="ALL">ALL</option>
@@ -14,6 +14,10 @@ const DIRECTION_OPTIONS_HTML: &str = r#"
 
 fn global() -> JsValue {
     js_sys::global().into()
+}
+
+fn window() -> JsValue {
+    property(&global(), "window")
 }
 
 fn document() -> JsValue {
@@ -41,6 +45,12 @@ fn function(target: &JsValue, name: &str) -> Option<Function> {
 fn call1(target: &JsValue, name: &str, argument: &JsValue) -> JsValue {
     function(target, name)
         .and_then(|method| method.call1(target, argument).ok())
+        .unwrap_or(JsValue::UNDEFINED)
+}
+
+fn call2(target: &JsValue, name: &str, first: &JsValue, second: &JsValue) -> JsValue {
+    function(target, name)
+        .and_then(|method| method.call2(target, first, second).ok())
         .unwrap_or(JsValue::UNDEFINED)
 }
 
@@ -280,6 +290,194 @@ fn filter_build_request_impl(
     console_log("[KGW Explorer][filter-owner] request", request.as_ref());
     request.into()
 }
+fn normalize_tx_type_filter_value(value: &str) -> String {
+    normalize_choice(value, &["all", "coinbase", "transfer"])
+}
+
+fn normalize_direction_filter_value(value: &str) -> String {
+    normalize_choice(value, &["all", "incoming", "outgoing"])
+}
+
+fn repair_filter_selects_impl(section: &JsValue) -> JsValue {
+    let payload = ensure_filter_options_impl(section);
+    console_log("[KGW Explorer][filter] selects repaired", &payload);
+    payload
+}
+
+fn repair_filter_selects_now_impl() {
+    let doc = document();
+    for selector in ["#explorer", ".explorer-python-root"] {
+        let candidate = query(&doc, selector);
+        if present(&candidate) {
+            let _ = repair_filter_selects_impl(&candidate);
+        }
+    }
+}
+
+fn schedule_repair(delay_ms: u32) {
+    let callback = Closure::wrap(Box::new(move || {
+        repair_filter_selects_now_impl();
+    }) as Box<dyn FnMut()>);
+    let _ = call2(
+        &window(),
+        "setTimeout",
+        callback.as_ref().unchecked_ref(),
+        &JsValue::from_f64(delay_ms as f64),
+    );
+    callback.forget();
+}
+
+fn queue_repair() {
+    let callback = Closure::wrap(Box::new(move || {
+        repair_filter_selects_now_impl();
+    }) as Box<dyn FnMut()>);
+    let _ = call1(
+        &window(),
+        "queueMicrotask",
+        callback.as_ref().unchecked_ref(),
+    );
+    callback.forget();
+}
+
+fn install_filter_select_repair_impl() {
+    let win = window();
+    if crate::js_boolean(&property(&win, "__kgwFilterSelectsInitRepairInstalled")) {
+        return;
+    }
+    set(
+        &win,
+        "__kgwFilterSelectsInitRepairInstalled",
+        &JsValue::TRUE,
+    );
+
+    queue_repair();
+
+    let dom_ready = Closure::wrap(Box::new(move |_event: JsValue| {
+        repair_filter_selects_now_impl();
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call2(
+        &document(),
+        "addEventListener",
+        &JsValue::from_str("DOMContentLoaded"),
+        dom_ready.as_ref().unchecked_ref(),
+    );
+    dom_ready.forget();
+
+    let click = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+        let text = format!(
+            "{} {}",
+            js_text(&property(&target, "textContent")),
+            js_text(&property(&target, "id"))
+        )
+        .to_lowercase();
+        let inside_explorer = present(&call1(&target, "closest", &JsValue::from_str("#explorer")));
+        if text.contains("explorer") || inside_explorer {
+            schedule_repair(0);
+        }
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call2(
+        &document(),
+        "addEventListener",
+        &JsValue::from_str("click"),
+        click.as_ref().unchecked_ref(),
+    );
+    click.forget();
+
+    let change = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+        let id = js_text(&property(&target, "id"));
+        if id == "explorerTypeFilter" || id == "explorerDirectionFilter" {
+            repair_filter_selects_now_impl();
+        }
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call2(
+        &document(),
+        "addEventListener",
+        &JsValue::from_str("change"),
+        change.as_ref().unchecked_ref(),
+    );
+    change.forget();
+
+    for delay in [100_u32, 500, 1500] {
+        schedule_repair(delay);
+    }
+    console_log(
+        "[KGW Explorer][filter] select init repair installed",
+        &JsValue::UNDEFINED,
+    );
+}
+
+fn clean2_request_impl(
+    section: &JsValue,
+    address: JsValue,
+    start_ts: JsValue,
+    end_ts: JsValue,
+    limit: JsValue,
+) -> JsValue {
+    let scope = scope(section);
+    let _ = repair_filter_selects_impl(&scope);
+    let request = Object::new();
+    set(request.as_ref(), "address", &address);
+    set(request.as_ref(), "start_ts", &start_ts);
+    set(request.as_ref(), "end_ts", &end_ts);
+    set(
+        request.as_ref(),
+        "tx_type",
+        &JsValue::from_str(&normalize_tx_type_filter_value(&current_value(
+            &query(&scope, "#explorerTypeFilter"),
+            "ALL",
+        ))),
+    );
+    set(
+        request.as_ref(),
+        "direction",
+        &JsValue::from_str(&normalize_direction_filter_value(&current_value(
+            &query(&scope, "#explorerDirectionFilter"),
+            "ALL",
+        ))),
+    );
+    set(
+        request.as_ref(),
+        "search_query",
+        &JsValue::from_str(&current_value(&query(&scope, "#explorerSearch"), "")),
+    );
+    set(request.as_ref(), "limit", &limit);
+    console_log("[KGW Explorer][clean2] request", request.as_ref());
+    request.into()
+}
+
+#[wasm_bindgen(js_name = explorerNormalizeTxTypeFilterValue)]
+pub fn explorer_normalize_tx_type_filter_value(value: String) -> String {
+    normalize_tx_type_filter_value(&value)
+}
+
+#[wasm_bindgen(js_name = explorerNormalizeDirectionFilterValue)]
+pub fn explorer_normalize_direction_filter_value(value: String) -> String {
+    normalize_direction_filter_value(&value)
+}
+
+#[wasm_bindgen(js_name = explorerRepairFilterSelects)]
+pub fn explorer_repair_filter_selects(section: JsValue) -> JsValue {
+    repair_filter_selects_impl(&section)
+}
+
+#[wasm_bindgen(js_name = explorerInstallFilterSelectRepair)]
+pub fn explorer_install_filter_select_repair() {
+    install_filter_select_repair_impl();
+}
+
+#[wasm_bindgen(js_name = explorerClean2Request)]
+pub fn explorer_clean2_request(
+    section: JsValue,
+    address: JsValue,
+    start_ts: JsValue,
+    end_ts: JsValue,
+    limit: JsValue,
+) -> JsValue {
+    clean2_request_impl(&section, address, start_ts, end_ts, limit)
+}
+
 #[wasm_bindgen(js_name = explorerEnsureFilterOptions)]
 pub fn explorer_ensure_filter_options(section: JsValue) -> JsValue {
     ensure_filter_options_impl(&section)
