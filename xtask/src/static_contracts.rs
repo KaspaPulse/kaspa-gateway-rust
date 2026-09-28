@@ -174,6 +174,10 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
         root,
         "crates/kaspa-gateway-frontend-wasm/src/explorer_filters.rs",
     )?;
+    let explorer_runtime_rust = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/explorer_runtime.rs",
+    )?;
     let explorer_css = read(
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.css",
@@ -202,6 +206,7 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
         explorer_js: &explorer_js,
         explorer_address_rust: &explorer_address_rust,
         explorer_filters_rust: &explorer_filters_rust,
+        explorer_runtime_rust: &explorer_runtime_rust,
         explorer_css: &explorer_css,
         settings_paths: &settings_paths,
         top_js: &top_js,
@@ -215,6 +220,7 @@ struct FunctionalUiSources<'a> {
     explorer_js: &'a str,
     explorer_address_rust: &'a str,
     explorer_filters_rust: &'a str,
+    explorer_runtime_rust: &'a str,
     explorer_css: &'a str,
     settings_paths: &'a str,
     top_js: &'a str,
@@ -272,6 +278,7 @@ fn validate_functional_ui(sources: FunctionalUiSources<'_>) -> Result<(), String
         explorer_js,
         explorer_address_rust,
         explorer_filters_rust,
+        explorer_runtime_rust,
         explorer_css,
         settings_paths,
         top_js,
@@ -298,11 +305,19 @@ fn validate_functional_ui(sources: FunctionalUiSources<'_>) -> Result<(), String
     if invalid_address_error_statuses != canonical_address_validations {
         return Err("All invalid Explorer actions need visible error status".to_owned());
     }
-    require_contains(
-        explorer_js,
-        r#"node.setAttribute("aria-live", state === "error" ? "assertive" : "polite")"#,
-        "Explorer ARIA-live state missing",
-    )?;
+    for needle in [
+        "#[wasm_bindgen(js_name = explorerSetStatus)]",
+        "set_status_impl",
+        "aria-live",
+        "assertive",
+        "polite",
+    ] {
+        require_contains(
+            explorer_runtime_rust,
+            needle,
+            "Explorer Rust status/ARIA-live contract missing",
+        )?;
+    }
     require_contains(
         explorer_address_rust,
         r#""validate_kaspa_address""#,
@@ -834,6 +849,11 @@ mod tests {
             "crates/kaspa-gateway-frontend-wasm/src/explorer_filters.rs",
         )
         .unwrap();
+        let explorer_runtime_rust = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/explorer_runtime.rs",
+        )
+        .unwrap();
         let explorer_css = read(
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.css",
@@ -869,6 +889,7 @@ mod tests {
                 explorer_js: &explorer_js,
                 explorer_address_rust: &explorer_address_rust,
                 explorer_filters_rust: &explorer_filters_rust,
+                explorer_runtime_rust: &explorer_runtime_rust,
                 explorer_css: &explorer_css,
                 settings_paths: &settings_paths,
                 top_js: &top_js,

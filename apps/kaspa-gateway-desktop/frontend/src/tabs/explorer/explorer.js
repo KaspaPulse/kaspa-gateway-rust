@@ -34,7 +34,7 @@
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf, kgwExplorerExportNumberV2, kgwExplorerExportNormalizeRawTxV2 } from "./explorer.export.js";
 import { parseDateSeconds, kgwDayToEpochSeconds, kgwClean2DayToSeconds } from "./explorer.date.js";
 import { kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, kgwNormalizeUnifiedResult, kgwDaySummaryRowsFromResult, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateLog, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
+import { kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, kgwDaySummaryRowsFromResult, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateLog, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot, kgwInvokeExplorerUnifiedFetch, kgwInvokeExplorerCancelTransactionsR57D4, kgwInvokeExplorerGroupedTransactions, kgwInvokeExplorerDaySummaries, setStatus, kgwExplorerSyncActionState, extractRowsFromUnifiedResult, kgwExplorerUiTraceR53B3, kgwFilterTrace } from "./explorer.utils.js";
 
 const explorerState = {
   rows: [],
@@ -56,62 +56,9 @@ function qsa(selector, scope = root()) {
   return Array.from(scope.querySelectorAll(selector));
 }
 
-function invokeApi() {
-  return (
-    window.__TAURI__?.core?.invoke ||
-    window.__TAURI__?.tauri?.invoke ||
-    window.__TAURI_INVOKE__
-  );
-}
-
-
-/* KGW_PHASE3C_CANONICAL_EXPLORER_COMMAND_WRAPPERS */
-async function kgwInvokeExplorerUnifiedFetch(request) {
-  return await invokeCommand("explorer_transactions", { request });
-}
-
-async function kgwInvokeExplorerCancelTransactionsR57D4(requestId) {
-  return await invokeCommand("explorer_cancel_transactions", { requestId });
-}
-
-async function kgwInvokeExplorerGroupedTransactions(request) {
-  return await invokeCommand("explorer_list_transactions_grouped_rust", { request });
-}
-
-async function kgwInvokeExplorerDaySummaries(request) {
-  return await invokeCommand("explorer_transaction_day_summaries_rust", { request });
-}
-
-async function invokeCommand(command, args = {}) {
-  const invoke = invokeApi();
-
-  if (!invoke) {
-    throw new Error("Tauri invoke API is not available.");
-  }
-
-  return await invoke(command, args);
-}
-
-
-function setStatus(section, message, state = "info") {
-  const cleanMessage = String(message || "");
-
-  const node = qs("#explorerStatus", section);
-  if (node) {
-    node.hidden = false;
-    node.textContent = cleanMessage;
-    node.dataset.state = state;
-    node.setAttribute("role", state === "error" ? "alert" : "status");
-    node.setAttribute("aria-live", state === "error" ? "assertive" : "polite");
-  }
-
-  if (typeof window.kgwSetGlobalFetchProgressText === "function") {
-    window.kgwSetGlobalFetchProgressText(cleanMessage);
-  }
-
-  console.info("[KGW Explorer]", message);
-}
-
+/* KGW_PHASE3C_CANONICAL_EXPLORER_COMMAND_WRAPPERS
+   Runtime invocation ownership lives in Rust/WASM explorer_runtime.rs.
+*/
 
 /* KGW_CALENDAR_EXISTING_OWNER_REBUILD_R2_EXPLORER_OWNER_START */
 /* KGW_CALENDAR_EXISTING_OWNER_REGEX_FIX_R4: fixed regex escaping only; no new owner layer.\n * KGW_CALENDAR_EXISTING_OWNER_DOM_CSS_FIX_R6: body-attached compact popover inside existing owner.\n * KGW_CALENDAR_SCOPED_POPOVER_OWNER_FIX_R7: scope-isolated popovers per tab.\n * KGW_CALENDAR_SINGLE_ACTIVE_POPOVER_FIX_R8: removes stale body-attached popovers before opening current tab calendar.
@@ -121,37 +68,13 @@ function setStatus(section, message, state = "info") {
 /* Explorer local busy-control ownership lives in Rust/WASM explorer_controls.rs. */
 
 function syncActionState(section) {
-  const busy = explorerState.busy;
-  kgwApplyExplorerLocalBusyControls(section, busy); // KGW_LOCAL_BUSY_CONTROLS
-
-  qs("#explorerFetch", section).disabled = busy;
-  qs("#explorerForceFetch", section).disabled = busy;
-  qs("#explorerCancel", section).disabled = !busy;
-
-  const hasRows = explorerState.filteredRows.length > 0;
-
-  microscopeLog("SYNC ACTION STATE", {
-    busy,
-    rows: explorerState.rows?.length || 0,
-    filteredRows: explorerState.filteredRows?.length || 0
-  });
-
-  for (const selector of ["#explorerExportCsv", "#explorerExportHtml", "#explorerExportPdf"]) {
-    const node = qs(selector, section);
-    if (node) node.disabled = !hasRows;
-  }
+  return kgwExplorerSyncActionState(
+    section,
+    explorerState.busy,
+    explorerState.rows?.length || 0,
+    explorerState.filteredRows?.length || 0
+  );
 }
-
-function extractRowsFromUnifiedResult(result) {
-  microscopeApiShape("UNIFIED RESULT RAW SHAPE", result);
-  const rows = kgwNormalizeUnifiedResult(result);
-  microscopeLog("UNIFIED RESULT NORMALIZED ROWS", {
-    rows: rows.length,
-    sample: rows.slice(0, 3)
-  });
-  return rows;
-}
-
 
 /* KGW_TX_R4_GROUPED_COLLAPSED_RENDERER
    Python parity:
@@ -184,40 +107,9 @@ if (!window.__kgwExplorerDayTransactionCache) {
    Existing Explorer UI trace owner.
    Scope: Explorer fetch, force fetch, filters, address, date/calendar, grouped rows, and safe export button activity.
 */
-function kgwExplorerUiTraceR53B3(action, phase, details = {}) {
-  try {
-    const call = invokeApi();
-    if (typeof call !== "function") return Promise.resolve(false);
-
-    return Promise.resolve(call("kgw_frontend_button_trace_v1", {
-      scope: "explorer",
-      net: "ui",
-      action: String(action || "explorer-ui"),
-      phase: String(phase || "unknown"),
-      details: JSON.stringify({
-        patch: "KGW_EXPLORER_SAFE_CONTROLS_TRACE_PATCH_R53B3",
-        owner: "explorer-existing-safe-controls-owner",
-        action: String(action || "explorer-ui"),
-        phase: String(phase || "unknown"),
-        details: details && typeof details === "object" ? details : {}
-      })
-    })).catch(function () {});
-  } catch (_) {
-    return Promise.resolve(false);
-  }
-}
-
 /* KGW_FILTER_TRACE_1
-   Console tracing for Explorer filters.
-   This proves which filter values are sent to Rust and what comes back.
+   Explorer safe-controls and filter trace ownership lives in Rust/WASM explorer_runtime.rs.
 */
-function kgwFilterTrace(label, payload = {}) {
-  try {
-    console.log(`[KGW Explorer][filter] ${label}`, payload);
-  } catch (_) {
-    console.log(`[KGW Explorer][filter] ${label}`);
-  }
-}
 
 
 /* KGW_FIX_FILTER_DROPDOWN_OPTIONS

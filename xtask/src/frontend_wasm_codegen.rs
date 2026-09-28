@@ -101,6 +101,15 @@ import init, {
   explorerMicroscopeLog as wasmExplorerMicroscopeLog,
   explorerMicroscopeStateReport as wasmExplorerMicroscopeStateReport,
   explorerMicroscopeWarn as wasmExplorerMicroscopeWarn,
+  explorerExtractRowsFromUnifiedResult as wasmExplorerExtractRowsFromUnifiedResult,
+  explorerFilterTrace as wasmExplorerFilterTrace,
+  explorerInvokeCancelTransactions as wasmExplorerInvokeCancelTransactions,
+  explorerInvokeDaySummaries as wasmExplorerInvokeDaySummaries,
+  explorerInvokeGroupedTransactions as wasmExplorerInvokeGroupedTransactions,
+  explorerInvokeUnifiedFetch as wasmExplorerInvokeUnifiedFetch,
+  explorerSetStatus as wasmExplorerSetStatus,
+  explorerSyncActionState as wasmExplorerSyncActionState,
+  explorerUiTrace as wasmExplorerUiTrace,
   explorerNormalizeUnifiedResult as wasmExplorerNormalizeUnifiedResult,
   explorerDaySummaryRowsFromResult as wasmExplorerDaySummaryRowsFromResult,
   explorerNormalizeDaySummaries as wasmExplorerNormalizeDaySummaries,
@@ -222,6 +231,42 @@ export function microscopeStateLog(label, snapshot) {
 
 export function microscopeApiShape(label, value) {
   wasmExplorerMicroscopeApiShape(String(label ?? ""), value);
+}
+
+export async function kgwInvokeExplorerUnifiedFetch(request) {
+  return await wasmExplorerInvokeUnifiedFetch(request);
+}
+
+export async function kgwInvokeExplorerCancelTransactionsR57D4(requestId) {
+  return await wasmExplorerInvokeCancelTransactions(requestId);
+}
+
+export async function kgwInvokeExplorerGroupedTransactions(request) {
+  return await wasmExplorerInvokeGroupedTransactions(request);
+}
+
+export async function kgwInvokeExplorerDaySummaries(request) {
+  return await wasmExplorerInvokeDaySummaries(request);
+}
+
+export function setStatus(section, message, state = "info") {
+  return wasmExplorerSetStatus(section, message, state);
+}
+
+export function kgwExplorerSyncActionState(section, busy, rowsCount = 0, filteredRowsCount = 0) {
+  return wasmExplorerSyncActionState(section, Boolean(busy), rowsCount, filteredRowsCount);
+}
+
+export function extractRowsFromUnifiedResult(result) {
+  return wasmExplorerExtractRowsFromUnifiedResult(result);
+}
+
+export function kgwExplorerUiTraceR53B3(action, phase, details = {}) {
+  return wasmExplorerUiTrace(action, phase, details);
+}
+
+export function kgwFilterTrace(label, payload = {}) {
+  return wasmExplorerFilterTrace(label, payload);
 }
 
 export function setTableFontSize(section) {
@@ -1607,6 +1652,17 @@ mod tests {
             "wasmExplorerMicroscopeStateReport(String(label ?? \"STATE REPORT\"), snapshot ?? {})"
         ));
         assert!(adapter.contains("wasmExplorerMicroscopeApiShape(String(label ?? \"\"), value)"));
+        assert!(adapter.contains("await wasmExplorerInvokeUnifiedFetch(request)"));
+        assert!(adapter.contains("await wasmExplorerInvokeCancelTransactions(requestId)"));
+        assert!(adapter.contains("await wasmExplorerInvokeGroupedTransactions(request)"));
+        assert!(adapter.contains("await wasmExplorerInvokeDaySummaries(request)"));
+        assert!(adapter.contains("wasmExplorerSetStatus(section, message, state)"));
+        assert!(adapter.contains(
+            "wasmExplorerSyncActionState(section, Boolean(busy), rowsCount, filteredRowsCount)"
+        ));
+        assert!(adapter.contains("wasmExplorerExtractRowsFromUnifiedResult(result)"));
+        assert!(adapter.contains("wasmExplorerUiTrace(action, phase, details)"));
+        assert!(adapter.contains("wasmExplorerFilterTrace(label, payload)"));
         assert!(!adapter.contains("Number.isFinite"));
         assert!(!adapter.contains("Math.abs"));
         assert!(!adapter.contains("new Map"));
