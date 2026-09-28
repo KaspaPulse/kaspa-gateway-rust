@@ -114,10 +114,18 @@ fn explorer_lint_contract(root: &Path) -> Result<(), String> {
         root,
         "crates/kaspa-gateway-frontend-wasm/src/explorer_runtime.rs",
     )?;
-    validate_explorer_lint(&source, &runtime_owner)
+    let render_owner = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/explorer_render.rs",
+    )?;
+    validate_explorer_lint(&source, &runtime_owner, &render_owner)
 }
 
-fn validate_explorer_lint(source: &str, runtime_owner: &str) -> Result<(), String> {
+fn validate_explorer_lint(
+    source: &str,
+    runtime_owner: &str,
+    render_owner: &str,
+) -> Result<(), String> {
     for (needle, message) in [
         (
             "kgwFormatUsd(",
@@ -138,11 +146,22 @@ fn validate_explorer_lint(source: &str, runtime_owner: &str) -> Result<(), Strin
     ] {
         forbid_contains(source, needle, message)?;
     }
+    for legacy_definition in [
+        "async function kgwRenderDaySummaries(",
+        "async function kgwRenderDaySummariesDirect(",
+        "async function kgwLoadAndRenderDaySummaries(",
+        "async function kgwClean2RenderSummaries(",
+        "function renderTable(",
+        "function clearExplorerTransactionTable(",
+        "function resetFilters(",
+    ] {
+        forbid_contains(
+            source,
+            legacy_definition,
+            "Explorer canonical renderer implementation must not return to JavaScript",
+        )?;
+    }
     for (needle, message) in [
-        (
-            "kgwSummaryFormatUsd(",
-            "Explorer must use imported summary USD formatter",
-        ),
         (
             "await kgwInstallTxLiveCoreListener();",
             "Explorer fetch must install the event-driven live-core owner",
@@ -153,6 +172,20 @@ fn validate_explorer_lint(source: &str, runtime_owner: &str) -> Result<(), Strin
         ),
     ] {
         require_contains(source, needle, message)?;
+    }
+    for export in [
+        "#[wasm_bindgen(js_name = explorerRenderSummaries)]",
+        "#[wasm_bindgen(js_name = explorerRenderTable)]",
+        "#[wasm_bindgen(js_name = explorerClearTransactionTable)]",
+        "#[wasm_bindgen(js_name = explorerResetFilters)]",
+        "#[wasm_bindgen(js_name = explorerLoadAndRenderDaySummaries)]",
+        "crate::kgw_clean2_usd(",
+    ] {
+        require_contains(
+            render_owner,
+            export,
+            "Explorer canonical renderer Rust-owner contract missing",
+        )?;
     }
     for (needle, message) in [
         (
@@ -830,20 +863,28 @@ mod tests {
     }
 
     #[test]
-    fn explorer_lint_missing_formatter_fails_closed() {
+    fn explorer_lint_missing_renderer_owner_fails_closed() {
         let root = root();
         let source = read(
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.js",
         )
-        .unwrap()
-        .replace("kgwSummaryFormatUsd(", "kgwRemovedSummaryFormatter(");
+        .unwrap();
         let runtime_owner = read(
             &root,
             "crates/kaspa-gateway-frontend-wasm/src/explorer_runtime.rs",
         )
         .unwrap();
-        assert!(validate_explorer_lint(&source, &runtime_owner).is_err());
+        let render_owner = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/explorer_render.rs",
+        )
+        .unwrap()
+        .replace(
+            "#[wasm_bindgen(js_name = explorerRenderSummaries)]",
+            "#[wasm_bindgen(js_name = removedExplorerRenderSummaries)]",
+        );
+        assert!(validate_explorer_lint(&source, &runtime_owner, &render_owner).is_err());
     }
 
     #[test]
@@ -863,7 +904,12 @@ mod tests {
             "crate::kgw_day_to_epoch_seconds(day.clone(), false)",
             "crate::removed_day_to_epoch_seconds(day.clone(), false)",
         );
-        assert!(validate_explorer_lint(&source, &runtime_owner).is_err());
+        let render_owner = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/explorer_render.rs",
+        )
+        .unwrap();
+        assert!(validate_explorer_lint(&source, &runtime_owner, &render_owner).is_err());
     }
 
     #[test]

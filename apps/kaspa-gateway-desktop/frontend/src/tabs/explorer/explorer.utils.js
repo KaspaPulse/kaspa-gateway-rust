@@ -66,6 +66,11 @@ import init, {
   explorerNormalizeUnifiedResult as wasmExplorerNormalizeUnifiedResult,
   explorerDaySummaryRowsFromResult as wasmExplorerDaySummaryRowsFromResult,
   explorerNormalizeDaySummaries as wasmExplorerNormalizeDaySummaries,
+  explorerRenderSummaries as wasmExplorerRenderSummaries,
+  explorerRenderTable as wasmExplorerRenderTable,
+  explorerClearTransactionTable as wasmExplorerClearTransactionTable,
+  explorerResetFilters as wasmExplorerResetFilters,
+  explorerLoadAndRenderDaySummaries as wasmExplorerLoadAndRenderDaySummaries,
   explorerSummaryCurrentUsdPrice as wasmExplorerSummaryCurrentUsdPrice,
   explorerSummaryUsdForKas as wasmExplorerSummaryUsdForKas,
   explorerSummaryUsdForSummary as wasmExplorerSummaryUsdForSummary,
@@ -120,6 +125,34 @@ export function kgwNormalizeDaySummaries(result) {
 
 export function kgwClean2NormalizeSummaries(result) {
   return wasmExplorerNormalizeDaySummaries(result);
+}
+
+export async function kgwRenderDaySummaries(section, rows, statusText = "") {
+  return wasmExplorerRenderSummaries(section, rows, String(statusText ?? ""));
+}
+
+export async function kgwRenderDaySummariesDirect(section, summaries, statusText = "") {
+  return wasmExplorerRenderSummaries(section, summaries, String(statusText ?? ""));
+}
+
+export async function kgwClean2RenderSummaries(section, rows, statusText = "") {
+  return wasmExplorerRenderSummaries(section, rows, String(statusText ?? ""));
+}
+
+export function renderTable(section) {
+  return wasmExplorerRenderTable(section);
+}
+
+export function clearExplorerTransactionTable(section, reason = "cleared", options = {}) {
+  return wasmExplorerClearTransactionTable(section, String(reason ?? "cleared"), options ?? {});
+}
+
+export function resetFilters(section) {
+  return wasmExplorerResetFilters(section);
+}
+
+export async function kgwLoadAndRenderDaySummaries(section, address, startTs, endTs, statusText = "") {
+  return await wasmExplorerLoadAndRenderDaySummaries(section, address, startTs, endTs, String(statusText ?? ""));
 }
 
 export function kgwSummaryUsdForSummary(summary) {
