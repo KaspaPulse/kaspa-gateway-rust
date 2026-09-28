@@ -8,6 +8,7 @@ mod explorer_export;
 mod explorer_filters;
 mod explorer_force_ui;
 mod explorer_live_core;
+mod explorer_microscope;
 mod explorer_results;
 mod explorer_summary;
 mod header_live_metrics;

@@ -34,7 +34,7 @@
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf, kgwExplorerExportNumberV2, kgwExplorerExportNormalizeRawTxV2 } from "./explorer.export.js";
 import { parseDateSeconds, kgwDayToEpochSeconds, kgwClean2DayToSeconds } from "./explorer.date.js";
 import { kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, kgwNormalizeUnifiedResult, kgwDaySummaryRowsFromResult, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
+import { kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, kgwNormalizeUnifiedResult, kgwDaySummaryRowsFromResult, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateLog, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
 
 const explorerState = {
   rows: [],
@@ -988,152 +988,12 @@ function installEvents(section) {
 }
 
 
-const EXPLORER_MICROSCOPE_ENABLED = true;
-
-function microscopeNow() {
-  try {
-    return new Date().toISOString();
-  } catch (_) {
-    return "";
-  }
-}
-
-function microscopeSafeJson(value) {
-  try {
-    return JSON.stringify(value, function (_key, val) {
-      if (typeof val === "bigint") return String(val);
-      if (val instanceof Error) return { message: val.message, stack: val.stack };
-      return val;
-    });
-  } catch (_) {
-    return String(value);
-  }
-}
-
-function microscopeLog(stage, details = {}) {
-  if (!EXPLORER_MICROSCOPE_ENABLED) return;
-
-  const payload = {
-    stage,
-    at: microscopeNow(),
-    ...details
-  };
-
-  console.info(`[KGW][microscope][explorer] ${stage} :: ${microscopeSafeJson(payload)}`);
-}
-
-function microscopeWarn(stage, details = {}) {
-  const payload = {
-    stage,
-    at: microscopeNow(),
-    ...details
-  };
-
-  console.warn(`[KGW][microscope][explorer] ${stage} :: ${microscopeSafeJson(payload)}`);
-}
-
-function microscopeError(stage, error, details = {}) {
-  const payload = {
-    stage,
-    at: microscopeNow(),
-    error: error?.message || String(error),
-    stack: error?.stack || "",
-    ...details
-  };
-
-  console.error(`[KGW][microscope][explorer] ${stage} :: ${microscopeSafeJson(payload)}`);
-}
-
-function microscopeElementReport(section) {
-  const ids = [
-    "explorer",
-    "explorerAddress",
-    "explorerAddressOptions",
-    "explorerBalanceValue",
-    "explorerAddressNameValue",
-    "explorerBalanceUsdValue",
-    "explorerFromDate",
-    "explorerToDate",
-    "explorerDirectionFilter",
-    "explorerTypeFilter",
-    "explorerSearch",
-    "explorerFetch",
-    "explorerForceFetch",
-    "explorerOpenExplorer",
-    "explorerCancel",
-    "explorerTransactionsTable",
-    "explorerTransactionsBody",
-    "explorerExportControls",
-    "explorerExportCsv",
-    "explorerExportHtml",
-    "explorerExportPdf",
-    "explorerTableFontSize",
-    "explorerStatus"
-  ];
-
-  const report = {};
-
-  for (const id of ids) {
-    const node = section?.querySelector?.(`#${id}`) || document.getElementById(id);
-    const rect = node?.getBoundingClientRect?.();
-
-    report[id] = {
-      exists: Boolean(node),
-      tag: node?.tagName || null,
-      hidden: Boolean(node?.hidden),
-      disabled: Boolean(node?.disabled),
-      display: node ? getComputedStyle(node).display : null,
-      visibility: node ? getComputedStyle(node).visibility : null,
-      width: rect ? Math.round(rect.width) : null,
-      height: rect ? Math.round(rect.height) : null,
-      textLength: node?.textContent?.length || 0,
-      value: "value" in (node || {}) ? node.value : undefined
-    };
-  }
-
-  microscopeLog("DOM REPORT", report);
-  return report;
-}
-
-function microscopeLayoutReport(section) {
-  const tableZone = section?.querySelector?.(".explorer-table-zone");
-  const footer = section?.querySelector?.("#explorerExportControls");
-  const load = section?.querySelector?.(".explorer-load-card");
-  const filter = section?.querySelector?.(".explorer-filter-card");
-  const shell = section?.querySelector?.(".explorer-clean-shell");
-
-  function box(node) {
-    const rect = node?.getBoundingClientRect?.();
-    if (!rect) return null;
-    const style = getComputedStyle(node);
-    return {
-      x: Math.round(rect.x),
-      y: Math.round(rect.y),
-      width: Math.round(rect.width),
-      height: Math.round(rect.height),
-      display: style.display,
-      overflow: style.overflow,
-      gridTemplateRows: style.gridTemplateRows || ""
-    };
-  }
-
-  microscopeLog("LAYOUT REPORT", {
-    shell: box(shell),
-    load: box(load),
-    filter: box(filter),
-    tableZone: box(tableZone),
-    footer: box(footer),
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight
-    }
-  });
-}
-
+/* Explorer microscope serialization/logging/DOM/layout/API diagnostics are Rust-owned
+   by explorer_microscope.rs and exposed through generated explorer.utils.js. */
 function microscopeStateReport(label = "STATE REPORT") {
   const address = normalizeAddress(qs("#explorerAddress", root())?.value);
   const addressState = explorerAddressDiagnosticsSnapshot(address);
-  microscopeLog(label, {
+  microscopeStateLog(label, {
     rows: explorerState?.rows?.length ?? null,
     filteredRows: explorerState?.filteredRows?.length ?? null,
     selectedAddress: explorerState?.selectedAddress ?? "",
@@ -1141,39 +1001,6 @@ function microscopeStateReport(label = "STATE REPORT") {
     addressState
   });
 }
-
-function microscopeApiShape(label, value) {
-  if (Array.isArray(value)) {
-    microscopeLog(label, {
-      kind: "array",
-      length: value.length,
-      first: value[0] || null
-    });
-    return;
-  }
-
-  if (value && typeof value === "object") {
-    const keys = Object.keys(value);
-    microscopeLog(label, {
-      kind: "object",
-      keys,
-      groupsLength: Array.isArray(value.groups) ? value.groups.length : null,
-      rowsLength: Array.isArray(value.rows) ? value.rows.length : null,
-      transactionsLength: Array.isArray(value.transactions) ? value.transactions.length : null,
-      firstGroupKeys: Array.isArray(value.groups) && value.groups[0] ? Object.keys(value.groups[0]) : null,
-      firstGroup: Array.isArray(value.groups) && value.groups[0] ? value.groups[0] : null
-    });
-    return;
-  }
-
-  microscopeLog(label, {
-    kind: typeof value,
-    value
-  });
-}
-
-
-
 
 export async function initExplorerTab() {
   const section = root();

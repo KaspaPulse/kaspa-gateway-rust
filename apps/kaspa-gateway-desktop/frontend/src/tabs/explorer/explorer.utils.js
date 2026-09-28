@@ -37,6 +37,13 @@ import init, {
   explorerLiveCoreRows as wasmExplorerLiveCoreRows,
   explorerLiveCoreSeedRows as wasmExplorerLiveCoreSeedRows,
   explorerLiveCoreShouldRender as wasmExplorerLiveCoreShouldRender,
+  explorerMicroscopeApiShape as wasmExplorerMicroscopeApiShape,
+  explorerMicroscopeElementReport as wasmExplorerMicroscopeElementReport,
+  explorerMicroscopeError as wasmExplorerMicroscopeError,
+  explorerMicroscopeLayoutReport as wasmExplorerMicroscopeLayoutReport,
+  explorerMicroscopeLog as wasmExplorerMicroscopeLog,
+  explorerMicroscopeStateReport as wasmExplorerMicroscopeStateReport,
+  explorerMicroscopeWarn as wasmExplorerMicroscopeWarn,
   explorerNormalizeUnifiedResult as wasmExplorerNormalizeUnifiedResult,
   explorerDaySummaryRowsFromResult as wasmExplorerDaySummaryRowsFromResult,
   explorerNormalizeDaySummaries as wasmExplorerNormalizeDaySummaries,
@@ -130,6 +137,34 @@ export function kgwNormalizeUnifiedResult(result) {
 
 export function kgwDaySummaryRowsFromResult(result) {
   return wasmExplorerDaySummaryRowsFromResult(result);
+}
+
+export function microscopeLog(stage, details = {}) {
+  wasmExplorerMicroscopeLog(String(stage ?? ""), details ?? {});
+}
+
+export function microscopeWarn(stage, details = {}) {
+  wasmExplorerMicroscopeWarn(String(stage ?? ""), details ?? {});
+}
+
+export function microscopeError(stage, error, details = {}) {
+  wasmExplorerMicroscopeError(String(stage ?? ""), error, details ?? {});
+}
+
+export function microscopeElementReport(section) {
+  return wasmExplorerMicroscopeElementReport(section);
+}
+
+export function microscopeLayoutReport(section) {
+  wasmExplorerMicroscopeLayoutReport(section);
+}
+
+export function microscopeStateLog(label, snapshot) {
+  wasmExplorerMicroscopeStateReport(String(label ?? "STATE REPORT"), snapshot ?? {});
+}
+
+export function microscopeApiShape(label, value) {
+  wasmExplorerMicroscopeApiShape(String(label ?? ""), value);
 }
 
 export function setTableFontSize(section) {
