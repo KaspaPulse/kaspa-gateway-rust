@@ -31,9 +31,9 @@
  * - Transaction fetch/sync orchestration belongs to Rust runtime transaction_sync.rs.
  */
 
-import { openBlockExplorer, exportCsv, exportHtml, exportPdf, kgwExplorerExportNumberV2, kgwExplorerExportNormalizeRawTxV2 } from "./explorer.export.js";
+import { openBlockExplorer, exportCsv, exportHtml, exportPdf } from "./explorer.export.js";
 import { parseDateSeconds } from "./explorer.date.js";
-import { kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateReport, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, kgwInvokeExplorerUnifiedFetch, kgwInvokeExplorerCancelTransactionsR57D4, setStatus, syncActionState, kgwInstallExplorerPriceRerenderV1, kgwExplorerUiTraceR53B3, kgwClean2Log, kgwClean2Section, kgwClean2LoadSummaries, kgwClean2LoadDayTransactions, kgwEnsureExplorerState, kgwLoadAndRenderDaySummaries, kgwClean2RenderSummaries, renderTable, clearExplorerTransactionTable, resetFilters } from "./explorer.utils.js";
+import { kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateReport, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, kgwInvokeExplorerUnifiedFetch, kgwInvokeExplorerCancelTransactionsR57D4, setStatus, syncActionState, kgwInstallExplorerPriceRerenderV1, kgwExplorerUiTraceR53B3, kgwClean2Log, kgwClean2Section, kgwClean2LoadSummaries, kgwEnsureExplorerState, kgwLoadAndRenderDaySummaries, kgwClean2RenderSummaries, renderTable, clearExplorerTransactionTable, resetFilters } from "./explorer.utils.js";
 
 const explorerState = kgwEnsureExplorerState();
 
@@ -459,108 +459,8 @@ renderTable(section);
 
 /* Clean2 day loader is Rust/WASM-owned in explorer_runtime.rs. */
 
-/* KGW_EXPORT_RAW_PAYLOAD_PARITY_EXPLORER_V2
-   Export must use raw transaction rows, not the visible day-summary table.
-   Pure raw-transaction normalization/number formatting is Rust-owned in explorer_export.rs
-   and reached through deterministic explorer.export.js ABI glue.
-   Async day loading/table assembly remains here until its own migration boundary.
-*/
-async function kgwExplorerBuildRawExportTableV2(section) {
-  const root = kgwClean2Section(section);
-  const address = explorerState.selectedAddress || normalizeAddress(qs("#explorerAddress", root)?.value);
-  const visibleRows = Array.isArray(explorerState?.filteredRows) ? explorerState.filteredRows : [];
-
-  if (!isKaspaAddress(address)) {
-    throw new Error("Enter a valid Kaspa address before exporting raw transactions.");
-  }
-
-  if (!visibleRows.length) {
-    throw new Error("No explorer rows are available for export. Fetch transactions first, then export.");
-  }
-
-  const rawRows = [];
-  const seenTxids = new Set();
-  const summaryDays = visibleRows
-    .filter((row) => row?.__kgwDaySummary && row.day)
-    .map((row) => String(row.day).slice(0, 10))
-    .filter(Boolean);
-
-  if (summaryDays.length) {
-    for (const day of summaryDays) {
-      const dayRows = await kgwClean2LoadDayTransactions(root, address, day);
-
-      for (const row of Array.isArray(dayRows) ? dayRows : []) {
-        const normalized = kgwExplorerExportNormalizeRawTxV2(row);
-        if (!normalized.txid || seenTxids.has(normalized.txid)) continue;
-        seenTxids.add(normalized.txid);
-        rawRows.push(normalized);
-      }
-    }
-  } else {
-    for (const row of visibleRows) {
-      const normalized = kgwExplorerExportNormalizeRawTxV2(row);
-      if (!normalized.txid || seenTxids.has(normalized.txid)) continue;
-      seenTxids.add(normalized.txid);
-      rawRows.push(normalized);
-    }
-  }
-
-  rawRows.sort((a, b) => {
-    if (b.timestampMs !== a.timestampMs) return b.timestampMs - a.timestampMs;
-    return String(b.datetime || "").localeCompare(String(a.datetime || ""));
-  });
-
-  if (!rawRows.length) {
-    throw new Error("Explorer raw transaction export found no transaction rows. Expand/fetch data first, then export.");
-  }
-
-  const rows = rawRows.map((row) => [
-    row.datetime,
-    row.txid,
-    row.direction,
-    row.fromAddress,
-    row.toAddress,
-    kgwExplorerExportNumberV2(row.amount, 8),
-    row.blockScore,
-    String(row.timestampMs || ""),
-    row.type,
-    kgwExplorerExportNumberV2(row.value, 2),
-    row.date,
-    row.transactionUrl,
-    row.addressUrl
-  ]);
-
-  window.__KGW_EXPLORER_RAW_EXPORT_LAST_V2 = {
-    at: new Date().toISOString(),
-    days: summaryDays.length,
-    rows: rows.length,
-    address
-  };
-
-  return {
-    title: "Kaspa Gateway Explorer Transactions",
-    subtitle: `Address: ${address} | Raw transactions: ${rows.length}`,
-    headers: [
-      "Date/Time",
-      "Transaction ID",
-      "Direction",
-      "From Address(es)",
-      "To Address(es)",
-      "Amount (KAS)",
-      "Block Score",
-      "timestamp",
-      "Type:",
-      "Value (USD)",
-      "date",
-      "Transaction URL",
-      "Address URL"
-    ],
-    rows
-  };
-}
-
-window.__kgwExplorerBuildRawExportTableV2 = kgwExplorerBuildRawExportTableV2;
-
+/* KGW_EXPORT_RAW_PAYLOAD_PARITY_EXPLORER_V2 is Rust/WASM-owned in explorer_export.rs.
+   Async day loading, dedup/sort/table assembly, and export client-table routing no longer live in JavaScript. */
 
 /* KGW_TX_FORCE_UI_LOCK_1
    Explorer force-fetch table messaging, filter reset, busy controls, and capture blocking

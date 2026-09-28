@@ -1,4 +1,6 @@
 use js_sys::{Array, Date, Function, Intl::NumberFormat, JSON, Object, Promise, Reflect};
+use std::cmp::Ordering;
+use std::collections::HashSet;
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 use wasm_bindgen_futures::{JsFuture, spawn_local};
 
@@ -666,6 +668,196 @@ pub fn explorer_raw_export_normalize_raw_tx_v2(row: JsValue) -> JsValue {
     raw_export_normalize_tx(&row)
 }
 
+fn raw_export_day_text(row: &JsValue) -> Option<String> {
+    if !truthy(&property(row, "__kgwDaySummary")) {
+        return None;
+    }
+    let day = raw_export_string(&property(row, "day"));
+    if day.is_empty() {
+        return None;
+    }
+    Some(day.chars().take(10).collect())
+}
+
+fn raw_export_datetime_desc(a: &JsValue, b: &JsValue) -> Ordering {
+    let a_time = number(&property(a, "timestampMs"));
+    let b_time = number(&property(b, "timestampMs"));
+    if a_time != b_time {
+        return b_time.partial_cmp(&a_time).unwrap_or(Ordering::Equal);
+    }
+    let a_text = js_string(&property(a, "datetime"));
+    let b_text = js_string(&property(b, "datetime"));
+    let left = JsValue::from_str(&b_text);
+    let right = JsValue::from_str(&a_text);
+    let value = call1(&left, "localeCompare", &right)
+        .ok()
+        .map(|value| number(&value))
+        .unwrap_or(0.0);
+    if value < 0.0 {
+        Ordering::Less
+    } else if value > 0.0 {
+        Ordering::Greater
+    } else {
+        Ordering::Equal
+    }
+}
+
+async fn build_raw_export_table(section: &JsValue) -> Result<JsValue, JsValue> {
+    let root = crate::explorer_runtime::explorer_clean2_section(section.clone());
+    let state = crate::explorer_state::explorer_state();
+    let selected = raw_export_string(&property(&state, "selectedAddress"));
+    let raw_address = if selected.is_empty() {
+        raw_export_string(&property(&query(&root, "#explorerAddress"), "value"))
+    } else {
+        selected
+    };
+    let address =
+        crate::explorer_addresses::explorer_normalize_address(JsValue::from_str(&raw_address));
+    if !crate::explorer_controls::explorer_is_kaspa_address(JsValue::from_str(&address)) {
+        return Err(js_error(
+            "Enter a valid Kaspa address before exporting raw transactions.",
+        ));
+    }
+
+    let filtered = property(&state, "filteredRows");
+    let visible_rows = if Array::is_array(&filtered) {
+        Array::from(&filtered)
+    } else {
+        Array::new()
+    };
+    if visible_rows.length() == 0 {
+        return Err(js_error(
+            "No explorer rows are available for export. Fetch transactions first, then export.",
+        ));
+    }
+
+    let summary_days = visible_rows
+        .iter()
+        .filter_map(|row| raw_export_day_text(&row))
+        .collect::<Vec<_>>();
+
+    let mut raw_rows = Vec::<JsValue>::new();
+    let mut seen_txids = HashSet::<String>::new();
+    if summary_days.is_empty() {
+        for row in visible_rows.iter() {
+            let normalized = raw_export_normalize_tx(&row);
+            let txid = js_string(&property(&normalized, "txid"));
+            if txid.is_empty() || !seen_txids.insert(txid) {
+                continue;
+            }
+            raw_rows.push(normalized);
+        }
+    } else {
+        for day in &summary_days {
+            let day_rows = crate::explorer_runtime::explorer_clean2_load_day_transactions(
+                root.clone(),
+                JsValue::from_str(&address),
+                day.clone(),
+            )
+            .await?;
+            if !Array::is_array(&day_rows) {
+                continue;
+            }
+            for row in Array::from(&day_rows).iter() {
+                let normalized = raw_export_normalize_tx(&row);
+                let txid = js_string(&property(&normalized, "txid"));
+                if txid.is_empty() || !seen_txids.insert(txid) {
+                    continue;
+                }
+                raw_rows.push(normalized);
+            }
+        }
+    }
+
+    raw_rows.sort_by(raw_export_datetime_desc);
+    if raw_rows.is_empty() {
+        return Err(js_error(
+            "Explorer raw transaction export found no transaction rows. Expand/fetch data first, then export.",
+        ));
+    }
+
+    let output_rows = Array::new();
+    for row in &raw_rows {
+        let values = Array::new();
+        for value in [
+            js_string(&property(row, "datetime")),
+            js_string(&property(row, "txid")),
+            js_string(&property(row, "direction")),
+            js_string(&property(row, "fromAddress")),
+            js_string(&property(row, "toAddress")),
+            raw_export_number_string(&property(row, "amount"), 8),
+            js_string(&property(row, "blockScore")),
+            {
+                let timestamp = property(row, "timestampMs");
+                if truthy(&timestamp) {
+                    js_string(&timestamp)
+                } else {
+                    String::new()
+                }
+            },
+            js_string(&property(row, "type")),
+            raw_export_number_string(&property(row, "value"), 2),
+            js_string(&property(row, "date")),
+            js_string(&property(row, "transactionUrl")),
+            js_string(&property(row, "addressUrl")),
+        ] {
+            values.push(&JsValue::from_str(&value));
+        }
+        output_rows.push(values.as_ref());
+    }
+
+    let headers = Array::new();
+    for header in [
+        "Date/Time",
+        "Transaction ID",
+        "Direction",
+        "From Address(es)",
+        "To Address(es)",
+        "Amount (KAS)",
+        "Block Score",
+        "timestamp",
+        "Type:",
+        "Value (USD)",
+        "date",
+        "Transaction URL",
+        "Address URL",
+    ] {
+        headers.push(&JsValue::from_str(header));
+    }
+
+    let report = object(&[
+        (
+            "at",
+            JsValue::from_str(&String::from(Date::new_0().to_iso_string())),
+        ),
+        ("days", JsValue::from_f64(summary_days.len() as f64)),
+        ("rows", JsValue::from_f64(output_rows.length() as f64)),
+        ("address", JsValue::from_str(&address)),
+    ]);
+    set_property(&window(), "__KGW_EXPLORER_RAW_EXPORT_LAST_V2", &report)?;
+
+    Ok(object(&[
+        (
+            "title",
+            JsValue::from_str("Kaspa Gateway Explorer Transactions"),
+        ),
+        (
+            "subtitle",
+            JsValue::from_str(&format!(
+                "Address: {address} | Raw transactions: {}",
+                output_rows.length()
+            )),
+        ),
+        ("headers", headers.into()),
+        ("rows", output_rows.into()),
+    ]))
+}
+
+#[wasm_bindgen(js_name = explorerBuildRawExportTableV2)]
+pub async fn explorer_build_raw_export_table_v2(section: JsValue) -> Result<JsValue, JsValue> {
+    build_raw_export_table(&section).await
+}
+
 fn build_client_table(section: &JsValue) -> Result<JsValue, JsValue> {
     let table = explorer_table(section);
     if !is_present(&table) {
@@ -802,12 +994,12 @@ fn build_client_table(section: &JsValue) -> Result<JsValue, JsValue> {
 }
 
 async fn client_table(section: &JsValue) -> Result<JsValue, JsValue> {
-    let builder = property(&window(), "__kgwExplorerBuildRawExportTableV2");
-    if let Ok(builder) = builder.dyn_into::<Function>() {
-        let result = builder.call1(&window(), section)?;
-        return JsFuture::from(Promise::resolve(&result)).await;
+    let state = crate::explorer_state::explorer_state();
+    if Array::is_array(&property(&state, "filteredRows")) {
+        build_raw_export_table(section).await
+    } else {
+        build_client_table(section)
     }
-    build_client_table(section)
 }
 
 fn kgw_export_t(key: &str) -> String {

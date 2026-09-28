@@ -122,6 +122,25 @@ fn explorer_lint_contract(root: &Path) -> Result<(), String> {
         root,
         "crates/kaspa-gateway-frontend-wasm/src/explorer_controls.rs",
     )?;
+    let export_owner = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/explorer_export.rs",
+    )?;
+    require_contains(
+        &export_owner,
+        "#[wasm_bindgen(js_name = explorerBuildRawExportTableV2)]",
+        "Explorer raw-export table Rust-owner export missing",
+    )?;
+    forbid_contains(
+        &source,
+        "async function kgwExplorerBuildRawExportTableV2(",
+        "Explorer raw-export table assembly must not return to JavaScript",
+    )?;
+    forbid_contains(
+        &source,
+        "__kgwExplorerBuildRawExportTableV2",
+        "Explorer raw-export client-table routing must not return to a JavaScript global",
+    )?;
     for export in [
         "#[wasm_bindgen(js_name = explorerInstallFilterBusyLock)]",
         "#[wasm_bindgen(js_name = explorerRefreshFilterAvailability)]",
