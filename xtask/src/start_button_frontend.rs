@@ -523,6 +523,18 @@ function staticPlacementTests() {
     "Node runtime args must delegate to the Rust/WASM owner",
   );
   assert.ok(
+    source.includes("nodeSyncDependencies as wasmNodeSyncDependencies")
+      && source.includes("nodePreviewMessage as kgwNodePreviewMessage")
+      && source.includes("nodePanelStartFromMonitor as panelStartFromMonitor")
+      && !source.includes("function kgwNodeForm(")
+      && !source.includes("function kgwNodeSyncDependencies(")
+      && !source.includes("function kgwNodePreviewMessage(")
+      && !source.includes("function panelStartFromMonitor(")
+      && rustNodeHelpersSource.includes("fn node_sync_dependencies_inner(")
+      && rustNodeHelpersSource.includes("fn panel_start_from_monitor_inner("),
+    "Node form/dependency/preview/monitor-start ownership must remain in Rust/WASM",
+  );
+  assert.ok(
     source.includes("nodeExplicitTrace as kgwNodeExplicitTraceR27D")
       && source.includes("nodeExplicitOwnerTrace as kgwNodeExplicitOwnerTraceR27D")
       && !source.includes("function kgwNodeExplicitTraceR27D(")
@@ -1193,6 +1205,62 @@ const wasmNodeEffectiveNodeSettings = (net) => {
 const kgwNodeEffectiveNodeSettings = wasmNodeEffectiveNodeSettings;
 const kgwNodeValidateForm = (net, _focus = false) =>
   validateNodeForm(wasmNodeEffectiveForm(net), wasmNodeCommandInlineState(net), net);
+const wasmNodePreviewMessage = (net, message, error = false) => {
+  const el = document.getElementById("node-" + String(net || "") + "-previewMessage");
+  if (!el) return false;
+  el.textContent = String(message || "");
+  el.classList.toggle("kgw-field-error", Boolean(error));
+  applyStatusTone(el, error ? "error" : String(message || "").startsWith("Validating") ? "validating" : "verified");
+  return true;
+};
+const wasmNodeSyncDependencies = (net, locked = false) => {
+  const values = wasmNodeEffectiveForm(net);
+  const options = wasmNodeCommandInlineState(net);
+  const panel = wasmNodeR51Panel(net);
+  if (!panel) return false;
+  for (const [name] of Object.entries(values)) {
+    const field = document.getElementById("node-" + String(net || "") + "-" + name);
+    if (!field) continue;
+    const managed = NODE_MANAGED[name];
+    const experimentalOnly = name === "enableUnsyncedMining" && net === "mainnet";
+    const active = nodeFieldEnabled(name, values, options) && !experimentalOnly;
+    field.disabled = Boolean(locked || (!active && name !== "appDir"));
+    field.readOnly = Boolean(locked || managed);
+    field.title = locked ? "Stop the bridge that owns this node to edit settings."
+      : managed || (experimentalOnly ? "Available only on test networks." : !active ? "Enable the parent option to use this value." : field.value || "");
+    const card = field.closest(".node-v6-card");
+    if (card) card.classList.toggle("kgw-field-inactive", !active);
+    const state = managed ? (/unsupported/i.test(managed) ? "Unsupported" : "Managed")
+      : NODE_DANGEROUS[name] ? "Dangerous"
+      : Object.hasOwn(NODE_REQUIRED, name) ? (String(values[name]) === NODE_REQUIRED[name] ? "KGW default" : "Custom value")
+      : experimentalOnly ? "Test networks only"
+      : !active ? "Not active" : "";
+    setSettingFieldState(field, state);
+  }
+  for (const toggle of panel.querySelectorAll("[data-node-command-option-toggle-r7]")) {
+    const name = toggle.dataset.nodeCommandOptionToggleR7;
+    toggle.disabled = Boolean(locked || (name === "logDir" && values.noLogFiles)
+      || (name === "perfMetricsInterval" && !values.perfMetrics)
+      || (name === "rocksDbCacheSize" && (!options.rocksDbPreset || values.rocksDbPreset !== "hdd")));
+  }
+  decorateSettingsFields(panel);
+  return true;
+};
+const wasmNodePanelStartFromMonitor = (net) => {
+  const panel = wasmNodeR51Panel(net);
+  const start = panel && panel.querySelector('[data-node-action="start"]');
+  if (!start) return false;
+  if (start.disabled) {
+    const settings = panel.querySelector('[data-node-inner-tab="settings"]');
+    if (settings) settings.click();
+    wasmNodePreviewMessage(net, start.title || "Check the profile and settings before starting.", true);
+  } else {
+    start.click();
+  }
+  return true;
+};
+const kgwNodePreviewMessage = wasmNodePreviewMessage;
+const panelStartFromMonitor = wasmNodePanelStartFromMonitor;
 const kgwNodeRequireValidSettings = (net) => {
   const errors = kgwNodeValidateForm(net, true);
   if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);

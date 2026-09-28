@@ -1,6 +1,6 @@
 import { applyStatusTone, renderStatusSummary } from "../../status.js";
-import { NODE_MANAGED, NODE_REQUIRED, NODE_DANGEROUS, nodeFieldEnabled, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
-import { installSettingsLayout, decorateSettingsFields, setSettingFieldState } from "../../settings-layout.js";
+import { NODE_DANGEROUS, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
+import { installSettingsLayout } from "../../settings-layout.js";
 import initNodeRust, {
   nodeBackendInvoke as kgwNodeBackendInvokeR5,
   nodeById as byId,
@@ -38,6 +38,8 @@ import initNodeRust, {
   nodeNetworkProfile as kgwNodeNetworkProfile,
   nodeNetworkProfiles as wasmNodeNetworkProfiles,
   nodeNormalizeNetwork as kgwNodeNormalizeNetworkR101W2,
+  nodePanelStartFromMonitor as panelStartFromMonitor,
+  nodePreviewMessage as kgwNodePreviewMessage,
   nodeAssertStartEvidence as kgwNodeAssertStartEvidence,
   nodeNormalizeRuntimeError as normalizeRuntimeError,
   nodeParseRuntimeFields as parseRuntimeFields,
@@ -63,6 +65,7 @@ import initNodeRust, {
   nodeSaveLastNetwork as kgwNodeSaveLastNetworkR101W2,
   nodeSetNetworkEnabled as kgwNodeSetNetworkEnabled,
   nodeStringifyRuntimeResult as stringifyRuntimeResult,
+  nodeSyncDependencies as wasmNodeSyncDependencies,
   nodeSmallOwnerTrace as kgwNodeSmallOwnerTraceR44D,
   nodeStartTraceFrontend as kgwStartTraceFrontendR1,
   nodeTraceActiveNetwork as kgwNodeTraceActiveNetworkR1,
@@ -774,7 +777,7 @@ const KGW_NODE_PREVIEWS = new Map();
 function updateCommand(net) {
   const preview = byId(id(net, "commandPreview"));
   if (!preview) return;
-  kgwNodeSyncDependencies(net);
+  wasmNodeSyncDependencies(net, kgwIsBridgeOwnedNodeLockedR65E(net));
   const errors = kgwNodeValidateForm(net);
   const state = KGW_NODE_PREVIEWS.get(net) || {sequence:0};
   clearTimeout(state.timer); state.sequence++;
@@ -803,14 +806,6 @@ function updateCommand(net) {
       if (state.sequence === sequence) kgwNodePreviewMessage(net, normalizeRuntimeError(error), true);
     }
   }, 160);
-}
-function kgwNodePreviewMessage(net, message, error = false) {
-  const el = byId(id(net, "previewMessage"));
-  if (el) {
-    el.textContent = message;
-    el.classList.toggle("kgw-field-error", error);
-    applyStatusTone(el, error ? "error" : message.startsWith("Validating") ? "validating" : "verified");
-  }
 }
 async function kgwNodePreparePreview(net, effective) {
   const invoke = kgwResolvePublicTauriInvokeR1().invoke;
@@ -1354,7 +1349,7 @@ function kgwNodeR51SetRuntimeButtons(net, running, bridgeInprocessLocked = false
     field.dataset.kgwBridgeInprocessLockedV7 = displayOnlyLocked ? "true" : "false";
     field.title = displayOnlyLocked ? lockMessage : "";
   }
-  kgwNodeSyncDependencies(net, displayOnlyLocked);
+  wasmNodeSyncDependencies(net, displayOnlyLocked);
 
   const preview = byId(id(net, "commandPreview"));
   if (preview) {
@@ -1510,7 +1505,7 @@ function kgwNodeApplyBridgeOwnedDisplayOnlyR65E(net, locked, reason) {
     field.title = locked ? message : "";
   }
 
-  kgwNodeSyncDependencies(net, locked);
+  wasmNodeSyncDependencies(net, locked);
   const preview = byId(id(net, "commandPreview"));
   if (preview) {
     preview.readOnly = true;
@@ -2375,51 +2370,6 @@ window.kgwV67RuntimeFeaturePolicy = wasmNodeV67RuntimeFeaturePolicy;
 /* R38 UI freeze protection for Node Start/Stop. */
 
 
-function kgwNodeForm(net) {
-  const values = {};
-  const panel = kgwNodeR51Panel(net);
-  panel?.querySelectorAll(".node-v6-card input[id], .node-v6-card select[id]").forEach(field => {
-    const name = field.id.slice(("node-" + net + "-").length);
-    values[name] = field.type === "checkbox" ? field.checked : field.value;
-  });
-  return values;
-}
-function kgwNodeSyncDependencies(net, locked = kgwIsBridgeOwnedNodeLockedR65E(net)) {
-  const values = kgwNodeForm(net), options = kgwNodeCommandInlineStateR7(net);
-  const panel = kgwNodeR51Panel(net);
-  for (const [name] of Object.entries(values)) {
-    const field = byId(id(net, name));
-    const managed = NODE_MANAGED[name];
-    const experimentalOnly = name === "enableUnsyncedMining" && net === "mainnet";
-    const active = nodeFieldEnabled(name, values, options) && !experimentalOnly;
-    field.disabled = Boolean(locked || (!active && name !== "appDir"));
-    field.readOnly = Boolean(locked || managed);
-    field.title = locked ? "Stop the bridge that owns this node to edit settings."
-      : managed || (experimentalOnly ? "Available only on test networks." : !active ? "Enable the parent option to use this value." : field.value || "");
-    field.closest(".node-v6-card")?.classList.toggle("kgw-field-inactive", !active);
-    const state = managed ? (/unsupported/i.test(managed) ? "Unsupported" : "Managed")
-      : NODE_DANGEROUS[name] ? "Dangerous"
-      : Object.hasOwn(NODE_REQUIRED, name) ? (String(values[name]) === NODE_REQUIRED[name] ? "KGW default" : "Custom value")
-      : experimentalOnly ? "Test networks only"
-      : !active ? "Not active" : "";
-    setSettingFieldState(field, state);
-  }
-  panel?.querySelectorAll("[data-node-command-option-toggle-r7]").forEach(toggle => {
-    const name = toggle.dataset.nodeCommandOptionToggleR7;
-    toggle.disabled = Boolean(locked || (name === "logDir" && values.noLogFiles) ||
-      (name === "perfMetricsInterval" && !values.perfMetrics) ||
-      (name === "rocksDbCacheSize" && (!options.rocksDbPreset || values.rocksDbPreset !== "hdd")));
-  });
-  decorateSettingsFields(panel);
-}
+/* Node form collection, dependency synchronization, and monitor Start routing are Rust/WASM-owned. */
 
 export { kgwNodeEffectiveNodeSettings, kgwNodeValidateForm };
-
-function panelStartFromMonitor(net) {
-  const panel = kgwNodeR51Panel(net);
-  const start = panel?.querySelector('[data-node-action="start"]');
-  if (start?.disabled) {
-    panel.querySelector('[data-node-inner-tab="settings"]')?.click();
-    kgwNodePreviewMessage(net, start.title || "Check the profile and settings before starting.", true);
-  } else start?.click();
-}

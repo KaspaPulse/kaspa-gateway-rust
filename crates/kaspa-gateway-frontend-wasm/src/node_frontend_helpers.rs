@@ -3,8 +3,13 @@ use super::settings_contract::{
     render_field_errors as settings_render_field_errors,
     validate_node_form as settings_validate_node_form,
 };
-use super::settings_layout::reveal_field as settings_reveal_field;
-use super::settings_schema::{NODE_ENDPOINTS, NODE_MANAGED, NODE_OPTIONAL, NODE_REQUIRED};
+use super::settings_layout::{
+    decorate_fields as settings_decorate_fields, reveal_field as settings_reveal_field,
+    set_field_state as settings_set_field_state,
+};
+use super::settings_schema::{
+    NODE_DANGEROUS, NODE_ENDPOINTS, NODE_MANAGED, NODE_OPTIONAL, NODE_REQUIRED,
+};
 use js_sys::{Array, Error, Function, JSON, Object, Promise, Reflect};
 use std::collections::BTreeMap;
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
@@ -608,6 +613,12 @@ fn schema_pair_contains(items: &[(&str, &str)], name: &str) -> bool {
     items.iter().any(|(key, _)| *key == name)
 }
 
+fn schema_pair_value<'a>(items: &'a [(&'a str, &'a str)], name: &str) -> Option<&'a str> {
+    items
+        .iter()
+        .find_map(|(key, value)| (*key == name).then_some(*value))
+}
+
 fn schema_endpoint_field(name: &str) -> bool {
     NODE_ENDPOINTS
         .iter()
@@ -1000,6 +1011,160 @@ fn node_form_values(net: &str) -> JsValue {
     values.into()
 }
 
+fn node_preview_message_inner(net: &str, message: &str, error: bool) -> bool {
+    let element = node_by_id(node_element_id(net.to_owned(), "previewMessage".to_owned()));
+    if !present(&element) {
+        return false;
+    }
+    set(&element, "textContent", &JsValue::from_str(message));
+    let class_list = property(&element, "classList");
+    let _ = call2(
+        &class_list,
+        "toggle",
+        &JsValue::from_str("kgw-field-error"),
+        &JsValue::from_bool(error),
+    );
+    let tone = if error {
+        "error"
+    } else if message.starts_with("Validating") {
+        "validating"
+    } else {
+        "verified"
+    };
+    let _ = crate::apply_status_tone_js(element, JsValue::from_str(tone));
+    true
+}
+
+fn node_sync_dependencies_inner(net: &str, locked: bool) -> bool {
+    let values = node_form_values(net);
+    let options = command_state_object(net);
+    let panel = r51_panel(net);
+    if !present(&panel) {
+        return false;
+    }
+
+    let keys = Object::keys(&Object::from(values.clone()));
+    for key in keys.iter() {
+        let name = crate::js_string_owned(&key);
+        let field = node_by_id(node_element_id(net.to_owned(), name.clone()));
+        if !present(&field) {
+            continue;
+        }
+        let managed = schema_pair_value(NODE_MANAGED, &name);
+        let experimental_only = name == "enableUnsyncedMining" && net == "mainnet";
+        let active = settings_node_field_enabled(name.clone(), values.clone(), options.clone())
+            && !experimental_only;
+
+        set(
+            &field,
+            "disabled",
+            &JsValue::from_bool(locked || (!active && name != "appDir")),
+        );
+        set(
+            &field,
+            "readOnly",
+            &JsValue::from_bool(locked || managed.is_some()),
+        );
+
+        let title = if locked {
+            "Stop the bridge that owns this node to edit settings.".to_owned()
+        } else if let Some(message) = managed {
+            message.to_owned()
+        } else if experimental_only {
+            "Available only on test networks.".to_owned()
+        } else if !active {
+            "Enable the parent option to use this value.".to_owned()
+        } else {
+            crate::js_string_owned(&property(&field, "value"))
+        };
+        set(&field, "title", &JsValue::from_str(&title));
+
+        if let Some(card) = call1(&field, "closest", &JsValue::from_str(".node-v6-card")) {
+            let class_list = property(&card, "classList");
+            let _ = call2(
+                &class_list,
+                "toggle",
+                &JsValue::from_str("kgw-field-inactive"),
+                &JsValue::from_bool(!active),
+            );
+        }
+
+        let state = if let Some(message) = managed {
+            if message.to_ascii_lowercase().contains("unsupported") {
+                "Unsupported".to_owned()
+            } else {
+                "Managed".to_owned()
+            }
+        } else if schema_pair_contains(NODE_DANGEROUS, &name) {
+            "Dangerous".to_owned()
+        } else if let Some(required) = schema_pair_value(NODE_REQUIRED, &name) {
+            if form_text(&values, &name) == required {
+                "KGW default".to_owned()
+            } else {
+                "Custom value".to_owned()
+            }
+        } else if experimental_only {
+            "Test networks only".to_owned()
+        } else if !active {
+            "Not active".to_owned()
+        } else {
+            String::new()
+        };
+        let _ = settings_set_field_state(field, state);
+    }
+
+    if let Some(toggles) = call1(
+        &panel,
+        "querySelectorAll",
+        &JsValue::from_str("[data-node-command-option-toggle-r7]"),
+    ) {
+        let length = crate::js_number(&property(&toggles, "length"));
+        for index in 0..length.max(0.0) as u32 {
+            let Ok(toggle) = Reflect::get(&toggles, &JsValue::from_f64(index as f64)) else {
+                continue;
+            };
+            let name = crate::js_string_owned(&property(
+                &property(&toggle, "dataset"),
+                "nodeCommandOptionToggleR7",
+            ));
+            let disabled = locked
+                || (name == "logDir" && form_checked(&values, "noLogFiles"))
+                || (name == "perfMetricsInterval" && !form_checked(&values, "perfMetrics"))
+                || (name == "rocksDbCacheSize"
+                    && (!crate::js_boolean(&property(&options, "rocksDbPreset"))
+                        || form_text(&values, "rocksDbPreset") != "hdd"));
+            set(&toggle, "disabled", &JsValue::from_bool(disabled));
+        }
+    }
+
+    let _ = settings_decorate_fields(panel);
+    true
+}
+
+fn panel_start_from_monitor_inner(net: &str) -> bool {
+    let panel = r51_panel(net);
+    let start = query(&panel, r#"[data-node-action="start"]"#);
+    if !present(&start) {
+        return false;
+    }
+    if crate::js_boolean(&property(&start, "disabled")) {
+        let settings_tab = query(&panel, r#"[data-node-inner-tab="settings"]"#);
+        if let Some(click) = function(&settings_tab, "click") {
+            let _ = click.call0(&settings_tab);
+        }
+        let title = crate::js_string_owned(&property(&start, "title"));
+        let message = if title.is_empty() {
+            "Check the profile and settings before starting."
+        } else {
+            &title
+        };
+        let _ = node_preview_message_inner(net, message, true);
+    } else if let Some(click) = function(&start, "click") {
+        let _ = click.call0(&start);
+    }
+    true
+}
+
 fn form_text(values: &JsValue, name: &str) -> String {
     crate::js_string_owned(&property(values, name))
         .trim()
@@ -1372,6 +1537,21 @@ fn node_validate_form_inner(net: &str, focus: bool) -> JsValue {
         }
     }
     errors
+}
+
+#[wasm_bindgen(js_name = nodePreviewMessage)]
+pub fn node_preview_message(net: String, message: String, error: bool) -> bool {
+    node_preview_message_inner(&net, &message, error)
+}
+
+#[wasm_bindgen(js_name = nodeSyncDependencies)]
+pub fn node_sync_dependencies(net: String, locked: bool) -> bool {
+    node_sync_dependencies_inner(&net, locked)
+}
+
+#[wasm_bindgen(js_name = nodePanelStartFromMonitor)]
+pub fn node_panel_start_from_monitor(net: String) -> bool {
+    panel_start_from_monitor_inner(&net)
 }
 
 #[wasm_bindgen(js_name = nodeValidateForm)]
