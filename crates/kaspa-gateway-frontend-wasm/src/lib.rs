@@ -8,6 +8,7 @@ mod node_frontend_helpers;
 mod node_path_helpers;
 mod node_settings_owner;
 mod node_start_trace;
+mod node_tab;
 mod settings_addresses;
 mod settings_contract;
 mod settings_database;

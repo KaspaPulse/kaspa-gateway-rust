@@ -5,6 +5,7 @@ use std::process::Command;
 
 const NODE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
 const NODE_RENDER_RUST: &str = "crates/kaspa-gateway-frontend-wasm/src/node_frontend_helpers.rs";
+const NODE_TAB_RUST: &str = "crates/kaspa-gateway-frontend-wasm/src/node_tab.rs";
 #[cfg(test)]
 const TEMPLATE_TICK: char = '\u{0060}';
 
@@ -13,7 +14,9 @@ pub fn run(root: &Path) -> Result<String, String> {
         .map_err(|_| format!("Missing required file: {NODE_JS}"))?;
     let node_render_rust = fs::read_to_string(root.join(NODE_RENDER_RUST))
         .map_err(|_| format!("Missing required file: {NODE_RENDER_RUST}"))?;
-    let mut failures = production_static_failures(&node_js, &node_render_rust);
+    let node_tab_rust = fs::read_to_string(root.join(NODE_TAB_RUST))
+        .map_err(|_| format!("Missing required file: {NODE_TAB_RUST}"))?;
+    let mut failures = production_static_failures(&node_js, &node_render_rust, &node_tab_rust);
 
     println!("Running: Rust-owned frontend start button regression bridge");
     match crate::start_button_frontend::run(root) {
@@ -165,12 +168,23 @@ fn static_failures(node_js: &str) -> Vec<String> {
     failures
 }
 
-fn production_static_failures(node_js: &str, node_render_rust: &str) -> Vec<String> {
+fn production_static_failures(
+    node_js: &str,
+    node_render_rust: &str,
+    node_tab_rust: &str,
+) -> Vec<String> {
     let mut failures = Vec::new();
 
-    if !node_js.contains("nodeRenderNetworkPanelsHtml as wasmNodeRenderNetworkPanelsHtml")
-        || !node_js.contains("host.innerHTML = wasmNodeRenderNetworkPanelsHtml();")
-    {
+    let adapter_enters_rust_owner = node_js.contains("nodeInitKaspaNodeTab")
+        && node_js.contains("return nodeInitKaspaNodeTab(root);");
+    let rust_tab_owns_panel_install = node_tab_rust
+        .contains("fn render_all_networks(root: &JsValue) -> bool")
+        && node_tab_rust
+            .contains("crate::node_frontend_helpers::node_render_network_panels_html()")
+        && node_tab_rust.contains(r#"set(&host, "innerHTML", &JsValue::from_str(&html));"#)
+        && node_tab_rust.contains("render_all_networks(&node_root);");
+
+    if !adapter_enters_rust_owner || !rust_tab_owns_panel_install {
         failures.push(
             "Node network panels must be rendered through the Rust/WASM ownership seam.".to_owned(),
         );
@@ -432,7 +446,8 @@ mod tests {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
         let source = fs::read_to_string(root.join(NODE_JS)).unwrap();
         let renderer = fs::read_to_string(root.join(NODE_RENDER_RUST)).unwrap();
-        let failures = production_static_failures(&source, &renderer);
+        let node_tab = fs::read_to_string(root.join(NODE_TAB_RUST)).unwrap();
+        let failures = production_static_failures(&source, &renderer, &node_tab);
         assert!(
             failures.is_empty(),
             "current Node/Rust source: {failures:?}"

@@ -822,7 +822,7 @@ fn resolved_invoke() -> JsValue {
 }
 
 const NODE_RAW_LOG_BUFFER_LIMIT: usize = 4096;
-const NODE_RUNTIME_INVOKE_TIMEOUT_MS: u32 = 110_000;
+pub(crate) const NODE_RUNTIME_INVOKE_TIMEOUT_MS: u32 = 110_000;
 const NODE_STOP_INVOKE_TIMEOUT_MS: u32 = 0;
 
 #[derive(Clone)]
@@ -1430,7 +1430,7 @@ async fn await_with_timeout(value: JsValue, timeout_ms: u32) -> Result<JsValue, 
     JsFuture::from(Promise::race(values.as_ref())).await
 }
 
-async fn await_command_with_timeout(
+pub(crate) async fn await_command_with_timeout(
     value: JsValue,
     command: &str,
     timeout_ms: u32,

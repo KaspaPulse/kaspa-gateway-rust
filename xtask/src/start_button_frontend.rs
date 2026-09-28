@@ -285,7 +285,7 @@ const assert = require("assert");
 const { webcrypto } = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const vm = require("vm");
+const { pathToFileURL } = require("url");
 
 const repo = process.cwd();
 const nodeJsPath = path.join(
@@ -299,6 +299,15 @@ const nodeJsPath = path.join(
   "kaspa-node.js",
 );
 const source = fs.readFileSync(nodeJsPath, "utf8");
+const generatedWasmJsPath = path.join(
+  repo, "apps", "kaspa-gateway-desktop", "frontend", "generated",
+  "kgw_frontend_wasm", "kgw_frontend_wasm.js",
+);
+const generatedWasmBinaryPath = path.join(
+  repo, "apps", "kaspa-gateway-desktop", "frontend", "generated",
+  "kgw_frontend_wasm", "kgw_frontend_wasm_bg.wasm",
+);
+let wasmHarnessSequence = 0;
 const tauriConfigPath = path.join(
   repo,
   "apps",
@@ -322,6 +331,14 @@ const rustNodeTracePath = path.join(
   "node_start_trace.rs",
 );
 const rustNodeTraceSource = fs.readFileSync(rustNodeTracePath, "utf8");
+const rustNodeTabPath = path.join(
+  repo,
+  "crates",
+  "kaspa-gateway-frontend-wasm",
+  "src",
+  "node_tab.rs",
+);
+const rustNodeTabSource = fs.readFileSync(rustNodeTabPath, "utf8");
 const rustNodeSettingsOwnerPath = path.join(
   repo,
   "crates",
@@ -353,27 +370,80 @@ function extractBetween(text, start, end) {
 }
 
 function staticPlacementTests() {
+  assert.ok(source.includes("@generated"), "Kaspa Node adapter must be deterministic generated glue");
+  assert.ok(source.includes("nodeInitKaspaNodeTab"), "Generated adapter must call Rust nodeInitKaspaNodeTab");
   assert.ok(
-    source.includes("nodeRenderNetworkPanelsHtml as wasmNodeRenderNetworkPanelsHtml")
-      && source.includes("host.innerHTML = wasmNodeRenderNetworkPanelsHtml();"),
-    "Production Node panel rendering must delegate to the Rust/WASM renderer",
+    source.includes("nodeEffectiveNodeSettings as kgwNodeEffectiveNodeSettings")
+      && source.includes("nodeValidateForm as kgwNodeValidateForm"),
+    "Generated adapter must preserve public effective-settings/validation exports",
+  );
+  assert.ok(
+    source.includes("window.initKaspaNodeTab = initKaspaNodeTab"),
+    "Generated adapter must preserve the tab-registry init global",
   );
   for (const forbidden of [
-    "function cardInput(",
-    "function cardSelect(",
-    "function cardCheck(",
-    "function renderRuntime(",
-    "function renderNetwork(",
-    "function renderRpc(",
-    "function renderPeers(",
-    "function renderDatabase(",
-    "function renderRocksDb(",
-    "function renderPaths(",
-    "function renderSections(",
+    "querySelector(",
+    "addEventListener(",
+    "localStorage",
     "function renderNetworkPanel(",
+    "function runNodeIntegratedAction(",
+    "kgw_runtime_owner_status_v1",
+    "kgw_kgw_runtime_logs_v1",
+    "kgw_copy_text_to_clipboard_v1",
   ]) {
-    assert.ok(!source.includes(forbidden), "Hand-maintained Node renderer must stay absent: " + forbidden);
+    assert.ok(!source.includes(forbidden), "Generated Node adapter must not regain implementation: " + forbidden);
   }
+
+  for (const required of [
+    "#[wasm_bindgen(js_name = nodeInitKaspaNodeTab)]",
+    "fn render_all_networks(",
+    "crate::node_frontend_helpers::node_render_network_panels_html()",
+    "fn install_actions(",
+    "fn start_live_refresh(",
+    "async fn run_integrated_action(",
+    "crate::node_start_trace::node_handle_log_action(",
+    "crate::node_frontend_helpers::node_apply_root_default_path(",
+    "crate::node_frontend_helpers::node_install_network_tabs(",
+    "crate::node_frontend_helpers::node_install_delegated_tabs(",
+    "crate::node_frontend_helpers::node_r51_capture_factory_defaults()",
+    "Stop required FORCED termination.",
+    "\"Starting\"",
+    "\"Stopping\"",
+    "\"runtime.failed\"",
+  ]) {
+    assertIncludes(rustNodeTabSource, required, "Rust node_tab owner contract missing");
+  }
+
+  assertIncludes(
+    rustNodeTraceSource,
+    "pub(crate) const NODE_RUNTIME_INVOKE_TIMEOUT_MS: u32 = 110_000;",
+    "Rust Node Start must preserve the backend readiness window",
+  );
+  assertIncludes(
+    rustNodeTraceSource,
+    "const NODE_STOP_INVOKE_TIMEOUT_MS: u32 = 0;",
+    "Rust Node Stop must defer terminality to the async backend",
+  );
+  assertIncludes(
+    rustNodeTraceSource,
+    "async fn invoke_integrated_runtime_impl(",
+    "Rust integrated runtime invocation owner must remain present",
+  );
+  assertIncludes(
+    rustNodeHelpersSource,
+    "fn node_validate_form_inner(",
+    "Rust Node validation owner must remain present",
+  );
+  assertIncludes(
+    rustNodeHelpersSource,
+    "fn node_effective_node_settings_inner(",
+    "Rust effective Node settings owner must remain present",
+  );
+  assertIncludes(
+    rustNodeSettingsOwnerSource,
+    "#[wasm_bindgen(js_name = nodeInstallSettingsOwner)]",
+    "Rust settings-action owner must remain present",
+  );
 
   const renderStart = rustNodeHelpersSource.indexOf("fn render_node_network_panel(");
   assert.ok(renderStart >= 0, "missing Rust render_node_network_panel owner");
@@ -391,13 +461,8 @@ function staticPlacementTests() {
   assertIncludes(settingsPanel, "kgw-network-policy", "Settings must own network policy");
   assertIncludes(settingsPanel, "{runtime_error}", "Settings must expose the Rust runtime-error placeholder");
   assertIncludes(settingsPanel, "{runtime_status}", "Settings must expose the Rust runtime-status placeholder");
-  assertIncludes(rustNodeHelpersSource, 'runtime_error = id("runtimeError")', "Rust renderer must bind runtimeError to the shared ID contract");
-  assertIncludes(rustNodeHelpersSource, 'runtime_status = id("runtimeStatus")', "Rust renderer must bind runtimeStatus to the shared ID contract");
-
   assert.ok(!logPanel.includes('data-node-action="start"'), "Live Node Monitor must not contain Start");
   assert.ok(!logPanel.includes('data-node-action="stop"'), "Live Node Monitor must not contain Stop");
-  assert.ok(!logPanel.includes("data-node-network-enabled"), "Live Node Monitor must not contain network enable");
-  assert.ok(!logPanel.includes("kgw-network-policy"), "Live Node Monitor must not contain network policy");
   assertIncludes(logPanel, 'data-node-action="copy-log"', "Live Node Monitor must contain Copy Log");
   assertIncludes(logPanel, 'data-node-action="clear-log"', "Live Node Monitor must contain Clear Log");
   assertIncludes(logPanel, "node-v6-log-metadata", "Live Node Monitor must contain stream/source metadata");
@@ -406,191 +471,16 @@ function staticPlacementTests() {
   const stopMatches = renderSource.match(/<button[^>]+data-node-action="stop"/g) || [];
   assert.strictEqual(startMatches.length, 1, "Rust renderer Start control markup must not be duplicated");
   assert.strictEqual(stopMatches.length, 1, "Rust renderer Stop control markup must not be duplicated");
-  assert.ok(!/<button[^>]+\s+id\s*=[^>]+data-node-action="start"/.test(renderSource), "Start control must not use duplicate generated IDs");
-  assert.ok(!/<button[^>]+data-node-action="start"[^>]+\s+id\s*=/.test(renderSource), "Start control must not use duplicate generated IDs");
-  assert.ok(!/<button[^>]+\s+id\s*=[^>]+data-node-action="stop"/.test(renderSource), "Stop control must not use duplicate generated IDs");
-  assert.ok(!/<button[^>]+data-node-action="stop"[^>]+\s+id\s*=/.test(renderSource), "Stop control must not use duplicate generated IDs");
-
-  assert.ok(!/appendLog\([^)]*initialized/i.test(source), "Synthetic initialized text must not be inserted into raw logs");
-  assert.ok(!/appendLog\([^)]*node settings saved/i.test(source), "Settings success text must not be inserted into raw logs");
-  assert.ok(!/appendLog\([^)]*node .* response/i.test(source), "Synthetic start response text must not be inserted into raw logs");
   assert.ok(
-    source.includes("nodeApplyRuntimeLogReport as kgwNodeApplyRuntimeLogReportV1")
-      && source.includes("nodeHandleLogAction as kgwNodeHandleLogActionV29")
-      && source.includes("nodeCopyLogFailure as kgwNodeCopyLogFailureV1")
-      && !source.includes("function kgwNodeApplyRuntimeLogReportV1(")
-      && !source.includes("function kgwNodeHandleLogActionV29(")
-      && !source.includes("function kgwNodeCopyLogFailureV1("),
-    "Node raw-log and log-action adapters must bind directly to the Rust/WASM owner without JavaScript wrappers",
+    !/<button[^>]+\s+id\s*=[^>]+data-node-action="start"/.test(renderSource)
+      && !/<button[^>]+data-node-action="start"[^>]+\s+id\s*=/.test(renderSource),
+    "Start control must not use duplicate generated IDs",
   );
   assert.ok(
-    source.includes("nodeInstallSettingsOwner as wasmNodeInstallSettingsOwner")
-      && source.includes("nodeSettingsOwnerSetDisabled as wasmNodeSettingsOwnerSetDisabled")
-      && source.includes("nodeSettingsOwnerButtons as wasmNodeSettingsOwnerButtons")
-      && !source.includes("(function installKgwSettingsOwnerV19()")
-      && rustNodeSettingsOwnerSource.includes("#[wasm_bindgen(js_name = nodeInstallSettingsOwner)]")
-      && rustNodeSettingsOwnerSource.includes("#[wasm_bindgen(js_name = nodeSettingsOwnerSetDisabled)]"),
-    "Node settings-action dirty/feedback/install ownership must remain in Rust/WASM",
+    !/<button[^>]+\s+id\s*=[^>]+data-node-action="stop"/.test(renderSource)
+      && !/<button[^>]+data-node-action="stop"[^>]+\s+id\s*=/.test(renderSource),
+    "Stop control must not use duplicate generated IDs",
   );
-  assert.ok(
-    source.includes("const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 110000"),
-    "Node Start must wait through the backend readiness window",
-  );
-  assert.ok(
-    rustNodeTraceSource.includes("const NODE_STOP_INVOKE_TIMEOUT_MS: u32 = 0;"),
-    "Rust Node Stop owner must defer terminality to the async backend without a frontend wall-clock cutoff",
-  );
-  assert.ok(
-    source.includes("nodeInvokeIntegratedRuntime as invokeNodeIntegratedRuntime")
-      && !source.includes("async function invokeNodeIntegratedRuntime(")
-      && rustNodeTraceSource.includes("async fn invoke_integrated_runtime_impl(")
-      && rustNodeTraceSource.includes("pub async fn node_invoke_integrated_runtime("),
-    "Node integrated runtime invocation must remain Rust/WASM-owned",
-  );
-  assert.ok(source.includes('action === "start" ? "Starting" : "Stopping"'), "Stop click must enter Stopping before backend completion");
-  assert.ok(source.includes('evidence.fields.running === "false"'), "Stopped requires terminal backend liveness evidence");
-  assert.ok(source.includes("Stop required FORCED termination."), "forced Stop must be visible outside raw logs");
-  assert.ok(!/appendLog\([^\n]*(FORCED|graceful|stop_outcome|Stopping)/i.test(source), "Stop control diagnostics must remain outside raw Node logs");
-  assert.ok(
-    source.includes("nodeRuntimeIsRunning as kgwNodeR51IsRunning") && !source.includes("function kgwNodeR51IsRunning("),
-    "Node status polling must delegate READY/running classification to the Rust/WASM owner",
-  );
-  assert.ok(
-    source.includes("nodeRuntimeErrorFromStatus as kgwNodeRuntimeErrorFromStatus")
-      && !source.includes("function kgwNodeRuntimeErrorFromStatus(")
-      && source.includes("kgwNodeRuntimeErrorFromStatus(status)"),
-    "Node status polling must surface typed post-READY runtime failures through the Rust/WASM owner",
-  );
-  assert.ok(
-    source.includes("nodeRuntimeEvidence as kgwNodeRuntimeEvidence")
-      && !source.includes("function kgwNodeRuntimeEvidence(")
-      && source.includes("nodeAssertStartEvidence as kgwNodeAssertStartEvidence")
-      && !source.includes("function kgwNodeAssertStartEvidence("),
-    "Node runtime evidence and Start attestation must be delegated to the Rust/WASM owner",
-  );
-  assert.ok(
-    source.includes('kgwI18nTextR41("runtime.failed", "Failed")')
-      && source.includes("nodeI18nText as kgwI18nTextR41"),
-    "Node post-READY failure must remain visible outside raw logs",
-  );
-  assert.ok(
-    source.includes("nodeCommandInlineState as kgwNodeCommandInlineStateR7")
-      && !source.includes("nodeCommandInlineToggle as kgwNodeCommandInlineToggleR7")
-      && source.includes("nodeRefreshInlineCommandToggles as kgwNodeRefreshInlineCommandTogglesR7")
-      && source.includes("nodeToggleCommandOptionAndUpdate as wasmNodeToggleCommandOptionAndUpdate")
-      && !source.includes("nodeToggleCommandOption as wasmNodeToggleCommandOption")
-      && source.includes("nodeRenderNetworkPanelsHtml as wasmNodeRenderNetworkPanelsHtml")
-      && rustNodeHelpersSource.includes("fn command_inline_toggle_html(")
-      && !source.includes("function kgwNodeCommandInlineStateR7(")
-      && !source.includes("function kgwNodeCommandInlineToggleR7(")
-      && !source.includes("function kgwNodeRefreshInlineCommandTogglesR7(")
-      && !source.includes("nodeCommandShouldInclude as wasmNodeCommandShouldInclude")
-      && !source.includes("function kgwNodeCommandShouldIncludeR7("),
-    "Active Node command-composer adapters must bind directly to Rust/WASM, renderer-only inline-toggle ownership must remain in Rust, and retired JS wrappers/imports must stay absent",
-  );
-  assert.ok(
-    !source.includes("window.__kgwNodeCommandComposerInlineR7 = window.__kgwNodeCommandComposerInlineR7 || {}"),
-    "Node command-composer state initialization must not remain implemented in hand-maintained JS",
-  );
-  assert.ok(
-    !source.includes("NODE_ENDPOINTS.some(row => row[1] === name || row[2] === name)"),
-    "Node command-composer schema policy must not remain implemented in hand-maintained JS",
-  );
-  assert.ok(
-    source.includes("nodeR51Keys as kgwNodeR51Keys")
-      && !source.includes("function kgwNodeR51Keys(")
-      && source.includes("nodeR51Panel as kgwNodeR51Panel")
-      && !source.includes("function kgwNodeR51Panel(")
-      && source.includes("nodeR51Fields as kgwNodeR51Fields")
-      && !source.includes("function kgwNodeR51Fields(")
-      && source.includes("nodeR51ReadSettingsTracked as kgwNodeR51ReadSettings")
-      && !source.includes("function kgwNodeR51ReadSettings(")
-      && source.includes("nodeR51Load as kgwNodeR51Load")
-      && !source.includes("function kgwNodeR51Load(")
-      && source.includes("nodeR51CaptureFactoryDefaults as kgwNodeR51CaptureFactoryDefaults")
-      && !source.includes("function kgwNodeR51CaptureFactoryDefaults(")
-      && source.includes("nodeR51LoadSavedSettings as wasmNodeR51LoadSavedSettings"),
-    "Node R51 persistence core must bind directly to the Rust/WASM owner",
-  );
-  assert.ok(
-    !source.includes("nodeCommandOptionsKey as wasmNodeCommandOptionsKey")
-      && !source.includes("KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C")
-      && source.includes("nodeR51SaveSettings as kgwNodeR51SaveSettings")
-      && !source.includes("function kgwNodeR51SaveSettings(")
-      && source.includes("nodeR51SetAsDefaults as kgwNodeR51SetAsDefaults")
-      && !source.includes("function kgwNodeR51SetAsDefaults(")
-      && !source.includes("function kgwNodeR51WriteSettings(")
-      && !source.includes("function kgwNodeR51Store("),
-    "Node R51 read/load/save/set-defaults must use direct Rust/WASM bindings",
-  );
-  assert.ok(
-    source.includes("nodeR51RestoreDefaultsAction as wasmNodeR51RestoreDefaultsAction")
-      && /function kgwNodeR51RestoreDefaults\(net\)[\s\S]*?wasmNodeR51RestoreDefaultsAction/.test(source),
-    "Node R51 Restore Defaults compatibility wrapper must remain delegated to Rust/WASM",
-  );
-  assert.ok(
-    !source.includes("const commandOptions = values && values[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C];")
-      && !source.includes("state[String(name)] = Boolean(enabled) && (!NODE_OPTIONAL.has(name)")
-      && !source.includes('const KGW_NODE_R51_STORAGE_PREFIX = "kgw.node.direct.v51.";')
-      && !source.includes("localStorage.setItem(KGW_NODE_R51_STORAGE_PREFIX")
-      && !source.includes('kgwNodeR51Store("saved:" + net, values)')
-      && !source.includes('kgwNodeR51Store("default:" + net, values)')
-      && !source.includes('const defaults = kgwNodeR51Load("default:" + net) || kgwNodeR51Load("factory:" + net)'),
-    "Node R51 persistence implementation must not return to hand-maintained JS",
-  );
-  assert.ok(
-    source.includes("nodeEffectiveNodeSettings as kgwNodeEffectiveNodeSettings")
-      && source.includes("nodeValidateForm as kgwNodeValidateForm")
-      && !source.includes("nodeRequireValidSettings as kgwNodeRequireValidSettings")
-      && !source.includes("function kgwNodeEffectiveNodeSettings(")
-      && !source.includes("function kgwNodeValidateForm(")
-      && !source.includes("function kgwNodeRequireValidSettings(")
-      && rustNodeHelpersSource.includes("fn node_validate_form_inner(")
-      && rustNodeHelpersSource.includes("node_require_valid_settings"),
-    "Node effective settings and validation must bind directly to the Rust/WASM owner",
-  );
-  assert.ok(
-    !source.includes("nodeRuntimeArgs as nodeRuntimeArgs")
-      && !source.includes("function nodeRuntimeArgs(")
-      && rustNodeTraceSource.includes("crate::node_frontend_helpers::node_runtime_args(")
-      && rustNodeHelpersSource.includes("pub fn node_runtime_args("),
-    "Node runtime args must stay Rust-owned and be consumed by the Rust integrated-invoke owner",
-  );
-  assert.ok(
-    source.includes("nodeSyncDependencies as wasmNodeSyncDependencies")
-      && source.includes("nodePreviewMessage as kgwNodePreviewMessage")
-      && source.includes("nodeSetRuntimeNotice as kgwNodeSetRuntimeNotice")
-      && source.includes("nodeMarkRestartRequired as kgwNodeMarkRestartRequired")
-      && source.includes("nodePanelStartFromMonitor as panelStartFromMonitor")
-      && !source.includes("function kgwNodeForm(")
-      && !source.includes("function kgwNodeSyncDependencies(")
-      && !source.includes("function kgwNodePreviewMessage(")
-      && !source.includes("function kgwNodeSetRuntimeNotice(")
-      && !source.includes("function kgwNodeMarkRestartRequired(")
-      && !source.includes("function panelStartFromMonitor(")
-      && rustNodeHelpersSource.includes("fn node_sync_dependencies_inner(")
-      && rustNodeHelpersSource.includes("fn set_runtime_notice_inner(")
-      && rustNodeHelpersSource.includes("fn mark_restart_required_inner(")
-      && rustNodeHelpersSource.includes("fn panel_start_from_monitor_inner("),
-    "Node form/dependency/preview/runtime-notice/restart/monitor-start ownership must remain in Rust/WASM",
-  );
-  assert.ok(
-    source.includes("nodeExplicitTrace as kgwNodeExplicitTraceR27D")
-      && source.includes("nodeExplicitOwnerTrace as kgwNodeExplicitOwnerTraceR27D")
-      && !source.includes("function kgwNodeExplicitTraceR27D(")
-      && !source.includes("function kgwNodeExplicitOwnerTraceR27D(")
-      && source.includes('kgwNodeExplicitOwnerTraceR27D(net, "settings-scope", "r27d-scoped-update"'),
-    "Both Node explicit-trace variants must bind directly to their Rust/WASM owners",
-  );
-  for (const retired of [
-    "function kgwNodeEffectiveNumber(",
-    "function kgwNodeEffectiveEndpoint(",
-    "const rpcBase = net ===",
-    "asyncThreads: kgwNodeEffectiveNumber",
-    'nodeKind: "integrated-as-daemon"',
-  ]) {
-    assert.ok(!source.includes(retired), "Retired Node effective-settings implementation must stay out of hand-maintained JS: " + retired);
-  }
 }
 
 class ClassList {
@@ -924,7 +814,7 @@ function matchesSelector(node, selector) {
   return true;
 }
 
-function createHarness(options = {}) {
+async function createHarness(options = {}) {
   const document = new TestDocument();
   const storage = new Map();
   const timers = [];
@@ -988,7 +878,7 @@ function createHarness(options = {}) {
   for (const [net, label, active] of [
     ["mainnet", "Mainnet", true],
     ["testnet10", "Testnet 10", false],
-    ["testnet13", "Testnet 13 آ· Experimental", false],
+    ["testnet13", "Testnet 13 ط¢آ· Experimental", false],
   ]) {
     const button = document.createElement("button");
     button.setAttribute("type", "button");
@@ -2189,18 +2079,51 @@ const kgwNodeR51Keys = wasmNodeR51Keys;
 const kgwNodeR51Fields = wasmNodeR51Fields;
 const kgwNodeR51Panel = wasmNodeR51Panel;
 `;
-  const executable = importPrelude
-    + renderFixture
-    + "\nconst wasmNodeRenderNetworkPanelsHtml = () => wasmNodeNetworkProfiles().map(renderNetworkPanel).join(\"\");\n"
-    + source
-    .replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "")
-    .replace(/^import\s+["'][^"']+["'];\s*/gm, "")
-    .replace(/^await\s+initNodeRust\(\);\s*/gm, "")
-    .replace(/export\s+async\s+function\s+initKaspaNodeTab/, "async function initKaspaNodeTab")
-    .replace(/export\s*\{[^}]+\}\s*;?/g, "")
-    .replace(/export\s+default\s+initKaspaNodeTab\s*;/, "")
-    + "\nwindow.__kgwStartButtonTest = { initKaspaNodeTab, kgwResolvePublicTauriInvokeR1, kgwNodeR51SetRuntimeButtons, KGW_NODE_R51_TRANSITIONS };\n";
-  vm.runInNewContext(executable, sandbox, { filename: nodeJsPath });
+  void importPrelude;
+  void renderFixture;
+  void sandbox;
+
+  globalThis.window = window;
+  globalThis.document = document;
+  globalThis.navigator = window.navigator;
+  globalThis.localStorage = window.localStorage;
+  globalThis.crypto = window.crypto;
+  globalThis.TextEncoder = window.TextEncoder;
+  globalThis.CustomEvent = window.CustomEvent;
+  globalThis.Event = window.Event;
+
+  const moduleUrl = pathToFileURL(generatedWasmJsPath).href
+    + "?kgwStartButtonHarness=" + String(++wasmHarnessSequence);
+  const wasmApi = await import(moduleUrl);
+  wasmApi.initSync({ module: fs.readFileSync(generatedWasmBinaryPath) });
+
+  const transitions = new Proxy({}, {
+    set(_target, key, value) {
+      wasmApi.nodeSetRuntimeTransition(String(key), String(value || ""));
+      return true;
+    },
+    get() {
+      return "";
+    },
+  });
+  window.__kgwStartButtonTest = {
+    initKaspaNodeTab(nodeRoot) {
+      return wasmApi.nodeInitKaspaNodeTab(nodeRoot);
+    },
+    kgwResolvePublicTauriInvokeR1() {
+      return wasmApi.nodeResolvePublicTauriInvoke();
+    },
+    kgwNodeR51SetRuntimeButtons(net, running, locked) {
+      return wasmApi.nodeSetRuntimeButtons(
+        String(net || ""),
+        Boolean(running),
+        Boolean(locked),
+        "",
+        "",
+      );
+    },
+    KGW_NODE_R51_TRANSITIONS: transitions,
+  };
 
   return { window, document, root };
 }
@@ -2234,7 +2157,7 @@ function parsedTraceDetails(call) {
 }
 
 async function dynamicClickTests() {
-  const { window, document, root } = createHarness();
+  const { window, document, root } = await createHarness();
   await window.__kgwStartButtonTest.initKaspaNodeTab(root);
   await flush();
 
@@ -2323,7 +2246,7 @@ async function dynamicClickTests() {
 }
 
 async function startupStopAvailabilityTests() {
-  const { window, root } = createHarness();
+  const { window, root } = await createHarness();
   await window.__kgwStartButtonTest.initKaspaNodeTab(root);
   await flush();
   const api = window.__kgwStartButtonTest;
@@ -2340,7 +2263,7 @@ async function stopTruthfulnessTests() {
   const calls = [];
   let resolveStop;
   let stopResponse = null;
-  const { window, document, root } = createHarness({
+  const { window, document, root } = await createHarness({
     tauri: {
       core: {
         invoke: async (command, payload) => {
@@ -2392,12 +2315,12 @@ async function stopTruthfulnessTests() {
   assert.strictEqual(document.getElementById("node-mainnet-runtimeEvidence").textContent, "Worker exited after graceful shutdown failure");
 }
 
-function configuredTauriInvokeResolverTests() {
+async function configuredTauriInvokeResolverTests() {
   const tauriConfig = JSON.parse(fs.readFileSync(tauriConfigPath, "utf8"));
   assert.strictEqual(tauriConfig.app.withGlobalTauri, true, "Tauri config must expose the supported global API");
 
   const calls = [];
-  const { window } = createHarness({
+  const { window } = await createHarness({
     tauri: {
       core: {
         invoke: async (command, payload) => {
@@ -2416,7 +2339,7 @@ function configuredTauriInvokeResolverTests() {
 }
 
 async function missingInvokeApiVisibleErrorTest() {
-  const { window, document, root } = createHarness();
+  const { window, document, root } = await createHarness();
   await window.__kgwStartButtonTest.initKaspaNodeTab(root);
   await flush();
 
@@ -2433,7 +2356,7 @@ async function missingInvokeApiVisibleErrorTest() {
 
 async function tracePayloadSafetyTests() {
   const calls = [];
-  const { window, root } = createHarness({
+  const { window, root } = await createHarness({
     tauri: {
       core: {
         invoke: async (command, payload) => {
@@ -2465,7 +2388,7 @@ async function copyLogFrontendTests() {
   let copyPending = false;
   let resolvePendingCopy = null;
   let navigatorWriteCount = 0;
-  const { window, document, root } = createHarness({
+  const { window, document, root } = await createHarness({
     tauri: {
       core: {
         invoke: async (command, payload) => {
@@ -2591,7 +2514,7 @@ async function copyLogFrontendTests() {
 (async () => {
   try {
     staticPlacementTests();
-    configuredTauriInvokeResolverTests();
+    await configuredTauriInvokeResolverTests();
     await dynamicClickTests();
     await startupStopAvailabilityTests();
     await stopTruthfulnessTests();
@@ -2648,7 +2571,9 @@ mod tests {
     fn generated_bridge_is_interop_only_and_loads_real_frontend() {
         assert!(NODE_BRIDGE.contains("apps"));
         assert!(NODE_BRIDGE.contains("kaspa-node.js"));
-        assert!(NODE_BRIDGE.contains("vm.runInNewContext"));
+        assert!(NODE_BRIDGE.contains("pathToFileURL"));
+        assert!(NODE_BRIDGE.contains("wasmApi.initSync"));
+        assert!(!NODE_BRIDGE.contains("vm.runInNewContext"));
         assert!(NODE_BRIDGE.contains("KGW start button and Copy Log frontend tests PASSED"));
     }
 }

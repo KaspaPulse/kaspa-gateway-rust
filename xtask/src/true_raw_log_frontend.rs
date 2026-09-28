@@ -6,6 +6,8 @@ use std::process::Command;
 const NODE_SOURCE: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
 const BRIDGE_SOURCE: &str =
     "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
+const NODE_RAW_RUST: &str = "crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs";
+const NODE_TAB_RUST: &str = "crates/kaspa-gateway-frontend-wasm/src/node_tab.rs";
 
 const NODE_BRIDGE: &str = r##"
 const fs = require("node:fs");
@@ -342,8 +344,13 @@ function prepare(kind) {
     frontendWasm.nodeClearRawLogBuffer("testnet10", "node");
   }
   if (kind === "node") {
-    evalFrontend(nodePath, window,
-      "window.__kgwRaw = { apply: kgwNodeApplyRuntimeLogReportV1, action: kgwNodeHandleLogActionV29, refresh: kgwNodeR51RefreshOne, setButtons: kgwNodeR51SetRuntimeButtons, appendLog };");
+    window.__kgwRaw = {
+      apply: (net, role, report) => frontendWasm.nodeApplyRuntimeLogReport(net, role, report),
+      action: (action, net, button) => frontendWasm.nodeHandleLogAction(action, net, button),
+      refresh: (net, reason) => frontendWasm.nodeRefreshOne(net, reason),
+      setButtons: (net, running) => frontendWasm.nodeSetRuntimeButtons(net, Boolean(running), false, "", ""),
+      appendLog: () => {},
+    };
   } else {
     evalFrontend(bridgePath, window,
       "window.__kgwRaw = { apply: kgwBridgeApplyRuntimeLogReportV1, action: kgwBridgeHandleLogActionV29, refresh: kgwBridgeR51RefreshOne, setButtons: kgwBridgeR51SetRuntimeButtons, appendLog };");
@@ -587,21 +594,43 @@ fn expected_bridge_raw() -> String {
 }
 
 pub fn run(root: &Path) -> Result<String, String> {
-    let node = fs::read_to_string(root.join(NODE_SOURCE))
+    let _node = fs::read_to_string(root.join(NODE_SOURCE))
         .map_err(|error| format!("failed to read {NODE_SOURCE}: {error}"))?;
     let bridge = fs::read_to_string(root.join(BRIDGE_SOURCE))
         .map_err(|error| format!("failed to read {BRIDGE_SOURCE}: {error}"))?;
-    for (source, symbol) in [
-        (&node, "kgwNodeApplyRuntimeLogReportV1"),
-        (&node, "kgwNodeHandleLogActionV29"),
-        (&node, "kgwNodeR51RefreshOne"),
-        (&bridge, "kgwBridgeApplyRuntimeLogReportV1"),
-        (&bridge, "kgwBridgeHandleLogActionV29"),
-        (&bridge, "kgwBridgeR51RefreshOne"),
+    let node_raw_rust = fs::read_to_string(root.join(NODE_RAW_RUST))
+        .map_err(|error| format!("failed to read {NODE_RAW_RUST}: {error}"))?;
+    let node_tab_rust = fs::read_to_string(root.join(NODE_TAB_RUST))
+        .map_err(|error| format!("failed to read {NODE_TAB_RUST}: {error}"))?;
+
+    for symbol in [
+        "kgwBridgeApplyRuntimeLogReportV1",
+        "kgwBridgeHandleLogActionV29",
+        "kgwBridgeR51RefreshOne",
     ] {
-        if !source.contains(symbol) {
+        if !bridge.contains(symbol) {
             return Err(format!(
-                "required frontend raw-log symbol missing: {symbol}"
+                "required Bridge frontend raw-log symbol missing: {symbol}"
+            ));
+        }
+    }
+    for symbol in [
+        "#[wasm_bindgen(js_name = nodeApplyRuntimeLogReport)]",
+        "#[wasm_bindgen(js_name = nodeHandleLogAction)]",
+    ] {
+        if !node_raw_rust.contains(symbol) {
+            return Err(format!(
+                "required Node Rust raw-log export missing: {symbol}"
+            ));
+        }
+    }
+    for symbol in [
+        "#[wasm_bindgen(js_name = nodeRefreshOne)]",
+        "#[wasm_bindgen(js_name = nodeSetRuntimeButtons)]",
+    ] {
+        if !node_tab_rust.contains(symbol) {
+            return Err(format!(
+                "required Node Rust lifecycle export missing: {symbol}"
             ));
         }
     }

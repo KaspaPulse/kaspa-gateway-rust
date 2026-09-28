@@ -3354,6 +3354,21 @@ fn javascript_timeout_constant(source: &str, name: &str) -> u64 {
         .unwrap_or_else(|error| panic!("invalid JavaScript timeout constant {name}: {error}"))
 }
 
+fn rust_u32_timeout_constant(source: &str, name: &str) -> u64 {
+    let marker = format!("{name}: u32 = ");
+    source
+        .split_once(&marker)
+        .unwrap_or_else(|| panic!("missing Rust u32 timeout constant {name}"))
+        .1
+        .split_once(';')
+        .unwrap_or_else(|| panic!("unterminated Rust u32 timeout constant {name}"))
+        .0
+        .trim()
+        .replace('_', "")
+        .parse()
+        .unwrap_or_else(|error| panic!("invalid Rust u32 timeout constant {name}: {error}"))
+}
+
 #[test]
 fn startup_timeout_hierarchy_is_strict_for_node_and_bridge() {
     let bridge_child = kaspa_gateway_rk_bridge::KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS;
@@ -3369,9 +3384,9 @@ fn startup_timeout_hierarchy_is_strict_for_node_and_bridge() {
     let node_child = integrated_runtime_commands::KGW_NODE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS_V1;
     let node_parent =
         integrated_runtime_commands::KGW_NODE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1;
-    let node_ui = javascript_timeout_constant(
-        include_str!("../../frontend/src/tabs/kaspa-node/kaspa-node.js"),
-        "KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS",
+    let node_ui = rust_u32_timeout_constant(
+        include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs"),
+        "NODE_RUNTIME_INVOKE_TIMEOUT_MS",
     );
     assert!(node_parent > node_child);
     assert!(node_ui > node_parent);

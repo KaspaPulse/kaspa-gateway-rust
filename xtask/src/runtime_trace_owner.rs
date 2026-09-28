@@ -211,6 +211,7 @@ fn run_global_owner_gate_check(audit: &mut Audit, repo_root: &Path) -> Result<i3
 
 fn source_findings(
     node_js: &str,
+    node_rust: &str,
     bridge_js: &str,
     lib_rs: &str,
     main_rs: &str,
@@ -223,11 +224,13 @@ fn source_findings(
         "level": "INFO",
         "title": "V19 frontend owner markers",
         "data": {
-            "nodeOwnerCount": count(node_js, "KGW_SETTINGS_OWNER_V19"),
+            "nodeOwnerSurface": "Rust/WASM",
+            "bridgeOwnerSurface": "JavaScript migration debt",
+            "nodeOwnerCount": count(node_rust, "KGW_SETTINGS_OWNER_V19"),
             "bridgeOwnerCount": count(bridge_js, "KGW_SETTINGS_OWNER_V19"),
-            "nodeInstallRoute": node_js.contains("window.KGW_NODE_SETTINGS_OWNER_V19.install(root)"),
+            "nodeInstallRoute": node_rust.contains("node_install_settings_owner("),
             "bridgeInstallRoute": bridge_js.contains("window.KGW_BRIDGE_SETTINGS_OWNER_V19.install(root)"),
-            "nodeTraceInvokeCount": count(node_js, "kgw_frontend_button_trace_v1"),
+            "nodeTraceInvokeCount": count(node_rust, "kgw_frontend_button_trace_v1"),
             "bridgeTraceInvokeCount": count(bridge_js, "kgw_frontend_button_trace_v1"),
         }
     }));
@@ -246,14 +249,14 @@ fn source_findings(
     ];
     let mut old_hits = Map::new();
     for token in old_tokens {
-        let hits = count(node_js, token) + count(bridge_js, token);
+        let hits = count(node_js, token) + count(node_rust, token) + count(bridge_js, token);
         if hits > 0 {
             old_hits.insert(token.to_owned(), json!(hits));
         }
     }
     findings.push(json!({
         "level": if old_hits.is_empty() { "OK" } else { "ERROR" },
-        "title": "Old owner/runtime tokens in Node/Bridge JS",
+        "title": "Old owner/runtime tokens in Node Rust/WASM or Bridge JS",
         "data": old_hits,
     }));
 
@@ -282,20 +285,22 @@ fn source_findings(
         }
     }));
 
-    if count(node_js, "KGW_SETTINGS_OWNER_V19") < 2 {
-        critical.push("Node V19 owner marker missing/incomplete.".to_owned());
+    if count(node_rust, "KGW_SETTINGS_OWNER_V19") < 2 {
+        critical.push("Node Rust/WASM V19 owner marker missing/incomplete.".to_owned());
     }
     if count(bridge_js, "KGW_SETTINGS_OWNER_V19") < 2 {
         critical.push("Bridge V19 owner marker missing/incomplete.".to_owned());
     }
-    if !node_js.contains("window.KGW_NODE_SETTINGS_OWNER_V19.install(root)") {
-        critical.push("Node installActions not routed to V19 owner.".to_owned());
+    if !node_rust.contains("node_install_settings_owner(") {
+        critical.push("Node installActions not routed to V19 Rust/WASM owner.".to_owned());
     }
     if !bridge_js.contains("window.KGW_BRIDGE_SETTINGS_OWNER_V19.install(root)") {
         critical.push("Bridge installActions not routed to V19 owner.".to_owned());
     }
     if !old_hits.is_empty() {
-        critical.push("Old owner/runtime tokens still exist in frontend JS.".to_owned());
+        critical.push(
+            "Old owner/runtime tokens still exist in Node Rust/WASM or Bridge JS.".to_owned(),
+        );
     }
     if !rust_combined.contains("kgw_frontend_button_trace_v1") {
         critical.push(
@@ -560,6 +565,9 @@ pub fn run_cli(args: &mut impl Iterator<Item = String>) -> Result<RunResult, Str
     let rels = [
         "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js",
         "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
+        "crates/kaspa-gateway-frontend-wasm/src/node_settings_owner.rs",
+        "crates/kaspa-gateway-frontend-wasm/src/node_tab.rs",
+        "crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs",
         "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.css",
         "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.css",
         "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs",
@@ -579,20 +587,35 @@ pub fn run_cli(args: &mut impl Iterator<Item = String>) -> Result<RunResult, Str
 
     let node_rel = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
     let bridge_rel = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
+    let node_owner_rel = "crates/kaspa-gateway-frontend-wasm/src/node_settings_owner.rs";
+    let node_tab_rel = "crates/kaspa-gateway-frontend-wasm/src/node_tab.rs";
+    let node_trace_rel = "crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs";
     let lib_rel = "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs";
     let main_rel = "apps/kaspa-gateway-desktop/src-tauri/src/main.rs";
     let gate_rel = "xtask/src/global_owner.rs";
     let registry_rel = "docs/governance/global-owner-registry.json";
     let node_js = texts.get(node_rel).map(String::as_str).unwrap_or("");
     let bridge_js = texts.get(bridge_rel).map(String::as_str).unwrap_or("");
+    let node_rust = [
+        texts.get(node_owner_rel).map(String::as_str).unwrap_or(""),
+        texts.get(node_tab_rel).map(String::as_str).unwrap_or(""),
+        texts.get(node_trace_rel).map(String::as_str).unwrap_or(""),
+    ]
+    .join("\n");
     let lib_rs = texts.get(lib_rel).map(String::as_str).unwrap_or("");
     let main_rs = texts.get(main_rel).map(String::as_str).unwrap_or("");
     let gate = texts.get(gate_rel).map(String::as_str).unwrap_or("");
     let registry = texts.get(registry_rel).map(String::as_str).unwrap_or("");
     let gate_sources = format!("{gate}\n{registry}");
 
-    let (findings, mut critical) =
-        source_findings(node_js, bridge_js, lib_rs, main_rs, &gate_sources);
+    let (findings, mut critical) = source_findings(
+        node_js,
+        &node_rust,
+        bridge_js,
+        lib_rs,
+        main_rs,
+        &gate_sources,
+    );
     audit.findings.extend(findings);
 
     let node_path = audit.abs(node_rel).to_string_lossy().into_owned();
@@ -651,12 +674,13 @@ pub fn run_cli(args: &mut impl Iterator<Item = String>) -> Result<RunResult, Str
 mod tests {
     use super::*;
 
-    fn valid_sources() -> (String, String, String, String, String) {
-        let node = format!(
+    fn valid_sources() -> (String, String, String, String, String, String) {
+        let node = "generated-node-adapter".to_owned();
+        let node_rust = format!(
             "{} {} {}",
             "KGW_SETTINGS_OWNER_V19 ".repeat(10),
             "kgw_frontend_button_trace_v1 ".repeat(5),
-            "window.KGW_NODE_SETTINGS_OWNER_V19.install(root)"
+            "crate::node_settings_owner::node_install_settings_owner(root, callbacks)"
         );
         let bridge = format!(
             "{} {} {}",
@@ -667,13 +691,13 @@ mod tests {
         let lib = "#[tauri::command]\nfn kgw_frontend_button_trace_v1() { println!(\"trace\"); }\ngenerate_handler![kgw_frontend_button_trace_v1]".to_owned();
         let main = String::new();
         let gate = "KGW_SETTINGS_OWNER_V19 new RegExp".to_owned();
-        (node, bridge, lib, main, gate)
+        (node, node_rust, bridge, lib, main, gate)
     }
 
     #[test]
     fn legacy_reference_source_findings_match() {
-        let (node, bridge, lib, main, gate) = valid_sources();
-        let (findings, critical) = source_findings(&node, &bridge, &lib, &main, &gate);
+        let (node, node_rust, bridge, lib, main, gate) = valid_sources();
+        let (findings, critical) = source_findings(&node, &node_rust, &bridge, &lib, &main, &gate);
         assert!(critical.is_empty());
         assert_eq!(findings.len(), 4);
         assert_eq!(findings[0]["data"]["nodeOwnerCount"], 10);
@@ -687,9 +711,9 @@ mod tests {
 
     #[test]
     fn old_owner_token_fails_closed() {
-        let (mut node, bridge, lib, main, gate) = valid_sources();
+        let (mut node, node_rust, bridge, lib, main, gate) = valid_sources();
         node.push_str(" KGW_SETTINGS_OWNER_V18");
-        let (findings, critical) = source_findings(&node, &bridge, &lib, &main, &gate);
+        let (findings, critical) = source_findings(&node, &node_rust, &bridge, &lib, &main, &gate);
         assert_eq!(findings[1]["level"], "ERROR");
         assert!(
             critical
@@ -700,9 +724,9 @@ mod tests {
 
     #[test]
     fn missing_install_route_and_trace_command_fail_closed() {
-        let (node, bridge, _lib, main, gate) = valid_sources();
-        let node = node.replace("window.KGW_NODE_SETTINGS_OWNER_V19.install(root)", "");
-        let (_, critical) = source_findings(&node, &bridge, "", &main, &gate);
+        let (node, node_rust, bridge, _lib, main, gate) = valid_sources();
+        let node_rust = node_rust.replace("node_install_settings_owner(", "missing_owner_route(");
+        let (_, critical) = source_findings(&node, &node_rust, &bridge, "", &main, &gate);
         assert!(
             critical
                 .iter()
