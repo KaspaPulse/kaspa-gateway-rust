@@ -400,14 +400,12 @@ function staticPlacementTests() {
   assert.ok(!/appendLog\([^)]*node .* response/i.test(source), "Synthetic start response text must not be inserted into raw logs");
   assert.ok(
     source.includes("nodeApplyRuntimeLogReport as kgwNodeApplyRuntimeLogReportV1")
-      && source.includes("nodeClearRawLogBuffer as kgwNodeClearRawLogBufferV1")
-      && source.includes("nodeDispatchRuntimeLogClear as kgwNodeDispatchRuntimeLogClearV1")
+      && source.includes("nodeHandleLogAction as kgwNodeHandleLogActionV29")
       && source.includes("nodeCopyLogFailure as kgwNodeCopyLogFailureV1")
       && !source.includes("function kgwNodeApplyRuntimeLogReportV1(")
-      && !source.includes("function kgwNodeClearRawLogBufferV1(")
-      && !source.includes("function kgwNodeDispatchRuntimeLogClearV1(")
+      && !source.includes("function kgwNodeHandleLogActionV29(")
       && !source.includes("function kgwNodeCopyLogFailureV1("),
-    "Node raw-log adapters must bind directly to the Rust/WASM owner without JavaScript wrappers",
+    "Node raw-log and log-action adapters must bind directly to the Rust/WASM owner without JavaScript wrappers",
   );
   assert.ok(
     source.includes("const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 110000"),
@@ -439,7 +437,8 @@ function staticPlacementTests() {
     "Node runtime evidence and Start attestation must be delegated to the Rust/WASM owner",
   );
   assert.ok(
-    source.includes('kgwNodeTranslateRuntimeV29("runtime.failed", "Failed")'),
+    source.includes('kgwI18nTextR41("runtime.failed", "Failed")')
+      && source.includes("nodeI18nText as kgwI18nTextR41"),
     "Node post-READY failure must remain visible outside raw logs",
   );
   assert.ok(
@@ -1723,6 +1722,20 @@ const wasmNodeHandleCopyLog = async (net, button) => {
   }
   return ok;
 };
+const wasmNodeHandleLogAction = async (action, net, button) => {
+  const normalizedAction = String(action || "");
+  const network = String(net || "");
+  const out = document.getElementById("node-" + network + "-logOutput");
+  if (!out && normalizedAction !== "copy-log") return false;
+  if (normalizedAction === "copy-log") return await wasmNodeHandleCopyLog(network, button);
+  if (normalizedAction === "clear-log") {
+    wasmNodeClearRawLogBuffer(network, "node");
+    Promise.resolve(kgwNodeDispatchRuntimeLogClearV1(network, "node")).catch(() => {});
+    if (button) button.textContent = "Deleted";
+  }
+  return true;
+};
+const kgwNodeHandleLogActionV29 = wasmNodeHandleLogAction;
 const wasmNodeStartTraceTauriShape = (adapterName = "") => {
   const tauri = window.__TAURI__;
   const keys = (value) => value && typeof value === "object" ? Object.keys(value).sort().slice(0, 24) : [];

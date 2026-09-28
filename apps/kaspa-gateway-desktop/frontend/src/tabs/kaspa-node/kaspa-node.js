@@ -9,10 +9,8 @@ import initNodeRust, {
   nodeRefreshInlineCommandToggles as kgwNodeRefreshInlineCommandTogglesR7,
   nodeToggleCommandOptionAndUpdate as wasmNodeToggleCommandOptionAndUpdate,
   nodeApplyRuntimeLogReport as kgwNodeApplyRuntimeLogReportV1,
-  nodeClearRawLogBuffer as kgwNodeClearRawLogBufferV1,
   nodeCopyLogFailure as kgwNodeCopyLogFailureV1,
   nodeDispatchClipboardWrite as kgwNodeDispatchClipboardWriteV1,
-  nodeDispatchRuntimeLogClear as kgwNodeDispatchRuntimeLogClearV1,
   nodeEffectiveNodeSettings as kgwNodeEffectiveNodeSettings,
   nodeValidateForm as kgwNodeValidateForm,
   nodeSuperMegaIsolatedAdapterStatusPreviewV1 as wasmNodeSuperMegaIsolatedAdapterStatusPreviewV1,
@@ -30,7 +28,7 @@ import initNodeRust, {
   nodeElementId as id,
   nodeExplicitTrace as kgwNodeExplicitTraceR27D,
   nodeExplicitOwnerTrace as kgwNodeExplicitOwnerTraceR27D,
-  nodeHandleCopyLog as wasmNodeHandleCopyLog,
+  nodeHandleLogAction as kgwNodeHandleLogActionV29,
   nodeI18nText as kgwI18nTextR41,
   nodeInstallDelegatedTabs as wasmNodeInstallDelegatedTabs,
   nodeInstallLogAutoScrollControls as kgwInstallNodeLogAutoScrollControlsR27,
@@ -1432,7 +1430,7 @@ async function kgwNodeR51RefreshOne(net, _reason = "live") {
           if (!running && runtimeError) {
             kgwNodeSetRuntimeNotice(
               net,
-              kgwNodeTranslateRuntimeV29("runtime.failed", "Failed"),
+              kgwI18nTextR41("runtime.failed", "Failed"),
               "Official runtime terminated after READY",
               runtimeError,
             );
@@ -1532,69 +1530,7 @@ function kgwNodeR51StartLiveRefresh() {
 
 
 
-/* KGW_LOG_ACTIONS_SCOPED_OWNER_V29_START */
-function kgwNodeTranslateRuntimeV29(key, fallback) {
-  const runtime = window.kgwT || window.kgwI18n || window.__kgwT;
-  if (typeof runtime === "function") {
-    try {
-      const value = runtime(key, fallback);
-      if (value && value !== key) return value;
-    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
-  }
-  return fallback || key;
-}
-
-function kgwNodeRestoreLogActionLabelV29(button) {
-  if (!button) return;
-  const original = button.dataset.kgwLogOriginalLabelV29;
-  if (original) button.textContent = original;
-  button.classList.remove("kgw-log-action-feedback");
-  delete button.dataset.kgwDoneLabel;
-}
-
-function kgwNodeFlashLogActionButtonV29(button, doneLabel) {
-  if (!button) return;
-
-  if (!button.dataset.kgwLogOriginalLabelV29) {
-    button.dataset.kgwLogOriginalLabelV29 = String(button.textContent || "").trim() || "Log Action";
-  }
-
-  window.clearTimeout(button.__kgwLogActionFeedbackTimerV29);
-
-  button.textContent = doneLabel;
-  button.dataset.kgwDoneLabel = doneLabel;
-  button.classList.add("kgw-log-action-feedback");
-
-  button.__kgwLogActionFeedbackTimerV29 = window.setTimeout(() => {
-    kgwNodeRestoreLogActionLabelV29(button);
-  }, 1600);
-}
-
-async function kgwNodeHandleLogActionV29(action, net, button) {
-  
-  kgwNodeSmallOwnerTraceR44D(net, String(action || "log-action"), "r51b3-node-log-action-click", {
-    patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
-    action: String(action || ""),
-    buttonId: String(button && button.id || ""),
-    buttonText: String(button && button.textContent || "").trim()
-  });
-  kgwNodeSmallOwnerTraceR44D(net, String(action || "log-action"), "r44d-owner-begin", {});
-  const out = byId(id(net, "logOutput"));
-  if (!out && action !== "copy-log") return;
-
-  if (action === "copy-log") {
-    await wasmNodeHandleCopyLog(String(net || ""), button || null);
-    return;
-  }
-
-  if (action === "clear-log") {
-    kgwNodeClearRawLogBufferV1(net, "node");
-    kgwNodeDispatchRuntimeLogClearV1(net, "node").catch(() => {});
-    kgwNodeFlashLogActionButtonV29(button, kgwNodeTranslateRuntimeV29("log.deleted", "Deleted"));
-  }
-  kgwNodeSmallOwnerTraceR44D(net, String(action || "log-action"), "r44d-owner-complete", {});
-}
-/* KGW_LOG_ACTIONS_SCOPED_OWNER_V29_END */
+/* KGW_LOG_ACTIONS_SCOPED_OWNER_V29 is Rust/WASM-owned in node_start_trace.rs. */
 
 function installActions(root) {
   if (!root.dataset.kgwNodeCommandComposerInlineOwnerR7) {

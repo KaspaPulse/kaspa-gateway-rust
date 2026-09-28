@@ -2,7 +2,7 @@ use js_sys::{Array, Function, JSON, Object, Promise, Reflect, Uint8Array};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
-use wasm_bindgen_futures::JsFuture;
+use wasm_bindgen_futures::{JsFuture, spawn_local};
 
 const COMMAND: &str = "kgw_start_trace_frontend_v1";
 const REDACTED: &str = "[redacted]";
@@ -1845,6 +1845,77 @@ pub fn node_copy_log_failure(
 #[wasm_bindgen(js_name = nodeHandleCopyLog)]
 pub async fn node_handle_copy_log(net: String, button: JsValue) -> bool {
     handle_copy_log_impl(&net, &button).await
+}
+
+#[wasm_bindgen(js_name = nodeHandleLogAction)]
+pub async fn node_handle_log_action(action: String, net: String, button: JsValue) -> bool {
+    let safe_action = if action.is_empty() {
+        "log-action".to_owned()
+    } else {
+        action.clone()
+    };
+
+    let details = Object::new();
+    set(
+        details.as_ref(),
+        "patch",
+        &JsValue::from_str("KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3"),
+    );
+    set(details.as_ref(), "action", &JsValue::from_str(&action));
+    set(
+        details.as_ref(),
+        "buttonId",
+        &JsValue::from_str(&crate::js_string_owned(&property(&button, "id"))),
+    );
+    set(
+        details.as_ref(),
+        "buttonText",
+        &JsValue::from_str(crate::js_string_owned(&property(&button, "textContent")).trim()),
+    );
+    let _ = small_owner_trace(
+        JsValue::from_str(&net),
+        JsValue::from_str(&safe_action),
+        JsValue::from_str("r51b3-node-log-action-click"),
+        details.into(),
+    );
+    let _ = small_owner_trace(
+        JsValue::from_str(&net),
+        JsValue::from_str(&safe_action),
+        JsValue::from_str("r44d-owner-begin"),
+        Object::new().into(),
+    );
+
+    let output_id = format!("node-{net}-logOutput");
+    let output = call1(
+        &document(),
+        "getElementById",
+        &JsValue::from_str(&output_id),
+    )
+    .unwrap_or(JsValue::UNDEFINED);
+    if !present(&output) && action != "copy-log" {
+        return false;
+    }
+
+    if action == "copy-log" {
+        return handle_copy_log_impl(&net, &button).await;
+    }
+
+    if action == "clear-log" {
+        raw_log_clear(&net, "node");
+        let clear_net = net.clone();
+        spawn_local(async move {
+            let _ = dispatch_runtime_log_clear_impl(&clear_net, "node").await;
+        });
+        flash_copy_log_button(&button, &translate_copy_log_text("log.deleted", "Deleted"));
+    }
+
+    let _ = small_owner_trace(
+        JsValue::from_str(&net),
+        JsValue::from_str(&safe_action),
+        JsValue::from_str("r44d-owner-complete"),
+        Object::new().into(),
+    );
+    true
 }
 
 #[wasm_bindgen(js_name = nodeClipboardCharacterCount)]
