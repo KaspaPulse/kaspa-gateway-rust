@@ -154,6 +154,8 @@ fn validate_explorer_lint(
         "function renderTable(",
         "function clearExplorerTransactionTable(",
         "function resetFilters(",
+        "function syncActionState(",
+        "function kgwInstallExplorerPriceRerenderV1(",
     ] {
         forbid_contains(
             source,
@@ -179,6 +181,8 @@ fn validate_explorer_lint(
         "#[wasm_bindgen(js_name = explorerClearTransactionTable)]",
         "#[wasm_bindgen(js_name = explorerResetFilters)]",
         "#[wasm_bindgen(js_name = explorerLoadAndRenderDaySummaries)]",
+        "#[wasm_bindgen(js_name = explorerSyncCurrentActionState)]",
+        "#[wasm_bindgen(js_name = explorerInstallPriceRerender)]",
         "crate::kgw_clean2_usd(",
     ] {
         require_contains(

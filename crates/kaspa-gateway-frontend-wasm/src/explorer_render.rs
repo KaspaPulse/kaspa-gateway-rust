@@ -190,6 +190,13 @@ fn console_error(message: &str) {
     }
 }
 
+fn console_warn(message: &str) {
+    let console = property(&global(), "console");
+    if let Some(warn) = function(&console, "warn") {
+        let _ = warn.call1(&console, &JsValue::from_str(message));
+    }
+}
+
 fn expanded_set() -> JsValue {
     let win = window();
     let existing = property(&win, "__kgwExplorerExpandedDateGroups");
@@ -633,6 +640,86 @@ async fn load_and_render_impl(
     };
     render_summaries_impl(section, summaries.clone(), message)?;
     Ok(summaries)
+}
+
+fn price_rerender_root() -> JsValue {
+    let doc = document();
+    let direct = query(&doc, "#explorer");
+    if present(&direct) {
+        return direct;
+    }
+    let fallback = query(&doc, ".explorer-python-root");
+    if present(&fallback) { fallback } else { doc }
+}
+
+fn install_price_rerender_impl() -> bool {
+    let win = window();
+    if crate::js_boolean(&property(&win, "__kgwExplorerPriceRerenderV1Installed")) {
+        return false;
+    }
+    set(
+        &win,
+        "__kgwExplorerPriceRerenderV1Installed",
+        &JsValue::TRUE,
+    );
+
+    let callback = Closure::wrap(Box::new(move |_event: JsValue| {
+        let section = price_rerender_root();
+        let rows = property(&state(), "rows");
+        if !present(&section) || !Array::is_array(&rows) {
+            return;
+        }
+        let has_day_summary = Array::from(&rows)
+            .iter()
+            .any(|row| crate::js_boolean(&property(&row, "__kgwDaySummary")));
+        if !has_day_summary {
+            return;
+        }
+        if let Err(error) = render_summaries_impl(section, rows, String::new()) {
+            console_warn(&format!(
+                "[KGW Explorer] price rerender failed: {}",
+                js_text(&error)
+            ));
+        }
+    }) as Box<dyn FnMut(JsValue)>);
+
+    let registered = function(&win, "addEventListener")
+        .and_then(|add| {
+            add.call2(
+                &win,
+                &JsValue::from_str("kgw:kaspa-price-updated"),
+                callback.as_ref().unchecked_ref(),
+            )
+            .ok()
+        })
+        .is_some();
+    if registered {
+        callback.forget();
+        true
+    } else {
+        set(
+            &win,
+            "__kgwExplorerPriceRerenderV1Installed",
+            &JsValue::FALSE,
+        );
+        false
+    }
+}
+
+#[wasm_bindgen(js_name = explorerSyncCurrentActionState)]
+pub fn explorer_sync_current_action_state(section: JsValue) -> Result<(), JsValue> {
+    let root = scope(&section);
+    crate::explorer_runtime::explorer_sync_action_state(
+        root,
+        bool_property(&state(), "busy"),
+        array_len("rows"),
+        array_len("filteredRows"),
+    )
+}
+
+#[wasm_bindgen(js_name = explorerInstallPriceRerender)]
+pub fn explorer_install_price_rerender() -> bool {
+    install_price_rerender_impl()
 }
 
 #[wasm_bindgen(js_name = explorerRenderSummaries)]

@@ -33,7 +33,7 @@
 
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf, kgwExplorerExportNumberV2, kgwExplorerExportNormalizeRawTxV2 } from "./explorer.export.js";
 import { parseDateSeconds } from "./explorer.date.js";
-import { kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateLog, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot, kgwInvokeExplorerUnifiedFetch, kgwInvokeExplorerCancelTransactionsR57D4, setStatus, kgwExplorerSyncActionState, kgwExplorerUiTraceR53B3, kgwClean2Log, kgwClean2Section, kgwClean2LoadSummaries, kgwClean2LoadDayTransactions, kgwEnsureExplorerState, kgwRenderDaySummaries, kgwLoadAndRenderDaySummaries, kgwClean2RenderSummaries, renderTable, clearExplorerTransactionTable, resetFilters } from "./explorer.utils.js";
+import { kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateLog, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot, kgwInvokeExplorerUnifiedFetch, kgwInvokeExplorerCancelTransactionsR57D4, setStatus, syncActionState, kgwInstallExplorerPriceRerenderV1, kgwExplorerUiTraceR53B3, kgwClean2Log, kgwClean2Section, kgwClean2LoadSummaries, kgwClean2LoadDayTransactions, kgwEnsureExplorerState, kgwLoadAndRenderDaySummaries, kgwClean2RenderSummaries, renderTable, clearExplorerTransactionTable, resetFilters } from "./explorer.utils.js";
 
 const explorerState = kgwEnsureExplorerState();
 
@@ -55,15 +55,6 @@ function qs(selector, scope = root()) {
 /* Explorer calendar/date-control ownership lives in Rust/WASM explorer_calendar.rs. */
 
 /* Explorer local busy-control ownership lives in Rust/WASM explorer_controls.rs. */
-
-function syncActionState(section) {
-  return kgwExplorerSyncActionState(
-    section,
-    explorerState.busy,
-    explorerState.rows?.length || 0,
-    explorerState.filteredRows?.length || 0
-  );
-}
 
 /* KGW_TX_R4_GROUPED_COLLAPSED_RENDERER
    Python parity:
@@ -136,26 +127,7 @@ if (!window.__kgwExplorerExpandedDateGroups) {
 
 
 /* KGW_EXPLORER_USD_VALUE_RUNTIME_PRICE_REPAIR_V1 */
-function kgwInstallExplorerPriceRerenderV1() {
-  if (window.__kgwExplorerPriceRerenderV1Installed) return;
-  window.__kgwExplorerPriceRerenderV1Installed = true;
-
-  window.addEventListener("kgw:kaspa-price-updated", () => {
-    try {
-      const section = root();
-      const rows = Array.isArray(explorerState?.rows) ? explorerState.rows : [];
-
-      if (!section || !rows.some((row) => row?.__kgwDaySummary)) return;
-
-      kgwRenderDaySummaries(section, rows).catch((error) => {
-        console.warn("[KGW Explorer] price rerender failed", error);
-      });
-    } catch (error) {
-      console.warn("[KGW Explorer] price rerender failed", error);
-    }
-  });
-}
-
+/* Explorer price-rerender listener ownership lives in Rust/WASM explorer_render.rs. */
 kgwInstallExplorerPriceRerenderV1();
 
 

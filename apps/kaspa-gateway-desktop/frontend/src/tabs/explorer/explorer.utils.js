@@ -62,6 +62,8 @@ import init, {
   explorerSetStatus as wasmExplorerSetStatus,
   explorerEnsureState as wasmExplorerEnsureState,
   explorerSyncActionState as wasmExplorerSyncActionState,
+  explorerSyncCurrentActionState as wasmExplorerSyncCurrentActionState,
+  explorerInstallPriceRerender as wasmExplorerInstallPriceRerender,
   explorerUiTrace as wasmExplorerUiTrace,
   explorerNormalizeUnifiedResult as wasmExplorerNormalizeUnifiedResult,
   explorerDaySummaryRowsFromResult as wasmExplorerDaySummaryRowsFromResult,
@@ -125,6 +127,14 @@ export function kgwNormalizeDaySummaries(result) {
 
 export function kgwClean2NormalizeSummaries(result) {
   return wasmExplorerNormalizeDaySummaries(result);
+}
+
+export function syncActionState(section) {
+  return wasmExplorerSyncCurrentActionState(section);
+}
+
+export function kgwInstallExplorerPriceRerenderV1() {
+  return wasmExplorerInstallPriceRerender();
 }
 
 export async function kgwRenderDaySummaries(section, rows, statusText = "") {

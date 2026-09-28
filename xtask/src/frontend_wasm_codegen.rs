@@ -119,6 +119,8 @@ import init, {
   explorerSetStatus as wasmExplorerSetStatus,
   explorerEnsureState as wasmExplorerEnsureState,
   explorerSyncActionState as wasmExplorerSyncActionState,
+  explorerSyncCurrentActionState as wasmExplorerSyncCurrentActionState,
+  explorerInstallPriceRerender as wasmExplorerInstallPriceRerender,
   explorerUiTrace as wasmExplorerUiTrace,
   explorerNormalizeUnifiedResult as wasmExplorerNormalizeUnifiedResult,
   explorerDaySummaryRowsFromResult as wasmExplorerDaySummaryRowsFromResult,
@@ -182,6 +184,14 @@ export function kgwNormalizeDaySummaries(result) {
 
 export function kgwClean2NormalizeSummaries(result) {
   return wasmExplorerNormalizeDaySummaries(result);
+}
+
+export function syncActionState(section) {
+  return wasmExplorerSyncCurrentActionState(section);
+}
+
+export function kgwInstallExplorerPriceRerenderV1() {
+  return wasmExplorerInstallPriceRerender();
 }
 
 export async function kgwRenderDaySummaries(section, rows, statusText = "") {
@@ -1744,6 +1754,8 @@ mod tests {
         assert!(adapter.contains(
             "wasmExplorerSyncActionState(section, Boolean(busy), rowsCount, filteredRowsCount)"
         ));
+        assert!(adapter.contains("wasmExplorerSyncCurrentActionState(section)"));
+        assert!(adapter.contains("wasmExplorerInstallPriceRerender()"));
         assert!(adapter.contains("wasmExplorerExtractRowsFromUnifiedResult(result)"));
         assert!(adapter.contains("wasmExplorerUiTrace(action, phase, details)"));
         assert!(adapter.contains("wasmExplorerFilterTrace(label, payload)"));
