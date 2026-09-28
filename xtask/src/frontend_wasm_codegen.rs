@@ -83,6 +83,10 @@ import init, {
   explorerNormalizeTxTypeFilterValue as wasmExplorerNormalizeTxTypeFilterValue,
   explorerReadFilterState as wasmExplorerReadFilterState,
   explorerRepairFilterSelects as wasmExplorerRepairFilterSelects,
+  explorerNormalizeDaySummaries as wasmExplorerNormalizeDaySummaries,
+  explorerSummaryCurrentUsdPrice as wasmExplorerSummaryCurrentUsdPrice,
+  explorerSummaryUsdForKas as wasmExplorerSummaryUsdForKas,
+  explorerSummaryUsdForSummary as wasmExplorerSummaryUsdForSummary,
   explorerRefreshAddressName as wasmExplorerRefreshAddressName,
   explorerSaveAddressToDatabase as wasmExplorerSaveAddressToDatabase,
   explorerSaveManualAddress as wasmExplorerSaveManualAddress,
@@ -110,6 +114,30 @@ export function toNumber(value, fallback = 0) {
 
 export function kgwClean2SafeText(value) {
   return wasmKgwClean2SafeText(value);
+}
+
+export function kgwSummaryCurrentUsdPrice() {
+  return wasmExplorerSummaryCurrentUsdPrice();
+}
+
+export function kgwClean2UsdPrice() {
+  return wasmExplorerSummaryCurrentUsdPrice();
+}
+
+export function kgwSummaryUsdForKas(valueKas) {
+  return wasmExplorerSummaryUsdForKas(valueKas);
+}
+
+export function kgwNormalizeDaySummaries(result) {
+  return wasmExplorerNormalizeDaySummaries(result);
+}
+
+export function kgwClean2NormalizeSummaries(result) {
+  return wasmExplorerNormalizeDaySummaries(result);
+}
+
+export function kgwSummaryUsdForSummary(summary) {
+  return wasmExplorerSummaryUsdForSummary(summary);
 }
 
 export function setTableFontSize(section) {
@@ -1449,6 +1477,12 @@ mod tests {
         assert!(adapter.contains("wasmPick(values)"));
         assert!(adapter.contains("wasmToNumber(value, fallback)"));
         assert!(adapter.contains("wasmKgwClean2SafeText(value)"));
+        assert!(adapter.contains("wasmExplorerSummaryCurrentUsdPrice()"));
+        assert!(adapter.contains("wasmExplorerSummaryUsdForKas(valueKas)"));
+        assert!(adapter.contains("wasmExplorerNormalizeDaySummaries(result)"));
+        assert!(adapter.contains("wasmExplorerSummaryUsdForSummary(summary)"));
+        assert!(!adapter.contains("Number.isFinite"));
+        assert!(!adapter.contains("Math.abs"));
         assert!(adapter.contains("wasmExplorerSetTableFontSize(section)"));
         assert!(adapter.contains("wasmExplorerApplyFontSize(section, rawValue)"));
         assert!(adapter.contains("wasmExplorerBindFontSpinbox(section)"));

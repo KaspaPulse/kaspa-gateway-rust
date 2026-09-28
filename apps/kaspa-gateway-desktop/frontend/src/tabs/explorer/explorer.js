@@ -35,7 +35,7 @@ import { parseHeaderUsdPrice } from "./explorer.header.js";
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf, kgwExplorerExportNumberV2, kgwExplorerExportNormalizeRawTxV2 } from "./explorer.export.js";
 import { parseDateSeconds, kgwDayToEpochSeconds, kgwClean2DayToSeconds } from "./explorer.date.js";
 import { kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { pick, toNumber, kgwClean2SafeText, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwRepairExplorerFilterSelects, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
+import { pick, toNumber, kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwRepairExplorerFilterSelects, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
 
 const SOMPI_PER_KAS = 100_000_000;
 
@@ -435,102 +435,10 @@ if (!window.__kgwExplorerExpandedDateGroups) {
   window.__kgwExplorerExpandedDateGroups = new Set();
 }
 
-function kgwSummarySafeText(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
 /* KGW_FIX_DAY_SUMMARY_USD_TOTALS
    Collapsed day rows must show the total USD value for the day.
    The DB summary has KAS totals; USD is calculated from the current header price.
 */
-function kgwSummaryCurrentUsdPrice() {
-  const candidates = [
-    typeof parseHeaderUsdPrice === "function" ? parseHeaderUsdPrice() : null,
-    window.__kgwHeaderPriceUsd,
-    window.__kgwLastKasPriceUsd,
-    window.__kaspaPriceUsd,
-    window.kaspaPriceUsd
-  ];
-
-  for (const candidate of candidates) {
-    const number = Number(candidate);
-
-    if (Number.isFinite(number) && number > 0) {
-      return number;
-    }
-  }
-
-  const priceText = document.body?.innerText?.match(/Price\s+([0-9.]+)\s+USD/i)?.[1];
-  const parsed = Number(priceText);
-
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-}
-
-function kgwSummaryUsdForKas(valueKas) {
-  const priceUsd = kgwSummaryCurrentUsdPrice();
-  const kas = Math.abs(Number(valueKas || 0));
-
-  if (!Number.isFinite(kas) || !Number.isFinite(priceUsd) || priceUsd <= 0) {
-    return 0;
-  }
-
-  return kas * priceUsd;
-}
-
-function kgwNormalizeDaySummaries(result) {
-  const items = Array.isArray(result)
-    ? result
-    : Array.isArray(result?.days)
-      ? result.days
-      : Array.isArray(result?.summaries)
-        ? result.summaries
-        : [];
-
-  const priceUsd = kgwSummaryCurrentUsdPrice();
-
-  return items
-    .map((item) => {
-      const incomingKas = Number(item?.incoming_kas ?? item?.incomingKas ?? 0) || 0;
-      const outgoingKas = Number(item?.outgoing_kas ?? item?.outgoingKas ?? 0) || 0;
-      const netKas = Number(item?.net_kas ?? item?.netKas ?? (incomingKas - outgoingKas)) || 0;
-
-      // USD day total must represent total movement value, not only net.
-      const grossKas = Math.abs(incomingKas) + Math.abs(outgoingKas);
-      const kasForUsd = grossKas > 0 ? grossKas : Math.abs(netKas);
-
-      const explicitUsd = Number(
-        item?.value_usd ??
-        item?.valueUsd ??
-        item?.usd_value ??
-        item?.usdValue ??
-        item?.value
-      );
-
-      const valueUsd =
-        Number.isFinite(explicitUsd) && explicitUsd > 0
-          ? explicitUsd
-          : priceUsd > 0
-            ? kasForUsd * priceUsd
-            : 0;
-
-      return {
-        __kgwDaySummary: true,
-        day: String(item?.day || item?.date || "").slice(0, 10),
-        count: Number(item?.count ?? item?.tx_count ?? item?.transactions_count ?? 0) || 0,
-        incoming_kas: incomingKas,
-        outgoing_kas: outgoingKas,
-        net_kas: netKas,
-        value_usd: valueUsd
-      };
-    })
-    .filter((item) => item.day);
-}
-
 
 
 async function kgwLoadTransactionsForDay(section, address, day) {
@@ -573,28 +481,6 @@ async function kgwLoadTransactionsForDay(section, address, day) {
 
 
 /* KGW_EXPLORER_USD_VALUE_RUNTIME_PRICE_REPAIR_V1 */
-function kgwSummaryUsdForSummary(summary) {
-  const explicit = Number(
-    summary?.value_usd ??
-    summary?.valueUsd ??
-    summary?.usd_value ??
-    summary?.usdValue ??
-    0
-  );
-
-  if (Number.isFinite(explicit) && explicit > 0) {
-    return explicit;
-  }
-
-  const incomingKas = Number(summary?.incoming_kas ?? summary?.incomingKas ?? 0) || 0;
-  const outgoingKas = Number(summary?.outgoing_kas ?? summary?.outgoingKas ?? 0) || 0;
-  const netKas = Number(summary?.net_kas ?? summary?.netKas ?? 0) || 0;
-  const grossKas = Math.abs(incomingKas) + Math.abs(outgoingKas);
-  const kasForUsd = grossKas > 0 ? grossKas : Math.abs(netKas);
-
-  return kgwSummaryUsdForKas(kasForUsd);
-}
-
 function kgwInstallExplorerPriceRerenderV1() {
   if (window.__kgwExplorerPriceRerenderV1Installed) return;
   window.__kgwExplorerPriceRerenderV1Installed = true;
@@ -677,7 +563,7 @@ async function kgwRenderDaySummaries(section, rows, statusText = "") {
     dayTr.className = "kgw-day-group-row";
     dayTr.dataset.kgwDateGroup = day;
     dayTr.innerHTML =
-      `<td>${sign} ${kgwSummarySafeText(day)}</td>` +
+      `<td>${sign} ${kgwClean2SafeText(day)}</td>` +
       `<td>${Number(summary.count || 0).toLocaleString()} transactions</td>` +
       "<td></td>" +
       `<td>${kgwSummaryFormatKas(summary.net_kas)}</td>` +
@@ -695,7 +581,7 @@ async function kgwRenderDaySummaries(section, rows, statusText = "") {
     if (!cachedRows) {
       const loadingTr = document.createElement("tr");
       loadingTr.className = "kgw-transaction-row";
-      loadingTr.innerHTML = `<td colspan="6" class="muted">Loading transactions for ${kgwSummarySafeText(day)}...</td>`;
+      loadingTr.innerHTML = `<td colspan="6" class="muted">Loading transactions for ${kgwClean2SafeText(day)}...</td>`;
       fragment.appendChild(loadingTr);
       continue;
     }
@@ -716,12 +602,12 @@ async function kgwRenderDaySummaries(section, rows, statusText = "") {
       txTr.className = "kgw-transaction-row";
       txTr.dataset.kgwParentDateGroup = day;
       txTr.innerHTML =
-        `<td>${kgwSummarySafeText(tx?.datetime || tx?.date_time || tx?.time || tx?.timestamp || "")}</td>` +
-        `<td>${kgwSummarySafeText(txid)}</td>` +
-        `<td>${kgwSummarySafeText(tx?.direction || "")}</td>` +
+        `<td>${kgwClean2SafeText(tx?.datetime || tx?.date_time || tx?.time || tx?.timestamp || "")}</td>` +
+        `<td>${kgwClean2SafeText(txid)}</td>` +
+        `<td>${kgwClean2SafeText(tx?.direction || "")}</td>` +
         `<td>${kgwSummaryFormatKas(amount)}</td>` +
         `<td>${kgwSummaryFormatUsd(usd)}</td>` +
-        `<td>${kgwSummarySafeText(tx?.tx_type || tx?.type || "")}</td>`;
+        `<td>${kgwClean2SafeText(tx?.tx_type || tx?.type || "")}</td>`;
 
       fragment.appendChild(txTr);
     }
@@ -1517,80 +1403,6 @@ function kgwClean2Log(label, payload = {}) {
   } catch (_) {
     console.log(`[KGW Explorer][clean2] ${label}`);
   }
-}
-
-function kgwClean2UsdPrice() {
-  const direct = [
-    window.__kgwKaspaUsdPrice,
-    window.__kgwHeaderPriceUsd,
-    window.__kgwLastKasPriceUsd,
-    window.__kaspaPriceUsd,
-    window.kaspaPriceUsd,
-    document.documentElement?.dataset?.kgwKaspaUsdPrice
-  ];
-
-  for (const item of direct) {
-    const n = Number(item);
-    if (Number.isFinite(n) && n > 0) return n;
-  }
-
-  const headerText = String(document.getElementById("kgwHeaderPrice")?.textContent || "").replace(/,/g, "");
-  const headerMatch = headerText.match(/([0-9]+(?:\.[0-9]+)?)/);
-  const headerParsed = Number(headerMatch?.[1]);
-
-  if (Number.isFinite(headerParsed) && headerParsed > 0) {
-    return headerParsed;
-  }
-
-  const bodyText = document.body?.innerText || "";
-  const m = bodyText.replace(/,/g, "").match(/(?:Price\s*)?([0-9]+(?:\.[0-9]+)?)\s*USD/i);
-  const parsed = Number(m?.[1]);
-
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-}
-
-function kgwClean2NormalizeSummaries(result) {
-  const items = Array.isArray(result)
-    ? result
-    : Array.isArray(result?.days)
-      ? result.days
-      : Array.isArray(result?.summaries)
-        ? result.summaries
-        : [];
-
-  const price = kgwClean2UsdPrice();
-
-  return items
-    .map((item) => {
-      const incomingKas = Number(item?.incoming_kas ?? item?.incomingKas ?? 0) || 0;
-      const outgoingKas = Number(item?.outgoing_kas ?? item?.outgoingKas ?? 0) || 0;
-      const netKas = Number(item?.net_kas ?? item?.netKas ?? (incomingKas - outgoingKas)) || 0;
-      const grossKas = Math.abs(incomingKas) + Math.abs(outgoingKas);
-      const kasForUsd = grossKas > 0 ? grossKas : Math.abs(netKas);
-
-      const explicitUsd = Number(
-        item?.value_usd ??
-        item?.valueUsd ??
-        item?.usd_value ??
-        item?.usdValue ??
-        item?.value
-      );
-
-      return {
-        __kgwDaySummary: true,
-        day: String(item?.day || item?.date || "").slice(0, 10),
-        count: Number(item?.count ?? item?.tx_count ?? item?.transactions_count ?? 0) || 0,
-        incoming_kas: incomingKas,
-        outgoing_kas: outgoingKas,
-        net_kas: netKas,
-        value_usd: Number.isFinite(explicitUsd) && explicitUsd > 0
-          ? explicitUsd
-          : price > 0
-            ? kasForUsd * price
-            : 0
-      };
-    })
-    .filter((item) => item.day);
 }
 
 function kgwClean2Section(section) {

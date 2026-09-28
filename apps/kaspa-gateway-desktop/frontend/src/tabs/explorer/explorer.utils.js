@@ -26,6 +26,10 @@ import init, {
   explorerNormalizeTxTypeFilterValue as wasmExplorerNormalizeTxTypeFilterValue,
   explorerReadFilterState as wasmExplorerReadFilterState,
   explorerRepairFilterSelects as wasmExplorerRepairFilterSelects,
+  explorerNormalizeDaySummaries as wasmExplorerNormalizeDaySummaries,
+  explorerSummaryCurrentUsdPrice as wasmExplorerSummaryCurrentUsdPrice,
+  explorerSummaryUsdForKas as wasmExplorerSummaryUsdForKas,
+  explorerSummaryUsdForSummary as wasmExplorerSummaryUsdForSummary,
   explorerRefreshAddressName as wasmExplorerRefreshAddressName,
   explorerSaveAddressToDatabase as wasmExplorerSaveAddressToDatabase,
   explorerSaveManualAddress as wasmExplorerSaveManualAddress,
@@ -53,6 +57,30 @@ export function toNumber(value, fallback = 0) {
 
 export function kgwClean2SafeText(value) {
   return wasmKgwClean2SafeText(value);
+}
+
+export function kgwSummaryCurrentUsdPrice() {
+  return wasmExplorerSummaryCurrentUsdPrice();
+}
+
+export function kgwClean2UsdPrice() {
+  return wasmExplorerSummaryCurrentUsdPrice();
+}
+
+export function kgwSummaryUsdForKas(valueKas) {
+  return wasmExplorerSummaryUsdForKas(valueKas);
+}
+
+export function kgwNormalizeDaySummaries(result) {
+  return wasmExplorerNormalizeDaySummaries(result);
+}
+
+export function kgwClean2NormalizeSummaries(result) {
+  return wasmExplorerNormalizeDaySummaries(result);
+}
+
+export function kgwSummaryUsdForSummary(summary) {
+  return wasmExplorerSummaryUsdForSummary(summary);
 }
 
 export function setTableFontSize(section) {
