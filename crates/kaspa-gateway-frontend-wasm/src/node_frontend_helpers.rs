@@ -3891,6 +3891,245 @@ fn query(target: &JsValue, selector: &str) -> JsValue {
     call1(target, "querySelector", &JsValue::from_str(selector)).unwrap_or(JsValue::UNDEFINED)
 }
 
+const LOG_FONT_MIN_SIZE: i32 = 10;
+const LOG_FONT_MAX_SIZE: i32 = 18;
+const LOG_FONT_DEFAULT_SIZE: i32 = 12;
+
+fn log_font_storage_key(net: &str) -> String {
+    format!("kgw.node.log.fontSize.{net}")
+}
+
+fn clamp_log_font_size(value: &str) -> i32 {
+    value
+        .trim()
+        .parse::<i32>()
+        .unwrap_or(LOG_FONT_DEFAULT_SIZE)
+        .clamp(LOG_FONT_MIN_SIZE, LOG_FONT_MAX_SIZE)
+}
+
+fn read_log_font_size(net: &str) -> i32 {
+    storage_get(&log_font_storage_key(net))
+        .map(|value| clamp_log_font_size(&value))
+        .unwrap_or(LOG_FONT_DEFAULT_SIZE)
+}
+
+fn write_log_font_size(net: &str, size: i32) -> i32 {
+    let final_size = size.clamp(LOG_FONT_MIN_SIZE, LOG_FONT_MAX_SIZE);
+    storage_set(&log_font_storage_key(net), &final_size.to_string());
+    final_size
+}
+
+fn log_output(net: &str) -> JsValue {
+    node_by_id(node_element_id(net.to_owned(), "logOutput".to_owned()))
+}
+
+fn log_toolbar(net: &str) -> JsValue {
+    let root = query(&document(), "#kaspa-node");
+    if !present(&root) {
+        return JsValue::UNDEFINED;
+    }
+    let copy_selector =
+        format!(".node-v6-log-toolbar [data-node-action='copy-log'][data-net='{net}']");
+    let copy_button = query(&root, &copy_selector);
+    if present(&copy_button) {
+        let toolbar = call1(
+            &copy_button,
+            "closest",
+            &JsValue::from_str(".node-v6-log-toolbar"),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        if present(&toolbar) {
+            return toolbar;
+        }
+    }
+    let panel = query(&root, &format!("[data-net='{net}']"));
+    if present(&panel) {
+        query(&panel, ".node-v6-log-toolbar")
+    } else {
+        JsValue::UNDEFINED
+    }
+}
+
+fn set_style_property(style: &JsValue, name: &str, value: &str, priority: &str) {
+    if let Some(set_property) = function(style, "setProperty") {
+        let _ = set_property.call3(
+            style,
+            &JsValue::from_str(name),
+            &JsValue::from_str(value),
+            &JsValue::from_str(priority),
+        );
+    }
+}
+
+fn apply_log_font_size(net: &str) {
+    let output = log_output(net);
+    let size = read_log_font_size(net);
+    if present(&output) {
+        set(
+            &property(&output, "dataset"),
+            "kgwLogFontSizePane",
+            &JsValue::from_str("v29"),
+        );
+        let style = property(&output, "style");
+        set_style_property(&style, "--kgw-log-font-size", &format!("{size}px"), "");
+        set_style_property(&style, "font-size", "var(--kgw-log-font-size)", "important");
+        set_style_property(&style, "line-height", "1.45", "important");
+    }
+
+    let toolbar = log_toolbar(net);
+    if present(&toolbar) {
+        let value = query(
+            &toolbar,
+            &format!(".kgw-log-font-size-value[data-net='{net}']"),
+        );
+        if present(&value) {
+            set(
+                &value,
+                "textContent",
+                &JsValue::from_str(&format!("{size}px")),
+            );
+        }
+    }
+}
+
+fn log_font_button(label: &str, title: &str) -> JsValue {
+    let button = create_element("button");
+    set(&button, "type", &JsValue::from_str("button"));
+    set(
+        &button,
+        "className",
+        &JsValue::from_str("kgw-log-font-size-button"),
+    );
+    set(&button, "textContent", &JsValue::from_str(label));
+    set(&button, "title", &JsValue::from_str(title));
+    let _ = call2(
+        &button,
+        "setAttribute",
+        &JsValue::from_str("aria-label"),
+        &JsValue::from_str(title),
+    );
+    set(
+        &property(&button, "dataset"),
+        "kgwLogFontOwner",
+        &JsValue::from_str("v29"),
+    );
+    button
+}
+
+fn bind_log_font_button(button: &JsValue, net: &str, delta: i32, phase: &'static str) {
+    let net = net.to_owned();
+    let callback = Closure::wrap(Box::new(move |event: JsValue| {
+        if let Some(prevent) = function(&event, "preventDefault") {
+            let _ = prevent.call0(&event);
+        }
+        if let Some(stop) = function(&event, "stopPropagation") {
+            let _ = stop.call0(&event);
+        }
+        let previous_size = read_log_font_size(&net);
+        let next_size = if delta == 0 {
+            LOG_FONT_DEFAULT_SIZE
+        } else {
+            previous_size + delta
+        };
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "patch",
+            &JsValue::from_str("KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3"),
+        );
+        set(
+            details.as_ref(),
+            "trusted",
+            &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+        );
+        set(
+            details.as_ref(),
+            "previousSize",
+            &JsValue::from_f64(previous_size as f64),
+        );
+        set(
+            details.as_ref(),
+            "nextSize",
+            &JsValue::from_f64(next_size as f64),
+        );
+        let _ = crate::node_start_trace::node_small_owner_trace(
+            JsValue::from_str(&net),
+            JsValue::from_str("log-font-size"),
+            JsValue::from_str(phase),
+            details.into(),
+        );
+        write_log_font_size(&net, next_size);
+        apply_log_font_size(&net);
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call2(
+        button,
+        "addEventListener",
+        &JsValue::from_str("click"),
+        callback.as_ref().unchecked_ref(),
+    );
+    callback.forget();
+}
+
+fn install_log_font_controls_for_network(net: &str) {
+    let toolbar = log_toolbar(net);
+    if !present(&toolbar) {
+        return;
+    }
+    for duplicate in query_all_values(&toolbar, ".kgw-log-font-size-controls") {
+        if let Some(remove) = function(&duplicate, "remove") {
+            let _ = remove.call0(&duplicate);
+        }
+    }
+
+    let controls = create_element("div");
+    set(
+        &controls,
+        "className",
+        &JsValue::from_str("kgw-log-font-size-controls"),
+    );
+    let controls_dataset = property(&controls, "dataset");
+    set(&controls_dataset, "kind", &JsValue::from_str("node"));
+    set(&controls_dataset, "net", &JsValue::from_str(net));
+    set(
+        &controls_dataset,
+        "marker",
+        &JsValue::from_str("KGW_NODE_LOG_SCOPED_CONTROLS_V29"),
+    );
+
+    let decrease = log_font_button("A-", "Decrease log font size");
+    let value = create_element("span");
+    set(
+        &value,
+        "className",
+        &JsValue::from_str("kgw-log-font-size-value"),
+    );
+    set(&property(&value, "dataset"), "net", &JsValue::from_str(net));
+    set(
+        &value,
+        "textContent",
+        &JsValue::from_str(&format!("{}px", read_log_font_size(net))),
+    );
+    let increase = log_font_button("A+", "Increase log font size");
+    let reset = log_font_button("Reset", "Reset log font size");
+
+    bind_log_font_button(&decrease, net, -1, "r51b3-node-log-font-decrease-click");
+    bind_log_font_button(&increase, net, 1, "r51b3-node-log-font-increase-click");
+    bind_log_font_button(&reset, net, 0, "r51b3-node-log-font-reset-click");
+
+    append_child(&controls, &decrease);
+    append_child(&controls, &value);
+    append_child(&controls, &increase);
+    append_child(&controls, &reset);
+    append_child(&toolbar, &controls);
+    apply_log_font_size(net);
+}
+
+fn install_all_log_font_controls() {
+    for profile in NETWORKS {
+        install_log_font_controls_for_network(profile.key);
+    }
+}
+
 #[wasm_bindgen(js_name = nodeInstallLogAutoScrollControls)]
 pub fn node_install_log_auto_scroll_controls() {
     let doc = document();
@@ -4022,11 +4261,24 @@ pub fn node_install_log_auto_scroll_controls() {
             }
         }
     }
+    install_all_log_font_controls();
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn log_font_size_contract_matches_legacy_bounds() {
+        assert_eq!(
+            log_font_storage_key("mainnet"),
+            "kgw.node.log.fontSize.mainnet"
+        );
+        assert_eq!(clamp_log_font_size(""), LOG_FONT_DEFAULT_SIZE);
+        assert_eq!(clamp_log_font_size("9"), LOG_FONT_MIN_SIZE);
+        assert_eq!(clamp_log_font_size("12"), 12);
+        assert_eq!(clamp_log_font_size("99"), LOG_FONT_MAX_SIZE);
+    }
 
     #[test]
     fn network_profiles_match_legacy_defaults() {
