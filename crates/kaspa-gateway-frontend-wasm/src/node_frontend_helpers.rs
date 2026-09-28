@@ -1698,6 +1698,143 @@ fn r51_restore_action(net: &str) -> JsValue {
     result.into()
 }
 
+fn r51_trace(net: &str, action: &str, phase: &str, details: JsValue) {
+    let _ = crate::node_start_trace::node_small_owner_trace(
+        JsValue::from_str(net),
+        JsValue::from_str(action),
+        JsValue::from_str(phase),
+        details,
+    );
+}
+
+fn r51_trace_details() -> Object {
+    let details = Object::new();
+    set(details.as_ref(), "patch", &JsValue::from_str("R29B"));
+    set(
+        details.as_ref(),
+        "owner",
+        &JsValue::from_str("node-r51-settings-owner"),
+    );
+    details
+}
+
+fn r51_persist_trace_spec(
+    kind: &str,
+) -> Option<(
+    &'static str,
+    &'static str,
+    &'static str,
+    &'static str,
+    &'static str,
+)> {
+    match kind {
+        "saved" => Some((
+            "save-settings",
+            "r29b-save-begin",
+            "r29b-save-read-settings",
+            "r29b-save-complete",
+            "savedKey",
+        )),
+        "default" => Some((
+            "set-defaults",
+            "r29b-set-defaults-begin",
+            "r29b-set-defaults-read-settings",
+            "r29b-set-defaults-complete",
+            "defaultKey",
+        )),
+        _ => None,
+    }
+}
+
+fn r51_read_settings_tracked(net: &str) -> JsValue {
+    let values = r51_read_settings(net);
+    let details = r51_trace_details();
+    let options = property(&values, COMMAND_OPTIONS_KEY);
+    let count = if options.is_object() && !options.is_null() {
+        Object::keys(&Object::from(options)).length()
+    } else {
+        0
+    };
+    set(
+        details.as_ref(),
+        "commandOptionCount",
+        &JsValue::from_f64(f64::from(count)),
+    );
+    r51_trace(
+        net,
+        "settings-persistence",
+        "r38c-read-settings-command-options",
+        details.into(),
+    );
+    values
+}
+
+fn r51_persist_tracked(net: &str, kind: &str) -> Result<JsValue, JsValue> {
+    node_require_valid_settings(net.to_owned())?;
+    let Some((action, begin_phase, read_phase, complete_phase, key_field)) =
+        r51_persist_trace_spec(kind)
+    else {
+        return Err(Error::new("unsupported R51 persistence kind").into());
+    };
+
+    r51_trace(net, action, begin_phase, r51_trace_details().into());
+    let result = r51_persist_action(net, kind)?;
+
+    let read = r51_trace_details();
+    for key in [
+        "keyCount",
+        "checkboxCount",
+        "valueCount",
+        "structuredInstanceCount",
+        "hasActiveStructuredInstance",
+    ] {
+        set(read.as_ref(), key, &property(&result, key));
+    }
+    r51_trace(net, action, read_phase, read.into());
+
+    let complete = r51_trace_details();
+    let storage_key = {
+        let value = property(&result, "storageKey");
+        if present(&value) {
+            crate::js_string_owned(&value)
+        } else {
+            format!("{kind}:{net}")
+        }
+    };
+    set(
+        complete.as_ref(),
+        key_field,
+        &JsValue::from_str(&storage_key),
+    );
+    set(
+        complete.as_ref(),
+        "persisted",
+        &property(&result, "persisted"),
+    );
+    set(
+        complete.as_ref(),
+        "persistedKeyCount",
+        &property(&result, "persistedKeyCount"),
+    );
+    r51_trace(net, action, complete_phase, complete.into());
+    Ok(result)
+}
+
+#[wasm_bindgen(js_name = nodeR51ReadSettingsTracked)]
+pub fn node_r51_read_settings_tracked(net: String) -> JsValue {
+    r51_read_settings_tracked(&net)
+}
+
+#[wasm_bindgen(js_name = nodeR51SaveSettings)]
+pub fn node_r51_save_settings(net: String) -> Result<JsValue, JsValue> {
+    r51_persist_tracked(&net, "saved")
+}
+
+#[wasm_bindgen(js_name = nodeR51SetAsDefaults)]
+pub fn node_r51_set_as_defaults(net: String) -> Result<JsValue, JsValue> {
+    r51_persist_tracked(&net, "default")
+}
+
 #[wasm_bindgen(js_name = nodeR51Keys)]
 pub fn node_r51_keys() -> Array {
     r51_keys_array()

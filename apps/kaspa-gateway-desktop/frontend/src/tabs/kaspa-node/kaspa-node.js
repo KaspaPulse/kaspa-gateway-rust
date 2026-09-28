@@ -6,7 +6,6 @@ import initNodeRust, {
   nodeById as byId,
   nodeChecked as c,
   nodeCommandInlineState as kgwNodeCommandInlineStateR7,
-  nodeCommandOptionsKey as wasmNodeCommandOptionsKey,
   nodeRefreshInlineCommandToggles as kgwNodeRefreshInlineCommandTogglesR7,
   nodeToggleCommandOption as wasmNodeToggleCommandOption,
   nodeApplyRuntimeLogReport as kgwNodeApplyRuntimeLogReportV1,
@@ -15,7 +14,6 @@ import initNodeRust, {
   nodeDispatchClipboardWrite as kgwNodeDispatchClipboardWriteV1,
   nodeDispatchRuntimeLogClear as kgwNodeDispatchRuntimeLogClearV1,
   nodeEffectiveNodeSettings as kgwNodeEffectiveNodeSettings,
-  nodeRequireValidSettings as kgwNodeRequireValidSettings,
   nodeValidateForm as kgwNodeValidateForm,
   nodeSuperMegaIsolatedAdapterStatusPreviewV1 as wasmNodeSuperMegaIsolatedAdapterStatusPreviewV1,
   nodeFinalIsolatedAdapterStartV1 as wasmNodeFinalIsolatedAdapterStartV1,
@@ -46,14 +44,14 @@ import initNodeRust, {
   nodeR51CaptureFactoryDefaults as kgwNodeR51CaptureFactoryDefaults,
   nodeR51Fields as kgwNodeR51Fields,
   nodeR51Keys as kgwNodeR51Keys,
-  nodeR51Load as wasmNodeR51Load,
+  nodeR51Load as kgwNodeR51Load,
   nodeR51LoadSavedSettings as wasmNodeR51LoadSavedSettings,
   nodeR51Panel as kgwNodeR51Panel,
-  nodeR51ReadSettings as wasmNodeR51ReadSettings,
+  nodeR51ReadSettingsTracked as kgwNodeR51ReadSettings,
   nodeRenderNetworkPanelsHtml as wasmNodeRenderNetworkPanelsHtml,
   nodeR51RestoreDefaultsAction as wasmNodeR51RestoreDefaultsAction,
-  nodeR51SaveSettingsAction as wasmNodeR51SaveSettingsAction,
-  nodeR51SetDefaultsAction as wasmNodeR51SetDefaultsAction,
+  nodeR51SaveSettings as kgwNodeR51SaveSettings,
+  nodeR51SetAsDefaults as kgwNodeR51SetAsDefaults,
   nodeResolvePublicTauriInvoke as kgwResolvePublicTauriInvokeR1,
   nodeRuntimeActionForCommand as kgwNodeRuntimeActionForCommandR1,
   nodeRuntimeArgs as nodeRuntimeArgs,
@@ -1280,31 +1278,6 @@ let KGW_NODE_R51_TIMER = null;
 
 /* KGW_SETTINGS_FEEDBACK_LOCK_OWNER_R11_END */
 
-function kgwNodeR51ReadSettings(net) {
-  const values = wasmNodeR51ReadSettings(String(net || ""));
-  kgwNodeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-read-settings-command-options", {
-    patch: "R38C",
-    owner: "node-r51-settings-owner",
-    commandOptionCount: Object.keys(values?.[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C] || {}).length
-  });
-  return values;
-}
-
-
-/* KGW_NODE_COMMAND_CHECKBOX_PERSISTENCE_PATCH_R38C
- * Persist Node command include/exclude checkboxes by semantic keys, not empty DOM ids.
- * This patches the existing R51 settings persistence owner only.
- */
-const KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C = wasmNodeCommandOptionsKey();
-
-function kgwNodeR51Load(key) {
-  try {
-    return wasmNodeR51Load(String(key || ""));
-  } catch {
-    return null;
-  }
-}
-
 function kgwNodeR51LoadSavedSettings() {
   const applied = Array.from(wasmNodeR51LoadSavedSettings() || []);
   for (const item of applied) {
@@ -1327,60 +1300,6 @@ function kgwNodeR51LoadSavedSettings() {
  * No changes: Save Settings / Restore Defaults / Set as Defaults are disabled.
  */
 
-
-function kgwNodeR51SaveSettings(net) {
-  kgwNodeRequireValidSettings(net);
-  kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-begin", {
-    patch: "R29B",
-    owner: "node-r51-settings-owner"
-  });
-
-  const result = wasmNodeR51SaveSettingsAction(String(net || ""));
-  kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-read-settings", {
-    patch: "R29B",
-    owner: "node-r51-settings-owner",
-    keyCount: Number(result?.keyCount || 0),
-    checkboxCount: Number(result?.checkboxCount || 0),
-    valueCount: Number(result?.valueCount || 0),
-    structuredInstanceCount: Number(result?.structuredInstanceCount || 0),
-    hasActiveStructuredInstance: Boolean(result?.hasActiveStructuredInstance)
-  });
-  kgwNodeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-complete", {
-    patch: "R29B",
-    owner: "node-r51-settings-owner",
-    savedKey: String(result?.storageKey || ("saved:" + String(net || ""))),
-    persisted: Boolean(result?.persisted),
-    persistedKeyCount: Number(result?.persistedKeyCount || 0)
-  });
-  return result;
-}
-
-function kgwNodeR51SetAsDefaults(net) {
-  kgwNodeRequireValidSettings(net);
-  kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-begin", {
-    patch: "R29B",
-    owner: "node-r51-settings-owner"
-  });
-
-  const result = wasmNodeR51SetDefaultsAction(String(net || ""));
-  kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-read-settings", {
-    patch: "R29B",
-    owner: "node-r51-settings-owner",
-    keyCount: Number(result?.keyCount || 0),
-    checkboxCount: Number(result?.checkboxCount || 0),
-    valueCount: Number(result?.valueCount || 0),
-    structuredInstanceCount: Number(result?.structuredInstanceCount || 0),
-    hasActiveStructuredInstance: Boolean(result?.hasActiveStructuredInstance)
-  });
-  kgwNodeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-complete", {
-    patch: "R29B",
-    owner: "node-r51-settings-owner",
-    defaultKey: String(result?.storageKey || ("default:" + String(net || ""))),
-    persisted: Boolean(result?.persisted),
-    persistedKeyCount: Number(result?.persistedKeyCount || 0)
-  });
-  return result;
-}
 
 /* R9B compatibility boundary: current input/change owners identify programmatic writes via Event.isTrusted. */
 function kgwNodeSettingsWithProgrammaticWriteR9B(callback) {

@@ -13,6 +13,24 @@ use integrated_runtime_commands::{
 };
 use std::sync::{Mutex, OnceLock};
 
+fn isolated_bridge_listener_pair() -> (String, String) {
+    let stratum = std::net::TcpListener::bind("127.0.0.1:0")
+        .expect("test-only Stratum listener port must be reservable");
+    let prometheus = std::net::TcpListener::bind("127.0.0.1:0")
+        .expect("test-only Prometheus listener port must be reservable");
+    let stratum_addr = stratum
+        .local_addr()
+        .expect("test-only Stratum listener address must be readable")
+        .to_string();
+    let prometheus_addr = prometheus
+        .local_addr()
+        .expect("test-only Prometheus listener address must be readable")
+        .to_string();
+    drop(prometheus);
+    drop(stratum);
+    (stratum_addr, prometheus_addr)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn kgw_kgw_apply_node_settings_v1(
     network: String,
@@ -44,6 +62,11 @@ fn kgw_kgw_apply_node_settings_v1(
         let network = kaspa_gateway_rk_bridge::BridgeRuntimeNetwork::parse(&network).unwrap();
         let mut effective = kaspa_gateway_rk_bridge::EffectiveBridgeSettings::for_network(network);
         effective.global.kaspa_rpc_endpoint = network.default_rpc().to_string();
+        for instance in &mut effective.instances {
+            let (stratum, prometheus) = isolated_bridge_listener_pair();
+            instance.stratum_listen = stratum;
+            instance.prometheus_listen = Some(prometheus);
+        }
         effective
     });
     integrated_runtime_commands::kgw_kgw_apply_node_settings_v1(

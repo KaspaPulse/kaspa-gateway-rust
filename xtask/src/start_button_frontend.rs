@@ -471,32 +471,30 @@ function staticPlacementTests() {
       && !source.includes("function kgwNodeR51Panel(")
       && source.includes("nodeR51Fields as kgwNodeR51Fields")
       && !source.includes("function kgwNodeR51Fields(")
-      && source.includes("nodeR51ReadSettings as wasmNodeR51ReadSettings")
-      && source.includes("nodeR51Load as wasmNodeR51Load")
+      && source.includes("nodeR51ReadSettingsTracked as kgwNodeR51ReadSettings")
+      && !source.includes("function kgwNodeR51ReadSettings(")
+      && source.includes("nodeR51Load as kgwNodeR51Load")
+      && !source.includes("function kgwNodeR51Load(")
       && source.includes("nodeR51CaptureFactoryDefaults as kgwNodeR51CaptureFactoryDefaults")
       && !source.includes("function kgwNodeR51CaptureFactoryDefaults(")
       && source.includes("nodeR51LoadSavedSettings as wasmNodeR51LoadSavedSettings"),
-    "Node R51 persistence core must be delegated to the Rust/WASM owner",
+    "Node R51 persistence core must bind directly to the Rust/WASM owner",
   );
   assert.ok(
-    source.includes("const KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C = wasmNodeCommandOptionsKey();")
-      && /function kgwNodeR51ReadSettings\(net\)\s*\{\s*const values = wasmNodeR51ReadSettings/.test(source)
-      && source.includes('return wasmNodeR51Load(String(key || ""));')
+    !source.includes("nodeCommandOptionsKey as wasmNodeCommandOptionsKey")
+      && !source.includes("KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C")
+      && source.includes("nodeR51SaveSettings as kgwNodeR51SaveSettings")
+      && !source.includes("function kgwNodeR51SaveSettings(")
+      && source.includes("nodeR51SetAsDefaults as kgwNodeR51SetAsDefaults")
+      && !source.includes("function kgwNodeR51SetAsDefaults(")
       && !source.includes("function kgwNodeR51WriteSettings(")
       && !source.includes("function kgwNodeR51Store("),
-    "Node R51 wrappers must remain thin Rust/WASM adapters with JS-only trace/update glue",
+    "Node R51 read/load/save/set-defaults must use direct Rust/WASM bindings",
   );
   assert.ok(
-    source.includes("nodeR51SaveSettingsAction as wasmNodeR51SaveSettingsAction")
-      && source.includes("nodeR51SetDefaultsAction as wasmNodeR51SetDefaultsAction")
-      && source.includes("nodeR51RestoreDefaultsAction as wasmNodeR51RestoreDefaultsAction"),
-    "Node R51 Save/Set Defaults/Restore action ownership must be delegated to Rust/WASM",
-  );
-  assert.ok(
-    /function kgwNodeR51SaveSettings\(net\)[\s\S]*?wasmNodeR51SaveSettingsAction/.test(source)
-      && /function kgwNodeR51SetAsDefaults\(net\)[\s\S]*?wasmNodeR51SetDefaultsAction/.test(source)
+    source.includes("nodeR51RestoreDefaultsAction as wasmNodeR51RestoreDefaultsAction")
       && /function kgwNodeR51RestoreDefaults\(net\)[\s\S]*?wasmNodeR51RestoreDefaultsAction/.test(source),
-    "Node R51 settings action wrappers must call the Rust/WASM owner",
+    "Node R51 Restore Defaults compatibility wrapper must remain delegated to Rust/WASM",
   );
   assert.ok(
     !source.includes("const commandOptions = values && values[KGW_NODE_R51_COMMAND_OPTIONS_KEY_R38C];")
@@ -511,11 +509,12 @@ function staticPlacementTests() {
   assert.ok(
     source.includes("nodeEffectiveNodeSettings as kgwNodeEffectiveNodeSettings")
       && source.includes("nodeValidateForm as kgwNodeValidateForm")
-      && source.includes("nodeRequireValidSettings as kgwNodeRequireValidSettings")
+      && !source.includes("nodeRequireValidSettings as kgwNodeRequireValidSettings")
       && !source.includes("function kgwNodeEffectiveNodeSettings(")
       && !source.includes("function kgwNodeValidateForm(")
       && !source.includes("function kgwNodeRequireValidSettings(")
-      && rustNodeHelpersSource.includes("fn node_validate_form_inner("),
+      && rustNodeHelpersSource.includes("fn node_validate_form_inner(")
+      && rustNodeHelpersSource.includes("node_require_valid_settings"),
     "Node effective settings and validation must bind directly to the Rust/WASM owner",
   );
   assert.ok(
@@ -1330,6 +1329,16 @@ const wasmNodeR51PersistAction = (net, kind) => {
 };
 const wasmNodeR51SaveSettingsAction = (net) => wasmNodeR51PersistAction(net, "saved");
 const wasmNodeR51SetDefaultsAction = (net) => wasmNodeR51PersistAction(net, "default");
+const kgwNodeR51ReadSettings = (net) => wasmNodeR51ReadSettings(net);
+const kgwNodeR51Load = (key) => wasmNodeR51Load(key);
+const kgwNodeR51SaveSettings = (net) => {
+  kgwNodeRequireValidSettings(net);
+  return wasmNodeR51SaveSettingsAction(net);
+};
+const kgwNodeR51SetAsDefaults = (net) => {
+  kgwNodeRequireValidSettings(net);
+  return wasmNodeR51SetDefaultsAction(net);
+};
 const wasmNodeR51RestoreDefaultsAction = (net) => {
   const defaults = wasmNodeR51Load("default:" + net) || wasmNodeR51Load("factory:" + net);
   return {
