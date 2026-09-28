@@ -90,6 +90,8 @@ import init, {
   explorerLiveCoreRows as wasmExplorerLiveCoreRows,
   explorerLiveCoreSeedRows as wasmExplorerLiveCoreSeedRows,
   explorerLiveCoreShouldRender as wasmExplorerLiveCoreShouldRender,
+  explorerNormalizeUnifiedResult as wasmExplorerNormalizeUnifiedResult,
+  explorerDaySummaryRowsFromResult as wasmExplorerDaySummaryRowsFromResult,
   explorerNormalizeDaySummaries as wasmExplorerNormalizeDaySummaries,
   explorerSummaryCurrentUsdPrice as wasmExplorerSummaryCurrentUsdPrice,
   explorerSummaryUsdForKas as wasmExplorerSummaryUsdForKas,
@@ -173,6 +175,14 @@ export function kgwLiveCoreRows() {
 
 export function kgwLiveCoreShouldRender(payload) {
   return wasmExplorerLiveCoreShouldRender(payload);
+}
+
+export function kgwNormalizeUnifiedResult(result) {
+  return wasmExplorerNormalizeUnifiedResult(result);
+}
+
+export function kgwDaySummaryRowsFromResult(result) {
+  return wasmExplorerDaySummaryRowsFromResult(result);
 }
 
 export function setTableFontSize(section) {
@@ -1523,6 +1533,8 @@ mod tests {
         assert!(adapter.contains("wasmExplorerLiveCoreMergeDays(days)"));
         assert!(adapter.contains("wasmExplorerLiveCoreRows()"));
         assert!(adapter.contains("wasmExplorerLiveCoreShouldRender(payload)"));
+        assert!(adapter.contains("wasmExplorerNormalizeUnifiedResult(result)"));
+        assert!(adapter.contains("wasmExplorerDaySummaryRowsFromResult(result)"));
         assert!(!adapter.contains("Number.isFinite"));
         assert!(!adapter.contains("Math.abs"));
         assert!(!adapter.contains("new Map"));

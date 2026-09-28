@@ -31,13 +31,10 @@
  * - Transaction fetch/sync orchestration belongs to Rust runtime transaction_sync.rs.
  */
 
-import { parseHeaderUsdPrice } from "./explorer.header.js";
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf, kgwExplorerExportNumberV2, kgwExplorerExportNormalizeRawTxV2 } from "./explorer.export.js";
 import { parseDateSeconds, kgwDayToEpochSeconds, kgwClean2DayToSeconds } from "./explorer.date.js";
 import { kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { pick, toNumber, kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwRepairExplorerFilterSelects, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
-
-const SOMPI_PER_KAS = 100_000_000;
+import { kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, kgwNormalizeUnifiedResult, kgwDaySummaryRowsFromResult, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwRepairExplorerFilterSelects, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
 
 const explorerState = {
   rows: [],
@@ -147,156 +144,13 @@ function syncActionState(section) {
 
 function extractRowsFromUnifiedResult(result) {
   microscopeApiShape("UNIFIED RESULT RAW SHAPE", result);
-
-  const rows = [];
-  const seen = new Set();
-  const priceUsd = parseHeaderUsdPrice();
-
-  function dateTimeFromTimestamp(value) {
-    const raw = toNumber(value, 0);
-    if (raw <= 0) return "";
-
-    const ms = raw > 10_000_000_000 ? raw : raw * 1000;
-    const d = new Date(ms);
-    if (Number.isNaN(d.getTime())) return "";
-
-    const pad = (v) => String(v).padStart(2, "0");
-
-    return [
-      d.getFullYear(),
-      "-",
-      pad(d.getMonth() + 1),
-      "-",
-      pad(d.getDate()),
-      " ",
-      pad(d.getHours()),
-      ":",
-      pad(d.getMinutes()),
-      ":",
-      pad(d.getSeconds())
-    ].join("");
-  }
-
-  function normalizeTransaction(tx, day = "") {
-    if (!tx || typeof tx !== "object") return null;
-
-    const txid = String(pick(
-      tx.txid,
-      tx.transaction_id,
-      tx.transactionId,
-      tx.id,
-      tx.hash
-    ) || "").trim();
-
-    if (!txid) return null;
-
-    const timestampMs = toNumber(pick(
-      tx.timestamp_ms,
-      tx.timestampMs,
-      tx.timestamp,
-      tx.block_time,
-      tx.blockTime
-    ), 0);
-
-    const amountKas = toNumber(
-      pick(tx.amount_kas, tx.amountKas),
-      Number.NaN
-    );
-
-    const amountSompi = toNumber(
-      pick(tx.amount_sompi, tx.amountSompi),
-      0
-    );
-
-    const amount = Number.isFinite(amountKas)
-      ? amountKas
-      : amountSompi / SOMPI_PER_KAS;
-
-    const datetime = String(pick(
-      tx.datetime,
-      tx.date_time,
-      tx.dateTime,
-      dateTimeFromTimestamp(timestampMs)
-    ) || "");
-
-    const value = Number.isFinite(toNumber(tx.value, Number.NaN))
-      ? toNumber(tx.value, 0)
-      : Number.isFinite(Number(priceUsd))
-        ? amount * Number(priceUsd)
-        : 0;
-
-    return {
-      date: String(pick(tx.date, day, datetime.slice(0, 10)) || ""),
-      datetime,
-      txid,
-      direction: String(pick(tx.direction, "unknown") || "unknown"),
-      amount,
-      value,
-      type: String(pick(tx.type, tx.tx_type, tx.txType, "transfer") || "transfer"),
-      from_address: pick(tx.from_address, tx.fromAddress, tx.from),
-      to_address: pick(tx.to_address, tx.toAddress, tx.to),
-      counterparty: pick(tx.counterparty, tx.counterParty),
-      block_height: pick(tx.block_height, tx.blockHeight),
-      timestamp_ms: timestampMs
-    };
-  }
-
-  function pushRow(tx, day = "") {
-    const row = normalizeTransaction(tx, day);
-    if (!row) return;
-
-    if (seen.has(row.txid)) return;
-    seen.add(row.txid);
-
-    rows.push(row);
-  }
-
-  function consumeGroups(groups) {
-    for (const group of Array.isArray(groups) ? groups : []) {
-      const day = String(group?.day || group?.date || "");
-      const txs = Array.isArray(group?.transactions)
-        ? group.transactions
-        : Array.isArray(group?.rows)
-          ? group.rows
-          : [];
-
-      for (const tx of txs) {
-        pushRow(tx, day);
-      }
-    }
-  }
-
-  if (Array.isArray(result)) {
-    const looksGrouped = result.some((item) => Array.isArray(item?.transactions));
-    if (looksGrouped) {
-      consumeGroups(result);
-    } else {
-      for (const tx of result) pushRow(tx);
-    }
-  } else {
-    consumeGroups(result?.groups);
-    for (const tx of Array.isArray(result?.rows) ? result.rows : []) pushRow(tx);
-    for (const tx of Array.isArray(result?.transactions) ? result.transactions : []) pushRow(tx);
-  }
-
-  rows.sort((a, b) => {
-    const bt = toNumber(b.timestamp_ms, 0);
-    const at = toNumber(a.timestamp_ms, 0);
-    if (bt !== at) return bt - at;
-    return String(b.datetime || "").localeCompare(String(a.datetime || ""));
-  });
-
+  const rows = kgwNormalizeUnifiedResult(result);
   microscopeLog("UNIFIED RESULT NORMALIZED ROWS", {
     rows: rows.length,
     sample: rows.slice(0, 3)
   });
-
   return rows;
 }
-
-
-
-
 
 
 /* KGW_TX_R4_GROUPED_COLLAPSED_RENDERER
@@ -325,27 +179,6 @@ if (!window.__kgwExplorerExpandedDateGroups) {
 if (!window.__kgwExplorerDayTransactionCache) {
   window.__kgwExplorerDayTransactionCache = new Map();
 }
-
-function kgwDaySummaryRowsFromResult(result) {
-  const items = Array.isArray(result)
-    ? result
-    : Array.isArray(result?.days)
-      ? result.days
-      : Array.isArray(result?.summaries)
-        ? result.summaries
-        : [];
-
-  return items.map((item) => ({
-    __kgwDaySummary: true,
-    day: item.day || item.date || "",
-    count: Number(item.count || item.tx_count || item.transactions_count || 0) || 0,
-    incoming_kas: Number(item.incoming_kas || item.incomingKas || 0) || 0,
-    outgoing_kas: Number(item.outgoing_kas || item.outgoingKas || 0) || 0,
-    net_kas: Number(item.net_kas || item.netKas || 0) || 0
-  })).filter((item) => item.day);
-}
-
-
 
 /* KGW_EXPLORER_SAFE_CONTROLS_TRACE_PATCH_R53B3
    Existing Explorer UI trace owner.

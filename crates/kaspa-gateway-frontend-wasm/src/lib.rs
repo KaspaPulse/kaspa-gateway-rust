@@ -7,6 +7,7 @@ mod explorer_controls;
 mod explorer_export;
 mod explorer_filters;
 mod explorer_live_core;
+mod explorer_results;
 mod explorer_summary;
 mod header_live_metrics;
 mod log_tab;
