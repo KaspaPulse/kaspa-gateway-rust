@@ -322,6 +322,14 @@ const rustNodeTracePath = path.join(
   "node_start_trace.rs",
 );
 const rustNodeTraceSource = fs.readFileSync(rustNodeTracePath, "utf8");
+const rustNodeSettingsOwnerPath = path.join(
+  repo,
+  "crates",
+  "kaspa-gateway-frontend-wasm",
+  "src",
+  "node_settings_owner.rs",
+);
+const rustNodeSettingsOwnerSource = fs.readFileSync(rustNodeSettingsOwnerPath, "utf8");
 const renderFixturePath = process.env.KGW_NODE_RENDER_FIXTURE;
 if (!renderFixturePath) throw new Error("KGW_NODE_RENDER_FIXTURE is required");
 const renderFixture = fs.readFileSync(renderFixturePath, "utf8");
@@ -414,6 +422,15 @@ function staticPlacementTests() {
       && !source.includes("function kgwNodeHandleLogActionV29(")
       && !source.includes("function kgwNodeCopyLogFailureV1("),
     "Node raw-log and log-action adapters must bind directly to the Rust/WASM owner without JavaScript wrappers",
+  );
+  assert.ok(
+    source.includes("nodeInstallSettingsOwner as wasmNodeInstallSettingsOwner")
+      && source.includes("nodeSettingsOwnerSetDisabled as wasmNodeSettingsOwnerSetDisabled")
+      && source.includes("nodeSettingsOwnerButtons as wasmNodeSettingsOwnerButtons")
+      && !source.includes("(function installKgwSettingsOwnerV19()")
+      && rustNodeSettingsOwnerSource.includes("#[wasm_bindgen(js_name = nodeInstallSettingsOwner)]")
+      && rustNodeSettingsOwnerSource.includes("#[wasm_bindgen(js_name = nodeSettingsOwnerSetDisabled)]"),
+    "Node settings-action dirty/feedback/install ownership must remain in Rust/WASM",
   );
   assert.ok(
     source.includes("const KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS = 110000"),
@@ -1258,6 +1275,14 @@ const wasmNodeSetRuntimeNotice = (net, state, evidence = "", errorText = null, e
   return true;
 };
 const kgwNodeSetRuntimeNotice = wasmNodeSetRuntimeNotice;
+const wasmNodeInstallSettingsOwner = (root, _callbacks = {}) => {
+  if (!root) return false;
+  root.dataset.kgwSettingsOwnerV19 = "installed";
+  return true;
+};
+const wasmNodeSettingsOwnerSetDisabled = () => true;
+const wasmNodeSettingsOwnerButtons = (root, _network = "") =>
+  Array.from(root && root.querySelectorAll ? root.querySelectorAll("button") : []);
 const wasmNodeMarkRestartRequired = (net) => {
   const authority = document.getElementById("node-" + String(net || "") + "-settingsAuthority");
   if (!authority) return false;

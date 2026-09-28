@@ -1795,11 +1795,12 @@ fn timeout_hierarchy_is_strict_and_race_free() {
                 > integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1
         );
     }
-    let node_js = include_str!("../../frontend/src/tabs/kaspa-node/kaspa-node.js");
+    let node_rust =
+        include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs");
     let bridge_js = include_str!("../../frontend/src/tabs/kaspa-bridge/kaspa-bridge.js");
-    assert!(node_js.contains("const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 0"));
+    assert!(node_rust.contains("const NODE_STOP_INVOKE_TIMEOUT_MS: u32 = 0;"));
     assert!(bridge_js.contains("const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS = 0"));
-    assert!(node_js.contains("if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)"));
+    assert!(node_rust.contains("if timeout_ms == 0 {"));
     assert!(bridge_js.contains("if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)"));
 }
 
@@ -1894,6 +1895,8 @@ fn start_command_is_registered_and_payload_matches_frontend() {
     let node_js = include_str!("../../frontend/src/tabs/kaspa-node/kaspa-node.js");
     let node_frontend_helpers =
         include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/node_frontend_helpers.rs");
+    let node_start_trace =
+        include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs");
 
     assert!(
         lib_rs.contains("integrated_runtime_commands::kgw_kgw_apply_node_settings_v1"),
@@ -1908,8 +1911,9 @@ fn start_command_is_registered_and_payload_matches_frontend() {
         "start trace frontend command must be registered in tauri generate_handler"
     );
     assert!(
-        node_js.contains("nodeRuntimeArgs as nodeRuntimeArgs")
-            && !node_js.contains("function nodeRuntimeArgs("),
+        !node_js.contains("nodeRuntimeArgs as nodeRuntimeArgs")
+            && !node_js.contains("function nodeRuntimeArgs(")
+            && node_start_trace.contains("crate::node_frontend_helpers::node_runtime_args("),
         "frontend must delegate runtime IPC argument construction directly to the Rust/WASM owner"
     );
 
