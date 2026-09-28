@@ -679,6 +679,114 @@ fn small_owner_trace(net: JsValue, action: JsValue, phase: JsValue, details: JsV
     true
 }
 
+fn explicit_trace(net: JsValue, action: JsValue, phase: JsValue, details: JsValue) -> bool {
+    let safe_net = truthy_text_or(&net, "unknown");
+    let safe_action = truthy_text_or(&action, "internal-navigation");
+    let safe_phase = truthy_text_or(&phase, "unknown");
+    let safe_details = if details.is_object() {
+        details
+    } else {
+        Object::new().into()
+    };
+
+    let nested = Object::new();
+    set(
+        nested.as_ref(),
+        "patch",
+        &JsValue::from_str("KGW_NODE_EXPLICIT_TRACE_HELPER_VISIBILITY_R45F"),
+    );
+    set(
+        nested.as_ref(),
+        "owner",
+        &JsValue::from_str("node-module-visible-explicit-trace-helper"),
+    );
+    set(nested.as_ref(), "network", &JsValue::from_str(&safe_net));
+    set(nested.as_ref(), "action", &JsValue::from_str(&safe_action));
+    set(nested.as_ref(), "phase", &JsValue::from_str(&safe_phase));
+    set(nested.as_ref(), "details", &safe_details);
+
+    let args = Object::new();
+    set(args.as_ref(), "scope", &JsValue::from_str("node"));
+    set(args.as_ref(), "net", &JsValue::from_str(&safe_net));
+    set(args.as_ref(), "action", &JsValue::from_str(&safe_action));
+    set(args.as_ref(), "phase", &JsValue::from_str(&safe_phase));
+    let serialized = JSON::stringify(nested.as_ref())
+        .ok()
+        .map(|value| crate::js_string_owned(value.as_ref()))
+        .unwrap_or_else(|| "{}".to_owned());
+    set(args.as_ref(), "details", &JsValue::from_str(&serialized));
+
+    let Some(invoke) = small_owner_invoke() else {
+        return false;
+    };
+    if let Ok(result) = invoke.call2(
+        &JsValue::UNDEFINED,
+        &JsValue::from_str("kgw_frontend_button_trace_v1"),
+        args.as_ref(),
+    ) {
+        let promise = Promise::resolve(&result);
+        let catch = Closure::wrap(Box::new(move |_error: JsValue| {}) as Box<dyn FnMut(JsValue)>);
+        let _ = promise.catch(&catch);
+        catch.forget();
+    }
+    true
+}
+
+fn explicit_owner_trace(net: JsValue, action: JsValue, phase: JsValue, details: JsValue) -> bool {
+    let safe_net = truthy_text_or(&net, "unknown");
+    let safe_action = truthy_text_or(&action, "unknown");
+    let safe_phase = truthy_text_or(&phase, "unknown");
+    let safe_details = if details.is_object() {
+        details
+    } else {
+        Object::new().into()
+    };
+
+    let nested = Object::new();
+    set(
+        nested.as_ref(),
+        "patch",
+        &JsValue::from_str("KGW_EXPLICIT_TRACE_EXACT_ANCHOR_PATCH_R27D"),
+    );
+    set(
+        nested.as_ref(),
+        "owner",
+        &JsValue::from_str("node-existing-owner"),
+    );
+    set(nested.as_ref(), "network", &JsValue::from_str(&safe_net));
+    set(nested.as_ref(), "action", &JsValue::from_str(&safe_action));
+    set(nested.as_ref(), "phase", &JsValue::from_str(&safe_phase));
+    set(nested.as_ref(), "details", &safe_details);
+
+    let args = Object::new();
+    set(args.as_ref(), "scope", &JsValue::from_str("node"));
+    set(args.as_ref(), "net", &JsValue::from_str(&safe_net));
+    set(args.as_ref(), "action", &JsValue::from_str(&safe_action));
+    set(args.as_ref(), "phase", &JsValue::from_str(&safe_phase));
+    let serialized = JSON::stringify(nested.as_ref())
+        .ok()
+        .map(|value| crate::js_string_owned(value.as_ref()))
+        .unwrap_or_else(|| "{}".to_owned());
+    set(args.as_ref(), "details", &JsValue::from_str(&serialized));
+
+    let tauri = property(&window(), "__TAURI__");
+    let core = property(&tauri, "core");
+    let Some(invoke) = bound_invoke(&core, property(&core, "invoke")) else {
+        return false;
+    };
+    if let Ok(result) = invoke.call2(
+        &JsValue::UNDEFINED,
+        &JsValue::from_str("kgw_frontend_button_trace_v1"),
+        args.as_ref(),
+    ) {
+        let promise = Promise::resolve(&result);
+        let catch = Closure::wrap(Box::new(move |_error: JsValue| {}) as Box<dyn FnMut(JsValue)>);
+        let _ = promise.catch(&catch);
+        catch.forget();
+    }
+    true
+}
+
 fn resolved_invoke() -> JsValue {
     let tauri = property(&window(), "__TAURI__");
     for (adapter, owner, candidate) in [
@@ -1810,6 +1918,26 @@ pub fn node_small_owner_trace(
     details: JsValue,
 ) -> bool {
     small_owner_trace(net, action, phase, details)
+}
+
+#[wasm_bindgen(js_name = nodeExplicitTrace)]
+pub fn node_explicit_trace(
+    net: JsValue,
+    action: JsValue,
+    phase: JsValue,
+    details: JsValue,
+) -> bool {
+    explicit_trace(net, action, phase, details)
+}
+
+#[wasm_bindgen(js_name = nodeExplicitOwnerTrace)]
+pub fn node_explicit_owner_trace(
+    net: JsValue,
+    action: JsValue,
+    phase: JsValue,
+    details: JsValue,
+) -> bool {
+    explicit_owner_trace(net, action, phase, details)
 }
 
 #[wasm_bindgen(js_name = nodeStartTraceTauriShape)]

@@ -522,6 +522,14 @@ function staticPlacementTests() {
       && !source.includes("function nodeRuntimeArgs("),
     "Node runtime args must delegate to the Rust/WASM owner",
   );
+  assert.ok(
+    source.includes("nodeExplicitTrace as kgwNodeExplicitTraceR27D")
+      && source.includes("nodeExplicitOwnerTrace as kgwNodeExplicitOwnerTraceR27D")
+      && !source.includes("function kgwNodeExplicitTraceR27D(")
+      && !source.includes("function kgwNodeExplicitOwnerTraceR27D(")
+      && source.includes('kgwNodeExplicitOwnerTraceR27D(net, "settings-scope", "r27d-scoped-update"'),
+    "Both Node explicit-trace variants must bind directly to their Rust/WASM owners",
+  );
   for (const retired of [
     "function kgwNodeEffectiveNumber(",
     "function kgwNodeEffectiveEndpoint(",
@@ -1786,11 +1794,51 @@ const wasmNodeSmallOwnerTrace = (net, action, phase, details) => {
   })).catch(() => {});
   return true;
 };
+const wasmNodeExplicitTrace = (net, action, phase, details) => {
+  const safeNet = String(net || "unknown");
+  const safeAction = String(action || "internal-navigation");
+  const safePhase = String(phase || "unknown");
+  const tauri = window.__TAURI__;
+  const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
+    ? tauri.core.invoke.bind(tauri.core)
+    : tauri && typeof tauri.invoke === "function"
+      ? tauri.invoke.bind(tauri)
+      : window.__TAURI_INVOKE__;
+  if (typeof invoke !== "function") return false;
+  Promise.resolve(invoke("kgw_frontend_button_trace_v1", {
+    scope: "node",
+    net: safeNet,
+    action: safeAction,
+    phase: safePhase,
+    details: JSON.stringify({ patch: "KGW_NODE_EXPLICIT_TRACE_HELPER_VISIBILITY_R45F", owner: "node-module-visible-explicit-trace-helper", network: safeNet, action: safeAction, phase: safePhase, details: details && typeof details === "object" ? details : {} }),
+  })).catch(() => {});
+  return true;
+};
+const wasmNodeExplicitOwnerTrace = (net, action, phase, details) => {
+  const safeNet = String(net || "unknown");
+  const safeAction = String(action || "unknown");
+  const safePhase = String(phase || "unknown");
+  const tauri = window.__TAURI__;
+  const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
+    ? tauri.core.invoke.bind(tauri.core)
+    : null;
+  if (typeof invoke !== "function") return false;
+  Promise.resolve(invoke("kgw_frontend_button_trace_v1", {
+    scope: "node",
+    net: safeNet,
+    action: safeAction,
+    phase: safePhase,
+    details: JSON.stringify({ patch: "KGW_EXPLICIT_TRACE_EXACT_ANCHOR_PATCH_R27D", owner: "node-existing-owner", network: safeNet, action: safeAction, phase: safePhase, details: details && typeof details === "object" ? details : {} }),
+  })).catch(() => {});
+  return true;
+};
 const kgwNodeTraceStartButtonStateR1 = wasmNodeTraceStartButtonState;
 const kgwNodeInstallStartTraceDocumentClickObserverR1 = wasmNodeInstallStartTraceDocumentClickObserver;
 const kgwNodeTraceRenderedStartControlsR1 = wasmNodeTraceRenderedStartControls;
 const kgwNodeRuntimeActionForCommandR1 = wasmNodeRuntimeActionForCommand;
 const kgwNodeSmallOwnerTraceR44D = wasmNodeSmallOwnerTrace;
+const kgwNodeExplicitTraceR27D = wasmNodeExplicitTrace;
+const kgwNodeExplicitOwnerTraceR27D = wasmNodeExplicitOwnerTrace;
 const kgwI18nTextR41 = wasmNodeI18nText;
 const kgwNodeNetworkProfile = wasmNodeNetworkProfile;
 const kgwNodeNetworkEnabled = wasmNodeNetworkEnabled;

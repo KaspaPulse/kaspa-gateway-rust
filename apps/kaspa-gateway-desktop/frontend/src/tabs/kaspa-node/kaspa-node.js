@@ -28,6 +28,8 @@ import initNodeRust, {
   nodeV67StopRuntime as wasmNodeV67StopRuntime,
   nodeV67RuntimeFeaturePolicy as wasmNodeV67RuntimeFeaturePolicy,
   nodeElementId as id,
+  nodeExplicitTrace as kgwNodeExplicitTraceR27D,
+  nodeExplicitOwnerTrace as kgwNodeExplicitOwnerTraceR27D,
   nodeHandleCopyLog as wasmNodeHandleCopyLog,
   nodeI18nText as kgwI18nTextR41,
   nodeInstallLogAutoScrollControls as kgwInstallNodeLogAutoScrollControlsR27,
@@ -823,38 +825,7 @@ function updateAllCommands() {
 
 
 
-// KGW_NODE_EXPLICIT_TRACE_HELPER_VISIBILITY_R45F
-function kgwNodeExplicitTraceR27D(net, action, phase, details) {
-  try {
-    const safeNet = String(net || "unknown");
-    const safeAction = String(action || "internal-navigation");
-    const safePhase = String(phase || "unknown");
-    const safeDetails = details && typeof details === "object" ? details : {};
-    const args = {
-      scope: "node",
-      net: safeNet,
-      action: safeAction,
-      phase: safePhase,
-      details: JSON.stringify({
-        patch: "KGW_NODE_EXPLICIT_TRACE_HELPER_VISIBILITY_R45F",
-        owner: "node-module-visible-explicit-trace-helper",
-        network: safeNet,
-        action: safeAction,
-        phase: safePhase,
-        details: safeDetails
-      })
-    };
-    const tauri = window.__TAURI__;
-    const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
-      ? tauri.core.invoke.bind(tauri.core)
-      : tauri && typeof tauri.invoke === "function"
-        ? tauri.invoke.bind(tauri)
-        : window.__TAURI_INVOKE__;
-    if (typeof invoke === "function") {
-      invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
-    }
-  } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
-}
+// KGW_NODE_EXPLICIT_TRACE_HELPER_VISIBILITY_R45F is Rust/WASM-owned in node_start_trace.rs.
 /* KGW_NODE_LAST_NETWORK_RESTORE_R101W2 */
 /* R101W2 last-network persistence is Rust-owned in node_frontend_helpers.rs. */
 function installNetworkTabs(root) {
@@ -1967,40 +1938,14 @@ function installActions(root) {
   }
 
 
-  // KGW_EXPLICIT_TRACE_OWNER_R27D_NODE_BEGIN
-  function kgwNodeExplicitTraceR27D(net, action, phase, details) {
-    try {
-      const safeNet = String(net || "unknown");
-      const safeAction = String(action || "unknown");
-      const safePhase = String(phase || "unknown");
-      const payload = {
-        patch: "KGW_EXPLICIT_TRACE_EXACT_ANCHOR_PATCH_R27D",
-        owner: "node-existing-owner",
-        network: safeNet,
-        action: safeAction,
-        phase: safePhase,
-        details: details && typeof details === "object" ? details : {}
-      };
-
-      if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === "function") {
-        window.__TAURI__.core.invoke("kgw_frontend_button_trace_v1", {
-          scope: "node",
-          net: safeNet,
-          action: safeAction,
-          phase: safePhase,
-          details: JSON.stringify(payload)
-        }).catch(function () {});
-      }
-    } catch (_) { /* Best-effort secondary operation; primary node behavior is preserved. */ }
-  }
-  // KGW_EXPLICIT_TRACE_OWNER_R27D_NODE_END
+  // KGW_EXPLICIT_TRACE_OWNER_R27D_NODE is Rust/WASM-owned in node_start_trace.rs.
 
   function scopedUpdate(net, reason) {
     if (!net) return;
     if (typeof updateCommand === "function") {
       updateCommand(net);
     }
-    kgwNodeExplicitTraceR27D(net, "settings-scope", "r27d-scoped-update", {
+    kgwNodeExplicitOwnerTraceR27D(net, "settings-scope", "r27d-scoped-update", {
       previousPatch: "KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26",
       reason: reason || "unknown"
     });
@@ -2016,7 +1961,7 @@ function installActions(root) {
       event.preventDefault();
       event.stopPropagation();
       kgwNodeApplyBridgeOwnedDisplayOnlyR65E(inputNet, true, "input-guard");
-      kgwNodeExplicitTraceR27D(inputNet, "display-only", "r65e-node-input-blocked", {
+      kgwNodeExplicitOwnerTraceR27D(inputNet, "display-only", "r65e-node-input-blocked", {
         patch: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E",
         targetId: String(target.id || "")
       });
@@ -2038,7 +1983,7 @@ function installActions(root) {
       event.preventDefault();
       event.stopPropagation();
       kgwNodeApplyBridgeOwnedDisplayOnlyR65E(changeNet, true, "change-guard");
-      kgwNodeExplicitTraceR27D(changeNet, "display-only", "r65e-node-change-blocked", {
+      kgwNodeExplicitOwnerTraceR27D(changeNet, "display-only", "r65e-node-change-blocked", {
         patch: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E",
         targetId: String(target.id || "")
       });
@@ -2087,7 +2032,7 @@ function installActions(root) {
     const lockedBeforeAction = kgwIsBridgeOwnedNodeLockedR65E(net);
 
     if (action !== "start" && action !== "stop") {
-      kgwNodeExplicitTraceR27D(net, String(action || "unknown"), "r27d-action-click", {
+      kgwNodeExplicitOwnerTraceR27D(net, String(action || "unknown"), "r27d-action-click", {
         trusted: Boolean(event && event.isTrusted),
         disabled: Boolean(button.disabled || lockedBeforeAction),
         id: String(button.id || ""),
