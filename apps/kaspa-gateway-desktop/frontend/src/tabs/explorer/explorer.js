@@ -32,9 +32,9 @@
  */
 
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf, kgwExplorerExportNumberV2, kgwExplorerExportNormalizeRawTxV2 } from "./explorer.export.js";
-import { parseDateSeconds, kgwDayToEpochSeconds, kgwClean2DayToSeconds } from "./explorer.date.js";
+import { parseDateSeconds } from "./explorer.date.js";
 import { kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, kgwDaySummaryRowsFromResult, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateLog, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot, kgwInvokeExplorerUnifiedFetch, kgwInvokeExplorerCancelTransactionsR57D4, kgwInvokeExplorerGroupedTransactions, kgwInvokeExplorerDaySummaries, setStatus, kgwExplorerSyncActionState, extractRowsFromUnifiedResult, kgwExplorerUiTraceR53B3, kgwFilterTrace } from "./explorer.utils.js";
+import { kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateLog, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot, kgwInvokeExplorerUnifiedFetch, kgwInvokeExplorerCancelTransactionsR57D4, setStatus, kgwExplorerSyncActionState, kgwExplorerUiTraceR53B3, kgwLoadTransactionDaySummariesFromDb, kgwLoadTransactionsForSingleDayFromDb, kgwLoadTransactionsForDay, kgwClean2Log, kgwClean2Section, kgwClean2Body, kgwClean2LoadSummaries, kgwClean2LoadDayTransactions } from "./explorer.utils.js";
 
 const explorerState = {
   rows: [],
@@ -120,30 +120,7 @@ if (!window.__kgwExplorerDayTransactionCache) {
 */
 /* Explorer filter option/state/request ownership lives in Rust/WASM explorer_filters.rs. */
 
-async function kgwLoadTransactionDaySummariesFromDb(section, address, startTs, endTs) {
-  const request = kgwExplorerListRequest(section, address, startTs, endTs);
-  request.limit = 10000;
-
-  const result = await kgwInvokeExplorerDaySummaries(request);
-  return kgwDaySummaryRowsFromResult(result);
-}
-
-async function kgwLoadTransactionsForSingleDayFromDb(section, address, day) {
-  const startTs = kgwDayToEpochSeconds(day, false);
-  const endTs = kgwDayToEpochSeconds(day, true);
-
-  if (!Number.isFinite(startTs) || !Number.isFinite(endTs)) {
-    return [];
-  }
-
-  const request = kgwExplorerListRequest(section, address, startTs, endTs);
-  request.limit = 1000000;
-
-  const groups = await kgwInvokeExplorerGroupedTransactions(request);
-  return extractRowsFromUnifiedResult({ groups });
-}
-
-
+/* Explorer DB/day data-load orchestration is Rust/WASM-owned in explorer_runtime.rs. */
 
 
 /* KGW_TX_UI_CLEAN_1_DAY_SUMMARY_RENDERER
@@ -166,43 +143,7 @@ if (!window.__kgwExplorerExpandedDateGroups) {
 */
 
 
-async function kgwLoadTransactionsForDay(section, address, day) {
-  const startTs = kgwDayToEpochSeconds(day, false);
-  const endTs = kgwDayToEpochSeconds(day, true);
-
-  if (!Number.isFinite(startTs) || !Number.isFinite(endTs)) {
-    kgwFilterTrace("day load invalid range", { day, startTs, endTs });
-    return [];
-  }
-
-  const request = kgwBuildExplorerListRequest(section, address, startTs, endTs, 1000000);
-
-  kgwFilterTrace("day transactions request", {
-    day,
-    request
-  });
-
-  const started = performance.now();
-
-  const groups = await kgwInvokeExplorerGroupedTransactions(request);
-  const rows = extractRowsFromUnifiedResult({ groups });
-
-  kgwFilterTrace("day transactions response", {
-    day,
-    elapsedMs: Math.round(performance.now() - started),
-    groups: Array.isArray(groups) ? groups.length : null,
-    rows: rows.length,
-    sample: rows.slice(0, 3).map((row) => ({
-      txid: row.txid || row.transaction_id || row.transactionId,
-      direction: row.direction,
-      tx_type: row.tx_type || row.type,
-      amount: row.amount_kas ?? row.amountKas ?? row.amount,
-      value: row.value_usd ?? row.valueUsd ?? row.value
-    }))
-  });
-
-  return rows;
-}
+/* Explorer traced day loader is Rust/WASM-owned in explorer_runtime.rs. */
 
 
 /* KGW_EXPLORER_USD_VALUE_RUNTIME_PRICE_REPAIR_V1 */
@@ -445,17 +386,7 @@ function clearExplorerTransactionTable(section, reason = "cleared", options = {}
    Do not poll/read Transactions DB while backend is writing.
    Read DB only after fetch command completes, or from Apply Filter when not busy.
 */
-function kgwExplorerListRequest(section, address, startTs, endTs) {
-  return {
-    address,
-    start_ts: startTs,
-    end_ts: endTs,
-    tx_type: qs("#explorerTypeFilter", section)?.value || "ALL",
-    direction: qs("#explorerDirectionFilter", section)?.value || "ALL",
-    search_query: qs("#explorerSearch", section)?.value || "",
-    limit: 1000000
-  };
-}
+/* Explorer legacy list-request compatibility is Rust/WASM-owned in explorer_runtime.rs. */
 
 
 
@@ -949,71 +880,18 @@ renderTable(section);
    - Expanding + loads one day only.
    - Old renderTable/fetchTransactions/applyFilter declarations were removed above.
 */
-function kgwClean2Log(label, payload = {}) {
-  try {
-    console.log(`[KGW Explorer][clean2] ${label}`, payload);
-  } catch (_) {
-    console.log(`[KGW Explorer][clean2] ${label}`);
-  }
-}
+/* Clean2 logging is Rust/WASM-owned in explorer_runtime.rs. */
 
-function kgwClean2Section(section) {
-  return (
-    section ||
-    document.querySelector("#explorer") ||
-    document.querySelector(".explorer-python-root")
-  );
-}
+/* Clean2 section resolution is Rust/WASM-owned in explorer_runtime.rs. */
 
-function kgwClean2Body(section) {
-  const root = kgwClean2Section(section);
-  return (
-    qs("#explorerTransactionsBody", root) ||
-    root?.querySelector?.("tbody") ||
-    document.querySelector("#explorerTransactionsBody")
-  );
-}
+/* Clean2 body resolution is Rust/WASM-owned in explorer_runtime.rs. */
 
 
 /* Explorer filter normalization/repair/init and Clean2 request ownership live in Rust/WASM via explorer.utils.js. */
 
-async function kgwClean2LoadSummaries(section, address, startTs, endTs) {
-  const request = kgwClean2Request(section, address, startTs, endTs, 10000);
-  const started = performance.now();
-  const result = await kgwInvokeExplorerDaySummaries(request);
-  const rows = kgwClean2NormalizeSummaries(result);
+/* Clean2 summary loader is Rust/WASM-owned in explorer_runtime.rs. */
 
-  kgwClean2Log("summaries loaded", {
-    elapsedMs: Math.round(performance.now() - started),
-    days: rows.length,
-    totalTransactions: rows.reduce((sum, row) => sum + (Number(row.count) || 0), 0),
-    first: rows[0] || null
-  });
-
-  return rows;
-}
-
-async function kgwClean2LoadDayTransactions(section, address, day) {
-  const startTs = kgwClean2DayToSeconds(day, false);
-  const endTs = kgwClean2DayToSeconds(day, true);
-
-  if (!Number.isFinite(startTs) || !Number.isFinite(endTs)) {
-    return [];
-  }
-
-  const request = kgwClean2Request(section, address, startTs, endTs, 1000000);
-  const started = performance.now();
-  const groups = await kgwInvokeExplorerGroupedTransactions(request);
-  const rows = extractRowsFromUnifiedResult({ groups });
-
-  kgwClean2Log("day transactions loaded", {
-    day,
-    elapsedMs: Math.round(performance.now() - started),
-    rows: rows.length
-  });
-
-  return rows;
-}
+/* Clean2 day loader is Rust/WASM-owned in explorer_runtime.rs. */
 
 /* KGW_EXPORT_RAW_PAYLOAD_PARITY_EXPLORER_V2
    Export must use raw transaction rows, not the visible day-summary table.

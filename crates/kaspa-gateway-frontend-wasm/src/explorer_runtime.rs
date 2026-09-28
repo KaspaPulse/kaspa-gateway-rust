@@ -281,6 +281,386 @@ fn filter_trace_impl(label: &JsValue, payload: &JsValue) {
     }
 }
 
+const DAY_SUMMARY_LIMIT: u32 = 10_000;
+const DAY_TRANSACTION_LIMIT: u32 = 1_000_000;
+
+fn document() -> JsValue {
+    property(&global(), "document")
+}
+
+fn legacy_filter_value(section: &JsValue, selector: &str, fallback: &str) -> String {
+    let node = query(section, selector);
+    let value = crate::js_string_owned(&property(&node, "value"));
+    if value.is_empty() {
+        fallback.to_owned()
+    } else {
+        value
+    }
+}
+
+fn legacy_list_request_impl(
+    section: &JsValue,
+    address: JsValue,
+    start_ts: JsValue,
+    end_ts: JsValue,
+    limit: u32,
+) -> JsValue {
+    let request = Object::new();
+    let _ = set(request.as_ref(), "address", &address);
+    let _ = set(request.as_ref(), "start_ts", &start_ts);
+    let _ = set(request.as_ref(), "end_ts", &end_ts);
+    let _ = set(
+        request.as_ref(),
+        "tx_type",
+        &JsValue::from_str(&legacy_filter_value(section, "#explorerTypeFilter", "ALL")),
+    );
+    let _ = set(
+        request.as_ref(),
+        "direction",
+        &JsValue::from_str(&legacy_filter_value(
+            section,
+            "#explorerDirectionFilter",
+            "ALL",
+        )),
+    );
+    let _ = set(
+        request.as_ref(),
+        "search_query",
+        &JsValue::from_str(&legacy_filter_value(section, "#explorerSearch", "")),
+    );
+    let _ = set(request.as_ref(), "limit", &JsValue::from_f64(limit as f64));
+    request.into()
+}
+
+fn day_range(day: &str, clean2: bool) -> Option<(JsValue, JsValue)> {
+    let day = JsValue::from_str(day);
+    let start = if clean2 {
+        crate::kgw_clean2_day_to_seconds(day.clone(), false)
+    } else {
+        crate::kgw_day_to_epoch_seconds(day.clone(), false)
+    };
+    let end = if clean2 {
+        crate::kgw_clean2_day_to_seconds(day, true)
+    } else {
+        crate::kgw_day_to_epoch_seconds(day, true)
+    };
+    let start_number = start.as_f64()?;
+    let end_number = end.as_f64()?;
+    (start_number.is_finite() && end_number.is_finite()).then_some((start, end))
+}
+
+fn performance_now() -> f64 {
+    let performance = property(&global(), "performance");
+    function(&performance, "now")
+        .and_then(|now| now.call0(&performance).ok())
+        .and_then(|value| value.as_f64())
+        .filter(|value| value.is_finite())
+        .unwrap_or(0.0)
+}
+
+fn first_truthy_property(target: &JsValue, names: &[&str]) -> JsValue {
+    for name in names {
+        let value = property(target, name);
+        if crate::js_boolean(&value) {
+            return value;
+        }
+    }
+    JsValue::UNDEFINED
+}
+
+fn first_present_property(target: &JsValue, names: &[&str]) -> JsValue {
+    for name in names {
+        let value = property(target, name);
+        if !value.is_null() && !value.is_undefined() {
+            return value;
+        }
+    }
+    JsValue::UNDEFINED
+}
+
+fn transaction_sample(rows: &Array) -> Array {
+    let output = Array::new();
+    for row in rows.iter().take(3) {
+        let sample = Object::new();
+        let _ = set(
+            sample.as_ref(),
+            "txid",
+            &first_truthy_property(&row, &["txid", "transaction_id", "transactionId"]),
+        );
+        let _ = set(sample.as_ref(), "direction", &property(&row, "direction"));
+        let _ = set(
+            sample.as_ref(),
+            "tx_type",
+            &first_truthy_property(&row, &["tx_type", "type"]),
+        );
+        let _ = set(
+            sample.as_ref(),
+            "amount",
+            &first_present_property(&row, &["amount_kas", "amountKas", "amount"]),
+        );
+        let _ = set(
+            sample.as_ref(),
+            "value",
+            &first_present_property(&row, &["value_usd", "valueUsd", "value"]),
+        );
+        output.push(sample.as_ref());
+    }
+    output
+}
+
+fn clean2_log_impl(label: &str, payload: &JsValue) {
+    let console = property(&global(), "console");
+    let Some(log) = function(&console, "log") else {
+        return;
+    };
+    let message = format!("[KGW Explorer][clean2] {label}");
+    if log
+        .call2(&console, &JsValue::from_str(&message), payload)
+        .is_err()
+    {
+        let _ = log.call1(&console, &JsValue::from_str(&message));
+    }
+}
+
+fn clean2_section_impl(section: &JsValue) -> JsValue {
+    if crate::js_boolean(section) {
+        return section.clone();
+    }
+    let doc = document();
+    let direct = query(&doc, "#explorer");
+    if crate::js_boolean(&direct) {
+        return direct;
+    }
+    query(&doc, ".explorer-python-root")
+}
+
+fn clean2_body_impl(section: &JsValue) -> JsValue {
+    let root = clean2_section_impl(section);
+    if crate::js_boolean(&root) {
+        let direct = query(&root, "#explorerTransactionsBody");
+        if crate::js_boolean(&direct) {
+            return direct;
+        }
+        let tbody = query(&root, "tbody");
+        if crate::js_boolean(&tbody) {
+            return tbody;
+        }
+    }
+    query(&document(), "#explorerTransactionsBody")
+}
+
+#[wasm_bindgen(js_name = explorerLegacyListRequest)]
+pub fn explorer_legacy_list_request(
+    section: JsValue,
+    address: JsValue,
+    start_ts: JsValue,
+    end_ts: JsValue,
+) -> JsValue {
+    legacy_list_request_impl(&section, address, start_ts, end_ts, DAY_TRANSACTION_LIMIT)
+}
+
+#[wasm_bindgen(js_name = explorerLoadTransactionDaySummariesFromDb)]
+pub async fn explorer_load_transaction_day_summaries_from_db(
+    section: JsValue,
+    address: JsValue,
+    start_ts: JsValue,
+    end_ts: JsValue,
+) -> Result<JsValue, JsValue> {
+    let request = legacy_list_request_impl(&section, address, start_ts, end_ts, DAY_SUMMARY_LIMIT);
+    let result = explorer_invoke_day_summaries(request).await?;
+    Ok(crate::explorer_results::explorer_day_summary_rows_from_result(result))
+}
+
+#[wasm_bindgen(js_name = explorerLoadTransactionsForSingleDayFromDb)]
+pub async fn explorer_load_transactions_for_single_day_from_db(
+    section: JsValue,
+    address: JsValue,
+    day: String,
+) -> Result<JsValue, JsValue> {
+    let Some((start_ts, end_ts)) = day_range(&day, false) else {
+        return Ok(Array::new().into());
+    };
+    let request =
+        legacy_list_request_impl(&section, address, start_ts, end_ts, DAY_TRANSACTION_LIMIT);
+    let groups = explorer_invoke_grouped_transactions(request).await?;
+    let result = Object::new();
+    set(result.as_ref(), "groups", &groups)?;
+    extract_rows_impl(result.into())
+}
+
+#[wasm_bindgen(js_name = explorerLoadTransactionsForDay)]
+pub async fn explorer_load_transactions_for_day(
+    section: JsValue,
+    address: JsValue,
+    day: String,
+) -> Result<JsValue, JsValue> {
+    let Some((start_ts, end_ts)) = day_range(&day, false) else {
+        let details = Object::new();
+        let _ = set(details.as_ref(), "day", &JsValue::from_str(&day));
+        let _ = set(details.as_ref(), "startTs", &JsValue::NULL);
+        let _ = set(details.as_ref(), "endTs", &JsValue::NULL);
+        filter_trace_impl(
+            &JsValue::from_str("day load invalid range"),
+            details.as_ref(),
+        );
+        return Ok(Array::new().into());
+    };
+
+    let request = crate::explorer_filters::explorer_build_list_request(
+        section,
+        address,
+        start_ts,
+        end_ts,
+        JsValue::from_f64(DAY_TRANSACTION_LIMIT as f64),
+    );
+
+    let request_trace = Object::new();
+    let _ = set(request_trace.as_ref(), "day", &JsValue::from_str(&day));
+    let _ = set(request_trace.as_ref(), "request", &request);
+    filter_trace_impl(
+        &JsValue::from_str("day transactions request"),
+        request_trace.as_ref(),
+    );
+
+    let started = performance_now();
+    let groups = explorer_invoke_grouped_transactions(request).await?;
+    let result = Object::new();
+    set(result.as_ref(), "groups", &groups)?;
+    let rows = extract_rows_impl(result.into())?;
+    let rows_array = Array::from(&rows);
+
+    let response_trace = Object::new();
+    let _ = set(response_trace.as_ref(), "day", &JsValue::from_str(&day));
+    let elapsed = (performance_now() - started).round();
+    let _ = set(
+        response_trace.as_ref(),
+        "elapsedMs",
+        &JsValue::from_f64(elapsed),
+    );
+    let group_count = if Array::is_array(&groups) {
+        JsValue::from_f64(Array::from(&groups).length() as f64)
+    } else {
+        JsValue::NULL
+    };
+    let _ = set(response_trace.as_ref(), "groups", &group_count);
+    let _ = set(
+        response_trace.as_ref(),
+        "rows",
+        &JsValue::from_f64(rows_array.length() as f64),
+    );
+    let sample = transaction_sample(&rows_array);
+    let _ = set(response_trace.as_ref(), "sample", sample.as_ref());
+    filter_trace_impl(
+        &JsValue::from_str("day transactions response"),
+        response_trace.as_ref(),
+    );
+    Ok(rows)
+}
+
+#[wasm_bindgen(js_name = explorerClean2Log)]
+pub fn explorer_clean2_log(label: String, payload: JsValue) {
+    clean2_log_impl(&label, &payload);
+}
+
+#[wasm_bindgen(js_name = explorerClean2Section)]
+pub fn explorer_clean2_section(section: JsValue) -> JsValue {
+    clean2_section_impl(&section)
+}
+
+#[wasm_bindgen(js_name = explorerClean2Body)]
+pub fn explorer_clean2_body(section: JsValue) -> JsValue {
+    clean2_body_impl(&section)
+}
+
+#[wasm_bindgen(js_name = explorerClean2LoadSummaries)]
+pub async fn explorer_clean2_load_summaries(
+    section: JsValue,
+    address: JsValue,
+    start_ts: JsValue,
+    end_ts: JsValue,
+) -> Result<JsValue, JsValue> {
+    let request = crate::explorer_filters::explorer_clean2_request(
+        section,
+        address,
+        start_ts,
+        end_ts,
+        JsValue::from_f64(DAY_SUMMARY_LIMIT as f64),
+    );
+    let started = performance_now();
+    let result = explorer_invoke_day_summaries(request).await?;
+    let rows = crate::explorer_summary::explorer_normalize_day_summaries(result)?;
+    let array = Array::from(&rows);
+    let total_transactions = array
+        .iter()
+        .map(|row| crate::js_number(&property(&row, "count")))
+        .filter(|value| value.is_finite())
+        .sum::<f64>();
+
+    let details = Object::new();
+    let _ = set(
+        details.as_ref(),
+        "elapsedMs",
+        &JsValue::from_f64((performance_now() - started).round()),
+    );
+    let _ = set(
+        details.as_ref(),
+        "days",
+        &JsValue::from_f64(array.length() as f64),
+    );
+    let _ = set(
+        details.as_ref(),
+        "totalTransactions",
+        &JsValue::from_f64(total_transactions),
+    );
+    let first = if array.length() > 0 {
+        array.get(0)
+    } else {
+        JsValue::NULL
+    };
+    let _ = set(details.as_ref(), "first", &first);
+    clean2_log_impl("summaries loaded", details.as_ref());
+    Ok(rows)
+}
+
+#[wasm_bindgen(js_name = explorerClean2LoadDayTransactions)]
+pub async fn explorer_clean2_load_day_transactions(
+    section: JsValue,
+    address: JsValue,
+    day: String,
+) -> Result<JsValue, JsValue> {
+    let Some((start_ts, end_ts)) = day_range(&day, true) else {
+        return Ok(Array::new().into());
+    };
+    let request = crate::explorer_filters::explorer_clean2_request(
+        section,
+        address,
+        start_ts,
+        end_ts,
+        JsValue::from_f64(DAY_TRANSACTION_LIMIT as f64),
+    );
+    let started = performance_now();
+    let groups = explorer_invoke_grouped_transactions(request).await?;
+    let result = Object::new();
+    set(result.as_ref(), "groups", &groups)?;
+    let rows = extract_rows_impl(result.into())?;
+    let array = Array::from(&rows);
+
+    let details = Object::new();
+    let _ = set(details.as_ref(), "day", &JsValue::from_str(&day));
+    let _ = set(
+        details.as_ref(),
+        "elapsedMs",
+        &JsValue::from_f64((performance_now() - started).round()),
+    );
+    let _ = set(
+        details.as_ref(),
+        "rows",
+        &JsValue::from_f64(array.length() as f64),
+    );
+    clean2_log_impl("day transactions loaded", details.as_ref());
+    Ok(rows)
+}
+
 #[wasm_bindgen(js_name = explorerInvokeUnifiedFetch)]
 pub async fn explorer_invoke_unified_fetch(request: JsValue) -> Result<JsValue, JsValue> {
     invoke_command("explorer_transactions", &request_args(&request)).await

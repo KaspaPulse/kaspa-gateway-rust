@@ -110,10 +110,14 @@ fn explorer_lint_contract(root: &Path) -> Result<(), String> {
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.js",
     )?;
-    validate_explorer_lint(&source)
+    let runtime_owner = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/explorer_runtime.rs",
+    )?;
+    validate_explorer_lint(&source, &runtime_owner)
 }
 
-fn validate_explorer_lint(source: &str) -> Result<(), String> {
+fn validate_explorer_lint(source: &str, runtime_owner: &str) -> Result<(), String> {
     for (needle, message) in [
         (
             "kgwFormatUsd(",
@@ -140,14 +144,6 @@ fn validate_explorer_lint(source: &str) -> Result<(), String> {
             "Explorer must use imported summary USD formatter",
         ),
         (
-            "kgwDayToEpochSeconds(day, false)",
-            "Explorer day start must use imported UTC day helper",
-        ),
-        (
-            "kgwDayToEpochSeconds(day, true)",
-            "Explorer day end must use imported UTC day helper",
-        ),
-        (
             "await kgwInstallTxLiveCoreListener();",
             "Explorer fetch must install the event-driven live-core owner",
         ),
@@ -157,6 +153,26 @@ fn validate_explorer_lint(source: &str) -> Result<(), String> {
         ),
     ] {
         require_contains(source, needle, message)?;
+    }
+    for (needle, message) in [
+        (
+            "crate::kgw_day_to_epoch_seconds(day.clone(), false)",
+            "Explorer Rust day start must use canonical UTC day helper",
+        ),
+        (
+            "crate::kgw_day_to_epoch_seconds(day, true)",
+            "Explorer Rust day end must use canonical UTC day helper",
+        ),
+        (
+            "crate::kgw_clean2_day_to_seconds(day.clone(), false)",
+            "Explorer Clean2 Rust day start must use canonical UTC day helper",
+        ),
+        (
+            "crate::kgw_clean2_day_to_seconds(day, true)",
+            "Explorer Clean2 Rust day end must use canonical UTC day helper",
+        ),
+    ] {
+        require_contains(runtime_owner, needle, message)?;
     }
     Ok(())
 }
@@ -822,7 +838,32 @@ mod tests {
         )
         .unwrap()
         .replace("kgwSummaryFormatUsd(", "kgwRemovedSummaryFormatter(");
-        assert!(validate_explorer_lint(&source).is_err());
+        let runtime_owner = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/explorer_runtime.rs",
+        )
+        .unwrap();
+        assert!(validate_explorer_lint(&source, &runtime_owner).is_err());
+    }
+
+    #[test]
+    fn explorer_lint_missing_rust_day_owner_fails_closed() {
+        let root = root();
+        let source = read(
+            &root,
+            "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.js",
+        )
+        .unwrap();
+        let runtime_owner = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/explorer_runtime.rs",
+        )
+        .unwrap()
+        .replace(
+            "crate::kgw_day_to_epoch_seconds(day.clone(), false)",
+            "crate::removed_day_to_epoch_seconds(day.clone(), false)",
+        );
+        assert!(validate_explorer_lint(&source, &runtime_owner).is_err());
     }
 
     #[test]

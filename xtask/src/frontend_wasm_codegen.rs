@@ -101,7 +101,16 @@ import init, {
   explorerMicroscopeLog as wasmExplorerMicroscopeLog,
   explorerMicroscopeStateReport as wasmExplorerMicroscopeStateReport,
   explorerMicroscopeWarn as wasmExplorerMicroscopeWarn,
+  explorerClean2Body as wasmExplorerClean2Body,
+  explorerClean2LoadDayTransactions as wasmExplorerClean2LoadDayTransactions,
+  explorerClean2LoadSummaries as wasmExplorerClean2LoadSummaries,
+  explorerClean2Log as wasmExplorerClean2Log,
+  explorerClean2Section as wasmExplorerClean2Section,
   explorerExtractRowsFromUnifiedResult as wasmExplorerExtractRowsFromUnifiedResult,
+  explorerLegacyListRequest as wasmExplorerLegacyListRequest,
+  explorerLoadTransactionDaySummariesFromDb as wasmExplorerLoadTransactionDaySummariesFromDb,
+  explorerLoadTransactionsForDay as wasmExplorerLoadTransactionsForDay,
+  explorerLoadTransactionsForSingleDayFromDb as wasmExplorerLoadTransactionsForSingleDayFromDb,
   explorerFilterTrace as wasmExplorerFilterTrace,
   explorerInvokeCancelTransactions as wasmExplorerInvokeCancelTransactions,
   explorerInvokeDaySummaries as wasmExplorerInvokeDaySummaries,
@@ -267,6 +276,42 @@ export function kgwExplorerUiTraceR53B3(action, phase, details = {}) {
 
 export function kgwFilterTrace(label, payload = {}) {
   return wasmExplorerFilterTrace(label, payload);
+}
+
+export function kgwExplorerListRequest(section, address, startTs, endTs) {
+  return wasmExplorerLegacyListRequest(section, address, startTs, endTs);
+}
+
+export async function kgwLoadTransactionDaySummariesFromDb(section, address, startTs, endTs) {
+  return await wasmExplorerLoadTransactionDaySummariesFromDb(section, address, startTs, endTs);
+}
+
+export async function kgwLoadTransactionsForSingleDayFromDb(section, address, day) {
+  return await wasmExplorerLoadTransactionsForSingleDayFromDb(section, address, day);
+}
+
+export async function kgwLoadTransactionsForDay(section, address, day) {
+  return await wasmExplorerLoadTransactionsForDay(section, address, day);
+}
+
+export function kgwClean2Log(label, payload = {}) {
+  return wasmExplorerClean2Log(String(label ?? ""), payload ?? {});
+}
+
+export function kgwClean2Section(section) {
+  return wasmExplorerClean2Section(section);
+}
+
+export function kgwClean2Body(section) {
+  return wasmExplorerClean2Body(section);
+}
+
+export async function kgwClean2LoadSummaries(section, address, startTs, endTs) {
+  return await wasmExplorerClean2LoadSummaries(section, address, startTs, endTs);
+}
+
+export async function kgwClean2LoadDayTransactions(section, address, day) {
+  return await wasmExplorerClean2LoadDayTransactions(section, address, day);
 }
 
 export function setTableFontSize(section) {
@@ -1663,6 +1708,29 @@ mod tests {
         assert!(adapter.contains("wasmExplorerExtractRowsFromUnifiedResult(result)"));
         assert!(adapter.contains("wasmExplorerUiTrace(action, phase, details)"));
         assert!(adapter.contains("wasmExplorerFilterTrace(label, payload)"));
+        assert!(
+            adapter.contains("wasmExplorerLegacyListRequest(section, address, startTs, endTs)")
+        );
+        assert!(adapter.contains(
+            "await wasmExplorerLoadTransactionDaySummariesFromDb(section, address, startTs, endTs)"
+        ));
+        assert!(adapter.contains(
+            "await wasmExplorerLoadTransactionsForSingleDayFromDb(section, address, day)"
+        ));
+        assert!(
+            adapter.contains("await wasmExplorerLoadTransactionsForDay(section, address, day)")
+        );
+        assert!(adapter.contains("wasmExplorerClean2Log(String(label ?? \"\"), payload ?? {})"));
+        assert!(adapter.contains("wasmExplorerClean2Section(section)"));
+        assert!(adapter.contains("wasmExplorerClean2Body(section)"));
+        assert!(
+            adapter.contains(
+                "await wasmExplorerClean2LoadSummaries(section, address, startTs, endTs)"
+            )
+        );
+        assert!(
+            adapter.contains("await wasmExplorerClean2LoadDayTransactions(section, address, day)")
+        );
         assert!(!adapter.contains("Number.isFinite"));
         assert!(!adapter.contains("Math.abs"));
         assert!(!adapter.contains("new Map"));
