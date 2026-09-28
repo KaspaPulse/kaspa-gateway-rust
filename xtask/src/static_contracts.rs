@@ -158,6 +158,10 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.js",
     )?;
+    let explorer_address_rust = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/explorer_addresses.rs",
+    )?;
     let explorer_css = read(
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.css",
@@ -182,25 +186,40 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/top-addresses/top-addresses.template.js",
     )?;
-    validate_functional_ui(
-        &explorer_js,
-        &explorer_css,
-        &settings_paths,
-        &top_js,
-        &top_rust,
-        &top_html,
-        &top_template,
-    )
+    validate_functional_ui(FunctionalUiSources {
+        explorer_js: &explorer_js,
+        explorer_address_rust: &explorer_address_rust,
+        explorer_css: &explorer_css,
+        settings_paths: &settings_paths,
+        top_js: &top_js,
+        top_rust: &top_rust,
+        top_html: &top_html,
+        top_template: &top_template,
+    })
 }
-fn validate_functional_ui(
-    explorer_js: &str,
-    explorer_css: &str,
-    settings_paths: &str,
-    top_js: &str,
-    top_rust: &str,
-    top_html: &str,
-    top_template: &str,
-) -> Result<(), String> {
+
+struct FunctionalUiSources<'a> {
+    explorer_js: &'a str,
+    explorer_address_rust: &'a str,
+    explorer_css: &'a str,
+    settings_paths: &'a str,
+    top_js: &'a str,
+    top_rust: &'a str,
+    top_html: &'a str,
+    top_template: &'a str,
+}
+
+fn validate_functional_ui(sources: FunctionalUiSources<'_>) -> Result<(), String> {
+    let FunctionalUiSources {
+        explorer_js,
+        explorer_address_rust,
+        explorer_css,
+        settings_paths,
+        top_js,
+        top_rust,
+        top_html,
+        top_template,
+    } = sources;
     forbid_contains(
         explorer_css,
         "#explorer #explorerStatus {\n  display: none !important;",
@@ -219,9 +238,14 @@ fn validate_functional_ui(
         "Explorer ARIA-live state missing",
     )?;
     require_contains(
-        explorer_js,
-        r#"invokeCommand("validate_kaspa_address""#,
-        "Explorer must use canonical backend address validation",
+        explorer_address_rust,
+        r#""validate_kaspa_address""#,
+        "Explorer Rust owner must use canonical backend address validation",
+    )?;
+    require_contains(
+        explorer_address_rust,
+        "explorerCanonicalKaspaAddress",
+        "Explorer canonical validation must remain exported by Rust/WASM",
     )?;
     if count_regex(explorer_js, r"await kgwCanonicalKaspaAddress\(address\)") < 4 {
         return Err(
@@ -530,10 +554,7 @@ fn validate_aud010(source: &str) -> Result<(), String> {
 }
 
 fn settings_programmatic_restore_contract(root: &Path) -> Result<(), String> {
-    let node = read(
-        root,
-        "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js",
-    )?;
+    let node = read(root, "crates/kaspa-gateway-frontend-wasm/src/node_tab.rs")?;
     let bridge = read(
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
@@ -560,32 +581,29 @@ fn function_block<'a>(source: &'a str, start: &str, next: &str) -> Result<&'a st
 }
 
 fn validate_programmatic_restore(node: &str, bridge: &str, node_owner: &str) -> Result<(), String> {
-    if !regex_is_match(
-        node,
-        r"function kgwNodeSettingsWithProgrammaticWriteR9B\(callback\)\s*\{\s*return callback\(\);\s*\}",
-    ) {
-        return Err("Node programmatic restore call boundary is missing".to_owned());
-    }
-    let node_restore = function_block(
-        node,
-        "function kgwNodeR51RestoreDefaults",
-        "function kgwNodeR51IsRunning",
-    )?;
     for (needle, message) in [
         (
-            "kgwNodeSettingsWithProgrammaticWriteR9B(() =>",
-            "Node Restore Defaults must use the programmatic boundary",
+            "fn restore_defaults(net: &str) -> JsValue",
+            "Node Restore Defaults Rust owner is missing",
         ),
         (
-            "wasmNodeR51RestoreDefaultsAction(String(net || \"\"))",
-            "Node Restore Defaults must delegate restored-settings application to Rust/WASM",
+            "node_r51_restore_defaults_action(net.to_owned())",
+            "Node Restore Defaults must delegate restored-settings application to the Rust helper",
         ),
         (
-            "kgwNodeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, { force: true })",
+            "node_apply_root_default_path(",
             "Node Restore Defaults must refresh backend-owned default paths",
         ),
+        (
+            "\"restore-defaults\" => {",
+            "Node action dispatcher must retain Restore Defaults routing",
+        ),
+        (
+            "let _ = restore_defaults(&net);",
+            "Node Restore Defaults action must call the Rust restore owner",
+        ),
     ] {
-        require_contains(node_restore, needle, message)?;
+        require_contains(node, needle, message)?;
     }
     require_contains(
         node_owner,
@@ -742,11 +760,13 @@ mod tests {
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.js",
         )
+        .unwrap();
+        let explorer_address_rust = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/explorer_addresses.rs",
+        )
         .unwrap()
-        .replace(
-            r#"invokeCommand("validate_kaspa_address""#,
-            r#"invokeCommand("wrong_validation""#,
-        );
+        .replace(r#""validate_kaspa_address""#, r#""wrong_validation""#);
         let explorer_css = read(
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.css",
@@ -778,15 +798,16 @@ mod tests {
         )
         .unwrap();
         assert!(
-            validate_functional_ui(
-                &explorer_js,
-                &explorer_css,
-                &settings_paths,
-                &top_js,
-                &top_rust,
-                &top_html,
-                &top_template
-            )
+            validate_functional_ui(FunctionalUiSources {
+                explorer_js: &explorer_js,
+                explorer_address_rust: &explorer_address_rust,
+                explorer_css: &explorer_css,
+                settings_paths: &settings_paths,
+                top_js: &top_js,
+                top_rust: &top_rust,
+                top_html: &top_html,
+                top_template: &top_template,
+            })
             .is_err()
         );
     }
@@ -870,11 +891,7 @@ mod tests {
     #[test]
     fn programmatic_restore_missing_node_rust_write_fails_closed() {
         let root = root();
-        let node = read(
-            &root,
-            "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js",
-        )
-        .unwrap();
+        let node = read(&root, "crates/kaspa-gateway-frontend-wasm/src/node_tab.rs").unwrap();
         let bridge = read(
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",

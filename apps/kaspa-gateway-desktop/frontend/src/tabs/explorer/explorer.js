@@ -35,16 +35,13 @@ import { parseHeaderUsdPrice } from "./explorer.header.js";
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf } from "./explorer.export.js";
 import { parseDateSeconds, kgwDayToEpochSeconds, kgwTxDayToEpochSeconds, kgwClean2DayToSeconds, kgwTransactionDateKey } from "./explorer.date.js";
 import { formatKas, formatUsd, kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { pick, toNumber, kgwClean2SafeText, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave } from "./explorer.utils.js";
+import { pick, toNumber, kgwClean2SafeText, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, addressLookupKeys, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
 
 const SOMPI_PER_KAS = 100_000_000;
 
 const explorerState = {
   rows: [],
   filteredRows: [],
-  savedAddresses: [],
-  addressNames: new Map(),
-  addressNamesLoaded: false,
   selectedAddress: "",
   busy: false,
   cancelRequested: false
@@ -132,389 +129,6 @@ function setStatus(section, message, state = "info") {
 }
 
 
-/* TX_LOAD_ADDRESS_PYTHON_STYLE_OWNER
-   One visual owner only. Do not create/move a grid.
-   Keep the native datalist attached to #explorerAddress so the dropdown width follows the input.
-*/
-function kgwApplyPythonLoadAddressStyle(section) {
-  const root =
-    section ||
-    document.querySelector("#explorer") ||
-    document.querySelector(".explorer-python-root") ||
-    document;
-
-  const input = qs("#explorerAddress", root);
-  const balance = qs("#explorerBalanceValue", root);
-  const usd = qs("#explorerBalanceUsdValue", root);
-  const name = qs("#explorerAddressNameValue", root);
-
-  if (!input || !balance) return;
-
-  const fieldset = input.closest("fieldset");
-  if (!fieldset) return;
-
-  fieldset.classList.add("kgw-python-load-address-owner");
-
-  const buttons = [
-    qs("#explorerFetch", root),
-    qs("#explorerForceFetch", root),
-    qs("#explorerOpenExplorer", root),
-    qs("#explorerCancel", root)
-  ].filter(Boolean);
-
-  for (const button of buttons) {
-    button.classList.add("kgw-python-load-address-button");
-  }
-
-  balance.classList.add("kgw-python-balance-kas");
-
-  if (usd) {
-    usd.classList.add("kgw-python-balance-fiat");
-  }
-
-  if (name) {
-    name.classList.add("kgw-python-wallet-name");
-  }
-}
-
-/* KGW_EXPLORER_BALANCE_3_DECIMAL_FORMAT_OWNER_V1 */
-function kgwFormatExplorerBalanceKasV1(value) {
-  const raw = String(value ?? "").trim();
-
-  if (!raw || raw === "N/A") {
-    return "N/A";
-  }
-
-  const number = Number(raw.replace(/,/g, "").replace(/\s*KAS\s*$/i, ""));
-
-  if (!Number.isFinite(number)) {
-    return raw;
-  }
-
-  return `${number.toLocaleString(undefined, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 3
-  })} KAS`;
-}
-
-
-function setBalance(section, value, balanceKas = null) {
-  microscopeLog("SET BALANCE", { value, balanceKas, headerPriceUsd: typeof parseHeaderUsdPrice === "function" ? parseHeaderUsdPrice() : null });
-
-  const node = qs("#explorerBalanceValue", section);
-  if (node) node.textContent = kgwFormatExplorerBalanceKasV1(balanceKas ?? value);
-
-  const usdNode = qs("#explorerBalanceUsdValue", section);
-  if (!usdNode) return;
-
-  const numericBalance =
-    Number.isFinite(Number(balanceKas))
-      ? Number(balanceKas)
-      : Number(String(value || "").replace(/[^0-9.-]/g, ""));
-
-  const priceUsd = parseHeaderUsdPrice();
-
-  if (Number.isFinite(numericBalance) && numericBalance > 0 && priceUsd > 0) {
-    usdNode.textContent = `(${formatUsd(numericBalance * priceUsd)} USD)`;
-    usdNode.hidden = false;
-    usdNode.style.display = "block";
-  } else {
-    usdNode.textContent = "";
-    usdNode.hidden = true;
-  }
-
-  kgwApplyPythonLoadAddressStyle(section);
-}
-
-
-function setAddressName(section, name) {
-  microscopeLog("SET ADDRESS NAME", { name });
-
-  const node = qs("#explorerAddressNameValue", section);
-  if (!node) return;
-
-  const clean = String(name || "").trim();
-
-  node.textContent = clean;
-  node.title = clean;
-  node.hidden = !clean;
-  node.style.display = clean ? "block" : "none";
-
-  const balanceNode = qs("#explorerBalanceValue", section);
-  if (balanceNode && clean) {
-    balanceNode.title = `Wallet: ${clean}`;
-  }
-
-  kgwApplyPythonLoadAddressStyle(section);
-}
-
-
-function isKaspaAddress(value) {
-  return /^kaspa(test|dev|sim)?:[a-z0-9]{50,}$/i.test(String(value || "").trim());
-}
-
-function normalizeAddress(value) {
-  return String(value || "").trim();
-}
-
-async function kgwCanonicalKaspaAddress(address) {
-  const clean = normalizeAddress(address);
-  if (!isKaspaAddress(clean)) return "";
-  try {
-    return normalizeAddress(await invokeCommand("validate_kaspa_address", { address: clean }));
-  } catch {
-    return "";
-  }
-}
-
-function addressLookupKeys(address) {
-  const clean = normalizeAddress(address);
-  const lower = clean.toLowerCase();
-  const noPrefix = clean.replace(/^kaspa(test|dev|sim)?:/i, "");
-  const noPrefixLower = noPrefix.toLowerCase();
-
-  return Array.from(new Set([
-    clean,
-    lower,
-    noPrefix,
-    noPrefixLower,
-    noPrefix ? `kaspa:${noPrefix}` : "",
-    noPrefixLower ? `kaspa:${noPrefixLower}` : ""
-  ].filter(Boolean)));
-}
-
-function storeKnownName(address, name) {
-  const cleanName = String(name || "").trim();
-  if (!cleanName) return;
-
-  for (const key of addressLookupKeys(address)) {
-    explorerState.addressNames.set(key, cleanName);
-  }
-}
-
-async function loadKnownAddressNames() {
-  microscopeLog("NAMES LOAD START", {
-    alreadyLoaded: explorerState.addressNamesLoaded,
-    currentCount: explorerState.addressNames?.size || 0
-  });
-
-  if (explorerState.addressNamesLoaded) {
-    microscopeLog("NAMES LOAD SKIP CACHE", {
-      count: explorerState.addressNames?.size || 0
-    });
-    return explorerState.addressNames;
-  }
-  explorerState.addressNamesLoaded = true;
-
-  try {
-    const json =
-      (await invokeCommand("top_addresses_load_known_names", {}).catch(() => null)) ||
-      (await invokeCommand("get_all_addresses", {}).catch(() => null));
-
-    if (!json) return explorerState.addressNames;
-    microscopeApiShape("NAMES API RAW SHAPE", json);
-
-    if (json && typeof json === "object" && !Array.isArray(json)) {
-      for (const [address, value] of Object.entries(json)) {
-        if (typeof value === "string") {
-          storeKnownName(address, value);
-        } else if (value && typeof value === "object") {
-          storeKnownName(address, value.name || value.known_name || value.label || value.display_name || "");
-        }
-      }
-    }
-
-    const list = Array.isArray(json)
-      ? json
-      : Array.isArray(json?.addresses)
-        ? json.addresses
-        : Array.isArray(json?.items)
-          ? json.items
-          : Array.isArray(json?.names)
-            ? json.names
-            : [];
-
-    for (const item of list) {
-      if (Array.isArray(item)) {
-        storeKnownName(item[0], item[1]);
-        continue;
-      }
-
-      if (item && typeof item === "object") {
-        storeKnownName(
-          item.address || item.Address || item.addr || item.kaspa_address || "",
-          item.name || item.known_name || item.KnownName || item.label || item.display_name || ""
-        );
-      }
-    }
-  } catch (error) {
-    console.warn("[KGW Explorer] Failed to load /addresses/names", error);
-  }
-
-  microscopeLog("NAMES LOAD DONE", {
-    count: explorerState.addressNames?.size || 0,
-    sample: Array.from(explorerState.addressNames?.entries?.() || []).slice(0, 8)
-  });
-
-  return explorerState.addressNames;
-}
-
-
-/* TX_EXPLORER_TOP_ADDRESS_NAME_SOURCE_1
-   Reuse the same network-backed Top Addresses source for names.
-   Explorer first checks saved-address names; if missing, it asks fetch_top_addresses_rust
-   and caches known_name by all normalized address lookup keys.
-*/
-async function loadTopAddressNamesForExplorer() {
-  microscopeLog("TOP NAME SOURCE LOAD START", {
-    alreadyLoaded: explorerState.topAddressNamesLoaded === true,
-    currentCount: explorerState.addressNames?.size || 0
-  });
-
-  if (explorerState.topAddressNamesLoaded === true) {
-    return explorerState.addressNames;
-  }
-
-  explorerState.topAddressNamesLoaded = true;
-
-  try {
-    const result = await tryInvokeMany([
-      { cmd: "fetch_top_addresses_rust", args: { limit: 10000 } },
-      { cmd: "fetch_top_addresses_rust", args: { request: { limit: 10000 } } }
-    ]);
-
-    const rows = Array.isArray(result)
-      ? result
-      : (Array.isArray(result?.rows) ? result.rows : []);
-
-    let stored = 0;
-
-    for (const row of rows) {
-      const address = String(row?.address || row?.Address || "").trim();
-      const name = String(
-        row?.known_name ||
-        row?.KnownName ||
-        row?.["Known Name"] ||
-        row?.name ||
-        row?.label ||
-        ""
-      ).trim();
-
-      if (!address || !name) continue;
-
-      storeKnownName(address, name);
-      stored += 1;
-    }
-
-    microscopeLog("TOP NAME SOURCE LOAD DONE", {
-      rows: rows.length,
-      stored,
-      totalNames: explorerState.addressNames?.size || 0
-    });
-  } catch (error) {
-    microscopeWarn("TOP NAME SOURCE LOAD FAILED", {
-      message: error?.message || String(error)
-    });
-  }
-
-  return explorerState.addressNames;
-}
-
-async function resolveKnownName(address) {
-  microscopeLog("RESOLVE NAME START", { address });
-
-  const map = await loadKnownAddressNames();
-
-  for (const key of addressLookupKeys(address)) {
-    const value = map.get(key);
-    if (value) {
-      microscopeLog("RESOLVE NAME HIT SAVED", { address, key, value });
-      return value;
-    }
-  }
-
-  await loadTopAddressNamesForExplorer();
-
-  for (const key of addressLookupKeys(address)) {
-    const value = explorerState.addressNames?.get?.(key);
-    if (value) {
-      microscopeLog("RESOLVE NAME HIT TOP", { address, key, value });
-      return value;
-    }
-  }
-
-  microscopeCheckAddressNameMatch(address);
-  microscopeWarn("RESOLVE NAME MISS", { address });
-  return "";
-}
-
-
-const explorerSaveAddressMemo = new Map();
-
-function saveAddressMemoKey(address, name) {
-  return `${String(address || "").trim()}|${String(name || "").trim()}`;
-}
-
-function shouldSkipAddressSave(address, name) {
-  const key = saveAddressMemoKey(address, name);
-  const now = Date.now();
-  const last = explorerSaveAddressMemo.get(key) || 0;
-
-  if (now - last < 10_000) {
-    microscopeLog("SAVE ADDRESS SKIPPED DUPLICATE", { address, name });
-    return true;
-  }
-
-  explorerSaveAddressMemo.set(key, now);
-  return false;
-}
-
-async function saveAddressToDatabase(address, name = "") {
-  const cleanAddress = normalizeAddress(address);
-  const cleanName = String(name || "").trim();
-
-  if (!isKaspaAddress(cleanAddress)) return "";
-
-  if (shouldSkipAddressSave(cleanAddress, cleanName)) {
-    return "";
-  }
-
-  try {
-    const result = await invokeCommand("save_address", {
-      address: cleanAddress,
-      name: cleanName
-    });
-
-    microscopeLog("SAVE ADDRESS DONE", {
-      address: cleanAddress,
-      name: cleanName,
-      result
-    });
-
-    return result || "";
-  } catch (error) {
-    microscopeError("SAVE ADDRESS FAILED", error, {
-      address: cleanAddress,
-      name: cleanName
-    });
-    throw error;
-  }
-}
-
-
-async function refreshAddressName(section, address) {
-  microscopeLog("REFRESH NAME START", { address });
-  const knownName = await resolveKnownName(address);
-  setAddressName(section, knownName);
-
-  if (knownName) {
-    await saveAddressToDatabase(address, knownName);
-  }
-
-  microscopeLog("REFRESH NAME DONE", { address, knownName });
-  return knownName;
-}
-
 /* KGW_CALENDAR_EXISTING_OWNER_REBUILD_R2_EXPLORER_OWNER_START */
 /* KGW_CALENDAR_EXISTING_OWNER_REGEX_FIX_R4: fixed regex escaping only; no new owner layer.\n * KGW_CALENDAR_EXISTING_OWNER_DOM_CSS_FIX_R6: body-attached compact popover inside existing owner.\n * KGW_CALENDAR_SCOPED_POPOVER_OWNER_FIX_R7: scope-isolated popovers per tab.\n * KGW_CALENDAR_SINGLE_ACTIVE_POPOVER_FIX_R8: removes stale body-attached popovers before opening current tab calendar.
 /* */
@@ -541,128 +155,6 @@ function syncActionState(section) {
   for (const selector of ["#explorerExportCsv", "#explorerExportHtml", "#explorerExportPdf"]) {
     const node = qs(selector, section);
     if (node) node.disabled = !hasRows;
-  }
-}
-
-async function loadSavedAddresses(section) {
-  const input = qs("#explorerAddress", section);
-  const list = qs("#explorerAddressOptions", section);
-  const isSavedSelect = input && input.tagName && input.tagName.toLowerCase() === "select";
-
-  if (!input) return;
-  if (!isSavedSelect && !list) return;
-
-  try {
-    const result = await tryInvokeMany([
-      { cmd: "explorer_saved_addresses" },
-      { cmd: "get_all_addresses" },
-      { cmd: "list_addresses" }
-    ]);
-
-    const addresses = Array.isArray(result)
-      ? result
-      : Array.isArray(result?.addresses)
-        ? result.addresses
-        : Array.isArray(result?.items)
-          ? result.items
-          : [];
-
-    explorerState.savedAddresses = addresses;
-
-    if (isSavedSelect) {
-      input.innerHTML = '<option value="">Select saved address...</option>';
-
-      const seenSavedAddresses = new Set();
-
-      for (const item of addresses) {
-        const address = String(
-          item?.address ||
-          item?.kaspa_address ||
-          item?.kaspaAddress ||
-          item?.wallet_address ||
-          ""
-        ).trim();
-
-        if (!address || !address.startsWith("kaspa:") || seenSavedAddresses.has(address)) continue;
-
-        seenSavedAddresses.add(address);
-
-        const option = document.createElement("option");
-        option.value = address;
-
-        const name = String(item?.name || item?.label || item?.alias || "").trim();
-        option.textContent = name ? `${name} — ${address}` : address;
-
-        input.appendChild(option);
-      }
-
-      return;
-    }
-
-    list.innerHTML = "";
-
-    for (const item of addresses) {
-      const address = String(item?.address || item?.kaspa_address || item?.kaspaAddress || item?.wallet_address || "").trim();
-      const name = String(item.name || item.known_name || item.label || "").trim();
-
-      if (!address) continue;
-
-      const option = document.createElement("option");
-      option.value = address;
-      if (name) option.label = name;
-      list.appendChild(option);
-
-      if (name) storeKnownName(address, name);
-    }
-
-        // KGW_EXPLORER_ADDRESS_DROPDOWN_NO_AUTOFILL_V1
-    // Keep the address input empty so the existing datalist can show saved addresses.
-    // Do not auto-fill the first saved address here.
-  } catch (error) {
-    console.warn("[KGW Explorer] Failed to load saved addresses", error);
-  }
-  kgwInstallExplorerManualAddressSave();
-}
-
-async function fetchBalance(section, address) {
-  microscopeLog("BALANCE FETCH START", { address });
-  setBalance(section, "N/A");
-
-  // TX_EXPLORER_REFRESH_NAME_DURING_BALANCE_1:
-  // Manual Explorer addresses should resolve names the same way as Top Addresses.
-  await refreshAddressName(section, address);
-
-  try {
-    const report = await tryInvokeMany([
-      { cmd: "explorer_fetch_balance", args: { address } },
-      { cmd: "explorer_fetch_balance", args: { request: { address } } },
-      { cmd: "explorer_balance", args: { address } },
-      { cmd: "explorer_balance", args: { request: { address } } }
-    ]);
-
-    microscopeApiShape("BALANCE RAW RESULT", report);
-
-    const balanceKas =
-      report?.balance_kas ??
-      report?.balanceKas ??
-      report?.balance ??
-      (Number.isFinite(Number(report?.balance_sompi ?? report?.balanceSompi))
-        ? Number(report?.balance_sompi ?? report?.balanceSompi) / SOMPI_PER_KAS
-        : null);
-
-    if (balanceKas === null || balanceKas === undefined || !Number.isFinite(Number(balanceKas))) {
-      setBalance(section, "N/A");
-      return null;
-    }
-
-    setBalance(section, `${formatKas(balanceKas)} KAS`, Number(balanceKas));
-    microscopeLog("BALANCE FETCH DONE", { address, balanceKas: Number(balanceKas) });
-    return balanceKas;
-  } catch (error) {
-    setBalance(section, "N/A");
-    microscopeError("BALANCE FETCH FAILED", error, { address });
-    console.warn("[KGW Explorer] balance fetch failed", error);
-    return null;
   }
 }
 
@@ -2833,15 +2325,14 @@ function microscopeLayoutReport(section) {
 }
 
 function microscopeStateReport(label = "STATE REPORT") {
+  const address = normalizeAddress(qs("#explorerAddress", root())?.value);
+  const addressState = explorerAddressDiagnosticsSnapshot(address);
   microscopeLog(label, {
     rows: explorerState?.rows?.length ?? null,
     filteredRows: explorerState?.filteredRows?.length ?? null,
-    savedAddresses: explorerState?.savedAddresses?.length ?? null,
-    addressNames: explorerState?.addressNames?.size ?? null,
-    addressNamesLoaded: explorerState?.addressNamesLoaded ?? null,
     selectedAddress: explorerState?.selectedAddress ?? "",
     busy: explorerState?.busy ?? null,
-    fontSize: explorerState?.fontSize ?? null
+    addressState
   });
 }
 
@@ -2876,20 +2367,9 @@ function microscopeApiShape(label, value) {
 }
 
 function microscopeCheckAddressNameMatch(address) {
-  const keys = typeof addressLookupKeys === "function" ? addressLookupKeys(address) : [address];
-  const matches = [];
-
-  for (const key of keys) {
-    const value = explorerState?.addressNames?.get?.(key);
-    if (value) matches.push({ key, value });
-  }
-
   microscopeLog("ADDRESS NAME MATCH CHECK", {
     address,
-    lookupKeys: keys,
-    matches,
-    namesLoaded: explorerState?.addressNamesLoaded ?? null,
-    namesCount: explorerState?.addressNames?.size ?? null
+    ...explorerAddressDiagnosticsSnapshot(address)
   });
 }
 
@@ -4695,19 +4175,23 @@ if (!window.__kgwClean2FilterCaptureInstalled) {
   }
 })();
 
-/* KGW_EXPLORER_MANUAL_ADDRESS_SAVE_OWNER_V1
- * Rust/WASM owns manual-address validation, save dispatch, dropdown DOM/events, and autosave.
- * These hooks bridge only still-legacy saved-address/name refresh functions until their migration.
+/* KGW_EXPLORER_ADDRESS_DIAGNOSTICS_V1
+ * Rust/WASM owns address/name/balance behavior.
+ * JavaScript exposes diagnostics only; no business callbacks remain.
  */
-window.__kgwExplorerAddressOwnerHooks = {
-  invalidateAddressNames() {
-    explorerState.addressNamesLoaded = false;
+window.__kgwExplorerAddressDiagnostics = {
+  log(label, details) {
+    microscopeLog(label, details);
   },
-  loadSavedAddresses(section) {
-    return loadSavedAddresses(section);
+  warn(label, details) {
+    microscopeWarn(label, details);
   },
-  refreshAddressName(section, address) {
-    return refreshAddressName(section, address);
+  error(label, details) {
+    const message = details?.message || String(details || "unknown error");
+    microscopeError(label, new Error(message), details);
+  },
+  apiShape(label, details) {
+    microscopeApiShape(label, details);
   }
 };
 

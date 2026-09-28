@@ -476,28 +476,6 @@ async fn await_js(value: JsValue) -> Result<JsValue, JsValue> {
     JsFuture::from(Promise::resolve(&value)).await
 }
 
-async fn invoke_tauri(command: &str, args: &JsValue) -> Result<JsValue, JsValue> {
-    let tauri = property(&window(), "__TAURI__");
-    for owner in [
-        property(&tauri, "core"),
-        property(&tauri, "tauri"),
-        tauri.clone(),
-    ] {
-        if let Some(invoke) = function(&owner, "invoke") {
-            let value = invoke.call2(&owner, &JsValue::from_str(command), args)?;
-            return await_js(value).await;
-        }
-    }
-    let direct = property(&window(), "__TAURI_INVOKE__");
-    if let Ok(invoke) = direct.dyn_into::<Function>() {
-        let value = invoke.call2(&JsValue::UNDEFINED, &JsValue::from_str(command), args)?;
-        return await_js(value).await;
-    }
-    Err(JsValue::from_str(
-        "Tauri invoke API is not available for Explorer address save.",
-    ))
-}
-
 fn set_explorer_status(section: &JsValue, message: &str, state: &str) {
     let scope = if present(section) {
         section.clone()
@@ -540,35 +518,6 @@ fn set_explorer_status(section: &JsValue, message: &str, state: &str) {
     }
 }
 
-fn address_hooks() -> JsValue {
-    property(&window(), "__kgwExplorerAddressOwnerHooks")
-}
-
-async fn call_hook1(name: &str, value: &JsValue) -> Result<JsValue, JsValue> {
-    let hooks = address_hooks();
-    let Some(callback) = function(&hooks, name) else {
-        return Ok(JsValue::UNDEFINED);
-    };
-    let result = callback.call1(&hooks, value)?;
-    await_js(result).await
-}
-
-async fn call_hook2(name: &str, first: &JsValue, second: &JsValue) -> Result<JsValue, JsValue> {
-    let hooks = address_hooks();
-    let Some(callback) = function(&hooks, name) else {
-        return Ok(JsValue::UNDEFINED);
-    };
-    let result = callback.call2(&hooks, first, second)?;
-    await_js(result).await
-}
-
-fn invalidate_address_names() {
-    let hooks = address_hooks();
-    if let Some(callback) = function(&hooks, "invalidateAddressNames") {
-        let _ = callback.call0(&hooks);
-    }
-}
-
 async fn save_manual_address_impl(section: JsValue) -> bool {
     let scope = if present(&section) { section } else { root() };
     let address = manual_address_value_impl(&scope);
@@ -577,14 +526,13 @@ async fn save_manual_address_impl(section: JsValue) -> bool {
         return false;
     }
 
-    let args = Object::new();
-    set(args.as_ref(), "address", &JsValue::from_str(&address));
-    set(args.as_ref(), "name", &JsValue::from_str(""));
-    match invoke_tauri("save_address", args.as_ref()).await {
+    match crate::explorer_addresses::save_address_to_database_internal(&address, "").await {
         Ok(_) => {
-            invalidate_address_names();
-            let _ = call_hook1("loadSavedAddresses", &scope).await;
-            let _ = call_hook2("refreshAddressName", &scope, &JsValue::from_str(&address)).await;
+            crate::explorer_addresses::invalidate_address_names();
+            let _ = crate::explorer_addresses::load_saved_addresses_internal(scope.clone()).await;
+            let _ =
+                crate::explorer_addresses::refresh_address_name_internal(scope.clone(), &address)
+                    .await;
             set_explorer_status(&scope, "Address saved.", "info");
             if let Some(refresh) = function(&window(), "kgwRefreshSettingsAddresses")
                 && let Ok(value) = refresh.call0(&window())
@@ -824,7 +772,9 @@ fn schedule_address_autosave(section: JsValue, input: JsValue, reason: &'static 
                     },
                     "info",
                 );
-                let _ = call_hook1("loadSavedAddresses", &section_async).await;
+                let _ =
+                    crate::explorer_addresses::load_saved_addresses_internal(section_async.clone())
+                        .await;
             } else {
                 set(
                     &input_async,
