@@ -99,6 +99,7 @@ import init, {
   explorerMicroscopeError as wasmExplorerMicroscopeError,
   explorerMicroscopeLayoutReport as wasmExplorerMicroscopeLayoutReport,
   explorerMicroscopeLog as wasmExplorerMicroscopeLog,
+  explorerMicroscopeCurrentStateReport as wasmExplorerMicroscopeCurrentStateReport,
   explorerMicroscopeStateReport as wasmExplorerMicroscopeStateReport,
   explorerMicroscopeWarn as wasmExplorerMicroscopeWarn,
   explorerClean2Body as wasmExplorerClean2Body,
@@ -284,6 +285,10 @@ export function microscopeLayoutReport(section) {
 
 export function microscopeStateLog(label, snapshot) {
   wasmExplorerMicroscopeStateReport(String(label ?? "STATE REPORT"), snapshot ?? {});
+}
+
+export function microscopeStateReport(label = "STATE REPORT") {
+  wasmExplorerMicroscopeCurrentStateReport(String(label ?? "STATE REPORT"));
 }
 
 export function microscopeApiShape(label, value) {
@@ -1743,6 +1748,9 @@ mod tests {
         assert!(adapter.contains("wasmExplorerMicroscopeLayoutReport(section)"));
         assert!(adapter.contains(
             "wasmExplorerMicroscopeStateReport(String(label ?? \"STATE REPORT\"), snapshot ?? {})"
+        ));
+        assert!(adapter.contains(
+            "wasmExplorerMicroscopeCurrentStateReport(String(label ?? \"STATE REPORT\"))"
         ));
         assert!(adapter.contains("wasmExplorerMicroscopeApiShape(String(label ?? \"\"), value)"));
         assert!(adapter.contains("await wasmExplorerInvokeUnifiedFetch(request)"));

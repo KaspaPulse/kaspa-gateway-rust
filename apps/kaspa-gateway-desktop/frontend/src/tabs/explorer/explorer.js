@@ -33,7 +33,7 @@
 
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf, kgwExplorerExportNumberV2, kgwExplorerExportNormalizeRawTxV2 } from "./explorer.export.js";
 import { parseDateSeconds } from "./explorer.date.js";
-import { kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateLog, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot, kgwInvokeExplorerUnifiedFetch, kgwInvokeExplorerCancelTransactionsR57D4, setStatus, syncActionState, kgwInstallExplorerPriceRerenderV1, kgwExplorerUiTraceR53B3, kgwClean2Log, kgwClean2Section, kgwClean2LoadSummaries, kgwClean2LoadDayTransactions, kgwEnsureExplorerState, kgwLoadAndRenderDaySummaries, kgwClean2RenderSummaries, renderTable, clearExplorerTransactionTable, resetFilters } from "./explorer.utils.js";
+import { kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, microscopeLog, microscopeWarn, microscopeError, microscopeElementReport, microscopeLayoutReport, microscopeStateReport, microscopeApiShape, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, kgwInvokeExplorerUnifiedFetch, kgwInvokeExplorerCancelTransactionsR57D4, setStatus, syncActionState, kgwInstallExplorerPriceRerenderV1, kgwExplorerUiTraceR53B3, kgwClean2Log, kgwClean2Section, kgwClean2LoadSummaries, kgwClean2LoadDayTransactions, kgwEnsureExplorerState, kgwLoadAndRenderDaySummaries, kgwClean2RenderSummaries, renderTable, clearExplorerTransactionTable, resetFilters } from "./explorer.utils.js";
 
 const explorerState = kgwEnsureExplorerState();
 
@@ -388,19 +388,8 @@ function installEvents(section) {
 }
 
 
-/* Explorer microscope serialization/logging/DOM/layout/API diagnostics are Rust-owned
+/* Explorer microscope serialization/logging/DOM/layout/state diagnostics are Rust-owned
    by explorer_microscope.rs and exposed through generated explorer.utils.js. */
-function microscopeStateReport(label = "STATE REPORT") {
-  const address = normalizeAddress(qs("#explorerAddress", root())?.value);
-  const addressState = explorerAddressDiagnosticsSnapshot(address);
-  microscopeStateLog(label, {
-    rows: explorerState?.rows?.length ?? null,
-    filteredRows: explorerState?.filteredRows?.length ?? null,
-    selectedAddress: explorerState?.selectedAddress ?? "",
-    busy: explorerState?.busy ?? null,
-    addressState
-  });
-}
 
 export async function initExplorerTab() {
   const section = root();

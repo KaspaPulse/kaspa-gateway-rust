@@ -346,6 +346,51 @@ fn array_length_or_null(value: &JsValue) -> JsValue {
     }
 }
 
+fn current_state_snapshot() -> JsValue {
+    let doc = document();
+    let section = {
+        let direct = query(&doc, "#explorer");
+        if present(&direct) {
+            direct
+        } else {
+            query(&doc, ".explorer-python-root")
+        }
+    };
+    let address_node = if present(&section) {
+        query(&section, "#explorerAddress")
+    } else {
+        query(&doc, "#explorerAddress")
+    };
+    let address =
+        crate::explorer_addresses::explorer_normalize_address(property(&address_node, "value"));
+    let state = crate::explorer_state::explorer_state();
+    let snapshot = Object::new();
+    set(
+        snapshot.as_ref(),
+        "rows",
+        &array_length_or_null(&property(&state, "rows")),
+    );
+    set(
+        snapshot.as_ref(),
+        "filteredRows",
+        &array_length_or_null(&property(&state, "filteredRows")),
+    );
+    set(
+        snapshot.as_ref(),
+        "selectedAddress",
+        &property(&state, "selectedAddress"),
+    );
+    set(snapshot.as_ref(), "busy", &property(&state, "busy"));
+    set(
+        snapshot.as_ref(),
+        "addressState",
+        &crate::explorer_addresses::explorer_address_diagnostics_snapshot(JsValue::from_str(
+            &address,
+        )),
+    );
+    snapshot.into()
+}
+
 fn api_shape(label: &str, value: &JsValue) {
     if Array::is_array(value) {
         let details = Object::new();
@@ -442,6 +487,13 @@ pub fn explorer_microscope_layout_report(section: JsValue) -> JsValue {
 #[wasm_bindgen(js_name = explorerMicroscopeStateReport)]
 pub fn explorer_microscope_state_report(label: String, snapshot: JsValue) {
     log_line("info", &label, &snapshot);
+}
+
+#[wasm_bindgen(js_name = explorerMicroscopeCurrentStateReport)]
+pub fn explorer_microscope_current_state_report(label: String) -> JsValue {
+    let snapshot = current_state_snapshot();
+    log_line("info", &label, &snapshot);
+    snapshot
 }
 
 #[wasm_bindgen(js_name = explorerMicroscopeApiShape)]

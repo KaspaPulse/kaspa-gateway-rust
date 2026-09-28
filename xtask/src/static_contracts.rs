@@ -156,6 +156,7 @@ fn validate_explorer_lint(
         "function resetFilters(",
         "function syncActionState(",
         "function kgwInstallExplorerPriceRerenderV1(",
+        "function microscopeStateReport(",
     ] {
         forbid_contains(
             source,

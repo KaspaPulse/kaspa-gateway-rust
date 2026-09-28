@@ -42,6 +42,7 @@ import init, {
   explorerMicroscopeError as wasmExplorerMicroscopeError,
   explorerMicroscopeLayoutReport as wasmExplorerMicroscopeLayoutReport,
   explorerMicroscopeLog as wasmExplorerMicroscopeLog,
+  explorerMicroscopeCurrentStateReport as wasmExplorerMicroscopeCurrentStateReport,
   explorerMicroscopeStateReport as wasmExplorerMicroscopeStateReport,
   explorerMicroscopeWarn as wasmExplorerMicroscopeWarn,
   explorerClean2Body as wasmExplorerClean2Body,
@@ -227,6 +228,10 @@ export function microscopeLayoutReport(section) {
 
 export function microscopeStateLog(label, snapshot) {
   wasmExplorerMicroscopeStateReport(String(label ?? "STATE REPORT"), snapshot ?? {});
+}
+
+export function microscopeStateReport(label = "STATE REPORT") {
+  wasmExplorerMicroscopeCurrentStateReport(String(label ?? "STATE REPORT"));
 }
 
 export function microscopeApiShape(label, value) {
