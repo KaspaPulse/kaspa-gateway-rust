@@ -991,6 +991,30 @@ const wasmNodeBackendInvoke = (command, payload = {}) => {
   if (typeof invoke !== "function") return Promise.reject(new Error("Tauri invoke is not available"));
   return invoke(command, payload);
 };
+const wasmNodeIsolatedCompatInvoke = async (command, payload) => {
+  try { return await wasmNodeBackendInvoke(command, payload); }
+  catch (_) { return null; }
+};
+const wasmNodeSuperMegaIsolatedAdapterStatusPreviewV1 = (network) =>
+  wasmNodeIsolatedCompatInvoke("rk_isolated_adapter_status_preview_v1", { network });
+const wasmNodeFinalIsolatedAdapterStartV1 = (network, appDirName) =>
+  wasmNodeIsolatedCompatInvoke("rk_final_isolated_adapter_start_v1", { network, appDirName });
+const wasmNodeFinalIsolatedAdapterStatusV1 = (network) =>
+  wasmNodeIsolatedCompatInvoke("rk_final_isolated_adapter_status_v1", { network });
+const wasmNodeFinalIsolatedAdapterStopV1 = (network) =>
+  wasmNodeIsolatedCompatInvoke("rk_final_isolated_adapter_stop_v1", { network });
+const wasmNodeV66RuntimeFeaturePolicyV1 = (network) =>
+  wasmNodeIsolatedCompatInvoke("rk_v66_runtime_feature_policy_v1", { network });
+const wasmNodeV66IsolatedAdapterStartV1 = (network, appDirName) =>
+  wasmNodeIsolatedCompatInvoke("rk_v66_isolated_adapter_start_v1", { network, appDirName });
+const wasmNodeV66IsolatedAdapterStatusV1 = (network) =>
+  wasmNodeIsolatedCompatInvoke("rk_v66_isolated_adapter_status_v1", { network });
+const wasmNodeV66IsolatedAdapterStopV1 = (network) =>
+  wasmNodeIsolatedCompatInvoke("rk_v66_isolated_adapter_stop_v1", { network });
+const wasmNodeV67StartRuntime = wasmNodeV66IsolatedAdapterStartV1;
+const wasmNodeV67StatusRuntime = wasmNodeV66IsolatedAdapterStatusV1;
+const wasmNodeV67StopRuntime = wasmNodeV66IsolatedAdapterStopV1;
+const wasmNodeV67RuntimeFeaturePolicy = wasmNodeV66RuntimeFeaturePolicyV1;
 const wasmNodeNetworkProfiles = () => [
   { key: "mainnet", label: "Mainnet", testnet: false, netsuffix: "", enabledByDefault: true, runtime: "Official Rusty Kaspa" },
   { key: "testnet10", label: "Testnet 10", testnet: true, netsuffix: "10", enabledByDefault: true, runtime: "Official Rusty Kaspa" },

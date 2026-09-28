@@ -6,6 +6,7 @@ use super::settings_schema::{NODE_ENDPOINTS, NODE_MANAGED, NODE_OPTIONAL, NODE_R
 use js_sys::{Array, Error, Function, JSON, Object, Promise, Reflect};
 use std::collections::BTreeMap;
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
+use wasm_bindgen_futures::JsFuture;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct NetworkProfile {
@@ -232,6 +233,300 @@ pub fn node_backend_invoke(command: String, payload: JsValue) -> Result<Promise,
     };
     let result = invoke.call2(&JsValue::UNDEFINED, &JsValue::from_str(&command), &payload)?;
     Ok(Promise::resolve(&result))
+}
+
+#[derive(Clone, Copy)]
+struct IsolatedCompatRoute {
+    command: &'static str,
+    unavailable: &'static str,
+    success: &'static str,
+    failure: &'static str,
+    include_command_in_log: bool,
+}
+
+fn isolated_compat_route(family: &str, action: &str) -> Option<IsolatedCompatRoute> {
+    let (command, unavailable, success, failure, include_command_in_log) = match (family, action) {
+        ("preview", "status") => (
+            "rk_isolated_adapter_status_preview_v1",
+            "[kaspa-node] isolated adapter preview unavailable: Tauri invoke not found",
+            "[kaspa-node] isolated adapter preview:",
+            "[kaspa-node] isolated adapter preview failed:",
+            false,
+        ),
+        ("final", "start") => (
+            "rk_final_isolated_adapter_start_v1",
+            "[kaspa-node] final isolated runtime unavailable: Tauri invoke not found",
+            "[kaspa-node] final isolated runtime:",
+            "[kaspa-node] final isolated runtime failed:",
+            true,
+        ),
+        ("final", "status") => (
+            "rk_final_isolated_adapter_status_v1",
+            "[kaspa-node] final isolated runtime unavailable: Tauri invoke not found",
+            "[kaspa-node] final isolated runtime:",
+            "[kaspa-node] final isolated runtime failed:",
+            true,
+        ),
+        ("final", "stop") => (
+            "rk_final_isolated_adapter_stop_v1",
+            "[kaspa-node] final isolated runtime unavailable: Tauri invoke not found",
+            "[kaspa-node] final isolated runtime:",
+            "[kaspa-node] final isolated runtime failed:",
+            true,
+        ),
+        ("v66", "policy") | ("v67", "policy") => (
+            "rk_v66_runtime_feature_policy_v1",
+            if family == "v66" {
+                "[kaspa-node] V66 isolated runtime unavailable: Tauri invoke not found"
+            } else {
+                "[kaspa-node] V67 runtime unavailable: Tauri invoke not found"
+            },
+            if family == "v66" {
+                "[kaspa-node] V66 isolated runtime:"
+            } else {
+                "[kaspa-node] V67 runtime:"
+            },
+            if family == "v66" {
+                "[kaspa-node] V66 isolated runtime failed:"
+            } else {
+                "[kaspa-node] V67 runtime failed:"
+            },
+            true,
+        ),
+        ("v66", "start") | ("v67", "start") => (
+            "rk_v66_isolated_adapter_start_v1",
+            if family == "v66" {
+                "[kaspa-node] V66 isolated runtime unavailable: Tauri invoke not found"
+            } else {
+                "[kaspa-node] V67 runtime unavailable: Tauri invoke not found"
+            },
+            if family == "v66" {
+                "[kaspa-node] V66 isolated runtime:"
+            } else {
+                "[kaspa-node] V67 runtime:"
+            },
+            if family == "v66" {
+                "[kaspa-node] V66 isolated runtime failed:"
+            } else {
+                "[kaspa-node] V67 runtime failed:"
+            },
+            true,
+        ),
+        ("v66", "status") | ("v67", "status") => (
+            "rk_v66_isolated_adapter_status_v1",
+            if family == "v66" {
+                "[kaspa-node] V66 isolated runtime unavailable: Tauri invoke not found"
+            } else {
+                "[kaspa-node] V67 runtime unavailable: Tauri invoke not found"
+            },
+            if family == "v66" {
+                "[kaspa-node] V66 isolated runtime:"
+            } else {
+                "[kaspa-node] V67 runtime:"
+            },
+            if family == "v66" {
+                "[kaspa-node] V66 isolated runtime failed:"
+            } else {
+                "[kaspa-node] V67 runtime failed:"
+            },
+            true,
+        ),
+        ("v66", "stop") | ("v67", "stop") => (
+            "rk_v66_isolated_adapter_stop_v1",
+            if family == "v66" {
+                "[kaspa-node] V66 isolated runtime unavailable: Tauri invoke not found"
+            } else {
+                "[kaspa-node] V67 runtime unavailable: Tauri invoke not found"
+            },
+            if family == "v66" {
+                "[kaspa-node] V66 isolated runtime:"
+            } else {
+                "[kaspa-node] V67 runtime:"
+            },
+            if family == "v66" {
+                "[kaspa-node] V66 isolated runtime failed:"
+            } else {
+                "[kaspa-node] V67 runtime failed:"
+            },
+            true,
+        ),
+        _ => return None,
+    };
+    Some(IsolatedCompatRoute {
+        command,
+        unavailable,
+        success,
+        failure,
+        include_command_in_log,
+    })
+}
+
+fn isolated_compat_invoke_function() -> Option<Function> {
+    let win = window();
+    let tauri = property(&win, "__TAURI__");
+    for candidate in [
+        property(&property(&tauri, "core"), "invoke"),
+        property(&property(&tauri, "tauri"), "invoke"),
+        property(&win, "__TAURI_IPC__"),
+    ] {
+        if let Ok(invoke) = candidate.dyn_into::<Function>() {
+            return Some(invoke);
+        }
+    }
+    None
+}
+
+fn console_one(method: &str, message: &str) {
+    let console = property(&global(), "console");
+    if let Some(callback) = function(&console, method) {
+        let _ = callback.call1(&console, &JsValue::from_str(message));
+    }
+}
+
+fn console_value(method: &str, message: &str, value: &JsValue) {
+    let console = property(&global(), "console");
+    if let Some(callback) = function(&console, method) {
+        let _ = callback.call2(&console, &JsValue::from_str(message), value);
+    }
+}
+
+fn console_command_value(method: &str, message: &str, command: &str, value: &JsValue) {
+    let console = property(&global(), "console");
+    if let Some(callback) = function(&console, method) {
+        let _ = callback.call3(
+            &console,
+            &JsValue::from_str(message),
+            &JsValue::from_str(command),
+            value,
+        );
+    }
+}
+
+fn isolated_compat_payload(network: JsValue, app_dir_name: Option<JsValue>) -> JsValue {
+    let payload = Object::new();
+    set(payload.as_ref(), "network", &network);
+    if let Some(app_dir_name) = app_dir_name {
+        set(payload.as_ref(), "appDirName", &app_dir_name);
+    }
+    payload.into()
+}
+
+async fn isolated_compat_invoke(route: IsolatedCompatRoute, payload: JsValue) -> JsValue {
+    let Some(invoke) = isolated_compat_invoke_function() else {
+        console_one("warn", route.unavailable);
+        return JsValue::NULL;
+    };
+    let result = match invoke.call2(
+        &JsValue::UNDEFINED,
+        &JsValue::from_str(route.command),
+        &payload,
+    ) {
+        Ok(value) => value,
+        Err(error) => {
+            if route.include_command_in_log {
+                console_command_value("warn", route.failure, route.command, &error);
+            } else {
+                console_value("warn", route.failure, &error);
+            }
+            return JsValue::NULL;
+        }
+    };
+    match JsFuture::from(Promise::resolve(&result)).await {
+        Ok(value) => {
+            if route.include_command_in_log {
+                console_command_value("log", route.success, route.command, &value);
+            } else {
+                console_value("log", route.success, &value);
+            }
+            value
+        }
+        Err(error) => {
+            if route.include_command_in_log {
+                console_command_value("warn", route.failure, route.command, &error);
+            } else {
+                console_value("warn", route.failure, &error);
+            }
+            JsValue::NULL
+        }
+    }
+}
+
+async fn isolated_compat_call(
+    family: &str,
+    action: &str,
+    network: JsValue,
+    app_dir_name: Option<JsValue>,
+) -> JsValue {
+    let Some(route) = isolated_compat_route(family, action) else {
+        return JsValue::NULL;
+    };
+    isolated_compat_invoke(route, isolated_compat_payload(network, app_dir_name)).await
+}
+
+#[wasm_bindgen(js_name = nodeSuperMegaIsolatedAdapterStatusPreviewV1)]
+pub async fn node_super_mega_isolated_adapter_status_preview_v1(network: JsValue) -> JsValue {
+    isolated_compat_call("preview", "status", network, None).await
+}
+
+#[wasm_bindgen(js_name = nodeFinalIsolatedAdapterStartV1)]
+pub async fn node_final_isolated_adapter_start_v1(
+    network: JsValue,
+    app_dir_name: JsValue,
+) -> JsValue {
+    isolated_compat_call("final", "start", network, Some(app_dir_name)).await
+}
+
+#[wasm_bindgen(js_name = nodeFinalIsolatedAdapterStatusV1)]
+pub async fn node_final_isolated_adapter_status_v1(network: JsValue) -> JsValue {
+    isolated_compat_call("final", "status", network, None).await
+}
+
+#[wasm_bindgen(js_name = nodeFinalIsolatedAdapterStopV1)]
+pub async fn node_final_isolated_adapter_stop_v1(network: JsValue) -> JsValue {
+    isolated_compat_call("final", "stop", network, None).await
+}
+
+#[wasm_bindgen(js_name = nodeV66RuntimeFeaturePolicyV1)]
+pub async fn node_v66_runtime_feature_policy_v1(network: JsValue) -> JsValue {
+    isolated_compat_call("v66", "policy", network, None).await
+}
+
+#[wasm_bindgen(js_name = nodeV66IsolatedAdapterStartV1)]
+pub async fn node_v66_isolated_adapter_start_v1(
+    network: JsValue,
+    app_dir_name: JsValue,
+) -> JsValue {
+    isolated_compat_call("v66", "start", network, Some(app_dir_name)).await
+}
+
+#[wasm_bindgen(js_name = nodeV66IsolatedAdapterStatusV1)]
+pub async fn node_v66_isolated_adapter_status_v1(network: JsValue) -> JsValue {
+    isolated_compat_call("v66", "status", network, None).await
+}
+
+#[wasm_bindgen(js_name = nodeV66IsolatedAdapterStopV1)]
+pub async fn node_v66_isolated_adapter_stop_v1(network: JsValue) -> JsValue {
+    isolated_compat_call("v66", "stop", network, None).await
+}
+
+#[wasm_bindgen(js_name = nodeV67StartRuntime)]
+pub async fn node_v67_start_runtime(network: JsValue, app_dir_name: JsValue) -> JsValue {
+    isolated_compat_call("v67", "start", network, Some(app_dir_name)).await
+}
+
+#[wasm_bindgen(js_name = nodeV67StatusRuntime)]
+pub async fn node_v67_status_runtime(network: JsValue) -> JsValue {
+    isolated_compat_call("v67", "status", network, None).await
+}
+
+#[wasm_bindgen(js_name = nodeV67StopRuntime)]
+pub async fn node_v67_stop_runtime(network: JsValue) -> JsValue {
+    isolated_compat_call("v67", "stop", network, None).await
+}
+
+#[wasm_bindgen(js_name = nodeV67RuntimeFeaturePolicy)]
+pub async fn node_v67_runtime_feature_policy(network: JsValue) -> JsValue {
+    isolated_compat_call("v67", "policy", network, None).await
 }
 
 #[wasm_bindgen(js_name = nodeNetworkProfiles)]
@@ -2700,6 +2995,44 @@ mod tests {
         assert!(policy_message_text("mainnet").contains("Official Rusty Kaspa"));
         assert!(policy_message_text("testnet13").contains("no DNS seeders"));
         assert_eq!(policy_message_text("missing"), "");
+    }
+
+    #[test]
+    fn isolated_runtime_compat_routes_match_legacy_contract() {
+        let cases = [
+            (
+                "preview",
+                "status",
+                "rk_isolated_adapter_status_preview_v1",
+                false,
+            ),
+            ("final", "start", "rk_final_isolated_adapter_start_v1", true),
+            (
+                "final",
+                "status",
+                "rk_final_isolated_adapter_status_v1",
+                true,
+            ),
+            ("final", "stop", "rk_final_isolated_adapter_stop_v1", true),
+            ("v66", "policy", "rk_v66_runtime_feature_policy_v1", true),
+            ("v66", "start", "rk_v66_isolated_adapter_start_v1", true),
+            ("v66", "status", "rk_v66_isolated_adapter_status_v1", true),
+            ("v66", "stop", "rk_v66_isolated_adapter_stop_v1", true),
+            ("v67", "policy", "rk_v66_runtime_feature_policy_v1", true),
+            ("v67", "start", "rk_v66_isolated_adapter_start_v1", true),
+            ("v67", "status", "rk_v66_isolated_adapter_status_v1", true),
+            ("v67", "stop", "rk_v66_isolated_adapter_stop_v1", true),
+        ];
+        for (family, action, command, include_command_in_log) in cases {
+            let route = isolated_compat_route(family, action).expect("compat route");
+            assert_eq!(route.command, command, "{family}/{action}");
+            assert_eq!(
+                route.include_command_in_log, include_command_in_log,
+                "{family}/{action}"
+            );
+        }
+        assert!(isolated_compat_route("preview", "start").is_none());
+        assert!(isolated_compat_route("v66", "missing").is_none());
     }
 
     #[test]

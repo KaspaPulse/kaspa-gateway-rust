@@ -15,6 +15,18 @@ import initNodeRust, {
   nodeDispatchClipboardWrite as kgwNodeDispatchClipboardWriteV1,
   nodeDispatchRuntimeLogClear as kgwNodeDispatchRuntimeLogClearV1,
   nodeEffectiveNodeSettings as wasmNodeEffectiveNodeSettings,
+  nodeSuperMegaIsolatedAdapterStatusPreviewV1 as wasmNodeSuperMegaIsolatedAdapterStatusPreviewV1,
+  nodeFinalIsolatedAdapterStartV1 as wasmNodeFinalIsolatedAdapterStartV1,
+  nodeFinalIsolatedAdapterStatusV1 as wasmNodeFinalIsolatedAdapterStatusV1,
+  nodeFinalIsolatedAdapterStopV1 as wasmNodeFinalIsolatedAdapterStopV1,
+  nodeV66RuntimeFeaturePolicyV1 as wasmNodeV66RuntimeFeaturePolicyV1,
+  nodeV66IsolatedAdapterStartV1 as wasmNodeV66IsolatedAdapterStartV1,
+  nodeV66IsolatedAdapterStatusV1 as wasmNodeV66IsolatedAdapterStatusV1,
+  nodeV66IsolatedAdapterStopV1 as wasmNodeV66IsolatedAdapterStopV1,
+  nodeV67StartRuntime as wasmNodeV67StartRuntime,
+  nodeV67StatusRuntime as wasmNodeV67StatusRuntime,
+  nodeV67StopRuntime as wasmNodeV67StopRuntime,
+  nodeV67RuntimeFeaturePolicy as wasmNodeV67RuntimeFeaturePolicy,
   nodeElementId as id,
   nodeHandleCopyLog as wasmNodeHandleCopyLog,
   nodeI18nText as kgwI18nTextR41,
@@ -2483,185 +2495,19 @@ if (typeof window !== "undefined") {
 
 
 
-/* kgwSuperMegaIsolatedAdapterStatusPreviewV1
- * Phase V42-V48 SuperMega:
- * Preview selected isolated runtime adapter owner without starting runtime.
- * This is status/route preview only.
- */
-async function kgwSuperMegaIsolatedAdapterStatusPreviewV1(network) {
-  const invoke =
-    window.__TAURI__?.core?.invoke ||
-    window.__TAURI__?.tauri?.invoke ||
-    window.__TAURI_IPC__;
-
-  if (typeof invoke !== "function") {
-    console.warn("[kaspa-node] isolated adapter preview unavailable: Tauri invoke not found");
-    return null;
-  }
-
-  try {
-    const result = await invoke("rk_isolated_adapter_status_preview_v1", { network });
-    console.log("[kaspa-node] isolated adapter preview:", result);
-    return result;
-  } catch (error) {
-    console.warn("[kaspa-node] isolated adapter preview failed:", error);
-    return null;
-  }
-}
-
-window.kgwSuperMegaIsolatedAdapterStatusPreviewV1 = kgwSuperMegaIsolatedAdapterStatusPreviewV1;
-
-/* kgwFinalIsolatedAdapterRuntimeV1
- * Final isolated adapter runtime bridge.
- * These helpers call real Start/Status/Stop IPC commands.
- */
-async function kgwFinalIsolatedAdapterInvokeV1(command, payload) {
-  const invoke =
-    window.__TAURI__?.core?.invoke ||
-    window.__TAURI__?.tauri?.invoke ||
-    window.__TAURI_IPC__;
-
-  if (typeof invoke !== "function") {
-    console.warn("[kaspa-node] final isolated runtime unavailable: Tauri invoke not found");
-    return null;
-  }
-
-  try {
-    const result = await invoke(command, payload);
-    console.log("[kaspa-node] final isolated runtime:", command, result);
-    return result;
-  } catch (error) {
-    console.warn("[kaspa-node] final isolated runtime failed:", command, error);
-    return null;
-  }
-}
-
-async function kgwFinalIsolatedAdapterStartV1(network, appDirName) {
-  return kgwFinalIsolatedAdapterInvokeV1("rk_final_isolated_adapter_start_v1", {
-    network,
-    appDirName,
-  });
-}
-
-async function kgwFinalIsolatedAdapterStatusV1(network) {
-  return kgwFinalIsolatedAdapterInvokeV1("rk_final_isolated_adapter_status_v1", {
-    network,
-  });
-}
-
-async function kgwFinalIsolatedAdapterStopV1(network) {
-  return kgwFinalIsolatedAdapterInvokeV1("rk_final_isolated_adapter_stop_v1", {
-    network,
-  });
-}
-
-window.kgwFinalIsolatedAdapterStartV1 = kgwFinalIsolatedAdapterStartV1;
-window.kgwFinalIsolatedAdapterStatusV1 = kgwFinalIsolatedAdapterStatusV1;
-window.kgwFinalIsolatedAdapterStopV1 = kgwFinalIsolatedAdapterStopV1;
-
-/* kgwV66FinalRuntimeIsolationV1
- * Final runtime feature isolation:
- * - mainnet/testnet10 require isolated-real-runtime-mainline build
- * - testnet13 requires isolated-real-runtime-tn13 build
- * - one binary must not link both Rusty Kaspa owners.
- */
-async function kgwV66Invoke(command, payload) {
-  const invoke =
-    window.__TAURI__?.core?.invoke ||
-    window.__TAURI__?.tauri?.invoke ||
-    window.__TAURI_IPC__;
-
-  if (typeof invoke !== "function") {
-    console.warn("[kaspa-node] V66 isolated runtime unavailable: Tauri invoke not found");
-    return null;
-  }
-
-  try {
-    const result = await invoke(command, payload);
-    console.log("[kaspa-node] V66 isolated runtime:", command, result);
-    return result;
-  } catch (error) {
-    console.warn("[kaspa-node] V66 isolated runtime failed:", command, error);
-    return null;
-  }
-}
-
-async function kgwV66RuntimeFeaturePolicyV1(network) {
-  return kgwV66Invoke("rk_v66_runtime_feature_policy_v1", { network });
-}
-
-async function kgwV66IsolatedAdapterStartV1(network, appDirName) {
-  return kgwV66Invoke("rk_v66_isolated_adapter_start_v1", { network, appDirName });
-}
-
-async function kgwV66IsolatedAdapterStatusV1(network) {
-  return kgwV66Invoke("rk_v66_isolated_adapter_status_v1", { network });
-}
-
-async function kgwV66IsolatedAdapterStopV1(network) {
-  return kgwV66Invoke("rk_v66_isolated_adapter_stop_v1", { network });
-}
-
-window.kgwV66RuntimeFeaturePolicyV1 = kgwV66RuntimeFeaturePolicyV1;
-window.kgwV66IsolatedAdapterStartV1 = kgwV66IsolatedAdapterStartV1;
-window.kgwV66IsolatedAdapterStatusV1 = kgwV66IsolatedAdapterStatusV1;
-window.kgwV66IsolatedAdapterStopV1 = kgwV66IsolatedAdapterStopV1;
-
-/* kgwV67FinalRuntimeStartStopRewireV1
- * Final UI rewire:
- * Start/Status/Stop must call V66 isolated adapter commands, not old rk_integrated_node_* commands.
- */
-async function kgwV67Invoke(command, payload) {
-  const invoke =
-    window.__TAURI__?.core?.invoke ||
-    window.__TAURI__?.tauri?.invoke ||
-    window.__TAURI_IPC__;
-
-  if (typeof invoke !== "function") {
-    console.warn("[kaspa-node] V67 runtime unavailable: Tauri invoke not found");
-    return null;
-  }
-
-  try {
-    const result = await invoke(command, payload);
-    console.log("[kaspa-node] V67 runtime:", command, result);
-    return result;
-  } catch (error) {
-    console.warn("[kaspa-node] V67 runtime failed:", command, error);
-    return null;
-  }
-}
-
-async function kgwV67StartRuntime(network, appDirName) {
-  return kgwV67Invoke("rk_v66_isolated_adapter_start_v1", {
-    network,
-    appDirName,
-  });
-}
-
-async function kgwV67StatusRuntime(network) {
-  return kgwV67Invoke("rk_v66_isolated_adapter_status_v1", {
-    network,
-  });
-}
-
-async function kgwV67StopRuntime(network) {
-  return kgwV67Invoke("rk_v66_isolated_adapter_stop_v1", {
-    network,
-  });
-}
-
-async function kgwV67RuntimeFeaturePolicy(network) {
-  return kgwV67Invoke("rk_v66_runtime_feature_policy_v1", {
-    network,
-  });
-}
-
-window.kgwV67StartRuntime = kgwV67StartRuntime;
-window.kgwV67StatusRuntime = kgwV67StatusRuntime;
-window.kgwV67StopRuntime = kgwV67StopRuntime;
-window.kgwV67RuntimeFeaturePolicy = kgwV67RuntimeFeaturePolicy;
-
+/* OP156 isolated runtime compatibility implementation is Rust/WASM-owned. */
+window.kgwSuperMegaIsolatedAdapterStatusPreviewV1 = wasmNodeSuperMegaIsolatedAdapterStatusPreviewV1;
+window.kgwFinalIsolatedAdapterStartV1 = wasmNodeFinalIsolatedAdapterStartV1;
+window.kgwFinalIsolatedAdapterStatusV1 = wasmNodeFinalIsolatedAdapterStatusV1;
+window.kgwFinalIsolatedAdapterStopV1 = wasmNodeFinalIsolatedAdapterStopV1;
+window.kgwV66RuntimeFeaturePolicyV1 = wasmNodeV66RuntimeFeaturePolicyV1;
+window.kgwV66IsolatedAdapterStartV1 = wasmNodeV66IsolatedAdapterStartV1;
+window.kgwV66IsolatedAdapterStatusV1 = wasmNodeV66IsolatedAdapterStatusV1;
+window.kgwV66IsolatedAdapterStopV1 = wasmNodeV66IsolatedAdapterStopV1;
+window.kgwV67StartRuntime = wasmNodeV67StartRuntime;
+window.kgwV67StatusRuntime = wasmNodeV67StatusRuntime;
+window.kgwV67StopRuntime = wasmNodeV67StopRuntime;
+window.kgwV67RuntimeFeaturePolicy = wasmNodeV67RuntimeFeaturePolicy;
 /* R35 settings persistence for existing Node tab. */
 /* R37 bottom placement for Node settings buttons. */
 /* R38 UI freeze protection for Node Start/Stop. */
