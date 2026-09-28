@@ -509,9 +509,14 @@ function staticPlacementTests() {
     "Node R51 persistence implementation must not return to hand-maintained JS",
   );
   assert.ok(
-    source.includes("nodeEffectiveNodeSettings as wasmNodeEffectiveNodeSettings")
-      && /function kgwNodeEffectiveNodeSettings\(net\)\s*\{[\s\S]*?return wasmNodeEffectiveNodeSettings\(String\(net \|\| \"\"\)\);\s*\}/.test(source),
-    "Node effective settings must delegate to the Rust/WASM owner",
+    source.includes("nodeEffectiveNodeSettings as kgwNodeEffectiveNodeSettings")
+      && source.includes("nodeValidateForm as kgwNodeValidateForm")
+      && source.includes("nodeRequireValidSettings as kgwNodeRequireValidSettings")
+      && !source.includes("function kgwNodeEffectiveNodeSettings(")
+      && !source.includes("function kgwNodeValidateForm(")
+      && !source.includes("function kgwNodeRequireValidSettings(")
+      && rustNodeHelpersSource.includes("fn node_validate_form_inner("),
+    "Node effective settings and validation must bind directly to the Rust/WASM owner",
   );
   assert.ok(
     source.includes("nodeRuntimeArgs as nodeRuntimeArgs")
@@ -1177,6 +1182,14 @@ const wasmNodeEffectiveNodeSettings = (net) => {
     overrideParamsFile: null,
     logDir: nodeFieldEnabled("logDir", values, options) ? values.logDir || null : null,
   };
+};
+const kgwNodeEffectiveNodeSettings = wasmNodeEffectiveNodeSettings;
+const kgwNodeValidateForm = (net, _focus = false) =>
+  validateNodeForm(wasmNodeEffectiveForm(net), wasmNodeCommandInlineState(net), net);
+const kgwNodeRequireValidSettings = (net) => {
+  const errors = kgwNodeValidateForm(net, true);
+  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
+  kgwNodeEffectiveNodeSettings(net);
 };
 const wasmNodeRuntimeArgs = (net, command) => {
   if (command === "kgw_kgw_apply_node_settings_v1") {

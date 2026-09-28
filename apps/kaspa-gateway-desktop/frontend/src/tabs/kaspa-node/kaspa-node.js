@@ -1,6 +1,6 @@
 import { applyStatusTone, renderStatusSummary } from "../../status.js";
-import { NODE_MANAGED, NODE_REQUIRED, NODE_DANGEROUS, nodeFieldEnabled, validateNodeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
-import { installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
+import { NODE_MANAGED, NODE_REQUIRED, NODE_DANGEROUS, nodeFieldEnabled, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
+import { installSettingsLayout, decorateSettingsFields, setSettingFieldState } from "../../settings-layout.js";
 import initNodeRust, {
   nodeBackendInvoke as kgwNodeBackendInvokeR5,
   nodeById as byId,
@@ -14,7 +14,9 @@ import initNodeRust, {
   nodeCopyLogFailure as kgwNodeCopyLogFailureV1,
   nodeDispatchClipboardWrite as kgwNodeDispatchClipboardWriteV1,
   nodeDispatchRuntimeLogClear as kgwNodeDispatchRuntimeLogClearV1,
-  nodeEffectiveNodeSettings as wasmNodeEffectiveNodeSettings,
+  nodeEffectiveNodeSettings as kgwNodeEffectiveNodeSettings,
+  nodeRequireValidSettings as kgwNodeRequireValidSettings,
+  nodeValidateForm as kgwNodeValidateForm,
   nodeSuperMegaIsolatedAdapterStatusPreviewV1 as wasmNodeSuperMegaIsolatedAdapterStatusPreviewV1,
   nodeFinalIsolatedAdapterStartV1 as wasmNodeFinalIsolatedAdapterStartV1,
   nodeFinalIsolatedAdapterStatusV1 as wasmNodeFinalIsolatedAdapterStatusV1,
@@ -766,11 +768,7 @@ function renderAllNetworks(root) {
 
 
 
-/* Effective Node settings construction is Rust/WASM-owned in node_frontend_helpers.rs. */
-function kgwNodeEffectiveNodeSettings(net) {
-  kgwNodeValidateForm(net);
-  return wasmNodeEffectiveNodeSettings(String(net || ""));
-}
+/* Effective Node settings + validation rendering are Rust/WASM-owned in node_frontend_helpers.rs. */
 
 const KGW_NODE_PREVIEWS = new Map();
 function updateCommand(net) {
@@ -2521,25 +2519,6 @@ function kgwNodeForm(net) {
     values[name] = field.type === "checkbox" ? field.checked : field.value;
   });
   return values;
-}
-function kgwNodeValidateForm(net, focus = false) {
-  const errors = validateNodeForm(kgwNodeForm(net), kgwNodeCommandInlineStateR7(net), net);
-  const panel = kgwNodeR51Panel(net);
-  renderFieldErrors(panel, "node-" + net + "-", errors);
-  if (focus && Object.keys(errors).length) {
-    const field = byId(id(net, Object.keys(errors)[0]));
-    panel?.querySelector('[data-node-inner-tab="settings"]')?.click();
-    const section = field?.closest("[data-node-section-panel]");
-    panel?.querySelector('[data-node-section-tab="' + section?.dataset.nodeSectionPanel + '"]')?.click();
-    revealSettingsField(field);
-    field?.focus();
-  }
-  return errors;
-}
-function kgwNodeRequireValidSettings(net) {
-  const errors = kgwNodeValidateForm(net, true);
-  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-  kgwNodeEffectiveNodeSettings(net);
 }
 function kgwNodeSyncDependencies(net, locked = kgwIsBridgeOwnedNodeLockedR65E(net)) {
   const values = kgwNodeForm(net), options = kgwNodeCommandInlineStateR7(net);

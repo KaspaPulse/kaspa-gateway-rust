@@ -1,7 +1,9 @@
 use super::settings_contract::{
     endpoint as settings_endpoint, node_field_enabled as settings_node_field_enabled,
+    render_field_errors as settings_render_field_errors,
     validate_node_form as settings_validate_node_form,
 };
+use super::settings_layout::reveal_field as settings_reveal_field;
 use super::settings_schema::{NODE_ENDPOINTS, NODE_MANAGED, NODE_OPTIONAL, NODE_REQUIRED};
 use js_sys::{Array, Error, Function, JSON, Object, Promise, Reflect};
 use std::collections::BTreeMap;
@@ -1325,8 +1327,76 @@ fn node_effective_node_settings_inner(net: &str) -> Result<JsValue, JsValue> {
     Ok(output.into())
 }
 
+fn node_validate_form_inner(net: &str, focus: bool) -> JsValue {
+    let values = node_form_values(net);
+    let options = command_state_object(net);
+    let errors = settings_validate_node_form(values, options, net.to_owned());
+    let panel = r51_panel(net);
+    let _ = settings_render_field_errors(panel.clone(), format!("node-{net}-"), errors.clone());
+
+    let keys = if errors.is_object() && !errors.is_null() {
+        Object::keys(&Object::from(errors.clone()))
+    } else {
+        Array::new()
+    };
+    if focus && keys.length() > 0 {
+        let name = crate::js_string_owned(&keys.get(0));
+        let field = node_by_id(node_element_id(net.to_owned(), name));
+        let settings_tab = query(&panel, r#"[data-node-inner-tab="settings"]"#);
+        if let Some(click) = function(&settings_tab, "click") {
+            let _ = click.call0(&settings_tab);
+        }
+
+        let section = call1(
+            &field,
+            "closest",
+            &JsValue::from_str("[data-node-section-panel]"),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        let section_name = crate::js_string_owned(&property(
+            &property(&section, "dataset"),
+            "nodeSectionPanel",
+        ));
+        if !section_name.is_empty() {
+            let section_tab = query(
+                &panel,
+                &format!(r#"[data-node-section-tab="{section_name}"]"#),
+            );
+            if let Some(click) = function(&section_tab, "click") {
+                let _ = click.call0(&section_tab);
+            }
+        }
+        settings_reveal_field(field.clone());
+        if let Some(focus_fn) = function(&field, "focus") {
+            let _ = focus_fn.call0(&field);
+        }
+    }
+    errors
+}
+
+#[wasm_bindgen(js_name = nodeValidateForm)]
+pub fn node_validate_form(net: String, focus: bool) -> JsValue {
+    node_validate_form_inner(&net, focus)
+}
+
+#[wasm_bindgen(js_name = nodeRequireValidSettings)]
+pub fn node_require_valid_settings(net: String) -> Result<(), JsValue> {
+    let errors = node_validate_form_inner(&net, true);
+    let values = if errors.is_object() && !errors.is_null() {
+        Object::values(&Object::from(errors))
+    } else {
+        Array::new()
+    };
+    if values.length() > 0 {
+        return Err(Error::new(&crate::js_string_owned(&values.get(0))).into());
+    }
+    let _ = node_effective_node_settings_inner(&net)?;
+    Ok(())
+}
+
 #[wasm_bindgen(js_name = nodeEffectiveNodeSettings)]
 pub fn node_effective_node_settings(net: String) -> Result<JsValue, JsValue> {
+    let _ = node_validate_form_inner(&net, false);
     node_effective_node_settings_inner(&net)
 }
 
