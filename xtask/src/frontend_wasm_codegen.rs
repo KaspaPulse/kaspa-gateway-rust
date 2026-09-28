@@ -62,6 +62,7 @@ import init, {
   explorerApplyFontSize as wasmExplorerApplyFontSize,
   explorerApplyLocalBusyControls as wasmExplorerApplyLocalBusyControls,
   explorerBindFontSpinbox as wasmExplorerBindFontSpinbox,
+  explorerDefaultDates as wasmExplorerDefaultDates,
   explorerSetTableFontSize as wasmExplorerSetTableFontSize,
   kgwClean2SafeText as wasmKgwClean2SafeText,
   pick as wasmPick,
@@ -97,6 +98,10 @@ export function kgwApplyExplorerFontSize(section, rawValue) {
 
 export function kgwBindFontSpinbox(section) {
   return wasmExplorerBindFontSpinbox(section);
+}
+
+export function defaultDates(section) {
+  return wasmExplorerDefaultDates(section);
 }
 
 export function kgwApplyExplorerLocalBusyControls(section, busy) {
@@ -1301,6 +1306,7 @@ mod tests {
         assert!(adapter.contains("wasmExplorerSetTableFontSize(section)"));
         assert!(adapter.contains("wasmExplorerApplyFontSize(section, rawValue)"));
         assert!(adapter.contains("wasmExplorerBindFontSpinbox(section)"));
+        assert!(adapter.contains("wasmExplorerDefaultDates(section)"));
         assert!(adapter.contains("wasmExplorerApplyLocalBusyControls(section, busy)"));
         assert!(!adapter.contains("replaceAll("));
         assert!(!adapter.contains("Number.isFinite"));

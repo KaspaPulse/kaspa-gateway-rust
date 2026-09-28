@@ -5,6 +5,7 @@ import init, {
   explorerApplyFontSize as wasmExplorerApplyFontSize,
   explorerApplyLocalBusyControls as wasmExplorerApplyLocalBusyControls,
   explorerBindFontSpinbox as wasmExplorerBindFontSpinbox,
+  explorerDefaultDates as wasmExplorerDefaultDates,
   explorerSetTableFontSize as wasmExplorerSetTableFontSize,
   kgwClean2SafeText as wasmKgwClean2SafeText,
   pick as wasmPick,
@@ -40,6 +41,10 @@ export function kgwApplyExplorerFontSize(section, rawValue) {
 
 export function kgwBindFontSpinbox(section) {
   return wasmExplorerBindFontSpinbox(section);
+}
+
+export function defaultDates(section) {
+  return wasmExplorerDefaultDates(section);
 }
 
 export function kgwApplyExplorerLocalBusyControls(section, busy) {
