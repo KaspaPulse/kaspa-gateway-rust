@@ -65,14 +65,19 @@ import init, {
   explorerApplyLocalBusyControls as wasmExplorerApplyLocalBusyControls,
   explorerBindFontSpinbox as wasmExplorerBindFontSpinbox,
   explorerCanonicalKaspaAddress as wasmExplorerCanonicalKaspaAddress,
+  explorerBuildListRequest as wasmExplorerBuildListRequest,
   explorerDefaultDates as wasmExplorerDefaultDates,
+  explorerEnsureFilterOptions as wasmExplorerEnsureFilterOptions,
   explorerFetchBalance as wasmExplorerFetchBalance,
+  explorerFilterBuildRequest as wasmExplorerFilterBuildRequest,
+  explorerFilterValue as wasmExplorerFilterValue,
   explorerInstallManualAddressSave as wasmExplorerInstallManualAddressSave,
   explorerIsKaspaAddress as wasmExplorerIsKaspaAddress,
   explorerLoadKnownAddressNames as wasmExplorerLoadKnownAddressNames,
   explorerLoadSavedAddresses as wasmExplorerLoadSavedAddresses,
   explorerManualAddressValue as wasmExplorerManualAddressValue,
   explorerNormalizeAddress as wasmExplorerNormalizeAddress,
+  explorerReadFilterState as wasmExplorerReadFilterState,
   explorerRefreshAddressName as wasmExplorerRefreshAddressName,
   explorerSaveAddressToDatabase as wasmExplorerSaveAddressToDatabase,
   explorerSaveManualAddress as wasmExplorerSaveManualAddress,
@@ -119,6 +124,26 @@ export function defaultDates(section) {
 
 export function kgwApplyExplorerLocalBusyControls(section, busy) {
   return wasmExplorerApplyLocalBusyControls(section, busy);
+}
+
+export function kgwEnsureExplorerFilterOptions(section) {
+  return wasmExplorerEnsureFilterOptions(section);
+}
+
+export function kgwReadExplorerFilterState(section) {
+  return wasmExplorerReadFilterState(section);
+}
+
+export function kgwBuildExplorerListRequest(section, address, startTs, endTs, limit = 10000) {
+  return wasmExplorerBuildListRequest(section, address, startTs, endTs, limit);
+}
+
+export function kgwFilterValue(selector, section, fallback = "ALL") {
+  return wasmExplorerFilterValue(selector, section, fallback);
+}
+
+export function kgwFilterBuildRequest(section, address, startTs, endTs, limit = 10000) {
+  return wasmExplorerFilterBuildRequest(section, address, startTs, endTs, limit);
 }
 
 export function normalizeAddress(value) {
@@ -1377,6 +1402,18 @@ mod tests {
         assert!(adapter.contains("wasmExplorerBindFontSpinbox(section)"));
         assert!(adapter.contains("wasmExplorerDefaultDates(section)"));
         assert!(adapter.contains("wasmExplorerApplyLocalBusyControls(section, busy)"));
+        assert!(adapter.contains("wasmExplorerEnsureFilterOptions(section)"));
+        assert!(adapter.contains("wasmExplorerReadFilterState(section)"));
+        assert!(
+            adapter
+                .contains("wasmExplorerBuildListRequest(section, address, startTs, endTs, limit)")
+        );
+        assert!(adapter.contains("wasmExplorerFilterValue(selector, section, fallback)"));
+        assert!(
+            adapter.contains(
+                "wasmExplorerFilterBuildRequest(section, address, startTs, endTs, limit)"
+            )
+        );
         assert!(adapter.contains("wasmExplorerNormalizeAddress(value)"));
         assert!(adapter.contains("wasmExplorerIsKaspaAddress(value)"));
         assert!(adapter.contains("wasmExplorerAddressLookupKeys(value)"));

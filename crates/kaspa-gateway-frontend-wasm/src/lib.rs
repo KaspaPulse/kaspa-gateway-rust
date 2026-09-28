@@ -5,6 +5,7 @@ mod explorer_addresses;
 mod explorer_calendar;
 mod explorer_controls;
 mod explorer_export;
+mod explorer_filters;
 mod header_live_metrics;
 mod log_tab;
 mod node_frontend_helpers;

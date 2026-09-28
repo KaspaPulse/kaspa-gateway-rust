@@ -162,6 +162,10 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
         root,
         "crates/kaspa-gateway-frontend-wasm/src/explorer_addresses.rs",
     )?;
+    let explorer_filters_rust = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/explorer_filters.rs",
+    )?;
     let explorer_css = read(
         root,
         "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.css",
@@ -189,6 +193,7 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
     validate_functional_ui(FunctionalUiSources {
         explorer_js: &explorer_js,
         explorer_address_rust: &explorer_address_rust,
+        explorer_filters_rust: &explorer_filters_rust,
         explorer_css: &explorer_css,
         settings_paths: &settings_paths,
         top_js: &top_js,
@@ -201,6 +206,7 @@ fn functional_ui_contract(root: &Path) -> Result<(), String> {
 struct FunctionalUiSources<'a> {
     explorer_js: &'a str,
     explorer_address_rust: &'a str,
+    explorer_filters_rust: &'a str,
     explorer_css: &'a str,
     settings_paths: &'a str,
     top_js: &'a str,
@@ -209,10 +215,44 @@ struct FunctionalUiSources<'a> {
     top_template: &'a str,
 }
 
+fn validate_explorer_filter_ownership(
+    explorer_js: &str,
+    explorer_filters_rust: &str,
+) -> Result<(), String> {
+    for export in [
+        "#[wasm_bindgen(js_name = explorerEnsureFilterOptions)]",
+        "#[wasm_bindgen(js_name = explorerReadFilterState)]",
+        "#[wasm_bindgen(js_name = explorerBuildListRequest)]",
+        "#[wasm_bindgen(js_name = explorerFilterValue)]",
+        "#[wasm_bindgen(js_name = explorerFilterBuildRequest)]",
+    ] {
+        require_contains(
+            explorer_filters_rust,
+            export,
+            "Explorer filter/control/request Rust-owner export missing",
+        )?;
+    }
+    for legacy_definition in [
+        "function kgwEnsureExplorerFilterOptions(",
+        "function kgwReadExplorerFilterState(",
+        "function kgwBuildExplorerListRequest(",
+        "function kgwFilterValue(",
+        "function kgwFilterBuildRequest(",
+    ] {
+        forbid_contains(
+            explorer_js,
+            legacy_definition,
+            "Explorer filter/control/request implementation must not return to JavaScript",
+        )?;
+    }
+    Ok(())
+}
+
 fn validate_functional_ui(sources: FunctionalUiSources<'_>) -> Result<(), String> {
     let FunctionalUiSources {
         explorer_js,
         explorer_address_rust,
+        explorer_filters_rust,
         explorer_css,
         settings_paths,
         top_js,
@@ -247,6 +287,7 @@ fn validate_functional_ui(sources: FunctionalUiSources<'_>) -> Result<(), String
         "explorerCanonicalKaspaAddress",
         "Explorer canonical validation must remain exported by Rust/WASM",
     )?;
+    validate_explorer_filter_ownership(explorer_js, explorer_filters_rust)?;
     if count_regex(explorer_js, r"await kgwCanonicalKaspaAddress\(address\)") < 4 {
         return Err(
             "All active Explorer filter/fetch owners must use canonical validation".to_owned(),
@@ -767,6 +808,11 @@ mod tests {
         )
         .unwrap()
         .replace(r#""validate_kaspa_address""#, r#""wrong_validation""#);
+        let explorer_filters_rust = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/explorer_filters.rs",
+        )
+        .unwrap();
         let explorer_css = read(
             &root,
             "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.css",
@@ -801,6 +847,7 @@ mod tests {
             validate_functional_ui(FunctionalUiSources {
                 explorer_js: &explorer_js,
                 explorer_address_rust: &explorer_address_rust,
+                explorer_filters_rust: &explorer_filters_rust,
                 explorer_css: &explorer_css,
                 settings_paths: &settings_paths,
                 top_js: &top_js,
@@ -810,6 +857,45 @@ mod tests {
             })
             .is_err()
         );
+    }
+
+    #[test]
+    fn explorer_filter_owner_missing_export_fails_closed() {
+        let root = root();
+        let explorer_js = read(
+            &root,
+            "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.js",
+        )
+        .unwrap();
+        let explorer_filters_rust = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/explorer_filters.rs",
+        )
+        .unwrap()
+        .replace(
+            "#[wasm_bindgen(js_name = explorerFilterBuildRequest)]",
+            "#[wasm_bindgen(js_name = explorerFilterBuildRequestRemoved)]",
+        );
+        assert!(validate_explorer_filter_ownership(&explorer_js, &explorer_filters_rust).is_err());
+    }
+
+    #[test]
+    fn explorer_filter_owner_legacy_js_definition_fails_closed() {
+        let root = root();
+        let explorer_js = format!(
+            "{}\nfunction kgwFilterBuildRequest() {{}}\n",
+            read(
+                &root,
+                "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.js",
+            )
+            .unwrap()
+        );
+        let explorer_filters_rust = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/explorer_filters.rs",
+        )
+        .unwrap();
+        assert!(validate_explorer_filter_ownership(&explorer_js, &explorer_filters_rust).is_err());
     }
 
     #[test]

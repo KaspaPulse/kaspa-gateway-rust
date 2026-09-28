@@ -35,7 +35,7 @@ import { parseHeaderUsdPrice } from "./explorer.header.js";
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf } from "./explorer.export.js";
 import { parseDateSeconds, kgwDayToEpochSeconds, kgwTxDayToEpochSeconds, kgwClean2DayToSeconds, kgwTransactionDateKey } from "./explorer.date.js";
 import { formatKas, formatUsd, kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { pick, toNumber, kgwClean2SafeText, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, addressLookupKeys, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
+import { pick, toNumber, kgwClean2SafeText, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwFilterValue, kgwFilterBuildRequest, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, addressLookupKeys, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
 
 const SOMPI_PER_KAS = 100_000_000;
 
@@ -469,88 +469,7 @@ function kgwFilterTrace(label, payload = {}) {
    Direction => ALL / incoming / outgoing
    Address search belongs in #explorerSearch, not in dropdowns.
 */
-function kgwEnsureExplorerFilterOptions(section) {
-  const typeEl = qs("#explorerTypeFilter", section);
-  const directionEl = qs("#explorerDirectionFilter", section);
-
-  if (typeEl) {
-    const previous = String(typeEl.value || "ALL").toLowerCase();
-
-    typeEl.innerHTML = `
-      <option value="ALL">ALL</option>
-      <option value="coinbase">coinbase</option>
-      <option value="transfer">transfer</option>
-    `;
-
-    if (["all", "coinbase", "transfer"].includes(previous)) {
-      typeEl.value = previous === "all" ? "ALL" : previous;
-    } else {
-      typeEl.value = "ALL";
-    }
-  }
-
-  if (directionEl) {
-    const previous = String(directionEl.value || "ALL").toLowerCase();
-
-    directionEl.innerHTML = `
-      <option value="ALL">ALL</option>
-      <option value="incoming">incoming</option>
-      <option value="outgoing">outgoing</option>
-    `;
-
-    if (["all", "incoming", "outgoing"].includes(previous)) {
-      directionEl.value = previous === "all" ? "ALL" : previous;
-    } else {
-      directionEl.value = "ALL";
-    }
-  }
-
-  console.log("[KGW Explorer][filter] canonical dropdown options installed", {
-    typeOptions: typeEl ? Array.from(typeEl.options).map((option) => option.value) : [],
-    directionOptions: directionEl ? Array.from(directionEl.options).map((option) => option.value) : []
-  });
-}
-
-function kgwReadExplorerFilterState(section) {
-  kgwEnsureExplorerFilterOptions(section);
-  const typeEl = qs("#explorerTypeFilter", section);
-  const directionEl = qs("#explorerDirectionFilter", section);
-  const searchEl = qs("#explorerSearch", section);
-  const fromEl = qs("#explorerFromDate", section);
-  const toEl = qs("#explorerToDate", section);
-
-  const state = {
-    typeId: typeEl?.id || "",
-    directionId: directionEl?.id || "",
-    typeValue: typeEl?.value || "ALL",
-    directionValue: directionEl?.value || "ALL",
-    searchValue: searchEl?.value || "",
-    fromValue: fromEl?.value || "",
-    toValue: toEl?.value || ""
-  };
-
-  kgwFilterTrace("controls", state);
-
-  return state;
-}
-
-function kgwBuildExplorerListRequest(section, address, startTs, endTs, limit = 10000) {
-  const filterState = kgwReadExplorerFilterState(section);
-
-  const request = {
-    address,
-    start_ts: startTs,
-    end_ts: endTs,
-    tx_type: filterState.typeValue || "ALL",
-    direction: filterState.directionValue || "ALL",
-    search_query: filterState.searchValue || "",
-    limit
-  };
-
-  kgwFilterTrace("request", request);
-
-  return request;
-}
+/* Explorer filter option/state/request ownership lives in Rust/WASM explorer_filters.rs. */
 
 async function kgwLoadTransactionDaySummariesFromDb(section, address, startTs, endTs) {
   const request = kgwExplorerListRequest(section, address, startTs, endTs);
@@ -1195,26 +1114,7 @@ function kgwFilterLog(label, payload = {}) {
   }
 }
 
-function kgwFilterValue(selector, section, fallback = "ALL") {
-  const element = qs(selector, section);
-  const value = String(element?.value || fallback).trim();
-  return value || fallback;
-}
-
-function kgwFilterBuildRequest(section, address, startTs, endTs, limit = 10000) {
-  const request = {
-    address,
-    start_ts: startTs,
-    end_ts: endTs,
-    tx_type: kgwFilterValue("#explorerTypeFilter", section, "ALL"),
-    direction: kgwFilterValue("#explorerDirectionFilter", section, "ALL"),
-    search_query: String(qs("#explorerSearch", section)?.value || ""),
-    limit
-  };
-
-  kgwFilterLog("request", request);
-  return request;
-}
+/* Explorer single-owner filter value/request construction lives in Rust/WASM explorer_filters.rs. */
 
 function kgwFilterTbody(section) {
   return qs("#explorerTransactionsBody", section) || document.querySelector("#explorerTransactionsBody");
