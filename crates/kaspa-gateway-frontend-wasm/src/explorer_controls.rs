@@ -1,6 +1,7 @@
-use js_sys::{Array, Date, Function, JSON, Object, Reflect};
+use js_sys::{Array, Date, Function, JSON, Object, Promise, Reflect};
 use std::cell::Cell;
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
+use wasm_bindgen_futures::{JsFuture, spawn_local};
 
 thread_local! {
     static FONT_SIZE: Cell<u32> = const { Cell::new(11) };
@@ -434,6 +435,570 @@ pub fn explorer_apply_local_busy_controls(section: JsValue, busy: bool) -> bool 
     apply_busy_controls_impl(&section, busy)
 }
 
+fn manual_address_value_impl(section: &JsValue) -> String {
+    let scope = if present(section) {
+        section.clone()
+    } else {
+        root()
+    };
+    crate::js_string_owned(&property(&query(&scope, "#explorerAddress"), "value"))
+        .trim()
+        .to_owned()
+}
+
+fn manual_kaspa_address_text(value: &str) -> bool {
+    let text = value.trim().to_ascii_lowercase();
+    let tail = if let Some(value) = text.strip_prefix("kaspa:") {
+        value
+    } else if let Some(value) = text.strip_prefix("kaspatest:") {
+        value
+    } else {
+        return false;
+    };
+    tail.len() >= 50 && tail.bytes().all(|byte| byte.is_ascii_alphanumeric())
+}
+
+fn error_text(error: &JsValue) -> String {
+    let message = property(error, "message");
+    let value = if present(&message) {
+        crate::js_string_owned(&message)
+    } else {
+        crate::js_string_owned(error)
+    };
+    if value.trim().is_empty() {
+        "unknown error".to_owned()
+    } else {
+        value.replace(['\r', '\n', '\t'], " ").trim().to_owned()
+    }
+}
+
+async fn await_js(value: JsValue) -> Result<JsValue, JsValue> {
+    JsFuture::from(Promise::resolve(&value)).await
+}
+
+async fn invoke_tauri(command: &str, args: &JsValue) -> Result<JsValue, JsValue> {
+    let tauri = property(&window(), "__TAURI__");
+    for owner in [
+        property(&tauri, "core"),
+        property(&tauri, "tauri"),
+        tauri.clone(),
+    ] {
+        if let Some(invoke) = function(&owner, "invoke") {
+            let value = invoke.call2(&owner, &JsValue::from_str(command), args)?;
+            return await_js(value).await;
+        }
+    }
+    let direct = property(&window(), "__TAURI_INVOKE__");
+    if let Ok(invoke) = direct.dyn_into::<Function>() {
+        let value = invoke.call2(&JsValue::UNDEFINED, &JsValue::from_str(command), args)?;
+        return await_js(value).await;
+    }
+    Err(JsValue::from_str(
+        "Tauri invoke API is not available for Explorer address save.",
+    ))
+}
+
+fn set_explorer_status(section: &JsValue, message: &str, state: &str) {
+    let scope = if present(section) {
+        section.clone()
+    } else {
+        root()
+    };
+    let node = query(&scope, "#explorerStatus");
+    if present(&node) {
+        set(&node, "hidden", &JsValue::FALSE);
+        set(&node, "textContent", &JsValue::from_str(message));
+        set(
+            &property(&node, "dataset"),
+            "state",
+            &JsValue::from_str(state),
+        );
+        set_attr(
+            &node,
+            "role",
+            if state == "error" { "alert" } else { "status" },
+        );
+        set_attr(
+            &node,
+            "aria-live",
+            if state == "error" {
+                "assertive"
+            } else {
+                "polite"
+            },
+        );
+    }
+    if let Some(progress) = function(&window(), "kgwSetGlobalFetchProgressText") {
+        let _ = progress.call1(&window(), &JsValue::from_str(message));
+    }
+    if let Some(info) = function(&property(&global(), "console"), "info") {
+        let _ = info.call2(
+            &property(&global(), "console"),
+            &JsValue::from_str("[KGW Explorer]"),
+            &JsValue::from_str(message),
+        );
+    }
+}
+
+fn address_hooks() -> JsValue {
+    property(&window(), "__kgwExplorerAddressOwnerHooks")
+}
+
+async fn call_hook1(name: &str, value: &JsValue) -> Result<JsValue, JsValue> {
+    let hooks = address_hooks();
+    let Some(callback) = function(&hooks, name) else {
+        return Ok(JsValue::UNDEFINED);
+    };
+    let result = callback.call1(&hooks, value)?;
+    await_js(result).await
+}
+
+async fn call_hook2(name: &str, first: &JsValue, second: &JsValue) -> Result<JsValue, JsValue> {
+    let hooks = address_hooks();
+    let Some(callback) = function(&hooks, name) else {
+        return Ok(JsValue::UNDEFINED);
+    };
+    let result = callback.call2(&hooks, first, second)?;
+    await_js(result).await
+}
+
+fn invalidate_address_names() {
+    let hooks = address_hooks();
+    if let Some(callback) = function(&hooks, "invalidateAddressNames") {
+        let _ = callback.call0(&hooks);
+    }
+}
+
+async fn save_manual_address_impl(section: JsValue) -> bool {
+    let scope = if present(&section) { section } else { root() };
+    let address = manual_address_value_impl(&scope);
+    if !manual_kaspa_address_text(&address) {
+        set_explorer_status(&scope, "Invalid Kaspa address.", "info");
+        return false;
+    }
+
+    let args = Object::new();
+    set(args.as_ref(), "address", &JsValue::from_str(&address));
+    set(args.as_ref(), "name", &JsValue::from_str(""));
+    match invoke_tauri("save_address", args.as_ref()).await {
+        Ok(_) => {
+            invalidate_address_names();
+            let _ = call_hook1("loadSavedAddresses", &scope).await;
+            let _ = call_hook2("refreshAddressName", &scope, &JsValue::from_str(&address)).await;
+            set_explorer_status(&scope, "Address saved.", "info");
+            if let Some(refresh) = function(&window(), "kgwRefreshSettingsAddresses")
+                && let Ok(value) = refresh.call0(&window())
+            {
+                let _ = await_js(value).await;
+            }
+            true
+        }
+        Err(error) => {
+            set_explorer_status(
+                &scope,
+                &format!("Save address failed: {}", error_text(&error)),
+                "info",
+            );
+            false
+        }
+    }
+}
+
+fn event_with_bubbles(name: &str) -> Option<JsValue> {
+    let constructor = property(&global(), "Event").dyn_into::<Function>().ok()?;
+    let init = Object::new();
+    set(init.as_ref(), "bubbles", &JsValue::TRUE);
+    let args = Array::new();
+    args.push(&JsValue::from_str(name));
+    args.push(init.as_ref());
+    Reflect::construct(&constructor, &args).ok()
+}
+
+fn close_address_dropdown(input: &JsValue, dropdown: &JsValue) {
+    set(dropdown, "hidden", &JsValue::TRUE);
+    set_attr(input, "aria-expanded", "false");
+}
+
+fn dropdown_number(value: JsValue, fallback: f64) -> f64 {
+    let number = crate::js_number(&value);
+    if number.is_finite() { number } else { fallback }
+}
+
+fn place_address_dropdown(input: &JsValue, dropdown: &JsValue) {
+    let Some(rect_fn) = function(input, "getBoundingClientRect") else {
+        return;
+    };
+    let Ok(rect) = rect_fn.call0(input) else {
+        return;
+    };
+    let doc_root = property(&document(), "documentElement");
+    let right = dropdown_number(property(&rect, "right"), 0.0);
+    let bottom = dropdown_number(property(&rect, "bottom"), 0.0);
+    let rect_width = dropdown_number(property(&rect, "width"), 220.0);
+    let viewport_width = dropdown_number(
+        property(&window(), "innerWidth"),
+        dropdown_number(property(&doc_root, "clientWidth"), right),
+    );
+    let viewport_height = dropdown_number(
+        property(&window(), "innerHeight"),
+        dropdown_number(property(&doc_root, "clientHeight"), bottom),
+    );
+    let width = rect_width.max(220.0);
+    let left = dropdown_number(property(&rect, "left"), 8.0)
+        .min(viewport_width - width - 8.0)
+        .max(8.0);
+    let top = (bottom + 4.0).min(viewport_height - 64.0).max(8.0);
+    let style = property(dropdown, "style");
+    for (name, value) in [
+        ("position", "fixed".to_owned()),
+        ("left", format!("{left}px")),
+        ("top", format!("{top}px")),
+        ("width", format!("{width}px")),
+        ("transform", "none".to_owned()),
+    ] {
+        set(&style, name, &JsValue::from_str(&value));
+    }
+}
+
+fn translated_saved_addresses_empty() -> String {
+    for name in ["kgwT", "kgwTranslate", "t"] {
+        if let Some(translate) = function(&window(), name)
+            && let Ok(value) = translate.call2(
+                &window(),
+                &JsValue::from_str("ui.explorer.noSavedAddresses"),
+                &JsValue::from_str("No saved addresses"),
+            )
+        {
+            let text = crate::js_string_owned(&value);
+            if !text.is_empty() && text != "ui.explorer.noSavedAddresses" {
+                return text;
+            }
+        }
+    }
+    "No saved addresses".to_owned()
+}
+
+fn apply_saved_address(input: &JsValue, dropdown: &JsValue, address: &str) {
+    set(input, "value", &JsValue::from_str(address));
+    for event_name in ["input", "change"] {
+        if let Some(event) = event_with_bubbles(event_name) {
+            let _ = call1(input, "dispatchEvent", &event);
+        }
+    }
+    close_address_dropdown(input, dropdown);
+}
+
+fn read_saved_address_options(datalist: &JsValue) -> Vec<String> {
+    let mut output = Vec::new();
+    for option in query_all(datalist, "option") {
+        let value = {
+            let candidate = crate::js_string_owned(&property(&option, "value"));
+            if candidate.trim().is_empty() {
+                crate::js_string_owned(&property(&option, "textContent"))
+            } else {
+                candidate
+            }
+        };
+        let value = value.trim().to_owned();
+        if !value.is_empty() && !output.contains(&value) {
+            output.push(value);
+        }
+    }
+    output
+}
+
+fn render_address_dropdown(input: &JsValue, datalist: &JsValue, dropdown: &JsValue) {
+    if let Some(replace) = function(dropdown, "replaceChildren") {
+        let _ = replace.call0(dropdown);
+    } else {
+        set(dropdown, "textContent", &JsValue::from_str(""));
+    }
+    let addresses = read_saved_address_options(datalist);
+    if addresses.is_empty() {
+        let empty = call1(&document(), "createElement", &JsValue::from_str("div"));
+        set(
+            &empty,
+            "className",
+            &JsValue::from_str("kgw-explorer-address-dropdown-empty"),
+        );
+        set(
+            &empty,
+            "textContent",
+            &JsValue::from_str(&translated_saved_addresses_empty()),
+        );
+        let _ = call1(dropdown, "appendChild", &empty);
+        return;
+    }
+
+    for address in addresses {
+        let button = call1(&document(), "createElement", &JsValue::from_str("button"));
+        set(&button, "type", &JsValue::from_str("button"));
+        set(
+            &button,
+            "className",
+            &JsValue::from_str("kgw-explorer-address-dropdown-option"),
+        );
+        set_attr(&button, "role", "option");
+        let label = if address.chars().count() > 54 {
+            format!("{}...", address.chars().take(54).collect::<String>())
+        } else {
+            address.clone()
+        };
+        set(&button, "textContent", &JsValue::from_str(&label));
+        set(&button, "title", &JsValue::from_str(&address));
+
+        let down = Closure::wrap(Box::new(move |event: JsValue| {
+            if let Some(prevent) = function(&event, "preventDefault") {
+                let _ = prevent.call0(&event);
+            }
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &button,
+            "addEventListener",
+            &JsValue::from_str("mousedown"),
+            down.as_ref().unchecked_ref(),
+        );
+        down.forget();
+
+        let input_for_click = input.clone();
+        let dropdown_for_click = dropdown.clone();
+        let address_for_click = address.clone();
+        let click = Closure::wrap(Box::new(move |_event: JsValue| {
+            apply_saved_address(&input_for_click, &dropdown_for_click, &address_for_click);
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &button,
+            "addEventListener",
+            &JsValue::from_str("click"),
+            click.as_ref().unchecked_ref(),
+        );
+        click.forget();
+        let _ = call1(dropdown, "appendChild", &button);
+    }
+}
+
+fn open_address_dropdown(input: &JsValue, datalist: &JsValue, dropdown: &JsValue) {
+    render_address_dropdown(input, datalist, dropdown);
+    place_address_dropdown(input, dropdown);
+    set(dropdown, "hidden", &JsValue::FALSE);
+    set_attr(input, "aria-expanded", "true");
+}
+
+fn schedule_address_autosave(section: JsValue, input: JsValue, reason: &'static str, delay: f64) {
+    let win = window();
+    let prior = property(&input, "__kgwExplorerAutosaveTimer");
+    if let Some(clear) = function(&win, "clearTimeout")
+        && let Some(timer) = prior.as_f64()
+    {
+        let _ = clear.call1(&win, &JsValue::from_f64(timer));
+    }
+
+    let input_for_timeout = input.clone();
+    let callback = Closure::wrap(Box::new(move || {
+        let address = manual_address_value_impl(&section);
+        if !manual_kaspa_address_text(&address) {
+            return;
+        }
+        let last = crate::js_string_owned(&property(
+            &input_for_timeout,
+            "__kgwExplorerLastAutosavedAddress",
+        ));
+        if address == last {
+            return;
+        }
+        set(
+            &input_for_timeout,
+            "__kgwExplorerLastAutosavedAddress",
+            &JsValue::from_str(&address),
+        );
+        let section_async = section.clone();
+        let input_async = input_for_timeout.clone();
+        spawn_local(async move {
+            if save_manual_address_impl(section_async.clone()).await {
+                set_explorer_status(
+                    &section_async,
+                    if reason == "paste" {
+                        "Address pasted and saved."
+                    } else {
+                        "Address saved."
+                    },
+                    "info",
+                );
+                let _ = call_hook1("loadSavedAddresses", &section_async).await;
+            } else {
+                set(
+                    &input_async,
+                    "__kgwExplorerLastAutosavedAddress",
+                    &JsValue::from_str(""),
+                );
+            }
+        });
+    }) as Box<dyn FnMut()>);
+
+    if let Some(set_timeout) = function(&win, "setTimeout")
+        && let Ok(timer) = set_timeout.call2(
+            &win,
+            callback.as_ref().unchecked_ref(),
+            &JsValue::from_f64(delay),
+        )
+    {
+        set(&input, "__kgwExplorerAutosaveTimer", &timer);
+    }
+    callback.forget();
+}
+
+fn install_manual_address_save_impl() -> bool {
+    let section = root();
+    let input = query(&section, "#explorerAddress");
+    let datalist = query(&section, "#explorerAddressOptions");
+    let dropdown = query(&section, "#explorerAddressDropdown");
+    if !present(&input) || !present(&datalist) || !present(&dropdown) {
+        return false;
+    }
+
+    let body = property(&document(), "body");
+    if !Object::is(&property(&dropdown, "parentElement"), &body) {
+        let _ = call1(&body, "appendChild", &dropdown);
+    }
+
+    let data = property(&input, "dataset");
+    if crate::js_string_owned(&property(&data, "kgwExplorerCustomDropdownR5Installed")) == "1" {
+        return true;
+    }
+    set(
+        &data,
+        "kgwExplorerCustomDropdownR5Installed",
+        &JsValue::from_str("1"),
+    );
+
+    remove_attr(&input, "list");
+    set_attr(&input, "aria-haspopup", "listbox");
+    set_attr(&input, "aria-controls", "explorerAddressDropdown");
+    set_attr(&input, "aria-expanded", "false");
+
+    for event_name in ["focus", "click"] {
+        let input_for_open = input.clone();
+        let datalist_for_open = datalist.clone();
+        let dropdown_for_open = dropdown.clone();
+        let callback = Closure::wrap(Box::new(move |_event: JsValue| {
+            open_address_dropdown(&input_for_open, &datalist_for_open, &dropdown_for_open);
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &input,
+            "addEventListener",
+            &JsValue::from_str(event_name),
+            callback.as_ref().unchecked_ref(),
+        );
+        callback.forget();
+    }
+
+    {
+        let input_for_key = input.clone();
+        let datalist_for_key = datalist.clone();
+        let dropdown_for_key = dropdown.clone();
+        let callback = Closure::wrap(Box::new(move |event: JsValue| {
+            let key = crate::js_string_owned(&property(&event, "key"));
+            if key == "ArrowDown" || key == "Enter" {
+                open_address_dropdown(&input_for_key, &datalist_for_key, &dropdown_for_key);
+            } else if key == "Escape" {
+                close_address_dropdown(&input_for_key, &dropdown_for_key);
+            }
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &input,
+            "addEventListener",
+            &JsValue::from_str("keydown"),
+            callback.as_ref().unchecked_ref(),
+        );
+        callback.forget();
+    }
+
+    for (event_name, reason, delay) in [
+        ("paste", "paste", 40.0),
+        ("input", "input", 350.0),
+        ("change", "change", 0.0),
+        ("blur", "blur", 0.0),
+    ] {
+        let section_for_event = section.clone();
+        let input_for_event = input.clone();
+        let callback = Closure::wrap(Box::new(move |_event: JsValue| {
+            schedule_address_autosave(
+                section_for_event.clone(),
+                input_for_event.clone(),
+                reason,
+                delay,
+            );
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &input,
+            "addEventListener",
+            &JsValue::from_str(event_name),
+            callback.as_ref().unchecked_ref(),
+        );
+        callback.forget();
+    }
+
+    {
+        let input_for_resize = input.clone();
+        let dropdown_for_resize = dropdown.clone();
+        let callback = Closure::wrap(Box::new(move |_event: JsValue| {
+            if !crate::js_boolean(&property(&dropdown_for_resize, "hidden")) {
+                place_address_dropdown(&input_for_resize, &dropdown_for_resize);
+            }
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &window(),
+            "addEventListener",
+            &JsValue::from_str("resize"),
+            callback.as_ref().unchecked_ref(),
+        );
+        callback.forget();
+    }
+
+    {
+        let input_for_doc = input.clone();
+        let dropdown_for_doc = dropdown.clone();
+        let callback = Closure::wrap(Box::new(move |event: JsValue| {
+            let target = property(&event, "target");
+            let inside_dropdown = crate::js_boolean(&call1(&dropdown_for_doc, "contains", &target));
+            if Object::is(&target, &input_for_doc) || inside_dropdown {
+                return;
+            }
+            close_address_dropdown(&input_for_doc, &dropdown_for_doc);
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &document(),
+            "addEventListener",
+            &JsValue::from_str("mousedown"),
+            callback.as_ref().unchecked_ref(),
+        );
+        callback.forget();
+    }
+
+    render_address_dropdown(&input, &datalist, &dropdown);
+    true
+}
+
+#[wasm_bindgen(js_name = explorerManualAddressValue)]
+pub fn explorer_manual_address_value(section: JsValue) -> String {
+    manual_address_value_impl(&section)
+}
+
+#[wasm_bindgen(js_name = explorerIsKaspaAddress)]
+pub fn explorer_is_kaspa_address(value: JsValue) -> bool {
+    manual_kaspa_address_text(&crate::js_string_owned(&value))
+}
+
+#[wasm_bindgen(js_name = explorerSaveManualAddress)]
+pub async fn explorer_save_manual_address(section: JsValue) -> bool {
+    save_manual_address_impl(section).await
+}
+
+#[wasm_bindgen(js_name = explorerInstallManualAddressSave)]
+pub fn explorer_install_manual_address_save() -> bool {
+    install_manual_address_save_impl()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -455,5 +1020,23 @@ mod tests {
         assert!(busy_allowed_text("", "إلغاء العملية"));
         assert!(busy_allowed_text("", "الغاء العملية"));
         assert!(!busy_allowed_text("explorerFetch", "fetch transactions"));
+    }
+
+    #[test]
+    fn manual_address_validation_matches_legacy_owner() {
+        let main = format!("kaspa:{}", "a".repeat(50));
+        let test = format!("kaspatest:{}", "b1".repeat(25));
+        let short = format!("kaspa:{}", "a".repeat(49));
+        assert!(manual_kaspa_address_text(&main));
+        assert!(manual_kaspa_address_text(&test));
+        assert!(!manual_kaspa_address_text(&short));
+        assert!(!manual_kaspa_address_text(&format!(
+            "kaspadev:{}",
+            "a".repeat(50)
+        )));
+        assert!(!manual_kaspa_address_text(&format!(
+            "kaspa:{}-",
+            "a".repeat(49)
+        )));
     }
 }

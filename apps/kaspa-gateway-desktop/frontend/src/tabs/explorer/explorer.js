@@ -1,12 +1,3 @@
-function kgwI18nTextR41(key, fallback) {
-  try {
-    if (window.kgwT && typeof window.kgwT === "function") return window.kgwT(key, fallback);
-    if (window.KGW_I18N && typeof window.KGW_I18N.t === "function") return window.KGW_I18N.t(key, fallback);
-    if (window.i18n && typeof window.i18n.t === "function") return window.i18n.t(key, fallback);
-  } catch (_) { /* Best-effort i18n lookup; fallback text remains authoritative. */ }
-  return fallback;
-}
-
 /*
  * KGW_UI_CLEANUP_NO_BEHAVIOR_CHANGE
  * This file has been cleaned only with behavior-preserving UI hygiene:
@@ -44,7 +35,7 @@ import { parseHeaderUsdPrice } from "./explorer.header.js";
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf } from "./explorer.export.js";
 import { parseDateSeconds, kgwDayToEpochSeconds, kgwTxDayToEpochSeconds, kgwClean2DayToSeconds, kgwTransactionDateKey } from "./explorer.date.js";
 import { formatKas, formatUsd, kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { pick, toNumber, kgwClean2SafeText, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls } from "./explorer.utils.js";
+import { pick, toNumber, kgwClean2SafeText, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave } from "./explorer.utils.js";
 
 const SOMPI_PER_KAS = 100_000_000;
 
@@ -4704,182 +4695,22 @@ if (!window.__kgwClean2FilterCaptureInstalled) {
   }
 })();
 
-/* KGW_EXPLORER_MANUAL_ADDRESS_SAVE_OWNER_V1 */
-function kgwExplorerManualAddressValue(section = root()) {
-  return String(qs("#explorerAddress", section)?.value || "").trim();
-}
-
-function kgwExplorerIsKaspaAddress(value) {
-  return /^kaspa(test)?:[a-z0-9]{50,}$/i.test(String(value || "").trim());
-}
-
-async function kgwExplorerSaveManualAddress(section = root()) {
-  const address = kgwExplorerManualAddressValue(section);
-
-  if (!kgwExplorerIsKaspaAddress(address)) {
-    setStatus(section, "Invalid Kaspa address.");
-    return;
-  }
-
-  try {
-    await invokeCommand("save_address", { address, name: "" });
+/* KGW_EXPLORER_MANUAL_ADDRESS_SAVE_OWNER_V1
+ * Rust/WASM owns manual-address validation, save dispatch, dropdown DOM/events, and autosave.
+ * These hooks bridge only still-legacy saved-address/name refresh functions until their migration.
+ */
+window.__kgwExplorerAddressOwnerHooks = {
+  invalidateAddressNames() {
     explorerState.addressNamesLoaded = false;
-    await loadSavedAddresses(section);
-    await refreshAddressName(section, address);
-    setStatus(section, "Address saved.");
-
-    if (typeof window.kgwRefreshSettingsAddresses === "function") {
-      window.kgwRefreshSettingsAddresses().catch(console.error);
-    }
-  } catch (error) {
-    setStatus(section, `Save address failed: ${error?.message || error}`);
+  },
+  loadSavedAddresses(section) {
+    return loadSavedAddresses(section);
+  },
+  refreshAddressName(section, address) {
+    return refreshAddressName(section, address);
   }
-}
+};
 
-function kgwInstallExplorerManualAddressSave() {
-  const section = root();
-  const input = section.querySelector("#explorerAddress");
-  const datalist = section.querySelector("#explorerAddressOptions");
-  const dropdown = section.querySelector("#explorerAddressDropdown");
-
-  if (!input || !datalist || !dropdown) return;
-  // KGW_EXPLORER_CUSTOM_SAVED_ADDRESS_DROPDOWN_BODY_ANCHOR_R7
-  if (dropdown.parentElement !== document.body) {
-    document.body.appendChild(dropdown);
-  }
-
-  if (input.dataset.kgwExplorerCustomDropdownR5Installed === "1") return;
-  input.dataset.kgwExplorerCustomDropdownR5Installed = "1";
-
-  // KGW_EXPLORER_CUSTOM_SAVED_ADDRESS_DROPDOWN_R5
-  input.removeAttribute("list");
-  input.setAttribute("aria-haspopup", "listbox");
-  input.setAttribute("aria-controls", "explorerAddressDropdown");
-  input.setAttribute("aria-expanded", "false");
-
-  const readOptions = () => Array.from(datalist.querySelectorAll("option"))
-    .map((option) => String(option.value || option.textContent || "").trim())
-    .filter(Boolean)
-    .filter((value, index, all) => all.indexOf(value) === index);
-
-  const placeDropdown = () => {
-    const rect = input.getBoundingClientRect();
-    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || rect.right;
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || rect.bottom;
-    const dropdownWidth = Math.max(220, rect.width);
-    const left = Math.max(8, Math.min(rect.left, viewportWidth - dropdownWidth - 8));
-    const top = Math.max(8, Math.min(rect.bottom + 4, viewportHeight - 64));
-
-    dropdown.style.position = "fixed";
-    dropdown.style.left = `${left}px`;
-    dropdown.style.top = `${top}px`;
-    dropdown.style.width = `${dropdownWidth}px`;
-    dropdown.style.transform = "none";
-  };
-
-  const closeDropdown = () => {
-    dropdown.hidden = true;
-    input.setAttribute("aria-expanded", "false");
-  };
-
-  const applyAddress = (address) => {
-    input.value = address;
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-    closeDropdown();
-  };
-
-  const renderDropdown = () => {
-    const addresses = readOptions();
-    dropdown.replaceChildren();
-
-    if (!addresses.length) {
-      const empty = document.createElement("div");
-      empty.className = "kgw-explorer-address-dropdown-empty";
-      empty.textContent = kgwI18nTextR41("ui.explorer.noSavedAddresses", "No saved addresses");
-      dropdown.appendChild(empty);
-      return;
-    }
-
-    for (const address of addresses) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "kgw-explorer-address-dropdown-option";
-      button.setAttribute("role", "option");
-      button.textContent = address.length > 54 ? address.slice(0, 54) + "..." : address;
-      button.title = address;
-      button.addEventListener("mousedown", (event) => event.preventDefault());
-      button.addEventListener("click", () => applyAddress(address));
-      dropdown.appendChild(button);
-    }
-  };
-
-  const openDropdown = () => {
-    renderDropdown();
-    placeDropdown();
-    dropdown.hidden = false;
-    input.setAttribute("aria-expanded", "true");
-  };
-
-  let autosaveTimer = null;
-  let lastAutosavedAddress = "";
-
-  const scheduleAutosave = (reason = "input", delay = 350) => {
-    window.clearTimeout(autosaveTimer);
-    autosaveTimer = window.setTimeout(async () => {
-      const address = kgwExplorerManualAddressValue(section);
-
-      if (!kgwExplorerIsKaspaAddress(address)) return;
-      if (address === lastAutosavedAddress) return;
-
-      lastAutosavedAddress = address;
-
-      try {
-        await kgwExplorerSaveManualAddress(section);
-        setStatus(section, reason === "paste" ? "Address pasted and saved." : "Address saved.");
-        await loadSavedAddresses(section);
-      } catch (error) {
-        lastAutosavedAddress = "";
-        setStatus(section, `Save address failed: ${error?.message || error}`);
-      }
-    }, delay);
-  };
-
-  input.addEventListener("focus", openDropdown);
-  input.addEventListener("click", openDropdown);
-  input.addEventListener("keydown", (event) => {
-    if (event.key === "ArrowDown" || event.key === "Enter") openDropdown();
-    if (event.key === "Escape") closeDropdown();
-  });
-
-  input.addEventListener("paste", () => {
-    scheduleAutosave("paste", 40);
-  });
-
-  input.addEventListener("input", () => {
-    scheduleAutosave("input", 350);
-  });
-
-  input.addEventListener("change", () => {
-    scheduleAutosave("change", 0);
-  });
-
-  input.addEventListener("blur", () => {
-    scheduleAutosave("blur", 0);
-  });
-
-  window.addEventListener("resize", () => {
-    if (!dropdown.hidden) placeDropdown();
-  });
-
-  document.addEventListener("mousedown", (event) => {
-    if (event.target === input || dropdown.contains(event.target)) return;
-    closeDropdown();
-  });
-
-  renderDropdown();
-}
-
-window.kgwExplorerSaveManualAddress = kgwExplorerSaveManualAddress;
-window.kgwInstallExplorerManualAddressSave = kgwInstallExplorerManualAddressSave;
+window.kgwExplorerSaveManualAddress = (section = root()) => kgwExplorerSaveManualAddress(section);
+window.kgwInstallExplorerManualAddressSave = () => kgwInstallExplorerManualAddressSave();
 kgwInstallExplorerManualAddressSave();

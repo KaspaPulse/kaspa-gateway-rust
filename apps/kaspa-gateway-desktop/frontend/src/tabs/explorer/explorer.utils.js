@@ -6,6 +6,10 @@ import init, {
   explorerApplyLocalBusyControls as wasmExplorerApplyLocalBusyControls,
   explorerBindFontSpinbox as wasmExplorerBindFontSpinbox,
   explorerDefaultDates as wasmExplorerDefaultDates,
+  explorerInstallManualAddressSave as wasmExplorerInstallManualAddressSave,
+  explorerIsKaspaAddress as wasmExplorerIsKaspaAddress,
+  explorerManualAddressValue as wasmExplorerManualAddressValue,
+  explorerSaveManualAddress as wasmExplorerSaveManualAddress,
   explorerSetTableFontSize as wasmExplorerSetTableFontSize,
   kgwClean2SafeText as wasmKgwClean2SafeText,
   pick as wasmPick,
@@ -49,4 +53,20 @@ export function defaultDates(section) {
 
 export function kgwApplyExplorerLocalBusyControls(section, busy) {
   return wasmExplorerApplyLocalBusyControls(section, busy);
+}
+
+export function kgwExplorerManualAddressValue(section) {
+  return wasmExplorerManualAddressValue(section);
+}
+
+export function kgwExplorerIsKaspaAddress(value) {
+  return wasmExplorerIsKaspaAddress(value);
+}
+
+export async function kgwExplorerSaveManualAddress(section) {
+  return await wasmExplorerSaveManualAddress(section);
+}
+
+export function kgwInstallExplorerManualAddressSave() {
+  return wasmExplorerInstallManualAddressSave();
 }
