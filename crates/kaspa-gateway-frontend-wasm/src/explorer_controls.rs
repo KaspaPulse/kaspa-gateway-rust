@@ -5,6 +5,12 @@ use wasm_bindgen_futures::{JsFuture, spawn_local};
 
 thread_local! {
     static FONT_SIZE: Cell<u32> = const { Cell::new(11) };
+    static FILTER_BUSY: Cell<bool> = const { Cell::new(false) };
+    static FILTER_BUSY_STARTED_AT: Cell<f64> = const { Cell::new(0.0) };
+    static FILTER_LAST_MUTATION_AT: Cell<f64> = const { Cell::new(0.0) };
+    static FILTER_POLL_TIMER: Cell<Option<f64>> = const { Cell::new(None) };
+    static FILTER_UNLOCK_TIMER: Cell<Option<f64>> = const { Cell::new(None) };
+    static FILTER_BUSY_OWNER_INSTALLED: Cell<bool> = const { Cell::new(false) };
 }
 
 fn global() -> JsValue {
@@ -927,6 +933,613 @@ fn install_manual_address_save_impl() -> bool {
 
     render_address_dropdown(&input, &datalist, &dropdown);
     true
+}
+
+fn normalize_filter_text(value: &str) -> String {
+    value
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
+fn filter_scope() -> JsValue {
+    let doc = document();
+    for selector in [
+        "#explorer",
+        ".explorer-python-root",
+        "[data-tab-panel='explorer']",
+    ] {
+        let node = query(&doc, selector);
+        if present(&node) {
+            return node;
+        }
+    }
+    doc
+}
+
+fn filter_attr(node: &JsValue, name: &str) -> String {
+    crate::js_string_owned(&call1(node, "getAttribute", &JsValue::from_str(name)))
+}
+
+fn filter_text_of(node: &JsValue) -> String {
+    normalize_filter_text(
+        &[
+            crate::js_string_owned(&property(node, "textContent")),
+            crate::js_string_owned(&property(node, "value")),
+            filter_attr(node, "aria-label"),
+        ]
+        .into_iter()
+        .find(|value| !value.trim().is_empty())
+        .unwrap_or_default(),
+    )
+}
+
+fn explorer_visible() -> bool {
+    let scope = filter_scope();
+    if Object::is(&scope, &document()) {
+        return true;
+    }
+    let rect = call1(&scope, "getBoundingClientRect", &JsValue::UNDEFINED);
+    if !present(&rect) {
+        return true;
+    }
+    let width = crate::js_number(&property(&rect, "width"));
+    let height = crate::js_number(&property(&rect, "height"));
+    width > 0.0 && height > 0.0
+}
+
+fn is_address_control(node: &JsValue) -> bool {
+    if !present(node) {
+        return false;
+    }
+    let id = normalize_filter_text(&crate::js_string_owned(&property(node, "id")));
+    let name = normalize_filter_text(&crate::js_string_owned(&property(node, "name")));
+    let label = normalize_filter_text(&filter_attr(node, "aria-label"));
+    let placeholder = normalize_filter_text(&filter_attr(node, "placeholder"));
+    if [id, name, label, placeholder]
+        .iter()
+        .any(|value| value.contains("address"))
+    {
+        return true;
+    }
+    if crate::js_string_owned(&property(node, "tagName")).eq_ignore_ascii_case("SELECT") {
+        let option_text = query_all(node, "option")
+            .into_iter()
+            .take(25)
+            .map(|option| {
+                format!(
+                    "{} {}",
+                    crate::js_string_owned(&property(&option, "value")),
+                    crate::js_string_owned(&property(&option, "textContent"))
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
+            .to_lowercase();
+        return option_text.contains("kaspa:")
+            || option_text.contains("saved address")
+            || option_text.contains("select saved");
+    }
+    false
+}
+
+fn unique_nodes(nodes: Vec<JsValue>) -> Vec<JsValue> {
+    let mut output = Vec::new();
+    for node in nodes {
+        if !output.iter().any(|existing| Object::is(existing, &node)) {
+            output.push(node);
+        }
+    }
+    output
+}
+
+fn address_controls() -> Vec<JsValue> {
+    unique_nodes(query_all(
+        &filter_scope(),
+        "select,input,#explorerAddressSelect,#explorerSavedAddressSelect,#savedAddressSelect,[data-role='address-select']",
+    ))
+    .into_iter()
+    .filter(is_address_control)
+    .collect()
+}
+
+fn contains_kaspa_address_text(value: &str) -> bool {
+    let lower = value.to_ascii_lowercase();
+    let mut offset = 0usize;
+    while let Some(found) = lower[offset..].find("kaspa:") {
+        let start = offset + found + "kaspa:".len();
+        let count = lower[start..]
+            .chars()
+            .take_while(|ch| ch.is_ascii_alphanumeric())
+            .count();
+        if count >= 20 {
+            return true;
+        }
+        offset = start;
+        if offset >= lower.len() {
+            break;
+        }
+    }
+    false
+}
+
+fn has_selected_address() -> bool {
+    for node in address_controls() {
+        let value = crate::js_string_owned(&property(&node, "value"));
+        if value.contains("kaspa:") {
+            return true;
+        }
+        if crate::js_string_owned(&property(&node, "tagName")).eq_ignore_ascii_case("SELECT") {
+            let index = crate::js_number(&property(&node, "selectedIndex"));
+            if index.is_finite() && index >= 0.0 {
+                let options = property(&node, "options");
+                let selected =
+                    Reflect::get(&options, &JsValue::from_f64(index)).unwrap_or(JsValue::UNDEFINED);
+                if crate::js_string_owned(&property(&selected, "textContent")).contains("kaspa:") {
+                    return true;
+                }
+            }
+        }
+    }
+    contains_kaspa_address_text(&crate::js_string_owned(&property(
+        &filter_scope(),
+        "textContent",
+    )))
+}
+
+fn is_action_button(node: &JsValue) -> bool {
+    if !crate::js_string_owned(&property(node, "tagName")).eq_ignore_ascii_case("BUTTON") {
+        return false;
+    }
+    let id = normalize_filter_text(&crate::js_string_owned(&property(node, "id")));
+    let text = filter_text_of(node);
+    let i18n = normalize_filter_text(&crate::js_string_owned(&property(
+        &property(node, "dataset"),
+        "i18n",
+    )));
+    id.contains("fetch")
+        || id.contains("forcefetch")
+        || id.contains("cancel")
+        || id.contains("openexplorer")
+        || i18n.contains("fetch")
+        || i18n.contains("cancel")
+        || matches!(
+            text.as_str(),
+            "fetch" | "force fetch" | "cancel" | "explorer"
+        )
+}
+
+fn is_filter_control(node: &JsValue) -> bool {
+    if !present(node) {
+        return false;
+    }
+    let scope = filter_scope();
+    if !Object::is(&scope, &document()) && !crate::js_boolean(&call1(&scope, "contains", node)) {
+        return false;
+    }
+    if is_address_control(node) || is_action_button(node) {
+        return false;
+    }
+    let id = normalize_filter_text(&crate::js_string_owned(&property(node, "id")));
+    let name = normalize_filter_text(&crate::js_string_owned(&property(node, "name")));
+    let placeholder = normalize_filter_text(&filter_attr(node, "placeholder"));
+    let i18n = normalize_filter_text(&crate::js_string_owned(&property(
+        &property(node, "dataset"),
+        "i18n",
+    )));
+    let text = filter_text_of(node);
+    let tag = crate::js_string_owned(&property(node, "tagName")).to_uppercase();
+    let input_type = crate::js_string_owned(&property(node, "type")).to_lowercase();
+
+    if tag == "INPUT" && input_type == "date" {
+        return true;
+    }
+    if tag == "INPUT" && (input_type == "search" || placeholder.contains("search")) {
+        return true;
+    }
+    if tag == "SELECT" {
+        if [id, name].iter().any(|value| {
+            value.contains("language") || value.contains("currency") || value.contains("theme")
+        }) {
+            return false;
+        }
+        return true;
+    }
+    if tag == "BUTTON" {
+        return id.contains("filter")
+            || id.contains("reset")
+            || i18n.contains("filter")
+            || i18n.contains("reset")
+            || matches!(text.as_str(), "filter" | "reset filter");
+    }
+    false
+}
+
+fn filter_controls() -> Vec<JsValue> {
+    unique_nodes(query_all(
+        &filter_scope(),
+        "input[type='date'],input[type='search'],input[placeholder*='Search'],input[placeholder*='Address'],input[placeholder*='Transaction'],select,button,#explorerFilter,#explorerResetFilter",
+    ))
+    .into_iter()
+    .filter(is_filter_control)
+    .collect()
+}
+
+fn find_action_button(id: &str, phrase: &str, contains: bool) -> JsValue {
+    let scope = filter_scope();
+    let direct = query(&scope, id);
+    if present(&direct) {
+        return direct;
+    }
+    query_all(&scope, "button")
+        .into_iter()
+        .find(|button| {
+            let text = filter_text_of(button);
+            if contains {
+                text.contains(phrase)
+            } else {
+                text == phrase
+            }
+        })
+        .unwrap_or(JsValue::UNDEFINED)
+}
+
+fn action_buttons() -> (JsValue, JsValue, JsValue) {
+    (
+        find_action_button("#explorerFetch", "fetch", false),
+        find_action_button("#explorerForceFetch", "force fetch", true),
+        find_action_button("#explorerCancel", "cancel", false),
+    )
+}
+
+fn set_filter_availability(enabled: bool, reason: &str) {
+    for node in filter_controls() {
+        set(&node, "disabled", &JsValue::from_bool(!enabled));
+        set_attr(
+            &node,
+            "aria-disabled",
+            if enabled { "false" } else { "true" },
+        );
+        set(
+            &property(&node, "dataset"),
+            "kgwExplorerFilterLifecycle",
+            &JsValue::from_str(reason),
+        );
+    }
+    let scope = filter_scope();
+    if !Object::is(&scope, &document()) {
+        let data = property(&scope, "dataset");
+        if present(&data) {
+            set(
+                &data,
+                "kgwExplorerFiltersEnabled",
+                &JsValue::from_str(if enabled { "true" } else { "false" }),
+            );
+            set(
+                &data,
+                "kgwExplorerFiltersReason",
+                &JsValue::from_str(reason),
+            );
+        }
+    }
+    let root = property(&document(), "documentElement");
+    let data = property(&root, "dataset");
+    set(
+        &data,
+        "kgwExplorerFiltersEnabled",
+        &JsValue::from_str(if enabled { "true" } else { "false" }),
+    );
+    set(
+        &data,
+        "kgwExplorerFiltersReason",
+        &JsValue::from_str(reason),
+    );
+}
+
+fn refresh_filter_availability(reason: &str) {
+    if FILTER_BUSY.with(Cell::get) {
+        set_filter_availability(false, &format!("busy:{reason}"));
+        return;
+    }
+    let selected = has_selected_address();
+    set_filter_availability(
+        selected,
+        &format!(
+            "{}:{reason}",
+            if selected {
+                "address-selected"
+            } else {
+                "no-address"
+            }
+        ),
+    );
+}
+
+fn fetch_buttons_idle() -> bool {
+    let (fetch, force_fetch, _) = action_buttons();
+    [fetch, force_fetch]
+        .into_iter()
+        .all(|button| !present(&button) || !crate::js_boolean(&property(&button, "disabled")))
+}
+
+fn cancel_looks_idle() -> bool {
+    let (_, _, cancel) = action_buttons();
+    if !present(&cancel) {
+        return true;
+    }
+    let style = call1(&window(), "getComputedStyle", &cancel);
+    let hidden = crate::js_string_owned(&property(&style, "display")) == "none"
+        || crate::js_string_owned(&property(&style, "visibility")) == "hidden"
+        || property(&cancel, "offsetParent").is_null();
+    hidden
+        || crate::js_boolean(&property(&cancel, "disabled"))
+        || filter_attr(&cancel, "aria-disabled") == "true"
+}
+
+fn stop_filter_busy_timers() {
+    let win = window();
+    FILTER_POLL_TIMER.with(|timer| {
+        if let Some(value) = timer.take() {
+            let _ = call1(&win, "clearInterval", &JsValue::from_f64(value));
+        }
+    });
+    FILTER_UNLOCK_TIMER.with(|timer| {
+        if let Some(value) = timer.take() {
+            let _ = call1(&win, "clearTimeout", &JsValue::from_f64(value));
+        }
+    });
+}
+
+fn end_filter_busy(reason: &str) {
+    FILTER_BUSY.with(|state| state.set(false));
+    stop_filter_busy_timers();
+    refresh_filter_availability(&format!("fetch-{reason}"));
+}
+
+fn begin_filter_busy(reason: &str) {
+    let now = Date::now();
+    FILTER_BUSY.with(|state| state.set(true));
+    FILTER_BUSY_STARTED_AT.with(|state| state.set(now));
+    FILTER_LAST_MUTATION_AT.with(|state| state.set(now));
+    set_filter_availability(false, reason);
+    stop_filter_busy_timers();
+
+    let interval = Closure::wrap(Box::new(move || {
+        if !FILTER_BUSY.with(Cell::get) {
+            return;
+        }
+        let now = Date::now();
+        let elapsed = now - FILTER_BUSY_STARTED_AT.with(Cell::get);
+        let quiet = now - FILTER_LAST_MUTATION_AT.with(Cell::get);
+        if elapsed > 1800.0 && quiet > 900.0 && fetch_buttons_idle() && cancel_looks_idle() {
+            end_filter_busy("buttons-idle");
+            return;
+        }
+        if elapsed > 90_000.0 && fetch_buttons_idle() {
+            end_filter_busy("watchdog");
+        }
+    }) as Box<dyn FnMut()>);
+    let timer = call2(
+        &window(),
+        "setInterval",
+        interval.as_ref().unchecked_ref(),
+        &JsValue::from_f64(500.0),
+    );
+    FILTER_POLL_TIMER.with(|state| state.set(timer.as_f64()));
+    interval.forget();
+
+    let timeout = Closure::wrap(Box::new(move || {
+        if FILTER_BUSY.with(Cell::get) && fetch_buttons_idle() {
+            end_filter_busy("max-timeout");
+        }
+    }) as Box<dyn FnMut()>);
+    let timer = call2(
+        &window(),
+        "setTimeout",
+        timeout.as_ref().unchecked_ref(),
+        &JsValue::from_f64(180_000.0),
+    );
+    FILTER_UNLOCK_TIMER.with(|state| state.set(timer.as_f64()));
+    timeout.forget();
+}
+
+fn event_button(target: &JsValue) -> JsValue {
+    call1(target, "closest", &JsValue::from_str("button"))
+}
+
+fn fetch_click_target(target: &JsValue) -> bool {
+    let button = event_button(target);
+    if !present(&button) {
+        return false;
+    }
+    let id = normalize_filter_text(&crate::js_string_owned(&property(&button, "id")));
+    let text = filter_text_of(&button);
+    let i18n = normalize_filter_text(&crate::js_string_owned(&property(
+        &property(&button, "dataset"),
+        "i18n",
+    )));
+    id == "explorerfetch"
+        || id == "explorerforcefetch"
+        || i18n.contains("fetch")
+        || matches!(text.as_str(), "fetch" | "force fetch")
+}
+
+fn cancel_click_target(target: &JsValue) -> bool {
+    let button = event_button(target);
+    if !present(&button) {
+        return false;
+    }
+    let id = normalize_filter_text(&crate::js_string_owned(&property(&button, "id")));
+    let text = filter_text_of(&button);
+    let i18n = normalize_filter_text(&crate::js_string_owned(&property(
+        &property(&button, "dataset"),
+        "i18n",
+    )));
+    id == "explorercancel" || text == "cancel" || i18n.contains("cancel")
+}
+
+fn schedule_filter_action(reason: String, delay: f64, end_busy: bool) {
+    let callback = Closure::wrap(Box::new(move || {
+        if end_busy {
+            end_filter_busy(&reason);
+        } else {
+            refresh_filter_availability(&reason);
+        }
+    }) as Box<dyn FnMut()>);
+    let _ = call2(
+        &window(),
+        "setTimeout",
+        callback.as_ref().unchecked_ref(),
+        &JsValue::from_f64(delay),
+    );
+    callback.forget();
+}
+
+fn install_filter_invoke_readonly_marker() {
+    let tauri = property(&window(), "__TAURI__");
+    let core = property(&tauri, "core");
+    let legacy = property(&tauri, "tauri");
+    let owner = if present(&core) { core } else { legacy };
+    if present(&owner) && property(&owner, "invoke").dyn_ref::<Function>().is_some() {
+        set(
+            &property(&property(&document(), "documentElement"), "dataset"),
+            "kgwExplorerInvokeReadonlySafeV1",
+            &JsValue::from_str("true"),
+        );
+    }
+}
+
+fn install_filter_busy_owner_impl() -> bool {
+    if FILTER_BUSY_OWNER_INSTALLED.with(Cell::get) {
+        return false;
+    }
+    FILTER_BUSY_OWNER_INSTALLED.with(|state| state.set(true));
+    install_filter_invoke_readonly_marker();
+
+    for event_name in ["change", "input"] {
+        let callback = Closure::wrap(Box::new(move |event: JsValue| {
+            let target = property(&event, "target");
+            if is_address_control(&target) {
+                schedule_filter_action(format!("address-{event_name}"), 0.0, false);
+            }
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call3(
+            &document(),
+            "addEventListener",
+            &JsValue::from_str(event_name),
+            callback.as_ref().unchecked_ref(),
+            &JsValue::TRUE,
+        );
+        callback.forget();
+    }
+
+    let click = Closure::wrap(Box::new(move |event: JsValue| {
+        if !explorer_visible() {
+            return;
+        }
+        let target = property(&event, "target");
+        if fetch_click_target(&target) {
+            begin_filter_busy("fetch-click");
+        } else if cancel_click_target(&target) {
+            schedule_filter_action("cancel-click".to_owned(), 150.0, true);
+        }
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call3(
+        &document(),
+        "addEventListener",
+        &JsValue::from_str("click"),
+        click.as_ref().unchecked_ref(),
+        &JsValue::TRUE,
+    );
+    click.forget();
+
+    for event_name in [
+        "kgw:explorer-fetch-complete",
+        "kgw:explorer-fetch-failed",
+        "kgw:explorer-fetch-cancelled",
+        "kgw:transactions-loaded",
+        "kgw:tab-opened",
+        "kgw:tab-opened-after-mount",
+    ] {
+        let callback = Closure::wrap(Box::new(move |_event: JsValue| {
+            let end = event_name.contains("fetch") || event_name.contains("transactions");
+            schedule_filter_action(event_name.to_owned(), 150.0, end);
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &window(),
+            "addEventListener",
+            &JsValue::from_str(event_name),
+            callback.as_ref().unchecked_ref(),
+        );
+        callback.forget();
+    }
+
+    if let Ok(constructor) = property(&global(), "MutationObserver").dyn_into::<Function>() {
+        let callback = Closure::wrap(Box::new(move |_records: JsValue, _observer: JsValue| {
+            if FILTER_BUSY.with(Cell::get) {
+                FILTER_LAST_MUTATION_AT.with(|state| state.set(Date::now()));
+            } else {
+                schedule_filter_action("dom-mutation".to_owned(), 80.0, false);
+            }
+        }) as Box<dyn FnMut(JsValue, JsValue)>);
+        let args = Array::new();
+        args.push(callback.as_ref().unchecked_ref());
+        if let Ok(observer) = Reflect::construct(&constructor, &args) {
+            let options = Object::new();
+            set(options.as_ref(), "childList", &JsValue::TRUE);
+            set(options.as_ref(), "subtree", &JsValue::TRUE);
+            set(options.as_ref(), "attributes", &JsValue::TRUE);
+            let attributes = Array::new();
+            for name in ["disabled", "aria-disabled", "style", "class", "value"] {
+                attributes.push(&JsValue::from_str(name));
+            }
+            set(options.as_ref(), "attributeFilter", attributes.as_ref());
+            let _ = call2(
+                &observer,
+                "observe",
+                &property(&document(), "documentElement"),
+                options.as_ref(),
+            );
+        }
+        callback.forget();
+    }
+
+    let periodic = Closure::wrap(Box::new(move || {
+        install_filter_invoke_readonly_marker();
+        if !FILTER_BUSY.with(Cell::get) {
+            refresh_filter_availability("periodic");
+        }
+    }) as Box<dyn FnMut()>);
+    let _ = call2(
+        &window(),
+        "setInterval",
+        periodic.as_ref().unchecked_ref(),
+        &JsValue::from_f64(1000.0),
+    );
+    periodic.forget();
+
+    refresh_filter_availability("install");
+    true
+}
+
+#[wasm_bindgen(js_name = explorerInstallFilterBusyLock)]
+pub fn explorer_install_filter_busy_lock() -> bool {
+    install_filter_busy_owner_impl()
+}
+
+#[wasm_bindgen(js_name = explorerRefreshFilterAvailability)]
+pub fn explorer_refresh_filter_availability(reason: String) {
+    refresh_filter_availability(&reason);
+}
+
+#[wasm_bindgen(js_name = explorerSetFilterBusy)]
+pub fn explorer_set_filter_busy(value: bool, reason: String) {
+    if value {
+        begin_filter_busy(&reason);
+    } else {
+        end_filter_busy(&reason);
+    }
 }
 
 #[wasm_bindgen(js_name = explorerManualAddressValue)]

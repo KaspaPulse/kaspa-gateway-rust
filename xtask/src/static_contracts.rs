@@ -118,6 +118,26 @@ fn explorer_lint_contract(root: &Path) -> Result<(), String> {
         root,
         "crates/kaspa-gateway-frontend-wasm/src/explorer_render.rs",
     )?;
+    let controls_owner = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/explorer_controls.rs",
+    )?;
+    for export in [
+        "#[wasm_bindgen(js_name = explorerInstallFilterBusyLock)]",
+        "#[wasm_bindgen(js_name = explorerRefreshFilterAvailability)]",
+        "#[wasm_bindgen(js_name = explorerSetFilterBusy)]",
+    ] {
+        require_contains(
+            &controls_owner,
+            export,
+            "Explorer filter busy lifecycle Rust-owner export missing",
+        )?;
+    }
+    forbid_contains(
+        &source,
+        "(function installKgwExplorerFilterBusyLockOwnerV1()",
+        "Explorer filter busy lifecycle implementation must not return to JavaScript",
+    )?;
     validate_explorer_lint(&source, &runtime_owner, &render_owner)
 }
 

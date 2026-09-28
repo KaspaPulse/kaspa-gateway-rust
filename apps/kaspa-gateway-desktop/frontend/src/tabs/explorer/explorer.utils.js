@@ -6,6 +6,9 @@ import init, {
   explorerAddressLookupKeys as wasmExplorerAddressLookupKeys,
   explorerApplyFontSize as wasmExplorerApplyFontSize,
   explorerApplyLocalBusyControls as wasmExplorerApplyLocalBusyControls,
+  explorerInstallFilterBusyLock as wasmExplorerInstallFilterBusyLock,
+  explorerRefreshFilterAvailability as wasmExplorerRefreshFilterAvailability,
+  explorerSetFilterBusy as wasmExplorerSetFilterBusy,
   explorerBindFontSpinbox as wasmExplorerBindFontSpinbox,
   explorerCanonicalKaspaAddress as wasmExplorerCanonicalKaspaAddress,
   explorerBuildListRequest as wasmExplorerBuildListRequest,
@@ -89,6 +92,7 @@ import init, {
 
 await init();
 wasmExplorerInstallFilterSelectRepair();
+wasmExplorerInstallFilterBusyLock();
 
 export function toEnglishDigits(value) {
   return wasmToEnglishDigits(value);
@@ -329,6 +333,17 @@ export function defaultDates(section) {
 export function kgwApplyExplorerLocalBusyControls(section, busy) {
   return wasmExplorerApplyLocalBusyControls(section, busy);
 }
+
+export function kgwRefreshExplorerFilterAvailabilityV1(reason = "manual") {
+  return wasmExplorerRefreshFilterAvailability(String(reason ?? "manual"));
+}
+
+export function kgwSetExplorerFilterBusyV1(value, reason = "manual") {
+  return wasmExplorerSetFilterBusy(Boolean(value), String(reason ?? "manual"));
+}
+
+window.kgwRefreshExplorerFilterAvailabilityV1 = kgwRefreshExplorerFilterAvailabilityV1;
+window.kgwSetExplorerFilterBusyV1 = kgwSetExplorerFilterBusyV1;
 
 export function kgwForceSetTableMessage(section, message) {
   return wasmExplorerForceSetTableMessage(section, String(message ?? ""));
