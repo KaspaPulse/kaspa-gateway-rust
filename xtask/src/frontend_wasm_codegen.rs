@@ -83,6 +83,13 @@ import init, {
   explorerNormalizeTxTypeFilterValue as wasmExplorerNormalizeTxTypeFilterValue,
   explorerReadFilterState as wasmExplorerReadFilterState,
   explorerRepairFilterSelects as wasmExplorerRepairFilterSelects,
+  explorerLiveCoreAddress as wasmExplorerLiveCoreAddress,
+  explorerLiveCoreMergeDays as wasmExplorerLiveCoreMergeDays,
+  explorerLiveCoreMergeRecords as wasmExplorerLiveCoreMergeRecords,
+  explorerLiveCoreReset as wasmExplorerLiveCoreReset,
+  explorerLiveCoreRows as wasmExplorerLiveCoreRows,
+  explorerLiveCoreSeedRows as wasmExplorerLiveCoreSeedRows,
+  explorerLiveCoreShouldRender as wasmExplorerLiveCoreShouldRender,
   explorerNormalizeDaySummaries as wasmExplorerNormalizeDaySummaries,
   explorerSummaryCurrentUsdPrice as wasmExplorerSummaryCurrentUsdPrice,
   explorerSummaryUsdForKas as wasmExplorerSummaryUsdForKas,
@@ -138,6 +145,34 @@ export function kgwClean2NormalizeSummaries(result) {
 
 export function kgwSummaryUsdForSummary(summary) {
   return wasmExplorerSummaryUsdForSummary(summary);
+}
+
+export function kgwLiveCoreAddress() {
+  return wasmExplorerLiveCoreAddress();
+}
+
+export function kgwLiveCoreReset(address) {
+  return wasmExplorerLiveCoreReset(address);
+}
+
+export function kgwLiveCoreSeedRows(address, rows) {
+  return wasmExplorerLiveCoreSeedRows(address, rows);
+}
+
+export function kgwLiveCoreMergeRecords(records) {
+  return wasmExplorerLiveCoreMergeRecords(records);
+}
+
+export function kgwLiveCoreMergeDays(days) {
+  return wasmExplorerLiveCoreMergeDays(days);
+}
+
+export function kgwLiveCoreRows() {
+  return wasmExplorerLiveCoreRows();
+}
+
+export function kgwLiveCoreShouldRender(payload) {
+  return wasmExplorerLiveCoreShouldRender(payload);
 }
 
 export function setTableFontSize(section) {
@@ -1481,8 +1516,16 @@ mod tests {
         assert!(adapter.contains("wasmExplorerSummaryUsdForKas(valueKas)"));
         assert!(adapter.contains("wasmExplorerNormalizeDaySummaries(result)"));
         assert!(adapter.contains("wasmExplorerSummaryUsdForSummary(summary)"));
+        assert!(adapter.contains("wasmExplorerLiveCoreAddress()"));
+        assert!(adapter.contains("wasmExplorerLiveCoreReset(address)"));
+        assert!(adapter.contains("wasmExplorerLiveCoreSeedRows(address, rows)"));
+        assert!(adapter.contains("wasmExplorerLiveCoreMergeRecords(records)"));
+        assert!(adapter.contains("wasmExplorerLiveCoreMergeDays(days)"));
+        assert!(adapter.contains("wasmExplorerLiveCoreRows()"));
+        assert!(adapter.contains("wasmExplorerLiveCoreShouldRender(payload)"));
         assert!(!adapter.contains("Number.isFinite"));
         assert!(!adapter.contains("Math.abs"));
+        assert!(!adapter.contains("new Map"));
         assert!(adapter.contains("wasmExplorerSetTableFontSize(section)"));
         assert!(adapter.contains("wasmExplorerApplyFontSize(section, rawValue)"));
         assert!(adapter.contains("wasmExplorerBindFontSpinbox(section)"));

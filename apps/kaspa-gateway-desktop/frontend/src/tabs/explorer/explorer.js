@@ -35,7 +35,7 @@ import { parseHeaderUsdPrice } from "./explorer.header.js";
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf, kgwExplorerExportNumberV2, kgwExplorerExportNormalizeRawTxV2 } from "./explorer.export.js";
 import { parseDateSeconds, kgwDayToEpochSeconds, kgwClean2DayToSeconds } from "./explorer.date.js";
 import { kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { pick, toNumber, kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwRepairExplorerFilterSelects, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
+import { pick, toNumber, kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwRepairExplorerFilterSelects, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
 
 const SOMPI_PER_KAS = 100_000_000;
 
@@ -1916,145 +1916,7 @@ function kgwLiveCoreRoot() {
   return document.querySelector("#explorer") || document.querySelector(".explorer-python-root");
 }
 
-function kgwLiveCoreDayFromMs(timestampMs) {
-  const n = Number(timestampMs || 0);
-  if (!Number.isFinite(n) || n <= 0) return "";
-  return new Date(n).toISOString().slice(0, 10);
-}
-
-function kgwLiveCoreReset(address) {
-  window.__kgwLiveCoreAddress = address || "";
-  window.__kgwLiveCoreDays = new Map();
-}
-
-function kgwLiveCoreSeedFromCurrentRows(address) {
-  if (!window.__kgwLiveCoreDays) {
-    kgwLiveCoreReset(address);
-  }
-
-  const rows = Array.isArray(explorerState?.rows) ? explorerState.rows : [];
-
-  for (const row of rows) {
-    if (!row?.__kgwDaySummary || !row.day) continue;
-    window.__kgwLiveCoreDays.set(row.day, { ...row });
-  }
-}
-
-function kgwLiveCoreMergeRecords(records) {
-  if (!window.__kgwLiveCoreDays) {
-    window.__kgwLiveCoreDays = new Map();
-  }
-
-  const price = typeof kgwClean2UsdPrice === "function" ? kgwClean2UsdPrice() : 0;
-
-  for (const record of Array.isArray(records) ? records : []) {
-    const day = kgwLiveCoreDayFromMs(record?.timestamp_ms ?? record?.timestampMs);
-    if (!day) continue;
-
-    const amountSompi = Math.abs(Number(record?.amount_sompi ?? record?.amountSompi ?? 0) || 0);
-    const amountKas = amountSompi / 100000000;
-    const direction = String(record?.direction || "").toLowerCase();
-
-    const summary = window.__kgwLiveCoreDays.get(day) || {
-      __kgwDaySummary: true,
-      day,
-      count: 0,
-      incoming_kas: 0,
-      outgoing_kas: 0,
-      net_kas: 0,
-      value_usd: 0
-    };
-
-    summary.count += 1;
-
-    if (direction === "outgoing") {
-      summary.outgoing_kas += amountKas;
-    } else {
-      summary.incoming_kas += amountKas;
-    }
-
-    summary.net_kas = summary.incoming_kas - summary.outgoing_kas;
-    summary.value_usd = price > 0
-      ? (Math.abs(summary.incoming_kas) + Math.abs(summary.outgoing_kas)) * price
-      : 0;
-
-    window.__kgwLiveCoreDays.set(day, summary);
-  }
-}
-
-function kgwLiveCoreRows() {
-  return Array.from((window.__kgwLiveCoreDays || new Map()).values())
-    .sort((a, b) => String(b.day).localeCompare(String(a.day)));
-}
-
-
-/* TX_SPEED_CORE_1_LIGHT_LIVE_DAYS
-   Merge compact day summaries from Rust.
-   This avoids sending/rendering hundreds of transaction rows for every live progress event.
-*/
-function kgwLiveCoreMergeDays(days) {
-  if (!window.__kgwLiveCoreDays) {
-    window.__kgwLiveCoreDays = new Map();
-  }
-
-  const price = typeof kgwClean2UsdPrice === "function" ? kgwClean2UsdPrice() : 0;
-
-  for (const item of Array.isArray(days) ? days : []) {
-    const day = String(item?.day || "").slice(0, 10);
-    if (!day) continue;
-
-    const incomingSompi = Math.abs(Number(item?.incoming_sompi ?? item?.incomingSompi ?? 0) || 0);
-    const outgoingSompi = Math.abs(Number(item?.outgoing_sompi ?? item?.outgoingSompi ?? 0) || 0);
-    const incomingKas = incomingSompi / 100000000;
-    const outgoingKas = outgoingSompi / 100000000;
-
-    const summary = window.__kgwLiveCoreDays.get(day) || {
-      __kgwDaySummary: true,
-      day,
-      count: 0,
-      incoming_kas: 0,
-      outgoing_kas: 0,
-      net_kas: 0,
-      value_usd: 0
-    };
-
-    summary.count += Number(item?.count || 0) || 0;
-    summary.incoming_kas += incomingKas;
-    summary.outgoing_kas += outgoingKas;
-    summary.net_kas = summary.incoming_kas - summary.outgoing_kas;
-    summary.value_usd = price > 0
-      ? (Math.abs(summary.incoming_kas) + Math.abs(summary.outgoing_kas)) * price
-      : 0;
-
-    window.__kgwLiveCoreDays.set(day, summary);
-  }
-}
-
-function kgwLiveCoreShouldRender(payload) {
-  const now = Date.now();
-  const page = Number(payload?.page || 0);
-
-  if (!window.__kgwLiveCoreLastRenderMs) {
-    window.__kgwLiveCoreLastRenderMs = 0;
-  }
-
-  if (page <= 1) {
-    window.__kgwLiveCoreLastRenderMs = now;
-    return true;
-  }
-
-  if (page % 2 === 0) {
-    window.__kgwLiveCoreLastRenderMs = now;
-    return true;
-  }
-
-  if (now - window.__kgwLiveCoreLastRenderMs >= 1500) {
-    window.__kgwLiveCoreLastRenderMs = now;
-    return true;
-  }
-
-  return false;
-}
+/* Explorer live-core state, aggregation, ordering, and render throttling are Rust-owned via explorer.utils.js. */
 
 async function kgwInstallTxLiveCoreListener() {
   if (window.__kgwTxLiveCoreListenerInstalled) return;
@@ -2077,7 +1939,7 @@ async function kgwInstallTxLiveCoreListener() {
     }
 
     const activeAddress =
-      window.__kgwLiveCoreAddress ||
+      kgwLiveCoreAddress() ||
       normalizeAddress(qs("#explorerAddress", root)?.value);
 
     if (payload.address && activeAddress && payload.address !== activeAddress) {
@@ -2223,7 +2085,7 @@ async function fetchTransactions(section, forceMode) {
           : "No saved transaction days found yet. Fetch is running..."
       );
 
-      kgwLiveCoreSeedFromCurrentRows(address);
+      kgwLiveCoreSeedRows(address, explorerState.rows);
 
       if (stopIfExplorerCancelRequestedR56E("after-initial-render")) {
         return;

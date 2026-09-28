@@ -26,6 +26,13 @@ import init, {
   explorerNormalizeTxTypeFilterValue as wasmExplorerNormalizeTxTypeFilterValue,
   explorerReadFilterState as wasmExplorerReadFilterState,
   explorerRepairFilterSelects as wasmExplorerRepairFilterSelects,
+  explorerLiveCoreAddress as wasmExplorerLiveCoreAddress,
+  explorerLiveCoreMergeDays as wasmExplorerLiveCoreMergeDays,
+  explorerLiveCoreMergeRecords as wasmExplorerLiveCoreMergeRecords,
+  explorerLiveCoreReset as wasmExplorerLiveCoreReset,
+  explorerLiveCoreRows as wasmExplorerLiveCoreRows,
+  explorerLiveCoreSeedRows as wasmExplorerLiveCoreSeedRows,
+  explorerLiveCoreShouldRender as wasmExplorerLiveCoreShouldRender,
   explorerNormalizeDaySummaries as wasmExplorerNormalizeDaySummaries,
   explorerSummaryCurrentUsdPrice as wasmExplorerSummaryCurrentUsdPrice,
   explorerSummaryUsdForKas as wasmExplorerSummaryUsdForKas,
@@ -81,6 +88,34 @@ export function kgwClean2NormalizeSummaries(result) {
 
 export function kgwSummaryUsdForSummary(summary) {
   return wasmExplorerSummaryUsdForSummary(summary);
+}
+
+export function kgwLiveCoreAddress() {
+  return wasmExplorerLiveCoreAddress();
+}
+
+export function kgwLiveCoreReset(address) {
+  return wasmExplorerLiveCoreReset(address);
+}
+
+export function kgwLiveCoreSeedRows(address, rows) {
+  return wasmExplorerLiveCoreSeedRows(address, rows);
+}
+
+export function kgwLiveCoreMergeRecords(records) {
+  return wasmExplorerLiveCoreMergeRecords(records);
+}
+
+export function kgwLiveCoreMergeDays(days) {
+  return wasmExplorerLiveCoreMergeDays(days);
+}
+
+export function kgwLiveCoreRows() {
+  return wasmExplorerLiveCoreRows();
+}
+
+export function kgwLiveCoreShouldRender(payload) {
+  return wasmExplorerLiveCoreShouldRender(payload);
 }
 
 export function setTableFontSize(section) {
