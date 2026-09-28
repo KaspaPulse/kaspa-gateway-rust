@@ -34,7 +34,7 @@
 import { openBlockExplorer, exportCsv, exportHtml, exportPdf, kgwExplorerExportNumberV2, kgwExplorerExportNormalizeRawTxV2 } from "./explorer.export.js";
 import { parseDateSeconds, kgwDayToEpochSeconds, kgwClean2DayToSeconds } from "./explorer.date.js";
 import { kgwSummaryFormatKas, kgwSummaryFormatUsd, kgwClean2Kas, kgwClean2Usd } from "./explorer.formatting.js";
-import { kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, kgwNormalizeUnifiedResult, kgwDaySummaryRowsFromResult, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwRepairExplorerFilterSelects, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
+import { kgwClean2SafeText, kgwClean2UsdPrice, kgwSummaryUsdForKas, kgwNormalizeDaySummaries, kgwClean2NormalizeSummaries, kgwSummaryUsdForSummary, kgwLiveCoreAddress, kgwLiveCoreReset, kgwLiveCoreSeedRows, kgwLiveCoreMergeRecords, kgwLiveCoreMergeDays, kgwLiveCoreRows, kgwLiveCoreShouldRender, kgwNormalizeUnifiedResult, kgwDaySummaryRowsFromResult, kgwForceSetTableMessage, kgwForceResetDisplayFiltersToAll, kgwForceSetControlsBusy, kgwInstallForceBusyBlocker, defaultDates, kgwBindFontSpinbox, setTableFontSize, kgwApplyExplorerLocalBusyControls, kgwBuildExplorerListRequest, kgwNormalizeTxTypeFilterValue, kgwNormalizeDirectionFilterValue, kgwClean2Request, kgwExplorerSaveManualAddress, kgwInstallExplorerManualAddressSave, normalizeAddress, isKaspaAddress, kgwCanonicalKaspaAddress, loadKnownAddressNames, saveAddressToDatabase, refreshAddressName, loadSavedAddresses, fetchBalance, explorerAddressDiagnosticsSnapshot } from "./explorer.utils.js";
 
 const explorerState = {
   rows: [],
@@ -1571,175 +1571,10 @@ function renderTable(section) {
 
 
 /* KGW_TX_FORCE_UI_LOCK_1
-   Force fetch UX rules:
-   - Force fetch clears the table immediately.
-   - Force fetch always fetches ALL accepted transactions, not the current filter.
-   - During fetch, controls that can trigger DB/filter/render work are disabled.
-   - Cancel stays enabled.
-   - While force fetch is running, summaries are live-rendered from local database after delete begins.
+   Explorer force-fetch table messaging, filter reset, busy controls, and capture blocking
+   are Rust-owned by explorer_force_ui.rs and exposed through generated explorer.utils.js.
 */
-function kgwForceUiRoot(section) {
-  return (
-    section ||
-    document.querySelector("#explorer") ||
-    document.querySelector(".explorer-python-root")
-  );
-}
-
-function kgwForceUiBody(section) {
-  const root = kgwForceUiRoot(section);
-  return (
-    qs("#explorerTransactionsBody", root) ||
-    root?.querySelector?.("tbody") ||
-    document.querySelector("#explorerTransactionsBody")
-  );
-}
-
-function kgwForceSetTableMessage(section, message) {
-  const body = kgwForceUiBody(section);
-
-  if (!body) {
-    console.warn("[KGW Explorer][force-ui] tbody not found for message", { message });
-    return;
-  }
-
-  body.innerHTML = `<tr><td colspan="6" class="muted">${kgwClean2SafeText(message)}</td></tr>`;
-
-  console.log("[KGW Explorer][force-ui] table message", {
-    message,
-    childRows: body.children.length
-  });
-}
-
-function kgwForceResetDisplayFiltersToAll(section) {
-  const root = kgwForceUiRoot(section);
-  const typeEl = qs("#explorerTypeFilter", root);
-  const directionEl = qs("#explorerDirectionFilter", root);
-  const searchEl = qs("#explorerSearch", root);
-
-  if (typeof kgwRepairExplorerFilterSelects === "function") {
-    kgwRepairExplorerFilterSelects(root);
-  }
-
-  if (typeEl) typeEl.value = "ALL";
-  if (directionEl) directionEl.value = "ALL";
-  if (searchEl) searchEl.value = "";
-
-  console.log("[KGW Explorer][force-ui] force filters reset to ALL");
-}
-
-function kgwForceSetControlsBusy(section, busy, mode = "normal") {
-  const root = kgwForceUiRoot(section);
-
-  if (!root) return;
-
-  root.dataset.kgwFetchBusy = busy ? "true" : "false";
-  root.dataset.kgwFetchMode = busy ? mode : "";
-
-  const selectors = [
-    "#explorerAddress",
-    "#explorerFromDate",
-    "#explorerToDate",
-    "#explorerTypeFilter",
-    "#explorerDirectionFilter",
-    "#explorerSearch",
-    "#explorerFetchButton",
-    "#explorerForceFetchButton",
-    "#explorerFilterButton",
-    "#explorerResetFilterButton",
-    "button",
-    "select",
-    "input"
-  ];
-
-  const controls = new Set();
-
-  for (const selector of selectors) {
-    root.querySelectorAll(selector).forEach((element) => controls.add(element));
-  }
-
-  for (const element of controls) {
-    const text = [
-      element.id,
-      element.name,
-      element.value,
-      element.textContent,
-      element.getAttribute?.("aria-label"),
-      element.dataset?.action,
-      element.dataset?.kgwAction
-    ].filter(Boolean).join(" ").toLowerCase();
-
-    const isCancel =
-      text.includes("cancel") ||
-      element.id?.toLowerCase?.().includes("cancel");
-
-    if (busy) {
-      if (isCancel) {
-        element.disabled = false;
-        element.removeAttribute("aria-disabled");
-      } else {
-        element.disabled = true;
-        element.setAttribute("aria-disabled", "true");
-      }
-    } else {
-      element.disabled = false;
-      element.removeAttribute("aria-disabled");
-    }
-  }
-
-  console.log("[KGW Explorer][force-ui] controls busy", {
-    busy,
-    mode,
-    disabledCount: Array.from(controls).filter((x) => x.disabled).length
-  });
-}
-
-function kgwForceBlockBusyExplorerActions(event) {
-  const root =
-    document.querySelector("#explorer") ||
-    document.querySelector(".explorer-python-root");
-
-  if (!root || root.dataset.kgwFetchBusy !== "true") return;
-
-  const target = event.target?.closest?.(
-    "button,input,select,textarea,a,[role='button'],.btn,.button"
-  );
-
-  if (!target || !root.contains(target)) return;
-
-  const text = [
-    target.id,
-    target.name,
-    target.value,
-    target.textContent,
-    target.getAttribute?.("aria-label"),
-    target.dataset?.action,
-    target.dataset?.kgwAction
-  ].filter(Boolean).join(" ").toLowerCase();
-
-  if (text.includes("cancel")) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-  event.stopImmediatePropagation();
-
-  console.warn("[KGW Explorer][force-ui] blocked action while fetch is busy", {
-    eventType: event.type,
-    id: target.id || "",
-    tag: target.tagName,
-    text: String(target.textContent || target.value || "").trim()
-  });
-}
-
-if (!window.__kgwForceUiBusyBlockInstalled) {
-  window.__kgwForceUiBusyBlockInstalled = true;
-
-  document.addEventListener("click", kgwForceBlockBusyExplorerActions, true);
-  document.addEventListener("change", kgwForceBlockBusyExplorerActions, true);
-  document.addEventListener("input", kgwForceBlockBusyExplorerActions, true);
-  document.addEventListener("pointerdown", kgwForceBlockBusyExplorerActions, true);
-}
-
+kgwInstallForceBusyBlocker();
 
 /* KGW_TX_LIVE_CORE_1_LISTENER
    Generic live table updates for both normal and force fetch.

@@ -13,9 +13,13 @@ import init, {
   explorerDefaultDates as wasmExplorerDefaultDates,
   explorerEnsureFilterOptions as wasmExplorerEnsureFilterOptions,
   explorerFetchBalance as wasmExplorerFetchBalance,
+  explorerForceResetDisplayFiltersToAll as wasmExplorerForceResetDisplayFiltersToAll,
+  explorerForceSetControlsBusy as wasmExplorerForceSetControlsBusy,
+  explorerForceSetTableMessage as wasmExplorerForceSetTableMessage,
   explorerFilterBuildRequest as wasmExplorerFilterBuildRequest,
   explorerFilterValue as wasmExplorerFilterValue,
   explorerInstallFilterSelectRepair as wasmExplorerInstallFilterSelectRepair,
+  explorerInstallForceBusyBlocker as wasmExplorerInstallForceBusyBlocker,
   explorerInstallManualAddressSave as wasmExplorerInstallManualAddressSave,
   explorerIsKaspaAddress as wasmExplorerIsKaspaAddress,
   explorerLoadKnownAddressNames as wasmExplorerLoadKnownAddressNames,
@@ -146,6 +150,22 @@ export function defaultDates(section) {
 
 export function kgwApplyExplorerLocalBusyControls(section, busy) {
   return wasmExplorerApplyLocalBusyControls(section, busy);
+}
+
+export function kgwForceSetTableMessage(section, message) {
+  return wasmExplorerForceSetTableMessage(section, String(message ?? ""));
+}
+
+export function kgwForceResetDisplayFiltersToAll(section) {
+  return wasmExplorerForceResetDisplayFiltersToAll(section);
+}
+
+export function kgwForceSetControlsBusy(section, busy, mode = "normal") {
+  return wasmExplorerForceSetControlsBusy(section, Boolean(busy), String(mode ?? "normal"));
+}
+
+export function kgwInstallForceBusyBlocker() {
+  return wasmExplorerInstallForceBusyBlocker();
 }
 
 export function kgwEnsureExplorerFilterOptions(section) {
