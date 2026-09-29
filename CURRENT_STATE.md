@@ -6,7 +6,7 @@
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
 - Current HEAD: **VERIFY DYNAMICALLY** from Git; latest verified implementation checkpoint is `6e341827b5e9cd80f93c41387017cf353fe1cdb2`, tree `4c7871e10b86d48c4ee6d960108a17d3f70d5cad`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **DIRTY / CONTINUITY-ONLY** after OP209 implementation checkpoint; only `CURRENT_STATE.md` and `ACTIVE_TASK.md` remain to be synchronized and checkpointed.
+- Working tree: **CLEAN** after OP209 implementation and continuity checkpoints.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -84,4 +84,4 @@
 
 ## NEXT ACTION
 
-OP209 Bridge presentation rendering is VERIFIED_LOCAL and implementation-checkpointed at `6e341827b5e9cd80f93c41387017cf353fe1cdb2`, tree `4c7871e10b86d48c4ee6d960108a17d3f70d5cad`. Synchronize these continuity mirrors, run only the project-continuity gate and `git diff --check` invalidated by this mirror update, create the docs-only continuity checkpoint, then audit the remaining `kaspa-bridge.js` source debt for the next smallest independent Rust/WASM boundary. No push yet.
+OP209 Bridge presentation rendering and its continuity closeout are VERIFIED_LOCAL; current Git is clean at continuity checkpoint `43ea2de8eb4af596496d5fdb55f2c81022bf65de`, tree `578f22215c3181ca3c699192e6e779472b3dbf6b`, while the verified OP209 implementation checkpoint remains `6e341827b5e9cd80f93c41387017cf353fe1cdb2`. Read-only debt audit selected OP210: migrate Bridge configured/used-port collection plus instance-port assign/reassign/create orchestration into the existing Rust port owner, reusing current Rust policies and leaving only thin JS calls. Write OP210 intent and freeze exact legacy contract before source mutation. No push yet.

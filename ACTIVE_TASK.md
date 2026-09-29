@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS. OP209 Bridge presentation rendering is VERIFIED_LOCAL and implementation-checkpointed at `6e341827b5e9cd80f93c41387017cf353fe1cdb2`, tree `4c7871e10b86d48c4ee6d960108a17d3f70d5cad`; Rust/MSRV/strict Clippy/codegen/exact render parity 18/18/Node syntax/Desktop ESLint/Bridge readiness/Effective Bridge/Effective Node/language check+inventory/final diff all PASS. Current inventory is Rust 217 / source debt 2 / execution debt 8 / exceptions 39 / unapproved 0/0. Continuity-only synchronization is the current boundary.
+PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS. OP209 Bridge presentation rendering is fully checkpointed and continuity-closed; the worktree is clean. Current inventory is Rust 217 / source debt 2 / execution debt 8 / exceptions 39 / unapproved 0/0. Read-only debt audit selected OP210 Bridge Port/Instance Orchestration: move configured/used-port collection and instance-port assign/reassign/create orchestration into the existing Rust port owner while reusing its current policies and preserving JS only as thin calls.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -88,10 +88,10 @@ The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access
 OP209 Bridge presentation rendering Rust/WASM ownership is committed as `6e341827b5e9cd80f93c41387017cf353fe1cdb2`, tree `4c7871e10b86d48c4ee6d960108a17d3f70d5cad`. Exact legacy/generated-WASM render parity is 18/18 PASS; repaired dead glue is Node-syntax and ESLint clean; all affected Bridge/language/diff gates PASS.
 
 ## Current Action
-Tracked continuity synchronization after the verified OP209 implementation checkpoint. No implementation mutation is in progress; only `CURRENT_STATE.md` and `ACTIVE_TASK.md` are dirty.
+OP209 closeout is clean. Read-only remaining-debt audit has selected OP210 Bridge Port/Instance Orchestration; no OP210 source mutation has started yet.
 
 ## Next Action
-Run only the project-continuity gate and `git diff --check` invalidated by this mirror update, create a docs-only OP209 continuity checkpoint if both pass, then audit the remaining `kaspa-bridge.js` source debt and continue from the smallest independent unblocked boundary. No push yet.
+Write the OP210 crash-safe intent, freeze the exact legacy orchestration slice and hashes, then move only configured/used-port collection and instance-port assign/reassign/create orchestration into Rust. Preserve existing port policy, traces, DOM contracts and `bridgeInstances` shape; validate narrowly before any checkpoint. No push yet.
 
 ## Verification Required
 - OP103 affected surface: legacy launcher frozen at SHA-256 `7229e1fd33546f0c14dc89dd34627b2626eaede00d07bdf08956721964cca0c5`; stable diagnostic/Windows-evidence/clipboard tests 5/5 each PASS; cargo check, FMT and strict xtask Clippy PASS; MSRV 1.97.1 check + diagnostic 5/5 PASS; aggregate true-raw-log gate PASS; full-local parser PASS; language inventory PASS at Rust 169 / source debt 16 / execution debt 10 / exceptions 30 / unapproved 0/0; diff-check PASS.
