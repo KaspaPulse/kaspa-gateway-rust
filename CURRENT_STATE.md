@@ -1,13 +1,13 @@
 # CURRENT STATE
-- Current product boundary: OP217 Bridge port-orchestration passthrough-wrapper retirement is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 20be7140e5a8f6689d84bb54cd388c334fa2d287, tree 282b424a0b4a595f47731a16035d7106b871381b; Bridge SHA-256 cb5dd8cf85ac298ec9c8b8e9350ee896c207a469828e46cf2676629c65d375c8; no product mutation or push is active.
+- Current product boundary: OP218 Bridge runtime parsing/predicate Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint a2b96763a86530c4464ddf05b8ea6edc51ab79a6, tree 408e35137bc43463dde3cc58d5486c14b4a2564f; Bridge SHA-256 d4327024dce28eb393d1aaaea6fbf4c00ba38ad91cdcfe09f143123d04b757ed; no product mutation or push is active.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP217 verified implementation checkpoint is 20be7140e5a8f6689d84bb54cd388c334fa2d287, tree 282b424a0b4a595f47731a16035d7106b871381b.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP218 verified implementation checkpoint is a2b96763a86530c4464ddf05b8ea6edc51ab79a6, tree 408e35137bc43463dde3cc58d5486c14b4a2564f.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP217 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
+- Working tree: **DIRTY — docs-only OP218 continuity closeout in progress.** Expected dirty paths are CURRENT_STATE.md and ACTIVE_TASK.md only; steady-state after closeout is CLEAN.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -19,9 +19,16 @@
 - Owned non-Rust programming source debt: 2.
 - Non-Rust execution-wiring debt: 8.
 - Technical exceptions: 39.
-- Rust source inventory: 221 (verified during OP212 post-codegen language-policy check/inventory).
+- Rust source inventory: 222 (verified during OP218 post-codegen language-policy check/inventory).
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
+
+## OP218 VERIFIED EVIDENCE
+- Bridge runtime parsing/predicate core is Rust/WASM-owned in bridge_runtime_core.rs; implementation checkpoint a2b96763a86530c4464ddf05b8ea6edc51ab79a6, tree 408e35137bc43463dde3cc58d5486c14b4a2564f; no push.
+- Frozen legacy behavior moved for stringify/error normalization/key-value parsing/readiness-running predicates/runtime-error extraction/node-mode normalization/in-process preview detection. Rust unit parity 6/6 PASS; readiness Rust tests 2/2 PASS.
+- Stable frontend-WASM strict Clippy PASS; xtask strict Clippy PASS; stable wasm32 PASS; MSRV Rust 1.97.1 wasm32 PASS; FMT PASS.
+- Deterministic frontend-WASM codegen WRITE/CHECK PASS with wasm-pack 0.15.0 and artifact count 19; generated JS SHA-256 3b50060e8d00b26c91f8043a2fa4d84549b0a5b08b8e9c33d6588ea193147b4b; generated WASM SHA-256 9993b510473aee23634c42130bc191531369552fc9cf27995fbcd486c4375544.
+- Node syntax and Desktop ESLint zero-warning PASS; effective-Bridge 2/2 + gate PASS; Bridge-readiness 2/2 + lifecycle gate PASS; language policy PASS at Rust 222 / source debt 2 / execution debt 8 / unapproved 0/0; project-continuity PASS after one narrow working-tree classification mirror repair; diff-check PASS.
 
 ## OP217 VERIFIED EVIDENCE
 - Three local Bridge port-orchestration passthrough wrappers were retired without changing existing Rust/WASM implementation ownership. The implementation is committed locally as 20be7140e5a8f6689d84bb54cd388c334fa2d287, tree 282b424a0b4a595f47731a16035d7106b871381b; no push has occurred.
@@ -144,4 +151,4 @@
 
 ## NEXT ACTION
 
-OP217 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 20be7140e5a8f6689d84bb54cd388c334fa2d287, tree 282b424a0b4a595f47731a16035d7106b871381b; no push. Audit remaining kaspa-bridge.js ownership against existing Rust/WASM owners and xtask source-marker contracts; persist a WAI before mutation. The separate zero-touch helper blocker remains unchanged.
+OP218 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint a2b96763a86530c4464ddf05b8ea6edc51ab79a6, tree 408e35137bc43463dde3cc58d5486c14b4a2564f; no push. Audit and migrate the next coherent Bridge runtime/start-stop orchestration boundary into Rust/WASM, using the existing readiness lifecycle harness and Node-tab Rust orchestration pattern. Persist a WAI before mutation. The separate zero-touch helper blocker remains unchanged.
