@@ -325,6 +325,37 @@ fn resolve_invoke() -> Option<Function> {
     None
 }
 
+const BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS: u32 = 120_000;
+const BRIDGE_STOP_INVOKE_TIMEOUT_MS: u32 = 0;
+const BRIDGE_PREVIEW_INVOKE_TIMEOUT_MS: u32 = 10_000;
+
+fn runtime_invoke_timeout_ms(command: &str) -> u32 {
+    match command {
+        "kgw_kgw_disable_network_v1" => BRIDGE_STOP_INVOKE_TIMEOUT_MS,
+        "kgw_runtime_settings_preview_v1" => BRIDGE_PREVIEW_INVOKE_TIMEOUT_MS,
+        _ => BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS,
+    }
+}
+
+fn runtime_invoke_available() -> bool {
+    resolve_invoke().is_some()
+}
+
+async fn invoke_runtime_command_impl(command: &str, payload: JsValue) -> Result<JsValue, JsValue> {
+    let Some(invoke) = resolve_invoke() else {
+        return Err(JsValue::from_str(
+            "Tauri invoke is unavailable in this window.",
+        ));
+    };
+    let value = invoke.call2(&JsValue::UNDEFINED, &JsValue::from_str(command), &payload)?;
+    crate::node_start_trace::await_command_with_timeout(
+        value,
+        command,
+        runtime_invoke_timeout_ms(command),
+    )
+    .await
+}
+
 fn metadata_text(metadata: &JsValue, name: &str, fallback: &str) -> String {
     let value = property(metadata, name);
     if crate::js_boolean(&value) {
@@ -913,6 +944,19 @@ pub fn bridge_flash_log_action_button(button: JsValue, done_label: String) {
     flash_log_action_button_impl(&button, &done_label);
 }
 
+#[wasm_bindgen(js_name = bridgeRuntimeInvokeAvailable)]
+pub fn bridge_runtime_invoke_available() -> bool {
+    runtime_invoke_available()
+}
+
+#[wasm_bindgen(js_name = bridgeInvokeRuntimeCommand)]
+pub async fn bridge_invoke_runtime_command(
+    command: String,
+    payload: JsValue,
+) -> Result<JsValue, JsValue> {
+    invoke_runtime_command_impl(&command, payload).await
+}
+
 #[wasm_bindgen(js_name = bridgeDispatchClipboardWrite)]
 pub async fn bridge_dispatch_clipboard_write(
     net: String,
@@ -1046,6 +1090,23 @@ pub fn bridge_start_trace_frontend(stage: JsValue, options: JsValue) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn runtime_invoke_timeout_policy_matches_bridge_legacy() {
+        assert_eq!(runtime_invoke_timeout_ms("kgw_kgw_disable_network_v1"), 0);
+        assert_eq!(
+            runtime_invoke_timeout_ms("kgw_runtime_settings_preview_v1"),
+            10_000
+        );
+        assert_eq!(
+            runtime_invoke_timeout_ms("kgw_kgw_apply_node_settings_v1"),
+            120_000
+        );
+        assert_eq!(
+            runtime_invoke_timeout_ms("kgw_runtime_owner_status_v1"),
+            120_000
+        );
+    }
 
     #[test]
     fn blocked_key_policy_matches_bridge_legacy() {

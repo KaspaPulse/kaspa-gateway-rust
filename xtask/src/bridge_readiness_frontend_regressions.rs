@@ -9,6 +9,8 @@ const BRIDGE_HELPERS_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs";
 const BRIDGE_RUNTIME_CORE_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_runtime_core.rs";
+const BRIDGE_START_TRACE_SOURCE: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs";
 const WASM_JS: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 const WASM_BIN: &str =
@@ -25,7 +27,7 @@ const SLICES: &[(&str, &str)] = &[
     ),
     (
         "const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();",
-        "function getTauriInvoke(",
+        "/* KGW_BRIDGE_START_TRACE_V1 is Rust-owned in bridge_start_trace.rs. */",
     ),
     (
         "async function runBridgeIntegratedAction(",
@@ -47,6 +49,22 @@ const selected = await readFile(selectedPath, "utf8");
 const request = JSON.parse(await readFile(requestPath, "utf8"));
 const wasm = await import(pathToFileURL(wasmJsPath).href);
 await wasm.default({ module_or_path: await readFile(wasmPath) });
+
+globalThis.window = globalThis;
+const transportCalls = [];
+globalThis.__TAURI__ = {
+  core: {
+    invoke: async (command, args) => {
+      transportCalls.push({ command: String(command || ""), network: String(args?.network || "") });
+      return "transport-ok";
+    }
+  }
+};
+const transportAvailable = wasm.bridgeRuntimeInvokeAvailable();
+const transportResult = await wasm.bridgeInvokeRuntimeCommand(
+  "kgw_kgw_runtime_logs_v1",
+  { network: "mainnet", runtimeRole: "bridge" }
+);
 
 class NodeLike {
   constructor() {
@@ -264,6 +282,11 @@ api.setActivity("mainnet", "Bridge start failed.");
 const visibleFailure = snapshot();
 
 const output = {
+  transport: {
+    available: Boolean(transportAvailable),
+    result: String(transportResult || ""),
+    calls: transportCalls
+  },
   runtimeRunning: {
     liveOnly: api.runtimeRunning("role=node;network=mainnet;running=true"),
     ready: api.runtimeRunning("role=node;network=mainnet;running=true;readiness=READY")
@@ -378,11 +401,16 @@ fn expect(actual: &Value, pointer: &str, expected: Value) -> Result<(), String> 
     Ok(())
 }
 
-fn verify_static_contracts(source: &str, helpers: &str, runtime_core: &str) -> Result<(), String> {
+fn verify_static_contracts(
+    source: &str,
+    helpers: &str,
+    runtime_core: &str,
+    start_trace: &str,
+) -> Result<(), String> {
     for needle in [
         "wasmBridgeRuntimeErrorFromStatus(status)",
         "kgwBridgeSetRuntimeActivityV1(net, \"Bridge runtime failed after readiness.\", \"failed\")",
-        "const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 120000",
+        "Tauri invoke resolution and timeout policy are Rust-owned in bridge_start_trace.rs.",
     ] {
         if !source.contains(needle) {
             return Err(format!(
@@ -438,6 +466,32 @@ fn verify_static_contracts(source: &str, helpers: &str, runtime_core: &str) -> R
         }
     }
 
+    for needle in [
+        "bridgeRuntimeInvokeAvailable",
+        "bridgeInvokeRuntimeCommand",
+        "BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS",
+        "BRIDGE_PREVIEW_INVOKE_TIMEOUT_MS",
+    ] {
+        if !start_trace.contains(needle) {
+            return Err(format!(
+                "Bridge start-trace Rust transport export missing: {needle}"
+            ));
+        }
+    }
+
+    for forbidden in [
+        "function getTauriInvoke(",
+        "function invokeWithTimeout(",
+        "const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS =",
+        "const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS =",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge invoke transport remains in JavaScript: {forbidden}"
+            ));
+        }
+    }
+
     for line in source.lines() {
         let lower = line.to_ascii_lowercase();
         if !lower.contains("appendlog(") {
@@ -476,9 +530,25 @@ pub fn run(root: &Path) -> Result<String, String> {
         .map_err(|error| format!("failed to read {BRIDGE_HELPERS_SOURCE}: {error}"))?;
     let runtime_core_source = fs::read_to_string(root.join(BRIDGE_RUNTIME_CORE_SOURCE))
         .map_err(|error| format!("failed to read {BRIDGE_RUNTIME_CORE_SOURCE}: {error}"))?;
-    verify_static_contracts(&full_source, &helper_source, &runtime_core_source)?;
+    let start_trace_source = fs::read_to_string(root.join(BRIDGE_START_TRACE_SOURCE))
+        .map_err(|error| format!("failed to read {BRIDGE_START_TRACE_SOURCE}: {error}"))?;
+    verify_static_contracts(
+        &full_source,
+        &helper_source,
+        &runtime_core_source,
+        &start_trace_source,
+    )?;
     let selected = selected_source(root)?;
     let actual = run_bridge(root, &selected)?;
+
+    expect(&actual, "/transport/available", json!(true))?;
+    expect(&actual, "/transport/result", json!("transport-ok"))?;
+    expect(
+        &actual,
+        "/transport/calls/0/command",
+        json!("kgw_kgw_runtime_logs_v1"),
+    )?;
+    expect(&actual, "/transport/calls/0/network", json!("mainnet"))?;
 
     expect(&actual, "/runtimeRunning/liveOnly", json!(false))?;
     expect(&actual, "/runtimeRunning/ready", json!(true))?;

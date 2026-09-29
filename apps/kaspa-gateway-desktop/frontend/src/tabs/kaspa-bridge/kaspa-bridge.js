@@ -31,6 +31,8 @@ import initBridgeRust, {
   bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction,
   bridgeRuntimeActionOutcome as wasmBridgeRuntimeActionOutcome,
   bridgeStartWasInprocessR65F as wasmBridgeStartWasInprocessR65F,
+  bridgeRuntimeInvokeAvailable as wasmBridgeRuntimeInvokeAvailable,
+  bridgeInvokeRuntimeCommand as wasmBridgeInvokeRuntimeCommand,
   bridgeDefaultInstanceRecord as wasmBridgeDefaultInstanceRecord,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings,
@@ -1419,9 +1421,11 @@ function kgwBridgeClearRawLogBufferV1(net, role = "bridge", instanceId = kgwBrid
   return wasmBridgeClearRawLogBuffer(String(net || ""), String(role || "bridge"), String(instanceId || ""));
 }
 async function kgwBridgeDispatchRuntimeLogClearV1(net, _role = "bridge") {
-  const invoke = getTauriInvoke();
-  if (!invoke) return null;
-  return await invokeWithTimeout(invoke, "kgw_kgw_runtime_clear_logs_v1", buildApplyPayload(net, "kgw_kgw_runtime_clear_logs_v1"), KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS);
+  if (!wasmBridgeRuntimeInvokeAvailable()) return null;
+  return await wasmBridgeInvokeRuntimeCommand(
+    "kgw_kgw_runtime_clear_logs_v1",
+    buildApplyPayload(net, "kgw_kgw_runtime_clear_logs_v1")
+  );
 }
 
 function buildCommandLines(net) {
@@ -1452,9 +1456,8 @@ function kgwBridgePreviewMessage(net, message, error = false) {
   }
 }
 async function kgwBridgePreparePreview(net, payload) {
-  const invoke = getTauriInvoke();
-  if (!invoke) throw new Error("The desktop runtime is unavailable.");
-  return invokeWithTimeout(invoke, "kgw_runtime_settings_preview_v1", payload, 10000);
+  if (!wasmBridgeRuntimeInvokeAvailable()) throw new Error("The desktop runtime is unavailable.");
+  return await wasmBridgeInvokeRuntimeCommand("kgw_runtime_settings_preview_v1", payload);
 }
 function updateCommand(net) {
   const preview = wasmBridgeById(wasmBridgeElementId(net, "commandPreview"));
@@ -1716,16 +1719,8 @@ function installDelegatedTabs(root) {
 }
 
 // KGW_BRIDGE_INTEGRATED_RUNTIME_LINKAGE_V1: readable Bridge runtime response + duplicate-click guard.
-// The Bridge child contract is 101 seconds and the same-EXE parent is bounded at
-// 110 seconds. Keep the UI request strictly above both terminal-result boundaries.
-const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 120000;
-const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS = 0;
+// Tauri invoke resolution and timeout policy are Rust-owned in bridge_start_trace.rs.
 const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();
-
-function getTauriInvoke() {
-  const tauri = window.__TAURI__;
-  return tauri?.core?.invoke || tauri?.invoke || window.__TAURI_INVOKE__ || null;
-}
 
 /* KGW_BRIDGE_START_TRACE_V1 is Rust-owned in bridge_start_trace.rs. */
 
@@ -1792,43 +1787,14 @@ function buildApplyPayload(net, command) {
 
   return { network: net };
 }
-function invokeWithTimeout(invoke, command, args, timeoutMs) {
-  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
-    return Promise.resolve().then(() => invoke(command, args));
-  }
-
-  let timer = null;
-
-  const timeout = new Promise((_, reject) => {
-    timer = window.setTimeout(() => {
-      reject(new Error(command + " timed out after " + timeoutMs + "ms"));
-    }, timeoutMs);
-  });
-
-  return Promise.race([
-    invoke(command, args),
-    timeout
-  ]).finally(() => {
-    if (timer != null) window.clearTimeout(timer);
-  });
-}
-
 async function invokeBridgeIntegratedRuntime(command, net) {
-  const invoke = getTauriInvoke();
-  if (!invoke) {
-    throw new Error("Tauri invoke is unavailable in this window.");
-  }
-
-  const timeoutMs = command === "kgw_kgw_disable_network_v1"
-    ? KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS
-    : KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS;
   const payload = buildApplyPayload(net, command);
   if (command === "kgw_kgw_apply_node_settings_v1") {
     const errors = kgwBridgeValidateForm(net, true);
     if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
     await kgwBridgePreparePreview(net, payload);
   }
-  return await invokeWithTimeout(invoke, command, payload, timeoutMs);
+  return await wasmBridgeInvokeRuntimeCommand(command, payload);
 }
 
 
@@ -1864,14 +1830,11 @@ function kgwBridgeMarkRestartRequiredV1(net) {
 async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {
   if (bridgeNodeMode(net) !== "inprocess") return false;
 
-  const invoke = getTauriInvoke();
-  if (!invoke) return false;
+  if (!wasmBridgeRuntimeInvokeAvailable()) return false;
 
-  const result = await invokeWithTimeout(
-    invoke,
+  const result = await wasmBridgeInvokeRuntimeCommand(
     "kgw_runtime_owner_status_v1",
-    { network: net, runtimeRole: "node" },
-    KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS
+    { network: net, runtimeRole: "node" }
   );
 
   if (!wasmBridgeV7RuntimeRunningFromText(result)) return false;
