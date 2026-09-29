@@ -12,6 +12,7 @@ import initBridgeRust, {
   bridgeCommandSetOptionR7 as wasmBridgeCommandSetOptionR7,
   bridgeCommandShouldIncludeR7 as wasmBridgeCommandShouldIncludeR7,
   bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
+  bridgeBuildCommandLines as wasmBridgeBuildCommandLines,
   bridgeBuildUpstreamInstanceArg as wasmBridgeBuildUpstreamInstanceArg,
   bridgeDefaultInstanceRecord as wasmBridgeDefaultInstanceRecord,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
@@ -240,26 +241,6 @@ function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
     enabled: Boolean(enabled)
   });
 }
-
-
-function addFlag(lines, net, name, flag) {
-  if (!kgwBridgeCommandShouldIncludeR7(net, name)) return; // KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
-
-  if (c(net, name)) lines.push(flag);
-}
-
-function addValue(lines, net, name, flag) {
-  if (!kgwBridgeCommandShouldIncludeR7(net, name)) return; // KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
-
-  const value = v(net, name);
-  if (value) lines.push(`${flag}=${value}`);
-}
-
-function addBoolValue(lines, net, name, flag) {
-  const value = v(net, name);
-  if (value && value !== "not set") lines.push(`${flag}=${value}`);
-}
-
 
 
 // KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
@@ -2179,12 +2160,6 @@ function bridgeSyncAllModeControls() {
   BRIDGE_NETWORKS.forEach((item) => bridgeSyncModeControls(item.key));
 }
 
-function addRawValue(lines, flag, value) {
-  const normalized = String(value || "").trim();
-  if (normalized) lines.push(`${flag}=${normalized}`);
-}
-
-
 // KGW_BRIDGE_LOG_AUTOSCROLL_CONTROLS_R27_START
 function kgwBridgeLogAutoScrollKeyR27(net) {
   return `kgw.bridge.log.autoscroll.${net}`;
@@ -2280,132 +2255,13 @@ async function kgwBridgeDispatchRuntimeLogClearV1(net, _role = "bridge") {
   return await invokeWithTimeout(invoke, "kgw_kgw_runtime_clear_logs_v1", buildApplyPayload(net, "kgw_kgw_runtime_clear_logs_v1"), KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS);
 }
 
-// KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D_HELPER
-function bridgeInprocessAddKaspadValueArgV12D(lines, flag, value) {
-  const clean = String(value || "").trim();
-  if (!clean) return;
-  lines.push(`${flag}=${clean}`);
-}
-
-
-// KGW_BRIDGE_INPROCESS_SERIALIZATION_CHECKBOX_R13B
-function bridgeInprocessAddKaspadValueArgR13B(lines, net, name, flag, value) {
-  if (!kgwBridgeCommandShouldIncludeR7(net, name)) return;
-  bridgeInprocessAddKaspadValueArgV12D(lines, flag, value);
-}
-
-function bridgeInprocessAddKaspadFlagR13B(lines, net, name, flag) {
-  if (!kgwBridgeCommandShouldIncludeR7(net, name)) return;
-  if (c(net, name)) lines.push(flag);
-}
-
-
-
 function buildCommandLines(net) {
   bridgeSyncModeControls(net);
   bridgeEnsureInstanceState(net);
-
-  const profile = bridgeProfile(net);
-  const lines = ["stratum-bridge"];
-  const kaspadArgs = [];
-  const nodeMode = bridgeNodeMode(net);
-  const configValue = bridgeHasConfig(net) ? v(net, "config") : "";
-
-  if (configValue) {
-    addRawValue(lines, "--config", configValue);
-    addValue(lines, net, "nodeMode", "--node-mode");
-    addValue(lines, net, "webDashboardPort", "--web-dashboard-port");
-    return lines;
-  }
-
-  if (profile?.testnet) {
-    lines.push("--testnet");
-  }
-
-  addValue(lines, net, "nodeMode", "--node-mode");
-  addValue(lines, net, "appdir", "--appdir");
-
-  if (nodeMode === "external") {
-    addValue(lines, net, "kaspadAddress", "--kaspad-address");
-  } else if (nodeMode === "inprocess") {
-    if (profile?.testnet) {
-      kaspadArgs.push("--testnet");
-      if (profile.netsuffix) {
-        kaspadArgs.push(`--netsuffix=${profile.netsuffix}`);
-      }
-    }
-
-    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessRpcListen", "--rpclisten", v(net, "inprocessRpcListen") || `127.0.0.1:${profile.kaspadPort}`);
-    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessRpcListenBorsh", "--rpclisten-borsh", v(net, "inprocessRpcListenBorsh"));
-    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessRpcListenJson", "--rpclisten-json", v(net, "inprocessRpcListenJson"));
-
-    bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessUnsafeRpc", "--unsaferpc");
-    bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessUtxoIndex", "--utxoindex");
-    bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessArchival", "--archival");
-
-    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessListen", "--listen", v(net, "inprocessListen"));
-    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessAddPeer", "--addpeer", v(net, "inprocessAddPeer"));
-    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessConnect", "--connect", v(net, "inprocessConnect"));
-
-    bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessDisableUpnp", "--disable-upnp");
-
-    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessMaxInpeers", "--maxinpeers", v(net, "inprocessMaxInpeers"));
-    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessOutpeers", "--outpeers", v(net, "inprocessOutpeers"));
-
-    bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessPerfMetrics", "--perf-metrics");
-    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessPerfMetricsIntervalSec", "--perf-metrics-interval-sec", v(net, "inprocessPerfMetricsIntervalSec"));
-    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessLogLevel", "--loglevel", v(net, "inprocessLogLevel"));
-    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessRamScale", "--ram-scale", v(net, "inprocessRamScale"));
-
-    bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessConfigfile", "--configfile", v(net, "inprocessConfigfile"));
-    bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessYes", "--yes");
-
-    if (net !== "mainnet") {
-      bridgeInprocessAddKaspadValueArgR13B(kaspadArgs, net, "inprocessOverrideParamsFile", "--override-params-file", v(net, "inprocessOverrideParamsFile"));
-      bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessDevnet", "--devnet");
-      bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessSimnet", "--simnet");
-      bridgeInprocessAddKaspadFlagR13B(kaspadArgs, net, "inprocessEnableUnsyncedMining", "--enable-unsynced-mining");
-    }
-  }
-
-  addValue(lines, net, "blockWaitTime", "--block-wait-time");
-  addValue(lines, net, "printStats", "--print-stats");
-  addValue(lines, net, "logToFile", "--log-to-file");
-  addValue(lines, net, "healthCheckPort", "--health-check-port");
-  addValue(lines, net, "webDashboardPort", "--web-dashboard-port");
-  addValue(lines, net, "varDiff", "--var-diff");
-  addValue(lines, net, "sharesPerMin", "--shares-per-min");
-  addValue(lines, net, "varDiffStats", "--var-diff-stats");
-  addValue(lines, net, "extranonceSize", "--extranonce-size");
-  addValue(lines, net, "pow2Clamp", "--pow2-clamp");
-  addValue(lines, net, "coinbaseTagSuffix", "--coinbase-tag-suffix");
-  addBoolValue(lines, net, "approxGeoLookup", "--approximate-geo-lookup");
-  addValue(lines, net, "stratumPort", "--stratum-port");
-  addValue(lines, net, "minShareDiff", "--min-share-diff");
-  addValue(lines, net, "promPort", "--prom-port");
-
-  for (const instance of bridgeInstances[net]) {
-    const instanceDefinition = bridgeBuildUpstreamInstanceArg(net, instance);
-    if (instanceDefinition && kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, "instance")) {
-      lines.push(`--instance=${instanceDefinition}`);
-    } // KGW_BRIDGE_INSTANCE_WHOLE_ARG_CHECKBOX_R13B
-  }
-
-  if (c(net, "internalCpuMiner") && net !== "mainnet") {
-    addFlag(lines, net, "internalCpuMiner", "--internal-cpu-miner");
-    addValue(lines, net, "internalCpuMinerAddress", "--internal-cpu-miner-address");
-    addValue(lines, net, "internalCpuMinerThreads", "--internal-cpu-miner-threads");
-    addValue(lines, net, "internalCpuMinerThrottleMs", "--internal-cpu-miner-throttle-ms");
-    addValue(lines, net, "internalCpuMinerTemplatePollMs", "--internal-cpu-miner-template-poll-ms");
-  }
-
-  if (kaspadArgs.length) {
-    lines.push("--", ...kaspadArgs);
-  }
-
-  return lines;
+  return Array.from(
+    wasmBridgeBuildCommandLines(String(net || ""), bridgeInstances[net] || [])
+  );
 }
-
 function kgwBridgeEffectiveNodeInteger(net, name, fallback) {
   if (!bridgeFieldEnabled(name, kgwBridgeForm(net), kgwBridgeCommandInlineStateR7(net))) return fallback;
   const raw = v(net, name);
