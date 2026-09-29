@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use js_sys::{Array, Object, Reflect, RegExp};
+use js_sys::{Array, Function, Object, Reflect, RegExp};
 use wasm_bindgen::{JsCast, prelude::*};
 
 use crate::bridge_frontend_helpers;
@@ -464,6 +464,323 @@ fn unique_owners_impl(owners: &JsValue) -> Vec<JsValue> {
     output
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct PortOwnerRecord {
+    port: String,
+    net: String,
+    role: String,
+    owner: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct PortConflictRecord {
+    port: String,
+    owners: Vec<PortOwnerRecord>,
+}
+
+fn owner_record_from_js(value: &JsValue, fallback_port: &str) -> PortOwnerRecord {
+    let port = {
+        let direct = crate::js_string_owned(&property(value, "port"));
+        if direct.is_empty() {
+            fallback_port.to_owned()
+        } else {
+            direct
+        }
+    };
+    PortOwnerRecord {
+        port,
+        net: crate::js_string_owned(&property(value, "net")),
+        role: crate::js_string_owned(&property(value, "role")),
+        owner: crate::js_string_owned(&property(value, "owner")),
+    }
+}
+
+fn owner_record_key(owner: &PortOwnerRecord) -> String {
+    format!("{}:{}:{}", owner.net, owner.role, owner.owner)
+}
+
+fn records_share_logical_endpoint(owners: &[PortOwnerRecord]) -> bool {
+    let keys = owners
+        .iter()
+        .map(|owner| logical_key(&owner.net, &owner.role, &owner.owner))
+        .collect::<HashSet<_>>();
+    keys.len() <= 1
+}
+
+fn validate_port_conflicts_records(
+    records: &[PortOwnerRecord],
+    active_net: &str,
+) -> Vec<PortConflictRecord> {
+    let mut groups: Vec<(String, Vec<PortOwnerRecord>)> = Vec::new();
+    for record in records {
+        if record.port.is_empty() {
+            continue;
+        }
+        if let Some((_, owners)) = groups.iter_mut().find(|(port, _)| port == &record.port) {
+            owners.push(record.clone());
+        } else {
+            groups.push((record.port.clone(), vec![record.clone()]));
+        }
+    }
+
+    let mut conflicts = Vec::new();
+    for (port, owners) in groups {
+        let unique_owner_count = owners
+            .iter()
+            .map(owner_record_key)
+            .collect::<HashSet<_>>()
+            .len();
+        if unique_owner_count <= 1 || records_share_logical_endpoint(&owners) {
+            continue;
+        }
+
+        let touches_active_net = owners.iter().any(|owner| owner.net == active_net);
+        let touches_instance = owners.iter().any(|owner| owner.role == "instance");
+        if touches_active_net || touches_instance {
+            conflicts.push(PortConflictRecord { port, owners });
+        }
+    }
+    conflicts
+}
+
+fn owner_record_to_js(owner: &PortOwnerRecord) -> JsValue {
+    let output = Object::new();
+    set(output.as_ref(), "net", &JsValue::from_str(&owner.net));
+    set(output.as_ref(), "role", &JsValue::from_str(&owner.role));
+    set(output.as_ref(), "owner", &JsValue::from_str(&owner.owner));
+    output.into()
+}
+
+fn conflict_record_to_js(conflict: &PortConflictRecord) -> JsValue {
+    let output = Object::new();
+    set(output.as_ref(), "port", &JsValue::from_str(&conflict.port));
+    let owners = Array::new();
+    for owner in &conflict.owners {
+        owners.push(&owner_record_to_js(owner));
+    }
+    set(output.as_ref(), "owners", owners.as_ref());
+    output.into()
+}
+
+fn conflict_message_records(conflicts: &[PortConflictRecord]) -> String {
+    conflicts
+        .iter()
+        .map(|conflict| {
+            let owners = conflict
+                .owners
+                .iter()
+                .map(|owner| format!("{}/{}/{}", owner.net, owner.role, owner.owner))
+                .collect::<Vec<_>>()
+                .join(" | ");
+            format!("port {} => {}", conflict.port, owners)
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
+}
+
+fn conflicts_from_validation(validation: &JsValue) -> Vec<PortConflictRecord> {
+    let conflicts = property(validation, "conflicts");
+    if !Array::is_array(&conflicts) {
+        return Vec::new();
+    }
+
+    Array::from(&conflicts)
+        .iter()
+        .map(|conflict| {
+            let port = crate::js_string_owned(&property(&conflict, "port"));
+            let owners_value = property(&conflict, "owners");
+            let owners = if Array::is_array(&owners_value) {
+                Array::from(&owners_value)
+                    .iter()
+                    .map(|owner| owner_record_from_js(&owner, &port))
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            PortConflictRecord { port, owners }
+        })
+        .collect()
+}
+
+fn port_conflict_message(validation: &JsValue) -> String {
+    if !present(validation) || crate::js_boolean(&property(validation, "ok")) {
+        return String::new();
+    }
+    let message = crate::js_string_owned(&property(validation, "message"))
+        .trim()
+        .to_owned();
+    if !message.is_empty() {
+        return message;
+    }
+    conflict_message_records(&conflicts_from_validation(validation))
+}
+
+fn function(target: &JsValue, name: &str) -> Option<Function> {
+    property(target, name).dyn_into::<Function>().ok()
+}
+
+fn call1(target: &JsValue, name: &str, arg: &JsValue) -> Option<JsValue> {
+    function(target, name)?.call1(target, arg).ok()
+}
+
+fn node_list_values(value: &JsValue) -> Vec<JsValue> {
+    let length = property(value, "length")
+        .as_f64()
+        .filter(|value| value.is_finite() && *value >= 0.0)
+        .unwrap_or(0.0) as u32;
+    (0..length)
+        .filter_map(|index| {
+            Reflect::get(value, &JsValue::from_f64(index as f64))
+                .ok()
+                .filter(present)
+        })
+        .collect()
+}
+
+fn start_buttons_for_net(net: &str) -> Vec<JsValue> {
+    let global = js_sys::global();
+    let document = property(&global, "document");
+    let root = call1(
+        &document,
+        "getElementById",
+        &JsValue::from_str("kaspa-bridge"),
+    )
+    .unwrap_or(JsValue::UNDEFINED);
+    if !present(&root) {
+        return Vec::new();
+    }
+    let selector = format!("[data-bridge-action=\"start\"][data-net=\"{}\"]", net);
+    let list = call1(&root, "querySelectorAll", &JsValue::from_str(&selector))
+        .unwrap_or(JsValue::UNDEFINED);
+    node_list_values(&list)
+}
+
+fn trace_port_conflict(net: &str, phase: &str, validation: &JsValue, details: &JsValue) -> bool {
+    let conflicts = conflicts_from_validation(validation);
+    let payload = Object::new();
+    set(payload.as_ref(), "patch", &JsValue::from_str("R33"));
+    set(
+        payload.as_ref(),
+        "owner",
+        &JsValue::from_str("existing-bridge-port-conflict-owner-r5-r33"),
+    );
+    set(
+        payload.as_ref(),
+        "ok",
+        &JsValue::from_bool(crate::js_boolean(&property(validation, "ok"))),
+    );
+    set(
+        payload.as_ref(),
+        "conflictCount",
+        &JsValue::from_f64(conflicts.len() as f64),
+    );
+    let message: String = port_conflict_message(validation)
+        .chars()
+        .take(1200)
+        .collect();
+    set(payload.as_ref(), "message", &JsValue::from_str(&message));
+
+    let compact = Array::new();
+    for conflict in conflicts.iter().take(20) {
+        compact.push(&conflict_record_to_js(conflict));
+    }
+    set(payload.as_ref(), "conflicts", compact.as_ref());
+    let safe_details = if details.is_object() && !details.is_null() {
+        details.clone()
+    } else {
+        Object::new().into()
+    };
+    set(payload.as_ref(), "details", &safe_details);
+
+    bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+        JsValue::from_str(net),
+        JsValue::from_str("port-conflict"),
+        JsValue::from_str(phase),
+        payload.into(),
+    )
+}
+
+fn apply_port_conflict_start_state(net: &str, validation: &JsValue, reason: &str) -> JsValue {
+    let buttons = start_buttons_for_net(net);
+    let blocked = present(validation) && !crate::js_boolean(&property(validation, "ok"));
+    let message = port_conflict_message(validation);
+
+    for button in &buttons {
+        let dataset = property(button, "dataset");
+        let class_list = property(button, "classList");
+        if blocked {
+            set(button, "disabled", &JsValue::TRUE);
+            let _ = call1(
+                &class_list,
+                "add",
+                &JsValue::from_str("kgw-port-conflict-blocked-r33"),
+            );
+            set(
+                &dataset,
+                "kgwPortConflictBlockedR33",
+                &JsValue::from_str("true"),
+            );
+            let short_message: String = message.chars().take(800).collect();
+            set(
+                &dataset,
+                "kgwPortConflictMessageR33",
+                &JsValue::from_str(&short_message),
+            );
+            let title_message: String = message.chars().take(700).collect();
+            set(
+                button,
+                "title",
+                &JsValue::from_str(&format!("Port conflict: {title_message}")),
+            );
+        } else if crate::js_string_owned(&property(&dataset, "kgwPortConflictBlockedR33")) == "true"
+        {
+            set(button, "disabled", &JsValue::FALSE);
+            let _ = call1(
+                &class_list,
+                "remove",
+                &JsValue::from_str("kgw-port-conflict-blocked-r33"),
+            );
+            let dataset_object = Object::from(dataset.clone());
+            let _ = Reflect::delete_property(
+                &dataset_object,
+                &JsValue::from_str("kgwPortConflictBlockedR33"),
+            );
+            let _ = Reflect::delete_property(
+                &dataset_object,
+                &JsValue::from_str("kgwPortConflictMessageR33"),
+            );
+            if crate::js_string_owned(&property(button, "title")).starts_with("Port conflict:") {
+                set(button, "title", &JsValue::from_str(""));
+            }
+        }
+    }
+
+    let details = Object::new();
+    set(details.as_ref(), "reason", &JsValue::from_str(reason));
+    set(
+        details.as_ref(),
+        "startButtonCount",
+        &JsValue::from_f64(buttons.len() as f64),
+    );
+    trace_port_conflict(
+        net,
+        if blocked {
+            "r33-port-conflict-detected"
+        } else {
+            "r33-port-validation-clear"
+        },
+        validation,
+        details.as_ref(),
+    );
+
+    let output = Object::new();
+    set(output.as_ref(), "ok", &JsValue::from_bool(!blocked));
+    set(output.as_ref(), "blocked", &JsValue::from_bool(blocked));
+    set(output.as_ref(), "message", &JsValue::from_str(&message));
+    set(output.as_ref(), "validation", validation);
+    output.into()
+}
+
 #[wasm_bindgen(js_name = bridgePortProfilesR35B)]
 pub fn bridge_port_profiles_r35b() -> JsValue {
     let output = Object::new();
@@ -776,6 +1093,76 @@ pub fn bridge_owners_to_autofix_r45(active_net: String, owners: JsValue) -> Arra
     output
 }
 
+#[wasm_bindgen(js_name = bridgeValidatePortConflictsR5)]
+pub fn bridge_validate_port_conflicts_r5(items: Array, active_net: String) -> JsValue {
+    let records = items
+        .iter()
+        .map(|item| owner_record_from_js(&item, ""))
+        .collect::<Vec<_>>();
+    let conflicts = validate_port_conflicts_records(&records, &active_net);
+
+    let conflict_values = Array::new();
+    for conflict in &conflicts {
+        conflict_values.push(&conflict_record_to_js(conflict));
+    }
+
+    let output = Object::new();
+    set(
+        output.as_ref(),
+        "ok",
+        &JsValue::from_bool(conflicts.is_empty()),
+    );
+    set(output.as_ref(), "conflicts", conflict_values.as_ref());
+    set(
+        output.as_ref(),
+        "message",
+        &JsValue::from_str(&conflict_message_records(&conflicts)),
+    );
+    output.into()
+}
+
+#[wasm_bindgen(js_name = bridgePortConflictCompactSummaryR33)]
+pub fn bridge_port_conflict_compact_summary_r33(validation: JsValue) -> Array {
+    let output = Array::new();
+    for conflict in conflicts_from_validation(&validation) {
+        output.push(&conflict_record_to_js(&conflict));
+    }
+    output
+}
+
+#[wasm_bindgen(js_name = bridgePortConflictMessageR33)]
+pub fn bridge_port_conflict_message_r33(validation: JsValue) -> String {
+    port_conflict_message(&validation)
+}
+
+#[wasm_bindgen(js_name = bridgeTracePortConflictR33)]
+pub fn bridge_trace_port_conflict_r33(
+    net: String,
+    phase: String,
+    validation: JsValue,
+    details: JsValue,
+) -> bool {
+    trace_port_conflict(&net, &phase, &validation, &details)
+}
+
+#[wasm_bindgen(js_name = bridgeStartButtonsForNetR33)]
+pub fn bridge_start_buttons_for_net_r33(net: String) -> Array {
+    let output = Array::new();
+    for button in start_buttons_for_net(&net) {
+        output.push(&button);
+    }
+    output
+}
+
+#[wasm_bindgen(js_name = bridgeApplyPortConflictStartStateR33)]
+pub fn bridge_apply_port_conflict_start_state_r33(
+    net: String,
+    validation: JsValue,
+    reason: String,
+) -> JsValue {
+    apply_port_conflict_start_state(&net, &validation, &reason)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -838,5 +1225,89 @@ mod tests {
         assert_eq!(parse_valid_port("0"), None);
         assert_eq!(parse_valid_port("65536"), None);
         assert_eq!(parse_valid_port("localhost:5555"), None);
+    }
+
+    #[test]
+    fn conflict_validation_matches_active_network_and_instance_policy() {
+        let records = vec![
+            PortOwnerRecord {
+                port: "5555".to_owned(),
+                net: "mainnet".to_owned(),
+                role: "bridge-stratum".to_owned(),
+                owner: "stratumPort".to_owned(),
+            },
+            PortOwnerRecord {
+                port: "5555".to_owned(),
+                net: "mainnet".to_owned(),
+                role: "instance".to_owned(),
+                owner: "instance:1".to_owned(),
+            },
+            PortOwnerRecord {
+                port: "5655".to_owned(),
+                net: "testnet10".to_owned(),
+                role: "bridge-stratum".to_owned(),
+                owner: "stratumPort".to_owned(),
+            },
+            PortOwnerRecord {
+                port: "5655".to_owned(),
+                net: "testnet13".to_owned(),
+                role: "bridge-stratum".to_owned(),
+                owner: "stratumPort".to_owned(),
+            },
+        ];
+
+        let mainnet = validate_port_conflicts_records(&records, "mainnet");
+        assert_eq!(mainnet.len(), 1);
+        assert_eq!(mainnet[0].port, "5555");
+
+        let testnet10 = validate_port_conflicts_records(&records, "testnet10");
+        assert_eq!(testnet10.len(), 2);
+        assert_eq!(testnet10[0].port, "5555");
+        assert_eq!(testnet10[1].port, "5655");
+    }
+
+    #[test]
+    fn conflict_validation_preserves_logical_endpoint_alias_exception() {
+        let records = vec![
+            PortOwnerRecord {
+                port: "16110".to_owned(),
+                net: "mainnet".to_owned(),
+                role: "default-kaspad-rpc".to_owned(),
+                owner: "profile".to_owned(),
+            },
+            PortOwnerRecord {
+                port: "16110".to_owned(),
+                net: "mainnet".to_owned(),
+                role: "bridge-external-kaspad".to_owned(),
+                owner: "kaspadAddress".to_owned(),
+            },
+        ];
+
+        assert!(validate_port_conflicts_records(&records, "mainnet").is_empty());
+    }
+
+    #[test]
+    fn conflict_message_preserves_legacy_shape_and_order() {
+        let conflicts = vec![PortConflictRecord {
+            port: "5555".to_owned(),
+            owners: vec![
+                PortOwnerRecord {
+                    port: "5555".to_owned(),
+                    net: "mainnet".to_owned(),
+                    role: "bridge-stratum".to_owned(),
+                    owner: "stratumPort".to_owned(),
+                },
+                PortOwnerRecord {
+                    port: "5555".to_owned(),
+                    net: "mainnet".to_owned(),
+                    role: "instance".to_owned(),
+                    owner: "instance:7".to_owned(),
+                },
+            ],
+        }];
+        assert_eq!(
+            conflict_message_records(&conflicts),
+            "port 5555 => mainnet/bridge-stratum/stratumPort | mainnet/instance/instance:7"
+        );
     }
 }

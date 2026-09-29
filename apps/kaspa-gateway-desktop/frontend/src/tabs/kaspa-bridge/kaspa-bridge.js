@@ -36,6 +36,7 @@ import initBridgeRust, {
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
   bridgeValue as wasmBridgeValue,
   bridgeAddUsedPortR91 as wasmBridgeAddUsedPortR91,
+  bridgeApplyPortConflictStartStateR33 as wasmBridgeApplyPortConflictStartStateR33,
   bridgeAutofixChangeKeyR37 as wasmBridgeAutofixChangeKeyR37,
   bridgeExtractPortsFromTextR5 as wasmBridgeExtractPortsFromTextR5,
   bridgeFindRecommendedOrNearestUnusedPortR35B as wasmBridgeFindRecommendedOrNearestUnusedPortR35B,
@@ -46,7 +47,7 @@ import initBridgeRust, {
   bridgeNormalizePortR9 as wasmBridgeNormalizePortR9,
   bridgeOwnersToAutofixR45 as wasmBridgeOwnersToAutofixR45,
   bridgePortIsValidR9 as wasmBridgePortIsValidR9,
-  bridgePortOwnersRepresentSameLogicalEndpointR64F as wasmBridgePortOwnersRepresentSameLogicalEndpointR64F,
+  bridgeValidatePortConflictsR5 as wasmBridgeValidatePortConflictsR5,
   bridgePortProfileR35B as wasmBridgePortProfileR35B,
   bridgePortProfilesR35B as wasmBridgePortProfilesR35B,
   bridgePushPortR5 as wasmBridgePushPortR5,
@@ -520,51 +521,8 @@ function bridgeCollectConfiguredPortsR5() {
 
 
 
-function bridgePortOwnersRepresentSameLogicalEndpointR64F(owners) {
-  return wasmBridgePortOwnersRepresentSameLogicalEndpointR64F(owners || []);
-}
-
 function bridgeValidatePortConflictsR5(activeNet) {
-  const items = bridgeCollectConfiguredPortsR5();
-  const byPort = new Map();
-
-  for (const item of items) {
-    if (!byPort.has(item.port)) byPort.set(item.port, []);
-    byPort.get(item.port).push(item);
-  }
-
-  const conflicts = [];
-
-  for (const [port, owners] of byPort.entries()) {
-    const uniqueOwners = new Set(
-      owners.map((item) => item.net + ":" + item.role + ":" + item.owner)
-    );
-
-    if (uniqueOwners.size <= 1) continue;
-
-    if (bridgePortOwnersRepresentSameLogicalEndpointR64F(owners)) {
-      continue;
-    }
-
-    const touchesActiveNet = owners.some((item) => item.net === activeNet);
-    const touchesInstance = owners.some((item) => item.role === "instance");
-
-    if (touchesActiveNet || touchesInstance) {
-      conflicts.push({
-        port,
-        owners
-      });
-    }
-  }
-
-  return {
-    ok: conflicts.length === 0,
-    conflicts,
-    message: conflicts.map((item) => {
-      const owners = item.owners.map((owner) => owner.net + "/" + owner.role + "/" + owner.owner).join(" | ");
-      return "port " + item.port + " => " + owners;
-    }).join("; ")
-  };
+  return wasmBridgeValidatePortConflictsR5(bridgeCollectConfiguredPortsR5(), String(activeNet || ""));
 }
 
 /* KGW_BRIDGE_INSTANCES_PLUS_AUTOPORT_DETAILS_R8B
@@ -934,92 +892,12 @@ function bridgeAssertNoPortConflictsR5(net) {
  * - Save remains allowed with warning.
  * - Covers mainnet, testnet10, testnet13 through BRIDGE_NETWORKS.
  */
-function bridgePortConflictCompactSummaryR33(validation) {
-  const conflicts = validation && Array.isArray(validation.conflicts) ? validation.conflicts : [];
-  return conflicts.map((item) => {
-    const owners = Array.isArray(item.owners) ? item.owners : [];
-    return {
-      port: String(item.port || ""),
-      owners: owners.map((owner) => ({
-        net: String(owner.net || ""),
-        role: String(owner.role || ""),
-        owner: String(owner.owner || "")
-      }))
-    };
-  });
-}
-
-function bridgePortConflictMessageR33(validation) {
-  if (!validation || validation.ok) return "";
-  const message = String(validation.message || "").trim();
-  if (message) return message;
-  return bridgePortConflictCompactSummaryR33(validation).map((item) => {
-    return "port " + item.port + " => " + item.owners.map((owner) => owner.net + "/" + owner.role + "/" + owner.owner).join(" | ");
-  }).join("; ");
-}
-
-function bridgeTracePortConflictR33(net, phase, validation, details) {
-  try {
-    kgwBridgeSmallOwnerTraceR44D(net, "port-conflict", phase, {
-      patch: "R33",
-      owner: "existing-bridge-port-conflict-owner-r5-r33",
-      ok: Boolean(validation && validation.ok),
-      conflictCount: validation && Array.isArray(validation.conflicts) ? validation.conflicts.length : 0,
-      message: bridgePortConflictMessageR33(validation).slice(0, 1200),
-      conflicts: bridgePortConflictCompactSummaryR33(validation).slice(0, 20),
-      details: details && typeof details === "object" ? details : {}
-    });
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-}
-
-function bridgeStartButtonsForNetR33(net) {
-  const root = document.getElementById("kaspa-bridge");
-  if (!root) return [];
-  const safeNet = String(net || "");
-  return Array.from(root.querySelectorAll('[data-bridge-action="start"][data-net="' + safeNet + '"]'));
-}
-
 function bridgeApplyPortConflictStartStateR33(net, validation, reason) {
-  const buttons = bridgeStartButtonsForNetR33(net);
-  const blocked = Boolean(validation && !validation.ok);
-  const message = bridgePortConflictMessageR33(validation);
-
-  for (const button of buttons) {
-    if (!button) continue;
-
-    if (blocked) {
-      button.disabled = true;
-      button.classList.add("kgw-port-conflict-blocked-r33");
-      button.dataset.kgwPortConflictBlockedR33 = "true";
-      button.dataset.kgwPortConflictMessageR33 = message.slice(0, 800);
-      button.title = "Port conflict: " + message.slice(0, 700);
-    } else if (button.dataset.kgwPortConflictBlockedR33 === "true") {
-      button.disabled = false;
-      button.classList.remove("kgw-port-conflict-blocked-r33");
-      delete button.dataset.kgwPortConflictBlockedR33;
-      delete button.dataset.kgwPortConflictMessageR33;
-      if (String(button.title || "").startsWith("Port conflict:")) button.title = "";
-    }
-  }
-
-  if (blocked) {
-    bridgeTracePortConflictR33(net, "r33-port-conflict-detected", validation, {
-      reason: String(reason || ""),
-      startButtonCount: buttons.length
-    });
-  } else {
-    bridgeTracePortConflictR33(net, "r33-port-validation-clear", validation, {
-      reason: String(reason || ""),
-      startButtonCount: buttons.length
-    });
-  }
-
-  return {
-    ok: !blocked,
-    blocked,
-    message,
-    validation
-  };
+  return wasmBridgeApplyPortConflictStartStateR33(
+    String(net || ""),
+    validation || {},
+    String(reason || "")
+  );
 }
 
 function bridgeValidateAndApplyPortConflictStateR33(net, reason) {
