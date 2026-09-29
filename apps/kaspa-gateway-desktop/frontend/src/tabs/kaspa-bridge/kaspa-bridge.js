@@ -30,6 +30,11 @@ import initBridgeRust, {
   bridgeInstanceCommandCheckboxR13B as wasmBridgeInstanceCommandCheckboxR13B,
   bridgeInstanceCommandSetOptionR13B as wasmBridgeInstanceCommandSetOptionR13B,
   bridgeInstanceCommandShouldIncludeR13B as wasmBridgeInstanceCommandShouldIncludeR13B,
+  bridgeInstancePreviewTextR8B as wasmBridgeInstancePreviewTextR8B,
+  bridgeSyncInstancePreviewRowsR8B as wasmBridgeSyncInstancePreviewRowsR8B,
+  bridgeReadInstanceField as wasmBridgeReadInstanceField,
+  bridgeInstancePortPlaceholderR49 as wasmBridgeInstancePortPlaceholderR49,
+  bridgeInstancePromPlaceholderR49 as wasmBridgeInstancePromPlaceholderR49,
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeElementId as wasmBridgeElementId,
@@ -56,7 +61,6 @@ import initBridgeRust, {
   bridgeSchedulePortAutofixRefreshUiR37 as wasmBridgeSchedulePortAutofixRefreshUiR37,
   bridgeApplyPortAutofixUiR37 as wasmBridgeApplyPortAutofixUiR37,
   bridgeInstallPortAutofixButtonUiR37 as wasmBridgeInstallPortAutofixButtonUiR37,
-  bridgePortProfileR35B as wasmBridgePortProfileR35B,
   bridgePortProfilesR35B as wasmBridgePortProfilesR35B,
   bridgeStaticPortProfileR91 as wasmBridgeStaticPortProfileR91,
   settingsOwnerButtons as wasmSettingsOwnerButtons,
@@ -403,30 +407,15 @@ function bridgeCreateInstanceRecordR9(net) {
 }
 
 function bridgeInstancePreviewTextR8B(net, instance) {
-  if (!kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, "instance")) return "Excluded from runtime.";
-  const raw = byId(id(net, "commandPreview"))?.dataset.effectiveSettings;
-  if (!raw) return "Waiting for validated effective settings.";
-  try {
-    const resolved = JSON.parse(raw).effectiveBridgeSettings?.instances?.find(item => String(item.instanceId) === String(instance.id));
-    return resolved ? JSON.stringify(resolved) : "No effective instance in this configuration.";
-  } catch { return "Waiting for validated effective settings."; }
+  return wasmBridgeInstancePreviewTextR8B(String(net || ""), instance || {});
 }
 
 function bridgeSyncInstancePreviewRowsR8B(net) {
-  const root = document.getElementById("kaspa-bridge");
-  if (!root) return;
-
-  bridgeEnsureInstanceState(net);
-
-  for (const preview of root.querySelectorAll('[data-bridge-instance-preview][data-network="' + net + '"]')) {
-    const instanceId = preview.dataset.instanceId;
-    const instance = bridgeInstances[net].find((item) => String(item.id) === String(instanceId));
-    const text = instance ? bridgeInstancePreviewTextR8B(net, instance) : "--instance=";
-
-    preview.value = text;
-    preview.textContent = text;
-    preview.title = text;
-  }
+  return wasmBridgeSyncInstancePreviewRowsR8B(
+    String(net || ""),
+    bridgeInstances,
+    activeInstance
+  );
 }
 
 
@@ -476,11 +465,11 @@ function bridgeSchedulePortConflictValidationR33(net, reason) {
 
 
 function bridgeReadInstanceField(net, instanceId, fieldName) {
-  const el = byId(id(net, `${fieldName}-${instanceId}`));
-  if (!el) return "";
-
-  if (el.type === "checkbox") return el.checked ? "true" : "";
-  return String(el.value || "").trim();
+  return wasmBridgeReadInstanceField(
+    String(net || ""),
+    instanceId,
+    String(fieldName || "")
+  );
 }
 
 
@@ -502,15 +491,11 @@ function bridgeEnsureInstanceState(net) {
  * Display/help text only. Does not overwrite saved user ports.
  */
 function bridgeInstancePortPlaceholderR49(net) {
-  const profile = typeof bridgePortProfileR35B === "function" ? bridgePortProfileR35B(net) : null;
-  const value = profile && profile.stratum && profile.stratum.instanceStart ? profile.stratum.instanceStart : 5556;
-  return String(value);
+  return wasmBridgeInstancePortPlaceholderR49(String(net || ""));
 }
 
 function bridgeInstancePromPlaceholderR49(net) {
-  const profile = typeof bridgePortProfileR35B === "function" ? bridgePortProfileR35B(net) : null;
-  const value = profile && profile.prom && profile.prom.instanceStart ? profile.prom.instanceStart : 2113;
-  return String(value);
+  return wasmBridgeInstancePromPlaceholderR49(String(net || ""));
 }
 
 function renderInstances(net) {
@@ -1235,14 +1220,6 @@ function bridgeStaticPortProfileR91(net) {
 }
 
 
-
-
-
-
-
-function bridgePortProfileR35B(net) {
-  return wasmBridgePortProfileR35B(net);
-}
 
 
 

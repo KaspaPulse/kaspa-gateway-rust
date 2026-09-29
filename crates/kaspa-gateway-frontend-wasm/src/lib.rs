@@ -5,6 +5,7 @@ mod bridge_command_builder;
 mod bridge_command_options;
 mod bridge_frontend_helpers;
 mod bridge_instance_settings;
+mod bridge_instance_ui;
 mod bridge_port_core;
 mod bridge_port_orchestration;
 mod bridge_port_ui;
