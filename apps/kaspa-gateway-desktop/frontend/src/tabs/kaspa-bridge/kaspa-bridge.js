@@ -221,7 +221,7 @@ function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
     toggle.setAttribute("aria-label", toggle.title);
   });
   updateCommand(net);
-  bridgeSyncInstancePreviewRowsR8B(net);
+  wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
 
   wasmBridgeSmallOwnerTraceR44D(net, "command-checkbox", "r29b-bridge-instance-command-checkbox-complete", {
     patch: "R29B",
@@ -298,20 +298,8 @@ function bridgeBuildUpstreamInstanceArg(net, instance) {
   return wasmBridgeBuildUpstreamInstanceArg(String(net || ""), instance || {});
 }
 
-function kgwBridgeParseUnsignedV1(label, value, fallback, max = Number.MAX_SAFE_INTEGER) {
-  return wasmBridgeParseUnsignedV1(String(label || ""), value, fallback, max);
-}
-
 function kgwBridgeEffectiveSettingsV1(net, structuredInstances) {
   return wasmBridgeEffectiveSettingsV1(String(net || ""), structuredInstances || {});
-}
-
-function bridgeDefaultInstanceRecord(idValue) {
-  return wasmBridgeDefaultInstanceRecord(idValue);
-}
-
-function bridgeNormalizeInstanceRecord(raw, fallbackId) {
-  return wasmBridgeNormalizeInstanceRecord(raw || {}, fallbackId);
 }
 
 /* Port conflict registry/validation ownership lives in Rust bridge_port_core.rs. */
@@ -360,26 +348,11 @@ function bridgeCreateInstanceRecordR9(net) {
   );
 }
 
-function bridgeInstancePreviewTextR8B(net, instance) {
-  return wasmBridgeInstancePreviewTextR8B(String(net || ""), instance || {});
-}
-
-function bridgeSyncInstancePreviewRowsR8B(net) {
-  return wasmBridgeSyncInstancePreviewRowsR8B(
-    String(net || ""),
-    bridgeInstances,
-    activeInstance
-  );
-}
-
 
 // KGW_BRIDGE_INSTANCE_PORT_CONFLICT_REPAIR_R110G
 
 
 // KGW_BRIDGE_AUTOFIX_BUTTON_INITIAL_LABEL_R111G
-function kgwBridgeAutofixButtonInitialLabelR111G(root = document) {
-  return wasmBridgeAutofixButtonInitialLabelUiR111G(root);
-}
 /* KGW_BRIDGE_SCOPED_START_CONFLICT_R110H is Rust-owned in bridge_port_validation.rs. */
 function bridgeAssertNoPortConflictsR5(net) {
   return wasmBridgeAssertNoPortConflictsR5(
@@ -418,25 +391,9 @@ function bridgeSchedulePortConflictValidationR33(net, reason) {
 }
 
 
-function bridgeReadInstanceField(net, instanceId, fieldName) {
-  return wasmBridgeReadInstanceField(
-    String(net || ""),
-    instanceId,
-    String(fieldName || "")
-  );
-}
 
 
 
-
-
-function bridgeEnsureInstanceState(net) {
-  return wasmBridgeEnsureInstanceState(
-    bridgeInstances,
-    activeInstance,
-    String(net || "")
-  );
-}
 
 
 
@@ -444,18 +401,10 @@ function bridgeEnsureInstanceState(net) {
  * Field-level instance port placeholders now follow the active network profile.
  * Display/help text only. Does not overwrite saved user ports.
  */
-function bridgeInstancePortPlaceholderR49(net) {
-  return wasmBridgeInstancePortPlaceholderR49(String(net || ""));
-}
-
-function bridgeInstancePromPlaceholderR49(net) {
-  return wasmBridgeInstancePromPlaceholderR49(String(net || ""));
-}
-
 function renderInstances(net) {
   net = bridgeInstanceNetworkKeyR15(net, net);
   if (net !== "mainnet") return ""; // Testnet mining is embedded CPU-only, including restored settings.
-  bridgeEnsureInstanceState(net);
+  wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
 
   return `
     <div class="bridge-v7-instance-tabs bridge-v7-instance-tabs-r7b">
@@ -495,8 +444,8 @@ function renderInstances(net) {
               data-bridge-instance-preview="true"
               data-network="${net}"
               data-instance-id="${instance.id}"
-              value="${wasmBridgeEscapeHtml(bridgeInstancePreviewTextR8B(net, instance))}"
-              title="${wasmBridgeEscapeHtml(bridgeInstancePreviewTextR8B(net, instance))}" />
+              value="${wasmBridgeEscapeHtml(wasmBridgeInstancePreviewTextR8B(String(net || ""), instance || {}))}"
+              title="${wasmBridgeEscapeHtml(wasmBridgeInstancePreviewTextR8B(String(net || ""), instance || {}))}" />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -504,7 +453,7 @@ function renderInstances(net) {
               ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instancePort")}
               <span class="kgw-command-option-title-text-r8e">port</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input id="${wasmBridgeElementId(net, `instancePort-${instance.id}`)}" data-bridge-instance-field="instancePort" value="${wasmBridgeEscapeHtml(instance.instancePort || "")}" placeholder="${wasmBridgeEscapeHtml(bridgeInstancePortPlaceholderR49(net))}" />
+            <input id="${wasmBridgeElementId(net, `instancePort-${instance.id}`)}" data-bridge-instance-field="instancePort" value="${wasmBridgeEscapeHtml(instance.instancePort || "")}" placeholder="${wasmBridgeEscapeHtml(wasmBridgeInstancePortPlaceholderR49(String(net || "")))}" />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -520,7 +469,7 @@ function renderInstances(net) {
               ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceProm")}
               <span class="kgw-command-option-title-text-r8e">prom</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input id="${wasmBridgeElementId(net, `instanceProm-${instance.id}`)}" data-bridge-instance-field="instanceProm" value="${wasmBridgeEscapeHtml(instance.instanceProm || "")}" placeholder="${wasmBridgeEscapeHtml(bridgeInstancePromPlaceholderR49(net))}" />
+            <input id="${wasmBridgeElementId(net, `instanceProm-${instance.id}`)}" data-bridge-instance-field="instanceProm" value="${wasmBridgeEscapeHtml(instance.instanceProm || "")}" placeholder="${wasmBridgeEscapeHtml(wasmBridgeInstancePromPlaceholderR49(String(net || "")))}" />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -960,21 +909,21 @@ function renderNetworkPanel(net, index) {
 
 function bridgeReadInstanceState(net, instanceId) {
   const current = bridgeInstances[net].find((instance) => String(instance.id) === String(instanceId)) || {};
-  const next = bridgeNormalizeInstanceRecord(current, Date.now() + Math.floor(Math.random() * 1000));
+  const next = wasmBridgeNormalizeInstanceRecord(current || {}, Date.now() + Math.floor(Math.random() * 1000));
 
   return bridgeAssignMissingInstancePortsR9(net, {
     id: next.id || instanceId || Date.now() + Math.floor(Math.random() * 1000),
     instance: "",
-    instancePort: bridgeReadInstanceField(net, instanceId, "instancePort") || next.instancePort || "",
-    instanceDiff: bridgeReadInstanceField(net, instanceId, "instanceDiff") || next.instanceDiff || "2048",
-    instanceProm: bridgeReadInstanceField(net, instanceId, "instanceProm") || next.instanceProm || "",
-    instanceLogToFile: bridgeReadInstanceField(net, instanceId, "instanceLogToFile") || next.instanceLogToFile || "not set",
-    instanceBlockWaitTime: bridgeReadInstanceField(net, instanceId, "instanceBlockWaitTime") || next.instanceBlockWaitTime || "",
-    instanceExtranonceSize: bridgeReadInstanceField(net, instanceId, "instanceExtranonceSize") || next.instanceExtranonceSize || "",
-    instanceVarDiff: bridgeReadInstanceField(net, instanceId, "instanceVarDiff") || next.instanceVarDiff || "not set",
-    instanceSharesPerMin: bridgeReadInstanceField(net, instanceId, "instanceSharesPerMin") || next.instanceSharesPerMin || "",
-    instanceVarDiffStats: bridgeReadInstanceField(net, instanceId, "instanceVarDiffStats") || next.instanceVarDiffStats || "not set",
-    instancePow2Clamp: bridgeReadInstanceField(net, instanceId, "instancePow2Clamp") || next.instancePow2Clamp || "not set"
+    instancePort: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instancePort") || next.instancePort || "",
+    instanceDiff: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceDiff") || next.instanceDiff || "2048",
+    instanceProm: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceProm") || next.instanceProm || "",
+    instanceLogToFile: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceLogToFile") || next.instanceLogToFile || "not set",
+    instanceBlockWaitTime: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceBlockWaitTime") || next.instanceBlockWaitTime || "",
+    instanceExtranonceSize: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceExtranonceSize") || next.instanceExtranonceSize || "",
+    instanceVarDiff: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceVarDiff") || next.instanceVarDiff || "not set",
+    instanceSharesPerMin: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceSharesPerMin") || next.instanceSharesPerMin || "",
+    instanceVarDiffStats: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceVarDiffStats") || next.instanceVarDiffStats || "not set",
+    instancePow2Clamp: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instancePow2Clamp") || next.instancePow2Clamp || "not set"
   });
 }
 
@@ -1108,7 +1057,7 @@ function bridgeInstanceNetworkKeyR15(value, fallback) {
 function addInstance(net) {
   wasmBridgeSmallOwnerTraceR44D(net, "add-instance", "r44d-owner-begin", {});
   net = bridgeInstanceNetworkKeyR15(net, net);
-  bridgeEnsureInstanceState(net);
+  wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
 
   const next = bridgeCreateInstanceRecordR9(net);
   bridgeInstances[net].push(next);
@@ -1123,7 +1072,7 @@ function addInstance(net) {
 
 function removeInstance(net, instanceId) {
   wasmBridgeSmallOwnerTraceR44D(net, "remove-instance", "r44d-owner-begin", { instanceId: String(instanceId || "") });
-  bridgeEnsureInstanceState(net);
+  wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
   if (bridgeInstances[net].length <= 1) return;
   const removedIndex = bridgeInstances[net].findIndex(instance => String(instance.id) === String(instanceId));
   bridgeInstances[net] = bridgeInstances[net].filter((instance) => String(instance.id) !== String(instanceId));
@@ -1501,7 +1450,7 @@ function kgwInstallBridgeLogAutoScrollControlsR27() {
 // KGW_BRIDGE_LOG_AUTOSCROLL_CONTROLS_R27_END
 
 function kgwBridgeActiveRawLogInstanceIdV1(net) {
-  bridgeEnsureInstanceState(net);
+  wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
   return String(activeInstance?.[net] || (bridgeInstances?.[net]?.[0] && bridgeInstances[net][0].id) || "");
 }
 
@@ -1524,7 +1473,7 @@ async function kgwBridgeDispatchRuntimeLogClearV1(net, _role = "bridge") {
 
 function buildCommandLines(net) {
   bridgeSyncModeControls(net);
-  bridgeEnsureInstanceState(net);
+  wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
   return Array.from(
     wasmBridgeBuildCommandLines(String(net || ""), bridgeInstances[net] || [])
   );
@@ -1566,7 +1515,7 @@ function updateCommand(net) {
   try {
     bridgeSyncModeControls(net);
     bridgeReassignInstancePortsFromExternalRangeR91(net, "update-command");
-    bridgeSyncInstancePreviewRowsR8B(net);
+    wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
     const errors = kgwBridgeValidateForm(net);
     if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
     const payload = buildApplyPayload(net, "kgw_kgw_apply_node_settings_v1");
@@ -1577,7 +1526,7 @@ function updateCommand(net) {
         if (KGW_BRIDGE_PREVIEW_REQUESTS.get(net) !== request) return;
         preview.value = JSON.stringify(result, null, 2);
         preview.dataset.effectiveSettings = JSON.stringify(result);
-        bridgeSyncInstancePreviewRowsR8B(net);
+        wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
         preview.dataset.kgwBridgeCommandOwner = "typed-effective-settings-preview";
         preview.dataset.kgwBridgeNetwork = net;
         preview.classList.remove("bridge-v7-command-warning");
@@ -1876,9 +1825,9 @@ function kgwBridgeStartOptions(net) {
     configFile: bridgeHasConfig(net) ? wasmBridgeValue(net, "config") : null,
     internalCpuMiner: enabled ? {
       enabled: true, address: wasmBridgeValue(net, "internalCpuMinerAddress"),
-      threads: kgwBridgeParseUnsignedV1("CPU threads", wasmBridgeValue(net, "internalCpuMinerThreads"), 1, 256),
-      throttleMs: kgwBridgeParseUnsignedV1("CPU throttle", wasmBridgeValue(net, "internalCpuMinerThrottleMs"), null, 60000),
-      templatePollMs: kgwBridgeParseUnsignedV1("Template poll interval", wasmBridgeValue(net, "internalCpuMinerTemplatePollMs"), null, 60000),
+      threads: wasmBridgeParseUnsignedV1("CPU threads", wasmBridgeValue(net, "internalCpuMinerThreads"), 1, 256),
+      throttleMs: wasmBridgeParseUnsignedV1("CPU throttle", wasmBridgeValue(net, "internalCpuMinerThrottleMs"), null, 60000),
+      templatePollMs: wasmBridgeParseUnsignedV1("Template poll interval", wasmBridgeValue(net, "internalCpuMinerTemplatePollMs"), null, 60000),
     } : { enabled: false },
   };
 }
@@ -2429,7 +2378,7 @@ function kgwBridgeR51CommitInstanceDomStateR26B(net) {
     net = bridgeInstanceNetworkKeyR15(net, net);
     if (!net) return [];
 
-    bridgeEnsureInstanceState(net);
+    wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
 
     if (!Array.isArray(bridgeInstances[net])) {
       bridgeInstances[net] = [];
@@ -2441,7 +2390,7 @@ function kgwBridgeR51CommitInstanceDomStateR26B(net) {
       return bridgeReadInstanceState(net, instanceId);
     });
 
-    bridgeEnsureInstanceState(net);
+    wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
     return Array.isArray(bridgeInstances[net]) ? bridgeInstances[net] : [];
   } catch (error) {
     try {
@@ -2459,7 +2408,7 @@ function kgwBridgeR51ReadStructuredInstancesR26B(net) {
 
   const instances = committed.map((instance, index) => {
     const fallbackId = instance && instance.id ? instance.id : Date.now() + index;
-    return bridgeNormalizeInstanceRecord(instance, fallbackId);
+    return wasmBridgeNormalizeInstanceRecord(instance || {}, fallbackId);
   }).filter(Boolean);
 
   const active = activeInstance[net] || (instances[0] && instances[0].id) || "";
@@ -2535,7 +2484,7 @@ function kgwBridgeR51ApplyCommandOptionsR38C(net, values) {
           kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, Boolean(enabled) && (!optional || Boolean(String(record?.[name] || "").trim())));
         }
       }
-      bridgeSyncInstancePreviewRowsR8B(net);
+      wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
     }
 
     updateCommand(net);
@@ -2566,12 +2515,12 @@ function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
 
     const normalized = payload.instances.map((instance, index) => {
       const fallbackId = instance && instance.id ? instance.id : Date.now() + index;
-      return bridgeNormalizeInstanceRecord(instance, fallbackId);
+      return wasmBridgeNormalizeInstanceRecord(instance || {}, fallbackId);
     }).filter(Boolean);
 
     bridgeInstances[net] = normalized.length
       ? normalized
-      : [bridgeDefaultInstanceRecord(Date.now())];
+      : [wasmBridgeDefaultInstanceRecord(Date.now())];
 
     const wantedActive = String(payload.activeInstance || values[KGW_BRIDGE_R51_ACTIVE_INSTANCE_KEY_R26B] || "");
     const exists = bridgeInstances[net].some((instance) => String(instance.id) === wantedActive);
@@ -2813,7 +2762,7 @@ function kgwBridgeR51WriteSettings(net, values) {
     bridgeReassignInstancePortsFromExternalRangeR91(net, "r95b-r51-write-settings-normalized-network-ports");
   }
 
-  bridgeSyncInstancePreviewRowsR8B(net);
+  wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
   updateCommand(net);
 }
 
@@ -3927,7 +3876,7 @@ if (typeof window !== "undefined") {
 
 
 // KGW_BRIDGE_AUTOFIX_BUTTON_INITIAL_LABEL_R111G
-try { kgwBridgeAutofixButtonInitialLabelR111G(document); } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
+try { wasmBridgeAutofixButtonInitialLabelUiR111G(document); } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
 function kgwBridgeForm(net) {
   const values = { network: net };
