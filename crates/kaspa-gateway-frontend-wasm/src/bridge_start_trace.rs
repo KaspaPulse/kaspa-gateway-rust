@@ -505,6 +505,404 @@ fn flash_log_action_button_impl(button: &JsValue, done_label: &str) {
     callback.forget();
 }
 
+fn dependency(deps: &JsValue, name: &str) -> Option<Function> {
+    property(deps, name).dyn_into::<Function>().ok()
+}
+
+fn dependency_apply(deps: &JsValue, name: &str, args: &[JsValue]) -> JsValue {
+    let Some(function) = dependency(deps, name) else {
+        return JsValue::UNDEFINED;
+    };
+    let values = Array::new();
+    for value in args {
+        values.push(value);
+    }
+    function
+        .apply(&JsValue::UNDEFINED, &values)
+        .unwrap_or(JsValue::UNDEFINED)
+}
+
+fn translate_runtime(deps: &JsValue, key: &str, fallback: &str) -> String {
+    let value = dependency_apply(
+        deps,
+        "translateRuntime",
+        &[JsValue::from_str(key), JsValue::from_str(fallback)],
+    );
+    let text = crate::js_string_owned(&value);
+    if text.is_empty() {
+        fallback.to_owned()
+    } else {
+        text
+    }
+}
+
+fn active_raw_log_instance_id(deps: &JsValue, net: &str) -> String {
+    crate::js_string_owned(&dependency_apply(
+        deps,
+        "activeRawLogInstanceId",
+        &[JsValue::from_str(net)],
+    ))
+}
+
+fn small_owner_trace(deps: &JsValue, net: &str, action: &str, phase: &str, details: JsValue) {
+    let _ = dependency_apply(
+        deps,
+        "smallOwnerTrace",
+        &[
+            JsValue::from_str(net),
+            JsValue::from_str(action),
+            JsValue::from_str(phase),
+            details,
+        ],
+    );
+}
+
+fn clear_raw_log_buffer(deps: &JsValue, net: &str, instance_id: &str) {
+    let _ = dependency_apply(
+        deps,
+        "clearRawLogBuffer",
+        &[
+            JsValue::from_str(net),
+            JsValue::from_str("bridge"),
+            JsValue::from_str(instance_id),
+        ],
+    );
+}
+
+fn dispatch_runtime_log_clear(deps: &JsValue, net: &str) {
+    let result = dependency_apply(
+        deps,
+        "dispatchRuntimeLogClear",
+        &[JsValue::from_str(net), JsValue::from_str("bridge")],
+    );
+    if !present(&result) {
+        return;
+    }
+    let promise = Promise::resolve(&result);
+    let catch = Closure::wrap(Box::new(move |_error: JsValue| {}) as Box<dyn FnMut(JsValue)>);
+    let _ = promise.catch(&catch);
+    catch.forget();
+}
+
+fn delete_dataset_key(target: &JsValue, key: &str) {
+    let data = property(target, "dataset");
+    if let Ok(object) = data.dyn_into::<Object>() {
+        let _ = Reflect::delete_property(&object, &JsValue::from_str(key));
+    }
+}
+
+fn clipboard_safe_error_value(error: &JsValue) -> String {
+    let message = property(error, "message");
+    let source = if crate::js_boolean(&message) {
+        crate::js_string_owned(&message)
+    } else if crate::js_boolean(error) {
+        crate::js_string_owned(error)
+    } else {
+        "clipboard write failed".to_owned()
+    };
+    clipboard_safe_error_text(&source)
+}
+
+fn copy_log_failure_impl(
+    net: &str,
+    button: &JsValue,
+    error: &JsValue,
+    details: &JsValue,
+    deps: &JsValue,
+) {
+    let safe_error = clipboard_safe_error_value(error);
+    let _ = set_clipboard_status(net, &safe_error, "error");
+    let failed_label = translate_runtime(deps, "log.copyFailed", "Copy failed");
+    flash_log_action_button_impl(button, &failed_label);
+
+    let trace_details = safe_details(details);
+    set(&trace_details, "runtimeRole", &JsValue::from_str("bridge"));
+    set(&trace_details, "safeError", &JsValue::from_str(&safe_error));
+    set(
+        &trace_details,
+        "userFeedbackDisplayed",
+        &JsValue::from_bool(true),
+    );
+    emit_trace(
+        "frontend.copy_log_failed",
+        net,
+        "copy-log",
+        "error",
+        trace_details,
+    );
+}
+
+async fn handle_log_action_impl(
+    action: &str,
+    net: &str,
+    button: &JsValue,
+    deps: &JsValue,
+) -> Result<(), JsValue> {
+    let trace_action = if action.is_empty() {
+        "log-action"
+    } else {
+        action
+    };
+    let click_details = Object::new();
+    set(
+        click_details.as_ref(),
+        "patch",
+        &JsValue::from_str("KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3"),
+    );
+    set(click_details.as_ref(), "action", &JsValue::from_str(action));
+    set(
+        click_details.as_ref(),
+        "buttonId",
+        &JsValue::from_str(&crate::js_string_owned(&property(button, "id"))),
+    );
+    set(
+        click_details.as_ref(),
+        "buttonText",
+        &JsValue::from_str(crate::js_string_owned(&property(button, "textContent")).trim()),
+    );
+    small_owner_trace(
+        deps,
+        net,
+        trace_action,
+        "r51b3-bridge-log-action-click",
+        click_details.into(),
+    );
+    small_owner_trace(
+        deps,
+        net,
+        trace_action,
+        "r44d-owner-begin",
+        Object::new().into(),
+    );
+
+    if !present(&bridge_log_output(net)) {
+        return Ok(());
+    }
+
+    if action == "copy-log" {
+        let instance_id = active_raw_log_instance_id(deps, net);
+        let belongs_to_live_bridge_monitor =
+            present(&closest(button, r#"[data-bridge-inner-panel="log"]"#));
+
+        let resolved_details = Object::new();
+        set(
+            resolved_details.as_ref(),
+            "runtimeRole",
+            &JsValue::from_str("bridge"),
+        );
+        set(
+            resolved_details.as_ref(),
+            "bridgeInstanceId",
+            &JsValue::from_str(&instance_id),
+        );
+        set(
+            resolved_details.as_ref(),
+            "belongsToLiveBridgeMonitor",
+            &JsValue::from_bool(belongs_to_live_bridge_monitor),
+        );
+        emit_trace(
+            "frontend.copy_log_network_resolved",
+            net,
+            "copy-log",
+            if net.is_empty() { "error" } else { "ok" },
+            resolved_details.into(),
+        );
+
+        let data = property(button, "dataset");
+        if crate::js_string_owned(&property(&data, "kgwCopyLogInFlightV1")) == "1" {
+            let duplicate_details = Object::new();
+            set(
+                duplicate_details.as_ref(),
+                "reason",
+                &JsValue::from_str("duplicate-copy"),
+            );
+            set(
+                duplicate_details.as_ref(),
+                "bridgeInstanceId",
+                &JsValue::from_str(&instance_id),
+            );
+            set(
+                duplicate_details.as_ref(),
+                "belongsToLiveBridgeMonitor",
+                &JsValue::from_bool(belongs_to_live_bridge_monitor),
+            );
+            copy_log_failure_impl(
+                net,
+                button,
+                &JsValue::from_str("Copy Log is already in progress for this bridge buffer."),
+                duplicate_details.as_ref(),
+                deps,
+            );
+            return Ok(());
+        }
+
+        let original_disabled = crate::js_boolean(&property(button, "disabled"));
+        if present(button) {
+            set(
+                &property(button, "dataset"),
+                "kgwCopyLogInFlightV1",
+                &JsValue::from_str("1"),
+            );
+            set(button, "disabled", &JsValue::from_bool(true));
+        }
+
+        let copy_result: Result<(), JsValue> = async {
+            let buffer = read_clipboard_raw_log_buffer(net);
+            let buffer_out = property(&buffer, "out");
+            let normalized_text = crate::js_string_owned(&property(&buffer, "normalizedText"));
+            let character_count = property(&buffer, "characterCount");
+            let line_count = property(&buffer, "lineCount");
+            if !present(&buffer_out) || normalized_text.trim().is_empty() {
+                let prepared = Object::new();
+                set(
+                    prepared.as_ref(),
+                    "rawLogBufferSelected",
+                    &JsValue::from_bool(present(&buffer_out)),
+                );
+                set(
+                    prepared.as_ref(),
+                    "runtimeRole",
+                    &JsValue::from_str("bridge"),
+                );
+                set(
+                    prepared.as_ref(),
+                    "bridgeInstanceId",
+                    &JsValue::from_str(&instance_id),
+                );
+                set(prepared.as_ref(), "characterCount", &character_count);
+                set(prepared.as_ref(), "lineCount", &line_count);
+                set(prepared.as_ref(), "sha256", &JsValue::from_str(""));
+                emit_trace(
+                    "frontend.copy_log_content_prepared",
+                    net,
+                    "copy-log",
+                    "error",
+                    prepared.into(),
+                );
+                return Err(JsValue::from_str(&format!(
+                    "Copy Log requires a non-empty raw log buffer for {net}."
+                )));
+            }
+
+            let sha256 = sha256_hex_text(&normalized_text).await;
+            let metadata = Object::new();
+            set(
+                metadata.as_ref(),
+                "runtimeRole",
+                &JsValue::from_str("bridge"),
+            );
+            set(
+                metadata.as_ref(),
+                "bridgeInstanceId",
+                &JsValue::from_str(&instance_id),
+            );
+            set(metadata.as_ref(), "characterCount", &character_count);
+            set(metadata.as_ref(), "lineCount", &line_count);
+            set(metadata.as_ref(), "sha256", &JsValue::from_str(&sha256));
+
+            let prepared = Object::new();
+            set(
+                prepared.as_ref(),
+                "rawLogBufferSelected",
+                &JsValue::from_bool(true),
+            );
+            for name in [
+                "runtimeRole",
+                "bridgeInstanceId",
+                "characterCount",
+                "lineCount",
+                "sha256",
+            ] {
+                set(prepared.as_ref(), name, &property(metadata.as_ref(), name));
+            }
+            emit_trace(
+                "frontend.copy_log_content_prepared",
+                net,
+                "copy-log",
+                "ok",
+                prepared.into(),
+            );
+
+            dispatch_clipboard_write_impl(net, &normalized_text, metadata.as_ref()).await?;
+            let copied_label = translate_runtime(deps, "log.copied", "Copied");
+            flash_log_action_button_impl(button, &copied_label);
+            let _ = set_clipboard_status(net, &copied_label, "ok");
+
+            let success = Object::new();
+            for name in [
+                "runtimeRole",
+                "bridgeInstanceId",
+                "characterCount",
+                "lineCount",
+                "sha256",
+            ] {
+                set(success.as_ref(), name, &property(metadata.as_ref(), name));
+            }
+            set(
+                success.as_ref(),
+                "userFeedbackDisplayed",
+                &JsValue::from_bool(true),
+            );
+            emit_trace(
+                "frontend.copy_log_succeeded",
+                net,
+                "copy-log",
+                "ok",
+                success.into(),
+            );
+            Ok(())
+        }
+        .await;
+
+        if let Err(error) = copy_result {
+            let failure_details = Object::new();
+            set(
+                failure_details.as_ref(),
+                "bridgeInstanceId",
+                &JsValue::from_str(&instance_id),
+            );
+            set(
+                failure_details.as_ref(),
+                "belongsToLiveBridgeMonitor",
+                &JsValue::from_bool(belongs_to_live_bridge_monitor),
+            );
+            copy_log_failure_impl(net, button, &error, failure_details.as_ref(), deps);
+        }
+
+        if present(button) {
+            set(button, "disabled", &JsValue::from_bool(original_disabled));
+            delete_dataset_key(button, "kgwCopyLogInFlightV1");
+        }
+        return Ok(());
+    }
+
+    if action == "clear-log" {
+        let instance_id = active_raw_log_instance_id(deps, net);
+        clear_raw_log_buffer(deps, net, &instance_id);
+        dispatch_runtime_log_clear(deps, net);
+        let deleted_label = translate_runtime(deps, "log.deleted", "Deleted");
+        flash_log_action_button_impl(button, &deleted_label);
+    }
+    small_owner_trace(
+        deps,
+        net,
+        trace_action,
+        "r44d-owner-complete",
+        Object::new().into(),
+    );
+    Ok(())
+}
+
+#[wasm_bindgen(js_name = bridgeHandleLogAction)]
+pub async fn bridge_handle_log_action(
+    action: String,
+    net: String,
+    button: JsValue,
+    deps: JsValue,
+) -> Result<(), JsValue> {
+    handle_log_action_impl(&action, &net, &button, &deps).await
+}
+
 #[wasm_bindgen(js_name = bridgeRestoreLogActionLabel)]
 pub fn bridge_restore_log_action_label(button: JsValue) {
     restore_log_action_label_impl(&button);

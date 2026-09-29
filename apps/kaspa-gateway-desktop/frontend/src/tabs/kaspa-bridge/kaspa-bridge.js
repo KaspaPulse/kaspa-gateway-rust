@@ -2,13 +2,8 @@ import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { BRIDGE_MANAGED, BRIDGE_REQUIRED, BRIDGE_OPTIONAL, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initBridgeRust, {
-  bridgeClipboardSafeError as wasmBridgeClipboardSafeError,
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
-  bridgeFlashLogActionButton as wasmBridgeFlashLogActionButton,
-  bridgeReadClipboardRawLogBuffer as wasmBridgeReadClipboardRawLogBuffer,
-  bridgeRestoreLogActionLabel as wasmBridgeRestoreLogActionLabel,
-  bridgeSetClipboardStatus as wasmBridgeSetClipboardStatus,
-  bridgeSha256Hex as wasmBridgeSha256Hex,
+  bridgeHandleLogAction as wasmBridgeHandleLogAction,
   bridgeStartTraceFrontend as wasmBridgeStartTraceFrontend,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
@@ -6373,171 +6368,14 @@ function kgwBridgeLogOutputV29(net) {
   return document.getElementById("bridge-" + net + "-logOutput");
 }
 
-function kgwBridgeRestoreLogActionLabelV29(button) {
-  return wasmBridgeRestoreLogActionLabel(button);
-}
-
-function kgwBridgeFlashLogActionButtonV29(button, doneLabel) {
-  return wasmBridgeFlashLogActionButton(button, String(doneLabel || ""));
-}
-
-async function kgwBridgeSha256HexV1(text) {
-  return await wasmBridgeSha256Hex(text);
-}
-
-function kgwBridgeClipboardSafeErrorV1(error) {
-  return wasmBridgeClipboardSafeError(error);
-}
-
-function kgwBridgeSetClipboardStatusV1(net, message, state = "info") {
-  return wasmBridgeSetClipboardStatus(String(net || ""), String(message || ""), String(state || "info"));
-}
-
-function kgwBridgeReadClipboardRawLogBufferV1(net) {
-  return wasmBridgeReadClipboardRawLogBuffer(String(net || ""));
-}
-
-async function kgwBridgeDispatchClipboardWriteV1(net, text, metadata) {
-  return await wasmBridgeDispatchClipboardWrite(String(net || ""), String(text ?? ""), metadata || {});
-}
-
-function kgwBridgeCopyLogFailureV1(net, button, error, details = {}) {
-  const safeError = kgwBridgeClipboardSafeErrorV1(error);
-  kgwBridgeSetClipboardStatusV1(net, safeError, "error");
-  kgwBridgeFlashLogActionButtonV29(button, kgwBridgeTranslateRuntimeV29("log.copyFailed", "Copy failed"));
-  kgwBridgeStartTraceFrontendV1("frontend.copy_log_failed", {
-    network: net,
-    action: "copy-log",
-    result: "error",
-    details: {
-      ...details,
-      runtimeRole: "bridge",
-      safeError,
-      userFeedbackDisplayed: true
-    }
-  });
-}
-
 async function kgwBridgeHandleLogActionV29(action, net, button) {
-  
-  kgwBridgeSmallOwnerTraceR44D(net, String(action || "log-action"), "r51b3-bridge-log-action-click", {
-    patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
-    action: String(action || ""),
-    buttonId: String(button && button.id || ""),
-    buttonText: String(button && button.textContent || "").trim()
+  return await wasmBridgeHandleLogAction(String(action || ""), String(net || ""), button, {
+    smallOwnerTrace: kgwBridgeSmallOwnerTraceR44D,
+    activeRawLogInstanceId: kgwBridgeActiveRawLogInstanceIdV1,
+    translateRuntime: kgwBridgeTranslateRuntimeV29,
+    clearRawLogBuffer: kgwBridgeClearRawLogBufferV1,
+    dispatchRuntimeLogClear: kgwBridgeDispatchRuntimeLogClearV1
   });
-  kgwBridgeSmallOwnerTraceR44D(net, String(action || "log-action"), "r44d-owner-begin", {});
-  const out = kgwBridgeLogOutputV29(net);
-  if (!out) return;
-
-  if (action === "copy-log") {
-    const instanceId = kgwBridgeActiveRawLogInstanceIdV1(net);
-    const belongsToLiveBridgeMonitor = Boolean(button?.closest?.('[data-bridge-inner-panel="log"]'));
-
-    kgwBridgeStartTraceFrontendV1("frontend.copy_log_network_resolved", {
-      network: net,
-      action: "copy-log",
-      result: net ? "ok" : "error",
-      details: {
-        runtimeRole: "bridge",
-        bridgeInstanceId: instanceId,
-        belongsToLiveBridgeMonitor
-      }
-    });
-
-    if (button?.dataset?.kgwCopyLogInFlightV1 === "1") {
-      kgwBridgeCopyLogFailureV1(net, button, "Copy Log is already in progress for this bridge buffer.", {
-        reason: "duplicate-copy",
-        bridgeInstanceId: instanceId,
-        belongsToLiveBridgeMonitor
-      });
-      return;
-    }
-
-    const originalDisabled = Boolean(button && button.disabled);
-    if (button) {
-      button.dataset.kgwCopyLogInFlightV1 = "1";
-      button.disabled = true;
-    }
-
-    try {
-      const buffer = kgwBridgeReadClipboardRawLogBufferV1(net);
-      if (!buffer.out || !buffer.normalizedText.trim()) {
-        kgwBridgeStartTraceFrontendV1("frontend.copy_log_content_prepared", {
-          network: net,
-          action: "copy-log",
-          result: "error",
-          details: {
-            rawLogBufferSelected: Boolean(buffer.out),
-            runtimeRole: "bridge",
-            bridgeInstanceId: instanceId,
-            characterCount: buffer.characterCount,
-            lineCount: buffer.lineCount,
-            sha256: ""
-          }
-        });
-        throw new Error("Copy Log requires a non-empty raw log buffer for " + net + ".");
-      }
-
-      const sha256 = await kgwBridgeSha256HexV1(buffer.normalizedText);
-      const metadata = {
-        runtimeRole: "bridge",
-        bridgeInstanceId: instanceId,
-        characterCount: buffer.characterCount,
-        lineCount: buffer.lineCount,
-        sha256
-      };
-
-      kgwBridgeStartTraceFrontendV1("frontend.copy_log_content_prepared", {
-        network: net,
-        action: "copy-log",
-        result: "ok",
-        details: {
-          rawLogBufferSelected: true,
-          runtimeRole: metadata.runtimeRole,
-          bridgeInstanceId: metadata.bridgeInstanceId,
-          characterCount: metadata.characterCount,
-          lineCount: metadata.lineCount,
-          sha256: metadata.sha256 || ""
-        }
-      });
-
-      await kgwBridgeDispatchClipboardWriteV1(net, buffer.normalizedText, metadata);
-      kgwBridgeFlashLogActionButtonV29(button, kgwBridgeTranslateRuntimeV29("log.copied", "Copied"));
-      kgwBridgeSetClipboardStatusV1(net, kgwBridgeTranslateRuntimeV29("log.copied", "Copied"), "ok");
-      kgwBridgeStartTraceFrontendV1("frontend.copy_log_succeeded", {
-        network: net,
-        action: "copy-log",
-        result: "ok",
-        details: {
-          runtimeRole: metadata.runtimeRole,
-          bridgeInstanceId: metadata.bridgeInstanceId,
-          characterCount: metadata.characterCount,
-          lineCount: metadata.lineCount,
-          sha256: metadata.sha256 || "",
-          userFeedbackDisplayed: true
-        }
-      });
-    } catch (error) {
-      kgwBridgeCopyLogFailureV1(net, button, error, {
-        bridgeInstanceId: instanceId,
-        belongsToLiveBridgeMonitor
-      });
-    } finally {
-      if (button) {
-        button.disabled = originalDisabled;
-        delete button.dataset.kgwCopyLogInFlightV1;
-      }
-    }
-    return;
-  }
-
-  if (action === "clear-log") {
-    kgwBridgeClearRawLogBufferV1(net, "bridge", kgwBridgeActiveRawLogInstanceIdV1(net));
-    kgwBridgeDispatchRuntimeLogClearV1(net, "bridge").catch(() => {});
-    kgwBridgeFlashLogActionButtonV29(button, kgwBridgeTranslateRuntimeV29("log.deleted", "Deleted"));
-  }
-  kgwBridgeSmallOwnerTraceR44D(net, String(action || "log-action"), "r44d-owner-complete", {});
 }
 /* KGW_LOG_ACTIONS_SCOPED_OWNER_V29_END */
 
@@ -6985,7 +6823,7 @@ function installActions(root) {
           text = JSON.stringify(result, null, 2);
         }
         if (!text) throw new Error("There is no validated value to copy.");
-        await kgwBridgeDispatchClipboardWriteV1(net, text, {characterCount: [...text].length, lineCount: text.split(/\r?\n/).length});
+        await wasmBridgeDispatchClipboardWrite(String(net || ""), String(text ?? ""), {characterCount: [...text].length, lineCount: text.split(/\r?\n/).length});
         kgwBridgePreviewMessage(net, action === "copy-path" ? "Data directory copied." : "Effective settings copied.");
       })().catch(error => kgwBridgePreviewMessage(net, "Copy failed: " + normalizeRuntimeError(error), true));
       return;

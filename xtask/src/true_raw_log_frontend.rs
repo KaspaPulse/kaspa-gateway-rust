@@ -212,7 +212,7 @@ function createWindow(calls) {
 function stripModuleSyntax(source) {
   source = source.replace(/^import[\s\S]*?from\s+["'][^"']+["'];\s*/gm, "");
   source = source.replace(/^import\s+["'][^"']+["'];\s*/gm, "");
-  source = source.replace(/^await\s+initNodeRust\(\);\s*/gm, "");
+  source = source.replace(/^await\s+init(?:Node|Bridge)Rust\(\);\s*/gm, "");
   source = source.replace(/export\s+async\s+function\s+initKaspaNodeTab/, "async function initKaspaNodeTab");
   source = source.replace(/export\s+async\s+function\s+initKaspaBridgeTab/, "async function initKaspaBridgeTab");
   source = source.replace(/export\s+default\s+initKaspaNodeTab\s*;/, "");
@@ -731,5 +731,12 @@ mod tests {
     fn expected_raw_payloads_keep_transport_looking_official_lines() {
         assert!(expected_node_raw().contains("kgw_raw_process_log_v1"));
         assert!(expected_bridge_raw().contains("diagnostic_transport.child.stderr"));
+    }
+
+    #[test]
+    fn vm_preprocessor_strips_both_frontend_wasm_bootstraps() {
+        assert!(NODE_BRIDGE.contains("init(?:Node|Bridge)Rust"));
+        assert!(NODE_BRIDGE.contains("initKaspaNodeTab"));
+        assert!(NODE_BRIDGE.contains("initKaspaBridgeTab"));
     }
 }
