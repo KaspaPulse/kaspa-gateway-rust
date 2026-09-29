@@ -12,7 +12,7 @@ const WASM_BIN: &str =
 
 const SLICES: &[(&str, &str)] = &[
     (
-        "function kgwBridgeCommandInlineStateKeyR7(",
+        "function kgwBridgeCommandInlineStateR7(",
         "function kgwBridgeCommandInlineToggleR7(",
     ),
     ("function bridgeNodeMode(", "function bridgeHasConfig("),
@@ -29,10 +29,10 @@ const SLICES: &[(&str, &str)] = &[
     ("function id(", "function v("),
     (
         "function v(",
-        "function kgwBridgeInstanceCommandStateKeyR13B(",
+        "function kgwBridgeInstanceCommandRecordR13B(",
     ),
     (
-        "function kgwBridgeInstanceCommandStateKeyR13B(",
+        "function kgwBridgeInstanceCommandRecordR13B(",
         "function kgwBridgeInstanceCommandCheckboxR13B(",
     ),
     (
@@ -82,6 +82,18 @@ const sandbox = {
   wasmBridgeElementId: wasmModule.bridgeElementId,
   wasmBridgeValue: wasmModule.bridgeValue,
   wasmBridgeChecked: wasmModule.bridgeChecked,
+  wasmBridgeCommandInlineStateKeyR7: wasmModule.bridgeCommandInlineStateKeyR7,
+  wasmBridgeCommandInlineStateR7: wasmModule.bridgeCommandInlineStateR7,
+  wasmBridgeCommandInlineToggleR7: wasmModule.bridgeCommandInlineToggleR7,
+  wasmBridgeCommandOptionEnabledR7: wasmModule.bridgeCommandOptionEnabledR7,
+  wasmBridgeCommandSetOptionR7: wasmModule.bridgeCommandSetOptionR7,
+  wasmBridgeCommandShouldIncludeR7: wasmModule.bridgeCommandShouldIncludeR7,
+  wasmBridgeCommandToggleOptionR7: wasmModule.bridgeCommandToggleOptionR7,
+  wasmBridgeInstanceCommandCheckboxR13B: wasmModule.bridgeInstanceCommandCheckboxR13B,
+  wasmBridgeInstanceCommandOptionEnabledR13B: wasmModule.bridgeInstanceCommandOptionEnabledR13B,
+  wasmBridgeInstanceCommandSetOptionR13B: wasmModule.bridgeInstanceCommandSetOptionR13B,
+  wasmBridgeInstanceCommandShouldIncludeR13B: wasmModule.bridgeInstanceCommandShouldIncludeR13B,
+  wasmBridgeInstanceCommandStateKeyR13B: wasmModule.bridgeInstanceCommandStateKeyR13B,
   bridgeInstances: {
     mainnet: request.structured.instances,
     testnet10: [],
@@ -109,10 +121,10 @@ for (const step of request.steps) {
   } else if (step.op === "effective") {
     output[step.label] = api.effective(step.net, request.structured);
   } else if (step.op === "set-instance-option") {
-    sandbox.__kgwBridgeInstanceCommandComposerR13B[step.key] = Boolean(step.value);
+    const [net, instanceId, name] = String(step.key || "").split("::");
+    wasmModule.bridgeInstanceCommandSetOptionR13B(net, instanceId, name, Boolean(step.value));
   } else if (step.op === "set-inline-option") {
-    sandbox.__kgwBridgeCommandComposerInlineR7[step.net] ||= {};
-    sandbox.__kgwBridgeCommandComposerInlineR7[step.net][step.name] = Boolean(step.value);
+    wasmModule.bridgeCommandSetOptionR7(step.net, step.name, Boolean(step.value));
   } else if (step.op === "set-element") {
     const existing = elements.get(step.id);
     if (existing) {

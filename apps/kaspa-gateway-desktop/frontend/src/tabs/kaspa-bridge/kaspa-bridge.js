@@ -1,12 +1,22 @@
 import { applyStatusTone, renderStatusSummary } from "../../status.js";
-import { BRIDGE_MANAGED, BRIDGE_REQUIRED, BRIDGE_OPTIONAL, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
+import { BRIDGE_MANAGED, BRIDGE_OPTIONAL, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initBridgeRust, {
   bridgeApplyRuntimeLogReport as wasmBridgeApplyRuntimeLogReport,
   bridgeApplyRustyKaspaRootOnlyDefaultPathsR5 as wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsR5,
   bridgeById as wasmBridgeById,
   bridgeChecked as wasmBridgeChecked,
+  bridgeCommandInlineStateR7 as wasmBridgeCommandInlineStateR7,
+  bridgeCommandInlineToggleR7 as wasmBridgeCommandInlineToggleR7,
+  bridgeCommandOptionEnabledR7 as wasmBridgeCommandOptionEnabledR7,
+  bridgeCommandSetOptionR7 as wasmBridgeCommandSetOptionR7,
+  bridgeCommandShouldIncludeR7 as wasmBridgeCommandShouldIncludeR7,
+  bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
   bridgeClearRawLogBuffer as wasmBridgeClearRawLogBuffer,
+  bridgeInstanceCommandCheckboxR13B as wasmBridgeInstanceCommandCheckboxR13B,
+  bridgeInstanceCommandSetOptionR13B as wasmBridgeInstanceCommandSetOptionR13B,
+  bridgeInstanceCommandShouldIncludeR13B as wasmBridgeInstanceCommandShouldIncludeR13B,
+
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeElementId as wasmBridgeElementId,
   bridgeEscapeHtml as wasmBridgeEscapeHtml,
@@ -156,29 +166,26 @@ function c(net, name) {
 
 // KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B
 
-function kgwBridgeInstanceCommandStateKeyR13B(net, instanceId, name) {
-  return `${String(net || "mainnet")}::${String(instanceId || "1")}::${String(name || "")}`;
-}
-
-function kgwBridgeInstanceCommandOptionEnabledR13B(net, instanceId, name) {
-  const key = kgwBridgeInstanceCommandStateKeyR13B(net, instanceId, name);
-  window.__kgwBridgeInstanceCommandComposerR13B = window.__kgwBridgeInstanceCommandComposerR13B || {};
-  const stored = window.__kgwBridgeInstanceCommandComposerR13B[key];
-  if (stored !== undefined) return stored !== false;
-  if (["instanceBlockWaitTime", "instanceExtranonceSize", "instanceSharesPerMin"].includes(name)) {
-    const record = (bridgeInstances[net] || []).find(item => String(item.id) === String(instanceId));
-    return Boolean(String(record?.[name] || "").trim());
-  }
-  return true;
+function kgwBridgeInstanceCommandRecordR13B(net, instanceId) {
+  return (bridgeInstances[net] || []).find(item => String(item.id) === String(instanceId)) || null;
 }
 
 function kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, name) {
-  return kgwBridgeInstanceCommandOptionEnabledR13B(net, instanceId, name);
+  return wasmBridgeInstanceCommandShouldIncludeR13B(
+    String(net || ""),
+    instanceId,
+    String(name || ""),
+    kgwBridgeInstanceCommandRecordR13B(net, instanceId)
+  );
 }
 
 function kgwBridgeInstanceCommandCheckboxR13B(net, instanceId, name) {
-  const enabled = kgwBridgeInstanceCommandOptionEnabledR13B(net, instanceId, name);
-  return `<input type="checkbox" class="kgw-command-option-checkbox-r9 kgw-bridge-instance-command-checkbox-r13b" data-bridge-instance-command-option-toggle-r13b="${esc(String(name))}" data-net="${esc(String(net))}" data-instance-id="${esc(String(instanceId))}" ${enabled ? "checked" : ""} aria-label="${enabled ? "Included in command" : "Excluded from command"}" title="${enabled ? "Included in command" : "Excluded from command"}">`;
+  return wasmBridgeInstanceCommandCheckboxR13B(
+    String(net || ""),
+    instanceId,
+    String(name || ""),
+    kgwBridgeInstanceCommandRecordR13B(net, instanceId)
+  );
 }
 
 function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
@@ -190,9 +197,12 @@ function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
     enabled: Boolean(enabled)
   });
 
-  const key = kgwBridgeInstanceCommandStateKeyR13B(net, instanceId, name);
-  window.__kgwBridgeInstanceCommandComposerR13B = window.__kgwBridgeInstanceCommandComposerR13B || {};
-  window.__kgwBridgeInstanceCommandComposerR13B[key] = Boolean(enabled);
+  const key = wasmBridgeInstanceCommandSetOptionR13B(
+    String(net || ""),
+    instanceId,
+    String(name || ""),
+    Boolean(enabled)
+  );
   kgwBridgeR51Panel(net)?.querySelectorAll("[data-bridge-instance-command-option-toggle-r13b]").forEach(toggle => {
     if (String(toggle.dataset.instanceId) !== String(instanceId) || toggle.dataset.bridgeInstanceCommandOptionToggleR13b !== name) return;
     toggle.checked = Boolean(enabled);
@@ -235,33 +245,20 @@ function addBoolValue(lines, net, name, flag) {
 
 // KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
 
-function kgwBridgeCommandInlineStateKeyR7(net) {
-  return String(net || "mainnet");
-}
-
 function kgwBridgeCommandInlineStateR7(net) {
-  const key = kgwBridgeCommandInlineStateKeyR7(net);
-  window.__kgwBridgeCommandComposerInlineR7 = window.__kgwBridgeCommandComposerInlineR7 || {};
-  window.__kgwBridgeCommandComposerInlineR7[key] = window.__kgwBridgeCommandComposerInlineR7[key] || {};
-  return window.__kgwBridgeCommandComposerInlineR7[key];
+  return wasmBridgeCommandInlineStateR7(String(net || ""));
 }
 
 function kgwBridgeCommandOptionEnabledR7(net, name) {
-  const state = kgwBridgeCommandInlineStateR7(net);
-  if (BRIDGE_REQUIRED.has(name)) return true;
-  if (BRIDGE_MANAGED[name]) return false;
-  if (BRIDGE_OPTIONAL.has(name)) return state[String(name)] === true;
-  return state[String(name)] !== false;
+  return wasmBridgeCommandOptionEnabledR7(String(net || ""), String(name || ""));
 }
 
 function kgwBridgeCommandShouldIncludeR7(net, name) {
-  return kgwBridgeCommandOptionEnabledR7(net, name);
+  return wasmBridgeCommandShouldIncludeR7(String(net || ""), String(name || ""));
 }
 
 function kgwBridgeCommandInlineToggleR7(net, name) {
-  if (BRIDGE_MANAGED[name] || BRIDGE_REQUIRED.has(name)) return "";
-  const enabled = kgwBridgeCommandOptionEnabledR7(net, name);
-  return `<input type="checkbox" class="kgw-command-option-checkbox-r9" data-bridge-command-option-toggle-r7="${esc(String(name))}" data-net="${esc(String(net))}" ${enabled ? "checked" : ""} aria-label="${enabled ? "Included in command" : "Excluded from command"}" title="${enabled ? "Included in command" : "Excluded from command"}">`; // KGW_BRIDGE_COMMAND_COMPOSER_CHECKBOX_ONLY_R9
+  return wasmBridgeCommandInlineToggleR7(String(net || ""), String(name || "")); // KGW_BRIDGE_COMMAND_COMPOSER_CHECKBOX_ONLY_R9
 }
 
 function kgwBridgeRefreshInlineCommandTogglesR7(net) {
@@ -277,9 +274,7 @@ function kgwBridgeRefreshInlineCommandTogglesR7(net) {
 }
 
 function kgwBridgeToggleCommandOptionR7(net, name) {
-  const state = kgwBridgeCommandInlineStateR7(net);
-  const key = String(name);
-  state[key] = state[key] === false;
+  wasmBridgeCommandToggleOptionR7(String(net || ""), String(name || ""));
   kgwBridgeRefreshInlineCommandTogglesR7(net);
   updateCommand(net);
 }
@@ -4291,9 +4286,12 @@ function kgwBridgeR51ApplyCommandOptionsR38C(net, values) {
   try {
     const commandOptions = values && values[KGW_BRIDGE_R51_COMMAND_OPTIONS_KEY_R38C];
     if (commandOptions && typeof commandOptions === "object") {
-      const state = kgwBridgeCommandInlineStateR7(net);
       for (const [name, enabled] of Object.entries(commandOptions)) {
-        state[String(name)] = Boolean(enabled) && (!BRIDGE_OPTIONAL.has(name) || Boolean(String(values[id(net, name)]?.value || "").trim()));
+        wasmBridgeCommandSetOptionR7(
+          String(net || ""),
+          String(name || ""),
+          Boolean(enabled) && (!BRIDGE_OPTIONAL.has(name) || Boolean(String(values[id(net, name)]?.value || "").trim()))
+        );
       }
       kgwBridgeRefreshInlineCommandTogglesR7(net);
     }
@@ -5145,15 +5143,10 @@ function installActions(root) {
       });
 
       try {
-        if (typeof kgwBridgeCommandInlineStateR7 === "function") {
-          const state = kgwBridgeCommandInlineStateR7(net);
-          state[String(option)] = enabled;
-          updateCommand(net);
-          if (typeof kgwBridgeRefreshInlineCommandTogglesR7 === "function") {
-            kgwBridgeRefreshInlineCommandTogglesR7(net);
-          }
-        } else if (typeof kgwBridgeToggleCommandOptionR7 === "function") {
-          kgwBridgeToggleCommandOptionR7(net, option);
+        wasmBridgeCommandSetOptionR7(String(net || ""), String(option || ""), enabled);
+        updateCommand(net);
+        if (typeof kgwBridgeRefreshInlineCommandTogglesR7 === "function") {
+          kgwBridgeRefreshInlineCommandTogglesR7(net);
         }
 
         queueMicrotask(() => {
