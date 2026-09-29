@@ -7,6 +7,8 @@ mod bridge_frontend_helpers;
 mod bridge_instance_settings;
 mod bridge_port_core;
 mod bridge_port_orchestration;
+mod bridge_port_ui;
+mod bridge_port_validation;
 mod bridge_raw_log;
 mod bridge_render;
 mod bridge_start_trace;

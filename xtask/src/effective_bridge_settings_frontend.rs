@@ -37,7 +37,7 @@ const SLICES: &[(&str, &str)] = &[
     ),
     (
         "function bridgeBuildUpstreamInstanceArg(",
-        "function bridgeCollectConfiguredPortsR5(",
+        "/* Port conflict registry/validation ownership lives in Rust bridge_port_core.rs. */",
     ),
     (
         "function bridgeProfile(",

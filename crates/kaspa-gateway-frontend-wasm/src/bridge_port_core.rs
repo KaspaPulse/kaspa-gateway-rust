@@ -111,7 +111,7 @@ fn normalize_port_text(value: &str) -> String {
     trimmed.strip_prefix(':').unwrap_or(trimmed).to_owned()
 }
 
-fn parse_valid_port(value: &str) -> Option<u16> {
+pub(crate) fn parse_valid_port(value: &str) -> Option<u16> {
     let normalized = normalize_port_text(value);
     if normalized.is_empty()
         || normalized.len() > 5

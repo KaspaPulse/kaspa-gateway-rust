@@ -44,15 +44,18 @@ import initBridgeRust, {
   bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
   bridgeValue as wasmBridgeValue,
-  bridgeCollectConfiguredPortsR5 as wasmBridgeCollectConfiguredPortsR5,
   bridgeAssignMissingInstancePortsR9 as wasmBridgeAssignMissingInstancePortsR9,
   bridgeReassignInstancePortsFromExternalRangeR91 as wasmBridgeReassignInstancePortsFromExternalRangeR91,
   bridgeCreateInstanceRecordR9 as wasmBridgeCreateInstanceRecordR9,
   bridgeEnsureInstanceState as wasmBridgeEnsureInstanceState,
-  bridgeApplyPortConflictStartStateR33 as wasmBridgeApplyPortConflictStartStateR33,
-  bridgeApplyPortAutofixR37 as wasmBridgeApplyPortAutofixR37,
-  bridgePlanPortAutofixR37 as wasmBridgePlanPortAutofixR37,
-  bridgeValidatePortConflictsR5 as wasmBridgeValidatePortConflictsR5,
+  bridgeAssertNoPortConflictsR5 as wasmBridgeAssertNoPortConflictsR5,
+  bridgeValidateAllPortConflictStatesR33 as wasmBridgeValidateAllPortConflictStatesR33,
+  bridgeSchedulePortConflictValidationR33 as wasmBridgeSchedulePortConflictValidationR33,
+  bridgeAutofixButtonInitialLabelUiR111G as wasmBridgeAutofixButtonInitialLabelUiR111G,
+  bridgeRefreshPortAutofixButtonsUiR37 as wasmBridgeRefreshPortAutofixButtonsUiR37,
+  bridgeSchedulePortAutofixRefreshUiR37 as wasmBridgeSchedulePortAutofixRefreshUiR37,
+  bridgeApplyPortAutofixUiR37 as wasmBridgeApplyPortAutofixUiR37,
+  bridgeInstallPortAutofixButtonUiR37 as wasmBridgeInstallPortAutofixButtonUiR37,
   bridgePortProfileR35B as wasmBridgePortProfileR35B,
   bridgePortProfilesR35B as wasmBridgePortProfilesR35B,
   bridgeStaticPortProfileR91 as wasmBridgeStaticPortProfileR91,
@@ -353,16 +356,7 @@ function bridgeNormalizeInstanceRecord(raw, fallbackId) {
   return wasmBridgeNormalizeInstanceRecord(raw || {}, fallbackId);
 }
 
-function bridgeCollectConfiguredPortsR5() {
-  return Array.from(wasmBridgeCollectConfiguredPortsR5(bridgeInstances, activeInstance));
-}
-
-
-
-function bridgeValidatePortConflictsR5(activeNet) {
-  return wasmBridgeValidatePortConflictsR5(bridgeCollectConfiguredPortsR5(), String(activeNet || ""));
-}
-
+/* Port conflict registry/validation ownership lives in Rust bridge_port_core.rs. */
 /* KGW_BRIDGE_INSTANCES_PLUS_AUTOPORT_DETAILS_R8B
  * Existing Bridge Instances owner refinement:
  * - + action is routed through installActions.
@@ -441,98 +435,16 @@ function bridgeSyncInstancePreviewRowsR8B(net) {
 
 // KGW_BRIDGE_AUTOFIX_BUTTON_INITIAL_LABEL_R111G
 function kgwBridgeAutofixButtonInitialLabelR111G(root = document) {
-  const rawKey = "bridge.autofixPorts.button";
-  const fallback = "Auto Fix Ports";
-
-  try {
-    const candidates = Array.from(root.querySelectorAll("button, [role='button']"));
-    for (const el of candidates) {
-      const text = String(el.textContent || "").trim();
-      if (text === rawKey) {
-        el.textContent = fallback;
-        el.setAttribute("data-i18n", rawKey);
-        el.setAttribute("data-kgw-owner", "bridgeInstances");
-      }
-    }
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
+  return wasmBridgeAutofixButtonInitialLabelUiR111G(root);
 }
-
+/* KGW_BRIDGE_SCOPED_START_CONFLICT_R110H is Rust-owned in bridge_port_validation.rs. */
 function bridgeAssertNoPortConflictsR5(net) {
-  if (net !== "mainnet") return;
-  // KGW_BRIDGE_SCOPED_START_CONFLICT_R110H
-  // Start validation must be scoped to the requested network/active instance.
-  // Stale or duplicated rows from other networks must not block Start.
-  const normalizePort = (value) => {
-    const clean = String(value || "").trim().replace(/^:/, "");
-    if (!/^\d+$/.test(clean)) return "";
-    const n = Number(clean);
-    if (!Number.isInteger(n) || n <= 0 || n > 65535) return "";
-    return String(n);
-  };
-
-  const cfg = kgwBridgeNetworkProfile(net) || {};
-  const defaultPort = normalizePort(cfg.stratumPort || cfg.port || "");
-  const structured = typeof kgwBridgeR51ReadStructuredInstancesR26B === "function"
-    ? kgwBridgeR51ReadStructuredInstancesR26B(net)
-    : { activeInstance: String(activeInstance?.[net] || ""), instances: Array.isArray(bridgeInstances?.[net]) ? bridgeInstances[net] : [] };
-
-  const instances = Array.isArray(structured?.instances) ? structured.instances : [];
-  const activeId = String(structured?.activeInstance || activeInstance?.[net] || "");
-  const uniqueById = new Map();
-
-  for (const item of instances) {
-    if (!item || typeof item !== "object") continue;
-    const id = String(item.id || "");
-    const key = id || JSON.stringify(item);
-    if (!uniqueById.has(key)) uniqueById.set(key, item);
-  }
-
-  const activeRecord = activeId && uniqueById.has(activeId)
-    ? uniqueById.get(activeId)
-    : Array.from(uniqueById.values())[0] || null;
-
-  const activePort = normalizePort(
-    activeRecord?.instancePort ||
-    activeRecord?.port ||
-    activeRecord?.stratumPort ||
-    ""
+  return wasmBridgeAssertNoPortConflictsR5(
+    String(net || ""),
+    typeof kgwBridgeR51ReadStructuredInstancesR26B === "function" ? kgwBridgeR51ReadStructuredInstancesR26B : null,
+    bridgeInstances,
+    activeInstance
   );
-
-  const conflictDetails = {
-    patch: "R110H",
-    owner: "existing-bridge-port-conflict-owner-r5-scoped-start",
-    network: net,
-    defaultPort,
-    activeInstanceId: activeId,
-    activeInstancePort: activePort,
-    instanceCount: instances.length,
-    uniqueInstanceCount: uniqueById.size,
-    policy: "start checks current network active instance only; stale cross-network conflicts are not blockers"
-  };
-
-  try {
-    kgwBridgeSmallOwnerTraceR44D(net, "port-conflict", "r110h-scoped-start-conflict-check", conflictDetails);
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-
-  if (!activeRecord) {
-    return { ok: true, conflictCount: 0, conflicts: [], message: "" };
-  }
-
-  if (!activePort) {
-    const msg = "Active Bridge instance has no valid Stratum port.";
-    try {
-      kgwBridgeSmallOwnerTraceR44D(net, "port-conflict", "r110h-active-instance-port-invalid", {
-        ...conflictDetails,
-        message: msg
-      });
-    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-    throw new Error(msg);
-  }
-
-  // If the selected instance uses the network default port, do not block Start here.
-  // R110F backend now uses the active instance contract as the runtime start target.
-  // The old global blocker incorrectly treated default-vs-instance as two separate listeners.
-  return { ok: true, conflictCount: 0, conflicts: [], message: "" };
 }
 
 
@@ -544,43 +456,22 @@ function bridgeAssertNoPortConflictsR5(net) {
  * - Save remains allowed with warning.
  * - Covers mainnet, testnet10, testnet13 through BRIDGE_NETWORKS.
  */
-function bridgeApplyPortConflictStartStateR33(net, validation, reason) {
-  return wasmBridgeApplyPortConflictStartStateR33(
-    String(net || ""),
-    validation || {},
+/* R33 per-network validate/apply state is Rust-owned; JS retains only live callers below. */
+function bridgeValidateAllPortConflictStatesR33(reason) {
+  return wasmBridgeValidateAllPortConflictStatesR33(
+    bridgeInstances,
+    activeInstance,
     String(reason || "")
   );
 }
 
-function bridgeValidateAndApplyPortConflictStateR33(net, reason) {
-  const normalized = String(net || "").trim();
-  if (!normalized) return { ok: true, blocked: false, message: "", validation: { ok: true, conflicts: [] } };
-
-  const validation = bridgeValidatePortConflictsR5(normalized);
-  return bridgeApplyPortConflictStartStateR33(normalized, validation, reason);
-}
-
-function bridgeValidateAllPortConflictStatesR33(reason) {
-  const results = {};
-  for (const profile of BRIDGE_NETWORKS) {
-    const net = String(profile && profile.key || "");
-    if (!net) continue;
-    results[net] = bridgeValidateAndApplyPortConflictStateR33(net, reason || "all");
-  }
-  return results;
-}
-
-
 function bridgeSchedulePortConflictValidationR33(net, reason) {
-  const normalized = String(net || "").trim();
-  window.clearTimeout(window.__kgwBridgePortConflictValidationTimerR33);
-  window.__kgwBridgePortConflictValidationTimerR33 = window.setTimeout(() => {
-    if (normalized) {
-      bridgeValidateAndApplyPortConflictStateR33(normalized, reason || "scheduled");
-    } else {
-      bridgeValidateAllPortConflictStatesR33(reason || "scheduled-all");
-    }
-  }, 60);
+  return wasmBridgeSchedulePortConflictValidationR33(
+    bridgeInstances,
+    activeInstance,
+    String(net || ""),
+    String(reason || "")
+  );
 }
 
 
@@ -1369,18 +1260,7 @@ function bridgePortProfileR35B(net) {
  * - Prefer changing conflicting instance ports.
  * - R33 remains the Start blocker.
  */
-function bridgeTracePortAutofixR37(net, phase, details) {
-  try {
-    kgwBridgeSmallOwnerTraceR44D(net, "port-autofix", phase, {
-      patch: "R37",
-      owner: "bridge-existing-port-conflict-owner-autofix",
-      policy: "user-triggered-only-change-actual-conflicts",
-      details: details && typeof details === "object" ? details : {}
-    });
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-}
-
-
+/* R37 trace ownership lives in Rust bridge_port_ui.rs. */
 /* KGW_BRIDGE_AUTOFIX_GLOBAL_USED_PORTS_PATCH_R45
  * Strengthens existing R37 Auto Fix:
  * - De-duplicates repeated conflict owners.
@@ -1391,123 +1271,32 @@ function bridgeTracePortAutofixR37(net, phase, details) {
  */
 
 
-function bridgeRefreshAutofixTouchedNetsR45(touchedNets, activeNet, reason) {
-  for (const touchedNet of touchedNets) {
-    bridgeRefreshInstances(touchedNet);
-    updateCommand(touchedNet);
-    bridgeValidateAndApplyPortConflictStateR33(touchedNet, reason || "r45-autofix");
-  }
-
-  if (activeNet && !touchedNets.has(activeNet)) {
-    updateCommand(activeNet);
-    bridgeValidateAndApplyPortConflictStateR33(activeNet, reason || "r45-autofix-active");
-  }
-
-  bridgeValidateAllPortConflictStatesR33(reason || "r45-autofix-all");
-  bridgeRefreshPortAutofixButtonsR37(reason || "r45-autofix-buttons");
-}
-
-
 function bridgeApplyPortAutofixR37(activeNet) {
-  const net = String(activeNet || "");
-  const validation = bridgeValidatePortConflictsR5(net);
-  let collected = [];
-  try {
-    collected = bridgeCollectConfiguredPortsR5();
-  } catch (_) {
-    // Preserve the empty fallback initialized above.
-  }
-
-  bridgeTracePortAutofixR37(net, "r37-port-autofix-begin", {
-    patch2: "R45",
-    mode: "rust-iterative-global-used-ports",
-    activeNet: net
-  });
-
-  const result = wasmBridgeApplyPortAutofixR37(
-    net,
-    validation || {},
-    bridgeInstances || {},
-    collected,
-    8
+  return wasmBridgeApplyPortAutofixUiR37(
+    String(activeNet || ""),
+    bridgeInstances,
+    activeInstance,
+    (net) => bridgeRefreshInstances(net),
+    (net) => updateCommand(net),
+    (net, message) => kgwBridgeSetRuntimeActivityV1(net, message)
   );
-  const changes = Array.isArray(result && result.changes) ? result.changes : [];
-  const finalValidation = result && result.validation ? result.validation : validation;
-  const touchedNets = new Set();
-
-  for (const change of changes) {
-    const changeNet = String(change && change.net || net);
-    touchedNets.add(changeNet);
-    bridgeTracePortAutofixR37(changeNet, "r37-port-autofix-change", change);
-  }
-
-  if (!changes.length) {
-    bridgeTracePortAutofixR37(net, "r37-port-autofix-noop", {
-      reason: finalValidation && finalValidation.ok ? "no-conflicts" : "no-instance-conflicts-can-be-autofixed",
-      patch2: "R45"
-    });
-  }
-
-  bridgeRefreshAutofixTouchedNetsR45(touchedNets, net, "r45-autofix-final");
-
-  bridgeTracePortAutofixR37(net, "r37-port-autofix-complete", {
-    patch2: "R45",
-    changedCount: changes.length,
-    finalOk: Boolean(finalValidation && finalValidation.ok),
-    finalConflictCount: finalValidation && Array.isArray(finalValidation.conflicts) ? finalValidation.conflicts.length : 0,
-    changes: changes.slice(0, 80)
-  });
-
-  kgwBridgeSetRuntimeActivityV1(
-    net,
-    kgwBridgeAutoFixTextR54D3("changedPrefix") + " " + String(changes.length) + " conflicting instance port(s)." +
-      (finalValidation && finalValidation.ok ? " Conflicts cleared." : " Some conflicts remain.")
+}
+/* Auto Fix button enumeration lives in Rust bridge_port_ui.rs. */
+function bridgeRefreshPortAutofixButtonsR37(reason) {
+  return wasmBridgeRefreshPortAutofixButtonsUiR37(
+    String(reason || ""),
+    bridgeInstances,
+    activeInstance
   );
-
-  return { changed: changes.length, changes, finalOk: Boolean(finalValidation && finalValidation.ok) };
 }
-
-function bridgeAutofixButtonsR37() {
-  const root = document.getElementById("kaspa-bridge");
-  if (!root) return [];
-  return Array.from(root.querySelectorAll('[data-bridge-action="auto-fix-ports-r37"]'));
-}
-
-function bridgeRefreshPortAutofixButtonsR37(_reason) {
-  for (const button of bridgeAutofixButtonsR37()) {
-    const net = String(button.dataset.net || "");
-    const validation = bridgeValidatePortConflictsR5(net);
-    const plan = wasmBridgePlanPortAutofixR37(net, validation || {}, bridgeInstances || {});
-    const planChanges = plan && Array.isArray(plan.changes) ? plan.changes : [];
-    const enabled = Boolean(validation && !validation.ok && planChanges.length);
-
-    button.disabled = !enabled;
-    button.classList.toggle("kgw-port-autofix-ready-r37", enabled);
-    button.dataset.kgwPortAutofixReadyR37 = enabled ? "true" : "false";
-    button.title = enabled
-      ? "Auto-fix conflicting instance ports only. Valid non-conflicting manual ports stay unchanged."
-      : "No auto-fixable instance port conflicts for this network.";
-
-    if (enabled) {
-      button.textContent = kgwBridgeAutoFixTextR54D3("conflictingButton");
-    } else {
-      button.textContent = kgwBridgeAutoFixTextR54D3("button");
-    }
-  }
-}
-
 function bridgeSchedulePortAutofixRefreshR37(net, reason) {
-  window.clearTimeout(window.__kgwBridgePortAutofixRefreshTimerR37);
-  window.__kgwBridgePortAutofixRefreshTimerR37 = window.setTimeout(() => {
-    if (net) {
-      bridgeValidateAndApplyPortConflictStateR33(net, "r37-refresh-" + String(reason || ""));
-    } else {
-      bridgeValidateAllPortConflictStatesR33("r37-refresh-all-" + String(reason || ""));
-    }
-    bridgeRefreshPortAutofixButtonsR37(reason || "scheduled");
-  }, 80);
+  return wasmBridgeSchedulePortAutofixRefreshUiR37(
+    String(net || ""),
+    String(reason || ""),
+    bridgeInstances,
+    activeInstance
+  );
 }
-
 /* KGW_BRIDGE_AUTOFIX_I18N_PATCH_R54D3
  * Local i18n wrapper for existing Bridge Auto Fix labels/log prefix.
  */
@@ -1516,113 +1305,14 @@ function bridgeSchedulePortAutofixRefreshR37(net, reason) {
  * KGW_BRIDGE_AUTOFIX_I18N_OWNER_SAFE_FALLBACK_R112D:
  * Never return a raw bridge.autofixPorts.* key to the UI.
  */
-function kgwBridgeAutoFixTextR54D3(key) {
-  const map = {
-    button: "bridge.autofixPorts.button",
-    conflictingButton: "bridge.autofixPorts.conflictingButton",
-    fixingButton: "bridge.autofixPorts.fixingButton",
-    fixedButton: "bridge.autofixPorts.fixedButton",
-    failedButton: "bridge.autofixPorts.failedButton",
-    disabledButton: "bridge.autofixPorts.disabledButton",
-    title: "bridge.autofixPorts.title",
-    changedPrefix: "bridge.autofixPorts.changedPrefix"
-  };
-
-  const fallback = {
-    button: "Auto Fix Ports",
-    conflictingButton: "Auto Fix Ports",
-    fixingButton: "Fixing Ports...",
-    fixedButton: "Ports Fixed",
-    failedButton: "Auto Fix Failed",
-    disabledButton: "Auto Fix Ports",
-    title: "Auto Fix Ports",
-    changedPrefix: "Changed ports"
-  };
-
-  const i18nKey = map[key] || map.button;
-  const fallbackText = fallback[key] || fallback.button;
-
-  const cleanTranslated = (value) => {
-    const text = String(value || "").trim();
-    if (!text) return "";
-    if (text === i18nKey) return "";
-    if (/^bridge\.autofixPorts\./.test(text)) return "";
-    return text;
-  };
-
-  const translated = cleanTranslated(kgwI18nTextR41(i18nKey, fallbackText));
-  if (translated) return translated;
-
-  return fallbackText;
-}
-
+/* R54D3 Auto Fix text ownership lives in Rust bridge_port_ui.rs. */
 function bridgeInstallPortAutofixButtonR37(root) {
-  /* KGW_BRIDGE_AUTOFIX_BUTTON_NEXT_TO_STOP_PATCH_R44
-   * Layout-only replacement:
-   * - Removes the full-width R40 Auto Fix banner.
-   * - Moves the same R37 Auto Fix button beside Stop in the runtime controls row.
-   * - Keeps R37 action/click handler and R33/R35B/R42 port policy unchanged.
-   */
-  if (!root) return;
-
-  for (const oldHost of Array.from(root.querySelectorAll('[data-kgw-bridge-port-autofix-host-r40="true"]'))) {
-    oldHost.remove();
-  }
-
-  for (const profile of BRIDGE_NETWORKS) {
-    const net = String(profile && profile.key || "");
-    if (!net) continue;
-
-    const selector = '[data-bridge-action="auto-fix-ports-r37"][data-net="' + net + '"]';
-    const existingButtons = Array.from(root.querySelectorAll(selector));
-
-    let button = existingButtons.find((item) => item.dataset.kgwBridgePortAutofixNextToStopR44 === "true") || null;
-
-    for (const item of existingButtons) {
-      if (item !== button) item.remove();
-    }
-
-    if (!button) {
-      button = document.createElement("button");
-      button.type = "button";
-      button.dataset.bridgeAction = "auto-fix-ports-r37";
-      button.dataset.net = net;
-      button.dataset.kgwBridgePortAutofixNextToStopR44 = "true";
-    }
-
-    button.className = "kgw-bridge-port-autofix-next-to-stop-r44";
-    button.textContent = kgwBridgeAutoFixTextR54D3("button");
-    button.title = kgwBridgeAutoFixTextR54D3("title");
-
-
-    const stopButton =
-      byId(id(net, "stop")) ||
-      root.querySelector('[data-bridge-action="stop"][data-net="' + net + '"]') ||
-      root.querySelector('[data-net="' + net + '"][id$="-stop"]');
-
-    const startButton =
-      byId(id(net, "start")) ||
-      root.querySelector('[data-bridge-action="start"][data-net="' + net + '"]') ||
-      root.querySelector('[data-net="' + net + '"][id$="-start"]');
-
-    const anchor = stopButton || startButton;
-
-    if (anchor && anchor.parentNode) {
-      if (button.parentNode !== anchor.parentNode) {
-        anchor.parentNode.insertBefore(button, stopButton ? stopButton.nextSibling : anchor.nextSibling);
-      } else if (stopButton && button.previousSibling !== stopButton) {
-        anchor.parentNode.insertBefore(button, stopButton.nextSibling);
-      }
-    } else if (!button.parentNode) {
-      root.appendChild(button);
-    }
-  }
-
-  bridgeRefreshPortAutofixButtonsR37("r44-next-to-stop-install");
+  return wasmBridgeInstallPortAutofixButtonUiR37(
+    root,
+    bridgeInstances,
+    activeInstance
+  );
 }
-
-
-
 function bridgeNodeMode(net) {
   const value = v(net, "nodeMode");
   return value === "inprocess" ? "inprocess" : "external";
