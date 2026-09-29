@@ -23,13 +23,7 @@ const SLICES: &[(&str, &str)] = &[
     ("function kgwBridgeForm(", "function kgwBridgeValidateForm("),
     (
         "const BRIDGE_NETWORKS = wasmBridgeNetworkProfiles();",
-        "function kgwBridgeSetNetworkEnabled(",
-    ),
-    ("function byId(", "function esc("),
-    ("function id(", "function v("),
-    (
-        "function v(",
-        "function kgwBridgeInstanceCommandRecordR13B(",
+        "const bridgeInstances = {",
     ),
     (
         "function kgwBridgeInstanceCommandRecordR13B(",

@@ -15,10 +15,8 @@ const WASM_BIN: &str =
 const SLICES: &[(&str, &str)] = &[
     (
         "const BRIDGE_NETWORKS = wasmBridgeNetworkProfiles();",
-        "function kgwBridgeSetNetworkEnabled(",
+        "const bridgeInstances = {",
     ),
-    ("function byId(", "function esc("),
-    ("function id(", "function v("),
     (
         "function kgwBridgeV7RuntimeRunningFromText(",
         "function kgwBridgeSetRuntimeErrorV1(",
@@ -172,7 +170,8 @@ const sandbox = {
   wasmBridgeNetworkProfile: wasm.bridgeNetworkProfile,
   wasmBridgeNetworkEnabled: wasm.bridgeNetworkEnabled,
   wasmBridgeById: wasm.bridgeById,
-  wasmBridgeElementId: wasm.bridgeElementId
+  wasmBridgeElementId: wasm.bridgeElementId,
+  wasmBridgeChecked: wasm.bridgeChecked
 };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
