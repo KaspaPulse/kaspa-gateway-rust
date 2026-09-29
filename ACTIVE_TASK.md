@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. OP213 bridge passthrough-wrapper cleanup and affected gate repairs are CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint fb4951da113fb957d781f3d3df185f1091c09c13, tree a1c691103458a83d20c5995a0c899065214169ac; affected qualification PASS; no push.
+PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. OP214 render/difficulty passthrough-wrapper retirement is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 5dfe449e83c2b37a147ede75fd5e55f35cda17b2, tree ec9c1be9d9c1be5e2b05d083da70c8752e747fb0; affected qualification PASS; no push.
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
 - Phase 1 foundation is committed locally as `33461f6511c69b457c5f3dd069b54322d9a236a0` / tree `e355550c6fa311fdfb4dd54a8cd29c4b45f0c583`.
@@ -84,13 +84,13 @@ PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. O
 The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates. The remaining owned source debt is exactly kaspa-bridge.js plus that locked PowerShell helper; execution debt remains 8. Independent Bridge migration work continues.
 
 ## Last Completed Action
-OP212 Bridge instance UI ownership is CLOSED_LOCAL / VERIFIED_SUCCESS. The qualified implementation checkpoint is `734eb2de17570eef2c831cb8647cc2c489c21e39` / tree `03a1359e6602065a381292b27c6c57fde16542b7`; browser/WASM parity is 16/16 PASS, dedicated test processes are cleaned, and no push occurred.
+OP214 Bridge render/difficulty passthrough-wrapper retirement is CLOSED_LOCAL / VERIFIED_SUCCESS. Eight hand-maintained JavaScript wrappers were retired in favor of direct existing Rust/WASM calls. The qualified implementation checkpoint is 5dfe449e83c2b37a147ede75fd5e55f35cda17b2 / tree ec9c1be9d9c1be5e2b05d083da70c8752e747fb0; Bridge SHA-256 is cc9862288fa72f0f140bd9820271fe3e7892ab5ffd709835c8d8412371ee3b03; no push occurred.
 
 ## Current Action
-OP213 is locally complete and bound to implementation checkpoint fb4951da113fb957d781f3d3df185f1091c09c13 / tree a1c691103458a83d20c5995a0c899065214169ac. Product Bridge source SHA-256 remains a37a079241be23503fcb823b165683570ec95418efb936e96fcaa63ffad2cc51; readiness harness SHA-256 is c2d26f5f05fc6ba06bd986933c2fcc9b55fa578c189d5ae208ce8e6ac9d08863. No product mutation or push is active.
+OP214 is locally complete. Affected Node syntax, Desktop ESLint zero-warning, effective-Bridge gate, Bridge-readiness gate, language-policy check/inventory, project-continuity gate, and diff-check all PASS. Only this docs-only continuity closeout is active; product source is already checkpointed and unchanged.
 
 ## Next Action
-Audit the remaining kaspa-bridge.js source debt read-only, select the smallest coherent unblocked Rust ownership boundary, freeze its exact input, persist a write-ahead intent before mutation, and continue locally. Do not push yet.
+Audit the remaining kaspa-bridge.js source debt read-only, select the smallest coherent unblocked Rust ownership boundary, freeze its exact input, and persist a write-ahead intent before any mutation. Do not touch the separately blocked zero-touch PowerShell helper and do not push yet.
 
 ## Verification Required
 - OP103 affected surface: legacy launcher frozen at SHA-256 `7229e1fd33546f0c14dc89dd34627b2626eaede00d07bdf08956721964cca0c5`; stable diagnostic/Windows-evidence/clipboard tests 5/5 each PASS; cargo check, FMT and strict xtask Clippy PASS; MSRV 1.97.1 check + diagnostic 5/5 PASS; aggregate true-raw-log gate PASS; full-local parser PASS; language inventory PASS at Rust 169 / source debt 16 / execution debt 10 / exceptions 30 / unapproved 0/0; diff-check PASS.

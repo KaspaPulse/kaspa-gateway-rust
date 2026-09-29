@@ -1,13 +1,13 @@
 # CURRENT STATE
-- Current product boundary: OP213 bridge passthrough-wrapper cleanup is CLOSED_LOCAL / VERIFIED_SUCCESS at fb4951da113fb957d781f3d3df185f1091c09c13, tree a1c691103458a83d20c5995a0c899065214169ac; no product mutation or push is active. Structured continuity state remains authoritative for transient transaction status.
+- Current product boundary: OP214 Bridge render/difficulty passthrough-wrapper retirement is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 5dfe449e83c2b37a147ede75fd5e55f35cda17b2, tree ec9c1be9d9c1be5e2b05d083da70c8752e747fb0; Bridge SHA-256 cc9862288fa72f0f140bd9820271fe3e7892ab5ffd709835c8d8412371ee3b03; no product mutation or push is active.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP213 verified implementation checkpoint is fb4951da113fb957d781f3d3df185f1091c09c13, tree a1c691103458a83d20c5995a0c899065214169ac.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP214 verified implementation checkpoint is 5dfe449e83c2b37a147ede75fd5e55f35cda17b2, tree ec9c1be9d9c1be5e2b05d083da70c8752e747fb0.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **VERIFY DYNAMICALLY before acting.** OP213 qualified implementation/gate changes are checkpointed at fb4951da113fb957d781f3d3df185f1091c09c13; steady-state after the docs-only closeout checkpoint is CLEAN.
+- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP214 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -23,6 +23,11 @@
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
 
+## OP214 VERIFIED EVIDENCE
+- Eight hand-maintained Bridge render/difficulty passthrough wrappers were retired without changing the Rust/WASM implementation owner. The implementation is committed locally as 5dfe449e83c2b37a147ede75fd5e55f35cda17b2, tree ec9c1be9d9c1be5e2b05d083da70c8752e747fb0; no push has occurred.
+- Bridge source SHA-256 moved from a37a079241be23503fcb823b165683570ec95418efb936e96fcaa63ffad2cc51 to cc9862288fa72f0f140bd9820271fe3e7892ab5ffd709835c8d8412371ee3b03.
+- Affected qualification: Node syntax PASS; Desktop ESLint zero-warning PASS; effective-bridge-settings-gate PASS; bridge-readiness-frontend-regressions PASS; language-policy check/inventory PASS at Rust 221 / source debt 2 / execution debt 8 / unapproved 0/0; project-continuity-gate PASS; diff-check PASS.
+- Unchanged Rust/MSRV/WASM codegen evidence remains reusable because OP214 modified only kaspa-bridge.js and did not change Rust or generator source.
 ## OP213 VERIFIED EVIDENCE
 - Bridge passthrough-wrapper cleanup is locally verified and committed as fb4951da113fb957d781f3d3df185f1091c09c13, tree a1c691103458a83d20c5995a0c899065214169ac; no push has occurred.
 - Product Bridge source SHA-256 is a37a079241be23503fcb823b165683570ec95418efb936e96fcaa63ffad2cc51; readiness gate SHA-256 after the direct WASM sandbox binding repair is c2d26f5f05fc6ba06bd986933c2fcc9b55fa578c189d5ae208ce8e6ac9d08863.
@@ -121,4 +126,4 @@
 
 ## NEXT ACTION
 
-OP213 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint fb4951da113fb957d781f3d3df185f1091c09c13, tree a1c691103458a83d20c5995a0c899065214169ac; no push. Audit the remaining kaspa-bridge.js source debt read-only and select the smallest coherent unblocked Rust ownership boundary. Persist a write-ahead intent before any source mutation. The separate zero-touch helper blocker remains unchanged.
+OP214 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 5dfe449e83c2b37a147ede75fd5e55f35cda17b2, tree ec9c1be9d9c1be5e2b05d083da70c8752e747fb0; no push. Audit the remaining kaspa-bridge.js source debt read-only and select the smallest coherent unblocked Rust ownership boundary. Persist a write-ahead intent before mutation. The separate zero-touch helper blocker remains unchanged.
