@@ -4,9 +4,9 @@
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest verified implementation checkpoint is `6e341827b5e9cd80f93c41387017cf353fe1cdb2`, tree `4c7871e10b86d48c4ee6d960108a17d3f70d5cad`.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest verified implementation checkpoint is `38634dd24da4499fd7f4878f30db7bcd02b8ee46`, tree `7cf689f6d8bc4b9980bcc54812428bcf210f0ab6`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **CLEAN** after OP209 implementation and continuity checkpoints.
+- Working tree: **DIRTY / CONTINUITY DOCS ONLY** after the verified OP210 implementation checkpoint `38634dd24da4499fd7f4878f30db7bcd02b8ee46`; only `CURRENT_STATE.md` and `ACTIVE_TASK.md` are being synchronized to that exact source identity. No implementation mutation is in progress.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -18,9 +18,19 @@
 - Owned non-Rust programming source debt: 2.
 - Non-Rust execution-wiring debt: 8.
 - Technical exceptions: 39.
-- Rust source inventory: 217.
+- Rust source inventory: 218.
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
+
+## OP210 VERIFIED EVIDENCE
+
+- OP210 implementation is committed locally as `38634dd24da4499fd7f4878f30db7bcd02b8ee46`, tree `7cf689f6d8bc4b9980bcc54812428bcf210f0ab6`; no push has occurred.
+- Exact frozen pre-mutation Bridge source is preserved at `.git/autonomous-task-continuity/artifacts/op210/legacy-kaspa-bridge.js`, SHA-256 `15e17c3236ff06eaadab5f52d2a0827834f6667c8f7d5f2b3d8f43a0f6fda3da`.
+- Rust owner `crates/kaspa-gateway-frontend-wasm/src/bridge_port_orchestration.rs` owns configured-port collection, used-port sets, missing-port assignment, external-range reassignment, instance creation, and instance-state orchestration while preserving existing soft port policy and traces.
+- Pre-codegen qualification: repository FMT PASS; frontend-WASM strict Clippy PASS; targeted effective-Bridge harness tests 2/2 PASS; strict xtask Clippy PASS; exact-source Rust 1.97.1 wasm32 evidence reused.
+- Deterministic frontend-WASM codegen write/check PASS with artifact count 19; generated JS SHA-256 `f4d1a657e0892f0a88947768012357a10c7847e0e3d40d59859f14dc06fa0e3b`; generated WASM SHA-256 `9256fc7f869826823557ea135eb9982c1a979adc142d46fc8a2ec458e1ff83b4`.
+- Exact frozen-legacy/generated-WASM semantic parity: 34/34 PASS. Effective Bridge settings gate PASS; Bridge readiness frontend regressions PASS; language check/inventory PASS at Rust 218 / source debt 2 / execution debt 8 / technical exceptions 39 / unapproved 0/0; `git diff --check` PASS.
+- Source JavaScript SHA remains `864cd5cd6cc341529993d1bdd8e09889dd75e1c007b2ffca0a13bd3564cc35bf`, so the prior Node syntax and zero-warning Desktop ESLint evidence remains valid; `frontend/generated/` is explicitly ignored by Desktop ESLint.
 
 ## OP103 VERIFIED EVIDENCE
 
@@ -84,4 +94,4 @@
 
 ## NEXT ACTION
 
-OP209 Bridge presentation rendering and its continuity closeout are VERIFIED_LOCAL; current Git is clean at continuity checkpoint `43ea2de8eb4af596496d5fdb55f2c81022bf65de`, tree `578f22215c3181ca3c699192e6e779472b3dbf6b`, while the verified OP209 implementation checkpoint remains `6e341827b5e9cd80f93c41387017cf353fe1cdb2`. Read-only debt audit selected OP210: migrate Bridge configured/used-port collection plus instance-port assign/reassign/create orchestration into the existing Rust port owner, reusing current Rust policies and leaving only thin JS calls. Write OP210 intent and freeze exact legacy contract before source mutation. No push yet.
+OP210 implementation checkpoint is VERIFIED_SUCCESS as `38634dd24da4499fd7f4878f30db7bcd02b8ee46`. Run only the project-continuity gate and `git diff --check` invalidated by this post-checkpoint mirror update, create the docs-only continuity checkpoint if both pass, then audit the remaining `kaspa-bridge.js` debt and immediately continue from the smallest independent unblocked Bridge boundary. No push yet.
