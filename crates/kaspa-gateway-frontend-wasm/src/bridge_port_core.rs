@@ -1003,6 +1003,38 @@ pub fn bridge_choose_replacement_port_r37(
     choose_replacement_port(&change, &planned, &bridge_instances, &collected_records)
 }
 
+#[wasm_bindgen(js_name = bridgeWriteInstancePortR37)]
+pub fn bridge_write_instance_port_r37(
+    bridge_instances: JsValue,
+    net: String,
+    instance_id: String,
+    kind: String,
+    new_port: String,
+) -> bool {
+    let list = property(&bridge_instances, &net);
+    if !Array::is_array(&list) {
+        return false;
+    }
+    let instance = Array::from(&list)
+        .iter()
+        .find(|item| crate::js_string_owned(&property(item, "id")) == instance_id)
+        .unwrap_or(JsValue::UNDEFINED);
+    if !present(&instance) {
+        return false;
+    }
+    let field_name = if kind == "prom" {
+        "instanceProm"
+    } else {
+        "instancePort"
+    };
+    let normalized = normalize_soft_text(&new_port);
+    if normalized.is_empty() {
+        return false;
+    }
+    set(&instance, field_name, &JsValue::from_str(&normalized));
+    true
+}
+
 fn choose_replacement_port(
     change: &JsValue,
     planned_used: &[String],

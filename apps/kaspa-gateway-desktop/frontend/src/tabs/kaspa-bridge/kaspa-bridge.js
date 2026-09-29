@@ -41,6 +41,7 @@ import initBridgeRust, {
   bridgeExtractPortsFromTextR5 as wasmBridgeExtractPortsFromTextR5,
   bridgePlanPortAutofixR37 as wasmBridgePlanPortAutofixR37,
   bridgeFindRecommendedOrNearestUnusedPortR35B as wasmBridgeFindRecommendedOrNearestUnusedPortR35B,
+  bridgeWriteInstancePortR37 as wasmBridgeWriteInstancePortR37,
   bridgeInstancePortShouldFollowExternalRangeR91 as wasmBridgeInstancePortShouldFollowExternalRangeR91,
   bridgeNormalizePortR9 as wasmBridgeNormalizePortR9,
   bridgePortIsValidR9 as wasmBridgePortIsValidR9,
@@ -1813,16 +1814,20 @@ function bridgeWriteInstancePortR37(change, newPort) {
   const net = String(change && change.net || "");
   const instanceId = String(change && change.instanceId || "");
   const kind = String(change && change.kind || "");
-  const list = Array.isArray(bridgeInstances[net]) ? bridgeInstances[net] : [];
-  const instance = list.find((row) => String(row && row.id) === instanceId);
-  if (!instance) return false;
+  const normalizedPort = String(newPort || "").trim().replace(/^:/, "");
+  const ok = wasmBridgeWriteInstancePortR37(
+    bridgeInstances || {},
+    net,
+    instanceId,
+    kind,
+    normalizedPort
+  );
+  if (!ok) return false;
 
   const fieldName = kind === "prom" ? "instanceProm" : "instancePort";
-  instance[fieldName] = String(newPort || "");
-
   const field = byId(id(net, fieldName + "-" + instanceId));
   if (field) {
-    field.value = String(newPort || "");
+    field.value = normalizedPort;
     field.dispatchEvent(new Event("input", { bubbles: true }));
     field.dispatchEvent(new Event("change", { bubbles: true }));
   }
