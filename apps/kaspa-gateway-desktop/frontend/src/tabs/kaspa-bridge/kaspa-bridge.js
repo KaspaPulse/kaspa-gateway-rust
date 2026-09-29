@@ -2,8 +2,11 @@ import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { BRIDGE_MANAGED, BRIDGE_REQUIRED, BRIDGE_OPTIONAL, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initBridgeRust, {
+  bridgeApplyRuntimeLogReport as wasmBridgeApplyRuntimeLogReport,
+  bridgeClearRawLogBuffer as wasmBridgeClearRawLogBuffer,
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
+  bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
   bridgeStartTraceFrontend as wasmBridgeStartTraceFrontend,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
@@ -4083,12 +4086,6 @@ function addRawValue(lines, flag, value) {
 }
 
 
-function bridgeLogLineBelongsToBridge(_line) {
-  // KGW_BRIDGE_RAW_NO_FILTER_R20
-  return true;
-}
-
-
 // KGW_BRIDGE_LOG_AUTOSCROLL_CONTROLS_R27_START
 function kgwBridgeLogAutoScrollKeyR27(net) {
   return `kgw.bridge.log.autoscroll.${net}`;
@@ -4162,137 +4159,22 @@ function kgwInstallBridgeLogAutoScrollControlsR27() {
 }
 // KGW_BRIDGE_LOG_AUTOSCROLL_CONTROLS_R27_END
 
-const KGW_BRIDGE_RAW_LOG_BUFFER_LIMIT_V1 = 4096;
-const KGW_BRIDGE_RAW_LOG_BUFFERS_V1 = new Map();
-
 function kgwBridgeActiveRawLogInstanceIdV1(net) {
   bridgeEnsureInstanceState(net);
   return String(activeInstance?.[net] || (bridgeInstances?.[net]?.[0] && bridgeInstances[net][0].id) || "");
 }
 
-function kgwBridgeRawLogBufferKeyV1(net, role = "bridge", instanceId = "") {
-  // Official Bridge output is process-wide for one role/network owner. The
-  // upstream logger does not attribute records to individual listeners.
-  void instanceId;
-  return [
-    String(net || "").trim().toLowerCase(),
-    String(role || "bridge").trim().toLowerCase()
-  ].join(":");
-}
-
-function kgwBridgeRawLogBufferV1(net, role = "bridge", instanceId = "") {
-  const key = kgwBridgeRawLogBufferKeyV1(net, role, instanceId);
-  if (!KGW_BRIDGE_RAW_LOG_BUFFERS_V1.has(key)) {
-    KGW_BRIDGE_RAW_LOG_BUFFERS_V1.set(key, { records: new Map() });
-  }
-  return KGW_BRIDGE_RAW_LOG_BUFFERS_V1.get(key);
-}
-
-function kgwBridgeRawLogTextHasTransportWrapperV1(value) {
-  const text = typeof value === "string" ? value.trim() : "";
-  if (!text) return false;
-  if (/^kgw_raw_process_log_v1(?:;|$)/i.test(text)) return true;
-  return /^(?:\[KGW_CHILD_STD(?:OUT|ERR)\]\s*)?\{[\s\S]*["']eventKind["']\s*:\s*["']diagnostic_transport_record["']/i.test(text);
-}
-
-function kgwBridgeLegacyTransportReportTextV1(report) {
-  if (typeof report === "string") return report;
-  if (!report || typeof report !== "object" || Array.isArray(report) || Array.isArray(report.entries)) return "";
-  return String(report.rawText ?? report.raw_text ?? report.line ?? "");
-}
-
-function kgwBridgeNormalizeRawLogEntryV1(entry, expectedNet, expectedRole = "bridge", expectedInstanceId = "") {
-  void expectedInstanceId;
-  if (!entry || typeof entry !== "object") return null;
-
-  const rawTextValue = entry.rawText ?? entry.raw_text ?? entry.line;
-  if (rawTextValue === undefined || rawTextValue === null) return null;
-  const sequence = Number(entry.sequence);
-  if (!Number.isSafeInteger(sequence) || sequence < 0) return null;
-
-  const network = String(entry.network || expectedNet || "").trim().toLowerCase();
-  const runtimeRole = String(entry.runtimeRole || entry.runtime_role || expectedRole || "bridge").trim().toLowerCase();
-  const bridgeInstanceId = String(entry.bridgeInstanceId ?? entry.bridge_instance_id ?? "").trim();
-  const stream = String(entry.stream || "").trim().toLowerCase();
-
-  if (network !== String(expectedNet || "").trim().toLowerCase()) return null;
-  if (runtimeRole !== String(expectedRole || "bridge").trim().toLowerCase()) return null;
-  // Official Bridge logging is process-wide; upstream exposes no structural
-  // listener identifier for a record. Never filter official text by a UI instance.
-  if (stream !== "stdout" && stream !== "stderr") return null;
-
-  return Object.freeze({
-    sequence,
-    network,
-    runtimeRole,
-    bridgeInstanceId,
-    stream,
-    receivedMs: Number(entry.receivedMs ?? entry.received_ms ?? 0) || 0,
-    rawText: String(rawTextValue)
-  });
-}
-
-function kgwBridgeTrimRawLogBufferV1(buffer) {
-  const ordered = Array.from(buffer.records.keys()).sort((a, b) => a - b);
-  while (ordered.length > KGW_BRIDGE_RAW_LOG_BUFFER_LIMIT_V1) {
-    const sequence = ordered.shift();
-    buffer.records.delete(sequence);
-  }
-}
-
-function kgwBridgeVisibleRawLogTextV1(net, role = "bridge", instanceId = kgwBridgeActiveRawLogInstanceIdV1(net)) {
-  const buffer = kgwBridgeRawLogBufferV1(net, role, instanceId);
-  return Array.from(buffer.records.values())
-    .sort((a, b) => a.sequence - b.sequence)
-    .map((entry) => entry.rawText)
-    .join("\n");
-}
-
-function kgwBridgeLogEmptyStateV1(net) {
-  return document.getElementById("bridge-" + net + "-logEmpty");
-}
-
 function kgwBridgeRenderRawLogBufferV1(net, role = "bridge", instanceId = kgwBridgeActiveRawLogInstanceIdV1(net)) {
-  const out = byId(id(net, "logOutput"));
-  if (!out) return false;
-
-  const text = kgwBridgeVisibleRawLogTextV1(net, role, instanceId);
-  out.textContent = text;
-
-  const empty = kgwBridgeLogEmptyStateV1(net);
-  if (empty) empty.hidden = text.length > 0;
-
-  if (kgwBridgeLogAutoScrollEnabledR27(net)) out.scrollTop = out.scrollHeight;
-  return true;
+  return wasmBridgeRenderRawLogBuffer(String(net || ""), String(role || "bridge"), String(instanceId || ""));
 }
 
 function kgwBridgeApplyRuntimeLogReportV1(net, role, report, instanceId = kgwBridgeActiveRawLogInstanceIdV1(net)) {
-  const legacyTransportText = kgwBridgeLegacyTransportReportTextV1(report);
-  if (kgwBridgeRawLogTextHasTransportWrapperV1(legacyTransportText)) return 0;
-  const entries = Array.isArray(report?.entries) ? report.entries : [];
-  const buffer = kgwBridgeRawLogBufferV1(net, role, instanceId);
-  let accepted = 0;
-
-  for (const entry of entries) {
-    const normalized = kgwBridgeNormalizeRawLogEntryV1(entry, net, role, instanceId);
-    if (!normalized || buffer.records.has(normalized.sequence)) continue;
-    buffer.records.set(normalized.sequence, normalized);
-    accepted += 1;
-  }
-
-  if (accepted > 0) {
-    kgwBridgeTrimRawLogBufferV1(buffer);
-  }
-
-  kgwBridgeRenderRawLogBufferV1(net, role, instanceId);
-  return accepted;
+  return wasmBridgeApplyRuntimeLogReport(String(net || ""), String(role || "bridge"), report, String(instanceId || ""));
 }
 
 function kgwBridgeClearRawLogBufferV1(net, role = "bridge", instanceId = kgwBridgeActiveRawLogInstanceIdV1(net)) {
-  kgwBridgeRawLogBufferV1(net, role, instanceId).records.clear();
-  kgwBridgeRenderRawLogBufferV1(net, role, instanceId);
+  return wasmBridgeClearRawLogBuffer(String(net || ""), String(role || "bridge"), String(instanceId || ""));
 }
-
 async function kgwBridgeDispatchRuntimeLogClearV1(net, role = "bridge") {
   const invoke = getTauriInvoke();
   if (!invoke) return null;
