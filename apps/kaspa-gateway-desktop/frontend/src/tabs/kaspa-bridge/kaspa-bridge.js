@@ -336,23 +336,6 @@ function kgwBridgeEffectiveSettingsV1(net, structuredInstances) {
 
 
 
-function bridgeReassignInstancePortsFromExternalRangeR91(net, reason) {
-  const normalizedNet = bridgeInstanceNetworkKeyR15(net, net);
-  return wasmBridgeReassignInstancePortsFromExternalRangeR91(
-    bridgeInstances,
-    String(normalizedNet || ""),
-    String(reason || "")
-  );
-}
-
-function bridgeCreateInstanceRecordR9(net) {
-  const normalizedNet = bridgeInstanceNetworkKeyR15(net, net);
-  return wasmBridgeCreateInstanceRecordR9(
-    bridgeInstances,
-    String(normalizedNet || "")
-  );
-}
-
 
 // KGW_BRIDGE_INSTANCE_PORT_CONFLICT_REPAIR_R110G
 
@@ -1049,7 +1032,7 @@ function addInstance(net) {
   net = bridgeInstanceNetworkKeyR15(net, net);
   wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
 
-  const next = bridgeCreateInstanceRecordR9(net);
+  const next = wasmBridgeCreateInstanceRecordR9(bridgeInstances, String(net || ""));
   bridgeInstances[net].push(next);
   activeInstance[net] = next.id;
 
@@ -1470,7 +1453,11 @@ function updateCommand(net) {
   delete preview.dataset.effectiveSettings;
   try {
     bridgeSyncModeControls(net);
-    bridgeReassignInstancePortsFromExternalRangeR91(net, "update-command");
+    wasmBridgeReassignInstancePortsFromExternalRangeR91(
+      bridgeInstances,
+      String(bridgeInstanceNetworkKeyR15(net, net) || ""),
+      "update-command"
+    );
     wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
     const errors = kgwBridgeValidateForm(net);
     if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
@@ -2578,9 +2565,11 @@ function kgwBridgeR51WriteSettings(net, values) {
 
   kgwBridgeR51ApplyCommandOptionsR38C(net, values);
 
-  if (typeof bridgeReassignInstancePortsFromExternalRangeR91 === "function") {
-    bridgeReassignInstancePortsFromExternalRangeR91(net, "r95b-r51-write-settings-normalized-network-ports");
-  }
+  wasmBridgeReassignInstancePortsFromExternalRangeR91(
+    bridgeInstances,
+    String(bridgeInstanceNetworkKeyR15(net, net) || ""),
+    "r95b-r51-write-settings-normalized-network-ports"
+  );
 
   wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
   updateCommand(net);
