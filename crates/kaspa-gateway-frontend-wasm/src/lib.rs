@@ -12,6 +12,7 @@ mod bridge_port_ui;
 mod bridge_port_validation;
 mod bridge_raw_log;
 mod bridge_render;
+mod bridge_runtime_core;
 mod bridge_start_trace;
 mod explorer_addresses;
 mod explorer_calendar;

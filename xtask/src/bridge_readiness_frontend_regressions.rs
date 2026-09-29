@@ -7,6 +7,8 @@ const BRIDGE_SOURCE: &str =
     "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
 const BRIDGE_HELPERS_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs";
+const BRIDGE_RUNTIME_CORE_SOURCE: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_runtime_core.rs";
 const WASM_JS: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 const WASM_BIN: &str =
@@ -18,16 +20,8 @@ const SLICES: &[(&str, &str)] = &[
         "const bridgeInstances = {",
     ),
     (
-        "function kgwBridgeV7RuntimeRunningFromText(",
-        "function kgwBridgeSetRuntimeErrorV1(",
-    ),
-    (
         "function kgwBridgeSetRuntimeErrorV1(",
         "async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning",
-    ),
-    (
-        "function stringifyRuntimeResult(",
-        "function kgwBridgeStartOptions(",
     ),
     (
         "const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();",
@@ -38,7 +32,7 @@ const SLICES: &[(&str, &str)] = &[
         "/* KGW_R51_DIRECT_BRIDGE_LOG_RUNTIME_SETTINGS_OWNER */",
     ),
     (
-        "function kgwBridgeR51IsRunning(",
+        "function kgwBridgeR51SetRuntimeButtons(",
         "function kgwBridgeR51MaybeActivityNotice(",
     ),
 ];
@@ -171,7 +165,15 @@ const sandbox = {
   wasmBridgeNetworkEnabled: wasm.bridgeNetworkEnabled,
   wasmBridgeById: wasm.bridgeById,
   wasmBridgeElementId: wasm.bridgeElementId,
-  wasmBridgeChecked: wasm.bridgeChecked
+  wasmBridgeChecked: wasm.bridgeChecked,
+  wasmBridgeStringifyRuntimeResult: wasm.bridgeStringifyRuntimeResult,
+  wasmBridgeNormalizeRuntimeError: wasm.bridgeNormalizeRuntimeError,
+  wasmBridgeParseRuntimeKeyValueResponse: wasm.bridgeParseRuntimeKeyValueResponse,
+  wasmBridgeV7RuntimeRunningFromText: wasm.bridgeV7RuntimeRunningFromText,
+  wasmBridgeR51IsRunning: wasm.bridgeR51IsRunning,
+  wasmBridgeRuntimeErrorFromStatus: wasm.bridgeRuntimeErrorFromStatus,
+  wasmBridgeNormalizeNodeModeR65F: wasm.bridgeNormalizeNodeModeR65F,
+  wasmBridgePreviewDeclaresInprocessR65F: wasm.bridgePreviewDeclaresInprocessR65F
 };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
@@ -194,7 +196,7 @@ sandbox.bridgeNodeMode = () => "external";
 
 vm.createContext(sandbox);
 vm.runInContext(selected, sandbox, { filename: request.sourceName });
-const api = vm.runInContext("({ runtimeRunning: kgwBridgeV7RuntimeRunningFromText, isRunning: kgwBridgeR51IsRunning, setButtons: kgwBridgeR51SetRuntimeButtons, setError: kgwBridgeSetRuntimeErrorV1, setActivity: kgwBridgeSetRuntimeActivityV1, runAction: runBridgeIntegratedAction })", sandbox);
+const api = vm.runInContext("({ runtimeRunning: wasmBridgeV7RuntimeRunningFromText, isRunning: wasmBridgeR51IsRunning, setButtons: kgwBridgeR51SetRuntimeButtons, setError: kgwBridgeSetRuntimeErrorV1, setActivity: kgwBridgeSetRuntimeActivityV1, runAction: runBridgeIntegratedAction })", sandbox);
 
 function snapshot() {
   return {
@@ -374,9 +376,9 @@ fn expect(actual: &Value, pointer: &str, expected: Value) -> Result<(), String> 
     Ok(())
 }
 
-fn verify_static_contracts(source: &str, helpers: &str) -> Result<(), String> {
+fn verify_static_contracts(source: &str, helpers: &str, runtime_core: &str) -> Result<(), String> {
     for needle in [
-        "kgwBridgeRuntimeErrorFromStatus(status)",
+        "wasmBridgeRuntimeErrorFromStatus(status)",
         "kgwBridgeSetRuntimeActivityV1(net, \"Bridge runtime failed after readiness.\", \"failed\")",
         "const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 120000",
     ] {
@@ -394,6 +396,38 @@ fn verify_static_contracts(source: &str, helpers: &str) -> Result<(), String> {
         if !helpers.contains(needle) {
             return Err(format!(
                 "Bridge readiness Rust owner contract missing: {needle}"
+            ));
+        }
+    }
+
+    for needle in [
+        "bridgeStringifyRuntimeResult",
+        "bridgeNormalizeRuntimeError",
+        "bridgeParseRuntimeKeyValueResponse",
+        "bridgeV7RuntimeRunningFromText",
+        "bridgeR51IsRunning",
+        "bridgeRuntimeErrorFromStatus",
+        "bridgeNormalizeNodeModeR65F",
+        "bridgePreviewDeclaresInprocessR65F",
+    ] {
+        if !runtime_core.contains(needle) {
+            return Err(format!("Bridge runtime-core Rust export missing: {needle}"));
+        }
+    }
+
+    for forbidden in [
+        "function stringifyRuntimeResult(",
+        "function normalizeRuntimeError(",
+        "function parseRuntimeKeyValueResponse(",
+        "function kgwBridgeV7RuntimeRunningFromText(",
+        "function kgwBridgeNormalizeNodeModeR65F(",
+        "function kgwBridgePreviewDeclaresInprocessR65F(",
+        "function kgwBridgeR51IsRunning(",
+        "function kgwBridgeRuntimeErrorFromStatus(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge runtime parser remains in JavaScript: {forbidden}"
             ));
         }
     }
@@ -434,7 +468,9 @@ pub fn run(root: &Path) -> Result<String, String> {
         .map_err(|error| format!("failed to read {BRIDGE_SOURCE}: {error}"))?;
     let helper_source = fs::read_to_string(root.join(BRIDGE_HELPERS_SOURCE))
         .map_err(|error| format!("failed to read {BRIDGE_HELPERS_SOURCE}: {error}"))?;
-    verify_static_contracts(&full_source, &helper_source)?;
+    let runtime_core_source = fs::read_to_string(root.join(BRIDGE_RUNTIME_CORE_SOURCE))
+        .map_err(|error| format!("failed to read {BRIDGE_RUNTIME_CORE_SOURCE}: {error}"))?;
+    verify_static_contracts(&full_source, &helper_source, &runtime_core_source)?;
     let selected = selected_source(root)?;
     let actual = run_bridge(root, &selected)?;
 

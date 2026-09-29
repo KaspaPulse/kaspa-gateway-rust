@@ -21,6 +21,14 @@ import initBridgeRust, {
   bridgeRenderLogging as wasmBridgeRenderLogging,
   bridgeRenderPorts as wasmBridgeRenderPorts,
   bridgeRenderCpuMiner as wasmBridgeRenderCpuMiner,
+  bridgeStringifyRuntimeResult as wasmBridgeStringifyRuntimeResult,
+  bridgeNormalizeRuntimeError as wasmBridgeNormalizeRuntimeError,
+  bridgeParseRuntimeKeyValueResponse as wasmBridgeParseRuntimeKeyValueResponse,
+  bridgeV7RuntimeRunningFromText as wasmBridgeV7RuntimeRunningFromText,
+  bridgeR51IsRunning as wasmBridgeR51IsRunning,
+  bridgeRuntimeErrorFromStatus as wasmBridgeRuntimeErrorFromStatus,
+  bridgeNormalizeNodeModeR65F as wasmBridgeNormalizeNodeModeR65F,
+  bridgePreviewDeclaresInprocessR65F as wasmBridgePreviewDeclaresInprocessR65F,
   bridgeDefaultInstanceRecord as wasmBridgeDefaultInstanceRecord,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings,
@@ -1480,12 +1488,12 @@ function updateCommand(net) {
       } catch (error) {
         if (KGW_BRIDGE_PREVIEW_REQUESTS.get(net) !== request) return;
         preview.value = "";
-        kgwBridgePreviewMessage(net, normalizeRuntimeError(error), true);
+        kgwBridgePreviewMessage(net, wasmBridgeNormalizeRuntimeError(error), true);
       }
     }, 180);
     return payload.bridgeCommandPreview;
   } catch (error) {
-    kgwBridgePreviewMessage(net, normalizeRuntimeError(error), true);
+    kgwBridgePreviewMessage(net, wasmBridgeNormalizeRuntimeError(error), true);
     return "";
   }
 }
@@ -1719,49 +1727,6 @@ function getTauriInvoke() {
 
 /* KGW_BRIDGE_START_TRACE_V1 is Rust-owned in bridge_start_trace.rs. */
 
-function stringifyRuntimeResult(result) {
-  if (result == null) return "No response";
-  if (typeof result === "string") return result;
-  try {
-    return JSON.stringify(result);
-  } catch {
-    return String(result);
-  }
-}
-
-function normalizeRuntimeError(error) {
-  if (error == null) return "Unknown backend error";
-  if (typeof error === "string") return error;
-  if (error.message) return error.message;
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
-}
-
-function parseRuntimeKeyValueResponse(value) {
-  const raw = stringifyRuntimeResult(value);
-  const text = raw.trim();
-
-  if (!text || !text.includes("=")) {
-    return { raw: text, fields: {} };
-  }
-
-  const fields = {};
-  for (const part of text.split(";")) {
-    const index = part.indexOf("=");
-    if (index <= 0) continue;
-
-    const key = part.slice(0, index).trim();
-    const fieldValue = part.slice(index + 1).trim();
-    if (key) fields[key] = fieldValue;
-  }
-
-  return { raw: text, fields };
-}
-
-
 function kgwBridgeStartOptions(net) {
   const enabled = net !== "mainnet" && wasmBridgeChecked(net, "internalCpuMiner");
   return {
@@ -1866,21 +1831,6 @@ async function invokeBridgeIntegratedRuntime(command, net) {
 
 
 // KGW_BRIDGE_INPROCESS_SAME_DB_OWNER_V7
-function kgwBridgeV7RuntimeRunningFromText(text) {
-  const parsed = parseRuntimeKeyValueResponse(text);
-  const fields = parsed.fields || {};
-  const ready = String(fields.readiness || "").toUpperCase() === "READY";
-  return (
-    ready &&
-    (fields.running === "true" ||
-      fields.node_running === "true" ||
-      fields.official_core_running === "true" ||
-      fields.bridge_running === "true" ||
-      fields.bridge_owner_active === "true" ||
-      /running=true/i.test(String(text || "")))
-  );
-}
-
 function kgwBridgeSetRuntimeErrorV1(net, errorText = "", errorSource = "") {
   const errorNode = wasmBridgeById(wasmBridgeElementId(net, "runtimeError"));
   if (!errorNode) return;
@@ -1922,7 +1872,7 @@ async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {
     KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS
   );
 
-  if (!kgwBridgeV7RuntimeRunningFromText(result)) return false;
+  if (!wasmBridgeV7RuntimeRunningFromText(result)) return false;
 
   const message =
     "Cannot start bridge in in-process mode because the same-network node is already running. Stop the node first, or switch bridge node mode to External.";
@@ -1972,10 +1922,6 @@ function kgwSetBridgeOwnedNodeLockR65E(net, locked, details) {
 
 
 // KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_MAINNET_IMMEDIATE_R65F
-function kgwBridgeNormalizeNodeModeR65F(value) {
-  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
-}
-
 function kgwBridgeCurrentNodeModeFromUiR65F(net) {
   try {
     const direct = wasmBridgeById(wasmBridgeElementId(net, "nodeMode"));
@@ -1994,18 +1940,10 @@ function kgwBridgeCurrentNodeModeFromUiR65F(net) {
   return "";
 }
 
-function kgwBridgePreviewDeclaresInprocessR65F(preview) {
-  const text = String(preview || "").toLowerCase();
-  return /--node-mode\s*=\s*in-?process/.test(text) ||
-    /--node-mode\s+in-?process/.test(text) ||
-    /node-mode=in-?process/.test(text) ||
-    /node_mode=in-?process/.test(text);
-}
-
 function kgwBridgeStartWasInprocessR65F(net, fields, preview) {
-  const fieldMode = kgwBridgeNormalizeNodeModeR65F(fields && (fields.node_mode || fields.nodeMode));
-  const uiMode = kgwBridgeNormalizeNodeModeR65F(kgwBridgeCurrentNodeModeFromUiR65F(net));
-  const previewMode = kgwBridgePreviewDeclaresInprocessR65F(preview);
+  const fieldMode = wasmBridgeNormalizeNodeModeR65F(String((fields && (fields.node_mode || fields.nodeMode)) || ""));
+  const uiMode = wasmBridgeNormalizeNodeModeR65F(String(kgwBridgeCurrentNodeModeFromUiR65F(net) || ""));
+  const previewMode = wasmBridgePreviewDeclaresInprocessR65F(String(preview || ""));
 
   return fieldMode === "inprocess" ||
     fieldMode === "inproc" ||
@@ -2173,8 +2111,8 @@ async function runBridgeIntegratedAction(action, net) {
       resultStringLength: String(result ?? "").length
     });
 
-    const raw = stringifyRuntimeResult(result);
-    const parsed = parseRuntimeKeyValueResponse(result);
+    const raw = wasmBridgeStringifyRuntimeResult(result);
+    const parsed = wasmBridgeParseRuntimeKeyValueResponse(result);
     const fields = parsed.fields || {};
 
     kgwBridgeRuntimeOwnerTraceR64D("r64d-response-parsed", {
@@ -2213,7 +2151,7 @@ async function runBridgeIntegratedAction(action, net) {
             action: "start",
             nodeMode: bridgeNodeMode,
             uiNodeMode: kgwBridgeCurrentNodeModeFromUiR65F(net),
-            previewDeclaredInprocess: kgwBridgePreviewDeclaresInprocessR65F(preview),
+            previewDeclaredInprocess: wasmBridgePreviewDeclaresInprocessR65F(preview),
             pid: String(fields.pid || "")
           });
         }
@@ -2221,7 +2159,7 @@ async function runBridgeIntegratedAction(action, net) {
           patch: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_MAINNET_IMMEDIATE_R65F",
           bridgeNodeMode,
           uiNodeMode: kgwBridgeCurrentNodeModeFromUiR65F(net),
-          previewDeclaredInprocess: kgwBridgePreviewDeclaresInprocessR65F(preview),
+          previewDeclaredInprocess: wasmBridgePreviewDeclaresInprocessR65F(preview),
           bridgeStartWasInprocess
         });
         kgwBridgeSetRuntimeActivityV1(net, "Bridge READY attestation confirmed.", "ready");
@@ -2835,17 +2773,6 @@ function kgwBridgeR51RestoreDefaults(net) {
   });
 }
 
-function kgwBridgeR51IsRunning(text) {
-  const value = String(text || "");
-  return /readiness=READY/i.test(value) && (/running=true/.test(value) || /bridge_running=true/.test(value) || /bridge_owner_active=true/.test(value));
-}
-
-function kgwBridgeRuntimeErrorFromStatus(text) {
-  const fields = parseRuntimeKeyValueResponse(text).fields || {};
-  const error = String(fields.runtime_error || fields.runtimeError || "").trim();
-  return error && error.toLowerCase() !== "none" ? error : "";
-}
-
 function kgwBridgeR51SetRuntimeButtons(net, running, transition = "", runtimeError = "", statusText = "") {
   const panel = kgwBridgeR51Panel(net);
   if (!panel) return;
@@ -2864,7 +2791,7 @@ function kgwBridgeR51SetRuntimeButtons(net, running, transition = "", runtimeErr
   const summary = wasmBridgeById(wasmBridgeElementId(net, "monitorState"));
   renderStatusSummary(summary, presentation.processLabel + " | Profile: " + presentation.profile +
     " | Startup readiness: " + (running ? "Verified" : transition ? "Pending" : "Not ready") +
-    " | " + runtimeObservationSummary((parseRuntimeKeyValueResponse(statusText).fields || {}), running, net !== "mainnet"));
+    " | " + runtimeObservationSummary((wasmBridgeParseRuntimeKeyValueResponse(statusText).fields || {}), running, net !== "mainnet"));
   const empty = wasmBridgeById(wasmBridgeElementId(net, "logEmpty"));
   if (empty) empty.textContent = runtimeError ? "Bridge failed. Review the error in Settings and the logs below."
     : transition ? "Bridge is " + presentation.process.toLowerCase() + ". Waiting for runtime output."
@@ -2941,7 +2868,7 @@ function kgwBridgeR51MaybeActivityNotice(net, statusText) {
 
   if (now - last < 15000) return;
 
-  if (!kgwBridgeR51IsRunning(statusText)) return;
+  if (!wasmBridgeR51IsRunning(statusText)) return;
 
   KGW_BRIDGE_R51_LAST_ACTIVITY_NOTICE[net] = now;
 
@@ -2976,10 +2903,10 @@ async function kgwBridgeR51RefreshOne(net, _reason = "live") {
     if (!statusTask) {
       statusTask = (async () => {
         try {
-          const status = stringifyRuntimeResult(await invokeBridgeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
-          const running = kgwBridgeR51IsRunning(status);
-          const runtimeError = kgwBridgeRuntimeErrorFromStatus(status);
-          const statusFields = parseRuntimeKeyValueResponse(status).fields || {};
+          const status = wasmBridgeStringifyRuntimeResult(await invokeBridgeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
+          const running = wasmBridgeR51IsRunning(status);
+          const runtimeError = wasmBridgeRuntimeErrorFromStatus(status);
+          const statusFields = wasmBridgeParseRuntimeKeyValueResponse(status).fields || {};
           const errorNode = wasmBridgeById(wasmBridgeElementId(net, "runtimeError"));
           // Clear only recovered polling feedback; preserve Start/Stop and runtime errors.
           if (!runtimeError && statusFields.role === "bridge" && statusFields.network === String(net) &&
@@ -3012,7 +2939,7 @@ async function kgwBridgeR51RefreshOne(net, _reason = "live") {
           }
           kgwBridgeR51MaybeActivityNotice(net, status);
         } catch (error) {
-          kgwBridgeR51SetRuntimeUnknown(net, "Status refresh failed: " + normalizeRuntimeError(error), "status-refresh");
+          kgwBridgeR51SetRuntimeUnknown(net, "Status refresh failed: " + wasmBridgeNormalizeRuntimeError(error), "status-refresh");
         } finally {
           if (KGW_BRIDGE_R51_STATUS_IN_FLIGHT.get(net) === statusTask) {
             KGW_BRIDGE_R51_STATUS_IN_FLIGHT.delete(net);
@@ -3472,7 +3399,7 @@ function installActions(root) {
           enabled = (await confirmUserAction("Testnet 13 is experimental and uses a separate non-production runtime. Enable it only for isolated testing. Continue?")) === true;
         } catch (error) {
           enabled = false;
-          kgwBridgeSetRuntimeErrorV1(net, normalizeRuntimeError(error));
+          kgwBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
         } finally { target.disabled = false; target.checked = enabled; }
       }
 
@@ -3532,7 +3459,7 @@ function installActions(root) {
         button.dataset.kgwSettingsActionResult = "success";
       } catch (error) {
         button.dataset.kgwSettingsActionResult = "failed";
-        kgwBridgeSetRuntimeErrorV1(net, normalizeRuntimeError(error));
+        kgwBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
       }
       scopedUpdate(net, "save-settings");
       return;
@@ -3544,7 +3471,7 @@ function installActions(root) {
         button.dataset.kgwSettingsActionResult = "success";
       } catch (error) {
         button.dataset.kgwSettingsActionResult = "failed";
-        kgwBridgeSetRuntimeErrorV1(net, normalizeRuntimeError(error));
+        kgwBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
       }
       scopedUpdate(net, "set-defaults");
       return;
@@ -3556,7 +3483,7 @@ function installActions(root) {
         button.dataset.kgwSettingsActionResult = "success";
       } catch (error) {
         button.dataset.kgwSettingsActionResult = "failed";
-        kgwBridgeSetRuntimeErrorV1(net, normalizeRuntimeError(error));
+        kgwBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
       }
       scopedUpdate(net, "restore-defaults");
       return;
@@ -3587,7 +3514,7 @@ function installActions(root) {
         if (!text) throw new Error("There is no validated value to copy.");
         await wasmBridgeDispatchClipboardWrite(String(net || ""), String(text ?? ""), {characterCount: [...text].length, lineCount: text.split(/\r?\n/).length});
         kgwBridgePreviewMessage(net, action === "copy-path" ? "Data directory copied." : "Effective settings copied.");
-      })().catch(error => kgwBridgePreviewMessage(net, "Copy failed: " + normalizeRuntimeError(error), true));
+      })().catch(error => kgwBridgePreviewMessage(net, "Copy failed: " + wasmBridgeNormalizeRuntimeError(error), true));
       return;
     }
 
