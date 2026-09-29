@@ -1118,9 +1118,6 @@ const KGW_BRIDGE_PORT_PROFILES_R35B = wasmBridgePortProfilesR35B();
  * - each network remains isolated: mainnet, testnet10, testnet13.
  * - valid clearly manual out-of-range instance ports are preserved.
  */
-function bridgeStaticPortProfileR91(net) {
-  return wasmBridgeStaticPortProfileR91(net);
-}
 
 
 
@@ -1151,32 +1148,7 @@ function bridgeStaticPortProfileR91(net) {
  */
 
 
-function bridgeApplyPortAutofixR37(activeNet) {
-  return wasmBridgeApplyPortAutofixUiR37(
-    String(activeNet || ""),
-    bridgeInstances,
-    activeInstance,
-    (net) => bridgeRefreshInstances(net),
-    (net) => updateCommand(net),
-    (net, message) => kgwBridgeSetRuntimeActivityV1(net, message)
-  );
-}
 /* Auto Fix button enumeration lives in Rust bridge_port_ui.rs. */
-function bridgeRefreshPortAutofixButtonsR37(reason) {
-  return wasmBridgeRefreshPortAutofixButtonsUiR37(
-    String(reason || ""),
-    bridgeInstances,
-    activeInstance
-  );
-}
-function bridgeSchedulePortAutofixRefreshR37(net, reason) {
-  return wasmBridgeSchedulePortAutofixRefreshUiR37(
-    String(net || ""),
-    String(reason || ""),
-    bridgeInstances,
-    activeInstance
-  );
-}
 /* KGW_BRIDGE_AUTOFIX_I18N_PATCH_R54D3
  * Local i18n wrapper for existing Bridge Auto Fix labels/log prefix.
  */
@@ -1186,13 +1158,6 @@ function bridgeSchedulePortAutofixRefreshR37(net, reason) {
  * Never return a raw bridge.autofixPorts.* key to the UI.
  */
 /* R54D3 Auto Fix text ownership lives in Rust bridge_port_ui.rs. */
-function bridgeInstallPortAutofixButtonR37(root) {
-  return wasmBridgeInstallPortAutofixButtonUiR37(
-    root,
-    bridgeInstances,
-    activeInstance
-  );
-}
 function bridgeNodeMode(net) {
   const value = wasmBridgeValue(net, "nodeMode");
   return value === "inprocess" ? "inprocess" : "external";
@@ -2656,8 +2621,8 @@ function kgwBridgeR95BStorageFieldId(net, fieldName) {
 }
 
 function kgwBridgeR95BPreferredPort(net, kind) {
-  const profile = typeof bridgeStaticPortProfileR91 === "function"
-    ? bridgeStaticPortProfileR91(net)
+  const profile = typeof wasmBridgeStaticPortProfileR91 === "function"
+    ? wasmBridgeStaticPortProfileR91(net)
     : (KGW_BRIDGE_PORT_PROFILES_R35B[String(net || "")] || KGW_BRIDGE_PORT_PROFILES_R35B.mainnet);
 
   const range = profile && profile[kind];
@@ -3219,7 +3184,7 @@ function installActions(root) {
 
       if (/port|prom|listen|rpc|dashboard|kaspad|instance/.test(hay)) {
         bridgeSchedulePortConflictValidationR33(net, "input");
-        bridgeSchedulePortAutofixRefreshR37(net, "input");
+        wasmBridgeSchedulePortAutofixRefreshUiR37(String(net || ""), "input", bridgeInstances, activeInstance);
       }
     });
 
@@ -3235,7 +3200,7 @@ function installActions(root) {
 
       if (/port|prom|listen|rpc|dashboard|kaspad|instance/.test(hay)) {
         bridgeSchedulePortConflictValidationR33(net, "change");
-        bridgeSchedulePortAutofixRefreshR37(net, "change");
+        wasmBridgeSchedulePortAutofixRefreshUiR37(String(net || ""), "change", bridgeInstances, activeInstance);
       }
     });
 
@@ -3245,7 +3210,7 @@ function installActions(root) {
   if (!root.dataset.kgwBridgePortAutofixOwnerR37) {
     root.dataset.kgwBridgePortAutofixOwnerR37 = "1";
 
-    bridgeInstallPortAutofixButtonR37(root);
+    wasmBridgeInstallPortAutofixButtonUiR37(root, bridgeInstances, activeInstance);
 
     root.addEventListener("click", (event) => {
       const button = event.target && event.target.closest('[data-bridge-action="auto-fix-ports-r37"]');
@@ -3255,13 +3220,13 @@ function installActions(root) {
       event.stopPropagation();
 
       const net = button.dataset.net || "";
-      const result = bridgeApplyPortAutofixR37(net);
+      const result = wasmBridgeApplyPortAutofixUiR37(String(net || ""), bridgeInstances, activeInstance, (targetNet) => bridgeRefreshInstances(targetNet), (targetNet) => updateCommand(targetNet), (targetNet, message) => kgwBridgeSetRuntimeActivityV1(targetNet, message));
 
       button.textContent = result.changed ? "Fixed " + String(result.changed) + " Port(s)" : "No Fix Needed";
-      window.setTimeout(() => bridgeRefreshPortAutofixButtonsR37("button-feedback"), 1200);
+      window.setTimeout(() => wasmBridgeRefreshPortAutofixButtonsUiR37("button-feedback", bridgeInstances, activeInstance), 1200);
     });
 
-    window.setTimeout(() => bridgeRefreshPortAutofixButtonsR37("install"), 120);
+    window.setTimeout(() => wasmBridgeRefreshPortAutofixButtonsUiR37("install", bridgeInstances, activeInstance), 120);
   }
 
   if (!root.dataset.kgwBridgeInstancesCommandCheckboxOwnerR13B) {
