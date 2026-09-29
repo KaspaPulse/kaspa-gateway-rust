@@ -1,13 +1,13 @@
 # CURRENT STATE
-- Current product boundary: OP218 Bridge runtime parsing/predicate Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint a2b96763a86530c4464ddf05b8ea6edc51ab79a6, tree 408e35137bc43463dde3cc58d5486c14b4a2564f; Bridge SHA-256 d4327024dce28eb393d1aaaea6fbf4c00ba38ad91cdcfe09f143123d04b757ed; no product mutation or push is active.
+- Current product boundary: OP219 Bridge runtime Start/Stop decision Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 207eacf860f45477b5d39201f14b1eba3fe19909, tree e6a1e1b06523c0e98a9f54dce3e034f885ff939a; Bridge SHA-256 790a889d7cafb2094870456e0219b25f471e1c5a0a721a8d41d1f6a886fc722d; no product mutation or push is active.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest verified OP218 continuity checkpoint is 90a5a60a05cbf99ab09822f0590a145fcbd456f6, tree 2338b4cd587a148549b83f0cf786f7e722a90097; OP218 implementation checkpoint is a2b96763a86530c4464ddf05b8ea6edc51ab79a6.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP219 verified implementation checkpoint is 207eacf860f45477b5d39201f14b1eba3fe19909, tree e6a1e1b06523c0e98a9f54dce3e034f885ff939a.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **CLEAN** at the verified OP218 continuity checkpoint; always verify dynamically before the next material operation.
+- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP219 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -22,6 +22,12 @@
 - Rust source inventory: 222 (verified during OP218 post-codegen language-policy check/inventory).
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
+
+## OP219 VERIFIED EVIDENCE
+- Bridge Start/Stop decision policy is Rust/WASM-owned in bridge_runtime_core.rs; implementation checkpoint 207eacf860f45477b5d39201f14b1eba3fe19909, tree e6a1e1b06523c0e98a9f54dce3e034f885ff939a; no push.
+- Rust runtime core tests 10/10 PASS; Bridge-readiness tests 2/2 PASS; FMT PASS; stable and MSRV 1.97.1 wasm32 PASS; frontend-WASM and xtask strict Clippy PASS.
+- Deterministic frontend-WASM codegen WRITE/CHECK PASS with wasm-pack 0.15.0 and 19 artifacts; generated JS SHA-256 02c10a1da76980f4ef02f834aa27136055d668363ee9bc49bdf65a77b156cb75; generated WASM SHA-256 6e1c0018082c841691e02287b3b0682fd624f53452f63bca3bd8e4605b6a0c7b.
+- Node syntax and Desktop ESLint zero-warning PASS; effective-Bridge 2/2 + gate PASS; Bridge-readiness gate PASS; language policy PASS at Rust 222 / source debt 2 / execution debt 8 / unapproved 0/0; project-continuity PASS; diff-check PASS.
 
 ## OP218 VERIFIED EVIDENCE
 - Bridge runtime parsing/predicate core is Rust/WASM-owned in bridge_runtime_core.rs; implementation checkpoint a2b96763a86530c4464ddf05b8ea6edc51ab79a6, tree 408e35137bc43463dde3cc58d5486c14b4a2564f; no push.
@@ -151,4 +157,4 @@
 
 ## NEXT ACTION
 
-OP218 is fully **CLOSED_LOCAL / VERIFIED_SUCCESS**. Audit and migrate the next coherent Bridge runtime/start-stop orchestration boundary into Rust/WASM, using the existing readiness lifecycle harness and Node-tab Rust orchestration pattern. Persist a WAI before mutation. The separate zero-touch helper blocker remains unchanged; no push.
+OP219 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 207eacf860f45477b5d39201f14b1eba3fe19909, tree e6a1e1b06523c0e98a9f54dce3e034f885ff939a; no push. Audit the remaining Bridge Start/Stop transport/orchestration boundary read-only against the existing Rust Node orchestration pattern; persist a WAI before mutation. The separate zero-touch helper blocker remains unchanged.
