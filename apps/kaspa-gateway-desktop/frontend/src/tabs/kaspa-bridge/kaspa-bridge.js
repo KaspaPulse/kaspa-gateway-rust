@@ -27,8 +27,10 @@ import initBridgeRust, {
   bridgeV7RuntimeRunningFromText as wasmBridgeV7RuntimeRunningFromText,
   bridgeR51IsRunning as wasmBridgeR51IsRunning,
   bridgeRuntimeErrorFromStatus as wasmBridgeRuntimeErrorFromStatus,
-  bridgeNormalizeNodeModeR65F as wasmBridgeNormalizeNodeModeR65F,
   bridgePreviewDeclaresInprocessR65F as wasmBridgePreviewDeclaresInprocessR65F,
+  bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction,
+  bridgeRuntimeActionOutcome as wasmBridgeRuntimeActionOutcome,
+  bridgeStartWasInprocessR65F as wasmBridgeStartWasInprocessR65F,
   bridgeDefaultInstanceRecord as wasmBridgeDefaultInstanceRecord,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings,
@@ -1940,18 +1942,6 @@ function kgwBridgeCurrentNodeModeFromUiR65F(net) {
   return "";
 }
 
-function kgwBridgeStartWasInprocessR65F(net, fields, preview) {
-  const fieldMode = wasmBridgeNormalizeNodeModeR65F(String((fields && (fields.node_mode || fields.nodeMode)) || ""));
-  const uiMode = wasmBridgeNormalizeNodeModeR65F(String(kgwBridgeCurrentNodeModeFromUiR65F(net) || ""));
-  const previewMode = wasmBridgePreviewDeclaresInprocessR65F(String(preview || ""));
-
-  return fieldMode === "inprocess" ||
-    fieldMode === "inproc" ||
-    uiMode === "inprocess" ||
-    uiMode === "inproc" ||
-    previewMode;
-}
-
 async function runBridgeIntegratedAction(action, net) {
   function kgwBridgeRuntimeOwnerTraceR64D(phase, details) {
     try {
@@ -1984,12 +1974,7 @@ async function runBridgeIntegratedAction(action, net) {
     net: String(net || "")
   });
 
-  const commandByAction = {
-    start: "kgw_kgw_apply_node_settings_v1",
-    stop: "kgw_kgw_disable_network_v1"
-  };
-
-  const command = commandByAction[action];
+  const command = wasmBridgeRuntimeCommandForAction(String(action || ""));
 
   if (!command) {
     kgwBridgeRuntimeOwnerTraceR64D("r64d-invalid-action-return", {
@@ -2111,9 +2096,9 @@ async function runBridgeIntegratedAction(action, net) {
       resultStringLength: String(result ?? "").length
     });
 
-    const raw = wasmBridgeStringifyRuntimeResult(result);
-    const parsed = wasmBridgeParseRuntimeKeyValueResponse(result);
-    const fields = parsed.fields || {};
+    const outcome = wasmBridgeRuntimeActionOutcome(String(action || ""), result);
+    const raw = String(outcome?.raw || "");
+    const fields = outcome?.fields || {};
 
     kgwBridgeRuntimeOwnerTraceR64D("r64d-response-parsed", {
       rawLength: String(raw || "").length,
@@ -2121,19 +2106,8 @@ async function runBridgeIntegratedAction(action, net) {
     });
 
     if (action === "start") {
-      const confirmedStarted =
-        String(fields.readiness || "").toUpperCase() === "READY" &&
-        (/parallel-owned-self-worker\s+started/i.test(raw) ||
-          /parallel-owned-self-worker\s+already\s+running/i.test(raw) ||
-          (/role=bridge/i.test(raw) && /started|running=true|already running/i.test(raw)) ||
-          fields.running === "true" ||
-          fields.bridge_running === "true" ||
-          fields.bridge_owner_active === "true");
-
-      const blocked =
-        fields.start_blocked === "true" ||
-        fields.start_allowed === "false" ||
-        /blocked|not enabled|failed/i.test(raw);
+      const confirmedStarted = Boolean(outcome?.confirmedStarted);
+      const blocked = Boolean(outcome?.blocked);
 
       kgwBridgeRuntimeOwnerTraceR64D("r64d-start-confirmation-evaluated", {
         confirmedStarted: Boolean(confirmedStarted),
@@ -2144,7 +2118,11 @@ async function runBridgeIntegratedAction(action, net) {
         kgwBridgeSetRuntimeErrorV1(net, "");
         kgwBridgeR51SetRuntimeButtons(net, true);
         const bridgeNodeMode = String(fields.node_mode || fields.nodeMode || "").toLowerCase();
-        const bridgeStartWasInprocess = kgwBridgeStartWasInprocessR65F(net, fields, preview);
+        const bridgeStartWasInprocess = wasmBridgeStartWasInprocessR65F(
+          fields,
+          String(kgwBridgeCurrentNodeModeFromUiR65F(net) || ""),
+          String(preview || "")
+        );
         if (bridgeStartWasInprocess) {
           kgwSetBridgeOwnedNodeLockR65E(net, true, {
             source: "bridge-start-confirmed-r65f",
@@ -2176,17 +2154,15 @@ async function runBridgeIntegratedAction(action, net) {
     }
 
     if (action === "stop") {
-      const confirmedStopped =
-        fields.running === "false" &&
-        (fields.graceful === "true" || fields.forced === "true" || fields.stop_failed === "true" || fields.already_stopped === "true");
+      const confirmedStopped = Boolean(outcome?.confirmedStopped);
 
       kgwBridgeRuntimeOwnerTraceR64D("r64d-stop-confirmation-evaluated", {
         confirmedStopped: Boolean(confirmedStopped)
       });
 
       if (confirmedStopped) {
-        const forced = fields.forced === "true";
-        const stopFailed = fields.stop_failed === "true";
+        const forced = Boolean(outcome?.forced);
+        const stopFailed = Boolean(outcome?.stopFailed);
         KGW_BRIDGE_RUNTIME_IN_FLIGHT.delete(inFlightKey);
         kgwBridgeR51SetRuntimeButtons(net, false);
         kgwBridgeSetRuntimeErrorV1(

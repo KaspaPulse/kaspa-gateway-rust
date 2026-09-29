@@ -173,7 +173,10 @@ const sandbox = {
   wasmBridgeR51IsRunning: wasm.bridgeR51IsRunning,
   wasmBridgeRuntimeErrorFromStatus: wasm.bridgeRuntimeErrorFromStatus,
   wasmBridgeNormalizeNodeModeR65F: wasm.bridgeNormalizeNodeModeR65F,
-  wasmBridgePreviewDeclaresInprocessR65F: wasm.bridgePreviewDeclaresInprocessR65F
+  wasmBridgePreviewDeclaresInprocessR65F: wasm.bridgePreviewDeclaresInprocessR65F,
+  wasmBridgeRuntimeCommandForAction: wasm.bridgeRuntimeCommandForAction,
+  wasmBridgeRuntimeActionOutcome: wasm.bridgeRuntimeActionOutcome,
+  wasmBridgeStartWasInprocessR65F: wasm.bridgeStartWasInprocessR65F
 };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
@@ -185,7 +188,6 @@ sandbox.c = () => false;
 sandbox.confirmUserAction = async () => true;
 sandbox.kgwBridgeV7BlockInprocessIfNodeOwnerRunning = async () => false;
 sandbox.invokeBridgeIntegratedRuntime = (...args) => invokeRuntime(...args);
-sandbox.kgwBridgeStartWasInprocessR65F = () => false;
 sandbox.kgwBridgeRuntimeOwnerTraceR64D = () => {};
 sandbox.kgwSetBridgeOwnedNodeLockR65E = () => {};
 sandbox.kgwBridgeCurrentNodeModeFromUiR65F = () => "external";
@@ -409,6 +411,9 @@ fn verify_static_contracts(source: &str, helpers: &str, runtime_core: &str) -> R
         "bridgeRuntimeErrorFromStatus",
         "bridgeNormalizeNodeModeR65F",
         "bridgePreviewDeclaresInprocessR65F",
+        "bridgeRuntimeCommandForAction",
+        "bridgeRuntimeActionOutcome",
+        "bridgeStartWasInprocessR65F",
     ] {
         if !runtime_core.contains(needle) {
             return Err(format!("Bridge runtime-core Rust export missing: {needle}"));
@@ -422,6 +427,7 @@ fn verify_static_contracts(source: &str, helpers: &str, runtime_core: &str) -> R
         "function kgwBridgeV7RuntimeRunningFromText(",
         "function kgwBridgeNormalizeNodeModeR65F(",
         "function kgwBridgePreviewDeclaresInprocessR65F(",
+        "function kgwBridgeStartWasInprocessR65F(",
         "function kgwBridgeR51IsRunning(",
         "function kgwBridgeRuntimeErrorFromStatus(",
     ] {

@@ -132,6 +132,140 @@ fn preview_declares_inprocess_text(value: &str) -> bool {
     let collapsed = collapse_whitespace(&lower);
     collapsed.contains("--node-mode in-process") || collapsed.contains("--node-mode inprocess")
 }
+
+fn runtime_command_for_action_text(action: &str) -> &'static str {
+    match action {
+        "start" => "kgw_kgw_apply_node_settings_v1",
+        "stop" => "kgw_kgw_disable_network_v1",
+        _ => "",
+    }
+}
+
+fn strip_required_whitespace(value: &str) -> Option<&str> {
+    let trimmed = value.trim_start();
+    (trimmed.len() < value.len()).then_some(trimmed)
+}
+
+fn parallel_worker_started_text(lower: &str) -> bool {
+    const OWNER: &str = "parallel-owned-self-worker";
+    let mut offset = 0usize;
+    while let Some(relative) = lower[offset..].find(OWNER) {
+        let end = offset + relative + OWNER.len();
+        let rest = &lower[end..];
+        if let Some(after_space) = strip_required_whitespace(rest) {
+            if after_space.starts_with("started") {
+                return true;
+            }
+            if let Some(after_already) = after_space.strip_prefix("already")
+                && let Some(after_second_space) = strip_required_whitespace(after_already)
+                && after_second_space.starts_with("running")
+            {
+                return true;
+            }
+        }
+        offset = end;
+        if offset >= lower.len() {
+            break;
+        }
+    }
+    false
+}
+
+fn start_outcome_text(raw: &str, fields: &[(String, String)]) -> (bool, bool) {
+    let lower = raw.to_ascii_lowercase();
+    let ready =
+        last_field(fields, "readiness").is_some_and(|value| value.eq_ignore_ascii_case("READY"));
+    let bridge_role_started = lower.contains("role=bridge")
+        && (lower.contains("started")
+            || lower.contains("running=true")
+            || lower.contains("already running"));
+    let confirmed_started = ready
+        && (parallel_worker_started_text(&lower)
+            || bridge_role_started
+            || matches!(last_field(fields, "running"), Some("true"))
+            || matches!(last_field(fields, "bridge_running"), Some("true"))
+            || matches!(last_field(fields, "bridge_owner_active"), Some("true")));
+    let blocked = matches!(last_field(fields, "start_blocked"), Some("true"))
+        || matches!(last_field(fields, "start_allowed"), Some("false"))
+        || lower.contains("blocked")
+        || lower.contains("not enabled")
+        || lower.contains("failed");
+    (confirmed_started, blocked)
+}
+
+fn stop_outcome_text(raw: &str, fields: &[(String, String)]) -> (bool, bool, bool) {
+    let _ = raw;
+    let forced = matches!(last_field(fields, "forced"), Some("true"));
+    let stop_failed = matches!(last_field(fields, "stop_failed"), Some("true"));
+    let confirmed_stopped = matches!(last_field(fields, "running"), Some("false"))
+        && (matches!(last_field(fields, "graceful"), Some("true"))
+            || forced
+            || stop_failed
+            || matches!(last_field(fields, "already_stopped"), Some("true")));
+    (confirmed_stopped, forced, stop_failed)
+}
+
+fn start_was_inprocess_text(field_mode: &str, ui_mode: &str, preview: &str) -> bool {
+    let field_mode = normalize_node_mode_text(field_mode);
+    let ui_mode = normalize_node_mode_text(ui_mode);
+    field_mode == "inprocess"
+        || field_mode == "inproc"
+        || ui_mode == "inprocess"
+        || ui_mode == "inproc"
+        || preview_declares_inprocess_text(preview)
+}
+
+#[wasm_bindgen(js_name = bridgeRuntimeCommandForAction)]
+pub fn bridge_runtime_command_for_action(action: String) -> String {
+    runtime_command_for_action_text(&action).to_owned()
+}
+
+#[wasm_bindgen(js_name = bridgeRuntimeActionOutcome)]
+pub fn bridge_runtime_action_outcome(action: String, value: JsValue) -> JsValue {
+    let raw = stringify_runtime_result_value(&value).trim().to_owned();
+    let fields = parse_runtime_fields_text(&raw);
+    let fields_object = Object::new();
+    for (key, value) in &fields {
+        set(fields_object.as_ref(), key, &JsValue::from_str(value));
+    }
+
+    let (confirmed_started, blocked) = start_outcome_text(&raw, &fields);
+    let (confirmed_stopped, forced, stop_failed) = stop_outcome_text(&raw, &fields);
+    let output = Object::new();
+    set(output.as_ref(), "action", &JsValue::from_str(&action));
+    set(output.as_ref(), "raw", &JsValue::from_str(&raw));
+    set(output.as_ref(), "fields", fields_object.as_ref());
+    set(
+        output.as_ref(),
+        "confirmedStarted",
+        &JsValue::from_bool(confirmed_started),
+    );
+    set(output.as_ref(), "blocked", &JsValue::from_bool(blocked));
+    set(
+        output.as_ref(),
+        "confirmedStopped",
+        &JsValue::from_bool(confirmed_stopped),
+    );
+    set(output.as_ref(), "forced", &JsValue::from_bool(forced));
+    set(
+        output.as_ref(),
+        "stopFailed",
+        &JsValue::from_bool(stop_failed),
+    );
+    output.into()
+}
+
+#[wasm_bindgen(js_name = bridgeStartWasInprocessR65F)]
+pub fn bridge_start_was_inprocess_r65f(fields: JsValue, ui_mode: String, preview: String) -> bool {
+    let node_mode = property(&fields, "node_mode");
+    let field_value = if crate::js_boolean(&node_mode) {
+        node_mode
+    } else {
+        property(&fields, "nodeMode")
+    };
+    start_was_inprocess_text(&crate::js_string_owned(&field_value), &ui_mode, &preview)
+}
+
 #[wasm_bindgen(js_name = bridgeStringifyRuntimeResult)]
 pub fn bridge_stringify_runtime_result(value: JsValue) -> String {
     stringify_runtime_result_value(&value)
@@ -246,5 +380,99 @@ mod tests {
         }
         assert!(!preview_declares_inprocess_text("--node-mode=external"));
         assert!(!preview_declares_inprocess_text("node_mode=remote"));
+    }
+
+    #[test]
+    fn runtime_action_command_mapping_matches_legacy_contract() {
+        assert_eq!(
+            runtime_command_for_action_text("start"),
+            "kgw_kgw_apply_node_settings_v1"
+        );
+        assert_eq!(
+            runtime_command_for_action_text("stop"),
+            "kgw_kgw_disable_network_v1"
+        );
+        assert_eq!(runtime_command_for_action_text("status"), "");
+        assert_eq!(runtime_command_for_action_text(""), "");
+    }
+
+    #[test]
+    fn start_outcome_matches_legacy_ready_and_blocked_contract() {
+        for raw in [
+            "readiness=READY;parallel-owned-self-worker started",
+            "readiness=READY;parallel-owned-self-worker   already   running",
+            "readiness=READY;role=bridge;state=started",
+            "readiness=READY;running=true",
+            "readiness=READY;bridge_running=true",
+            "readiness=READY;bridge_owner_active=true",
+        ] {
+            let fields = parse_runtime_fields_text(raw);
+            assert!(start_outcome_text(raw, &fields).0, "{raw}");
+        }
+
+        for raw in [
+            "readiness=STARTING;running=true",
+            "readiness=READY;running=false",
+            "running=true",
+        ] {
+            let fields = parse_runtime_fields_text(raw);
+            assert!(!start_outcome_text(raw, &fields).0, "{raw}");
+        }
+
+        for raw in [
+            "readiness=READY;running=true;start_blocked=true",
+            "readiness=READY;running=true;start_allowed=false",
+            "readiness=READY;running=true;reason=Blocked by policy",
+            "readiness=READY;running=true;reason=not enabled",
+            "readiness=READY;running=true;reason=failed",
+        ] {
+            let fields = parse_runtime_fields_text(raw);
+            assert!(start_outcome_text(raw, &fields).1, "{raw}");
+        }
+    }
+
+    #[test]
+    fn stop_outcome_matches_legacy_terminal_contract() {
+        for raw in [
+            "running=false;graceful=true",
+            "running=false;forced=true",
+            "running=false;stop_failed=true",
+            "running=false;already_stopped=true",
+        ] {
+            let fields = parse_runtime_fields_text(raw);
+            assert!(stop_outcome_text(raw, &fields).0, "{raw}");
+        }
+
+        for raw in [
+            "running=true;graceful=true",
+            "running=false;graceful=false",
+            "graceful=true",
+        ] {
+            let fields = parse_runtime_fields_text(raw);
+            assert!(!stop_outcome_text(raw, &fields).0, "{raw}");
+        }
+
+        let forced = parse_runtime_fields_text("running=false;forced=true");
+        assert_eq!(stop_outcome_text("", &forced), (true, true, false));
+        let failed = parse_runtime_fields_text("running=false;stop_failed=true");
+        assert_eq!(stop_outcome_text("", &failed), (true, false, true));
+    }
+
+    #[test]
+    fn start_was_inprocess_matches_legacy_sources() {
+        assert!(start_was_inprocess_text("in-process", "external", ""));
+        assert!(start_was_inprocess_text("in_proc", "external", ""));
+        assert!(start_was_inprocess_text("", "in-process", ""));
+        assert!(start_was_inprocess_text("", "inproc", ""));
+        assert!(start_was_inprocess_text(
+            "",
+            "external",
+            "--node-mode=in-process"
+        ));
+        assert!(!start_was_inprocess_text(
+            "",
+            "external",
+            "--node-mode=external"
+        ));
     }
 }
