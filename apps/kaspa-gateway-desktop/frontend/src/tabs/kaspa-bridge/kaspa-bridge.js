@@ -1765,16 +1765,6 @@ function bridgeTracePortAutofixR37(net, phase, details) {
  */
 
 
-function bridgeConfiguredPortRecordsR45() {
-  let collected;
-  try {
-    collected = bridgeCollectConfiguredPortsR5();
-  } catch (_) {
-    collected = [];
-  }
-  return collected;
-}
-
 function bridgeRefreshAutofixTouchedNetsR45(touchedNets, activeNet, reason) {
   for (const touchedNet of touchedNets) {
     bridgeRefreshInstances(touchedNet);
@@ -1806,7 +1796,13 @@ function bridgeChooseReplacementPortR37(change, plannedUsed) {
     change || {},
     Array.from(plannedUsed || []),
     bridgeInstances || {},
-    bridgeConfiguredPortRecordsR45() || []
+    (() => {
+      try {
+        return bridgeCollectConfiguredPortsR5();
+      } catch (_) {
+        return [];
+      }
+    })() || []
   );
 }
 
