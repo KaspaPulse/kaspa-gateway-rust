@@ -6,7 +6,7 @@
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
 - Current HEAD: **VERIFY DYNAMICALLY** from Git; latest verified implementation checkpoint is `c3850aaa536ac7e33363225f671cca962c8016fb`, tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **DIRTY_CONTINUITY_MIRRORS_ONLY** after verified OP211 implementation checkpoint `c3850aaa536ac7e33363225f671cca962c8016fb`, tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`. Only `CURRENT_STATE.md` and `ACTIVE_TASK.md` remain dirty for post-checkpoint identity synchronization; do not reset/clean/stash.
+- Working tree: **CLEAN** at the OP211 clean-closeout boundary; during the docs-only closeout transaction, `CURRENT_STATE.md` and `ACTIVE_TASK.md` are the only permitted temporary dirty paths. Implementation checkpoint is `c3850aaa536ac7e33363225f671cca962c8016fb`, tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -105,4 +105,4 @@
 
 ## NEXT ACTION
 
-OP211 implementation is **VERIFIED_LOCAL / IMPLEMENTATION_CHECKPOINTED** at `c3850aaa536ac7e33363225f671cca962c8016fb`. Complete the post-checkpoint continuity mirror qualification and docs-only checkpoint, verify a clean worktree, then audit the remaining `kaspa-bridge.js` source debt and select the next smallest independent Rust ownership boundary. No push yet.
+OP211 is **CLOSED_LOCAL / VERIFIED_SUCCESS** with implementation checkpoint `c3850aaa536ac7e33363225f671cca962c8016fb`, tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`; no push. Begin read-only audit of the remaining `kaspa-bridge.js` source debt, select the smallest coherent unblocked next Rust ownership boundary, freeze its exact pre-mutation input, and persist a new write-ahead intent before source mutation. The locked zero-touch PowerShell helper remains an independent blocker only.

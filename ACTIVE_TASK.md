@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS. OP211 Bridge port-conflict/Auto-Fix UI ownership is VERIFIED_LOCAL and implementation-checkpointed as `c3850aaa536ac7e33363225f671cca962c8016fb`, tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`. Prewire Rust checks/tests/Clippy, zero-warning JS lint, deterministic frontend-WASM codegen, `bridge_port_core` 8/8, Rust 1.97.1 wasm32, effective-Bridge, Bridge-readiness, and language policy all PASS at Rust 220 / source debt 2 / execution debt 8 / unapproved 0/0. Post-checkpoint continuity docs remain to be checkpointed; no push.
+PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS. OP211 Bridge port-conflict/Auto-Fix UI ownership is CLOSED_LOCAL / VERIFIED_SUCCESS with implementation checkpoint `c3850aaa536ac7e33363225f671cca962c8016fb`, tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`. Prewire Rust checks/tests/Clippy, zero-warning JS lint, deterministic frontend-WASM codegen, `bridge_port_core` 8/8, Rust 1.97.1 wasm32, effective-Bridge, Bridge-readiness, continuity, and language policy all PASS at Rust 220 / source debt 2 / execution debt 8 / unapproved 0/0. No push.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -85,13 +85,13 @@ PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS. OP211 Bri
 The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates. The remaining owned source debt is exactly kaspa-bridge.js plus that locked PowerShell helper; execution debt remains 8. Independent Bridge migration work continues.
 
 ## Last Completed Action
-OP211 Bridge port-conflict/Auto-Fix UI implementation checkpoint `c3850aaa536ac7e33363225f671cca962c8016fb` / tree `d7a39dd5f45b27e45cea8e2453242f623577aec1` was created from exactly eight qualified implementation/generated/gate-contract paths. Post-commit status contains only the two continuity mirrors; no push.
+OP211 Bridge port-conflict/Auto-Fix UI is CLOSED_LOCAL / VERIFIED_SUCCESS. The qualified implementation checkpoint is `c3850aaa536ac7e33363225f671cca962c8016fb` / tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`; post-checkpoint continuity qualification PASSed and no push occurred.
 
 ## Current Action
-Synchronize `CURRENT_STATE.md` and `ACTIVE_TASK.md` to the actual OP211 implementation checkpoint, then run `project-continuity-gate` plus `git diff --check`. Preserve the committed implementation; no broad requalification is required.
+Read-only audit of the remaining `kaspa-bridge.js` owned implementation after the closed OP211 checkpoint. Preserve all prior valid evidence and identify the smallest coherent unblocked next Rust ownership boundary.
 
 ## Next Action
-If continuity qualification PASSes, persist a docs-only OP211 continuity checkpoint intent, commit only `CURRENT_STATE.md` and `ACTIVE_TASK.md`, verify HEAD/tree/clean status, update durable continuity to CLOSED_LOCAL, then continue read-only discovery of the next remaining `kaspa-bridge.js` ownership boundary. No push yet.
+Freeze the exact pre-mutation source for the selected next Bridge boundary, persist a new write-ahead intent, implement only that boundary, and qualify only invalidated checks before its local checkpoint. Do not touch the locked zero-touch helper and do not push yet.
 
 ## Verification Required
 - OP103 affected surface: legacy launcher frozen at SHA-256 `7229e1fd33546f0c14dc89dd34627b2626eaede00d07bdf08956721964cca0c5`; stable diagnostic/Windows-evidence/clipboard tests 5/5 each PASS; cargo check, FMT and strict xtask Clippy PASS; MSRV 1.97.1 check + diagnostic 5/5 PASS; aggregate true-raw-log gate PASS; full-local parser PASS; language inventory PASS at Rust 169 / source debt 16 / execution debt 10 / exceptions 30 / unapproved 0/0; diff-check PASS.
