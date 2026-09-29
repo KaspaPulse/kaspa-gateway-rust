@@ -24,14 +24,14 @@ const SLICES: &[(&str, &str)] = &[
         "const bridgeInstances = {",
     ),
     (
-        "function bridgeBuildUpstreamInstanceArg(",
+        "function kgwBridgeEffectiveSettingsV1(",
         "/* Port conflict registry/validation ownership lives in Rust bridge_port_core.rs. */",
     ),
     (
         "function bridgeProfile(",
         "/* KGW_BRIDGE_NETWORK_PORT_PROFILES_SOFT_POLICY_PATCH_R35B",
     ),
-    ("function bridgeHasConfig(", "function bridgeControl("),
+    ("function bridgeHasConfig(", "function bridgeControlCard("),
 ];
 
 const NODE_BRIDGE: &str = r##"

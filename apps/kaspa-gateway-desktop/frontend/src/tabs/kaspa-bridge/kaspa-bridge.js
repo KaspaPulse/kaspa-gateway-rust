@@ -135,15 +135,11 @@ window.KGW_SETTINGS_OWNER_V19 = KGW_BRIDGE_SETTINGS_OWNER_V19;
 
 
 
-async function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsR5(net, _options = {}) {
-  return await wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsR5(
+function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, _options = {}) {
+  void wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsR5(
     String(net || ""),
     (resolvedNet) => updateCommand(resolvedNet)
-  );
-}
-
-function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
-  void kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsR5(net, options).catch(() => {});
+  ).catch(() => {});
 }
 
 /* KGW_BRIDGE_NETWORK_PORT_RANGES_DEFAULTS_PATCH_R42
@@ -274,10 +270,6 @@ function kgwBridgeToggleCommandOptionR7(net, name) {
  * port/prom/diff/log/var_diff/shares_per_min/var_diff_stats/pow2_clamp.
  */
 /* KGW_BRIDGE_INSTANCE_EFFECTIVE_SETTINGS_RUST_OWNER_V1 */
-function bridgeBuildUpstreamInstanceArg(net, instance) {
-  return wasmBridgeBuildUpstreamInstanceArg(String(net || ""), instance || {});
-}
-
 function kgwBridgeEffectiveSettingsV1(net, structuredInstances) {
   return wasmBridgeEffectiveSettingsV1(String(net || ""), structuredInstances || {});
 }
@@ -1108,16 +1100,12 @@ function bridgeHasConfig(net) {
   return wasmBridgeCommandOptionEnabledR7(String(net || ""), "config") && Boolean(wasmBridgeValue(net, "config"));
 }
 
-function bridgeControl(net, name) {
-  return wasmBridgeById(wasmBridgeElementId(net, name));
-}
-
 function bridgeControlCard(el) {
   return el ? el.closest(".bridge-v7-card") : null;
 }
 
 function bridgeSetDisabled(net, name, disabled, reason = "") {
-  const el = bridgeControl(net, name);
+  const el = wasmBridgeById(wasmBridgeElementId(net, name));
   if (!el) return;
 
   el.disabled = Boolean(disabled);
@@ -1143,13 +1131,13 @@ function bridgeSyncInprocessNodeSettingsV12D(net) {
     section.dataset.kgwInprocessNodeActive = active ? "true" : "false";
   }
 
-  const appdirMirror = bridgeControl(net, "inprocessAppdirMirror");
+  const appdirMirror = wasmBridgeById(wasmBridgeElementId(net, "inprocessAppdirMirror"));
   if (appdirMirror) {
     appdirMirror.value = wasmBridgeValue(net, "appdir") || wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.sameAsAppdir", "same as --appdir");
     appdirMirror.readOnly = true;
   }
 
-  const networkArgs = bridgeControl(net, "inprocessNetworkArgs");
+  const networkArgs = wasmBridgeById(wasmBridgeElementId(net, "inprocessNetworkArgs"));
   if (networkArgs) {
     networkArgs.value = profile.testnet
       ? `--testnet${profile.netsuffix ? " --netsuffix=" + profile.netsuffix : ""}`
@@ -1206,7 +1194,7 @@ function bridgeSyncInprocessNodeSettingsV12D(net) {
 
   const readonlyFields = ["inprocessAppdirMirror", "inprocessNetworkArgs"];
   for (const name of readonlyFields) {
-    const control = bridgeControl(net, name);
+    const control = wasmBridgeById(wasmBridgeElementId(net, name));
     if (control) control.readOnly = true;
   }
 }
@@ -1255,7 +1243,7 @@ function bridgeSyncModeControls(net) {
 
   if (configMode) { kgwBridgeSyncDependencies(net); return; }
 
-  const testnetControl = bridgeControl(net, "testnet");
+  const testnetControl = wasmBridgeById(wasmBridgeElementId(net, "testnet"));
   if (testnetControl) {
     testnetControl.checked = Boolean(profile.testnet);
   }
@@ -1708,8 +1696,8 @@ function buildApplyPayload(net, command) {
     const bridgeActiveInstanceRecord = Array.isArray(structuredInstances?.instances)
       ? structuredInstances.instances.find((item) => String(item?.id || "") === bridgeActiveInstanceId) || structuredInstances.instances[0] || null
       : null;
-    const bridgeActiveInstance = bridgeActiveInstanceRecord && typeof bridgeBuildUpstreamInstanceArg === "function"
-      ? bridgeBuildUpstreamInstanceArg(net, bridgeActiveInstanceRecord)
+    const bridgeActiveInstance = bridgeActiveInstanceRecord
+      ? wasmBridgeBuildUpstreamInstanceArg(String(net || ""), bridgeActiveInstanceRecord || {})
       : "";
     const bridgeActiveInstancePort = String(bridgeActiveInstanceRecord?.instancePort || "").trim().replace(/^:/, "");
 
