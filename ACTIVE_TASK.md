@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. OP215 internal instance/settings passthrough-wrapper retirement is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint ed27d0f8fb6235810303140acb57cce1a625a460, tree 7f4d8c381687d4a634d6cb842232cd45f2640819; affected qualification PASS; no push.
+PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. OP216 Port Auto-Fix/static-profile passthrough-wrapper retirement is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint a8158f01ebb033e395075390d9a927fa5496ad81, tree eebeab5207c800d47fb6d9e4ccf7c18875f490ee; affected qualification PASS; no push.
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
 - Phase 1 foundation is committed locally as `33461f6511c69b457c5f3dd069b54322d9a236a0` / tree `e355550c6fa311fdfb4dd54a8cd29c4b45f0c583`.
@@ -84,10 +84,10 @@ PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. O
 The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates. The remaining owned source debt is exactly kaspa-bridge.js plus that locked PowerShell helper; execution debt remains 8. Independent Bridge migration work continues.
 
 ## Last Completed Action
-OP215 Bridge instance/settings passthrough-wrapper retirement is CLOSED_LOCAL / VERIFIED_SUCCESS. Ten internal JavaScript wrappers were retired in favor of direct existing Rust/WASM calls. The qualified implementation checkpoint is ed27d0f8fb6235810303140acb57cce1a625a460 / tree 7f4d8c381687d4a634d6cb842232cd45f2640819; Bridge SHA-256 is b647796aaed39c81b09f36859c01bd8b920f3ed7c35dcd520cfcf7909a45eb4e; no push occurred.
+OP216 Bridge Port Auto-Fix/static-profile passthrough-wrapper retirement is CLOSED_LOCAL / VERIFIED_SUCCESS. Five local JavaScript wrappers were retired in favor of direct existing Rust/WASM calls preserving identical state and callback arguments. The qualified implementation checkpoint is a8158f01ebb033e395075390d9a927fa5496ad81 / tree eebeab5207c800d47fb6d9e4ccf7c18875f490ee; Bridge SHA-256 is 8cec9bbe46f056390cc31ecb6e10913985bde895bf8beed0bbc2ef6051838b17; no push occurred.
 
 ## Current Action
-OP215 implementation and affected qualification are complete. This boundary is in docs-only continuity closeout; product source is already checkpointed and unchanged.
+OP216 implementation and affected qualification are complete. This boundary is in docs-only continuity closeout; product source is already checkpointed and unchanged.
 
 ## Next Action
 Audit the remaining kaspa-bridge.js source debt read-only, select the smallest coherent unblocked Rust ownership boundary, freeze its exact input, and persist a write-ahead intent before mutation. Do not touch the separately blocked zero-touch PowerShell helper and do not push yet.
