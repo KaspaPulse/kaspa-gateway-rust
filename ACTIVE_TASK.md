@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS. OP208 Bridge in-process EffectiveNodeSettings ownership is VERIFIED_LOCAL and implementation-checkpointed at `ea07b93dff8f791e3dc3b25652acf24b2bb364c0`; all invalidated narrow/MSRV/codegen/Bridge gates/strict KSSS Clippy/ESLint/language inventory/final diff/direct generated-WASM checks PASS. Current inventory remains Rust 216 / source debt 2 / execution debt 8 / exceptions 39 / unapproved 0/0. Continuity-only synchronization is the current boundary.
+PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS. OP209 Bridge presentation rendering is VERIFIED_LOCAL and implementation-checkpointed at `6e341827b5e9cd80f93c41387017cf353fe1cdb2`, tree `4c7871e10b86d48c4ee6d960108a17d3f70d5cad`; Rust/MSRV/strict Clippy/codegen/exact render parity 18/18/Node syntax/Desktop ESLint/Bridge readiness/Effective Bridge/Effective Node/language check+inventory/final diff all PASS. Current inventory is Rust 217 / source debt 2 / execution debt 8 / exceptions 39 / unapproved 0/0. Continuity-only synchronization is the current boundary.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -85,17 +85,17 @@ PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS. OP208 Bri
 The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates. The remaining owned source debt is exactly kaspa-bridge.js plus that locked PowerShell helper; execution debt remains 8. Independent Bridge migration work continues.
 
 ## Last Completed Action
-OP208 Bridge EffectiveNodeSettings Rust/WASM ownership is committed as `ea07b93dff8f791e3dc3b25652acf24b2bb364c0`, tree `544737c8695189a0497bcf00e4f81a6b2026d0ce`. Final direct generated-WASM smoke verifies testnet/mainnet defaults and fail-closed forbidden overrides.
+OP209 Bridge presentation rendering Rust/WASM ownership is committed as `6e341827b5e9cd80f93c41387017cf353fe1cdb2`, tree `4c7871e10b86d48c4ee6d960108a17d3f70d5cad`. Exact legacy/generated-WASM render parity is 18/18 PASS; repaired dead glue is Node-syntax and ESLint clean; all affected Bridge/language/diff gates PASS.
 
 ## Current Action
-Tracked continuity synchronization after the verified OP208 implementation checkpoint. No implementation mutation is in progress; only `CURRENT_STATE.md` and `ACTIVE_TASK.md` are dirty.
+Tracked continuity synchronization after the verified OP209 implementation checkpoint. No implementation mutation is in progress; only `CURRENT_STATE.md` and `ACTIVE_TASK.md` are dirty.
 
 ## Next Action
-Run only the project-continuity gate and `git diff --check` invalidated by this mirror update, create a docs-only continuity checkpoint if both pass, then audit the remaining `kaspa-bridge.js` source debt and continue from the smallest independent unblocked boundary. No push yet.
+Run only the project-continuity gate and `git diff --check` invalidated by this mirror update, create a docs-only OP209 continuity checkpoint if both pass, then audit the remaining `kaspa-bridge.js` source debt and continue from the smallest independent unblocked boundary. No push yet.
 
 ## Verification Required
 - OP103 affected surface: legacy launcher frozen at SHA-256 `7229e1fd33546f0c14dc89dd34627b2626eaede00d07bdf08956721964cca0c5`; stable diagnostic/Windows-evidence/clipboard tests 5/5 each PASS; cargo check, FMT and strict xtask Clippy PASS; MSRV 1.97.1 check + diagnostic 5/5 PASS; aggregate true-raw-log gate PASS; full-local parser PASS; language inventory PASS at Rust 169 / source debt 16 / execution debt 10 / exceptions 30 / unapproved 0/0; diff-check PASS.
-- Repository final zero-debt gate remains open because 6 source and 8 execution debts remain; unapproved debt is 0/0.
+- Repository final zero-debt gate remains open because 2 source and 8 execution debts remain; unapproved debt is 0/0.
 - Network-generation evidence remains reusable from commit `5494f58...`.
 - Runtime-automation Rust gate = PASS; regressions = 4/4 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
 - Effective-node-settings Rust gate = PASS; regressions = 5/5 PASS on stable and MSRV 1.97.1; Clippy/FMT/check = PASS; focused Graphify update/query = PASS.
