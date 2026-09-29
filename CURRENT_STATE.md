@@ -4,9 +4,9 @@
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest verified implementation checkpoint is `c3850aaa536ac7e33363225f671cca962c8016fb`, tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP212 verified implementation checkpoint is `734eb2de17570eef2c831cb8647cc2c489c21e39`, tree `03a1359e6602065a381292b27c6c57fde16542b7`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **CLEAN** at the OP211 clean-closeout boundary; during the docs-only closeout transaction, `CURRENT_STATE.md` and `ACTIVE_TASK.md` are the only permitted temporary dirty paths. Implementation checkpoint is `c3850aaa536ac7e33363225f671cca962c8016fb`, tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`.
+- Working tree: **CLEAN at the OP212 CLOSED_LOCAL checkpoint; VERIFY DYNAMICALLY before acting.** During this docs-only continuity transaction, `CURRENT_STATE.md` and `ACTIVE_TASK.md` are the only temporary dirty paths; committing this mirror is expected to restore CLEAN without touching product files.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -18,9 +18,18 @@
 - Owned non-Rust programming source debt: 2.
 - Non-Rust execution-wiring debt: 8.
 - Technical exceptions: 39.
-- Rust source inventory: 220 (verified by OP211 language-policy check/inventory).
+- Rust source inventory: 221 (verified during OP212 post-codegen language-policy check/inventory).
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
+
+## OP212 VERIFIED EVIDENCE
+
+- OP212 Bridge instance UI Rust/WASM ownership is VERIFIED_LOCAL and committed as implementation checkpoint `734eb2de17570eef2c831cb8647cc2c489c21e39`, tree `03a1359e6602065a381292b27c6c57fde16542b7`; no push has occurred.
+- New Rust owner `crates/kaspa-gateway-frontend-wasm/src/bridge_instance_ui.rs` is wired through frontend-WASM `lib.rs`; `kaspa-bridge.js` now uses the Rust/WASM owner for instance preview/sync/read/placeholder behavior.
+- OP212 Rust qualification already verified: FMT PASS; frontend-WASM cargo check PASS; targeted `bridge_instance_ui` tests 2/2 PASS; strict frontend-WASM Clippy PASS; Rust 1.97.1 wasm32 PASS.
+- Deterministic frontend-WASM codegen WRITE/CHECK PASS with wasm-pack 0.15.0, artifact count 19; generated JS SHA-256 `dd3283452f684ac0a884ba311ba0076f7f1f6ef9347ab3ff61ce7dac2c286514`; generated WASM SHA-256 `3b87466944f3e4f9989d6e2b7a57ae28a135cbb68bd2524fb64bc1f47b1ef705`.
+- Post-codegen gates already PASS for effective-Bridge, Bridge readiness, language check/inventory at Rust 221 / source debt 2 / execution debt 8 / unapproved 0/0, and diff-check. The only failure was one newly dead `bridgePortProfileR35B` JavaScript wrapper/import; generation 1893 removed exactly that dead wrapper/import.
+- Recovered durable log `KGW-RUST100-212-REQUALIFY-G1894.log` proves Node syntax exit 0, Desktop ESLint `--max-warnings=0` exit 0, and `git diff --check` exit 0. Headless Edge/CDP generated-WASM parity then verified **16/16 PASS** with `data-op212=PASS` and result status `PASS`; exact source/generated hashes matched the generation-1894 intent, and only the dedicated parity processes were cleaned afterward.
 
 ## OP211 VERIFIED EVIDENCE
 
@@ -105,4 +114,4 @@
 
 ## NEXT ACTION
 
-OP211 is **CLOSED_LOCAL / VERIFIED_SUCCESS** with implementation checkpoint `c3850aaa536ac7e33363225f671cca962c8016fb`, tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`; no push. Begin read-only audit of the remaining `kaspa-bridge.js` source debt, select the smallest coherent unblocked next Rust ownership boundary, freeze its exact pre-mutation input, and persist a new write-ahead intent before source mutation. The locked zero-touch PowerShell helper remains an independent blocker only.
+OP212 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint `734eb2de17570eef2c831cb8647cc2c489c21e39`, tree `03a1359e6602065a381292b27c6c57fde16542b7`; no push. After this docs-only continuity checkpoint, begin a read-only audit of the remaining `kaspa-bridge.js` source debt and select the smallest coherent unblocked Rust ownership boundary. The separate zero-touch helper blocker remains unchanged.
