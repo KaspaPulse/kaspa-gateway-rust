@@ -323,13 +323,6 @@ function kgwBridgeEffectiveSettingsV1(net, structuredInstances) {
 
 
 
-function bridgeAssignMissingInstancePortsR9(net, instance) {
-  return wasmBridgeAssignMissingInstancePortsR9(
-    bridgeInstances,
-    String(net || ""),
-    instance || {}
-  );
-}
 
 function bridgeReassignInstancePortsFromExternalRangeR91(net, reason) {
   const normalizedNet = bridgeInstanceNetworkKeyR15(net, net);
@@ -373,22 +366,7 @@ function bridgeAssertNoPortConflictsR5(net) {
  * - Covers mainnet, testnet10, testnet13 through BRIDGE_NETWORKS.
  */
 /* R33 per-network validate/apply state is Rust-owned; JS retains only live callers below. */
-function bridgeValidateAllPortConflictStatesR33(reason) {
-  return wasmBridgeValidateAllPortConflictStatesR33(
-    bridgeInstances,
-    activeInstance,
-    String(reason || "")
-  );
-}
 
-function bridgeSchedulePortConflictValidationR33(net, reason) {
-  return wasmBridgeSchedulePortConflictValidationR33(
-    bridgeInstances,
-    activeInstance,
-    String(net || ""),
-    String(reason || "")
-  );
-}
 
 
 
@@ -911,7 +889,7 @@ function bridgeReadInstanceState(net, instanceId) {
   const current = bridgeInstances[net].find((instance) => String(instance.id) === String(instanceId)) || {};
   const next = wasmBridgeNormalizeInstanceRecord(current || {}, Date.now() + Math.floor(Math.random() * 1000));
 
-  return bridgeAssignMissingInstancePortsR9(net, {
+  return wasmBridgeAssignMissingInstancePortsR9(bridgeInstances, String(net || ""), {
     id: next.id || instanceId || Date.now() + Math.floor(Math.random() * 1000),
     instance: "",
     instancePort: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instancePort") || next.instancePort || "",
@@ -3183,7 +3161,7 @@ function installActions(root) {
       ].map((value) => String(value || "").toLowerCase()).join(" ");
 
       if (/port|prom|listen|rpc|dashboard|kaspad|instance/.test(hay)) {
-        bridgeSchedulePortConflictValidationR33(net, "input");
+        wasmBridgeSchedulePortConflictValidationR33(bridgeInstances, activeInstance, String(net || ""), "input");
         wasmBridgeSchedulePortAutofixRefreshUiR37(String(net || ""), "input", bridgeInstances, activeInstance);
       }
     });
@@ -3199,12 +3177,12 @@ function installActions(root) {
       ].map((value) => String(value || "").toLowerCase()).join(" ");
 
       if (/port|prom|listen|rpc|dashboard|kaspad|instance/.test(hay)) {
-        bridgeSchedulePortConflictValidationR33(net, "change");
+        wasmBridgeSchedulePortConflictValidationR33(bridgeInstances, activeInstance, String(net || ""), "change");
         wasmBridgeSchedulePortAutofixRefreshUiR37(String(net || ""), "change", bridgeInstances, activeInstance);
       }
     });
 
-    window.setTimeout(() => bridgeValidateAllPortConflictStatesR33("install"), 100);
+    window.setTimeout(() => wasmBridgeValidateAllPortConflictStatesR33(bridgeInstances, activeInstance, "install"), 100);
   }
 
   if (!root.dataset.kgwBridgePortAutofixOwnerR37) {
