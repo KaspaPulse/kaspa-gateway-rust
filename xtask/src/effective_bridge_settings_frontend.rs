@@ -26,7 +26,7 @@ const SLICES: &[(&str, &str)] = &[
         "function kgwBridgeSetNetworkEnabled(",
     ),
     ("function byId(", "function esc("),
-    ("function id(", "function iid("),
+    ("function id(", "function v("),
     (
         "function v(",
         "function kgwBridgeInstanceCommandStateKeyR13B(",
@@ -36,7 +36,7 @@ const SLICES: &[(&str, &str)] = &[
         "function kgwBridgeInstanceCommandCheckboxR13B(",
     ),
     (
-        "function bridgeInstanceSplitParts(",
+        "function bridgeInstanceKeyOf(",
         "function bridgeExtractPortsFromTextR5(",
     ),
     (

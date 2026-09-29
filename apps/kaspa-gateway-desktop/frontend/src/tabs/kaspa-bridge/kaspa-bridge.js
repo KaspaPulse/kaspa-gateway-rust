@@ -12,7 +12,6 @@ import initBridgeRust, {
   bridgeEscapeHtml as wasmBridgeEscapeHtml,
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
   bridgeI18nTextR41 as wasmBridgeI18nTextR41,
-  bridgeInstanceElementId as wasmBridgeInstanceElementId,
   bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
   bridgeNetworkPolicyMessage as wasmBridgeNetworkPolicyMessage,
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
@@ -144,10 +143,6 @@ function id(net, name) {
   return wasmBridgeElementId(String(net || ""), String(name || ""));
 }
 
-function iid(net, instanceId, name) {
-  return wasmBridgeInstanceElementId(String(net || ""), instanceId, String(name || ""));
-}
-
 function v(net, name) {
   return wasmBridgeValue(String(net || ""), String(name || ""));
 }
@@ -160,7 +155,6 @@ function c(net, name) {
 
 
 // KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B
-const KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B = "KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B";
 
 function kgwBridgeInstanceCommandStateKeyR13B(net, instanceId, name) {
   return `${String(net || "mainnet")}::${String(instanceId || "1")}::${String(name || "")}`;
@@ -240,7 +234,6 @@ function addBoolValue(lines, net, name, flag) {
 
 
 // KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
-const KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7 = "KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7";
 
 function kgwBridgeCommandInlineStateKeyR7(net) {
   return String(net || "mainnet");
@@ -268,7 +261,6 @@ function kgwBridgeCommandShouldIncludeR7(net, name) {
 function kgwBridgeCommandInlineToggleR7(net, name) {
   if (BRIDGE_MANAGED[name] || BRIDGE_REQUIRED.has(name)) return "";
   const enabled = kgwBridgeCommandOptionEnabledR7(net, name);
-  const label = enabled ? "Included" : "Excluded";
   return `<input type="checkbox" class="kgw-command-option-checkbox-r9" data-bridge-command-option-toggle-r7="${esc(String(name))}" data-net="${esc(String(net))}" ${enabled ? "checked" : ""} aria-label="${enabled ? "Included in command" : "Excluded from command"}" title="${enabled ? "Included in command" : "Excluded from command"}">`; // KGW_BRIDGE_COMMAND_COMPOSER_CHECKBOX_ONLY_R9
 }
 
@@ -432,34 +424,11 @@ function renderCpuMiner(net) {
 
 
 
-function bridgeNormalizeInstance(raw) {
-  const value = String(raw || "").trim();
-
-  if (!value) return "";
-
-  if (/^\d+$/.test(value)) {
-    return `port=:${value}`;
-  }
-
-  if (/^:\d{2,5}$/.test(value)) {
-    return `port=${value}`;
-  }
-
-  return value;
-}
-
 /* KGW_BRIDGE_INSTANCE_PHASE1_UPSTREAM_SERIALIZER_R1C
  * Upstream-compatible bridge instance serializer.
  * RKStratum expects one --instance value with comma-separated internal keys:
  * port/prom/diff/log/var_diff/shares_per_min/var_diff_stats/pow2_clamp.
  */
-function bridgeInstanceSplitParts(value) {
-  return String(value || "")
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
-}
-
 function bridgeInstanceKeyOf(part) {
   const eq = String(part || "").indexOf("=");
   return eq > 0 ? String(part).slice(0, eq).trim() : "";
@@ -2315,29 +2284,6 @@ function bridgeFindRecommendedOrNearestUnusedPortR35B(net, kind, usedPorts, fall
   return bridgeFindNearestUnusedPortR9(fallbackStart || range.preferred || range.min || 1, usedPorts);
 }
 
-function bridgeClassifyPortProfileR35B(net, kind, port) {
-  const normalized = bridgeNormalizePortSoftR35B(port);
-  if (!normalized) {
-    return { ok: false, warning: true, invalid: true, message: "invalid port" };
-  }
-
-  const profile = bridgePortProfileR35B(net);
-  const range = profile[kind] || profile.stratum;
-
-  if (bridgePortInRangeR35B(normalized, range)) {
-    return { ok: true, warning: false, invalid: false, port: normalized, message: "" };
-  }
-
-  return {
-    ok: true,
-    warning: true,
-    invalid: false,
-    port: normalized,
-    message: kind + " port " + normalized + " is outside recommended " + String(net || "") + " range " + range.min + "-" + range.max + ". Accepted if unused."
-  };
-}
-
-
 
 function bridgeTracePortProfileR35B(net, phase, details) {
   try {
@@ -2733,7 +2679,7 @@ function bridgeAutofixButtonsR37() {
   return Array.from(root.querySelectorAll('[data-bridge-action="auto-fix-ports-r37"]'));
 }
 
-function bridgeRefreshPortAutofixButtonsR37(reason) {
+function bridgeRefreshPortAutofixButtonsR37(_reason) {
   for (const button of bridgeAutofixButtonsR37()) {
     const net = String(button.dataset.net || "");
     const validation = bridgeValidatePortConflictsR5(net);
@@ -3160,7 +3106,7 @@ function kgwBridgeApplyRuntimeLogReportV1(net, role, report, instanceId = kgwBri
 function kgwBridgeClearRawLogBufferV1(net, role = "bridge", instanceId = kgwBridgeActiveRawLogInstanceIdV1(net)) {
   return wasmBridgeClearRawLogBuffer(String(net || ""), String(role || "bridge"), String(instanceId || ""));
 }
-async function kgwBridgeDispatchRuntimeLogClearV1(net, role = "bridge") {
+async function kgwBridgeDispatchRuntimeLogClearV1(net, _role = "bridge") {
   const invoke = getTauriInvoke();
   if (!invoke) return null;
   return await invokeWithTimeout(invoke, "kgw_kgw_runtime_clear_logs_v1", buildApplyPayload(net, "kgw_kgw_runtime_clear_logs_v1"), KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS);
@@ -3698,13 +3644,6 @@ function parseRuntimeKeyValueResponse(value) {
 
   return { raw: text, fields };
 }
-
-function yesNo(value) {
-  if (value === true || value === "true") return "yes";
-  if (value === false || value === "false") return "no";
-  return value == null || value === "" ? "unknown" : String(value);
-}
-
 
 
 function kgwBridgeStartOptions(net) {
@@ -4877,16 +4816,6 @@ function kgwBridgeR51SetRuntimeUnknown(net, message = "Runtime status is tempora
   if (!preserveActionError) kgwBridgeSetRuntimeErrorV1(net, message, errorSource);
 }
 
-function kgwBridgeR51Delta(previous, current) {
-  const before = String(previous || "");
-  const after = String(current || "");
-
-  if (!after || before === after) return "";
-  if (after.startsWith(before)) return after.slice(before.length).trim();
-
-  return after.trim();
-}
-
 function kgwBridgeR51MaybeActivityNotice(net, statusText) {
   const now = Date.now();
   const last = KGW_BRIDGE_R51_LAST_ACTIVITY_NOTICE[net] || 0;
@@ -4899,7 +4828,7 @@ function kgwBridgeR51MaybeActivityNotice(net, statusText) {
 
 }
 
-async function kgwBridgeR51RefreshOne(net, reason = "live") {
+async function kgwBridgeR51RefreshOne(net, _reason = "live") {
   const transitionActive = KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(net + ":start") ||
     KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(net + ":stop");
 

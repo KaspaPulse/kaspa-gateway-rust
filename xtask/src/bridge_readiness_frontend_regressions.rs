@@ -18,7 +18,7 @@ const SLICES: &[(&str, &str)] = &[
         "function kgwBridgeSetNetworkEnabled(",
     ),
     ("function byId(", "function esc("),
-    ("function id(", "function iid("),
+    ("function id(", "function v("),
     (
         "function kgwBridgeV7RuntimeRunningFromText(",
         "function kgwBridgeSetRuntimeErrorV1(",
@@ -27,7 +27,10 @@ const SLICES: &[(&str, &str)] = &[
         "function kgwBridgeSetRuntimeErrorV1(",
         "async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning",
     ),
-    ("function stringifyRuntimeResult(", "function yesNo("),
+    (
+        "function stringifyRuntimeResult(",
+        "function kgwBridgeStartOptions(",
+    ),
     (
         "const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();",
         "function getTauriInvoke(",
@@ -38,7 +41,7 @@ const SLICES: &[(&str, &str)] = &[
     ),
     (
         "function kgwBridgeR51IsRunning(",
-        "function kgwBridgeR51Delta(",
+        "function kgwBridgeR51MaybeActivityNotice(",
     ),
 ];
 
