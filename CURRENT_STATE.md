@@ -6,7 +6,7 @@
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
 - Current HEAD: **VERIFY DYNAMICALLY** from Git; latest verified implementation checkpoint is `38634dd24da4499fd7f4878f30db7bcd02b8ee46`, tree `7cf689f6d8bc4b9980bcc54812428bcf210f0ab6`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **DIRTY / CONTINUITY DOCS ONLY** after the verified OP210 implementation checkpoint `38634dd24da4499fd7f4878f30db7bcd02b8ee46`; only `CURRENT_STATE.md` and `ACTIVE_TASK.md` are being synchronized to that exact source identity. No implementation mutation is in progress.
+- Working tree: **CLEAN at the verified OP210 closeout boundary** before the next Bridge source-debt mutation. OP210 implementation checkpoint is `38634dd24da4499fd7f4878f30db7bcd02b8ee46`, tree `7cf689f6d8bc4b9980bcc54812428bcf210f0ab6`; later continuity-only commits do not change that implementation identity.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -94,4 +94,4 @@
 
 ## NEXT ACTION
 
-OP210 implementation checkpoint is VERIFIED_SUCCESS as `38634dd24da4499fd7f4878f30db7bcd02b8ee46`. Run only the project-continuity gate and `git diff --check` invalidated by this post-checkpoint mirror update, create the docs-only continuity checkpoint if both pass, then audit the remaining `kaspa-bridge.js` debt and immediately continue from the smallest independent unblocked Bridge boundary. No push yet.
+OP210 is CLOSED_LOCAL / VERIFIED_SUCCESS. Start read-only audit of the remaining `kaspa-bridge.js` source debt, identify the smallest coherent unblocked Bridge ownership boundary, persist a new OP211 write-ahead intent before any source mutation, and continue locally. The locked zero-touch PowerShell helper remains an independent blocker only. No push yet.
