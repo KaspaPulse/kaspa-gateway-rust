@@ -5,7 +5,10 @@ import initBridgeRust, {
   bridgeClipboardCharacterCount as wasmBridgeClipboardCharacterCount,
   bridgeClipboardLineCount as wasmBridgeClipboardLineCount,
   bridgeClipboardSafeError as wasmBridgeClipboardSafeError,
+  bridgeClipboardStatusElement as wasmBridgeClipboardStatusElement,
   bridgeNormalizeClipboardLineEndings as wasmBridgeNormalizeClipboardLineEndings,
+  bridgeReadClipboardRawLogBuffer as wasmBridgeReadClipboardRawLogBuffer,
+  bridgeSetClipboardStatus as wasmBridgeSetClipboardStatus,
   bridgeSha256Hex as wasmBridgeSha256Hex,
   bridgeStartTraceFrontend as wasmBridgeStartTraceFrontend,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
@@ -6418,48 +6421,15 @@ function kgwBridgeClipboardSafeErrorV1(error) {
 }
 
 function kgwBridgeClipboardStatusElementV1(net) {
-  const out = kgwBridgeLogOutputV29(net);
-  const toolbar = out?.closest?.('[data-bridge-inner-panel="log"]')?.querySelector?.(".bridge-v7-log-toolbar");
-  if (!toolbar) return null;
-
-  let status = toolbar.querySelector('.kgw-copy-log-status-v1[data-net="' + net + '"]');
-  if (!status) {
-    status = document.createElement("span");
-    status.setAttribute("class", "kgw-copy-log-status-v1");
-    status.dataset.net = net;
-    status.setAttribute("data-net", net);
-    status.setAttribute("role", "status");
-    status.setAttribute("aria-live", "polite");
-    toolbar.appendChild(status);
-  }
-  return status;
+  return wasmBridgeClipboardStatusElement(String(net || ""));
 }
 
 function kgwBridgeSetClipboardStatusV1(net, message, state = "info") {
-  const status = kgwBridgeClipboardStatusElementV1(net);
-  if (!status) return false;
-
-  status.textContent = String(message || "");
-  status.dataset.state = String(state || "info");
-  applyStatusTone(status, state);
-  status.hidden = !status.textContent;
-  return true;
+  return wasmBridgeSetClipboardStatus(String(net || ""), String(message || ""), String(state || "info"));
 }
 
 function kgwBridgeReadClipboardRawLogBufferV1(net) {
-  const out = kgwBridgeLogOutputV29(net);
-  const tag = String(out?.tagName || "").toUpperCase();
-  const readsValue = tag === "TEXTAREA" || tag === "INPUT";
-  const rawText = String(out ? (readsValue ? out.value : out.textContent) : "");
-  const normalizedText = kgwBridgeNormalizeClipboardLineEndingsV1(rawText);
-
-  return {
-    out,
-    rawText,
-    normalizedText,
-    characterCount: kgwBridgeClipboardCharacterCountV1(normalizedText),
-    lineCount: kgwBridgeClipboardLineCountV1(normalizedText)
-  };
+  return wasmBridgeReadClipboardRawLogBuffer(String(net || ""));
 }
 
 async function kgwBridgeDispatchClipboardWriteV1(net, text, metadata) {

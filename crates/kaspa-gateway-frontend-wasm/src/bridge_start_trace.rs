@@ -42,6 +42,39 @@ fn set(target: &JsValue, name: &str, value: &JsValue) {
     let _ = Reflect::set(target, &JsValue::from_str(name), value);
 }
 
+fn function(target: &JsValue, name: &str) -> Option<Function> {
+    property(target, name).dyn_into::<Function>().ok()
+}
+
+fn call1(target: &JsValue, name: &str, arg: &JsValue) -> Option<JsValue> {
+    function(target, name)?.call1(target, arg).ok()
+}
+
+fn call2(target: &JsValue, name: &str, first: &JsValue, second: &JsValue) -> Option<JsValue> {
+    function(target, name)?.call2(target, first, second).ok()
+}
+
+fn document() -> JsValue {
+    property(&global(), "document")
+}
+
+fn query(target: &JsValue, selector: &str) -> JsValue {
+    call1(target, "querySelector", &JsValue::from_str(selector)).unwrap_or(JsValue::UNDEFINED)
+}
+
+fn closest(target: &JsValue, selector: &str) -> JsValue {
+    call1(target, "closest", &JsValue::from_str(selector)).unwrap_or(JsValue::UNDEFINED)
+}
+
+fn set_attr(target: &JsValue, name: &str, value: &str) {
+    let _ = call2(
+        target,
+        "setAttribute",
+        &JsValue::from_str(name),
+        &JsValue::from_str(value),
+    );
+}
+
 fn collapse_control_whitespace(value: &str) -> String {
     let mut output = String::with_capacity(value.len());
     let mut control_run = false;
@@ -174,6 +207,108 @@ async fn sha256_hex_text(text: &str) -> String {
     output
 }
 
+fn bridge_log_output_id(net: &str) -> String {
+    format!("bridge-{net}-logOutput")
+}
+
+fn bridge_status_selector(net: &str) -> String {
+    format!(".kgw-copy-log-status-v1[data-net=\"{net}\"]")
+}
+
+fn bridge_log_output(net: &str) -> JsValue {
+    call1(
+        &document(),
+        "getElementById",
+        &JsValue::from_str(&bridge_log_output_id(net)),
+    )
+    .unwrap_or(JsValue::UNDEFINED)
+}
+
+fn clipboard_status_element(net: &str) -> JsValue {
+    let out = bridge_log_output(net);
+    if !present(&out) {
+        return JsValue::UNDEFINED;
+    }
+    let panel = closest(&out, "[data-bridge-inner-panel=\"log\"]");
+    if !present(&panel) {
+        return JsValue::UNDEFINED;
+    }
+    let toolbar = query(&panel, ".bridge-v7-log-toolbar");
+    if !present(&toolbar) {
+        return JsValue::UNDEFINED;
+    }
+    let existing = query(&toolbar, &bridge_status_selector(net));
+    if present(&existing) {
+        return existing;
+    }
+    let status = call1(&document(), "createElement", &JsValue::from_str("span"))
+        .unwrap_or(JsValue::UNDEFINED);
+    if !present(&status) {
+        return JsValue::UNDEFINED;
+    }
+    set_attr(&status, "class", "kgw-copy-log-status-v1");
+    set(
+        &property(&status, "dataset"),
+        "net",
+        &JsValue::from_str(net),
+    );
+    set_attr(&status, "data-net", net);
+    set_attr(&status, "role", "status");
+    set_attr(&status, "aria-live", "polite");
+    let _ = call1(&toolbar, "appendChild", &status);
+    status
+}
+
+fn set_clipboard_status(net: &str, message: &str, state: &str) -> bool {
+    let status = clipboard_status_element(net);
+    if !present(&status) {
+        return false;
+    }
+    set(&status, "textContent", &JsValue::from_str(message));
+    set(
+        &property(&status, "dataset"),
+        "state",
+        &JsValue::from_str(state),
+    );
+    let _ = crate::apply_status_tone_js(status.clone(), JsValue::from_str(state));
+    set(&status, "hidden", &JsValue::from_bool(message.is_empty()));
+    true
+}
+
+fn read_clipboard_raw_log_buffer(net: &str) -> JsValue {
+    let out = bridge_log_output(net);
+    let tag = crate::js_string_owned(&property(&out, "tagName")).to_uppercase();
+    let raw_text = if present(&out) {
+        if tag == "TEXTAREA" || tag == "INPUT" {
+            crate::js_string_owned(&property(&out, "value"))
+        } else {
+            crate::js_string_owned(&property(&out, "textContent"))
+        }
+    } else {
+        String::new()
+    };
+    let normalized = normalize_clipboard_line_endings_text(&raw_text);
+    let output = Object::new();
+    set(output.as_ref(), "out", &out);
+    set(output.as_ref(), "rawText", &JsValue::from_str(&raw_text));
+    set(
+        output.as_ref(),
+        "normalizedText",
+        &JsValue::from_str(&normalized),
+    );
+    set(
+        output.as_ref(),
+        "characterCount",
+        &JsValue::from_f64(clipboard_character_count_text(&normalized) as f64),
+    );
+    set(
+        output.as_ref(),
+        "lineCount",
+        &JsValue::from_f64(clipboard_line_count_text(&normalized) as f64),
+    );
+    output.into()
+}
+
 fn resolve_invoke() -> Option<Function> {
     let window = window();
     let tauri = property(&window, "__TAURI__");
@@ -188,6 +323,21 @@ fn resolve_invoke() -> Option<Function> {
         }
     }
     None
+}
+
+#[wasm_bindgen(js_name = bridgeClipboardStatusElement)]
+pub fn bridge_clipboard_status_element(net: String) -> JsValue {
+    clipboard_status_element(&net)
+}
+
+#[wasm_bindgen(js_name = bridgeSetClipboardStatus)]
+pub fn bridge_set_clipboard_status(net: String, message: String, state: String) -> bool {
+    set_clipboard_status(&net, &message, &state)
+}
+
+#[wasm_bindgen(js_name = bridgeReadClipboardRawLogBuffer)]
+pub fn bridge_read_clipboard_raw_log_buffer(net: String) -> JsValue {
+    read_clipboard_raw_log_buffer(&net)
 }
 
 #[wasm_bindgen(js_name = bridgeClipboardCharacterCount)]
@@ -361,5 +511,14 @@ mod tests {
     fn control_whitespace_runs_collapse_like_legacy_regex() {
         assert_eq!(safe_text_str("a\r\n\tb", ""), "a b");
         assert_eq!(clipboard_safe_error_text("a\r\n\tb"), "a b");
+    }
+
+    #[test]
+    fn bridge_clipboard_dom_identifiers_match_legacy() {
+        assert_eq!(bridge_log_output_id("mainnet"), "bridge-mainnet-logOutput");
+        assert_eq!(
+            bridge_status_selector("testnet10"),
+            ".kgw-copy-log-status-v1[data-net=\"testnet10\"]"
+        );
     }
 }
