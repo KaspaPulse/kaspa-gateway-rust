@@ -1,7 +1,14 @@
 import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { BRIDGE_MANAGED, BRIDGE_REQUIRED, BRIDGE_OPTIONAL, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
-import initBridgeRust, { bridgeStartTraceFrontend as wasmBridgeStartTraceFrontend } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
+import initBridgeRust, {
+  bridgeClipboardCharacterCount as wasmBridgeClipboardCharacterCount,
+  bridgeClipboardLineCount as wasmBridgeClipboardLineCount,
+  bridgeClipboardSafeError as wasmBridgeClipboardSafeError,
+  bridgeNormalizeClipboardLineEndings as wasmBridgeNormalizeClipboardLineEndings,
+  bridgeSha256Hex as wasmBridgeSha256Hex,
+  bridgeStartTraceFrontend as wasmBridgeStartTraceFrontend,
+} from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
 await initBridgeRust();
 
@@ -6391,42 +6398,23 @@ function kgwBridgeFlashLogActionButtonV29(button, doneLabel) {
 }
 
 function kgwBridgeClipboardCharacterCountV1(text) {
-  return Array.from(String(text ?? "")).length;
+  return wasmBridgeClipboardCharacterCount(text);
 }
 
 function kgwBridgeClipboardLineCountV1(text) {
-  const value = String(text ?? "");
-  return value ? value.split("\n").length : 0;
+  return wasmBridgeClipboardLineCount(text);
 }
 
 function kgwBridgeNormalizeClipboardLineEndingsV1(text) {
-  return String(text ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\n/g, "\r\n");
+  return wasmBridgeNormalizeClipboardLineEndings(text);
 }
 
 async function kgwBridgeSha256HexV1(text) {
-  try {
-    const cryptoApi = window.crypto || globalThis.crypto;
-    const Encoder = window.TextEncoder || globalThis.TextEncoder;
-    if (!cryptoApi?.subtle?.digest || typeof Encoder !== "function") return "";
-
-    const bytes = new Encoder().encode(String(text ?? ""));
-    const digest = await cryptoApi.subtle.digest("SHA-256", bytes);
-    return Array.from(new Uint8Array(digest))
-      .map((value) => value.toString(16).padStart(2, "0"))
-      .join("");
-  } catch (_) {
-    return "";
-  }
+  return await wasmBridgeSha256Hex(text);
 }
 
 function kgwBridgeClipboardSafeErrorV1(error) {
-  const text = String(error && error.message ? error.message : error || "clipboard write failed")
-    .replace(/[\r\n\t]+/g, " ")
-    .trim();
-  if (/(secret|token|private|mnemonic|wallet|address)/i.test(text)) {
-    return "clipboard write failed with a sensitive error";
-  }
-  return (text || "clipboard write failed").slice(0, 360);
+  return wasmBridgeClipboardSafeError(error);
 }
 
 function kgwBridgeClipboardStatusElementV1(net) {
