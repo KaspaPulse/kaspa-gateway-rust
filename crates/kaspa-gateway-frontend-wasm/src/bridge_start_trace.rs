@@ -427,6 +427,94 @@ async fn dispatch_clipboard_write_impl(
     .await
 }
 
+fn original_log_action_label_text(value: &str) -> String {
+    let text = value.trim();
+    if text.is_empty() {
+        "Log Action".to_owned()
+    } else {
+        text.to_owned()
+    }
+}
+
+fn restore_log_action_label_impl(button: &JsValue) {
+    if !present(button) {
+        return;
+    }
+    let data = property(button, "dataset");
+    let original = property(&data, "kgwLogOriginalLabelV29");
+    if crate::js_boolean(&original) {
+        set(
+            button,
+            "textContent",
+            &JsValue::from_str(&crate::js_string_owned(&original)),
+        );
+    }
+    let classes = property(button, "classList");
+    let _ = call1(
+        &classes,
+        "remove",
+        &JsValue::from_str("kgw-log-action-feedback"),
+    );
+    if let Ok(object) = data.dyn_into::<Object>() {
+        let _ = Reflect::delete_property(&object, &JsValue::from_str("kgwDoneLabel"));
+    }
+}
+
+fn flash_log_action_button_impl(button: &JsValue, done_label: &str) {
+    if !present(button) {
+        return;
+    }
+    let data = property(button, "dataset");
+    let original = property(&data, "kgwLogOriginalLabelV29");
+    if !crate::js_boolean(&original) {
+        let current = crate::js_string_owned(&property(button, "textContent"));
+        set(
+            &data,
+            "kgwLogOriginalLabelV29",
+            &JsValue::from_str(&original_log_action_label_text(&current)),
+        );
+    }
+
+    let browser = window();
+    let timer = property(button, "__kgwLogActionFeedbackTimerV29");
+    if present(&timer) {
+        let _ = call1(&browser, "clearTimeout", &timer);
+    }
+
+    set(button, "textContent", &JsValue::from_str(done_label));
+    set(&data, "kgwDoneLabel", &JsValue::from_str(done_label));
+    let classes = property(button, "classList");
+    let _ = call1(
+        &classes,
+        "add",
+        &JsValue::from_str("kgw-log-action-feedback"),
+    );
+
+    let button_for_timeout = button.clone();
+    let callback = Closure::wrap(Box::new(move || {
+        restore_log_action_label_impl(&button_for_timeout);
+    }) as Box<dyn FnMut()>);
+    if let Some(timer_id) = call2(
+        &browser,
+        "setTimeout",
+        callback.as_ref(),
+        &JsValue::from_f64(1600.0),
+    ) {
+        set(button, "__kgwLogActionFeedbackTimerV29", &timer_id);
+    }
+    callback.forget();
+}
+
+#[wasm_bindgen(js_name = bridgeRestoreLogActionLabel)]
+pub fn bridge_restore_log_action_label(button: JsValue) {
+    restore_log_action_label_impl(&button);
+}
+
+#[wasm_bindgen(js_name = bridgeFlashLogActionButton)]
+pub fn bridge_flash_log_action_button(button: JsValue, done_label: String) {
+    flash_log_action_button_impl(&button, &done_label);
+}
+
 #[wasm_bindgen(js_name = bridgeDispatchClipboardWrite)]
 pub async fn bridge_dispatch_clipboard_write(
     net: String,
@@ -631,5 +719,12 @@ mod tests {
             bridge_status_selector("testnet10"),
             ".kgw-copy-log-status-v1[data-net=\"testnet10\"]"
         );
+    }
+
+    #[test]
+    fn log_feedback_original_label_matches_legacy_fallback() {
+        assert_eq!(original_log_action_label_text(" Copy Log "), "Copy Log");
+        assert_eq!(original_log_action_label_text(""), "Log Action");
+        assert_eq!(original_log_action_label_text("   "), "Log Action");
     }
 }

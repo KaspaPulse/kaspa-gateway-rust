@@ -4,7 +4,9 @@ import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, reve
 import initBridgeRust, {
   bridgeClipboardSafeError as wasmBridgeClipboardSafeError,
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
+  bridgeFlashLogActionButton as wasmBridgeFlashLogActionButton,
   bridgeReadClipboardRawLogBuffer as wasmBridgeReadClipboardRawLogBuffer,
+  bridgeRestoreLogActionLabel as wasmBridgeRestoreLogActionLabel,
   bridgeSetClipboardStatus as wasmBridgeSetClipboardStatus,
   bridgeSha256Hex as wasmBridgeSha256Hex,
   bridgeStartTraceFrontend as wasmBridgeStartTraceFrontend,
@@ -6372,29 +6374,11 @@ function kgwBridgeLogOutputV29(net) {
 }
 
 function kgwBridgeRestoreLogActionLabelV29(button) {
-  if (!button) return;
-  const original = button.dataset.kgwLogOriginalLabelV29;
-  if (original) button.textContent = original;
-  button.classList.remove("kgw-log-action-feedback");
-  delete button.dataset.kgwDoneLabel;
+  return wasmBridgeRestoreLogActionLabel(button);
 }
 
 function kgwBridgeFlashLogActionButtonV29(button, doneLabel) {
-  if (!button) return;
-
-  if (!button.dataset.kgwLogOriginalLabelV29) {
-    button.dataset.kgwLogOriginalLabelV29 = String(button.textContent || "").trim() || "Log Action";
-  }
-
-  window.clearTimeout(button.__kgwLogActionFeedbackTimerV29);
-
-  button.textContent = doneLabel;
-  button.dataset.kgwDoneLabel = doneLabel;
-  button.classList.add("kgw-log-action-feedback");
-
-  button.__kgwLogActionFeedbackTimerV29 = window.setTimeout(() => {
-    kgwBridgeRestoreLogActionLabelV29(button);
-  }, 1600);
+  return wasmBridgeFlashLogActionButton(button, String(doneLabel || ""));
 }
 
 async function kgwBridgeSha256HexV1(text) {
