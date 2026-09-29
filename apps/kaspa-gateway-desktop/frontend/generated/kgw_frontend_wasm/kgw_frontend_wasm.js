@@ -1294,134 +1294,74 @@ export function nodeV67StatusRuntime(network) {
     return ret;
 }
 
-export function settingsProfilesInstall() {
-    wasm.settingsProfilesInstall();
+export function shellI18nInstall() {
+    wasm.shellI18nInstall();
+}
+
+export function explorerTabInstall() {
+    wasm.explorerTabInstall();
 }
 
 /**
- * @param {any} row
- */
-export function settingsProfilesSelectEndpoint(row) {
-    wasm.settingsProfilesSelectEndpoint(row);
-}
-
-/**
- * @returns {Promise<any>}
- */
-export function settingsProfilesRefresh() {
-    const ret = wasm.settingsProfilesRefresh();
-    return ret;
-}
-
-/**
- * @returns {Promise<boolean>}
- */
-export function settingsPersistenceSave() {
-    const ret = wasm.settingsPersistenceSave();
-    return ret;
-}
-
-/**
- * @param {any} options
  * @returns {Promise<void>}
  */
-export function settingsPersistenceResetDefaults(options) {
-    const ret = wasm.settingsPersistenceResetDefaults(options);
+export function explorerInitTab() {
+    const ret = wasm.explorerInitTab();
     return ret;
 }
 
-export function settingsPersistenceLoadSaved() {
-    wasm.settingsPersistenceLoadSaved();
+/**
+ * @returns {any}
+ */
+export function explorerEnsureState() {
+    const ret = wasm.explorerEnsureState();
+    return ret;
 }
 
 /**
- * @param {any} root
+ * @param {any} section
+ * @param {string} message
  * @returns {boolean}
  */
-export function nodeInitKaspaNodeTab(root) {
-    const ret = wasm.nodeInitKaspaNodeTab(root);
+export function explorerForceSetTableMessage(section, message) {
+    const ptr0 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.explorerForceSetTableMessage(section, ptr0, len0);
     return ret !== 0;
 }
 
 /**
- * @param {string} net
- * @param {boolean} running
- * @param {boolean} bridge_inprocess_locked
- * @param {string} runtime_error
- * @param {string} status_text
- */
-export function nodeSetRuntimeButtons(net, running, bridge_inprocess_locked, runtime_error, status_text) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(runtime_error, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passStringToWasm0(status_text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len2 = WASM_VECTOR_LEN;
-    wasm.nodeSetRuntimeButtons(ptr0, len0, running, bridge_inprocess_locked, ptr1, len1, ptr2, len2);
-}
-
-/**
- * @param {string} net
- * @param {string} _reason
- * @returns {Promise<void>}
- */
-export function nodeRefreshOne(net, _reason) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(_reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.nodeRefreshOne(ptr0, len0, ptr1, len1);
-    return ret;
-}
-
-/**
- * @param {string} action
- * @param {string} net
- * @returns {Promise<boolean>}
- */
-export function nodeRunIntegratedAction(action, net) {
-    const ptr0 = passStringToWasm0(action, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.nodeRunIntegratedAction(ptr0, len0, ptr1, len1);
-    return ret;
-}
-
-/**
- * @param {string} net
- * @param {string} value
- */
-export function nodeSetRuntimeTransition(net, value) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    wasm.nodeSetRuntimeTransition(ptr0, len0, ptr1, len1);
-}
-
-/**
- * @param {string} net
+ * @param {any} section
  * @returns {boolean}
  */
-export function nodeBridgeOwnedLocked(net) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.nodeBridgeOwnedLocked(ptr0, len0);
+export function explorerForceResetDisplayFiltersToAll(section) {
+    const ret = wasm.explorerForceResetDisplayFiltersToAll(section);
     return ret !== 0;
 }
 
 /**
- * @param {string} net
- * @param {boolean} locked
- * @param {string} reason
+ * @param {any} section
+ * @param {boolean} busy
+ * @param {string} mode
+ * @returns {boolean}
  */
-export function nodeApplyBridgeDisplayOnly(net, locked, reason) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+export function explorerForceSetControlsBusy(section, busy, mode) {
+    const ptr0 = passStringToWasm0(mode, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    wasm.nodeApplyBridgeDisplayOnly(ptr0, len0, locked, ptr1, len1);
+    const ret = wasm.explorerForceSetControlsBusy(section, busy, ptr0, len0);
+    return ret !== 0;
+}
+
+/**
+ * @returns {boolean}
+ */
+export function explorerInstallForceBusyBlocker() {
+    const ret = wasm.explorerInstallForceBusyBlocker();
+    return ret !== 0;
+}
+
+export function shellAuxInstall() {
+    wasm.shellAuxInstall();
 }
 
 /**
@@ -1462,14 +1402,6 @@ export function shellLoggerClearBufferedLogs() {
 export function shellLoggerInstall() {
     const ret = wasm.shellLoggerInstall();
     return ret !== 0;
-}
-
-/**
- * @returns {any}
- */
-export function explorerEnsureState() {
-    const ret = wasm.explorerEnsureState();
-    return ret;
 }
 
 /**
@@ -1682,72 +1614,42 @@ export function nodeSettingsOwnerButtons(root, network) {
     return ret;
 }
 
-/**
- * @param {any} payload
- */
-export function analysisViewSetData(payload) {
-    wasm.analysisViewSetData(payload);
-}
-
-export function analysisViewRenderRows() {
-    wasm.analysisViewRenderRows();
-}
-
-export function analysisViewApplyFilter() {
-    wasm.analysisViewApplyFilter();
+export function settingsProfilesInstall() {
+    wasm.settingsProfilesInstall();
 }
 
 /**
- * @returns {Array<any>}
+ * @param {any} row
  */
-export function analysisViewFilteredRows() {
-    const ret = wasm.analysisViewFilteredRows();
-    return ret;
-}
-
-export function analysisViewResetExpansion() {
-    wasm.analysisViewResetExpansion();
-}
-
-export function settingsLayoutInstallSettingsI18nBindings() {
-    const ret = wasm.settingsLayoutInstallSettingsI18nBindings();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-export function settingsLayoutInstallManageAddressesClean() {
-    const ret = wasm.settingsLayoutInstallManageAddressesClean();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
+export function settingsProfilesSelectEndpoint(row) {
+    wasm.settingsProfilesSelectEndpoint(row);
 }
 
 /**
- * @returns {any}
+ * @returns {Promise<any>}
  */
-export function settingsLayoutHelpI18nKeys() {
-    const ret = wasm.settingsLayoutHelpI18nKeys();
+export function settingsProfilesRefresh() {
+    const ret = wasm.settingsProfilesRefresh();
     return ret;
 }
 
 /**
- * @returns {Array<any>}
+ * @param {string} address
  */
-export function settingsLayoutGlobalHelpIds() {
-    const ret = wasm.settingsLayoutGlobalHelpIds();
-    return ret;
+export function explorerLiveCoreReset(address) {
+    const ptr0 = passStringToWasm0(address, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.explorerLiveCoreReset(ptr0, len0);
 }
 
 /**
- * @param {any} field
  * @returns {string}
  */
-export function settingsLayoutFieldKind(field) {
+export function explorerLiveCoreAddress() {
     let deferred1_0;
     let deferred1_1;
     try {
-        const ret = wasm.settingsLayoutFieldKind(field);
+        const ret = wasm.explorerLiveCoreAddress();
         deferred1_0 = ret[0];
         deferred1_1 = ret[1];
         return getStringFromWasm0(ret[0], ret[1]);
@@ -1757,655 +1659,270 @@ export function settingsLayoutFieldKind(field) {
 }
 
 /**
- * @param {string} scope
- * @param {string} net
- * @param {any} groups
- * @returns {string}
- */
-export function settingsLayoutRenderTabs(scope, net, groups) {
-    let deferred3_0;
-    let deferred3_1;
-    try {
-        const ptr0 = passStringToWasm0(scope, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.settingsLayoutRenderTabs(ptr0, len0, ptr1, len1, groups);
-        deferred3_0 = ret[0];
-        deferred3_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
-    }
-}
-
-/**
- * @param {any} root
- */
-export function settingsLayoutDecorateFields(root) {
-    const ret = wasm.settingsLayoutDecorateFields(root);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} field
- * @param {string} message
- */
-export function settingsLayoutSetFieldState(field, message) {
-    const ptr0 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.settingsLayoutSetFieldState(field, ptr0, len0);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} field
- */
-export function settingsLayoutRevealField(field) {
-    wasm.settingsLayoutRevealField(field);
-}
-
-/**
- * @param {any} root
- */
-export function settingsLayoutInstall(root) {
-    const ret = wasm.settingsLayoutInstall(root);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} root
- */
-export function settingsLayoutDecorateGlobal(root) {
-    const ret = wasm.settingsLayoutDecorateGlobal(root);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} root
- */
-export function settingsLayoutInstallGlobal(root) {
-    const ret = wasm.settingsLayoutInstallGlobal(root);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {string} value
- * @returns {string}
- */
-export function explorerNormalizeTxTypeFilterValue(value) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.explorerNormalizeTxTypeFilterValue(ptr0, len0);
-        deferred2_0 = ret[0];
-        deferred2_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
- * @param {string} value
- * @returns {string}
- */
-export function explorerNormalizeDirectionFilterValue(value) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.explorerNormalizeDirectionFilterValue(ptr0, len0);
-        deferred2_0 = ret[0];
-        deferred2_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
- * @param {any} section
- * @returns {any}
- */
-export function explorerRepairFilterSelects(section) {
-    const ret = wasm.explorerRepairFilterSelects(section);
-    return ret;
-}
-
-export function explorerInstallFilterSelectRepair() {
-    wasm.explorerInstallFilterSelectRepair();
-}
-
-/**
- * @param {any} section
- * @param {any} address
- * @param {any} start_ts
- * @param {any} end_ts
- * @param {any} limit
- * @returns {any}
- */
-export function explorerClean2Request(section, address, start_ts, end_ts, limit) {
-    const ret = wasm.explorerClean2Request(section, address, start_ts, end_ts, limit);
-    return ret;
-}
-
-/**
- * @param {any} section
- * @returns {any}
- */
-export function explorerEnsureFilterOptions(section) {
-    const ret = wasm.explorerEnsureFilterOptions(section);
-    return ret;
-}
-
-/**
- * @param {any} section
- * @returns {any}
- */
-export function explorerReadFilterState(section) {
-    const ret = wasm.explorerReadFilterState(section);
-    return ret;
-}
-
-/**
- * @param {any} section
- * @param {any} address
- * @param {any} start_ts
- * @param {any} end_ts
- * @param {any} limit
- * @returns {any}
- */
-export function explorerBuildListRequest(section, address, start_ts, end_ts, limit) {
-    const ret = wasm.explorerBuildListRequest(section, address, start_ts, end_ts, limit);
-    return ret;
-}
-
-/**
- * @param {string} selector
- * @param {any} section
- * @param {string} fallback
- * @returns {string}
- */
-export function explorerFilterValue(selector, section, fallback) {
-    let deferred3_0;
-    let deferred3_1;
-    try {
-        const ptr0 = passStringToWasm0(selector, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(fallback, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.explorerFilterValue(ptr0, len0, section, ptr1, len1);
-        deferred3_0 = ret[0];
-        deferred3_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
-    }
-}
-
-/**
- * @param {any} section
- * @param {any} address
- * @param {any} start_ts
- * @param {any} end_ts
- * @param {any} limit
- * @returns {any}
- */
-export function explorerFilterBuildRequest(section, address, start_ts, end_ts, limit) {
-    const ret = wasm.explorerFilterBuildRequest(section, address, start_ts, end_ts, limit);
-    return ret;
-}
-
-/**
- * @param {any} section
- * @returns {boolean}
- */
-export function explorerDefaultDates(section) {
-    const ret = wasm.explorerDefaultDates(section);
-    return ret !== 0;
-}
-
-/**
- * @param {any} section
- * @param {any} address
- * @param {any} start_ts
- * @param {any} end_ts
- * @returns {any}
- */
-export function explorerLegacyListRequest(section, address, start_ts, end_ts) {
-    const ret = wasm.explorerLegacyListRequest(section, address, start_ts, end_ts);
-    return ret;
-}
-
-/**
- * @param {any} section
- * @param {any} address
- * @param {any} start_ts
- * @param {any} end_ts
- * @returns {Promise<any>}
- */
-export function explorerLoadTransactionDaySummariesFromDb(section, address, start_ts, end_ts) {
-    const ret = wasm.explorerLoadTransactionDaySummariesFromDb(section, address, start_ts, end_ts);
-    return ret;
-}
-
-/**
- * @param {any} section
- * @param {any} address
- * @param {string} day
- * @returns {Promise<any>}
- */
-export function explorerLoadTransactionsForSingleDayFromDb(section, address, day) {
-    const ptr0 = passStringToWasm0(day, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.explorerLoadTransactionsForSingleDayFromDb(section, address, ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {any} section
- * @param {any} address
- * @param {string} day
- * @returns {Promise<any>}
- */
-export function explorerLoadTransactionsForDay(section, address, day) {
-    const ptr0 = passStringToWasm0(day, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.explorerLoadTransactionsForDay(section, address, ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {any} request
- * @returns {Promise<any>}
- */
-export function explorerInvokeDaySummaries(request) {
-    const ret = wasm.explorerInvokeDaySummaries(request);
-    return ret;
-}
-
-/**
- * @param {any} section
- * @param {any} message
- * @param {any} state
- * @returns {boolean}
- */
-export function explorerSetStatus(section, message, state) {
-    const ret = wasm.explorerSetStatus(section, message, state);
-    return ret !== 0;
-}
-
-/**
- * @param {any} section
- * @param {boolean} busy
- * @param {number} rows_count
- * @param {number} filtered_rows_count
- */
-export function explorerSyncActionState(section, busy, rows_count, filtered_rows_count) {
-    const ret = wasm.explorerSyncActionState(section, busy, rows_count, filtered_rows_count);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} result
- * @returns {any}
- */
-export function explorerExtractRowsFromUnifiedResult(result) {
-    const ret = wasm.explorerExtractRowsFromUnifiedResult(result);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * @param {any} action
- * @param {any} phase
- * @param {any} details
- * @returns {Promise<any>}
- */
-export function explorerUiTrace(action, phase, details) {
-    const ret = wasm.explorerUiTrace(action, phase, details);
-    return ret;
-}
-
-/**
- * @param {any} label
- * @param {any} payload
- */
-export function explorerFilterTrace(label, payload) {
-    wasm.explorerFilterTrace(label, payload);
-}
-
-/**
- * @param {string} label
- * @param {any} payload
- */
-export function explorerClean2Log(label, payload) {
-    const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.explorerClean2Log(ptr0, len0, payload);
-}
-
-/**
- * @param {any} section
- * @returns {any}
- */
-export function explorerClean2Section(section) {
-    const ret = wasm.explorerClean2Section(section);
-    return ret;
-}
-
-/**
- * @param {any} section
- * @returns {any}
- */
-export function explorerClean2Body(section) {
-    const ret = wasm.explorerClean2Body(section);
-    return ret;
-}
-
-/**
- * @param {any} section
- * @param {any} address
- * @param {any} start_ts
- * @param {any} end_ts
- * @returns {Promise<any>}
- */
-export function explorerClean2LoadSummaries(section, address, start_ts, end_ts) {
-    const ret = wasm.explorerClean2LoadSummaries(section, address, start_ts, end_ts);
-    return ret;
-}
-
-/**
- * @param {any} section
- * @param {any} address
- * @param {string} day
- * @returns {Promise<any>}
- */
-export function explorerClean2LoadDayTransactions(section, address, day) {
-    const ptr0 = passStringToWasm0(day, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.explorerClean2LoadDayTransactions(section, address, ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {any} request
- * @returns {Promise<any>}
- */
-export function explorerInvokeUnifiedFetch(request) {
-    const ret = wasm.explorerInvokeUnifiedFetch(request);
-    return ret;
-}
-
-/**
- * @param {any} request_id
- * @returns {Promise<any>}
- */
-export function explorerInvokeCancelTransactions(request_id) {
-    const ret = wasm.explorerInvokeCancelTransactions(request_id);
-    return ret;
-}
-
-/**
- * @param {any} request
- * @returns {Promise<any>}
- */
-export function explorerInvokeGroupedTransactions(request) {
-    const ret = wasm.explorerInvokeGroupedTransactions(request);
-    return ret;
-}
-
-/**
- * @returns {number}
- */
-export function explorerSummaryCurrentUsdPrice() {
-    const ret = wasm.explorerSummaryCurrentUsdPrice();
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return ret[0];
-}
-
-/**
- * @param {any} value
- * @returns {number}
- */
-export function explorerSummaryUsdForKas(value) {
-    const ret = wasm.explorerSummaryUsdForKas(value);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return ret[0];
-}
-
-/**
- * @param {any} result
- * @returns {any}
- */
-export function explorerNormalizeDaySummaries(result) {
-    const ret = wasm.explorerNormalizeDaySummaries(result);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * @param {any} summary
- * @returns {number}
- */
-export function explorerSummaryUsdForSummary(summary) {
-    const ret = wasm.explorerSummaryUsdForSummary(summary);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return ret[0];
-}
-
-/**
+ * @param {string} address
  * @param {any} rows
  */
-export function settingsDatabaseRenderRows(rows) {
-    wasm.settingsDatabaseRenderRows(rows);
+export function explorerLiveCoreSeedRows(address, rows) {
+    const ptr0 = passStringToWasm0(address, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.explorerLiveCoreSeedRows(ptr0, len0, rows);
 }
 
 /**
- * @returns {Promise<void>}
+ * @param {any} records
  */
-export function settingsDatabaseRefresh() {
-    const ret = wasm.settingsDatabaseRefresh();
+export function explorerLiveCoreMergeRecords(records) {
+    wasm.explorerLiveCoreMergeRecords(records);
+}
+
+/**
+ * @param {any} days
+ */
+export function explorerLiveCoreMergeDays(days) {
+    wasm.explorerLiveCoreMergeDays(days);
+}
+
+/**
+ * @returns {any}
+ */
+export function explorerLiveCoreRows() {
+    const ret = wasm.explorerLiveCoreRows();
     return ret;
 }
 
-export function settingsDatabaseInstall() {
-    const ret = wasm.settingsDatabaseInstall();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-export function settingsDatabaseInstallMaintenance() {
-    const ret = wasm.settingsDatabaseInstallMaintenance();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
+/**
+ * @param {any} payload
+ * @returns {boolean}
+ */
+export function explorerLiveCoreShouldRender(payload) {
+    const ret = wasm.explorerLiveCoreShouldRender(payload);
+    return ret !== 0;
 }
 
 /**
- * @param {any} reason
  * @returns {Promise<boolean>}
  */
-export function headerLiveMetricsRefreshSelectedCurrencyPrice(reason) {
-    const ret = wasm.headerLiveMetricsRefreshSelectedCurrencyPrice(reason);
+export function settingsPersistenceSave() {
+    const ret = wasm.settingsPersistenceSave();
     return ret;
 }
 
-export function headerLiveMetricsInit() {
-    wasm.headerLiveMetricsInit();
+/**
+ * @param {any} options
+ * @returns {Promise<void>}
+ */
+export function settingsPersistenceResetDefaults(options) {
+    const ret = wasm.settingsPersistenceResetDefaults(options);
+    return ret;
 }
 
-export function headerLiveMetricsInstallModule() {
-    wasm.headerLiveMetricsInstallModule();
+export function settingsPersistenceLoadSaved() {
+    wasm.settingsPersistenceLoadSaved();
+}
+
+/**
+ * @param {any} root
+ * @returns {boolean}
+ */
+export function nodeInitKaspaNodeTab(root) {
+    const ret = wasm.nodeInitKaspaNodeTab(root);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @param {boolean} running
+ * @param {boolean} bridge_inprocess_locked
+ * @param {string} runtime_error
+ * @param {string} status_text
+ */
+export function nodeSetRuntimeButtons(net, running, bridge_inprocess_locked, runtime_error, status_text) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(runtime_error, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(status_text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    wasm.nodeSetRuntimeButtons(ptr0, len0, running, bridge_inprocess_locked, ptr1, len1, ptr2, len2);
+}
+
+/**
+ * @param {string} net
+ * @param {string} _reason
+ * @returns {Promise<void>}
+ */
+export function nodeRefreshOne(net, _reason) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(_reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.nodeRefreshOne(ptr0, len0, ptr1, len1);
+    return ret;
+}
+
+/**
+ * @param {string} action
+ * @param {string} net
+ * @returns {Promise<boolean>}
+ */
+export function nodeRunIntegratedAction(action, net) {
+    const ptr0 = passStringToWasm0(action, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.nodeRunIntegratedAction(ptr0, len0, ptr1, len1);
+    return ret;
+}
+
+/**
+ * @param {string} net
+ * @param {string} value
+ */
+export function nodeSetRuntimeTransition(net, value) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    wasm.nodeSetRuntimeTransition(ptr0, len0, ptr1, len1);
+}
+
+/**
+ * @param {string} net
+ * @returns {boolean}
+ */
+export function nodeBridgeOwnedLocked(net) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.nodeBridgeOwnedLocked(ptr0, len0);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @param {boolean} locked
+ * @param {string} reason
+ */
+export function nodeApplyBridgeDisplayOnly(net, locked, reason) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    wasm.nodeApplyBridgeDisplayOnly(ptr0, len0, locked, ptr1, len1);
+}
+
+export function topAddressesInitTab() {
+    wasm.topAddressesInitTab();
+}
+
+export function topAddressesRefresh() {
+    wasm.topAddressesRefresh();
+}
+
+/**
+ * @param {any} row
+ * @param {number} index
+ * @returns {any}
+ */
+export function topAddressesNormalizeRow(row, index) {
+    const ret = wasm.topAddressesNormalizeRow(row, index);
+    return ret;
 }
 
 /**
  * @param {any} value
- * @returns {number}
+ * @returns {string}
  */
-export function headerLiveMetricsExtractUsdPrice(value) {
-    const ret = wasm.headerLiveMetricsExtractUsdPrice(value);
-    return ret;
+export function topAddressesEscapeCsv(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.topAddressesEscapeCsv(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
 }
 
 /**
- * @param {string} label
+ * @param {Array<any>} value
+ */
+export function topAddressesContractSetFilteredRows(value) {
+    wasm.topAddressesContractSetFilteredRows(value);
+}
+
+/**
  * @param {string} value
- * @param {string} updated_at
- * @param {string} source
- * @returns {string}
  */
-export function headerLiveMetricsBuildEnglishTooltip(label, value, updated_at, source) {
-    let deferred5_0;
-    let deferred5_1;
-    try {
-        const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(updated_at, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len2 = WASM_VECTOR_LEN;
-        const ptr3 = passStringToWasm0(source, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len3 = WASM_VECTOR_LEN;
-        const ret = wasm.headerLiveMetricsBuildEnglishTooltip(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
-        deferred5_0 = ret[0];
-        deferred5_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
-    }
-}
-
-/**
- * @param {number} epoch_ms
- * @returns {string}
- */
-export function headerLiveMetricsFormatLocalDateTime(epoch_ms) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.headerLiveMetricsFormatLocalDateTime(epoch_ms);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {number} epoch_ms
- * @returns {string}
- */
-export function headerLiveMetricsFormatEnglishTime(epoch_ms) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.headerLiveMetricsFormatEnglishTime(epoch_ms);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {number} epoch_ms
- * @returns {string}
- */
-export function headerLiveMetricsFormatEnglishDate(epoch_ms) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.headerLiveMetricsFormatEnglishDate(epoch_ms);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {number} epoch_ms
- * @returns {string}
- */
-export function headerLiveMetricsFormatEnglishStamp(epoch_ms) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.headerLiveMetricsFormatEnglishStamp(epoch_ms);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {string} kind
- * @returns {any}
- */
-export function headerLiveMetricsMetricIds(kind) {
-    const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+export function topAddressesContractSetLastUpdatedText(value) {
+    const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.headerLiveMetricsMetricIds(ptr0, len0);
-    return ret;
+    wasm.topAddressesContractSetLastUpdatedText(ptr0, len0);
 }
 
 /**
- * @param {any} prices
- * @param {string} currency
- * @returns {any}
- */
-export function headerLiveMetricsNumericPrice(prices, currency) {
-    const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.headerLiveMetricsNumericPrice(prices, ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {string} currency
- * @param {number} value
+ * @param {any} value
  * @returns {string}
  */
-export function headerLiveMetricsFormatCurrency(currency, value) {
+export function topAddressesEscapeHtml(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.topAddressesEscapeHtml(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function topAddressesAddressUrl(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.topAddressesAddressUrl(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @returns {string}
+ */
+export function topAddressesSelectedCurrency() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.topAddressesSelectedCurrency();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} row
+ * @param {string} currency
+ * @returns {string}
+ */
+export function topAddressesValueForCurrency(row, currency) {
     let deferred2_0;
     let deferred2_1;
     try {
         const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.headerLiveMetricsFormatCurrency(ptr0, len0, value);
+        const ret = wasm.topAddressesValueForCurrency(row, ptr0, len0);
         deferred2_0 = ret[0];
         deferred2_1 = ret[1];
         return getStringFromWasm0(ret[0], ret[1]);
@@ -2415,24 +1932,177 @@ export function headerLiveMetricsFormatCurrency(currency, value) {
 }
 
 /**
- * @param {string} metric_value
- * @param {string} current_text
+ * @returns {any}
+ */
+export function topAddressesClientTable() {
+    const ret = wasm.topAddressesClientTable();
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {string} format
+ * @returns {any}
+ */
+export function topAddressesNativeDialogFilter(format) {
+    const ptr0 = passStringToWasm0(format, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.topAddressesNativeDialogFilter(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {string} locale
+ * @returns {any}
+ */
+export function topAddressesPromptText(locale) {
+    const ptr0 = passStringToWasm0(locale, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.topAddressesPromptText(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ */
+export function topAddressesContractSetPrices(value) {
+    wasm.topAddressesContractSetPrices(value);
+}
+
+/**
+ * @param {any} section
+ */
+export function explorerSyncCurrentActionState(section) {
+    const ret = wasm.explorerSyncCurrentActionState(section);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @returns {boolean}
+ */
+export function explorerInstallPriceRerender() {
+    const ret = wasm.explorerInstallPriceRerender();
+    return ret !== 0;
+}
+
+/**
+ * @param {any} section
+ * @param {any} rows
+ * @param {string} status_text
+ */
+export function explorerRenderSummaries(section, rows, status_text) {
+    const ptr0 = passStringToWasm0(status_text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.explorerRenderSummaries(section, rows, ptr0, len0);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} section
+ */
+export function explorerRenderTable(section) {
+    const ret = wasm.explorerRenderTable(section);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} section
+ * @param {string} reason
+ * @param {any} options
+ */
+export function explorerClearTransactionTable(section, reason, options) {
+    const ptr0 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.explorerClearTransactionTable(section, ptr0, len0, options);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} section
+ */
+export function explorerResetFilters(section) {
+    const ret = wasm.explorerResetFilters(section);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} section
+ * @param {any} address
+ * @param {any} start_ts
+ * @param {any} end_ts
+ * @param {string} status_text
+ * @returns {Promise<any>}
+ */
+export function explorerLoadAndRenderDaySummaries(section, address, start_ts, end_ts, status_text) {
+    const ptr0 = passStringToWasm0(status_text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.explorerLoadAndRenderDaySummaries(section, address, start_ts, end_ts, ptr0, len0);
+    return ret;
+}
+
+export function analysisCalendarInstall() {
+    wasm.analysisCalendarInstall();
+}
+
+/**
  * @returns {string}
  */
-export function headerLiveMetricsSelectedCurrencyValue(metric_value, current_text) {
-    let deferred3_0;
-    let deferred3_1;
+export function analysisCalendarResetToToday() {
+    let deferred1_0;
+    let deferred1_1;
     try {
-        const ptr0 = passStringToWasm0(metric_value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(current_text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.headerLiveMetricsSelectedCurrencyValue(ptr0, len0, ptr1, len1);
-        deferred3_0 = ret[0];
-        deferred3_1 = ret[1];
+        const ret = wasm.analysisCalendarResetToToday();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
         return getStringFromWasm0(ret[0], ret[1]);
     } finally {
-        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} line
+ * @returns {string}
+ */
+export function kgwLogParseLevel(line) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.kgwLogParseLevel(line);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} text
+ * @param {any} env
+ * @returns {Promise<boolean>}
+ */
+export function kgwLogCopyTextToClipboard(text, env) {
+    const ret = wasm.kgwLogCopyTextToClipboard(text, env);
+    return ret;
+}
+
+export function kgwLogInitTab() {
+    const ret = wasm.kgwLogInitTab();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
     }
 }
 
@@ -3113,83 +2783,1064 @@ export function settingsDiagnosticsInstall() {
 }
 
 /**
- * @param {string} stage
- * @param {any} details
- */
-export function explorerMicroscopeLog(stage, details) {
-    const ptr0 = passStringToWasm0(stage, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.explorerMicroscopeLog(ptr0, len0, details);
-}
-
-/**
- * @param {string} stage
- * @param {any} details
- */
-export function explorerMicroscopeWarn(stage, details) {
-    const ptr0 = passStringToWasm0(stage, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.explorerMicroscopeWarn(ptr0, len0, details);
-}
-
-/**
- * @param {string} stage
- * @param {any} error
- * @param {any} details
- */
-export function explorerMicroscopeError(stage, error, details) {
-    const ptr0 = passStringToWasm0(stage, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.explorerMicroscopeError(ptr0, len0, error, details);
-}
-
-/**
- * @param {any} section
- * @returns {any}
- */
-export function explorerMicroscopeElementReport(section) {
-    const ret = wasm.explorerMicroscopeElementReport(section);
-    return ret;
-}
-
-/**
- * @param {any} section
- * @returns {any}
- */
-export function explorerMicroscopeLayoutReport(section) {
-    const ret = wasm.explorerMicroscopeLayoutReport(section);
-    return ret;
-}
-
-/**
- * @param {string} label
- * @param {any} snapshot
- */
-export function explorerMicroscopeStateReport(label, snapshot) {
-    const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.explorerMicroscopeStateReport(ptr0, len0, snapshot);
-}
-
-/**
- * @param {string} label
- * @returns {any}
- */
-export function explorerMicroscopeCurrentStateReport(label) {
-    const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.explorerMicroscopeCurrentStateReport(ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {string} label
  * @param {any} value
+ * @returns {string}
  */
-export function explorerMicroscopeApiShape(label, value) {
+export function toEnglishDigits(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.toEnglishDigits(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {Array<any>} values
+ * @returns {any}
+ */
+export function pick(values) {
+    const ret = wasm.pick(values);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function formatUsd(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.formatUsd(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function kgwSummaryFormatKas(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.kgwSummaryFormatKas(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function kgwSummaryFormatUsd(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.kgwSummaryFormatUsd(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function kgwClean2Kas(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.kgwClean2Kas(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function kgwClean2Usd(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.kgwClean2Usd(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} state
+ * @returns {string}
+ */
+export function statusTone(state) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.statusTone(state);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} element
+ * @param {any} state
+ */
+export function applyStatusTone(element, state) {
+    const ret = wasm.applyStatusTone(element, state);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} element
+ * @param {any} text
+ */
+export function renderStatusSummary(element, text) {
+    const ret = wasm.renderStatusSummary(element, text);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @returns {number}
+ */
+export function parseHeaderUsdPrice() {
+    const ret = wasm.parseHeaderUsdPrice();
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0];
+}
+
+/**
+ * @param {any} value
+ * @param {number} fallback
+ * @returns {number}
+ */
+export function toNumber(value, fallback) {
+    const ret = wasm.toNumber(value, fallback);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function kgwClean2SafeText(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.kgwClean2SafeText(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function normalizeDateInputValue(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.normalizeDateInputValue(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} value
+ * @param {boolean} end_of_day
+ * @returns {any}
+ */
+export function parseDateSeconds(value, end_of_day) {
+    const ret = wasm.parseDateSeconds(value, end_of_day);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @param {boolean} end_of_day
+ * @returns {any}
+ */
+export function kgwDayToEpochSeconds(value, end_of_day) {
+    const ret = wasm.kgwDayToEpochSeconds(value, end_of_day);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @param {boolean} end_of_day
+ * @returns {any}
+ */
+export function kgwTxDayToEpochSeconds(value, end_of_day) {
+    const ret = wasm.kgwTxDayToEpochSeconds(value, end_of_day);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @param {boolean} end_of_day
+ * @returns {any}
+ */
+export function kgwClean2DayToSeconds(value, end_of_day) {
+    const ret = wasm.kgwClean2DayToSeconds(value, end_of_day);
+    return ret;
+}
+
+/**
+ * @param {any} row
+ * @returns {string}
+ */
+export function kgwTransactionDateKey(row) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.kgwTransactionDateKey(row);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function formatKas(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.formatKas(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @returns {Promise<any>}
+ */
+export function analysisLoadSavedAddresses() {
+    const ret = wasm.analysisLoadSavedAddresses();
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function analysisNormalizeTimeRange(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.analysisNormalizeTimeRange(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+export function analysisClear() {
+    wasm.analysisClear();
+}
+
+/**
+ * @returns {Promise<any>}
+ */
+export function analysisRun() {
+    const ret = wasm.analysisRun();
+    return ret;
+}
+
+export function analysisInitTab() {
+    const ret = wasm.analysisInitTab();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+export function analysisInstallBinding() {
+    const ret = wasm.analysisInstallBinding();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} section
+ * @param {any} address
+ * @param {any} start_ts
+ * @param {any} end_ts
+ * @returns {any}
+ */
+export function explorerLegacyListRequest(section, address, start_ts, end_ts) {
+    const ret = wasm.explorerLegacyListRequest(section, address, start_ts, end_ts);
+    return ret;
+}
+
+/**
+ * @param {any} section
+ * @param {any} address
+ * @param {any} start_ts
+ * @param {any} end_ts
+ * @returns {Promise<any>}
+ */
+export function explorerLoadTransactionDaySummariesFromDb(section, address, start_ts, end_ts) {
+    const ret = wasm.explorerLoadTransactionDaySummariesFromDb(section, address, start_ts, end_ts);
+    return ret;
+}
+
+/**
+ * @param {any} section
+ * @param {any} address
+ * @param {string} day
+ * @returns {Promise<any>}
+ */
+export function explorerLoadTransactionsForSingleDayFromDb(section, address, day) {
+    const ptr0 = passStringToWasm0(day, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.explorerLoadTransactionsForSingleDayFromDb(section, address, ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} section
+ * @param {any} address
+ * @param {string} day
+ * @returns {Promise<any>}
+ */
+export function explorerLoadTransactionsForDay(section, address, day) {
+    const ptr0 = passStringToWasm0(day, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.explorerLoadTransactionsForDay(section, address, ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} request
+ * @returns {Promise<any>}
+ */
+export function explorerInvokeDaySummaries(request) {
+    const ret = wasm.explorerInvokeDaySummaries(request);
+    return ret;
+}
+
+/**
+ * @param {any} section
+ * @param {any} message
+ * @param {any} state
+ * @returns {boolean}
+ */
+export function explorerSetStatus(section, message, state) {
+    const ret = wasm.explorerSetStatus(section, message, state);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} section
+ * @param {boolean} busy
+ * @param {number} rows_count
+ * @param {number} filtered_rows_count
+ */
+export function explorerSyncActionState(section, busy, rows_count, filtered_rows_count) {
+    const ret = wasm.explorerSyncActionState(section, busy, rows_count, filtered_rows_count);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} result
+ * @returns {any}
+ */
+export function explorerExtractRowsFromUnifiedResult(result) {
+    const ret = wasm.explorerExtractRowsFromUnifiedResult(result);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {any} action
+ * @param {any} phase
+ * @param {any} details
+ * @returns {Promise<any>}
+ */
+export function explorerUiTrace(action, phase, details) {
+    const ret = wasm.explorerUiTrace(action, phase, details);
+    return ret;
+}
+
+/**
+ * @param {any} label
+ * @param {any} payload
+ */
+export function explorerFilterTrace(label, payload) {
+    wasm.explorerFilterTrace(label, payload);
+}
+
+/**
+ * @param {string} label
+ * @param {any} payload
+ */
+export function explorerClean2Log(label, payload) {
     const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
-    wasm.explorerMicroscopeApiShape(ptr0, len0, value);
+    wasm.explorerClean2Log(ptr0, len0, payload);
+}
+
+/**
+ * @param {any} section
+ * @returns {any}
+ */
+export function explorerClean2Section(section) {
+    const ret = wasm.explorerClean2Section(section);
+    return ret;
+}
+
+/**
+ * @param {any} section
+ * @returns {any}
+ */
+export function explorerClean2Body(section) {
+    const ret = wasm.explorerClean2Body(section);
+    return ret;
+}
+
+/**
+ * @param {any} section
+ * @param {any} address
+ * @param {any} start_ts
+ * @param {any} end_ts
+ * @returns {Promise<any>}
+ */
+export function explorerClean2LoadSummaries(section, address, start_ts, end_ts) {
+    const ret = wasm.explorerClean2LoadSummaries(section, address, start_ts, end_ts);
+    return ret;
+}
+
+/**
+ * @param {any} section
+ * @param {any} address
+ * @param {string} day
+ * @returns {Promise<any>}
+ */
+export function explorerClean2LoadDayTransactions(section, address, day) {
+    const ptr0 = passStringToWasm0(day, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.explorerClean2LoadDayTransactions(section, address, ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} request
+ * @returns {Promise<any>}
+ */
+export function explorerInvokeUnifiedFetch(request) {
+    const ret = wasm.explorerInvokeUnifiedFetch(request);
+    return ret;
+}
+
+/**
+ * @param {any} request_id
+ * @returns {Promise<any>}
+ */
+export function explorerInvokeCancelTransactions(request_id) {
+    const ret = wasm.explorerInvokeCancelTransactions(request_id);
+    return ret;
+}
+
+/**
+ * @param {any} request
+ * @returns {Promise<any>}
+ */
+export function explorerInvokeGroupedTransactions(request) {
+    const ret = wasm.explorerInvokeGroupedTransactions(request);
+    return ret;
+}
+
+/**
+ * @param {string} key
+ * @param {string} fallback
+ * @returns {any}
+ */
+export function bridgeI18nTextR41(key, fallback) {
+    const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(fallback, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeI18nTextR41(ptr0, len0, ptr1, len1);
+    return ret;
+}
+
+/**
+ * @param {string} command
+ * @param {any} payload
+ * @returns {Promise<any>}
+ */
+export function bridgeBackendInvokeR5(command, payload) {
+    const ptr0 = passStringToWasm0(command, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeBackendInvokeR5(ptr0, len0, payload);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @returns {Array<any>}
+ */
+export function bridgeNetworkProfiles() {
+    const ret = wasm.bridgeNetworkProfiles();
+    return ret;
+}
+
+/**
+ * @param {string} net
+ * @returns {string}
+ */
+export function bridgeNetworkPolicyKey(net) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeNetworkPolicyKey(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @param {string} name
+ * @returns {string}
+ */
+export function bridgeValue(net, name) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeValue(ptr0, len0, ptr1, len1);
+        deferred3_0 = ret[0];
+        deferred3_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function bridgeChecked(net, name) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeChecked(ptr0, len0, ptr1, len1);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} net
+ * @param {any} action
+ * @param {any} phase
+ * @param {any} details
+ * @returns {boolean}
+ */
+export function bridgeSmallOwnerTraceR44D(net, action, phase, details) {
+    const ret = wasm.bridgeSmallOwnerTraceR44D(net, action, phase, details);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @param {Function} update_command
+ * @returns {Promise<any>}
+ */
+export function bridgeApplyRustyKaspaRootOnlyDefaultPathsR5(net, update_command) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeApplyRustyKaspaRootOnlyDefaultPathsR5(ptr0, len0, update_command);
+    return ret;
+}
+
+/**
+ * @param {string} net
+ * @returns {any}
+ */
+export function bridgeNetworkProfile(net) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeNetworkProfile(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {string} net
+ * @returns {boolean}
+ */
+export function bridgeNetworkEnabled(net) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeNetworkEnabled(ptr0, len0);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @param {boolean} enabled
+ */
+export function bridgeSetNetworkEnabled(net, enabled) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.bridgeSetNetworkEnabled(ptr0, len0, enabled);
+}
+
+/**
+ * @param {string} net
+ * @returns {string}
+ */
+export function bridgeNetworkPolicyMessage(net) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeNetworkPolicyMessage(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {string} id
+ * @returns {any}
+ */
+export function bridgeById(id) {
+    const ptr0 = passStringToWasm0(id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeById(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function bridgeEscapeHtml(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.bridgeEscapeHtml(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @param {string} name
+ * @returns {string}
+ */
+export function bridgeElementId(net, name) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeElementId(ptr0, len0, ptr1, len1);
+        deferred3_0 = ret[0];
+        deferred3_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @param {any} instance_id
+ * @param {string} name
+ * @returns {string}
+ */
+export function bridgeInstanceElementId(net, instance_id, name) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeInstanceElementId(ptr0, len0, instance_id, ptr1, len1);
+        deferred3_0 = ret[0];
+        deferred3_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * @param {any} payload
+ */
+export function analysisViewSetData(payload) {
+    wasm.analysisViewSetData(payload);
+}
+
+export function analysisViewRenderRows() {
+    wasm.analysisViewRenderRows();
+}
+
+export function analysisViewApplyFilter() {
+    wasm.analysisViewApplyFilter();
+}
+
+/**
+ * @returns {Array<any>}
+ */
+export function analysisViewFilteredRows() {
+    const ret = wasm.analysisViewFilteredRows();
+    return ret;
+}
+
+export function analysisViewResetExpansion() {
+    wasm.analysisViewResetExpansion();
+}
+
+export function settingsLayoutInstallSettingsI18nBindings() {
+    const ret = wasm.settingsLayoutInstallSettingsI18nBindings();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+export function settingsLayoutInstallManageAddressesClean() {
+    const ret = wasm.settingsLayoutInstallManageAddressesClean();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @returns {any}
+ */
+export function settingsLayoutHelpI18nKeys() {
+    const ret = wasm.settingsLayoutHelpI18nKeys();
+    return ret;
+}
+
+/**
+ * @returns {Array<any>}
+ */
+export function settingsLayoutGlobalHelpIds() {
+    const ret = wasm.settingsLayoutGlobalHelpIds();
+    return ret;
+}
+
+/**
+ * @param {any} field
+ * @returns {string}
+ */
+export function settingsLayoutFieldKind(field) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.settingsLayoutFieldKind(field);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {string} scope
+ * @param {string} net
+ * @param {any} groups
+ * @returns {string}
+ */
+export function settingsLayoutRenderTabs(scope, net, groups) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(scope, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.settingsLayoutRenderTabs(ptr0, len0, ptr1, len1, groups);
+        deferred3_0 = ret[0];
+        deferred3_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * @param {any} root
+ */
+export function settingsLayoutDecorateFields(root) {
+    const ret = wasm.settingsLayoutDecorateFields(root);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} field
+ * @param {string} message
+ */
+export function settingsLayoutSetFieldState(field, message) {
+    const ptr0 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsLayoutSetFieldState(field, ptr0, len0);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} field
+ */
+export function settingsLayoutRevealField(field) {
+    wasm.settingsLayoutRevealField(field);
+}
+
+/**
+ * @param {any} root
+ */
+export function settingsLayoutInstall(root) {
+    const ret = wasm.settingsLayoutInstall(root);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} root
+ */
+export function settingsLayoutDecorateGlobal(root) {
+    const ret = wasm.settingsLayoutDecorateGlobal(root);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} root
+ */
+export function settingsLayoutInstallGlobal(root) {
+    const ret = wasm.settingsLayoutInstallGlobal(root);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+export function explorerNormalizeTxTypeFilterValue(value) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.explorerNormalizeTxTypeFilterValue(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+export function explorerNormalizeDirectionFilterValue(value) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.explorerNormalizeDirectionFilterValue(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {any} section
+ * @returns {any}
+ */
+export function explorerRepairFilterSelects(section) {
+    const ret = wasm.explorerRepairFilterSelects(section);
+    return ret;
+}
+
+export function explorerInstallFilterSelectRepair() {
+    wasm.explorerInstallFilterSelectRepair();
+}
+
+/**
+ * @param {any} section
+ * @param {any} address
+ * @param {any} start_ts
+ * @param {any} end_ts
+ * @param {any} limit
+ * @returns {any}
+ */
+export function explorerClean2Request(section, address, start_ts, end_ts, limit) {
+    const ret = wasm.explorerClean2Request(section, address, start_ts, end_ts, limit);
+    return ret;
+}
+
+/**
+ * @param {any} section
+ * @returns {any}
+ */
+export function explorerEnsureFilterOptions(section) {
+    const ret = wasm.explorerEnsureFilterOptions(section);
+    return ret;
+}
+
+/**
+ * @param {any} section
+ * @returns {any}
+ */
+export function explorerReadFilterState(section) {
+    const ret = wasm.explorerReadFilterState(section);
+    return ret;
+}
+
+/**
+ * @param {any} section
+ * @param {any} address
+ * @param {any} start_ts
+ * @param {any} end_ts
+ * @param {any} limit
+ * @returns {any}
+ */
+export function explorerBuildListRequest(section, address, start_ts, end_ts, limit) {
+    const ret = wasm.explorerBuildListRequest(section, address, start_ts, end_ts, limit);
+    return ret;
+}
+
+/**
+ * @param {string} selector
+ * @param {any} section
+ * @param {string} fallback
+ * @returns {string}
+ */
+export function explorerFilterValue(selector, section, fallback) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(selector, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(fallback, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.explorerFilterValue(ptr0, len0, section, ptr1, len1);
+        deferred3_0 = ret[0];
+        deferred3_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * @param {any} section
+ * @param {any} address
+ * @param {any} start_ts
+ * @param {any} end_ts
+ * @param {any} limit
+ * @returns {any}
+ */
+export function explorerFilterBuildRequest(section, address, start_ts, end_ts, limit) {
+    const ret = wasm.explorerFilterBuildRequest(section, address, start_ts, end_ts, limit);
+    return ret;
+}
+
+/**
+ * @param {any} section
+ * @returns {boolean}
+ */
+export function explorerDefaultDates(section) {
+    const ret = wasm.explorerDefaultDates(section);
+    return ret !== 0;
 }
 
 export function settingsUiInitTab() {
@@ -3327,6 +3978,414 @@ export function shellRuntimeTraceTab(tab_id, phase, details) {
 }
 
 /**
+ * @param {string} stage
+ * @param {any} details
+ */
+export function explorerMicroscopeLog(stage, details) {
+    const ptr0 = passStringToWasm0(stage, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.explorerMicroscopeLog(ptr0, len0, details);
+}
+
+/**
+ * @param {string} stage
+ * @param {any} details
+ */
+export function explorerMicroscopeWarn(stage, details) {
+    const ptr0 = passStringToWasm0(stage, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.explorerMicroscopeWarn(ptr0, len0, details);
+}
+
+/**
+ * @param {string} stage
+ * @param {any} error
+ * @param {any} details
+ */
+export function explorerMicroscopeError(stage, error, details) {
+    const ptr0 = passStringToWasm0(stage, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.explorerMicroscopeError(ptr0, len0, error, details);
+}
+
+/**
+ * @param {any} section
+ * @returns {any}
+ */
+export function explorerMicroscopeElementReport(section) {
+    const ret = wasm.explorerMicroscopeElementReport(section);
+    return ret;
+}
+
+/**
+ * @param {any} section
+ * @returns {any}
+ */
+export function explorerMicroscopeLayoutReport(section) {
+    const ret = wasm.explorerMicroscopeLayoutReport(section);
+    return ret;
+}
+
+/**
+ * @param {string} label
+ * @param {any} snapshot
+ */
+export function explorerMicroscopeStateReport(label, snapshot) {
+    const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.explorerMicroscopeStateReport(ptr0, len0, snapshot);
+}
+
+/**
+ * @param {string} label
+ * @returns {any}
+ */
+export function explorerMicroscopeCurrentStateReport(label) {
+    const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.explorerMicroscopeCurrentStateReport(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {string} label
+ * @param {any} value
+ */
+export function explorerMicroscopeApiShape(label, value) {
+    const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.explorerMicroscopeApiShape(ptr0, len0, value);
+}
+
+/**
+ * @param {any} rows
+ */
+export function settingsDatabaseRenderRows(rows) {
+    wasm.settingsDatabaseRenderRows(rows);
+}
+
+/**
+ * @returns {Promise<void>}
+ */
+export function settingsDatabaseRefresh() {
+    const ret = wasm.settingsDatabaseRefresh();
+    return ret;
+}
+
+export function settingsDatabaseInstall() {
+    const ret = wasm.settingsDatabaseInstall();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+export function settingsDatabaseInstallMaintenance() {
+    const ret = wasm.settingsDatabaseInstallMaintenance();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+export function settingsAddressesInstallManage() {
+    const ret = wasm.settingsAddressesInstallManage();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @returns {Promise<any>}
+ */
+export function settingsAddressesRefresh() {
+    const ret = wasm.settingsAddressesRefresh();
+    return ret;
+}
+
+/**
+ * @param {any} records
+ * @param {any} options
+ * @returns {Promise<boolean>}
+ */
+export function settingsAddressesRenderRows(records, options) {
+    const ret = wasm.settingsAddressesRenderRows(records, options);
+    return ret;
+}
+
+export function settingsAddressesInstallExplorerOpen() {
+    const ret = wasm.settingsAddressesInstallExplorerOpen();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+export function settingsAddressesInstallIo() {
+    const ret = wasm.settingsAddressesInstallIo();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+export function settingsAddressesInstallDeleteTransactions() {
+    const ret = wasm.settingsAddressesInstallDeleteTransactions();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+export function settingsAddressesClearFields() {
+    wasm.settingsAddressesClearFields();
+}
+
+/**
+ * @param {string} message
+ * @param {string} state
+ */
+export function settingsAddressesSetStatus(message, state) {
+    const ptr0 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(state, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    wasm.settingsAddressesSetStatus(ptr0, len0, ptr1, len1);
+}
+
+/**
+ * @returns {string}
+ */
+export function settingsAddressesNow() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.settingsAddressesNow();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @returns {bigint}
+ */
+export function settingsAddressesIncrementRestoreEpoch() {
+    const ret = wasm.settingsAddressesIncrementRestoreEpoch();
+    return BigInt.asUintN(64, ret);
+}
+
+/**
+ * @returns {bigint}
+ */
+export function settingsAddressesRestoreEpoch() {
+    const ret = wasm.settingsAddressesRestoreEpoch();
+    return BigInt.asUintN(64, ret);
+}
+
+/**
+ * @param {string} address
+ * @returns {boolean}
+ */
+export function settingsAddressesOpenExplorer(address) {
+    const ptr0 = passStringToWasm0(address, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.settingsAddressesOpenExplorer(ptr0, len0);
+    return ret !== 0;
+}
+
+export function settingsAddressesInstallAll() {
+    const ret = wasm.settingsAddressesInstallAll();
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {any} reason
+ * @returns {Promise<boolean>}
+ */
+export function headerLiveMetricsRefreshSelectedCurrencyPrice(reason) {
+    const ret = wasm.headerLiveMetricsRefreshSelectedCurrencyPrice(reason);
+    return ret;
+}
+
+export function headerLiveMetricsInit() {
+    wasm.headerLiveMetricsInit();
+}
+
+export function headerLiveMetricsInstallModule() {
+    wasm.headerLiveMetricsInstallModule();
+}
+
+/**
+ * @param {any} value
+ * @returns {number}
+ */
+export function headerLiveMetricsExtractUsdPrice(value) {
+    const ret = wasm.headerLiveMetricsExtractUsdPrice(value);
+    return ret;
+}
+
+/**
+ * @param {string} label
+ * @param {string} value
+ * @param {string} updated_at
+ * @param {string} source
+ * @returns {string}
+ */
+export function headerLiveMetricsBuildEnglishTooltip(label, value, updated_at, source) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(updated_at, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passStringToWasm0(source, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len3 = WASM_VECTOR_LEN;
+        const ret = wasm.headerLiveMetricsBuildEnglishTooltip(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        deferred5_0 = ret[0];
+        deferred5_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
+ * @param {number} epoch_ms
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatLocalDateTime(epoch_ms) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.headerLiveMetricsFormatLocalDateTime(epoch_ms);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {number} epoch_ms
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatEnglishTime(epoch_ms) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.headerLiveMetricsFormatEnglishTime(epoch_ms);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {number} epoch_ms
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatEnglishDate(epoch_ms) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.headerLiveMetricsFormatEnglishDate(epoch_ms);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {number} epoch_ms
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatEnglishStamp(epoch_ms) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.headerLiveMetricsFormatEnglishStamp(epoch_ms);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {string} kind
+ * @returns {any}
+ */
+export function headerLiveMetricsMetricIds(kind) {
+    const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.headerLiveMetricsMetricIds(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} prices
+ * @param {string} currency
+ * @returns {any}
+ */
+export function headerLiveMetricsNumericPrice(prices, currency) {
+    const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.headerLiveMetricsNumericPrice(prices, ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {string} currency
+ * @param {number} value
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatCurrency(currency, value) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.headerLiveMetricsFormatCurrency(ptr0, len0, value);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {string} metric_value
+ * @param {string} current_text
+ * @returns {string}
+ */
+export function headerLiveMetricsSelectedCurrencyValue(metric_value, current_text) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(metric_value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(current_text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.headerLiveMetricsSelectedCurrencyValue(ptr0, len0, ptr1, len1);
+        deferred3_0 = ret[0];
+        deferred3_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
  * @param {string} net
  * @param {string} role
  * @param {string} _instance_id
@@ -3412,6 +4471,74 @@ export function settingsPathsBrowse(target_id) {
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.settingsPathsBrowse(ptr0, len0);
     return ret;
+}
+
+/**
+ * @param {any} result
+ * @returns {any}
+ */
+export function explorerNormalizeUnifiedResult(result) {
+    const ret = wasm.explorerNormalizeUnifiedResult(result);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {any} result
+ * @returns {any}
+ */
+export function explorerDaySummaryRowsFromResult(result) {
+    const ret = wasm.explorerDaySummaryRowsFromResult(result);
+    return ret;
+}
+
+/**
+ * @returns {number}
+ */
+export function explorerSummaryCurrentUsdPrice() {
+    const ret = wasm.explorerSummaryCurrentUsdPrice();
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0];
+}
+
+/**
+ * @param {any} value
+ * @returns {number}
+ */
+export function explorerSummaryUsdForKas(value) {
+    const ret = wasm.explorerSummaryUsdForKas(value);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0];
+}
+
+/**
+ * @param {any} result
+ * @returns {any}
+ */
+export function explorerNormalizeDaySummaries(result) {
+    const ret = wasm.explorerNormalizeDaySummaries(result);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {any} summary
+ * @returns {number}
+ */
+export function explorerSummaryUsdForSummary(summary) {
+    const ret = wasm.explorerSummaryUsdForSummary(summary);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0];
 }
 
 /**
@@ -3760,279 +4887,6 @@ export function settingsSplitEndpoint(value) {
     return ret;
 }
 
-export function settingsAddressesInstallManage() {
-    const ret = wasm.settingsAddressesInstallManage();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @returns {Promise<any>}
- */
-export function settingsAddressesRefresh() {
-    const ret = wasm.settingsAddressesRefresh();
-    return ret;
-}
-
-/**
- * @param {any} records
- * @param {any} options
- * @returns {Promise<boolean>}
- */
-export function settingsAddressesRenderRows(records, options) {
-    const ret = wasm.settingsAddressesRenderRows(records, options);
-    return ret;
-}
-
-export function settingsAddressesInstallExplorerOpen() {
-    const ret = wasm.settingsAddressesInstallExplorerOpen();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-export function settingsAddressesInstallIo() {
-    const ret = wasm.settingsAddressesInstallIo();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-export function settingsAddressesInstallDeleteTransactions() {
-    const ret = wasm.settingsAddressesInstallDeleteTransactions();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-export function settingsAddressesClearFields() {
-    wasm.settingsAddressesClearFields();
-}
-
-/**
- * @param {string} message
- * @param {string} state
- */
-export function settingsAddressesSetStatus(message, state) {
-    const ptr0 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(state, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    wasm.settingsAddressesSetStatus(ptr0, len0, ptr1, len1);
-}
-
-/**
- * @returns {string}
- */
-export function settingsAddressesNow() {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.settingsAddressesNow();
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @returns {bigint}
- */
-export function settingsAddressesIncrementRestoreEpoch() {
-    const ret = wasm.settingsAddressesIncrementRestoreEpoch();
-    return BigInt.asUintN(64, ret);
-}
-
-/**
- * @returns {bigint}
- */
-export function settingsAddressesRestoreEpoch() {
-    const ret = wasm.settingsAddressesRestoreEpoch();
-    return BigInt.asUintN(64, ret);
-}
-
-/**
- * @param {string} address
- * @returns {boolean}
- */
-export function settingsAddressesOpenExplorer(address) {
-    const ptr0 = passStringToWasm0(address, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.settingsAddressesOpenExplorer(ptr0, len0);
-    return ret !== 0;
-}
-
-export function settingsAddressesInstallAll() {
-    const ret = wasm.settingsAddressesInstallAll();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-export function topAddressesInitTab() {
-    wasm.topAddressesInitTab();
-}
-
-export function topAddressesRefresh() {
-    wasm.topAddressesRefresh();
-}
-
-/**
- * @param {any} row
- * @param {number} index
- * @returns {any}
- */
-export function topAddressesNormalizeRow(row, index) {
-    const ret = wasm.topAddressesNormalizeRow(row, index);
-    return ret;
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function topAddressesEscapeCsv(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.topAddressesEscapeCsv(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {Array<any>} value
- */
-export function topAddressesContractSetFilteredRows(value) {
-    wasm.topAddressesContractSetFilteredRows(value);
-}
-
-/**
- * @param {string} value
- */
-export function topAddressesContractSetLastUpdatedText(value) {
-    const ptr0 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.topAddressesContractSetLastUpdatedText(ptr0, len0);
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function topAddressesEscapeHtml(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.topAddressesEscapeHtml(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function topAddressesAddressUrl(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.topAddressesAddressUrl(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @returns {string}
- */
-export function topAddressesSelectedCurrency() {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.topAddressesSelectedCurrency();
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} row
- * @param {string} currency
- * @returns {string}
- */
-export function topAddressesValueForCurrency(row, currency) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.topAddressesValueForCurrency(row, ptr0, len0);
-        deferred2_0 = ret[0];
-        deferred2_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
- * @returns {any}
- */
-export function topAddressesClientTable() {
-    const ret = wasm.topAddressesClientTable();
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * @param {string} format
- * @returns {any}
- */
-export function topAddressesNativeDialogFilter(format) {
-    const ptr0 = passStringToWasm0(format, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.topAddressesNativeDialogFilter(ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {string} locale
- * @returns {any}
- */
-export function topAddressesPromptText(locale) {
-    const ptr0 = passStringToWasm0(locale, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.topAddressesPromptText(ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {any} value
- */
-export function topAddressesContractSetPrices(value) {
-    wasm.topAddressesContractSetPrices(value);
-}
-
 /**
  * @returns {any}
  */
@@ -4147,142 +5001,6 @@ export function settingsDisplayApplyShellFromState(state, reason) {
     const ptr0 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.settingsDisplayApplyShellFromState(state, ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {any} section
- */
-export function explorerSyncCurrentActionState(section) {
-    const ret = wasm.explorerSyncCurrentActionState(section);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @returns {boolean}
- */
-export function explorerInstallPriceRerender() {
-    const ret = wasm.explorerInstallPriceRerender();
-    return ret !== 0;
-}
-
-/**
- * @param {any} section
- * @param {any} rows
- * @param {string} status_text
- */
-export function explorerRenderSummaries(section, rows, status_text) {
-    const ptr0 = passStringToWasm0(status_text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.explorerRenderSummaries(section, rows, ptr0, len0);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} section
- */
-export function explorerRenderTable(section) {
-    const ret = wasm.explorerRenderTable(section);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} section
- * @param {string} reason
- * @param {any} options
- */
-export function explorerClearTransactionTable(section, reason, options) {
-    const ptr0 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.explorerClearTransactionTable(section, ptr0, len0, options);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} section
- */
-export function explorerResetFilters(section) {
-    const ret = wasm.explorerResetFilters(section);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} section
- * @param {any} address
- * @param {any} start_ts
- * @param {any} end_ts
- * @param {string} status_text
- * @returns {Promise<any>}
- */
-export function explorerLoadAndRenderDaySummaries(section, address, start_ts, end_ts, status_text) {
-    const ptr0 = passStringToWasm0(status_text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.explorerLoadAndRenderDaySummaries(section, address, start_ts, end_ts, ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {any} line
- * @returns {string}
- */
-export function kgwLogParseLevel(line) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.kgwLogParseLevel(line);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} text
- * @param {any} env
- * @returns {Promise<boolean>}
- */
-export function kgwLogCopyTextToClipboard(text, env) {
-    const ret = wasm.kgwLogCopyTextToClipboard(text, env);
-    return ret;
-}
-
-export function kgwLogInitTab() {
-    const ret = wasm.kgwLogInitTab();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} result
- * @returns {any}
- */
-export function explorerNormalizeUnifiedResult(result) {
-    const ret = wasm.explorerNormalizeUnifiedResult(result);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * @param {any} result
- * @returns {any}
- */
-export function explorerDaySummaryRowsFromResult(result) {
-    const ret = wasm.explorerDaySummaryRowsFromResult(result);
     return ret;
 }
 
@@ -4485,513 +5203,35 @@ export function explorerAddressDiagnosticsSnapshot(address) {
     return ret;
 }
 
-/**
- * @param {string} address
- */
-export function explorerLiveCoreReset(address) {
-    const ptr0 = passStringToWasm0(address, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.explorerLiveCoreReset(ptr0, len0);
-}
-
-/**
- * @returns {string}
- */
-export function explorerLiveCoreAddress() {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.explorerLiveCoreAddress();
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {string} address
- * @param {any} rows
- */
-export function explorerLiveCoreSeedRows(address, rows) {
-    const ptr0 = passStringToWasm0(address, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.explorerLiveCoreSeedRows(ptr0, len0, rows);
-}
-
-/**
- * @param {any} records
- */
-export function explorerLiveCoreMergeRecords(records) {
-    wasm.explorerLiveCoreMergeRecords(records);
-}
-
-/**
- * @param {any} days
- */
-export function explorerLiveCoreMergeDays(days) {
-    wasm.explorerLiveCoreMergeDays(days);
-}
-
-/**
- * @returns {any}
- */
-export function explorerLiveCoreRows() {
-    const ret = wasm.explorerLiveCoreRows();
-    return ret;
-}
-
-/**
- * @param {any} payload
- * @returns {boolean}
- */
-export function explorerLiveCoreShouldRender(payload) {
-    const ret = wasm.explorerLiveCoreShouldRender(payload);
-    return ret !== 0;
-}
-
-export function shellI18nInstall() {
-    wasm.shellI18nInstall();
-}
-
-export function explorerTabInstall() {
-    wasm.explorerTabInstall();
-}
-
-/**
- * @returns {Promise<void>}
- */
-export function explorerInitTab() {
-    const ret = wasm.explorerInitTab();
-    return ret;
-}
-
-/**
- * @param {any} section
- * @param {string} message
- * @returns {boolean}
- */
-export function explorerForceSetTableMessage(section, message) {
-    const ptr0 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.explorerForceSetTableMessage(section, ptr0, len0);
-    return ret !== 0;
-}
-
-/**
- * @param {any} section
- * @returns {boolean}
- */
-export function explorerForceResetDisplayFiltersToAll(section) {
-    const ret = wasm.explorerForceResetDisplayFiltersToAll(section);
-    return ret !== 0;
-}
-
-/**
- * @param {any} section
- * @param {boolean} busy
- * @param {string} mode
- * @returns {boolean}
- */
-export function explorerForceSetControlsBusy(section, busy, mode) {
-    const ptr0 = passStringToWasm0(mode, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.explorerForceSetControlsBusy(section, busy, ptr0, len0);
-    return ret !== 0;
-}
-
-/**
- * @returns {boolean}
- */
-export function explorerInstallForceBusyBlocker() {
-    const ret = wasm.explorerInstallForceBusyBlocker();
-    return ret !== 0;
-}
-
-export function shellAuxInstall() {
-    wasm.shellAuxInstall();
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function toEnglishDigits(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.toEnglishDigits(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {Array<any>} values
- * @returns {any}
- */
-export function pick(values) {
-    const ret = wasm.pick(values);
-    return ret;
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function formatUsd(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.formatUsd(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function kgwSummaryFormatKas(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.kgwSummaryFormatKas(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function kgwSummaryFormatUsd(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.kgwSummaryFormatUsd(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function kgwClean2Kas(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.kgwClean2Kas(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function kgwClean2Usd(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.kgwClean2Usd(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} state
- * @returns {string}
- */
-export function statusTone(state) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.statusTone(state);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} element
- * @param {any} state
- */
-export function applyStatusTone(element, state) {
-    const ret = wasm.applyStatusTone(element, state);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {any} element
- * @param {any} text
- */
-export function renderStatusSummary(element, text) {
-    const ret = wasm.renderStatusSummary(element, text);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @returns {number}
- */
-export function parseHeaderUsdPrice() {
-    const ret = wasm.parseHeaderUsdPrice();
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return ret[0];
-}
-
-/**
- * @param {any} value
- * @param {number} fallback
- * @returns {number}
- */
-export function toNumber(value, fallback) {
-    const ret = wasm.toNumber(value, fallback);
-    return ret;
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function kgwClean2SafeText(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.kgwClean2SafeText(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function normalizeDateInputValue(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.normalizeDateInputValue(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} value
- * @param {boolean} end_of_day
- * @returns {any}
- */
-export function parseDateSeconds(value, end_of_day) {
-    const ret = wasm.parseDateSeconds(value, end_of_day);
-    return ret;
-}
-
-/**
- * @param {any} value
- * @param {boolean} end_of_day
- * @returns {any}
- */
-export function kgwDayToEpochSeconds(value, end_of_day) {
-    const ret = wasm.kgwDayToEpochSeconds(value, end_of_day);
-    return ret;
-}
-
-/**
- * @param {any} value
- * @param {boolean} end_of_day
- * @returns {any}
- */
-export function kgwTxDayToEpochSeconds(value, end_of_day) {
-    const ret = wasm.kgwTxDayToEpochSeconds(value, end_of_day);
-    return ret;
-}
-
-/**
- * @param {any} value
- * @param {boolean} end_of_day
- * @returns {any}
- */
-export function kgwClean2DayToSeconds(value, end_of_day) {
-    const ret = wasm.kgwClean2DayToSeconds(value, end_of_day);
-    return ret;
-}
-
-/**
- * @param {any} row
- * @returns {string}
- */
-export function kgwTransactionDateKey(row) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.kgwTransactionDateKey(row);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function formatKas(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.formatKas(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @returns {Promise<any>}
- */
-export function analysisLoadSavedAddresses() {
-    const ret = wasm.analysisLoadSavedAddresses();
-    return ret;
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function analysisNormalizeTimeRange(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.analysisNormalizeTimeRange(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-export function analysisClear() {
-    wasm.analysisClear();
-}
-
-/**
- * @returns {Promise<any>}
- */
-export function analysisRun() {
-    const ret = wasm.analysisRun();
-    return ret;
-}
-
-export function analysisInitTab() {
-    const ret = wasm.analysisInitTab();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-export function analysisInstallBinding() {
-    const ret = wasm.analysisInstallBinding();
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-export function analysisCalendarInstall() {
-    wasm.analysisCalendarInstall();
-}
-
-/**
- * @returns {string}
- */
-export function analysisCalendarResetToToday() {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.analysisCalendarResetToToday();
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
 function __wbg_adapter_38(arg0, arg1) {
     wasm._dyn_core_ed718c3d60ebd546___ops__function__FnMut_____Output______as_wasm_bindgen_1ba7c375a52abd4d___closure__WasmClosure___describe__invoke______(arg0, arg1);
 }
 
 function __wbg_adapter_41(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure502_externref_shim(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure908_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_44(arg0, arg1, arg2, arg3) {
-    const ret = wasm.closure506_externref_shim(arg0, arg1, arg2, arg3);
+    const ret = wasm.closure912_externref_shim(arg0, arg1, arg2, arg3);
     return ret;
 }
 
 function __wbg_adapter_47(arg0, arg1, arg2, arg3) {
-    wasm.closure509_externref_shim(arg0, arg1, arg2, arg3);
+    wasm.closure915_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 function __wbg_adapter_50(arg0, arg1, arg2) {
-    const ret = wasm.closure512_externref_shim(arg0, arg1, arg2);
+    const ret = wasm.closure918_externref_shim(arg0, arg1, arg2);
     return ret;
 }
 
 function __wbg_adapter_55(arg0, arg1, arg2) {
-    const ret = wasm.closure516_externref_shim(arg0, arg1, arg2);
+    const ret = wasm.closure922_externref_shim(arg0, arg1, arg2);
     return ret !== 0;
 }
 
 function __wbg_adapter_58(arg0, arg1) {
-    const ret = wasm.closure519_externref_shim(arg0, arg1);
+    const ret = wasm.closure925_externref_shim(arg0, arg1);
     return ret;
 }
 
@@ -5001,11 +5241,11 @@ function __wbg_adapter_61(arg0, arg1) {
 }
 
 function __wbg_adapter_64(arg0, arg1, arg2) {
-    wasm.closure1110_externref_shim(arg0, arg1, arg2);
+    wasm.closure1115_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_577(arg0, arg1, arg2, arg3) {
-    wasm.closure1134_externref_shim(arg0, arg1, arg2, arg3);
+function __wbg_adapter_593(arg0, arg1, arg2, arg3) {
+    wasm.closure1139_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 async function __wbg_load(module, imports) {
@@ -5253,7 +5493,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_577(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_593(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -5436,44 +5676,44 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1465 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 503, __wbg_adapter_38);
+    imports.wbg.__wbindgen_closure_wrapper2954 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 909, __wbg_adapter_38);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1499 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 503, __wbg_adapter_41);
+    imports.wbg.__wbindgen_closure_wrapper2988 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 909, __wbg_adapter_41);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1501 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 503, __wbg_adapter_44);
+    imports.wbg.__wbindgen_closure_wrapper2990 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 909, __wbg_adapter_44);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1503 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 503, __wbg_adapter_47);
+    imports.wbg.__wbindgen_closure_wrapper2992 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 909, __wbg_adapter_47);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1505 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 503, __wbg_adapter_50);
+    imports.wbg.__wbindgen_closure_wrapper2994 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 909, __wbg_adapter_50);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1507 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 503, __wbg_adapter_50);
+    imports.wbg.__wbindgen_closure_wrapper2996 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 909, __wbg_adapter_50);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1509 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 503, __wbg_adapter_55);
+    imports.wbg.__wbindgen_closure_wrapper2998 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 909, __wbg_adapter_55);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1511 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 503, __wbg_adapter_58);
+    imports.wbg.__wbindgen_closure_wrapper3000 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 909, __wbg_adapter_58);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper1513 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 503, __wbg_adapter_61);
+    imports.wbg.__wbindgen_closure_wrapper3002 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 909, __wbg_adapter_61);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3634 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 1111, __wbg_adapter_64);
+    imports.wbg.__wbindgen_closure_wrapper3668 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 1116, __wbg_adapter_64);
         return ret;
     };
     imports.wbg.__wbindgen_init_externref_table = function() {

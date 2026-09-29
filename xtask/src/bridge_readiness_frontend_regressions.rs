@@ -5,6 +5,8 @@ use std::process::Command;
 
 const BRIDGE_SOURCE: &str =
     "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
+const BRIDGE_HELPERS_SOURCE: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs";
 const WASM_JS: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 const WASM_BIN: &str =
@@ -12,7 +14,7 @@ const WASM_BIN: &str =
 
 const SLICES: &[(&str, &str)] = &[
     (
-        "const BRIDGE_NETWORKS = [",
+        "const BRIDGE_NETWORKS = wasmBridgeNetworkProfiles();",
         "function kgwBridgeSetNetworkEnabled(",
     ),
     ("function byId(", "function esc("),
@@ -162,7 +164,12 @@ const sandbox = {
   runtimePresentation: wasm.runtimePresentation,
   runtimeObservationSummary: wasm.runtimeObservationSummary,
   applyStatusTone: wasm.applyStatusTone,
-  renderStatusSummary: wasm.renderStatusSummary
+  renderStatusSummary: wasm.renderStatusSummary,
+  wasmBridgeNetworkProfiles: wasm.bridgeNetworkProfiles,
+  wasmBridgeNetworkProfile: wasm.bridgeNetworkProfile,
+  wasmBridgeNetworkEnabled: wasm.bridgeNetworkEnabled,
+  wasmBridgeById: wasm.bridgeById,
+  wasmBridgeElementId: wasm.bridgeElementId
 };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
@@ -365,18 +372,26 @@ fn expect(actual: &Value, pointer: &str, expected: Value) -> Result<(), String> 
     Ok(())
 }
 
-fn verify_static_contracts(source: &str) -> Result<(), String> {
+fn verify_static_contracts(source: &str, helpers: &str) -> Result<(), String> {
     for needle in [
         "kgwBridgeRuntimeErrorFromStatus(status)",
         "kgwBridgeSetRuntimeActivityV1(net, \"Bridge runtime failed after readiness.\", \"failed\")",
         "const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 120000",
-        "experimental: true",
-        "enabledByDefault: false",
-        "requires explicit opt-in",
     ] {
         if !source.contains(needle) {
             return Err(format!(
-                "Bridge readiness static contract missing: {needle}"
+                "Bridge readiness JavaScript contract missing: {needle}"
+            ));
+        }
+    }
+    for needle in [
+        "experimental: true",
+        "enabled_by_default: false",
+        "requires explicit opt-in",
+    ] {
+        if !helpers.contains(needle) {
+            return Err(format!(
+                "Bridge readiness Rust owner contract missing: {needle}"
             ));
         }
     }
@@ -415,7 +430,9 @@ fn verify_static_contracts(source: &str) -> Result<(), String> {
 pub fn run(root: &Path) -> Result<String, String> {
     let full_source = fs::read_to_string(root.join(BRIDGE_SOURCE))
         .map_err(|error| format!("failed to read {BRIDGE_SOURCE}: {error}"))?;
-    verify_static_contracts(&full_source)?;
+    let helper_source = fs::read_to_string(root.join(BRIDGE_HELPERS_SOURCE))
+        .map_err(|error| format!("failed to read {BRIDGE_HELPERS_SOURCE}: {error}"))?;
+    verify_static_contracts(&full_source, &helper_source)?;
     let selected = selected_source(root)?;
     let actual = run_bridge(root, &selected)?;
 

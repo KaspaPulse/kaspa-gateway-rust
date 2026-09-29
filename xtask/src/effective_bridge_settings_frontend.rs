@@ -22,7 +22,7 @@ const SLICES: &[(&str, &str)] = &[
     ),
     ("function kgwBridgeForm(", "function kgwBridgeValidateForm("),
     (
-        "const BRIDGE_NETWORKS = [",
+        "const BRIDGE_NETWORKS = wasmBridgeNetworkProfiles();",
         "function kgwBridgeSetNetworkEnabled(",
     ),
     ("function byId(", "function esc("),
@@ -75,6 +75,13 @@ const sandbox = {
   BRIDGE_OPTIONAL: new Set(wasmModule.settingsBridgeOptional()),
   bridgeFieldEnabled: (name, values, options) =>
     wasmModule.settingsBridgeFieldEnabled(name, values, options),
+  wasmBridgeNetworkProfiles: wasmModule.bridgeNetworkProfiles,
+  wasmBridgeNetworkProfile: wasmModule.bridgeNetworkProfile,
+  wasmBridgeNetworkEnabled: wasmModule.bridgeNetworkEnabled,
+  wasmBridgeById: wasmModule.bridgeById,
+  wasmBridgeElementId: wasmModule.bridgeElementId,
+  wasmBridgeValue: wasmModule.bridgeValue,
+  wasmBridgeChecked: wasmModule.bridgeChecked,
   bridgeInstances: {
     mainnet: request.structured.instances,
     testnet10: [],
@@ -83,6 +90,8 @@ const sandbox = {
 };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
+globalThis.document = sandbox.document;
+globalThis.window = sandbox;
 sandbox.__kgwBridgeCommandComposerInlineR7 = request.inlineOptions;
 sandbox.__kgwBridgeInstanceCommandComposerR13B = {};
 

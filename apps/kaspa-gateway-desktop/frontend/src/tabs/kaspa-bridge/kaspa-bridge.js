@@ -3,10 +3,24 @@ import { BRIDGE_MANAGED, BRIDGE_REQUIRED, BRIDGE_OPTIONAL, bridgeFieldEnabled, v
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initBridgeRust, {
   bridgeApplyRuntimeLogReport as wasmBridgeApplyRuntimeLogReport,
+  bridgeApplyRustyKaspaRootOnlyDefaultPathsR5 as wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsR5,
+  bridgeById as wasmBridgeById,
+  bridgeChecked as wasmBridgeChecked,
   bridgeClearRawLogBuffer as wasmBridgeClearRawLogBuffer,
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
+  bridgeElementId as wasmBridgeElementId,
+  bridgeEscapeHtml as wasmBridgeEscapeHtml,
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
+  bridgeI18nTextR41 as wasmBridgeI18nTextR41,
+  bridgeInstanceElementId as wasmBridgeInstanceElementId,
+  bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
+  bridgeNetworkPolicyMessage as wasmBridgeNetworkPolicyMessage,
+  bridgeNetworkProfile as wasmBridgeNetworkProfile,
+  bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
+  bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
+  bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
+  bridgeValue as wasmBridgeValue,
   settingsOwnerButtons as wasmSettingsOwnerButtons,
   settingsOwnerInstall as wasmSettingsOwnerInstall,
   settingsOwnerSetDisabled as wasmSettingsOwnerSetDisabled,
@@ -49,47 +63,14 @@ window.KGW_SETTINGS_OWNER_V19 = KGW_BRIDGE_SETTINGS_OWNER_V19;
 // END_KGW_SETTINGS_OWNER_V19
 
 function kgwBridgeSmallOwnerTraceR44D(net, action, phase, details) {
-  try {
-    const safeNet = String(net || "unknown");
-    const safeAction = String(action || "small-owner");
-    const safePhase = String(phase || "unknown");
-    const safeDetails = details && typeof details === "object" ? details : {};
-    const args = {
-      scope: "bridge",
-      net: safeNet,
-      action: safeAction,
-      phase: safePhase,
-      details: JSON.stringify({
-        patch: "KGW_SMALL_NODE_BRIDGE_TRACE_PATCH_R44D",
-        existingOwner: "bridge-small-owner-functions",
-        network: safeNet,
-        action: safeAction,
-        phase: safePhase,
-        details: safeDetails
-      })
-    };
-    const tauri = window.__TAURI__;
-    const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
-      ? tauri.core.invoke.bind(tauri.core)
-      : tauri && typeof tauri.invoke === "function"
-        ? tauri.invoke.bind(tauri)
-        : window.__TAURI_INVOKE__;
-    if (typeof invoke === "function") {
-      invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
-    }
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
+  return wasmBridgeSmallOwnerTraceR44D(net, action, phase, details || {});
 }
 
 
 
 
 function kgwI18nTextR41(key, fallback) {
-  try {
-    if (window.kgwT && typeof window.kgwT === "function") return window.kgwT(key, fallback);
-    if (window.KGW_I18N && typeof window.KGW_I18N.t === "function") return window.KGW_I18N.t(key, fallback);
-    if (window.i18n && typeof window.i18n.t === "function") return window.i18n.t(key, fallback);
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-  return fallback;
+  return wasmBridgeI18nTextR41(String(key || ""), String(fallback || ""));
 }
 
 
@@ -97,18 +78,7 @@ function kgwI18nTextR41(key, fallback) {
  * In-process bridge mode shares the same network-specific database at:
  * %LOCALAPPDATA%\KaspaGateway\nodes\<network>
  */
-function kgwBridgeBackendInvokeR5(command, payload = {}) {
-  const invoke =
-    window.__TAURI__?.core?.invoke ||
-    window.__TAURI__?.tauri?.invoke ||
-    window.__TAURI_INVOKE__;
 
-  if (typeof invoke !== "function") {
-    return Promise.reject(new Error("Tauri invoke is not available"));
-  }
-
-  return invoke(command, payload);
-}
 
 
 
@@ -116,13 +86,10 @@ function kgwBridgeBackendInvokeR5(command, payload = {}) {
 
 
 async function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsR5(net, _options = {}) {
-  const context = await kgwBridgeBackendInvokeR5("kgw_settings_context_v1", {network: net});
-  for (const name of ["appdir", "inprocessAppdirMirror"]) {
-    const field = byId(id(net, name));
-    if (field) { field.value = context.appDir; field.title = context.appDir; }
-  }
-  updateCommand(net);
-  return {appdir: context.appDir};
+  return await wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsR5(
+    String(net || ""),
+    (resolvedNet) => updateCommand(resolvedNet)
+  );
 }
 
 function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
@@ -133,44 +100,24 @@ function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, options = {}) {
  * Defaults now follow the agreed soft network port ranges.
  * These are defaults only. Manual valid unused ports remain accepted anywhere.
  */
-const BRIDGE_NETWORKS = [
-  { key: "mainnet", label: "Mainnet", testnet: false, netsuffix: "", kaspadPort: "16110", stratumPort: ":5555", promPort: ":2112", dashboardPort: "3030", enabledByDefault: true, runtime: "Official Rusty Kaspa" },
-  { key: "testnet10", label: "Testnet 10", testnet: true, netsuffix: "10", kaspadPort: "16210", stratumPort: ":5655", promPort: ":2212", dashboardPort: "3130", enabledByDefault: true, runtime: "Official Rusty Kaspa" },
-  { key: "testnet13", label: "Testnet 13", testnet: true, netsuffix: "13", kaspadPort: "16210", stratumPort: ":5755", promPort: ":2312", dashboardPort: "3230", enabledByDefault: false, experimental: true, runtime: "DAGKnight - Experimental" }
-];
+const BRIDGE_NETWORKS = wasmBridgeNetworkProfiles();
 
-function kgwBridgeNetworkPolicyKey(net) {
-  return `kgw.bridge.network.enabled.${String(net || "unknown")}`;
-}
+
 
 function kgwBridgeNetworkProfile(net) {
-  return BRIDGE_NETWORKS.find((item) => item.key === net) || null;
+  return wasmBridgeNetworkProfile(String(net || ""));
 }
 
 function kgwBridgeNetworkEnabled(net) {
-  const profile = kgwBridgeNetworkProfile(net);
-  try {
-    const stored = localStorage.getItem(kgwBridgeNetworkPolicyKey(net));
-    if (stored === "1") return true;
-    if (stored === "0") return false;
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-  return profile ? profile.enabledByDefault !== false : false;
+  return wasmBridgeNetworkEnabled(String(net || ""));
 }
 
 function kgwBridgeSetNetworkEnabled(net, enabled) {
-  try {
-    localStorage.setItem(kgwBridgeNetworkPolicyKey(net), enabled ? "1" : "0");
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
+  wasmBridgeSetNetworkEnabled(String(net || ""), Boolean(enabled));
 }
 
 function kgwBridgeNetworkPolicyMessage(net) {
-  const profile = kgwBridgeNetworkProfile(net);
-  if (!profile) return "";
-  if (profile.experimental) {
-    return "Experimental network. Disabled by default and requires explicit opt-in."
-      + (net === "testnet13" ? " The bundled Testnet13 node has no DNS seeders. For public sync, set a trusted Testnet13 peer in the node's Connect or Add Peer settings." : "");
-  }
-  return `${profile.runtime}. External local-node mode is recommended for mining bridges.`;
+  return wasmBridgeNetworkPolicyMessage(String(net || ""));
 }
 
 const bridgeInstances = {
@@ -186,34 +133,27 @@ let activeInstance = {
 };
 
 function byId(id) {
-  return document.getElementById(id);
+  return wasmBridgeById(String(id || ""));
 }
 
 function esc(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;");
+  return wasmBridgeEscapeHtml(value);
 }
 
 function id(net, name) {
-  return `bridge-${net}-${name}`;
+  return wasmBridgeElementId(String(net || ""), String(name || ""));
 }
 
-
 function iid(net, instanceId, name) {
-  return `bridge-${net}-i${instanceId}-${name}`;
+  return wasmBridgeInstanceElementId(String(net || ""), instanceId, String(name || ""));
 }
 
 function v(net, name) {
-  const el = byId(id(net, name));
-  return el ? String(el.value || "").trim() : "";
+  return wasmBridgeValue(String(net || ""), String(name || ""));
 }
 
 function c(net, name) {
-  const el = byId(id(net, name));
-  return Boolean(el && el.checked);
+  return wasmBridgeChecked(String(net || ""), String(name || ""));
 }
 
 
