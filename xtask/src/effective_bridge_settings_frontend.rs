@@ -37,7 +37,7 @@ const SLICES: &[(&str, &str)] = &[
     ),
     (
         "function bridgeBuildUpstreamInstanceArg(",
-        "function bridgeExtractPortsFromTextR5(",
+        "function bridgeCollectConfiguredPortsR5(",
     ),
     (
         "function bridgeProfile(",

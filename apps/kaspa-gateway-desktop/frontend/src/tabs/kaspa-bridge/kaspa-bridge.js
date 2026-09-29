@@ -44,19 +44,17 @@ import initBridgeRust, {
   bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
   bridgeValue as wasmBridgeValue,
-  bridgeAddUsedPortR91 as wasmBridgeAddUsedPortR91,
+  bridgeCollectConfiguredPortsR5 as wasmBridgeCollectConfiguredPortsR5,
+  bridgeAssignMissingInstancePortsR9 as wasmBridgeAssignMissingInstancePortsR9,
+  bridgeReassignInstancePortsFromExternalRangeR91 as wasmBridgeReassignInstancePortsFromExternalRangeR91,
+  bridgeCreateInstanceRecordR9 as wasmBridgeCreateInstanceRecordR9,
+  bridgeEnsureInstanceState as wasmBridgeEnsureInstanceState,
   bridgeApplyPortConflictStartStateR33 as wasmBridgeApplyPortConflictStartStateR33,
   bridgeApplyPortAutofixR37 as wasmBridgeApplyPortAutofixR37,
-  bridgeExtractPortsFromTextR5 as wasmBridgeExtractPortsFromTextR5,
   bridgePlanPortAutofixR37 as wasmBridgePlanPortAutofixR37,
-  bridgeFindRecommendedOrNearestUnusedPortR35B as wasmBridgeFindRecommendedOrNearestUnusedPortR35B,
-  bridgeInstancePortShouldFollowExternalRangeR91 as wasmBridgeInstancePortShouldFollowExternalRangeR91,
-  bridgeNormalizePortR9 as wasmBridgeNormalizePortR9,
-  bridgePortIsValidR9 as wasmBridgePortIsValidR9,
   bridgeValidatePortConflictsR5 as wasmBridgeValidatePortConflictsR5,
   bridgePortProfileR35B as wasmBridgePortProfileR35B,
   bridgePortProfilesR35B as wasmBridgePortProfilesR35B,
-  bridgePushPortR5 as wasmBridgePushPortR5,
   bridgeStaticPortProfileR91 as wasmBridgeStaticPortProfileR91,
   settingsOwnerButtons as wasmSettingsOwnerButtons,
   settingsOwnerInstall as wasmSettingsOwnerInstall,
@@ -355,55 +353,8 @@ function bridgeNormalizeInstanceRecord(raw, fallbackId) {
   return wasmBridgeNormalizeInstanceRecord(raw || {}, fallbackId);
 }
 
-function bridgeExtractPortsFromTextR5(value) {
-  return Array.from(wasmBridgeExtractPortsFromTextR5(value));
-}
-
-function bridgePushPortR5(items, port, role, owner, net) {
-  return wasmBridgePushPortR5(items, port, role, owner, net);
-}
-
 function bridgeCollectConfiguredPortsR5() {
-  const items = [];
-
-  for (const profile of BRIDGE_NETWORKS) {
-    const net = profile.key;
-
-    bridgePushPortR5(items, profile.kaspadPort, "default-kaspad-rpc", "BRIDGE_NETWORKS.kaspadPort", net);
-    bridgePushPortR5(items, profile.stratumPort, "default-stratum", "BRIDGE_NETWORKS.stratumPort", net);
-    bridgePushPortR5(items, profile.promPort, "default-prometheus", "BRIDGE_NETWORKS.promPort", net);
-
-    const fields = [
-      ["stratumPort", "bridge-stratum"],
-      ["promPort", "bridge-prometheus"],
-      ["webDashboardPort", "bridge-dashboard"],
-      ["healthCheckPort", "bridge-health"],
-      ["kaspadAddress", "bridge-external-kaspad"],
-      ["inprocessRpcListen", "inprocess-rpc"],
-      ["inprocessRpcListenBorsh", "inprocess-rpc-borsh"],
-      ["inprocessRpcListenJson", "inprocess-rpc-json"],
-      ["inprocessListen", "inprocess-p2p"]
-    ];
-
-    for (const [field, role] of fields) {
-      const value = v(net, field);
-      for (const port of bridgeExtractPortsFromTextR5(value)) {
-        bridgePushPortR5(items, port, role, field, net);
-      }
-    }
-
-    bridgeEnsureInstanceState(net);
-
-    for (const instance of bridgeInstances[net]) {
-      const instanceText = bridgeBuildUpstreamInstanceArg(net, instance);
-
-      for (const port of bridgeExtractPortsFromTextR5(instanceText)) {
-        bridgePushPortR5(items, port, "instance", "instance:" + String(instance.id), net);
-      }
-    }
-  }
-
-  return items;
+  return Array.from(wasmBridgeCollectConfiguredPortsR5(bridgeInstances, activeInstance));
 }
 
 
@@ -428,219 +379,33 @@ function bridgeValidatePortConflictsR5(activeNet) {
  * - User can edit numeric port/prom.
  * - Validator still blocks conflicts.
  */
-function bridgeNormalizePortR9(value) {
-  return wasmBridgeNormalizePortR9(value);
-}
-
-function bridgePortIsValidR9(value) {
-  return wasmBridgePortIsValidR9(value);
-}
-
-function bridgeUsedPortSetR9(skipNet, skipInstanceId) {
-  const used = new Set();
-
-  function add(value) {
-    const port = bridgeNormalizePortR9(value);
-    if (!port) return;
-    const numeric = Number(port);
-    if (Number.isInteger(numeric) && numeric >= 1 && numeric <= 65535) {
-      used.add(String(numeric));
-    }
-  }
-
-  for (const profile of BRIDGE_NETWORKS) {
-    add(profile.kaspadPort);
-    add(profile.stratumPort);
-    add(profile.promPort);
-
-    const fields = [
-      "stratumPort",
-      "promPort",
-      "webDashboardPort",
-      "healthCheckPort",
-      "kaspadAddress",
-      "inprocessRpcListen",
-      "inprocessRpcListenBorsh",
-      "inprocessRpcListenJson",
-      "inprocessListen"
-    ];
-
-    for (const field of fields) {
-      const value = v(profile.key, field);
-      for (const port of bridgeExtractPortsFromTextR5(value)) add(port);
-    }
-  }
-
-  for (const [net, list] of Object.entries(bridgeInstances)) {
-    if (!Array.isArray(list)) continue;
-
-    for (const item of list) {
-      if (String(net) === String(skipNet) && String(item.id) === String(skipInstanceId)) continue;
-
-      add(item.instancePort);
-      add(item.instanceProm);
-
-      for (const port of bridgeExtractPortsFromTextR5(item.instance || "")) {
-        add(port);
-      }
-    }
-  }
-
-  return used;
-}
 
 
 
-
-
-function bridgeInstancePortShouldFollowExternalRangeR91(net, kind, value) {
-  return wasmBridgeInstancePortShouldFollowExternalRangeR91(net, kind, value);
-}
-
-function bridgeAddUsedPortR91(used, value) {
-  return wasmBridgeAddUsedPortR91(used, value);
-}
-
-function bridgeUsedPortSetExcludingNetworkInstancesR91(activeNet) {
-  const used = new Set();
-
-  for (const profile of BRIDGE_NETWORKS) {
-    const net = profile.key;
-
-    bridgeAddUsedPortR91(used, profile.kaspadPort);
-    bridgeAddUsedPortR91(used, profile.stratumPort);
-    bridgeAddUsedPortR91(used, profile.promPort);
-
-    const fields = [
-      "stratumPort",
-      "promPort",
-      "webDashboardPort",
-      "healthCheckPort",
-      "kaspadAddress",
-      "inprocessRpcListen",
-      "inprocessRpcListenBorsh",
-      "inprocessRpcListenJson",
-      "inprocessListen"
-    ];
-
-    for (const field of fields) {
-      const value = v(net, field);
-      for (const port of bridgeExtractPortsFromTextR5(value)) {
-        bridgeAddUsedPortR91(used, port);
-      }
-    }
-  }
-
-  for (const [net, list] of Object.entries(bridgeInstances)) {
-    if (String(net) === String(activeNet)) continue;
-    if (!Array.isArray(list)) continue;
-
-    for (const instance of list) {
-      bridgeAddUsedPortR91(used, instance && instance.instancePort);
-      bridgeAddUsedPortR91(used, instance && instance.instanceProm);
-
-      for (const port of bridgeExtractPortsFromTextR5(instance && instance.instance || "")) {
-        bridgeAddUsedPortR91(used, port);
-      }
-    }
-  }
-
-  return used;
-}
 
 function bridgeAssignMissingInstancePortsR9(net, instance) {
-  const profile = bridgePortProfileR35B(net);
-  const used = bridgeUsedPortSetR9(net, instance.id);
-
-  const currentPort = bridgeNormalizePortR9(instance.instancePort);
-  const currentProm = bridgeNormalizePortR9(instance.instanceProm);
-
-  const followStratumRange = bridgeInstancePortShouldFollowExternalRangeR91(net, "stratum", currentPort);
-  const followPromRange = bridgeInstancePortShouldFollowExternalRangeR91(net, "prom", currentProm);
-
-  const instancePort = !followStratumRange && bridgePortIsValidR9(currentPort)
-    ? currentPort
-    : bridgeFindRecommendedOrNearestUnusedPortR35B(net, "stratum", used, profile.stratum.instanceStart);
-
-  const instanceProm = !followPromRange && bridgePortIsValidR9(currentProm)
-    ? currentProm
-    : bridgeFindRecommendedOrNearestUnusedPortR35B(net, "prom", used, profile.prom.instanceStart);
-
-  bridgeTracePortProfileR35B(net, "r91-assign-instance-ports-from-external-range", {
-    instanceId: String(instance && instance.id || ""),
-    acceptedManualInstancePort: Boolean(!followStratumRange && currentPort && bridgePortIsValidR9(currentPort)),
-    acceptedManualInstanceProm: Boolean(!followPromRange && currentProm && bridgePortIsValidR9(currentProm)),
-    instancePort,
-    instanceProm,
-    stratumRange: [profile.stratum.min, profile.stratum.max],
-    promRange: [profile.prom.min, profile.prom.max],
-    stratumExternalBase: String(profile.stratum.externalBase || ""),
-    promExternalBase: String(profile.prom.externalBase || ""),
-    policy: "instances follow bridge-level external port settings unless a valid out-of-range manual port is clearly set"
-  });
-
-  return { ...instance, instancePort, instanceProm };
+  return wasmBridgeAssignMissingInstancePortsR9(
+    bridgeInstances,
+    String(net || ""),
+    instance || {}
+  );
 }
 
 function bridgeReassignInstancePortsFromExternalRangeR91(net, reason) {
-  net = bridgeInstanceNetworkKeyR15(net, net);
-  if (!Array.isArray(bridgeInstances[net])) return false;
-
-  const profile = bridgePortProfileR35B(net);
-  const used = bridgeUsedPortSetExcludingNetworkInstancesR91(net);
-  let changed = false;
-
-  bridgeInstances[net] = bridgeInstances[net].map((raw, index) => {
-    const instance = bridgeNormalizeInstanceRecord(raw, raw && raw.id ? raw.id : Date.now() + index);
-    const currentPort = bridgeNormalizePortR9(instance.instancePort);
-    const currentProm = bridgeNormalizePortR9(instance.instanceProm);
-
-    const shouldFollowPort = bridgeInstancePortShouldFollowExternalRangeR91(net, "stratum", currentPort);
-    const shouldFollowProm = bridgeInstancePortShouldFollowExternalRangeR91(net, "prom", currentProm);
-
-    let instancePort = currentPort;
-    let instanceProm = currentProm;
-
-    if (shouldFollowPort) {
-      instancePort = bridgeFindRecommendedOrNearestUnusedPortR35B(net, "stratum", used, Number(profile.stratum.instanceStart) + index);
-      changed = changed || instancePort !== currentPort;
-    } else {
-      bridgeAddUsedPortR91(used, instancePort);
-    }
-
-    if (shouldFollowProm) {
-      instanceProm = bridgeFindRecommendedOrNearestUnusedPortR35B(net, "prom", used, Number(profile.prom.instanceStart) + index);
-      changed = changed || instanceProm !== currentProm;
-    } else {
-      bridgeAddUsedPortR91(used, instanceProm);
-    }
-
-    return {
-      ...instance,
-      instance: "",
-      instancePort,
-      instanceProm
-    };
-  });
-
-  if (changed) {
-    bridgeTracePortProfileR35B(net, "r91-reassign-instances-from-external-range", {
-      reason: String(reason || ""),
-      stratumRange: [profile.stratum.min, profile.stratum.max],
-      promRange: [profile.prom.min, profile.prom.max],
-      stratumExternalBase: String(profile.stratum.externalBase || ""),
-      promExternalBase: String(profile.prom.externalBase || ""),
-      instanceCount: bridgeInstances[net].length
-    });
-  }
-
-  return changed;
+  const normalizedNet = bridgeInstanceNetworkKeyR15(net, net);
+  return wasmBridgeReassignInstancePortsFromExternalRangeR91(
+    bridgeInstances,
+    String(normalizedNet || ""),
+    String(reason || "")
+  );
 }
 
 function bridgeCreateInstanceRecordR9(net) {
-  bridgeReassignInstancePortsFromExternalRangeR91(net, "before-create-instance");
-  const record = bridgeDefaultInstanceRecord(Date.now() + Math.floor(Math.random() * 1000));
-  return bridgeAssignMissingInstancePortsR9(net, record);
+  const normalizedNet = bridgeInstanceNetworkKeyR15(net, net);
+  return wasmBridgeCreateInstanceRecordR9(
+    bridgeInstances,
+    String(normalizedNet || "")
+  );
 }
 
 function bridgeInstancePreviewTextR8B(net, instance) {
@@ -832,23 +597,11 @@ function bridgeReadInstanceField(net, instanceId, fieldName) {
 
 
 function bridgeEnsureInstanceState(net) {
-  if (!Array.isArray(bridgeInstances[net])) {
-    bridgeInstances[net] = [];
-  }
-
-  if (bridgeInstances[net].length === 0) {
-    bridgeInstances[net].push(bridgeDefaultInstanceRecord(Date.now()));
-  }
-
-  bridgeInstances[net] = bridgeInstances[net].map((instance, index) => {
-    const fallbackId = instance && instance.id ? instance.id : Date.now() + index;
-    const normalized = bridgeNormalizeInstanceRecord(instance, fallbackId);
-    return bridgeAssignMissingInstancePortsR9(net, normalized);
-  });
-
-  if (!activeInstance[net] && bridgeInstances[net][0]) {
-    activeInstance[net] = bridgeInstances[net][0].id;
-  }
+  return wasmBridgeEnsureInstanceState(
+    bridgeInstances,
+    activeInstance,
+    String(net || "")
+  );
 }
 
 
@@ -1604,23 +1357,6 @@ function bridgePortProfileR35B(net) {
 
 
 
-
-
-function bridgeFindRecommendedOrNearestUnusedPortR35B(net, kind, usedPorts, fallbackStart) {
-  return wasmBridgeFindRecommendedOrNearestUnusedPortR35B(net, kind, usedPorts, fallbackStart);
-}
-
-
-function bridgeTracePortProfileR35B(net, phase, details) {
-  try {
-    kgwBridgeSmallOwnerTraceR44D(net, "port-profile", phase, {
-      patch: "R35B",
-      owner: "bridge-network-port-profile-soft-policy",
-      policy: "manual-valid-unused-ports-accepted-even-inside-other-network-range",
-      details: details && typeof details === "object" ? details : {}
-    });
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-}
 
 
 /* KGW_BRIDGE_PORT_CONFLICT_AUTOFIX_PATCH_R37
