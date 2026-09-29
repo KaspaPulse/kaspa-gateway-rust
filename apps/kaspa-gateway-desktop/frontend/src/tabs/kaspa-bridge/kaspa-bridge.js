@@ -2,11 +2,8 @@ import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { BRIDGE_MANAGED, BRIDGE_REQUIRED, BRIDGE_OPTIONAL, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initBridgeRust, {
-  bridgeClipboardCharacterCount as wasmBridgeClipboardCharacterCount,
-  bridgeClipboardLineCount as wasmBridgeClipboardLineCount,
   bridgeClipboardSafeError as wasmBridgeClipboardSafeError,
-  bridgeClipboardStatusElement as wasmBridgeClipboardStatusElement,
-  bridgeNormalizeClipboardLineEndings as wasmBridgeNormalizeClipboardLineEndings,
+  bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeReadClipboardRawLogBuffer as wasmBridgeReadClipboardRawLogBuffer,
   bridgeSetClipboardStatus as wasmBridgeSetClipboardStatus,
   bridgeSha256Hex as wasmBridgeSha256Hex,
@@ -6400,28 +6397,12 @@ function kgwBridgeFlashLogActionButtonV29(button, doneLabel) {
   }, 1600);
 }
 
-function kgwBridgeClipboardCharacterCountV1(text) {
-  return wasmBridgeClipboardCharacterCount(text);
-}
-
-function kgwBridgeClipboardLineCountV1(text) {
-  return wasmBridgeClipboardLineCount(text);
-}
-
-function kgwBridgeNormalizeClipboardLineEndingsV1(text) {
-  return wasmBridgeNormalizeClipboardLineEndings(text);
-}
-
 async function kgwBridgeSha256HexV1(text) {
   return await wasmBridgeSha256Hex(text);
 }
 
 function kgwBridgeClipboardSafeErrorV1(error) {
   return wasmBridgeClipboardSafeError(error);
-}
-
-function kgwBridgeClipboardStatusElementV1(net) {
-  return wasmBridgeClipboardStatusElement(String(net || ""));
 }
 
 function kgwBridgeSetClipboardStatusV1(net, message, state = "info") {
@@ -6433,41 +6414,7 @@ function kgwBridgeReadClipboardRawLogBufferV1(net) {
 }
 
 async function kgwBridgeDispatchClipboardWriteV1(net, text, metadata) {
-  const invoke = getTauriInvoke();
-  if (typeof invoke !== "function") {
-    throw new Error("Tauri invoke API is not available for Copy Log.");
-  }
-
-  kgwBridgeStartTraceFrontendV1("frontend.copy_log_dispatched", {
-    network: net,
-    action: "copy-log",
-    result: "dispatched",
-    details: {
-      commandName: "kgw_copy_text_to_clipboard_v1",
-      implementation: "native-tauri-command",
-      runtimeRole: metadata.runtimeRole || "bridge",
-      bridgeInstanceId: metadata.bridgeInstanceId || "",
-      characterCount: metadata.characterCount,
-      lineCount: metadata.lineCount,
-      sha256: metadata.sha256 || "",
-      payloadFieldCount: 7
-    }
-  });
-
-  return await invokeWithTimeout(
-    invoke,
-    "kgw_copy_text_to_clipboard_v1",
-    {
-      network: net,
-      runtimeRole: metadata.runtimeRole || "bridge",
-      bridgeInstanceId: metadata.bridgeInstanceId || "",
-      text,
-      characterCount: metadata.characterCount,
-      lineCount: metadata.lineCount,
-      sha256: metadata.sha256 || ""
-    },
-    KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS
-  );
+  return await wasmBridgeDispatchClipboardWrite(String(net || ""), String(text ?? ""), metadata || {});
 }
 
 function kgwBridgeCopyLogFailureV1(net, button, error, details = {}) {

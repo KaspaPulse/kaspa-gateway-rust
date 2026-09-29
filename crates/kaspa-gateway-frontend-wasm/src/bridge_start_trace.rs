@@ -325,6 +325,117 @@ fn resolve_invoke() -> Option<Function> {
     None
 }
 
+fn metadata_text(metadata: &JsValue, name: &str, fallback: &str) -> String {
+    let value = property(metadata, name);
+    if crate::js_boolean(&value) {
+        crate::js_string_owned(&value)
+    } else {
+        fallback.to_owned()
+    }
+}
+
+fn metadata_number(metadata: &JsValue, name: &str) -> f64 {
+    let value = property(metadata, name);
+    let number = crate::js_number(&value);
+    if number.is_finite() { number } else { 0.0 }
+}
+
+fn emit_trace(stage: &str, net: &str, action: &str, result: &str, details: JsValue) {
+    let options = Object::new();
+    set(options.as_ref(), "network", &JsValue::from_str(net));
+    set(options.as_ref(), "action", &JsValue::from_str(action));
+    set(options.as_ref(), "result", &JsValue::from_str(result));
+    set(options.as_ref(), "details", &details);
+    let _ = bridge_start_trace_frontend(JsValue::from_str(stage), options.into());
+}
+
+async fn dispatch_clipboard_write_impl(
+    net: &str,
+    text: &str,
+    metadata: &JsValue,
+) -> Result<JsValue, JsValue> {
+    let Some(invoke) = resolve_invoke() else {
+        return Err(JsValue::from_str(
+            "Tauri invoke API is not available for Copy Log.",
+        ));
+    };
+    let runtime_role = metadata_text(metadata, "runtimeRole", "bridge");
+    let bridge_instance_id = metadata_text(metadata, "bridgeInstanceId", "");
+    let character_count = metadata_number(metadata, "characterCount");
+    let line_count = metadata_number(metadata, "lineCount");
+    let sha256 = metadata_text(metadata, "sha256", "");
+
+    let details = Object::new();
+    for (key, value) in [
+        (
+            "commandName",
+            JsValue::from_str("kgw_copy_text_to_clipboard_v1"),
+        ),
+        ("implementation", JsValue::from_str("native-tauri-command")),
+        ("runtimeRole", JsValue::from_str(&runtime_role)),
+        ("bridgeInstanceId", JsValue::from_str(&bridge_instance_id)),
+        ("characterCount", JsValue::from_f64(character_count)),
+        ("lineCount", JsValue::from_f64(line_count)),
+        ("sha256", JsValue::from_str(&sha256)),
+        ("payloadFieldCount", JsValue::from_f64(7.0)),
+    ] {
+        set(details.as_ref(), key, &value);
+    }
+    emit_trace(
+        "frontend.copy_log_dispatched",
+        net,
+        "copy-log",
+        "dispatched",
+        details.into(),
+    );
+
+    let payload = Object::new();
+    set(payload.as_ref(), "network", &JsValue::from_str(net));
+    set(
+        payload.as_ref(),
+        "runtimeRole",
+        &JsValue::from_str(&runtime_role),
+    );
+    set(
+        payload.as_ref(),
+        "bridgeInstanceId",
+        &JsValue::from_str(&bridge_instance_id),
+    );
+    set(payload.as_ref(), "text", &JsValue::from_str(text));
+    set(
+        payload.as_ref(),
+        "characterCount",
+        &JsValue::from_f64(character_count),
+    );
+    set(
+        payload.as_ref(),
+        "lineCount",
+        &JsValue::from_f64(line_count),
+    );
+    set(payload.as_ref(), "sha256", &JsValue::from_str(&sha256));
+
+    let call = invoke.call2(
+        &JsValue::UNDEFINED,
+        &JsValue::from_str("kgw_copy_text_to_clipboard_v1"),
+        payload.as_ref(),
+    )?;
+    crate::node_start_trace::await_command_with_timeout(
+        call,
+        "kgw_copy_text_to_clipboard_v1",
+        110_000,
+    )
+    .await
+}
+
+#[wasm_bindgen(js_name = bridgeDispatchClipboardWrite)]
+pub async fn bridge_dispatch_clipboard_write(
+    net: String,
+    text: String,
+    metadata: JsValue,
+) -> Result<JsValue, JsValue> {
+    dispatch_clipboard_write_impl(&net, &text, &metadata).await
+}
+
 #[wasm_bindgen(js_name = bridgeClipboardStatusElement)]
 pub fn bridge_clipboard_status_element(net: String) -> JsValue {
     clipboard_status_element(&net)
