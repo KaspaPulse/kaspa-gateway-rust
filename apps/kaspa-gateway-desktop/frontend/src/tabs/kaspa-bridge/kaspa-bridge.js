@@ -35,6 +35,23 @@ import initBridgeRust, {
   bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
   bridgeValue as wasmBridgeValue,
+  bridgeAddUsedPortR91 as wasmBridgeAddUsedPortR91,
+  bridgeAutofixChangeKeyR37 as wasmBridgeAutofixChangeKeyR37,
+  bridgeExtractPortsFromTextR5 as wasmBridgeExtractPortsFromTextR5,
+  bridgeFindRecommendedOrNearestUnusedPortR35B as wasmBridgeFindRecommendedOrNearestUnusedPortR35B,
+  bridgeInstanceIdFromOwnerR37 as wasmBridgeInstanceIdFromOwnerR37,
+  bridgeInstancePortKindForConflictR37 as wasmBridgeInstancePortKindForConflictR37,
+  bridgeInstancePortShouldFollowExternalRangeR91 as wasmBridgeInstancePortShouldFollowExternalRangeR91,
+  bridgeNormalizePortR37 as wasmBridgeNormalizePortR37,
+  bridgeNormalizePortR9 as wasmBridgeNormalizePortR9,
+  bridgeOwnersToAutofixR45 as wasmBridgeOwnersToAutofixR45,
+  bridgePortIsValidR9 as wasmBridgePortIsValidR9,
+  bridgePortOwnersRepresentSameLogicalEndpointR64F as wasmBridgePortOwnersRepresentSameLogicalEndpointR64F,
+  bridgePortProfileR35B as wasmBridgePortProfileR35B,
+  bridgePortProfilesR35B as wasmBridgePortProfilesR35B,
+  bridgePushPortR5 as wasmBridgePushPortR5,
+  bridgeStaticPortProfileR91 as wasmBridgeStaticPortProfileR91,
+  bridgeUniqueConflictOwnersR45 as wasmBridgeUniqueConflictOwnersR45,
   settingsOwnerButtons as wasmSettingsOwnerButtons,
   settingsOwnerInstall as wasmSettingsOwnerInstall,
   settingsOwnerSetDisabled as wasmSettingsOwnerSetDisabled,
@@ -451,40 +468,11 @@ function bridgeNormalizeInstanceRecord(raw, fallbackId) {
 }
 
 function bridgeExtractPortsFromTextR5(value) {
-  const text = String(value || "");
-  const ports = [];
-
-  const patterns = [
-    /(?:^|[,\s=])(?:port|stratum|stratum_port|prom|prom_port|rpc|rpclisten|listen|dashboard|web_dashboard_port)=?(?:127\.0\.0\.1:|0\.0\.0\.0:|localhost:|:)?(\d{2,5})(?=$|[,\s])/g,
-    /(?:127\.0\.0\.1|0\.0\.0\.0|localhost):(\d{2,5})/g,
-    /(^|[^\d]):(\d{2,5})(?=$|[,\s])/g
-  ];
-
-  for (const pattern of patterns) {
-    let match;
-    while ((match = pattern.exec(text))) {
-      const raw = match[2] || match[1];
-      const port = Number(raw);
-      if (Number.isInteger(port) && port > 0 && port <= 65535) ports.push(String(port));
-    }
-  }
-
-  return ports;
+  return Array.from(wasmBridgeExtractPortsFromTextR5(value));
 }
 
 function bridgePushPortR5(items, port, role, owner, net) {
-  const normalized = String(port || "").trim().replace(/^:/, "");
-  if (!/^\d{1,5}$/.test(normalized)) return;
-
-  const numeric = Number(normalized);
-  if (!Number.isInteger(numeric) || numeric < 1 || numeric > 65535) return;
-
-  items.push({
-    port: String(numeric),
-    role: String(role || "unknown"),
-    owner: String(owner || ""),
-    net: String(net || "")
-  });
+  return wasmBridgePushPortR5(items, port, role, owner, net);
 }
 
 function bridgeCollectConfiguredPortsR5() {
@@ -530,42 +518,10 @@ function bridgeCollectConfiguredPortsR5() {
   return items;
 }
 
-function bridgePortConflictLogicalKeyR64F(item) {
-  const net = String(item && item.net ? item.net : "");
-  const role = String(item && item.role ? item.role : "");
-  const owner = String(item && item.owner ? item.owner : "");
 
-  if (
-    role === "default-kaspad-rpc" ||
-    role === "bridge-external-kaspad" ||
-    role === "inprocess-rpc"
-  ) {
-    return net + ":node-rpc";
-  }
-
-  if (
-    role === "default-stratum" ||
-    role === "bridge-stratum"
-  ) {
-    return net + ":bridge-stratum";
-  }
-
-  if (
-    role === "default-prometheus" ||
-    role === "bridge-prometheus"
-  ) {
-    return net + ":bridge-prometheus";
-  }
-
-  return net + ":" + role + ":" + owner;
-}
 
 function bridgePortOwnersRepresentSameLogicalEndpointR64F(owners) {
-  const logicalKeys = new Set(
-    owners.map((item) => bridgePortConflictLogicalKeyR64F(item))
-  );
-
-  return logicalKeys.size <= 1;
+  return wasmBridgePortOwnersRepresentSameLogicalEndpointR64F(owners || []);
 }
 
 function bridgeValidatePortConflictsR5(activeNet) {
@@ -628,12 +584,11 @@ function bridgeValidatePortConflictsR5(activeNet) {
  * - Validator still blocks conflicts.
  */
 function bridgeNormalizePortR9(value) {
-  return String(value || "").trim().replace(/^:/, "");
+  return wasmBridgeNormalizePortR9(value);
 }
 
 function bridgePortIsValidR9(value) {
-  const port = Number(bridgeNormalizePortR9(value));
-  return Number.isInteger(port) && port >= 1 && port <= 65535;
+  return wasmBridgePortIsValidR9(value);
 }
 
 function bridgeUsedPortSetR9(skipNet, skipInstanceId) {
@@ -689,51 +644,16 @@ function bridgeUsedPortSetR9(skipNet, skipInstanceId) {
   return used;
 }
 
-function bridgeFindNearestUnusedPortR9(startPort, usedPorts) {
-  let port = Number(bridgeNormalizePortR9(startPort));
 
-  if (!Number.isInteger(port) || port < 1 || port > 65535) {
-    port = 1;
-  }
 
-  while (port <= 65535 && usedPorts.has(String(port))) {
-    port += 1;
-  }
 
-  if (port > 65535) {
-    throw new Error("No available TCP port was found for bridge instance allocation.");
-  }
-
-  usedPorts.add(String(port));
-  return String(port);
-}
-
-function bridgePortIsInsideAnyKnownRangeR91(net, kind, port) {
-  const normalized = bridgeNormalizePortR9(port);
-  if (!bridgePortIsValidR9(normalized)) return false;
-
-  const currentProfile = bridgePortProfileR35B(net);
-  const staticProfile = bridgeStaticPortProfileR91(net);
-  const ranges = [
-    currentProfile && currentProfile[kind],
-    staticProfile && staticProfile[kind]
-  ].filter(Boolean);
-
-  return ranges.some((range) => bridgePortInRangeR35B(normalized, range));
-}
 
 function bridgeInstancePortShouldFollowExternalRangeR91(net, kind, value) {
-  const normalized = bridgeNormalizePortR9(value);
-
-  if (!normalized) return true;
-  if (!bridgePortIsValidR9(normalized)) return true;
-
-  return bridgePortIsInsideAnyKnownRangeR91(net, kind, normalized);
+  return wasmBridgeInstancePortShouldFollowExternalRangeR91(net, kind, value);
 }
 
 function bridgeAddUsedPortR91(used, value) {
-  const normalized = bridgeNormalizePortR9(value);
-  if (bridgePortIsValidR9(normalized)) used.add(String(normalized));
+  return wasmBridgeAddUsedPortR91(used, value);
 }
 
 function bridgeUsedPortSetExcludingNetworkInstancesR91(activeNet) {
@@ -1890,23 +1810,7 @@ function bridgeProfile(net) {
  * - Real conflicts still block Start through R33.
  * - Out-of-profile ports are warning-only.
  */
-const KGW_BRIDGE_PORT_PROFILES_R35B = Object.freeze({
-  mainnet: Object.freeze({
-    stratum: Object.freeze({ min: 5500, max: 5599, preferred: 5555, instanceStart: 5556 }),
-    prom: Object.freeze({ min: 2100, max: 2199, preferred: 2112, instanceStart: 2113 }),
-    dashboard: Object.freeze({ min: 3000, max: 3099, preferred: 3030 })
-  }),
-  testnet10: Object.freeze({
-    stratum: Object.freeze({ min: 5600, max: 5699, preferred: 5655, instanceStart: 5656 }),
-    prom: Object.freeze({ min: 2200, max: 2299, preferred: 2212, instanceStart: 2213 }),
-    dashboard: Object.freeze({ min: 3100, max: 3199, preferred: 3130 })
-  }),
-  testnet13: Object.freeze({
-    stratum: Object.freeze({ min: 5700, max: 5799, preferred: 5755, instanceStart: 5756 }),
-    prom: Object.freeze({ min: 2300, max: 2399, preferred: 2312, instanceStart: 2313 }),
-    dashboard: Object.freeze({ min: 3200, max: 3299, preferred: 3230 })
-  })
-});
+const KGW_BRIDGE_PORT_PROFILES_R35B = wasmBridgePortProfilesR35B();
 
 /* KGW_BRIDGE_INSTANCE_EXTERNAL_PORT_RANGE_OWNER_R91
  * Existing Bridge port-profile owner refinement.
@@ -1918,153 +1822,27 @@ const KGW_BRIDGE_PORT_PROFILES_R35B = Object.freeze({
  * - valid clearly manual out-of-range instance ports are preserved.
  */
 function bridgeStaticPortProfileR91(net) {
-  return KGW_BRIDGE_PORT_PROFILES_R35B[String(net || "")] || KGW_BRIDGE_PORT_PROFILES_R35B.mainnet;
+  return wasmBridgeStaticPortProfileR91(net);
 }
 
-function bridgeNormalizePortLiteralR91(value) {
-  const text = String(value || "").trim();
-  if (!text) return "";
 
-  const hostMatch = text.match(/(?:^|[^0-9])(?:127\.0\.0\.1|0\.0\.0\.0|localhost)?:(\d{1,5})(?:$|[^0-9])/i);
-  if (hostMatch) {
-    const port = Number(hostMatch[1]);
-    return Number.isInteger(port) && port >= 1 && port <= 65535 ? String(port) : "";
-  }
 
-  const plain = text.replace(/^:/, "");
-  if (/^\d{1,5}$/.test(plain)) {
-    const port = Number(plain);
-    return Number.isInteger(port) && port >= 1 && port <= 65535 ? String(port) : "";
-  }
 
-  const extracted = typeof bridgeExtractPortsFromTextR5 === "function"
-    ? bridgeExtractPortsFromTextR5(text)
-    : [];
 
-  return extracted && extracted.length ? String(extracted[0]) : "";
-}
 
-function bridgeExternalBasePortR91(net, kind, fallbackRange) {
-  const profile = bridgeProfile(net) || {};
-  const fieldByKind = {
-    stratum: "stratumPort",
-    prom: "promPort",
-    dashboard: "webDashboardPort"
-  };
-
-  const profileFieldByKind = {
-    stratum: "stratumPort",
-    prom: "promPort",
-    dashboard: "dashboardPort"
-  };
-
-  const fieldName = fieldByKind[kind] || "stratumPort";
-  const profileFieldName = profileFieldByKind[kind] || fieldName;
-
-  const current = typeof v === "function" ? v(net, fieldName) : "";
-  const profileValue = profile && profile[profileFieldName] ? profile[profileFieldName] : "";
-
-  return bridgeNormalizePortLiteralR91(current) ||
-    bridgeNormalizePortLiteralR91(profileValue) ||
-    bridgeNormalizePortLiteralR91(fallbackRange && fallbackRange.preferred) ||
-    bridgeNormalizePortLiteralR91(fallbackRange && fallbackRange.min) ||
-    "";
-}
-
-function bridgeRangeFromExternalBaseR91(basePort, fallbackRange) {
-  const fallback = fallbackRange || {};
-  const base = Number(bridgeNormalizePortLiteralR91(basePort));
-
-  if (!Number.isInteger(base) || base < 1 || base > 65535) {
-    return { ...fallback };
-  }
-
-  if (Number(fallback.preferred) === base) {
-    return {
-      ...fallback,
-      externalBase: String(base),
-      externalOwner: "static-profile-matching-current-bridge-setting",
-      dynamicFromExternalSetting: false
-    };
-  }
-
-  const start = base < 65535 ? base + 1 : base;
-  const max = Math.min(65535, start + 98);
-
-  return {
-    ...fallback,
-    min: start,
-    max,
-    preferred: base,
-    instanceStart: start,
-    externalBase: String(base),
-    externalOwner: "bridge-level-port-setting",
-    dynamicFromExternalSetting: true
-  };
-}
 
 function bridgePortProfileR35B(net) {
-  const staticProfile = bridgeStaticPortProfileR91(net);
-
-  return {
-    stratum: Object.freeze(bridgeRangeFromExternalBaseR91(
-      bridgeExternalBasePortR91(net, "stratum", staticProfile.stratum),
-      staticProfile.stratum
-    )),
-    prom: Object.freeze(bridgeRangeFromExternalBaseR91(
-      bridgeExternalBasePortR91(net, "prom", staticProfile.prom),
-      staticProfile.prom
-    )),
-    dashboard: Object.freeze(bridgeRangeFromExternalBaseR91(
-      bridgeExternalBasePortR91(net, "dashboard", staticProfile.dashboard),
-      staticProfile.dashboard
-    ))
-  };
+  return wasmBridgePortProfileR35B(net);
 }
 
-function bridgeNormalizePortSoftR35B(value) {
-  const normalized = String(value || "").trim().replace(/^:/, "");
-  if (!/^\d{1,5}$/.test(normalized)) return "";
-  const port = Number(normalized);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) return "";
-  return String(port);
-}
 
-function bridgePortInRangeR35B(port, range) {
-  const n = Number(bridgeNormalizePortSoftR35B(port));
-  return Boolean(range && Number.isInteger(n) && n >= Number(range.min) && n <= Number(range.max));
-}
 
-function bridgeFindUnusedPortInRangeR35B(range, usedPorts, fallbackStart) {
-  const start = Number(bridgeNormalizePortSoftR35B(fallbackStart || (range && range.instanceStart) || (range && range.preferred) || (range && range.min) || 1));
-  const min = Number(range && range.min || 1);
-  const max = Number(range && range.max || 65535);
-  const begin = Math.max(min, Math.min(max, Number.isInteger(start) ? start : min));
 
-  for (let port = begin; port <= max; port += 1) {
-    if (!usedPorts.has(String(port))) {
-      usedPorts.add(String(port));
-      return String(port);
-    }
-  }
 
-  for (let port = min; port < begin; port += 1) {
-    if (!usedPorts.has(String(port))) {
-      usedPorts.add(String(port));
-      return String(port);
-    }
-  }
 
-  return "";
-}
 
 function bridgeFindRecommendedOrNearestUnusedPortR35B(net, kind, usedPorts, fallbackStart) {
-  const profile = bridgePortProfileR35B(net);
-  const range = profile[kind] || profile.stratum;
-  const inside = bridgeFindUnusedPortInRangeR35B(range, usedPorts, fallbackStart || range.instanceStart || range.preferred || range.min);
-  if (inside) return inside;
-
-  return bridgeFindNearestUnusedPortR9(fallbackStart || range.preferred || range.min || 1, usedPorts);
+  return wasmBridgeFindRecommendedOrNearestUnusedPortR35B(net, kind, usedPorts, fallbackStart);
 }
 
 
@@ -2103,28 +1881,19 @@ function bridgeTracePortAutofixR37(net, phase, details) {
 
 
 function bridgeInstanceIdFromOwnerR37(owner) {
-  const raw = String(owner && owner.owner || "");
-  return raw.startsWith("instance:") ? raw.slice("instance:".length) : "";
+  return wasmBridgeInstanceIdFromOwnerR37(owner || {});
 }
 
 function bridgeNormalizePortR37(value) {
-  return String(value || "").trim().replace(/^:/, "");
+  return wasmBridgeNormalizePortR37(value);
 }
 
 function bridgeInstancePortKindForConflictR37(instance, conflictPort) {
-  const oldPort = bridgeNormalizePortR37(conflictPort);
-  if (bridgeNormalizePortR37(instance && instance.instancePort) === oldPort) return "stratum";
-  if (bridgeNormalizePortR37(instance && instance.instanceProm) === oldPort) return "prom";
-  return "";
+  return wasmBridgeInstancePortKindForConflictR37(instance || {}, conflictPort);
 }
 
 function bridgeAutofixChangeKeyR37(change) {
-  return [
-    String(change && change.net || ""),
-    String(change && change.instanceId || ""),
-    String(change && change.kind || ""),
-    String(change && change.oldPort || "")
-  ].join(":");
+  return wasmBridgeAutofixChangeKeyR37(change || {});
 }
 
 
@@ -2136,24 +1905,10 @@ function bridgeAutofixChangeKeyR37(change) {
  * - Applies multiple passes so a replacement cannot leave a new conflict behind.
  * Port policy remains soft: manual valid unused ports are accepted anywhere.
  */
-function bridgeOwnerKeyR45(owner) {
-  return [
-    String(owner && owner.net || ""),
-    String(owner && owner.role || ""),
-    String(owner && owner.owner || "")
-  ].join("|");
-}
+
 
 function bridgeUniqueConflictOwnersR45(owners) {
-  const out = [];
-  const seen = new Set();
-  for (const owner of Array.isArray(owners) ? owners : []) {
-    const key = bridgeOwnerKeyR45(owner);
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    out.push(owner);
-  }
-  return out;
+  return Array.from(wasmBridgeUniqueConflictOwnersR45(owners || []));
 }
 
 function bridgeConfiguredPortRecordsR45() {
@@ -2235,23 +1990,7 @@ function bridgeGlobalUsedPortsForAutofixR45(change, plannedUsed) {
 }
 
 function bridgeOwnersToAutofixR45(activeNet, owners) {
-  const normalizedActive = String(activeNet || "");
-  const uniqueOwners = bridgeUniqueConflictOwnersR45(owners);
-  const instanceOwners = uniqueOwners.filter((owner) => String(owner && owner.role || "") === "instance");
-  const protectedOwners = uniqueOwners.filter((owner) => String(owner && owner.role || "") !== "instance");
-
-  if (instanceOwners.length === 0) return [];
-
-  if (protectedOwners.length > 0) {
-    return instanceOwners;
-  }
-
-  const activeInstanceOwners = instanceOwners.filter((owner) => String(owner && owner.net || "") === normalizedActive);
-  if (activeInstanceOwners.length > 0) {
-    return activeInstanceOwners;
-  }
-
-  return instanceOwners.slice(1);
+  return Array.from(wasmBridgeOwnersToAutofixR45(activeNet, owners || []));
 }
 
 function bridgeRefreshAutofixTouchedNetsR45(touchedNets, activeNet, reason) {
