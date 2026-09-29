@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS. OP210 Bridge Port/Instance Orchestration is CLOSED_LOCAL / VERIFIED_SUCCESS and committed as `38634dd24da4499fd7f4878f30db7bcd02b8ee46`, tree `7cf689f6d8bc4b9980bcc54812428bcf210f0ab6`; exact frozen-legacy parity is 34/34 PASS and language policy reports Rust 218 / source debt 2 / execution debt 8 / unapproved 0/0. The current boundary is read-only discovery of the next remaining `kaspa-bridge.js` ownership slice.
+PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS. OP211 Bridge port-conflict/Auto-Fix UI ownership is VERIFIED_LOCAL and implementation-checkpointed as `c3850aaa536ac7e33363225f671cca962c8016fb`, tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`. Prewire Rust checks/tests/Clippy, zero-warning JS lint, deterministic frontend-WASM codegen, `bridge_port_core` 8/8, Rust 1.97.1 wasm32, effective-Bridge, Bridge-readiness, and language policy all PASS at Rust 220 / source debt 2 / execution debt 8 / unapproved 0/0. Post-checkpoint continuity docs remain to be checkpointed; no push.
 
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
@@ -85,13 +85,13 @@ PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS. OP210 Bri
 The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates. The remaining owned source debt is exactly kaspa-bridge.js plus that locked PowerShell helper; execution debt remains 8. Independent Bridge migration work continues.
 
 ## Last Completed Action
-OP210 Bridge Port/Instance Orchestration Rust/WASM ownership is committed as `38634dd24da4499fd7f4878f30db7bcd02b8ee46`, tree `7cf689f6d8bc4b9980bcc54812428bcf210f0ab6`. Exact frozen-legacy/generated-WASM semantic parity is 34/34 PASS; Effective Bridge settings, Bridge readiness, language guard/inventory and diff-check PASS; no push.
+OP211 Bridge port-conflict/Auto-Fix UI implementation checkpoint `c3850aaa536ac7e33363225f671cca962c8016fb` / tree `d7a39dd5f45b27e45cea8e2453242f623577aec1` was created from exactly eight qualified implementation/generated/gate-contract paths. Post-commit status contains only the two continuity mirrors; no push.
 
 ## Current Action
-Read-only audit of the remaining `kaspa-bridge.js` source debt after the verified OP210 implementation checkpoint. No source mutation is authorized until the next coherent OP211 boundary is identified and a durable write-ahead intent is persisted.
+Synchronize `CURRENT_STATE.md` and `ACTIVE_TASK.md` to the actual OP211 implementation checkpoint, then run `project-continuity-gate` plus `git diff --check`. Preserve the committed implementation; no broad requalification is required.
 
 ## Next Action
-Audit the remaining `kaspa-bridge.js` implementation read-only, select the smallest coherent unblocked OP211 ownership slice, freeze its exact legacy input, and persist a write-ahead intent before source mutation. Continue local-first through narrow qualification and checkpointing. No push yet.
+If continuity qualification PASSes, persist a docs-only OP211 continuity checkpoint intent, commit only `CURRENT_STATE.md` and `ACTIVE_TASK.md`, verify HEAD/tree/clean status, update durable continuity to CLOSED_LOCAL, then continue read-only discovery of the next remaining `kaspa-bridge.js` ownership boundary. No push yet.
 
 ## Verification Required
 - OP103 affected surface: legacy launcher frozen at SHA-256 `7229e1fd33546f0c14dc89dd34627b2626eaede00d07bdf08956721964cca0c5`; stable diagnostic/Windows-evidence/clipboard tests 5/5 each PASS; cargo check, FMT and strict xtask Clippy PASS; MSRV 1.97.1 check + diagnostic 5/5 PASS; aggregate true-raw-log gate PASS; full-local parser PASS; language inventory PASS at Rust 169 / source debt 16 / execution debt 10 / exceptions 30 / unapproved 0/0; diff-check PASS.

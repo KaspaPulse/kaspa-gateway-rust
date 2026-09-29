@@ -4,9 +4,9 @@
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest verified implementation checkpoint is `38634dd24da4499fd7f4878f30db7bcd02b8ee46`, tree `7cf689f6d8bc4b9980bcc54812428bcf210f0ab6`.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; latest verified implementation checkpoint is `c3850aaa536ac7e33363225f671cca962c8016fb`, tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **CLEAN at the verified OP210 closeout boundary** before the next Bridge source-debt mutation. OP210 implementation checkpoint is `38634dd24da4499fd7f4878f30db7bcd02b8ee46`, tree `7cf689f6d8bc4b9980bcc54812428bcf210f0ab6`; later continuity-only commits do not change that implementation identity.
+- Working tree: **DIRTY_CONTINUITY_MIRRORS_ONLY** after verified OP211 implementation checkpoint `c3850aaa536ac7e33363225f671cca962c8016fb`, tree `d7a39dd5f45b27e45cea8e2453242f623577aec1`. Only `CURRENT_STATE.md` and `ACTIVE_TASK.md` remain dirty for post-checkpoint identity synchronization; do not reset/clean/stash.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -18,9 +18,20 @@
 - Owned non-Rust programming source debt: 2.
 - Non-Rust execution-wiring debt: 8.
 - Technical exceptions: 39.
-- Rust source inventory: 218.
+- Rust source inventory: 220 (verified by OP211 language-policy check/inventory).
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
+
+## OP211 VERIFIED EVIDENCE
+
+- Bridge port-conflict/Auto-Fix UI ownership is locally verified and committed as implementation checkpoint c3850aaa536ac7e33363225f671cca962c8016fb, tree d7a39dd5f45b27e45cea8e2453242f623577aec1; no push has occurred.
+- Rust owners `bridge_port_validation.rs` and `bridge_port_ui.rs` preserve the reconciled R110H/R33 and R37/R44/R45/R54D3/R111G responsibilities; overlapping partial work was reconciled without discarding valid progress.
+- Prewire qualification: FMT PASS; frontend-WASM cargo check PASS; targeted validation/UI tests 1/1 + 1/1 PASS; strict frontend-WASM Clippy PASS.
+- Bridge JavaScript wiring is reduced to the current Rust/WASM ownership surface; Node syntax and Desktop ESLint `--max-warnings=0` PASS.
+- Deterministic frontend-WASM codegen WRITE/CHECK PASS with wasm-pack 0.15.0 and artifact count 19; generated JS SHA-256 `7849c2ab5ea147600d14e5ec2e30734ea73721405ec25cc48ed36b4def14aa5a`; generated WASM SHA-256 `c6b3dcfea293fc2d2617dc60318bab3d5eb5cb5f389fcc608539eaa5b867442b`.
+- Post-codegen affected qualification: `bridge_port_core` 8/8 PASS; Rust 1.97.1 wasm32 PASS; repaired fail-closed effective-Bridge ownership gate PASS; Bridge readiness PASS; strict xtask Clippy PASS.
+- Language policy check/inventory PASS at Rust 220 / source debt 2 / execution debt 8 / technical exceptions 39 / unapproved 0/0; `git diff --check` PASS.
+- The gate repair changed only the xtask source-slice ownership marker after the retired `bridgeCollectConfiguredPortsR5` JavaScript wrapper disappeared; product/generated evidence remained valid.
 
 ## OP210 VERIFIED EVIDENCE
 
@@ -94,4 +105,4 @@
 
 ## NEXT ACTION
 
-OP210 is CLOSED_LOCAL / VERIFIED_SUCCESS. Start read-only audit of the remaining `kaspa-bridge.js` source debt, identify the smallest coherent unblocked Bridge ownership boundary, persist a new OP211 write-ahead intent before any source mutation, and continue locally. The locked zero-touch PowerShell helper remains an independent blocker only. No push yet.
+OP211 implementation is **VERIFIED_LOCAL / IMPLEMENTATION_CHECKPOINTED** at `c3850aaa536ac7e33363225f671cca962c8016fb`. Complete the post-checkpoint continuity mirror qualification and docs-only checkpoint, verify a clean worktree, then audit the remaining `kaspa-bridge.js` source debt and select the next smallest independent Rust ownership boundary. No push yet.
