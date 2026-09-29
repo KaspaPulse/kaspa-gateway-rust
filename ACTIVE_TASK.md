@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. OP220 Bridge runtime invoke transport Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 4a790b2722567fa55efa750ae8a44028133cf108, tree a650833df69d4564a599cfaf903e9d0059c7a4c4; affected qualification PASS; no push.
+PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. OP221 Bridge local port passthrough-wrapper retirement is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint df9002f8b0c157946717c87cc2e1305d99cf69ae, tree 723fcbe0297505a53a8e1613a7a7cccf819d3c19; affected qualification PASS; no push.
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
 - Phase 1 foundation is committed locally as `33461f6511c69b457c5f3dd069b54322d9a236a0` / tree `e355550c6fa311fdfb4dd54a8cd29c4b45f0c583`.
@@ -84,13 +84,13 @@ PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. O
 The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates. The remaining owned source debt is exactly kaspa-bridge.js plus that locked PowerShell helper; execution debt remains 8. Independent Bridge migration work continues.
 
 ## Last Completed Action
-OP220 Bridge runtime invoke transport is CLOSED_LOCAL / VERIFIED_SUCCESS. Rust/WASM now owns invoke availability, Tauri adapter resolution, command timeout policy and Promise awaiting for Bridge runtime commands. Implementation checkpoint 4a790b2722567fa55efa750ae8a44028133cf108 / tree a650833df69d4564a599cfaf903e9d0059c7a4c4; generated JS/WASM were regenerated deterministically; no push.
+OP221 Bridge local port passthrough-wrapper retirement is CLOSED_LOCAL / VERIFIED_SUCCESS. Two JavaScript wrappers were removed and their three call sites now invoke the existing Rust/WASM owners directly while preserving normalized-network semantics. Implementation checkpoint df9002f8b0c157946717c87cc2e1305d99cf69ae / tree 723fcbe0297505a53a8e1613a7a7cccf819d3c19; Bridge SHA-256 267a5b213470c5f6b9c529a79dd38fac9a547705fbc9fa4c8e88f11b657e6dc4; no push.
 
 ## Current Action
-OP220 implementation and qualification are complete. This boundary is in docs-only continuity closeout; product and generated source are already checkpointed and unchanged.
+OP221 implementation and qualification are complete. This boundary is in docs-only continuity closeout; product source is already checkpointed and unchanged.
 
 ## Next Action
-Audit the remaining Bridge payload construction and Start preflight/orchestration boundary read-only, compare it with existing Rust owners, choose the smallest coherent next ownership slice, and persist a WAI before mutation. No push.
+Audit remaining kaspa-bridge.js wrappers and owned JavaScript boundaries read-only; prioritize the next coherent slice that already has a Rust/WASM owner or a directly testable migration path. Persist a WAI before mutation; no push.
 
 ## Verification Required
 - OP103 affected surface: legacy launcher frozen at SHA-256 `7229e1fd33546f0c14dc89dd34627b2626eaede00d07bdf08956721964cca0c5`; stable diagnostic/Windows-evidence/clipboard tests 5/5 each PASS; cargo check, FMT and strict xtask Clippy PASS; MSRV 1.97.1 check + diagnostic 5/5 PASS; aggregate true-raw-log gate PASS; full-local parser PASS; language inventory PASS at Rust 169 / source debt 16 / execution debt 10 / exceptions 30 / unapproved 0/0; diff-check PASS.

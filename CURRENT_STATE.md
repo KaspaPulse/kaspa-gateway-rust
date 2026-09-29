@@ -1,13 +1,13 @@
 # CURRENT STATE
-- Current product boundary: OP220 Bridge runtime invoke transport Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 4a790b2722567fa55efa750ae8a44028133cf108, tree a650833df69d4564a599cfaf903e9d0059c7a4c4; Bridge SHA-256 3746d4175d497754a02767037f51196fce6174233ddb88b35e6138488c935237; no product mutation or push is active.
+- Current product boundary: OP221 Bridge local port passthrough-wrapper retirement is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint df9002f8b0c157946717c87cc2e1305d99cf69ae, tree 723fcbe0297505a53a8e1613a7a7cccf819d3c19; Bridge SHA-256 267a5b213470c5f6b9c529a79dd38fac9a547705fbc9fa4c8e88f11b657e6dc4; no product mutation or push is active.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP220 verified implementation checkpoint is 4a790b2722567fa55efa750ae8a44028133cf108, tree a650833df69d4564a599cfaf903e9d0059c7a4c4.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP221 verified implementation checkpoint is df9002f8b0c157946717c87cc2e1305d99cf69ae, tree 723fcbe0297505a53a8e1613a7a7cccf819d3c19.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP220 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
+- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP221 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -22,6 +22,11 @@
 - Rust source inventory: 222 (verified during OP218 post-codegen language-policy check/inventory).
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
+
+## OP221 VERIFIED EVIDENCE
+- Two Bridge-local port passthrough wrappers were retired and three call sites now invoke existing Rust/WASM owners directly; implementation checkpoint df9002f8b0c157946717c87cc2e1305d99cf69ae, tree 723fcbe0297505a53a8e1613a7a7cccf819d3c19; no push.
+- Bridge SHA-256 is 267a5b213470c5f6b9c529a79dd38fac9a547705fbc9fa4c8e88f11b657e6dc4. Node syntax and Desktop ESLint zero-warning PASS; effective-Bridge 2/2 + gate PASS; Bridge-readiness 2/2 + gate PASS; language policy PASS at Rust 222 / source debt 2 / execution debt 8 / unapproved 0/0; project-continuity PASS; diff-check PASS.
+- OP220 Rust/MSRV/codegen evidence remains reusable because OP221 modified only kaspa-bridge.js.
 
 ## OP220 VERIFIED EVIDENCE
 - Bridge runtime invoke transport is Rust/WASM-owned in bridge_start_trace.rs: invoke availability, Tauri adapter resolution, command timeout policy and Promise awaiting. Implementation checkpoint 4a790b2722567fa55efa750ae8a44028133cf108, tree a650833df69d4564a599cfaf903e9d0059c7a4c4; no push.
@@ -163,4 +168,4 @@
 
 ## NEXT ACTION
 
-OP220 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 4a790b2722567fa55efa750ae8a44028133cf108, tree a650833df69d4564a599cfaf903e9d0059c7a4c4; no push. Audit the remaining Bridge payload construction and Start preflight/orchestration boundary read-only; persist a WAI before mutation. The separate zero-touch helper blocker remains unchanged.
+OP221 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint df9002f8b0c157946717c87cc2e1305d99cf69ae, tree 723fcbe0297505a53a8e1613a7a7cccf819d3c19; no push. Audit remaining kaspa-bridge.js wrappers and owned JavaScript boundaries read-only; persist a WAI before mutation. The separate zero-touch helper blocker remains unchanged.
