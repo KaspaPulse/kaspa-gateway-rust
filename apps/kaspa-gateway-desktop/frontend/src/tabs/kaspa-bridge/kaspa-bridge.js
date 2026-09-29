@@ -12,6 +12,11 @@ import initBridgeRust, {
   bridgeCommandSetOptionR7 as wasmBridgeCommandSetOptionR7,
   bridgeCommandShouldIncludeR7 as wasmBridgeCommandShouldIncludeR7,
   bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
+  bridgeBuildUpstreamInstanceArg as wasmBridgeBuildUpstreamInstanceArg,
+  bridgeDefaultInstanceRecord as wasmBridgeDefaultInstanceRecord,
+  bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
+  bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord,
+  bridgeParseUnsignedV1 as wasmBridgeParseUnsignedV1,
   bridgeClearRawLogBuffer as wasmBridgeClearRawLogBuffer,
   bridgeInstanceCommandCheckboxR13B as wasmBridgeInstanceCommandCheckboxR13B,
   bridgeInstanceCommandSetOptionR13B as wasmBridgeInstanceCommandSetOptionR13B,
@@ -424,242 +429,25 @@ function renderCpuMiner(net) {
  * RKStratum expects one --instance value with comma-separated internal keys:
  * port/prom/diff/log/var_diff/shares_per_min/var_diff_stats/pow2_clamp.
  */
-function bridgeInstanceKeyOf(part) {
-  const eq = String(part || "").indexOf("=");
-  return eq > 0 ? String(part).slice(0, eq).trim() : "";
-}
-
-function bridgeInstanceCanonicalKey(key) {
-  const normalized = String(key || "").trim();
-
-  if (normalized === "stratum" || normalized === "stratum_port") return "port";
-  if (normalized === "prom_port") return "prom";
-  if (normalized === "min_share_diff") return "diff";
-  if (normalized === "log_to_file") return "log";
-
-  return normalized;
-}
-
-function bridgeInstanceWithoutKeys(parts, keys) {
-  const blocked = new Set(keys.map(bridgeInstanceCanonicalKey));
-  return parts.filter((part) => {
-    const key = bridgeInstanceKeyOf(part);
-    if (!key) return true;
-    return !blocked.has(bridgeInstanceCanonicalKey(key));
-  });
-}
-
-function bridgeInstanceAppend(parts, key, value) {
-  const clean = String(value || "").trim();
-  if (!clean) return parts;
-
-  const canonical = bridgeInstanceCanonicalKey(key);
-  const filtered = bridgeInstanceWithoutKeys(parts, [canonical]);
-  filtered.push(`${canonical}=${clean}`);
-  return filtered;
-}
-
-function bridgeInstanceReadSupplement(net, instanceId, fieldName, fallbackValue) {
-  const value = bridgeReadInstanceField(net, instanceId, fieldName);
-  if (value !== "") return value;
-  return String(fallbackValue || "").trim();
-}
-
+/* KGW_BRIDGE_INSTANCE_EFFECTIVE_SETTINGS_RUST_OWNER_V1 */
 function bridgeBuildUpstreamInstanceArg(net, instance) {
-  const instanceId = instance?.id;
-  let parts = [];
-  // KGW_BRIDGE_INSTANCE_UPSTREAM_SERIALIZATION_CHECKBOX_R13B
-
-  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instancePort")) parts = bridgeInstanceAppend(parts, "port", bridgeInstancePortValue(bridgeInstanceReadSupplement(net, instanceId, "instancePort", instance?.instancePort)));
-  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceDiff")) parts = bridgeInstanceAppend(parts, "diff", bridgeInstancePlainValue(bridgeInstanceReadSupplement(net, instanceId, "instanceDiff", instance?.instanceDiff)));
-  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceProm")) parts = bridgeInstanceAppend(parts, "prom", bridgeInstancePortValue(bridgeInstanceReadSupplement(net, instanceId, "instanceProm", instance?.instanceProm)));
-
-  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceLogToFile")) parts = bridgeInstanceAppend(parts, "log", bridgeInstanceReadSupplement(net, instanceId, "instanceLogToFile", instance?.instanceLogToFile));
-  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceBlockWaitTime")) parts = bridgeInstanceAppend(parts, "wait", bridgeInstanceReadSupplement(net, instanceId, "instanceBlockWaitTime", instance?.instanceBlockWaitTime));
-  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceExtranonceSize")) parts = bridgeInstanceAppend(parts, "extranonce", bridgeInstanceReadSupplement(net, instanceId, "instanceExtranonceSize", instance?.instanceExtranonceSize));
-  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceVarDiff")) parts = bridgeInstanceAppend(parts, "var_diff", bridgeInstanceReadSupplement(net, instanceId, "instanceVarDiff", instance?.instanceVarDiff));
-  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceSharesPerMin")) parts = bridgeInstanceAppend(parts, "shares_per_min", bridgeInstanceReadSupplement(net, instanceId, "instanceSharesPerMin", instance?.instanceSharesPerMin));
-  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instanceVarDiffStats")) parts = bridgeInstanceAppend(parts, "var_diff_stats", bridgeInstanceReadSupplement(net, instanceId, "instanceVarDiffStats", instance?.instanceVarDiffStats));
-  if (kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instancePow2Clamp")) parts = bridgeInstanceAppend(parts, "pow2_clamp", bridgeInstanceReadSupplement(net, instanceId, "instancePow2Clamp", instance?.instancePow2Clamp));
-
-  return parts.join(",");
-}
-
-/* KGW_BRIDGE_INSTANCES_FIELDS_TRASH_R6
- * Existing Bridge Instances owner refinement:
- * - Port, diff, and prom are first-class fields in the existing Instances tab.
- * - Trash icon is next to the instance name.
- * - Existing serializer still emits one upstream-compatible --instance value.
- */
-function bridgeInstanceParseStructured(value) {
-  const parsed = {};
-  const parts = String(value || "").split(",").map((part) => part.trim()).filter(Boolean);
-
-  for (const part of parts) {
-    const eq = part.indexOf("=");
-    if (eq <= 0) continue;
-
-    const key = bridgeInstanceCanonicalKey(part.slice(0, eq).trim());
-    const rawValue = part.slice(eq + 1).trim();
-
-    if (key === "port") parsed.instancePort = rawValue.replace(/^:/, "");
-    if (key === "diff") parsed.instanceDiff = rawValue;
-    if (key === "prom") parsed.instanceProm = rawValue.replace(/^:/, "");
-    if (key === "log") parsed.instanceLogToFile = rawValue;
-    if (key === "wait" || key === "block_wait_time") parsed.instanceBlockWaitTime = rawValue;
-    if (key === "extranonce" || key === "extranonce_size") parsed.instanceExtranonceSize = rawValue;
-    if (key === "var_diff") parsed.instanceVarDiff = rawValue;
-    if (key === "shares_per_min") parsed.instanceSharesPerMin = rawValue;
-    if (key === "var_diff_stats") parsed.instanceVarDiffStats = rawValue;
-    if (key === "pow2_clamp") parsed.instancePow2Clamp = rawValue;
-  }
-
-  return parsed;
-}
-
-function bridgeInstancePortValue(value) {
-  const clean = String(value || "").trim().replace(/^:/, "");
-  return clean ? ":" + clean : "";
-}
-
-function bridgeInstancePlainValue(value) {
-  return String(value || "").trim();
-}
-
-function kgwBridgeOptionalTextV1(value) {
-  const clean = String(value || "").trim();
-  return clean || null;
-}
-
-function kgwBridgePortListenV1(value, fallback = "") {
-  const clean = String(value || fallback || "").trim();
-  if (!clean) return null;
-  if (/^\d+$/.test(clean)) return ":" + clean;
-  return clean;
+  return wasmBridgeBuildUpstreamInstanceArg(String(net || ""), instance || {});
 }
 
 function kgwBridgeParseUnsignedV1(label, value, fallback, max = Number.MAX_SAFE_INTEGER) {
-  const clean = String(value ?? "").trim();
-  if (!clean) return fallback;
-  if (!/^\d+$/.test(clean)) throw new Error(label + " must be an unsigned integer");
-  const parsed = Number(clean);
-  if (!Number.isSafeInteger(parsed) || parsed > max) throw new Error(label + " is outside the supported range");
-  return parsed;
-}
-
-function kgwBridgeParseDurationMsV1(label, value, fallback) {
-  const clean = String(value ?? "").trim().toLowerCase();
-  if (!clean) return fallback;
-  const matched = clean.match(/^(\d+)(ms|s)?$/);
-  if (!matched) throw new Error(label + " must use milliseconds or an integer with ms/s suffix");
-  const amount = Number(matched[1]);
-  const milliseconds = matched[2] === "s" ? amount * 1000 : amount;
-  if (!Number.isSafeInteger(milliseconds) || milliseconds <= 0) throw new Error(label + " must be greater than zero");
-  return milliseconds;
-}
-
-function kgwBridgeBoolValueV1(value, fallback) {
-  const clean = String(value ?? "").trim().toLowerCase();
-  if (!clean || clean === "not set") return fallback;
-  if (clean === "true") return true;
-  if (clean === "false") return false;
-  throw new Error("Bridge boolean setting must be true or false");
+  return wasmBridgeParseUnsignedV1(String(label || ""), value, fallback, max);
 }
 
 function kgwBridgeEffectiveSettingsV1(net, structuredInstances) {
-  if (bridgeHasConfig(net)) return null;
-  const profile = bridgeProfile(net);
-  if (net !== "mainnet") {
-    return { version: 1, global: {
-      kaspaRpcEndpoint: kgwBridgePortListenV1(bridgeNodeMode(net) === "inprocess" ? v(net, "inprocessRpcListen") : v(net, "kaspadAddress"), "127.0.0.1:" + profile.kaspadPort),
-      logToFile: false, healthCheckListen: null, webDashboardListen: null, approximateGeoLookup: false,
-    }, instances: [] };
-  }
-  const records = Array.isArray(structuredInstances?.instances) ? structuredInstances.instances : [];
-  const instances = records.map((raw, index) => {
-    const instance = bridgeNormalizeInstanceRecord(raw, index + 1);
-    if (!kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, "instance")) return null;
-    const included = (fieldName) => kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, fieldName);
-    return {
-      instanceId: String(instance.id || (index + 1)),
-      stratumListen: kgwBridgePortListenV1(included("instancePort") ? instance.instancePort : "", index === 0 ? kgwBridgeEffectiveValue(net, "stratumPort") || profile?.stratumPort : ""),
-      minShareDiff: kgwBridgeParseUnsignedV1("Instance minimum share difficulty", included("instanceDiff") ? instance.instanceDiff : "", kgwBridgeParseUnsignedV1("Minimum share difficulty", kgwBridgeEffectiveValue(net, "minShareDiff"), 8192, 4294967295), 4294967295),
-      prometheusListen: kgwBridgePortListenV1(included("instanceProm") ? instance.instanceProm : "", index === 0 ? kgwBridgeEffectiveValue(net, "promPort") : ""),
-      logToFile: included("instanceLogToFile") ? kgwBridgeBoolValueV1(instance.instanceLogToFile, null) : null,
-      blockWaitTimeMs: included("instanceBlockWaitTime") && instance.instanceBlockWaitTime ? kgwBridgeParseDurationMsV1("Instance block wait time", instance.instanceBlockWaitTime, null) : null,
-      extranonceSize: included("instanceExtranonceSize") && instance.instanceExtranonceSize ? kgwBridgeParseUnsignedV1("Instance extranonce size", instance.instanceExtranonceSize, null, 8) : null,
-      varDiff: included("instanceVarDiff") ? kgwBridgeBoolValueV1(instance.instanceVarDiff, null) : null,
-      sharesPerMin: included("instanceSharesPerMin") && instance.instanceSharesPerMin ? kgwBridgeParseUnsignedV1("Instance shares per minute", instance.instanceSharesPerMin, null, 4294967295) : null,
-      varDiffStats: included("instanceVarDiffStats") ? kgwBridgeBoolValueV1(instance.instanceVarDiffStats, null) : null,
-      pow2Clamp: included("instancePow2Clamp") ? kgwBridgeBoolValueV1(instance.instancePow2Clamp, null) : null
-    };
-  }).filter(Boolean);
-  if (!instances.length) throw new Error("At least one Bridge instance is required");
-  return {
-    version: 1,
-    global: {
-      kaspaRpcEndpoint: kgwBridgePortListenV1(bridgeNodeMode(net) === "inprocess" ? v(net, "inprocessRpcListen") : kgwBridgeEffectiveValue(net, "kaspadAddress"), `127.0.0.1:${profile?.kaspadPort || "16110"}`),
-      blockWaitTimeMs: kgwBridgeParseDurationMsV1("Block wait time", kgwBridgeEffectiveValue(net, "blockWaitTime"), 1000),
-      printStats: kgwBridgeBoolValueV1(kgwBridgeEffectiveValue(net, "printStats"), true),
-      logToFile: kgwBridgeBoolValueV1(kgwBridgeEffectiveValue(net, "logToFile"), false),
-      healthCheckListen: kgwBridgePortListenV1(kgwBridgeEffectiveValue(net, "healthCheckPort")),
-      webDashboardListen: kgwBridgePortListenV1(kgwBridgeEffectiveValue(net, "webDashboardPort")),
-      varDiff: kgwBridgeBoolValueV1(kgwBridgeEffectiveValue(net, "varDiff"), true),
-      sharesPerMin: kgwBridgeParseUnsignedV1("Shares per minute", kgwBridgeEffectiveValue(net, "sharesPerMin"), 20, 4294967295),
-      varDiffStats: kgwBridgeBoolValueV1(kgwBridgeEffectiveValue(net, "varDiffStats"), false),
-      extranonceSize: kgwBridgeParseUnsignedV1("Extranonce size", kgwBridgeEffectiveValue(net, "extranonceSize"), 0, 8),
-      pow2Clamp: kgwBridgeBoolValueV1(kgwBridgeEffectiveValue(net, "pow2Clamp"), false),
-      coinbaseTagSuffix: kgwBridgeOptionalTextV1(kgwBridgeEffectiveValue(net, "coinbaseTagSuffix")),
-      approximateGeoLookup: net === "testnet13" && kgwBridgeBoolValueV1(kgwBridgeEffectiveValue(net, "approxGeoLookup"), false)
-    },
-    instances
-  };
+  return wasmBridgeEffectiveSettingsV1(String(net || ""), structuredInstances || {});
 }
 
-/* KGW_BRIDGE_INSTANCES_UI_PORT_VALIDATOR_R5
- * Existing Bridge owner enhancement:
- * - Instance optional booleans default to "not set" so they inherit official globals.
- * - Instance tab has remove control next to the name.
- * - Strict port validation blocks duplicate ports before runtime.
- */
 function bridgeDefaultInstanceRecord(idValue) {
-  return {
-    id: idValue || (Date.now() + Math.floor(Math.random() * 1000)),
-    instance: "",
-    instancePort: null,
-    instanceDiff: "2048",
-    instanceProm: null,
-    instanceLogToFile: "not set",
-    instanceBlockWaitTime: "",
-    instanceExtranonceSize: "",
-    instanceVarDiff: "not set",
-    instanceSharesPerMin: "",
-    instanceVarDiffStats: "not set",
-    instancePow2Clamp: "not set"
-  };
+  return wasmBridgeDefaultInstanceRecord(idValue);
 }
 
 function bridgeNormalizeInstanceRecord(raw, fallbackId) {
-  const source = raw && typeof raw === "object" ? raw : {};
-  const defaults = bridgeDefaultInstanceRecord(source.id || fallbackId);
-  const parsed = bridgeInstanceParseStructured(source.instance || "");
-
-  return {
-    ...defaults,
-    ...source,
-    id: source.id || defaults.id,
-    instance: "",
-    instancePort: String(source.instancePort || parsed.instancePort || ""),
-    instanceDiff: String(source.instanceDiff || parsed.instanceDiff || defaults.instanceDiff || "2048"),
-    instanceProm: String(source.instanceProm || parsed.instanceProm || ""),
-    instanceLogToFile: String(source.instanceLogToFile || parsed.instanceLogToFile || "not set"),
-    instanceBlockWaitTime: String(source.instanceBlockWaitTime || parsed.instanceBlockWaitTime || ""),
-    instanceExtranonceSize: String(source.instanceExtranonceSize || parsed.instanceExtranonceSize || ""),
-    instanceVarDiff: String(source.instanceVarDiff || parsed.instanceVarDiff || "not set"),
-    instanceSharesPerMin: String(source.instanceSharesPerMin || parsed.instanceSharesPerMin || ""),
-    instanceVarDiffStats: String(source.instanceVarDiffStats || parsed.instanceVarDiffStats || "not set"),
-    instancePow2Clamp: String(source.instancePow2Clamp || parsed.instancePow2Clamp || "not set")
-  };
+  return wasmBridgeNormalizeInstanceRecord(raw || {}, fallbackId);
 }
 
 function bridgeExtractPortsFromTextR5(value) {
@@ -5706,9 +5494,6 @@ function kgwBridgeForm(net) {
     values[field.id.slice(("bridge-" + net + "-").length)] = field.type === "checkbox" ? field.checked : field.value;
   });
   return values;
-}
-function kgwBridgeEffectiveValue(net, name) {
-  return bridgeFieldEnabled(name, kgwBridgeForm(net), kgwBridgeCommandInlineStateR7(net)) ? v(net, name) : "";
 }
 function kgwBridgeValidateForm(net, focus = false) {
   const errors = validateBridgeForm(kgwBridgeForm(net), kgwBridgeCommandInlineStateR7(net), net);

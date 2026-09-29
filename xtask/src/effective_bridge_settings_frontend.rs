@@ -36,7 +36,7 @@ const SLICES: &[(&str, &str)] = &[
         "function kgwBridgeInstanceCommandCheckboxR13B(",
     ),
     (
-        "function bridgeInstanceKeyOf(",
+        "function bridgeBuildUpstreamInstanceArg(",
         "function bridgeExtractPortsFromTextR5(",
     ),
     (
@@ -94,6 +94,19 @@ const sandbox = {
   wasmBridgeInstanceCommandSetOptionR13B: wasmModule.bridgeInstanceCommandSetOptionR13B,
   wasmBridgeInstanceCommandShouldIncludeR13B: wasmModule.bridgeInstanceCommandShouldIncludeR13B,
   wasmBridgeInstanceCommandStateKeyR13B: wasmModule.bridgeInstanceCommandStateKeyR13B,
+  bridgeInstanceParseStructured: wasmModule.bridgeInstanceParseStructured,
+  wasmBridgeBoolValueV1: wasmModule.bridgeBoolValueV1,
+  wasmBridgeBuildUpstreamInstanceArg: wasmModule.bridgeBuildUpstreamInstanceArg,
+  wasmBridgeDefaultInstanceRecord: wasmModule.bridgeDefaultInstanceRecord,
+  wasmBridgeEffectiveSettingsV1: wasmModule.bridgeEffectiveSettingsV1,
+  wasmBridgeInstanceParseStructured: wasmModule.bridgeInstanceParseStructured,
+  wasmBridgeInstancePlainValue: wasmModule.bridgeInstancePlainValue,
+  wasmBridgeInstancePortValue: wasmModule.bridgeInstancePortValue,
+  wasmBridgeNormalizeInstanceRecord: wasmModule.bridgeNormalizeInstanceRecord,
+  wasmBridgeOptionalTextV1: wasmModule.bridgeOptionalTextV1,
+  wasmBridgeParseDurationMsV1: wasmModule.bridgeParseDurationMsV1,
+  wasmBridgeParseUnsignedV1: wasmModule.bridgeParseUnsignedV1,
+  wasmBridgePortListenV1: wasmModule.bridgePortListenV1,
   bridgeInstances: {
     mainnet: request.structured.instances,
     testnet10: [],

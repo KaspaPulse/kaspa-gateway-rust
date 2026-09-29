@@ -3,6 +3,7 @@ mod analysis_calendar;
 mod analysis_view;
 mod bridge_command_options;
 mod bridge_frontend_helpers;
+mod bridge_instance_settings;
 mod bridge_raw_log;
 mod bridge_start_trace;
 mod explorer_addresses;
