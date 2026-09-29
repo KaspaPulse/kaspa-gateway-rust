@@ -492,6 +492,242 @@ fn profile_string(profile: &JsValue, name: &str, fallback: &str) -> String {
     }
 }
 
+fn effective_node_integer_text(name: &str, value: &str, fallback: f64) -> Result<f64, String> {
+    let clean = value.trim();
+    if clean.is_empty() {
+        return Ok(fallback);
+    }
+    let number = clean
+        .parse::<f64>()
+        .map_err(|_| format!("{name} must be an integer."))?;
+    if !number.is_finite() || number.fract() != 0.0 {
+        return Err(format!("{name} must be an integer."));
+    }
+    Ok(number)
+}
+
+fn effective_node_number_text(name: &str, value: &str, fallback: f64) -> Result<f64, String> {
+    let clean = value.trim();
+    if clean.is_empty() {
+        return Ok(fallback);
+    }
+    let number = clean
+        .parse::<f64>()
+        .map_err(|_| format!("{name} must be a finite number."))?;
+    if !number.is_finite() {
+        return Err(format!("{name} must be a finite number."));
+    }
+    Ok(number)
+}
+
+fn effective_node_integer(net: &str, name: &str, fallback: f64) -> Result<f64, JsValue> {
+    effective_node_integer_text(name, &effective_value(net, name), fallback)
+        .map_err(|error| JsValue::from_str(&error))
+}
+
+fn effective_node_number(net: &str, name: &str, fallback: f64) -> Result<f64, JsValue> {
+    if !bridge_command_options::bridge_command_should_include_r7(net.to_owned(), name.to_owned()) {
+        return Ok(fallback);
+    }
+    effective_node_number_text(name, &field_value(net, name), fallback)
+        .map_err(|error| JsValue::from_str(&error))
+}
+
+fn command_optional_text(net: &str, name: &str) -> JsValue {
+    if !bridge_command_options::bridge_command_should_include_r7(net.to_owned(), name.to_owned()) {
+        return JsValue::NULL;
+    }
+    js_option_string(optional_text(&field_value(net, name)))
+}
+
+fn one_peer_array(value: String) -> Array {
+    let output = Array::new();
+    if !value.is_empty() {
+        output.push(&JsValue::from_str(&value));
+    }
+    output
+}
+
+fn effective_inprocess_node_settings_impl(net: &str) -> Result<JsValue, JsValue> {
+    if !field_value(net, "inprocessConfigfile").is_empty() {
+        return Err(JsValue::from_str(
+            "In-process --configfile is unsupported because the desktop owns network and database isolation.",
+        ));
+    }
+    if bridge_frontend_helpers::bridge_checked(net.to_owned(), "inprocessDevnet".to_owned())
+        || bridge_frontend_helpers::bridge_checked(net.to_owned(), "inprocessSimnet".to_owned())
+    {
+        return Err(JsValue::from_str(
+            "Devnet and simnet cannot override the selected desktop network tab.",
+        ));
+    }
+    if !field_value(net, "inprocessOverrideParamsFile").is_empty() {
+        return Err(JsValue::from_str(
+            "In-process --override-params-file is unsupported because the desktop owns the selected network identity.",
+        ));
+    }
+
+    let profile = bridge_frontend_helpers::bridge_network_profile(net.to_owned());
+    let kaspad_port = profile_string(&profile, "kaspadPort", "16110");
+    let rpc_listen = {
+        let configured = field_value(net, "inprocessRpcListen");
+        if configured.is_empty() {
+            format!("127.0.0.1:{kaspad_port}")
+        } else {
+            configured
+        }
+    };
+    let add_peer = if bridge_command_options::bridge_command_should_include_r7(
+        net.to_owned(),
+        "inprocessAddPeer".to_owned(),
+    ) {
+        field_value(net, "inprocessAddPeer")
+    } else {
+        String::new()
+    };
+    let connect_peer = if bridge_command_options::bridge_command_should_include_r7(
+        net.to_owned(),
+        "inprocessConnect".to_owned(),
+    ) {
+        field_value(net, "inprocessConnect")
+    } else {
+        String::new()
+    };
+    let log_level = if bridge_command_options::bridge_command_should_include_r7(
+        net.to_owned(),
+        "inprocessLogLevel".to_owned(),
+    ) {
+        let value = field_value(net, "inprocessLogLevel");
+        if value.is_empty() {
+            "info".to_owned()
+        } else {
+            value
+        }
+    } else {
+        "info".to_owned()
+    };
+    let testnet = crate::js_boolean(&property(&profile, "testnet"));
+    let checked =
+        |name: &str| bridge_frontend_helpers::bridge_checked(net.to_owned(), name.to_owned());
+
+    let output = Object::new();
+    set(output.as_ref(), "logLevel", &JsValue::from_str(&log_level));
+    set(
+        output.as_ref(),
+        "asyncThreads",
+        &JsValue::from_f64(effective_node_integer(net, "inprocessAsyncThreads", 16.0)?),
+    );
+    set(
+        output.as_ref(),
+        "ramScale",
+        &JsValue::from_f64(effective_node_number(net, "inprocessRamScale", 1.0)?),
+    );
+    set(
+        output.as_ref(),
+        "yes",
+        &JsValue::from_bool(checked("inprocessYes")),
+    );
+    set(output.as_ref(), "noLogFiles", &JsValue::TRUE);
+    set(output.as_ref(), "sanity", &JsValue::FALSE);
+    set(
+        output.as_ref(),
+        "enableUnsyncedMining",
+        &JsValue::from_bool(checked("inprocessEnableUnsyncedMining") && testnet),
+    );
+    set(
+        output.as_ref(),
+        "p2pListen",
+        &command_optional_text(net, "inprocessListen"),
+    );
+    set(output.as_ref(), "externalIp", &JsValue::NULL);
+    set(
+        output.as_ref(),
+        "disableUpnp",
+        &JsValue::from_bool(checked("inprocessDisableUpnp")),
+    );
+    set(output.as_ref(), "disableDnsSeeding", &JsValue::FALSE);
+    set(output.as_ref(), "userAgentComments", Array::new().as_ref());
+    set(
+        output.as_ref(),
+        "rpcListen",
+        &JsValue::from_str(&rpc_listen),
+    );
+    set(
+        output.as_ref(),
+        "rpcListenBorsh",
+        &command_optional_text(net, "inprocessRpcListenBorsh"),
+    );
+    set(
+        output.as_ref(),
+        "rpcListenJson",
+        &command_optional_text(net, "inprocessRpcListenJson"),
+    );
+    set(output.as_ref(), "rpcMaxClients", &JsValue::from_f64(16.0));
+    set(
+        output.as_ref(),
+        "unsafeRpc",
+        &JsValue::from_bool(checked("inprocessUnsafeRpc")),
+    );
+    set(output.as_ref(), "disableGrpc", &JsValue::FALSE);
+    set(
+        output.as_ref(),
+        "connectPeers",
+        one_peer_array(connect_peer).as_ref(),
+    );
+    set(
+        output.as_ref(),
+        "addPeers",
+        one_peer_array(add_peer).as_ref(),
+    );
+    set(
+        output.as_ref(),
+        "outboundTarget",
+        &JsValue::from_f64(effective_node_integer(net, "inprocessOutpeers", 8.0)?),
+    );
+    set(
+        output.as_ref(),
+        "inboundLimit",
+        &JsValue::from_f64(effective_node_integer(net, "inprocessMaxInpeers", 32.0)?),
+    );
+    set(
+        output.as_ref(),
+        "utxoIndex",
+        &JsValue::from_bool(checked("inprocessUtxoIndex")),
+    );
+    set(
+        output.as_ref(),
+        "archival",
+        &JsValue::from_bool(checked("inprocessArchival")),
+    );
+    set(output.as_ref(), "resetDb", &JsValue::FALSE);
+    set(
+        output.as_ref(),
+        "perfMetrics",
+        &JsValue::from_bool(checked("inprocessPerfMetrics")),
+    );
+    set(
+        output.as_ref(),
+        "maxTrackedAddresses",
+        &JsValue::from_f64(0.0),
+    );
+    set(output.as_ref(), "retentionPeriodDays", &JsValue::NULL);
+    set(
+        output.as_ref(),
+        "perfMetricsIntervalSec",
+        &JsValue::from_f64(effective_node_integer(
+            net,
+            "inprocessPerfMetricsIntervalSec",
+            10.0,
+        )?),
+    );
+    set(output.as_ref(), "rocksDbPreset", &JsValue::NULL);
+    set(output.as_ref(), "rocksDbCacheSize", &JsValue::NULL);
+    set(output.as_ref(), "rocksDbWalDir", &JsValue::NULL);
+    set(output.as_ref(), "overrideParamsFile", &JsValue::NULL);
+    set(output.as_ref(), "logDir", &JsValue::NULL);
+    Ok(output.into())
+}
+
 fn effective_settings_impl(net: &str, structured_instances: &JsValue) -> Result<JsValue, JsValue> {
     if has_config(net) {
         return Ok(JsValue::NULL);
@@ -914,6 +1150,11 @@ pub fn bridge_effective_settings_v1(
     effective_settings_impl(&net, &structured_instances)
 }
 
+#[wasm_bindgen(js_name = bridgeEffectiveInprocessNodeSettings)]
+pub fn bridge_effective_inprocess_node_settings(net: String) -> Result<JsValue, JsValue> {
+    effective_inprocess_node_settings_impl(&net)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -954,5 +1195,23 @@ mod tests {
         assert_eq!(bool_value_text("not set", None).unwrap(), None);
         assert_eq!(bool_value_text("true", None).unwrap(), Some(true));
         assert!(bool_value_text("yes", None).is_err());
+    }
+
+    #[test]
+    fn effective_node_numeric_parsers_preserve_legacy_rules() {
+        assert_eq!(
+            effective_node_integer_text("inprocessAsyncThreads", "", 16.0).unwrap(),
+            16.0
+        );
+        assert_eq!(
+            effective_node_integer_text("inprocessAsyncThreads", "1e2", 16.0).unwrap(),
+            100.0
+        );
+        assert!(effective_node_integer_text("inprocessAsyncThreads", "1.5", 16.0).is_err());
+        assert_eq!(
+            effective_node_number_text("inprocessRamScale", "1.25", 1.0).unwrap(),
+            1.25
+        );
+        assert!(effective_node_number_text("inprocessRamScale", "NaN", 1.0).is_err());
     }
 }

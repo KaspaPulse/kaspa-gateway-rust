@@ -10,12 +10,12 @@ import initBridgeRust, {
   bridgeCommandInlineToggleR7 as wasmBridgeCommandInlineToggleR7,
   bridgeCommandOptionEnabledR7 as wasmBridgeCommandOptionEnabledR7,
   bridgeCommandSetOptionR7 as wasmBridgeCommandSetOptionR7,
-  bridgeCommandShouldIncludeR7 as wasmBridgeCommandShouldIncludeR7,
   bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
   bridgeBuildCommandLines as wasmBridgeBuildCommandLines,
   bridgeBuildUpstreamInstanceArg as wasmBridgeBuildUpstreamInstanceArg,
   bridgeDefaultInstanceRecord as wasmBridgeDefaultInstanceRecord,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
+  bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings,
   bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord,
   bridgeParseUnsignedV1 as wasmBridgeParseUnsignedV1,
   bridgeClearRawLogBuffer as wasmBridgeClearRawLogBuffer,
@@ -251,10 +251,6 @@ function kgwBridgeCommandInlineStateR7(net) {
 
 function kgwBridgeCommandOptionEnabledR7(net, name) {
   return wasmBridgeCommandOptionEnabledR7(String(net || ""), String(name || ""));
-}
-
-function kgwBridgeCommandShouldIncludeR7(net, name) {
-  return wasmBridgeCommandShouldIncludeR7(String(net || ""), String(name || ""));
 }
 
 function kgwBridgeCommandInlineToggleR7(net, name) {
@@ -2262,78 +2258,11 @@ function buildCommandLines(net) {
     wasmBridgeBuildCommandLines(String(net || ""), bridgeInstances[net] || [])
   );
 }
-function kgwBridgeEffectiveNodeInteger(net, name, fallback) {
-  if (!bridgeFieldEnabled(name, kgwBridgeForm(net), kgwBridgeCommandInlineStateR7(net))) return fallback;
-  const raw = v(net, name);
-  if (!raw) return fallback;
-  const value = Number(raw);
-  if (!Number.isInteger(value)) throw new Error(`${name} must be an integer.`);
-  return value;
-}
-
-function kgwBridgeEffectiveNodeNumber(net, name, fallback) {
-  if (!kgwBridgeCommandShouldIncludeR7(net, name)) return fallback;
-  const raw = v(net, name);
-  if (!raw) return fallback;
-  const value = Number(raw);
-  if (!Number.isFinite(value)) throw new Error(`${name} must be a finite number.`);
-  return value;
-}
-
 function kgwBridgeEffectiveInprocessNodeSettings(net) {
   if (bridgeNodeMode(net) !== "inprocess") return null;
   const errors = kgwBridgeValidateForm(net);
   if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-  const profile = bridgeProfile(net);
-  if (v(net, "inprocessConfigfile")) {
-    throw new Error("In-process --configfile is unsupported because the desktop owns network and database isolation.");
-  }
-  if (c(net, "inprocessDevnet") || c(net, "inprocessSimnet")) {
-    throw new Error("Devnet and simnet cannot override the selected desktop network tab.");
-  }
-  if (v(net, "inprocessOverrideParamsFile")) {
-    throw new Error("In-process --override-params-file is unsupported because the desktop owns the selected network identity.");
-  }
-  const rpcListen = v(net, "inprocessRpcListen") || `127.0.0.1:${profile.kaspadPort}`;
-  const addPeer = kgwBridgeCommandShouldIncludeR7(net, "inprocessAddPeer") ? v(net, "inprocessAddPeer") : "";
-  const connectPeer = kgwBridgeCommandShouldIncludeR7(net, "inprocessConnect") ? v(net, "inprocessConnect") : "";
-
-  return {
-    logLevel: kgwBridgeCommandShouldIncludeR7(net, "inprocessLogLevel") ? v(net, "inprocessLogLevel") || "info" : "info",
-    asyncThreads: kgwBridgeEffectiveNodeInteger(net, "inprocessAsyncThreads", 16),
-    ramScale: kgwBridgeEffectiveNodeNumber(net, "inprocessRamScale", 1),
-    yes: c(net, "inprocessYes"),
-    noLogFiles: true,
-    sanity: false,
-    enableUnsyncedMining: c(net, "inprocessEnableUnsyncedMining") && Boolean(profile?.testnet),
-    p2pListen: kgwBridgeCommandShouldIncludeR7(net, "inprocessListen") ? v(net, "inprocessListen") || null : null,
-    externalIp: null,
-    disableUpnp: c(net, "inprocessDisableUpnp"),
-    disableDnsSeeding: false,
-    userAgentComments: [],
-    rpcListen,
-    rpcListenBorsh: kgwBridgeCommandShouldIncludeR7(net, "inprocessRpcListenBorsh") ? v(net, "inprocessRpcListenBorsh") || null : null,
-    rpcListenJson: kgwBridgeCommandShouldIncludeR7(net, "inprocessRpcListenJson") ? v(net, "inprocessRpcListenJson") || null : null,
-    rpcMaxClients: 16,
-    unsafeRpc: c(net, "inprocessUnsafeRpc"),
-    disableGrpc: false,
-    connectPeers: connectPeer ? [connectPeer] : [],
-    addPeers: addPeer ? [addPeer] : [],
-    outboundTarget: kgwBridgeEffectiveNodeInteger(net, "inprocessOutpeers", 8),
-    inboundLimit: kgwBridgeEffectiveNodeInteger(net, "inprocessMaxInpeers", 32),
-    utxoIndex: c(net, "inprocessUtxoIndex"),
-    archival: c(net, "inprocessArchival"),
-    resetDb: false,
-    perfMetrics: c(net, "inprocessPerfMetrics"),
-    maxTrackedAddresses: 0,
-    retentionPeriodDays: null,
-    perfMetricsIntervalSec: kgwBridgeEffectiveNodeInteger(net, "inprocessPerfMetricsIntervalSec", 10),
-    rocksDbPreset: null,
-    rocksDbCacheSize: null,
-    rocksDbWalDir: null,
-    overrideParamsFile: null,
-    logDir: null,
-  };
+  return wasmBridgeEffectiveInprocessNodeSettings(String(net || ""));
 }
 
 
