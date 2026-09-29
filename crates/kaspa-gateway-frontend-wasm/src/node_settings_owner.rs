@@ -5,7 +5,6 @@ use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 
 const OWNER: &str = "KGW_SETTINGS_OWNER_V19";
 const PATCH: &str = "KGW_SETTINGS_OWNER_V19_SAFE_FEEDBACK_NO_FREEZE_V25B";
-const SCOPE: &str = "node";
 const FEEDBACK_MS: i32 = 3000;
 const DISABLED_CLASS: &str = "kgw-settings-action-disabled-v19";
 const ROOT_INSTALLED_ATTR: &str = "kgwSettingsOwnerV19";
@@ -148,11 +147,12 @@ fn clear_timeout(timer: f64) {
     let _ = call1(&window(), "clearTimeout", &JsValue::from_f64(timer));
 }
 
-fn trace_details_text(phase: &str, details: &JsValue) -> String {
+fn trace_details_text(phase: &str, details: &JsValue, callbacks: &JsValue) -> String {
     let nested = Object::new();
+    let scope = owner_scope(callbacks);
     set(nested.as_ref(), "owner", &JsValue::from_str(OWNER));
     set(nested.as_ref(), "patch", &JsValue::from_str(PATCH));
-    set(nested.as_ref(), "scope", &JsValue::from_str(SCOPE));
+    set(nested.as_ref(), "scope", &JsValue::from_str(&scope));
     set(nested.as_ref(), "phase", &JsValue::from_str(phase));
     set(nested.as_ref(), "details", details);
     JSON::stringify(nested.as_ref())
@@ -161,7 +161,7 @@ fn trace_details_text(phase: &str, details: &JsValue) -> String {
         .unwrap_or_else(|| "{}".to_owned())
 }
 
-fn trace(phase: &str, details: JsValue) {
+fn trace(phase: &str, details: JsValue, callbacks: &JsValue) {
     let net = {
         let network = property(&details, "network");
         if crate::js_boolean(&network) {
@@ -183,8 +183,9 @@ fn trace(phase: &str, details: JsValue) {
             "settings-owner".to_owned()
         }
     };
+    let scope = owner_scope(callbacks);
     let args = Object::new();
-    set(args.as_ref(), "scope", &JsValue::from_str(SCOPE));
+    set(args.as_ref(), "scope", &JsValue::from_str(&scope));
     set(args.as_ref(), "net", &JsValue::from_str(&net));
     set(args.as_ref(), "action", &JsValue::from_str(&action));
     set(
@@ -195,7 +196,7 @@ fn trace(phase: &str, details: JsValue) {
     set(
         args.as_ref(),
         "details",
-        &JsValue::from_str(&trace_details_text(phase, &details)),
+        &JsValue::from_str(&trace_details_text(phase, &details, callbacks)),
     );
 
     let tauri = property(&window(), "__TAURI__");
@@ -363,13 +364,20 @@ fn preview_snapshot(root: &JsValue, network: &str) -> JsValue {
     output.into()
 }
 
-fn event_trace_details(root: &JsValue, event: &JsValue, network: &str, reason: &str) -> JsValue {
+fn event_trace_details(
+    root: &JsValue,
+    event: &JsValue,
+    network: &str,
+    reason: &str,
+    callbacks: &JsValue,
+) -> JsValue {
     let output = Object::new();
+    let scope = owner_scope(callbacks);
     for (key, value) in [
         ("patch", "R29B"),
         ("owner", OWNER),
-        ("scope", SCOPE),
-        ("tab", "node"),
+        ("scope", scope.as_str()),
+        ("tab", scope.as_str()),
         ("reason", reason),
         ("network", network),
     ] {
@@ -401,12 +409,14 @@ fn button_trace_details(
     network: &str,
     action: &str,
     disabled: bool,
+    callbacks: &JsValue,
 ) -> JsValue {
     let output = Object::from(event_trace_details(
         root,
         event,
         network,
         "settings-action-button",
+        callbacks,
     ));
     set(output.as_ref(), "action", &JsValue::from_str(action));
     set(output.as_ref(), "button", &target_snapshot(button));
@@ -695,6 +705,71 @@ fn stable(value: &JsValue) -> String {
         .unwrap_or_default()
 }
 
+fn owner_scope(callbacks: &JsValue) -> String {
+    let scope = text(&property(callbacks, "scope")).trim().to_lowercase();
+    if scope == "bridge" {
+        "bridge".to_owned()
+    } else {
+        "node".to_owned()
+    }
+}
+
+fn state_key_for(scope: &str, network: &str) -> String {
+    format!("{scope}::{network}")
+}
+
+fn state_key(callbacks: &JsValue, network: &str) -> String {
+    state_key_for(&owner_scope(callbacks), network)
+}
+
+fn owner_networks(callbacks: &JsValue) -> Vec<String> {
+    if let Some(callback) = function(callbacks, "keys")
+        && let Ok(value) = callback.call0(callbacks)
+        && Array::is_array(&value)
+    {
+        return Array::from(&value)
+            .iter()
+            .map(|item| text(&item))
+            .filter(|item| !item.is_empty())
+            .collect();
+    }
+    super::node_frontend_helpers::node_r51_keys()
+        .iter()
+        .map(|value| text(&value))
+        .collect()
+}
+
+fn owner_read_settings(callbacks: &JsValue, net: &str) -> JsValue {
+    if let Some(callback) = function(callbacks, "readSettings")
+        && let Ok(value) = callback.call1(callbacks, &JsValue::from_str(net))
+    {
+        return value;
+    }
+    super::node_frontend_helpers::node_r51_read_settings_tracked(net.to_owned())
+}
+
+fn owner_load(callbacks: &JsValue, key: &str) -> JsValue {
+    if let Some(callback) = function(callbacks, "load")
+        && let Ok(value) = callback.call1(callbacks, &JsValue::from_str(key))
+    {
+        return value;
+    }
+    super::node_frontend_helpers::node_r51_load(key.to_owned())
+}
+
+fn owner_validate_form(callbacks: &JsValue, net: &str, focus: bool) -> JsValue {
+    if let Some(callback) = function(callbacks, "validateForm")
+        && let Ok(value) = callback.call2(
+            callbacks,
+            &JsValue::from_str(net),
+            &JsValue::from_bool(focus),
+        )
+    {
+        return value;
+    }
+    super::node_frontend_helpers::node_validate_form(net.to_owned(), focus)
+}
+
 fn bridge_locked(callbacks: &JsValue, net: &str) -> bool {
     let callback = property(callbacks, "isLocked");
     let Ok(callback) = callback.dyn_into::<Function>() else {
@@ -718,26 +793,23 @@ fn set_disabled(root: &JsValue, network: &str, reason: &str, callbacks: &JsValue
     let networks = if !network.is_empty() && network != "all" {
         vec![network.to_owned()]
     } else {
-        super::node_frontend_helpers::node_r51_keys()
-            .iter()
-            .map(|value| text(&value))
-            .collect()
+        owner_networks(callbacks)
     };
 
     for net in networks {
-        let current = super::node_frontend_helpers::node_r51_read_settings_tracked(net.clone());
+        let current = owner_read_settings(callbacks, &net);
         let saved = loaded_or(
-            super::node_frontend_helpers::node_r51_load(format!("saved:{net}")),
+            owner_load(callbacks, &format!("saved:{net}")),
             loaded_or(
-                super::node_frontend_helpers::node_r51_load(format!("factory:{net}")),
+                owner_load(callbacks, &format!("factory:{net}")),
                 current.clone(),
             ),
         );
-        let personal = super::node_frontend_helpers::node_r51_load(format!("default:{net}"));
+        let personal = owner_load(callbacks, &format!("default:{net}"));
         let defaults = loaded_or(
             personal.clone(),
             loaded_or(
-                super::node_frontend_helpers::node_r51_load(format!("factory:{net}")),
+                owner_load(callbacks, &format!("factory:{net}")),
                 current.clone(),
             ),
         );
@@ -808,12 +880,13 @@ fn set_disabled(root: &JsValue, network: &str, reason: &str, callbacks: &JsValue
     let details = Object::new();
     set(details.as_ref(), "network", &JsValue::from_str(network));
     set(details.as_ref(), "reason", &JsValue::from_str(reason));
-    trace("settings-actions-reconciled", details.into());
+    trace("settings-actions-reconciled", details.into(), callbacks);
 }
 
 fn set_dirty(root: &JsValue, network: &str, dirty: bool, reason: &str, callbacks: &JsValue) {
+    let key = state_key(callbacks, network);
     DIRTY.with(|map| {
-        map.borrow_mut().insert(network.to_owned(), dirty);
+        map.borrow_mut().insert(key, dirty);
     });
     set_disabled(
         root,
@@ -864,8 +937,9 @@ fn restore_labels(root: &JsValue, network: &str) {
         restore_label(&button);
     }
 }
-fn clear_feedback(_root: &JsValue, network: &str, reason: &str) {
-    let active = FEEDBACK.with(|map| map.borrow_mut().remove(network));
+fn clear_feedback(_root: &JsValue, network: &str, reason: &str, callbacks: &JsValue) {
+    let key = state_key(callbacks, network);
+    let active = FEEDBACK.with(|map| map.borrow_mut().remove(&key));
     let Some(active) = active else {
         return;
     };
@@ -878,7 +952,7 @@ fn clear_feedback(_root: &JsValue, network: &str, reason: &str) {
         "reason",
         &JsValue::from_str(if reason.is_empty() { "clear" } else { reason }),
     );
-    trace("v19-feedback-cleared", details.into());
+    trace("v19-feedback-cleared", details.into(), callbacks);
 }
 
 fn start_visual_feedback(
@@ -892,9 +966,10 @@ fn start_visual_feedback(
         if text(&property(&dataset(&button), "kgwSettingsActionResult")) != "success" {
             return;
         }
-        clear_feedback(&root, &network, "new-feedback");
+        clear_feedback(&root, &network, "new-feedback", &callbacks);
+        let feedback_key = state_key(&callbacks, &network);
         DIRTY.with(|map| {
-            map.borrow_mut().insert(network.clone(), false);
+            map.borrow_mut().insert(feedback_key, false);
         });
         remember_original_label(&button, &action);
         let label = feedback_text(&action);
@@ -908,19 +983,20 @@ fn start_visual_feedback(
         let action_late = action.clone();
         let callbacks_late = callbacks.clone();
         let late = Closure::wrap(Box::new(move || {
+            let late_key = state_key(&callbacks_late, &network_late);
             let matches = FEEDBACK.with(|map| {
                 map.borrow()
-                    .get(&network_late)
+                    .get(&late_key)
                     .is_some_and(|active| Object::is(&active.button, &button_late))
             });
             if !matches {
                 return;
             }
             FEEDBACK.with(|map| {
-                map.borrow_mut().remove(&network_late);
+                map.borrow_mut().remove(&late_key);
             });
             restore_label(&button_late);
-            let dirty = DIRTY.with(|map| map.borrow().get(&network_late).copied().unwrap_or(false));
+            let dirty = DIRTY.with(|map| map.borrow().get(&late_key).copied().unwrap_or(false));
             set_disabled(
                 &root_late,
                 &network_late,
@@ -945,13 +1021,14 @@ fn start_visual_feedback(
             );
             set(details.as_ref(), "dirty", &JsValue::from_bool(dirty));
             set(details.as_ref(), "safeNoFreeze", &JsValue::TRUE);
-            trace("v19-feedback-complete", details.into());
+            trace("v19-feedback-complete", details.into(), &callbacks_late);
         }) as Box<dyn FnMut()>);
         let timer = set_timeout(late.as_ref().unchecked_ref(), FEEDBACK_MS).unwrap_or(0.0);
         late.forget();
+        let feedback_key = state_key(&callbacks, &network);
         FEEDBACK.with(|map| {
             map.borrow_mut().insert(
-                network.clone(),
+                feedback_key,
                 Feedback {
                     timer,
                     button: button.clone(),
@@ -970,7 +1047,7 @@ fn start_visual_feedback(
         set(details.as_ref(), "label", &JsValue::from_str(&label));
         set(details.as_ref(), "visualOnly", &JsValue::TRUE);
         set(details.as_ref(), "safeNoFreeze", &JsValue::TRUE);
-        trace("v19-feedback-start", details.into());
+        trace("v19-feedback-start", details.into(), &callbacks);
     }) as Box<dyn FnMut()>);
     let _ = set_timeout(callback.as_ref().unchecked_ref(), 0);
     callback.forget();
@@ -1022,9 +1099,20 @@ fn install_event_listener(root: &JsValue, kind: &'static str, callbacks: &JsValu
                     &event_type
                 }
             ),
-            event_trace_details(&root_for_callback, &event, &network, "settings-control"),
+            event_trace_details(
+                &root_for_callback,
+                &event,
+                &network,
+                "settings-control",
+                &callbacks_for_callback,
+            ),
+            &callbacks_for_callback,
         );
-        trace(&format!("r44h2-{kind}-seen"), change_trace_details(&event));
+        trace(
+            &format!("r44h2-{kind}-seen"),
+            change_trace_details(&event),
+            &callbacks_for_callback,
+        );
         if !bool_property(&event, "isTrusted") {
             set_disabled(
                 &root_for_callback,
@@ -1035,10 +1123,16 @@ fn install_event_listener(root: &JsValue, kind: &'static str, callbacks: &JsValu
             trace(
                 &format!("r44h2-{kind}-programmatic-disabled"),
                 change_trace_details(&event),
+                &callbacks_for_callback,
             );
             return;
         }
-        clear_feedback(&root_for_callback, &network, &format!("trusted-{kind}"));
+        clear_feedback(
+            &root_for_callback,
+            &network,
+            &format!("trusted-{kind}"),
+            &callbacks_for_callback,
+        );
         restore_labels(&root_for_callback, &network);
         set_dirty(
             &root_for_callback,
@@ -1050,6 +1144,7 @@ fn install_event_listener(root: &JsValue, kind: &'static str, callbacks: &JsValu
         trace(
             &format!("r44h2-trusted-{kind}-dirty"),
             change_trace_details(&event),
+            &callbacks_for_callback,
         );
     }) as Box<dyn FnMut(JsValue)>);
     let _ = call3(
@@ -1089,7 +1184,9 @@ fn install_click_listener(root: &JsValue, callbacks: &JsValue) {
                 &network,
                 &action,
                 disabled,
+                &callbacks_for_callback,
             ),
+            &callbacks_for_callback,
         );
         let details = Object::new();
         set(details.as_ref(), "network", &JsValue::from_str(&network));
@@ -1100,7 +1197,7 @@ fn install_click_listener(root: &JsValue, callbacks: &JsValue) {
             "label",
             &JsValue::from_str(text(&property(&button, "textContent")).trim()),
         );
-        trace("v19-click", details.into());
+        trace("v19-click", details.into(), &callbacks_for_callback);
 
         if disabled {
             prevent_default(&event);
@@ -1114,7 +1211,7 @@ fn install_click_listener(root: &JsValue, callbacks: &JsValue) {
             return;
         }
         if action != "restore" {
-            let errors = super::node_frontend_helpers::node_validate_form(network.clone(), true);
+            let errors = owner_validate_form(&callbacks_for_callback, &network, true);
             if errors.is_object()
                 && !errors.is_null()
                 && Object::keys(&Object::from(errors)).length() > 0
@@ -1147,8 +1244,8 @@ fn install_click_listener(root: &JsValue, callbacks: &JsValue) {
     closure.forget();
 }
 
-#[wasm_bindgen(js_name = nodeInstallSettingsOwner)]
-pub fn node_install_settings_owner(root: JsValue, callbacks: JsValue) -> bool {
+#[wasm_bindgen(js_name = settingsOwnerInstall)]
+pub fn settings_owner_install(root: JsValue, callbacks: JsValue) -> bool {
     if !present(&root) {
         return false;
     }
@@ -1162,8 +1259,9 @@ pub fn node_install_settings_owner(root: JsValue, callbacks: JsValue) -> bool {
     install_event_listener(&root, "change", &callbacks);
     install_click_listener(&root, &callbacks);
 
+    let scope = owner_scope(&callbacks);
     let details = Object::new();
-    set(details.as_ref(), "scope", &JsValue::from_str(SCOPE));
+    set(details.as_ref(), "scope", &JsValue::from_str(&scope));
     set(details.as_ref(), "patch", &JsValue::from_str(PATCH));
     set(
         details.as_ref(),
@@ -1171,12 +1269,17 @@ pub fn node_install_settings_owner(root: JsValue, callbacks: JsValue) -> bool {
         &JsValue::from_f64(f64::from(FEEDBACK_MS)),
     );
     set(details.as_ref(), "safeNoFreeze", &JsValue::TRUE);
-    trace("v19-owner-installed", details.into());
+    trace("v19-owner-installed", details.into(), &callbacks);
     true
 }
 
-#[wasm_bindgen(js_name = nodeSettingsOwnerSetDisabled)]
-pub fn node_settings_owner_set_disabled(
+#[wasm_bindgen(js_name = nodeInstallSettingsOwner)]
+pub fn node_install_settings_owner(root: JsValue, callbacks: JsValue) -> bool {
+    settings_owner_install(root, callbacks)
+}
+
+#[wasm_bindgen(js_name = settingsOwnerSetDisabled)]
+pub fn settings_owner_set_disabled(
     root: JsValue,
     network: String,
     _disabled: bool,
@@ -1186,13 +1289,29 @@ pub fn node_settings_owner_set_disabled(
     set_disabled(&root, &network, &reason, &callbacks);
 }
 
-#[wasm_bindgen(js_name = nodeSettingsOwnerButtons)]
-pub fn node_settings_owner_buttons(root: JsValue, network: String) -> Array {
+#[wasm_bindgen(js_name = nodeSettingsOwnerSetDisabled)]
+pub fn node_settings_owner_set_disabled(
+    root: JsValue,
+    network: String,
+    disabled: bool,
+    reason: String,
+    callbacks: JsValue,
+) {
+    settings_owner_set_disabled(root, network, disabled, reason, callbacks);
+}
+
+#[wasm_bindgen(js_name = settingsOwnerButtons)]
+pub fn settings_owner_buttons(root: JsValue, network: String) -> Array {
     let output = Array::new();
     for button in buttons(&root, &network) {
         output.push(&button);
     }
     output
+}
+
+#[wasm_bindgen(js_name = nodeSettingsOwnerButtons)]
+pub fn node_settings_owner_buttons(root: JsValue, network: String) -> Array {
+    settings_owner_buttons(root, network)
 }
 
 #[cfg(test)]
@@ -1212,5 +1331,15 @@ mod tests {
             assert!(is_feedback_label_text(label));
         }
         assert!(!is_feedback_label_text("Save Settings"));
+    }
+
+    #[test]
+    fn state_keys_isolate_node_and_bridge_owners() {
+        assert_eq!(state_key_for("node", "mainnet"), "node::mainnet");
+        assert_eq!(state_key_for("bridge", "mainnet"), "bridge::mainnet");
+        assert_ne!(
+            state_key_for("node", "testnet10"),
+            state_key_for("bridge", "testnet10")
+        );
     }
 }
