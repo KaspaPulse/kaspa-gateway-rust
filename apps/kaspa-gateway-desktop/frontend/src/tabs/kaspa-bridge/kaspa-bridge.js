@@ -269,40 +269,16 @@ function kgwBridgeToggleCommandOptionR7(net, name) {
 
 // KGW_BRIDGE_DIFFICULTY_DATALIST_R16C
 
-function kgwBridgeDifficultyDatalistR16C() {
-  return wasmBridgeDifficultyDatalistR16C();
-}
-
-function kgwBridgeDifficultyInputAttrsR16C(name) {
-  return wasmBridgeDifficultyInputAttrsR16C(String(name || ""));
-}
-
-function cardInput(net, name, label, value = "", placeholder = "", span = "", inputAttrs = "") {
-  return wasmBridgeCardInput(String(net || ""), String(name || ""), String(label || ""), String(value || ""), String(placeholder || ""), String(span || ""), String(inputAttrs || ""));
-}
 
 
 
 
-function renderRuntime(net) {
-  return wasmBridgeRenderRuntime(net || {});
-}
 
-function renderDifficulty(net) {
-  return wasmBridgeRenderDifficulty(net || {});
-}
 
-function renderLogging(net) {
-  return wasmBridgeRenderLogging(net || {});
-}
 
-function renderPorts(net) {
-  return wasmBridgeRenderPorts(net || {});
-}
 
-function renderCpuMiner(net) {
-  return wasmBridgeRenderCpuMiner(net || {});
-}
+
+
 
 
 /* KGW_BRIDGE_INSTANCE_PLACEHOLDER_PORT_RANGES_PATCH_R47
@@ -536,7 +512,7 @@ function renderInstances(net) {
               ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceDiff")}
               <span class="kgw-command-option-title-text-r8e">diff</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input id="${wasmBridgeElementId(net, `instanceDiff-${instance.id}`)}" data-bridge-instance-field="instanceDiff" value="${wasmBridgeEscapeHtml(instance.instanceDiff || "2048")}" placeholder="2048" ${kgwBridgeDifficultyInputAttrsR16C("instanceDiff")} />
+            <input id="${wasmBridgeElementId(net, `instanceDiff-${instance.id}`)}" data-bridge-instance-field="instanceDiff" value="${wasmBridgeEscapeHtml(instance.instanceDiff || "2048")}" placeholder="2048" ${wasmBridgeDifficultyInputAttrsR16C("instanceDiff")} />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -604,7 +580,7 @@ function renderInstances(net) {
               ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceSharesPerMin")}
               <span class="kgw-command-option-title-text-r8e">shares/min</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input id="${wasmBridgeElementId(net, `instanceSharesPerMin-${instance.id}`)}" data-bridge-instance-field="instanceSharesPerMin" value="${wasmBridgeEscapeHtml(instance.instanceSharesPerMin || "")}" placeholder="optional" ${kgwBridgeDifficultyInputAttrsR16C("instanceSharesPerMin")} />
+            <input id="${wasmBridgeElementId(net, `instanceSharesPerMin-${instance.id}`)}" data-bridge-instance-field="instanceSharesPerMin" value="${wasmBridgeEscapeHtml(instance.instanceSharesPerMin || "")}" placeholder="optional" ${wasmBridgeDifficultyInputAttrsR16C("instanceSharesPerMin")} />
           </label>
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
@@ -750,7 +726,7 @@ function renderInprocessNodeSettings(net) {
 
       <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="perf" hidden>
         <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
-          ${cardInput(net.key, "inprocessAsyncThreads", "--async-threads", "16")}
+          ${wasmBridgeCardInput(String(net.key || ""), "inprocessAsyncThreads", "--async-threads", "16", "", "", "")}
           <label class="bridge-v7-card check">
             <input id="${wasmBridgeElementId(net.key, "inprocessPerfMetrics")}" type="checkbox" checked>
             <span data-i18n="bridge.inprocessNodeSettings.perfMetrics">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.perfMetrics", "--perf-metrics"))}</span>
@@ -829,8 +805,8 @@ function renderInprocessNodeSettings(net) {
 }
 function renderSections(net) {
   const template = document.createElement("template");
-  template.innerHTML = [renderRuntime(net), renderLogging(net), renderDifficulty(net), renderPorts(net),
-    ...(net.key === "mainnet" ? [] : [renderCpuMiner(net)])].join("");
+  template.innerHTML = [wasmBridgeRenderRuntime(net || {}), wasmBridgeRenderLogging(net || {}), wasmBridgeRenderDifficulty(net || {}), wasmBridgeRenderPorts(net || {}),
+    ...(net.key === "mainnet" ? [] : [wasmBridgeRenderCpuMiner(net || {})])].join("");
   const cards = new Map();
   template.content.querySelectorAll(".bridge-v7-card").forEach(card => {
     const field = card.querySelector("[id]");
@@ -866,7 +842,7 @@ function renderSections(net) {
     ["advanced", "dangerous", "Dangerous", dangerBody]
   ];
   if (cards.size) throw new Error("Ungrouped Bridge settings: " + [...cards.keys()].join(", "));
-  return kgwBridgeDifficultyDatalistR16C() + renderSettingsTabs("bridge", net.key, groups);
+  return wasmBridgeDifficultyDatalistR16C() + renderSettingsTabs("bridge", net.key, groups);
 }
 
 /* KGW_BRIDGE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U
