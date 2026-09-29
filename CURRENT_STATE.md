@@ -1,13 +1,13 @@
 # CURRENT STATE
-- Current product boundary: OP219 Bridge runtime Start/Stop decision Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 207eacf860f45477b5d39201f14b1eba3fe19909, tree e6a1e1b06523c0e98a9f54dce3e034f885ff939a; Bridge SHA-256 790a889d7cafb2094870456e0219b25f471e1c5a0a721a8d41d1f6a886fc722d; no product mutation or push is active.
+- Current product boundary: OP220 Bridge runtime invoke transport Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 4a790b2722567fa55efa750ae8a44028133cf108, tree a650833df69d4564a599cfaf903e9d0059c7a4c4; Bridge SHA-256 3746d4175d497754a02767037f51196fce6174233ddb88b35e6138488c935237; no product mutation or push is active.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP219 verified implementation checkpoint is 207eacf860f45477b5d39201f14b1eba3fe19909, tree e6a1e1b06523c0e98a9f54dce3e034f885ff939a.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP220 verified implementation checkpoint is 4a790b2722567fa55efa750ae8a44028133cf108, tree a650833df69d4564a599cfaf903e9d0059c7a4c4.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP219 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
+- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP220 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -22,6 +22,12 @@
 - Rust source inventory: 222 (verified during OP218 post-codegen language-policy check/inventory).
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
+
+## OP220 VERIFIED EVIDENCE
+- Bridge runtime invoke transport is Rust/WASM-owned in bridge_start_trace.rs: invoke availability, Tauri adapter resolution, command timeout policy and Promise awaiting. Implementation checkpoint 4a790b2722567fa55efa750ae8a44028133cf108, tree a650833df69d4564a599cfaf903e9d0059c7a4c4; no push.
+- bridge_start_trace tests 9/9 PASS; readiness Rust tests 2/2 PASS; readiness lifecycle gate PASS with direct Rust transport smoke; FMT PASS; strict frontend-WASM and xtask Clippy PASS; stable/MSRV 1.97.1 wasm32 PASS.
+- Deterministic frontend-WASM codegen WRITE/CHECK PASS with wasm-pack 0.15.0 and 19 artifacts; generated JS SHA-256 0b368b1bd8f0b9acaf87c8b28ad44933f3e68ab2389f576cc1ccd98191faeba5; generated WASM SHA-256 50efe7be56f8258fd534012f6cb1dd54c212b6434d549801187a16079d4da979.
+- Node syntax and Desktop ESLint zero-warning PASS; effective-Bridge 2/2 + gate PASS; language policy PASS at Rust 222 / source debt 2 / execution debt 8 / unapproved 0/0; project-continuity PASS; diff-check PASS.
 
 ## OP219 VERIFIED EVIDENCE
 - Bridge Start/Stop decision policy is Rust/WASM-owned in bridge_runtime_core.rs; implementation checkpoint 207eacf860f45477b5d39201f14b1eba3fe19909, tree e6a1e1b06523c0e98a9f54dce3e034f885ff939a; no push.
@@ -157,4 +163,4 @@
 
 ## NEXT ACTION
 
-OP219 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 207eacf860f45477b5d39201f14b1eba3fe19909, tree e6a1e1b06523c0e98a9f54dce3e034f885ff939a; no push. Audit the remaining Bridge Start/Stop transport/orchestration boundary read-only against the existing Rust Node orchestration pattern; persist a WAI before mutation. The separate zero-touch helper blocker remains unchanged.
+OP220 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 4a790b2722567fa55efa750ae8a44028133cf108, tree a650833df69d4564a599cfaf903e9d0059c7a4c4; no push. Audit the remaining Bridge payload construction and Start preflight/orchestration boundary read-only; persist a WAI before mutation. The separate zero-touch helper blocker remains unchanged.
