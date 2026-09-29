@@ -27,7 +27,10 @@ const SLICES: &[(&str, &str)] = &[
     ),
     ("function byId(", "function esc("),
     ("function id(", "function iid("),
-    ("function v(", "function iv("),
+    (
+        "function v(",
+        "function kgwBridgeInstanceCommandStateKeyR13B(",
+    ),
     (
         "function kgwBridgeInstanceCommandStateKeyR13B(",
         "function kgwBridgeInstanceCommandCheckboxR13B(",

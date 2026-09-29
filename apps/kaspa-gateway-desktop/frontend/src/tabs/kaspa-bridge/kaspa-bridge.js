@@ -7,7 +7,6 @@ import initBridgeRust, {
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
-  bridgeStartTraceFrontend as wasmBridgeStartTraceFrontend,
 } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 
 await initBridgeRust();
@@ -699,22 +698,7 @@ function kgwBridgeBackendInvokeR5(command, payload = {}) {
   return invoke(command, payload);
 }
 
-function kgwBridgeJoinPathR5(root, child) {
-  const base = String(root || "").replace(/[\\/]+$/, "");
-  if (!base) return "";
-  return base + "\\" + child;
-}
 
-function kgwBridgeExtractUserLocalAppDataR5(paths) {
-  const values = Object.values(paths || {}).map((value) => String(value || ""));
-  for (const value of values) {
-    const match = value.match(/^([A-Za-z]:[\\/]Users[\\/][^\\/]+[\\/]AppData)[\\/](?:Local|Roaming)(?:[\\/].*)?$/i);
-    if (match && match[1]) {
-      return match[1] + "\\Local";
-    }
-  }
-  return "%LOCALAPPDATA%";
-}
 
 
 
@@ -820,15 +804,7 @@ function c(net, name) {
   return Boolean(el && el.checked);
 }
 
-function iv(net, instanceId, name) {
-  const el = byId(iid(net, instanceId, name));
-  return el ? String(el.value || "").trim() : "";
-}
 
-function ic(net, instanceId, name) {
-  const el = byId(iid(net, instanceId, name));
-  return Boolean(el && el.checked);
-}
 
 
 // KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B
@@ -1038,32 +1014,7 @@ function cardCheck(net, name, label, checked = false, span = "") {
     </label>`;
 }
 
-function instanceInput(net, instanceId, name, label, value = "", placeholder = "", span = "") {
-  return `
-    <div class="bridge-v7-card${span ? " " + span : ""}">
-      <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeInstanceCommandCheckboxR13B(net, instanceId, name)}
-        <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
-      </span> <!-- KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B -->
-      <input id="${iid(net, instanceId, name)}" data-testid="kgw-bridge-instance-field-${esc(net)}-${esc(instanceId)}-${esc(name)}" type="text" value="${esc(value)}" placeholder="${esc(placeholder)}">
-    </div>`;
-}
 
-function instanceSelect(net, instanceId, name, label, options, value = "", span = "") {
-  const opts = options.map((item) => {
-    const selected = item === value ? " selected" : "";
-    return `<option value="${esc(item)}"${selected}>${esc(item || "not set")}</option>`;
-  }).join("");
-
-  return `
-    <div class="bridge-v7-card${span ? " " + span : ""}">
-      <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeInstanceCommandCheckboxR13B(net, instanceId, name)}
-        <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
-      </span> <!-- KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B -->
-      <select id="${iid(net, instanceId, name)}" data-testid="kgw-bridge-instance-field-${esc(net)}-${esc(instanceId)}-${esc(name)}">${opts}</select>
-    </div>`;
-}
 
 
 function renderRuntime(net) {
@@ -1126,21 +1077,6 @@ function renderCpuMiner(net) {
  * Instance placeholder examples now follow the agreed network port ranges.
  * This changes display/help text only. It does not overwrite saved user ports.
  */
-function bridgeInstanceExamplePlaceholderR47(net) {
-  const profile = typeof bridgePortProfileR35B === "function"
-    ? bridgePortProfileR35B(net)
-    : null;
-
-  const stratum = profile && profile.stratum && profile.stratum.instanceStart
-    ? profile.stratum.instanceStart
-    : 5556;
-
-  const prom = profile && profile.prom && profile.prom.instanceStart
-    ? profile.prom.instanceStart
-    : 2113;
-
-  return "port=:" + String(stratum) + ",diff=2048,prom=:" + String(prom);
-}
 
 
 
@@ -1577,9 +1513,6 @@ function bridgeValidatePortConflictsR5(activeNet) {
  * - New instance gets nearest unused stratum port and prom port.
  * - Each instance panel shows a read-only upstream --instance preview row.
  */
-function bridgeUsedPortSetR8B() {
-  return new Set(bridgeCollectConfiguredPortsR5().map((item) => String(item.port || "").trim()).filter(Boolean));
-}
 
 
 
@@ -2107,26 +2040,6 @@ function bridgeReadInstanceField(net, instanceId, fieldName) {
 
 
 
-function bridgeCollectCommandPorts(lines) {
-  const ports = [];
-
-  for (const part of lines) {
-    const text = String(part || "");
-    const values = [];
-
-    const eq = text.match(/=(0\.0\.0\.0:|127\.0\.0\.1:|localhost:|:)?(\d{2,5})(\b|,)/);
-    if (eq) values.push(eq[2]);
-
-    const instancePorts = [...text.matchAll(/(?:port|prom_port)=(:|0\.0\.0\.0:|127\.0\.0\.1:|localhost:)?(\d{2,5})/g)];
-    for (const match of instancePorts) values.push(match[2]);
-
-    for (const value of values) {
-      ports.push(value);
-    }
-  }
-
-  return ports;
-}
 
 
 function bridgeEnsureInstanceState(net) {
@@ -3072,44 +2985,6 @@ function bridgeClassifyPortProfileR35B(net, kind, port) {
   };
 }
 
-function bridgeCollectPortProfileWarningsR35B(net) {
-  const warnings = [];
-  const profile = bridgeProfile(net) || {};
-  const activeNet = String(net || "");
-
-  const bridgeStratum = bridgeNormalizePortSoftR35B(v(activeNet, "stratumPort") || profile.stratumPort || "");
-  const bridgeProm = bridgeNormalizePortSoftR35B(v(activeNet, "promPort") || profile.promPort || "");
-  const bridgeDashboard = bridgeNormalizePortSoftR35B(v(activeNet, "webDashboardPort") || profile.dashboardPort || "");
-
-  for (const item of [
-    { kind: "stratum", port: bridgeStratum, owner: "bridge-stratum" },
-    { kind: "prom", port: bridgeProm, owner: "bridge-prometheus" },
-    { kind: "dashboard", port: bridgeDashboard, owner: "bridge-dashboard" }
-  ]) {
-    if (!item.port) continue;
-    const status = bridgeClassifyPortProfileR35B(activeNet, item.kind, item.port);
-    if (status.warning) warnings.push({ ...status, owner: item.owner, kind: item.kind });
-  }
-
-  const list = Array.isArray(bridgeInstances[activeNet]) ? bridgeInstances[activeNet] : [];
-  for (const instance of list) {
-    const instanceId = instance && instance.id;
-    const instancePort = bridgeNormalizePortSoftR35B(bridgeInstanceReadSupplement(activeNet, instanceId, "instancePort", instance && instance.instancePort));
-    const instanceProm = bridgeNormalizePortSoftR35B(bridgeInstanceReadSupplement(activeNet, instanceId, "instanceProm", instance && instance.instanceProm));
-
-    if (instancePort) {
-      const status = bridgeClassifyPortProfileR35B(activeNet, "stratum", instancePort);
-      if (status.warning) warnings.push({ ...status, owner: "instance:" + String(instanceId || ""), kind: "stratum" });
-    }
-
-    if (instanceProm) {
-      const status = bridgeClassifyPortProfileR35B(activeNet, "prom", instanceProm);
-      if (status.warning) warnings.push({ ...status, owner: "instance:" + String(instanceId || ""), kind: "prom" });
-    }
-  }
-
-  return warnings;
-}
 
 
 function bridgeTracePortProfileR35B(net, phase, details) {
@@ -3939,12 +3814,6 @@ async function kgwBridgeDispatchRuntimeLogClearV1(net, role = "bridge") {
   return await invokeWithTimeout(invoke, "kgw_kgw_runtime_clear_logs_v1", buildApplyPayload(net, "kgw_kgw_runtime_clear_logs_v1"), KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS);
 }
 
-function appendLog(net, message) {
-  // Raw monitor text is driven by typed runtime log reports. This legacy hook is
-  // intentionally inert so bridge status strings cannot become fabricated raw lines.
-  void net;
-  void message;
-}
 // KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D_HELPER
 function bridgeInprocessAddKaspadValueArgV12D(lines, flag, value) {
   const clean = String(value || "").trim();
@@ -4146,21 +4015,6 @@ function kgwBridgeEffectiveInprocessNodeSettings(net) {
 }
 
 
-function kgwExtractBridgeOwnerFlags(result) {
-  const raw = stringifyRuntimeResult(result);
-  const fields = {};
-
-  for (const part of raw.split(";")) {
-    const index = part.indexOf("=");
-    if (index <= 0) continue;
-
-    const key = part.slice(0, index).trim();
-    const value = part.slice(index + 1).trim();
-    if (key) fields[key] = value;
-  }
-
-  return fields.flags || "";
-}
 
 
 
@@ -4442,7 +4296,6 @@ function installDelegatedTabs(root) {
 // 110 seconds. Keep the UI request strictly above both terminal-result boundaries.
 const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 120000;
 const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS = 0;
-const KGW_BRIDGE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_bridge_runtime_flags_v1";
 const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();
 
 function getTauriInvoke() {
@@ -5816,16 +5669,6 @@ function kgwBridgeR51StartLiveRefresh() {
 
 
 /* KGW_BRIDGE_ACTION_AND_LOG_FEEDBACK_OWNER_V1 */
-function kgwBridgeCurrentVisibleNetwork(root) {
-  const activePanel = root.querySelector("[data-bridge-network-panel].active, [data-bridge-network-panel].is-active, [data-bridge-network-panel][data-active='true']");
-  if (activePanel?.dataset?.bridgeNetworkPanel) return activePanel.dataset.bridgeNetworkPanel;
-
-  const activeTab = root.querySelector("[data-bridge-network-tab].active, [data-bridge-network-tab].is-active, [data-bridge-network-tab][aria-selected='true'], [data-bridge-network-tab][data-active='true']");
-  if (activeTab?.dataset?.bridgeNetworkTab) return activeTab.dataset.bridgeNetworkTab;
-  if (activeTab?.dataset?.net) return activeTab.dataset.net;
-
-  return "mainnet";
-}
 
 
 /* KGW_BRIDGE_LOG_FEEDBACK_I18N_OWNER_V1 */
