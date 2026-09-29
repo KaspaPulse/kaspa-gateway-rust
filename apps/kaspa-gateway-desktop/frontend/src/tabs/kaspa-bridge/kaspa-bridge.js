@@ -1,6 +1,9 @@
 import { applyStatusTone, renderStatusSummary } from "../../status.js";
 import { BRIDGE_MANAGED, BRIDGE_REQUIRED, BRIDGE_OPTIONAL, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
+import initBridgeRust, { bridgeStartTraceFrontend as wasmBridgeStartTraceFrontend } from "../../../generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
+
+await initBridgeRust();
 
 // KGW_SETTINGS_OWNER_V19
 (function installKgwSettingsOwnerV19() {
@@ -4814,7 +4817,6 @@ function installDelegatedTabs(root) {
 const KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS = 120000;
 const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS = 0;
 const KGW_BRIDGE_RUNTIME_FLAGS_OWNER_COMMAND = "rk_integrated_bridge_runtime_flags_v1";
-const KGW_BRIDGE_START_TRACE_COMMAND_V1 = "kgw_start_trace_frontend_v1";
 const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();
 
 function getTauriInvoke() {
@@ -4822,56 +4824,9 @@ function getTauriInvoke() {
   return tauri?.core?.invoke || tauri?.invoke || window.__TAURI_INVOKE__ || null;
 }
 
-function kgwBridgeStartTraceSafeTextV1(value, fallback = "") {
-  const text = String(value ?? "").replace(/[\r\n\t]+/g, " ").trim();
-  return (text || fallback).slice(0, 220);
-}
-
-function kgwBridgeStartTraceSafeDetailsV1(details) {
-  const source = details && typeof details === "object" ? details : {};
-  const blocked = /(secret|token|private|mnemonic|wallet|address|commandPreview|completeCommand|arguments|appDir|path|rpcEndpoint|stratum)/i;
-  const out = {};
-
-  for (const [key, value] of Object.entries(source)) {
-    if (blocked.test(key)) {
-      out[key] = "[redacted]";
-      continue;
-    }
-
-    if (Array.isArray(value)) {
-      out[key] = value.slice(0, 24).map((item) => kgwBridgeStartTraceSafeTextV1(item));
-    } else if (value && typeof value === "object") {
-      out[key] = kgwBridgeStartTraceSafeDetailsV1(value);
-    } else if (typeof value === "boolean" || typeof value === "number") {
-      out[key] = value;
-    } else {
-      out[key] = kgwBridgeStartTraceSafeTextV1(value);
-    }
-  }
-
-  return out;
-}
-
+/* KGW_BRIDGE_START_TRACE_V1 is Rust-owned in bridge_start_trace.rs. */
 function kgwBridgeStartTraceFrontendV1(stage, options = {}) {
-  const invoke = getTauriInvoke();
-  if (typeof invoke !== "function") return false;
-
-  const network = kgwBridgeStartTraceSafeTextV1(options.network || options.net, "unknown");
-  const action = kgwBridgeStartTraceSafeTextV1(options.action, "unknown");
-  const result = kgwBridgeStartTraceSafeTextV1(options.result, "observed");
-  const details = kgwBridgeStartTraceSafeDetailsV1(options.details && typeof options.details === "object" ? options.details : {});
-
-  invoke(KGW_BRIDGE_START_TRACE_COMMAND_V1, {
-    stage: kgwBridgeStartTraceSafeTextV1(stage, "frontend.unknown"),
-    network,
-    action,
-    result,
-    details: JSON.stringify(details)
-  }).catch(function (error) {
-    console.error("[KGW_START_TRACE_FRONTEND_FAILED]", error && error.message ? error.message : String(error));
-  });
-
-  return true;
+  return wasmBridgeStartTraceFrontend(stage, options || {});
 }
 
 function stringifyRuntimeResult(result) {

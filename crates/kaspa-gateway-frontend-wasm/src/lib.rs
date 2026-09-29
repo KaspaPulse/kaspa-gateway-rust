@@ -1,6 +1,7 @@
 mod analysis_binding;
 mod analysis_calendar;
 mod analysis_view;
+mod bridge_start_trace;
 mod explorer_addresses;
 mod explorer_calendar;
 mod explorer_controls;
