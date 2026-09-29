@@ -1,13 +1,13 @@
 # CURRENT STATE
-- Current product boundary: OP222 Bridge command/options direct Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 256acc66fa3fad6956688e899691f7c942fac0f3, tree a5a44bb627299c785545c79564cb36317aa88936; Bridge SHA-256 2937a3cc7f4e12235a2a524ecb919994221469bb29beb9a884816c9540bfb6aa; no product mutation or push is active.
+- Current product boundary: OP223 Bridge local passthrough-adapter retirement is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 0c052f7e5c39272bf67f743f0132efb45d265b10, tree d1bd16b502f9242061f68fa8bf90b3a6fed84f71; Bridge SHA-256 5409d905838fe49f3fc3a65f25e30021476f03df3f09a96e0d2533f2ffb4077a; no product mutation or push is active.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP222 verified implementation checkpoint is 256acc66fa3fad6956688e899691f7c942fac0f3, tree a5a44bb627299c785545c79564cb36317aa88936.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP223 verified implementation checkpoint is 0c052f7e5c39272bf67f743f0132efb45d265b10, tree d1bd16b502f9242061f68fa8bf90b3a6fed84f71.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP222 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
+- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP223 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -22,6 +22,11 @@
 - Rust source inventory: 222 (verified during OP218 post-codegen language-policy check/inventory).
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
+
+## OP223 VERIFIED EVIDENCE
+- Three local Bridge JavaScript passthrough adapters were retired while preserving existing Rust/WASM owners and product behavior. Implementation checkpoint 0c052f7e5c39272bf67f743f0132efb45d265b10, tree d1bd16b502f9242061f68fa8bf90b3a6fed84f71; no push.
+- Bridge SHA-256 is 5409d905838fe49f3fc3a65f25e30021476f03df3f09a96e0d2533f2ffb4077a; effective-Bridge harness SHA-256 is e2797249b0f5843fca688c4f0ed64530f7c651e7371703d3032155d9351a1ebf.
+- Node syntax PASS; Desktop ESLint zero-warning PASS; FMT PASS; xtask strict Clippy PASS; MSRV 1.97.1 xtask check PASS; effective-Bridge 2/2 + gate PASS; Bridge-readiness 2/2 + gate PASS; language policy PASS at Rust 222 / source debt 2 / execution debt 8 / unapproved 0/0; project-continuity PASS; diff-check PASS.
 
 ## OP222 VERIFIED EVIDENCE
 - Six pure Bridge command-option wrappers were retired; product call sites now invoke Rust/WASM directly, and bridge_command_options.rs owns instance-record lookup for ShouldInclude/Checkbox. Implementation checkpoint 256acc66fa3fad6956688e899691f7c942fac0f3, tree a5a44bb627299c785545c79564cb36317aa88936; no push.
@@ -174,4 +179,4 @@
 
 ## NEXT ACTION
 
-OP222 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 256acc66fa3fad6956688e899691f7c942fac0f3, tree a5a44bb627299c785545c79564cb36317aa88936; no push. Audit remaining kaspa-bridge.js wrappers and owned JavaScript boundaries read-only; persist a WAI before mutation. The separate zero-touch helper blocker remains unchanged.
+OP223 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 0c052f7e5c39272bf67f743f0132efb45d265b10, tree d1bd16b502f9242061f68fa8bf90b3a6fed84f71; no push. Audit the remaining kaspa-bridge.js owned JavaScript boundaries read-only and select the next coherent Rust ownership boundary. Preserve the exported kgwBridgeEffectiveSettingsV1 compatibility contract until migrated deliberately. The separate zero-touch helper blocker remains unchanged.
