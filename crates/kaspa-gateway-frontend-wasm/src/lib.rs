@@ -7,6 +7,7 @@ mod bridge_frontend_helpers;
 mod bridge_instance_settings;
 mod bridge_port_core;
 mod bridge_raw_log;
+mod bridge_render;
 mod bridge_start_trace;
 mod explorer_addresses;
 mod explorer_calendar;

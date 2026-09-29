@@ -13,6 +13,14 @@ import initBridgeRust, {
   bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
   bridgeBuildCommandLines as wasmBridgeBuildCommandLines,
   bridgeBuildUpstreamInstanceArg as wasmBridgeBuildUpstreamInstanceArg,
+  bridgeDifficultyDatalistR16C as wasmBridgeDifficultyDatalistR16C,
+  bridgeDifficultyInputAttrsR16C as wasmBridgeDifficultyInputAttrsR16C,
+  bridgeCardInput as wasmBridgeCardInput,
+  bridgeRenderRuntime as wasmBridgeRenderRuntime,
+  bridgeRenderDifficulty as wasmBridgeRenderDifficulty,
+  bridgeRenderLogging as wasmBridgeRenderLogging,
+  bridgeRenderPorts as wasmBridgeRenderPorts,
+  bridgeRenderCpuMiner as wasmBridgeRenderCpuMiner,
   bridgeDefaultInstanceRecord as wasmBridgeDefaultInstanceRecord,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings,
@@ -278,133 +286,39 @@ function kgwBridgeToggleCommandOptionR7(net, name) {
 
 // KGW_BRIDGE_DIFFICULTY_DATALIST_R16C
 
-function kgwBridgeDifficultyPresetValuesR16C() {
-  return [
-    "1",
-    "2",
-    "4",
-    "8",
-    "16",
-    "32",
-    "64",
-    "128",
-    "256",
-    "512",
-    "1024",
-    "2048",
-    "4096",
-    "8192",
-    "16384",
-    "32768",
-    "65536"
-  ];
-}
-
-function kgwBridgeDifficultyDatalistIdR16C() {
-  return "kgw-bridge-difficulty-presets-r16c";
-}
-
 function kgwBridgeDifficultyDatalistR16C() {
-  return `<datalist id="${kgwBridgeDifficultyDatalistIdR16C()}">${kgwBridgeDifficultyPresetValuesR16C().map((value) => `<option value="${esc(value)}"></option>`).join("")}</datalist>`;
+  return wasmBridgeDifficultyDatalistR16C();
 }
 
 function kgwBridgeDifficultyInputAttrsR16C(name) {
-  const key = String(name || "");
-  if (!["minShareDiff", "sharesPerMin", "instanceDiff", "instanceSharesPerMin"].includes(key)) return "";
-  return `list="${kgwBridgeDifficultyDatalistIdR16C()}" inputmode="numeric" autocomplete="off" data-kgw-difficulty-preset-r16c="${esc(key)}"`;
+  return wasmBridgeDifficultyInputAttrsR16C(String(name || ""));
 }
 
 function cardInput(net, name, label, value = "", placeholder = "", span = "", inputAttrs = "") {
-  return `
-    <div class="bridge-v7-card${span ? " " + span : ""}">
-      <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net, name)}
-        <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
-      </span> <!-- KGW_BRIDGE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->
-      <input ${inputAttrs} id="${id(net, name)}" data-testid="kgw-bridge-field-${esc(net)}-${esc(name)}" type="text" value="${esc(value)}" placeholder="${esc(placeholder)}">
-    </div>`;
-}
-
-function cardSelect(net, name, label, options, value = "", span = "") {
-  const opts = options.map((item) => {
-    const selected = item === value ? " selected" : "";
-    return `<option value="${esc(item)}"${selected}>${esc(item || "not set")}</option>`;
-  }).join("");
-
-  return `
-    <div class="bridge-v7-card${span ? " " + span : ""}">
-      <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net, name)}
-        <span class="kgw-command-option-title-text-r8e">${esc(label)}</span>
-      </span> <!-- KGW_BRIDGE_COMMAND_COMPOSER_INLINE_SWITCH_LAYOUT_R8E -->
-      <select id="${id(net, name)}" data-testid="kgw-bridge-field-${esc(net)}-${esc(name)}">${opts}</select>
-    </div>`;
-}
-
-function cardCheck(net, name, label, checked = false, span = "") {
-  return `
-    <label class="bridge-v7-card check${span ? " " + span : ""}">
-      <input id="${id(net, name)}" data-testid="kgw-bridge-field-${esc(net)}-${esc(name)}" type="checkbox"${checked ? " checked" : ""}>
-      <span>${esc(label)}</span>
-    </label>`;
+  return wasmBridgeCardInput(String(net || ""), String(name || ""), String(label || ""), String(value || ""), String(placeholder || ""), String(span || ""), String(inputAttrs || ""));
 }
 
 
 
 
 function renderRuntime(net) {
-  return `
-    <div class="bridge-v7-grid">
-      ${cardSelect(net.key, "nodeMode", "--node-mode", ["external", "inprocess"], "external")}
-      ${net.key === "mainnet" ? "" : cardCheck(net.key, "testnet", "--testnet", net.testnet)}
-      ${cardInput(net.key, "config", "--config", "", "config.yaml")}
-      ${cardInput(net.key, "appdir", "--appdir", "", "app dir")}
-      ${cardInput(net.key, "kaspadAddress", "--kaspad-address", `127.0.0.1:${net.kaspadPort}`)}
-      ${cardInput(net.key, "blockWaitTime", "--block-wait-time", "50ms")}
-      ${cardInput(net.key, "healthCheckPort", "--health-check-port", "", "optional")}
-      ${cardInput(net.key, "webDashboardPort", "--web-dashboard-port", "", ":3030")}
-    </div>`;
+  return wasmBridgeRenderRuntime(net || {});
 }
 
 function renderDifficulty(net) {
-  return `
-    <div class="bridge-v7-grid">
-      ${cardInput(net.key, "minShareDiff", "--min-share-diff", "8192", "", "", kgwBridgeDifficultyInputAttrsR16C("minShareDiff"))}
-      ${cardInput(net.key, "sharesPerMin", "--shares-per-min", "30", "", "", kgwBridgeDifficultyInputAttrsR16C("sharesPerMin"))}
-      ${cardSelect(net.key, "varDiff", "--var-diff", ["true", "false"], "true")}
-      ${cardSelect(net.key, "varDiffStats", "--var-diff-stats", ["true", "false"], "true")}
-      ${cardSelect(net.key, "pow2Clamp", "--pow2-clamp", ["true", "false"], "true")}
-      ${cardInput(net.key, "extranonceSize", "--extranonce-size", "0")}
-      ${cardInput(net.key, "coinbaseTagSuffix", "--coinbase-tag-suffix", "", "optional", "span2")}
-    </div>`;
+  return wasmBridgeRenderDifficulty(net || {});
 }
 
 function renderLogging(net) {
-  return `
-    <div class="bridge-v7-grid">
-      ${cardSelect(net.key, "printStats", "--print-stats", ["true", "false"], "true")}
-      ${cardSelect(net.key, "logToFile", "--log-to-file", ["true", "false"], "false")}
-      ${cardSelect(net.key, "approxGeoLookup", "--approximate-geo-lookup", ["not set", "true", "false"], "not set", "span2")}
-    </div>`;
+  return wasmBridgeRenderLogging(net || {});
 }
 
 function renderPorts(net) {
-  return `
-    <div class="bridge-v7-grid">
-      ${cardInput(net.key, "stratumPort", "--stratum-port", net.stratumPort)}
-      ${cardInput(net.key, "promPort", "--prom-port", net.promPort)}
-    </div>`;
+  return wasmBridgeRenderPorts(net || {});
 }
 
 function renderCpuMiner(net) {
-  return `
-    <div class="bridge-v7-grid">
-      ${cardCheck(net.key, "internalCpuMiner", "Enable CPU Mining", false)}
-      ${cardInput(net.key, "internalCpuMinerAddress", "Mining / Reward Address", "", "kaspatest:...", "span2")}
-      ${cardInput(net.key, "internalCpuMinerThreads", "CPU Threads", "1", "threads")}
-      ${cardInput(net.key, "internalCpuMinerThrottleMs", "Throttle (milliseconds)", "", "optional")}
-      ${cardInput(net.key, "internalCpuMinerTemplatePollMs", "Template Poll Interval (milliseconds)", "", "optional", "span2")}
-    </div>`;
+  return wasmBridgeRenderCpuMiner(net || {});
 }
 
 
