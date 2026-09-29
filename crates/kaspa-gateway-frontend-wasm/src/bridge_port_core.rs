@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use js_sys::{Array, Function, Object, Reflect, RegExp};
+use js_sys::{Array, Function, Object, Reflect, RegExp, Set as JsSet};
 use wasm_bindgen::{JsCast, prelude::*};
 
 use crate::bridge_frontend_helpers;
@@ -779,6 +779,277 @@ fn apply_port_conflict_start_state(net: &str, validation: &JsValue, reason: &str
     set(output.as_ref(), "message", &JsValue::from_str(&message));
     set(output.as_ref(), "validation", validation);
     output.into()
+}
+
+fn configured_port_records(collected: &JsValue) -> Vec<PortOwnerRecord> {
+    let mut records = Vec::new();
+    if Array::is_array(collected) {
+        for item in Array::from(collected).iter() {
+            if !present(&item) {
+                continue;
+            }
+            let port = crate::js_string_owned(&property(&item, "port"));
+            let owners = property(&item, "owners");
+            if Array::is_array(&owners) {
+                for owner in Array::from(&owners).iter() {
+                    records.push(owner_record_from_js(&owner, &port));
+                }
+            } else {
+                records.push(owner_record_from_js(&item, ""));
+            }
+        }
+        return records;
+    }
+
+    if collected.is_object() && !collected.is_null() {
+        let object = Object::from(collected.clone());
+        for entry in Object::entries(&object).iter() {
+            let pair = Array::from(&entry);
+            if pair.length() < 2 {
+                continue;
+            }
+            let port = crate::js_string_owned(&pair.get(0));
+            let owners = pair.get(1);
+            if !Array::is_array(&owners) {
+                continue;
+            }
+            for owner in Array::from(&owners).iter() {
+                records.push(owner_record_from_js(&owner, &port));
+            }
+        }
+    }
+    records
+}
+
+fn global_used_port_values(
+    records: &[PortOwnerRecord],
+    change: &JsValue,
+    planned_used: &[String],
+) -> HashSet<String> {
+    let target_net = crate::js_string_owned(&property(change, "net"));
+    let target_owner = format!(
+        "instance:{}",
+        crate::js_string_owned(&property(change, "instanceId"))
+    );
+    let old_port = normalize_port_text(&crate::js_string_owned(&property(change, "oldPort")));
+    let mut used = HashSet::new();
+
+    for record in records {
+        let port = normalize_port_text(&record.port);
+        if port.is_empty() {
+            continue;
+        }
+        let is_target_old_port =
+            record.net == target_net && record.owner == target_owner && port == old_port;
+        if !is_target_old_port {
+            used.insert(port);
+        }
+    }
+    for port in planned_used {
+        let normalized = normalize_port_text(port);
+        if !normalized.is_empty() {
+            used.insert(normalized);
+        }
+    }
+    used
+}
+
+fn js_set_from_values(values: &HashSet<String>) -> JsSet {
+    let output = JsSet::new(&JsValue::UNDEFINED);
+    for value in values {
+        output.add(&JsValue::from_str(value));
+    }
+    output
+}
+
+fn instance_for_change(bridge_instances: &JsValue, net: &str, instance_id: &str) -> JsValue {
+    let list = property(bridge_instances, net);
+    if !Array::is_array(&list) {
+        return JsValue::UNDEFINED;
+    }
+    Array::from(&list)
+        .iter()
+        .find(|item| crate::js_string_owned(&property(item, "id")) == instance_id)
+        .unwrap_or(JsValue::UNDEFINED)
+}
+
+fn plan_port_autofix(
+    active_net: &str,
+    validation: &JsValue,
+    bridge_instances: &JsValue,
+) -> JsValue {
+    let changes = Array::new();
+    let seen = std::cell::RefCell::new(HashSet::<String>::new());
+    let conflicts = property(validation, "conflicts");
+
+    if crate::js_boolean(&property(validation, "ok")) || !Array::is_array(&conflicts) {
+        let output = Object::new();
+        set(output.as_ref(), "validation", validation);
+        set(output.as_ref(), "changes", changes.as_ref());
+        return output.into();
+    }
+
+    for conflict in Array::from(&conflicts).iter() {
+        let owners = property(&conflict, "owners");
+        if !Array::is_array(&owners) {
+            continue;
+        }
+        let unique = bridge_unique_conflict_owners_r45(owners.clone());
+        if unique.length() < 2 {
+            continue;
+        }
+        let owners_to_change = bridge_owners_to_autofix_r45(active_net.to_owned(), unique.into());
+        for owner in owners_to_change.iter() {
+            let net = crate::js_string_owned(&property(&owner, "net"));
+            let owner_text = crate::js_string_owned(&property(&owner, "owner"));
+            let Some(instance_id) = owner_text.strip_prefix("instance:") else {
+                continue;
+            };
+            if net.is_empty() || instance_id.is_empty() {
+                continue;
+            }
+
+            let instance = instance_for_change(bridge_instances, &net, instance_id);
+            if !present(&instance) {
+                continue;
+            }
+            let old_port = crate::js_string_owned(&property(&conflict, "port"));
+            let normalized_old = normalize_port_text(&old_port);
+            let kind = if normalize_port_text(&crate::js_string_owned(&property(
+                &instance,
+                "instancePort",
+            ))) == normalized_old
+            {
+                "stratum"
+            } else if normalize_port_text(&crate::js_string_owned(&property(
+                &instance,
+                "instanceProm",
+            ))) == normalized_old
+            {
+                "prom"
+            } else {
+                ""
+            };
+            if kind.is_empty() {
+                continue;
+            }
+
+            let key = format!("{net}:{instance_id}:{kind}:{old_port}");
+            if !seen.borrow_mut().insert(key) {
+                continue;
+            }
+
+            let changed_owner = Object::new();
+            set(
+                changed_owner.as_ref(),
+                "net",
+                &JsValue::from_str(&crate::js_string_owned(&property(&owner, "net"))),
+            );
+            set(
+                changed_owner.as_ref(),
+                "role",
+                &JsValue::from_str(&crate::js_string_owned(&property(&owner, "role"))),
+            );
+            set(
+                changed_owner.as_ref(),
+                "owner",
+                &JsValue::from_str(&crate::js_string_owned(&property(&owner, "owner"))),
+            );
+
+            let change = Object::new();
+            set(change.as_ref(), "net", &JsValue::from_str(&net));
+            set(
+                change.as_ref(),
+                "instanceId",
+                &JsValue::from_str(instance_id),
+            );
+            set(change.as_ref(), "kind", &JsValue::from_str(kind));
+            set(change.as_ref(), "oldPort", &JsValue::from_str(&old_port));
+            set(change.as_ref(), "changedOwner", changed_owner.as_ref());
+            changes.push(change.as_ref());
+        }
+    }
+
+    let output = Object::new();
+    set(output.as_ref(), "validation", validation);
+    set(output.as_ref(), "changes", changes.as_ref());
+    output.into()
+}
+
+#[wasm_bindgen(js_name = bridgePlanPortAutofixR37)]
+pub fn bridge_plan_port_autofix_r37(
+    active_net: String,
+    validation: JsValue,
+    bridge_instances: JsValue,
+) -> JsValue {
+    plan_port_autofix(&active_net, &validation, &bridge_instances)
+}
+
+#[wasm_bindgen(js_name = bridgeChooseReplacementPortR37)]
+pub fn bridge_choose_replacement_port_r37(
+    change: JsValue,
+    planned_used: JsValue,
+    bridge_instances: JsValue,
+    collected_records: JsValue,
+) -> Result<String, JsValue> {
+    let planned = if Array::is_array(&planned_used) {
+        Array::from(&planned_used)
+            .iter()
+            .map(|value| crate::js_string_owned(&value))
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+    choose_replacement_port(&change, &planned, &bridge_instances, &collected_records)
+}
+
+fn choose_replacement_port(
+    change: &JsValue,
+    planned_used: &[String],
+    bridge_instances: &JsValue,
+    collected_records: &JsValue,
+) -> Result<String, JsValue> {
+    let net = crate::js_string_owned(&property(change, "net"));
+    let kind = {
+        let value = crate::js_string_owned(&property(change, "kind"));
+        if value == "prom" {
+            "prom".to_owned()
+        } else {
+            "stratum".to_owned()
+        }
+    };
+    let instance_id = crate::js_string_owned(&property(change, "instanceId"));
+    let old_port = normalize_port_text(&crate::js_string_owned(&property(change, "oldPort")));
+    let records = configured_port_records(collected_records);
+    let used_values = global_used_port_values(&records, change, planned_used);
+    let used = js_set_from_values(&used_values);
+
+    let instance = instance_for_change(bridge_instances, &net, &instance_id);
+    if present(&instance) {
+        let other_name = if kind == "prom" {
+            "instancePort"
+        } else {
+            "instanceProm"
+        };
+        let other = normalize_port_text(&crate::js_string_owned(&property(&instance, other_name)));
+        if !other.is_empty() && other != old_port {
+            set_add(used.as_ref(), &other);
+        }
+    }
+
+    let profile = profile_for_current_settings(&net);
+    let range = property(&profile, &kind);
+    let fallback = ["instanceStart", "preferred", "min"]
+        .iter()
+        .map(|key| crate::js_string_owned(&property(&range, key)))
+        .find(|value| !value.is_empty())
+        .unwrap_or_else(|| "1".to_owned());
+
+    let in_range = find_unused_in_range_impl(&range, used.as_ref(), &fallback);
+    if !in_range.is_empty() {
+        return Ok(in_range);
+    }
+    find_nearest_unused_impl(&fallback, used.as_ref())
 }
 
 #[wasm_bindgen(js_name = bridgePortProfilesR35B)]

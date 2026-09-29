@@ -37,22 +37,18 @@ import initBridgeRust, {
   bridgeValue as wasmBridgeValue,
   bridgeAddUsedPortR91 as wasmBridgeAddUsedPortR91,
   bridgeApplyPortConflictStartStateR33 as wasmBridgeApplyPortConflictStartStateR33,
-  bridgeAutofixChangeKeyR37 as wasmBridgeAutofixChangeKeyR37,
+  bridgeChooseReplacementPortR37 as wasmBridgeChooseReplacementPortR37,
   bridgeExtractPortsFromTextR5 as wasmBridgeExtractPortsFromTextR5,
+  bridgePlanPortAutofixR37 as wasmBridgePlanPortAutofixR37,
   bridgeFindRecommendedOrNearestUnusedPortR35B as wasmBridgeFindRecommendedOrNearestUnusedPortR35B,
-  bridgeInstanceIdFromOwnerR37 as wasmBridgeInstanceIdFromOwnerR37,
-  bridgeInstancePortKindForConflictR37 as wasmBridgeInstancePortKindForConflictR37,
   bridgeInstancePortShouldFollowExternalRangeR91 as wasmBridgeInstancePortShouldFollowExternalRangeR91,
-  bridgeNormalizePortR37 as wasmBridgeNormalizePortR37,
   bridgeNormalizePortR9 as wasmBridgeNormalizePortR9,
-  bridgeOwnersToAutofixR45 as wasmBridgeOwnersToAutofixR45,
   bridgePortIsValidR9 as wasmBridgePortIsValidR9,
   bridgeValidatePortConflictsR5 as wasmBridgeValidatePortConflictsR5,
   bridgePortProfileR35B as wasmBridgePortProfileR35B,
   bridgePortProfilesR35B as wasmBridgePortProfilesR35B,
   bridgePushPortR5 as wasmBridgePushPortR5,
   bridgeStaticPortProfileR91 as wasmBridgeStaticPortProfileR91,
-  bridgeUniqueConflictOwnersR45 as wasmBridgeUniqueConflictOwnersR45,
   settingsOwnerButtons as wasmSettingsOwnerButtons,
   settingsOwnerInstall as wasmSettingsOwnerInstall,
   settingsOwnerSetDisabled as wasmSettingsOwnerSetDisabled,
@@ -1758,23 +1754,6 @@ function bridgeTracePortAutofixR37(net, phase, details) {
 }
 
 
-function bridgeInstanceIdFromOwnerR37(owner) {
-  return wasmBridgeInstanceIdFromOwnerR37(owner || {});
-}
-
-function bridgeNormalizePortR37(value) {
-  return wasmBridgeNormalizePortR37(value);
-}
-
-function bridgeInstancePortKindForConflictR37(instance, conflictPort) {
-  return wasmBridgeInstancePortKindForConflictR37(instance || {}, conflictPort);
-}
-
-function bridgeAutofixChangeKeyR37(change) {
-  return wasmBridgeAutofixChangeKeyR37(change || {});
-}
-
-
 /* KGW_BRIDGE_AUTOFIX_GLOBAL_USED_PORTS_PATCH_R45
  * Strengthens existing R37 Auto Fix:
  * - De-duplicates repeated conflict owners.
@@ -1785,90 +1764,14 @@ function bridgeAutofixChangeKeyR37(change) {
  */
 
 
-function bridgeUniqueConflictOwnersR45(owners) {
-  return Array.from(wasmBridgeUniqueConflictOwnersR45(owners || []));
-}
-
 function bridgeConfiguredPortRecordsR45() {
-  const records = [];
   let collected;
-
   try {
     collected = bridgeCollectConfiguredPortsR5();
   } catch (_) {
     collected = [];
   }
-
-  if (Array.isArray(collected)) {
-    for (const item of collected) {
-      if (!item) continue;
-
-      if (Array.isArray(item.owners)) {
-        for (const owner of item.owners) {
-          records.push({
-            port: String(item.port || ""),
-            net: String(owner && owner.net || ""),
-            role: String(owner && owner.role || ""),
-            owner: String(owner && owner.owner || "")
-          });
-        }
-      } else {
-        records.push({
-          port: String(item.port || ""),
-          net: String(item.net || ""),
-          role: String(item.role || ""),
-          owner: String(item.owner || "")
-        });
-      }
-    }
-  } else if (collected && typeof collected === "object") {
-    for (const [port, owners] of Object.entries(collected)) {
-      if (Array.isArray(owners)) {
-        for (const owner of owners) {
-          records.push({
-            port: String(port || ""),
-            net: String(owner && owner.net || ""),
-            role: String(owner && owner.role || ""),
-            owner: String(owner && owner.owner || "")
-          });
-        }
-      }
-    }
-  }
-
-  return records.filter((item) => item.port);
-}
-
-function bridgeGlobalUsedPortsForAutofixR45(change, plannedUsed) {
-  const used = new Set();
-  const targetNet = String(change && change.net || "");
-  const targetInstanceOwner = "instance:" + String(change && change.instanceId || "");
-  const oldPort = String(change && change.oldPort || "");
-
-  for (const item of bridgeConfiguredPortRecordsR45()) {
-    const port = String(item && item.port || "").trim().replace(/^:/, "");
-    if (!port) continue;
-
-    const isTargetOldPort =
-      String(item.net || "") === targetNet &&
-      String(item.owner || "") === targetInstanceOwner &&
-      port === oldPort;
-
-    if (!isTargetOldPort) {
-      used.add(port);
-    }
-  }
-
-  for (const item of plannedUsed || []) {
-    const port = String(item || "").trim().replace(/^:/, "");
-    if (port) used.add(port);
-  }
-
-  return used;
-}
-
-function bridgeOwnersToAutofixR45(activeNet, owners) {
-  return Array.from(wasmBridgeOwnersToAutofixR45(activeNet, owners || []));
+  return collected;
 }
 
 function bridgeRefreshAutofixTouchedNetsR45(touchedNets, activeNet, reason) {
@@ -1890,79 +1793,19 @@ function bridgeRefreshAutofixTouchedNetsR45(touchedNets, activeNet, reason) {
 
 function bridgePlanPortAutofixR37(activeNet) {
   const validation = bridgeValidatePortConflictsR5(activeNet);
-  const changes = [];
-  const seen = new Set();
-
-  if (!validation || validation.ok || !Array.isArray(validation.conflicts)) {
-    return { validation, changes };
-  }
-
-  for (const conflict of validation.conflicts) {
-    const owners = bridgeUniqueConflictOwnersR45(conflict.owners);
-    if (owners.length < 2) continue;
-
-    const ownersToChange = bridgeOwnersToAutofixR45(activeNet, owners);
-
-    for (const owner of ownersToChange) {
-      const net = String(owner.net || "");
-      const instanceId = bridgeInstanceIdFromOwnerR37(owner);
-      if (!net || !instanceId) continue;
-
-      const list = Array.isArray(bridgeInstances[net]) ? bridgeInstances[net] : [];
-      const instance = list.find((item) => String(item && item.id) === String(instanceId));
-      if (!instance) continue;
-
-      const kind = bridgeInstancePortKindForConflictR37(instance, conflict.port);
-      if (!kind) continue;
-
-      const change = {
-        net,
-        instanceId,
-        kind,
-        oldPort: String(conflict.port || ""),
-        changedOwner: {
-          net: String(owner && owner.net || ""),
-          role: String(owner && owner.role || ""),
-          owner: String(owner && owner.owner || "")
-        }
-      };
-
-      const key = bridgeAutofixChangeKeyR37(change);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      changes.push(change);
-    }
-  }
-
-  return { validation, changes };
+  return wasmBridgePlanPortAutofixR37(
+    String(activeNet || ""),
+    validation || {},
+    bridgeInstances || {}
+  );
 }
 
 function bridgeChooseReplacementPortR37(change, plannedUsed) {
-  const net = String(change && change.net || "");
-  const kind = String(change && change.kind || "stratum");
-  const instanceId = String(change && change.instanceId || "");
-  const profile = bridgePortProfileR35B(net);
-  const range = kind === "prom" ? profile.prom : profile.stratum;
-  const used = bridgeGlobalUsedPortsForAutofixR45(change, plannedUsed);
-
-  const list = Array.isArray(bridgeInstances[net]) ? bridgeInstances[net] : [];
-  const instance = list.find((row) => String(row && row.id) === instanceId);
-
-  if (instance) {
-    if (kind === "prom") {
-      const other = bridgeNormalizePortR37(instance.instancePort);
-      if (other && other !== String(change.oldPort || "")) used.add(other);
-    } else {
-      const other = bridgeNormalizePortR37(instance.instanceProm);
-      if (other && other !== String(change.oldPort || "")) used.add(other);
-    }
-  }
-
-  return bridgeFindRecommendedOrNearestUnusedPortR35B(
-    net,
-    kind === "prom" ? "prom" : "stratum",
-    used,
-    range.instanceStart || range.preferred || range.min
+  return wasmBridgeChooseReplacementPortR37(
+    change || {},
+    Array.from(plannedUsed || []),
+    bridgeInstances || {},
+    bridgeConfiguredPortRecordsR45() || []
   );
 }
 
