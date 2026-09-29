@@ -1035,6 +1035,161 @@ pub fn bridge_write_instance_port_r37(
     true
 }
 
+fn records_to_js(records: &[PortOwnerRecord]) -> Array {
+    let output = Array::new();
+    for record in records {
+        let row = Object::new();
+        set(row.as_ref(), "port", &JsValue::from_str(&record.port));
+        set(row.as_ref(), "net", &JsValue::from_str(&record.net));
+        set(row.as_ref(), "role", &JsValue::from_str(&record.role));
+        set(row.as_ref(), "owner", &JsValue::from_str(&record.owner));
+        output.push(row.as_ref());
+    }
+    output
+}
+
+fn apply_port_autofix(
+    active_net: &str,
+    initial_validation: &JsValue,
+    bridge_instances: &JsValue,
+    collected_records: &JsValue,
+    max_passes: usize,
+) -> JsValue {
+    let mut records = configured_port_records(collected_records);
+    let mut validation = initial_validation.clone();
+    let all_changed = Array::new();
+
+    for pass in 1..=max_passes {
+        let plan = plan_port_autofix(active_net, &validation, bridge_instances);
+        let changes = property(&plan, "changes");
+        if !Array::is_array(&changes) {
+            break;
+        }
+        if Array::from(&changes).length() == 0 {
+            break;
+        }
+
+        let mut pass_changed = 0_u32;
+        let mut planned_used = (0..all_changed.length())
+            .map(|index| crate::js_string_owned(&property(&all_changed.get(index), "newPort")))
+            .filter(|value| !value.is_empty())
+            .collect::<Vec<_>>();
+
+        for change in Array::from(&changes).iter() {
+            let records_js = records_to_js(&records);
+            let Ok(new_port) =
+                choose_replacement_port(&change, &planned_used, bridge_instances, &records_js)
+            else {
+                continue;
+            };
+            if new_port.is_empty() {
+                continue;
+            }
+
+            let net = crate::js_string_owned(&property(&change, "net"));
+            let instance_id = crate::js_string_owned(&property(&change, "instanceId"));
+            let kind = crate::js_string_owned(&property(&change, "kind"));
+            let old_port =
+                normalize_port_text(&crate::js_string_owned(&property(&change, "oldPort")));
+            if !bridge_write_instance_port_r37(
+                bridge_instances.clone(),
+                net.clone(),
+                instance_id.clone(),
+                kind,
+                new_port.clone(),
+            ) {
+                continue;
+            }
+
+            let owner = format!("instance:{instance_id}");
+            let mut record_updated = false;
+            for record in &mut records {
+                if record.net == net
+                    && record.owner == owner
+                    && normalize_port_text(&record.port) == old_port
+                {
+                    record.port = new_port.clone();
+                    record_updated = true;
+                    break;
+                }
+            }
+            if !record_updated {
+                records.push(PortOwnerRecord {
+                    port: new_port.clone(),
+                    net: net.clone(),
+                    role: "instance".to_owned(),
+                    owner,
+                });
+            }
+
+            let applied = Object::new();
+            for key in ["net", "instanceId", "kind", "oldPort", "changedOwner"] {
+                let value = property(&change, key);
+                set(applied.as_ref(), key, &value);
+            }
+            set(applied.as_ref(), "newPort", &JsValue::from_str(&new_port));
+            set(applied.as_ref(), "pass", &JsValue::from_f64(pass as f64));
+            all_changed.push(applied.as_ref());
+            planned_used.push(new_port);
+            pass_changed += 1;
+        }
+
+        if pass_changed == 0 {
+            break;
+        }
+
+        let conflicts = validate_port_conflicts_records(&records, active_net);
+        let conflict_values = Array::new();
+        for conflict in &conflicts {
+            conflict_values.push(&conflict_record_to_js(conflict));
+        }
+        let next = Object::new();
+        set(
+            next.as_ref(),
+            "ok",
+            &JsValue::from_bool(conflicts.is_empty()),
+        );
+        set(next.as_ref(), "conflicts", conflict_values.as_ref());
+        set(
+            next.as_ref(),
+            "message",
+            &JsValue::from_str(&conflict_message_records(&conflicts)),
+        );
+        validation = next.into();
+
+        if crate::js_boolean(&property(&validation, "ok")) {
+            break;
+        }
+    }
+
+    let output = Object::new();
+    set(output.as_ref(), "changes", all_changed.as_ref());
+    set(output.as_ref(), "validation", &validation);
+    set(
+        output.as_ref(),
+        "finalOk",
+        &JsValue::from_bool(crate::js_boolean(&property(&validation, "ok"))),
+    );
+    output.into()
+}
+
+#[wasm_bindgen(js_name = bridgeApplyPortAutofixR37)]
+pub fn bridge_apply_port_autofix_r37(
+    active_net: String,
+    validation: JsValue,
+    bridge_instances: JsValue,
+    collected_records: JsValue,
+    max_passes: u32,
+) -> JsValue {
+    apply_port_autofix(
+        &active_net,
+        &validation,
+        &bridge_instances,
+        &collected_records,
+        max_passes as usize,
+    )
+}
+
 fn choose_replacement_port(
     change: &JsValue,
     planned_used: &[String],

@@ -37,11 +37,10 @@ import initBridgeRust, {
   bridgeValue as wasmBridgeValue,
   bridgeAddUsedPortR91 as wasmBridgeAddUsedPortR91,
   bridgeApplyPortConflictStartStateR33 as wasmBridgeApplyPortConflictStartStateR33,
-  bridgeChooseReplacementPortR37 as wasmBridgeChooseReplacementPortR37,
+  bridgeApplyPortAutofixR37 as wasmBridgeApplyPortAutofixR37,
   bridgeExtractPortsFromTextR5 as wasmBridgeExtractPortsFromTextR5,
   bridgePlanPortAutofixR37 as wasmBridgePlanPortAutofixR37,
   bridgeFindRecommendedOrNearestUnusedPortR35B as wasmBridgeFindRecommendedOrNearestUnusedPortR35B,
-  bridgeWriteInstancePortR37 as wasmBridgeWriteInstancePortR37,
   bridgeInstancePortShouldFollowExternalRangeR91 as wasmBridgeInstancePortShouldFollowExternalRangeR91,
   bridgeNormalizePortR9 as wasmBridgeNormalizePortR9,
   bridgePortIsValidR9 as wasmBridgePortIsValidR9,
@@ -1782,139 +1781,63 @@ function bridgeRefreshAutofixTouchedNetsR45(touchedNets, activeNet, reason) {
 }
 
 
-function bridgePlanPortAutofixR37(activeNet) {
-  const validation = bridgeValidatePortConflictsR5(activeNet);
-  return wasmBridgePlanPortAutofixR37(
-    String(activeNet || ""),
-    validation || {},
-    bridgeInstances || {}
-  );
-}
-
-function bridgeChooseReplacementPortR37(change, plannedUsed) {
-  return wasmBridgeChooseReplacementPortR37(
-    change || {},
-    Array.from(plannedUsed || []),
-    bridgeInstances || {},
-    (() => {
-      try {
-        return bridgeCollectConfiguredPortsR5();
-      } catch (_) {
-        return [];
-      }
-    })() || []
-  );
-}
-
-function bridgeWriteInstancePortR37(change, newPort) {
-  const net = String(change && change.net || "");
-  const instanceId = String(change && change.instanceId || "");
-  const kind = String(change && change.kind || "");
-  const normalizedPort = String(newPort || "").trim().replace(/^:/, "");
-  const ok = wasmBridgeWriteInstancePortR37(
-    bridgeInstances || {},
-    net,
-    instanceId,
-    kind,
-    normalizedPort
-  );
-  if (!ok) return false;
-
-  const fieldName = kind === "prom" ? "instanceProm" : "instancePort";
-  const field = byId(id(net, fieldName + "-" + instanceId));
-  if (field) {
-    field.value = normalizedPort;
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-    field.dispatchEvent(new Event("change", { bubbles: true }));
-  }
-
-  return true;
-}
-
 function bridgeApplyPortAutofixR37(activeNet) {
   const net = String(activeNet || "");
-  const allChanged = [];
-  const maxPasses = 8;
+  const validation = bridgeValidatePortConflictsR5(net);
+  let collected = [];
+  try {
+    collected = bridgeCollectConfiguredPortsR5();
+  } catch (_) {
+    // Preserve the empty fallback initialized above.
+  }
 
   bridgeTracePortAutofixR37(net, "r37-port-autofix-begin", {
     patch2: "R45",
-    mode: "iterative-global-used-ports",
+    mode: "rust-iterative-global-used-ports",
     activeNet: net
   });
 
-  for (let pass = 1; pass <= maxPasses; pass += 1) {
-    const plan = bridgePlanPortAutofixR37(net);
+  const result = wasmBridgeApplyPortAutofixR37(
+    net,
+    validation || {},
+    bridgeInstances || {},
+    collected,
+    8
+  );
+  const changes = Array.isArray(result && result.changes) ? result.changes : [];
+  const finalValidation = result && result.validation ? result.validation : validation;
+  const touchedNets = new Set();
 
-    bridgeTracePortAutofixR37(net, "r45-port-autofix-pass-plan", {
-      pass,
-      conflictCount: plan.validation && Array.isArray(plan.validation.conflicts) ? plan.validation.conflicts.length : 0,
-      plannedChangeCount: plan.changes.length
-    });
-
-    if (!plan.changes.length) {
-      if (pass === 1) {
-        bridgeTracePortAutofixR37(net, "r37-port-autofix-noop", {
-          reason: plan.validation && plan.validation.ok ? "no-conflicts" : "no-instance-conflicts-can-be-autofixed",
-          patch2: "R45"
-        });
-      }
-      break;
-    }
-
-    const passChanged = [];
-    const plannedUsed = new Set();
-
-    for (const change of plan.changes) {
-      const newPort = bridgeChooseReplacementPortR37(change, plannedUsed);
-      if (!newPort) continue;
-
-      const ok = bridgeWriteInstancePortR37(change, newPort);
-      if (!ok) continue;
-
-      plannedUsed.add(String(newPort));
-
-      const applied = {
-        ...change,
-        newPort: String(newPort || ""),
-        pass
-      };
-
-      passChanged.push(applied);
-      allChanged.push(applied);
-
-      bridgeTracePortAutofixR37(change.net, "r37-port-autofix-change", applied);
-    }
-
-    if (!passChanged.length) break;
-
-    const touchedNets = new Set(passChanged.map((item) => String(item.net || "")).filter(Boolean));
-    bridgeRefreshAutofixTouchedNetsR45(touchedNets, net, "r45-autofix-pass-" + String(pass));
-
-    const after = bridgeValidatePortConflictsR5(net);
-    if (after && after.ok) {
-      break;
-    }
+  for (const change of changes) {
+    const changeNet = String(change && change.net || net);
+    touchedNets.add(changeNet);
+    bridgeTracePortAutofixR37(changeNet, "r37-port-autofix-change", change);
   }
 
-  const finalValidation = bridgeValidatePortConflictsR5(net);
-  const touchedNets = new Set(allChanged.map((item) => String(item.net || "")).filter(Boolean));
+  if (!changes.length) {
+    bridgeTracePortAutofixR37(net, "r37-port-autofix-noop", {
+      reason: finalValidation && finalValidation.ok ? "no-conflicts" : "no-instance-conflicts-can-be-autofixed",
+      patch2: "R45"
+    });
+  }
+
   bridgeRefreshAutofixTouchedNetsR45(touchedNets, net, "r45-autofix-final");
 
   bridgeTracePortAutofixR37(net, "r37-port-autofix-complete", {
     patch2: "R45",
-    changedCount: allChanged.length,
+    changedCount: changes.length,
     finalOk: Boolean(finalValidation && finalValidation.ok),
     finalConflictCount: finalValidation && Array.isArray(finalValidation.conflicts) ? finalValidation.conflicts.length : 0,
-    changes: allChanged.slice(0, 80)
+    changes: changes.slice(0, 80)
   });
 
   kgwBridgeSetRuntimeActivityV1(
     net,
-    kgwBridgeAutoFixTextR54D3("changedPrefix") + " " + String(allChanged.length) + " conflicting instance port(s)." +
+    kgwBridgeAutoFixTextR54D3("changedPrefix") + " " + String(changes.length) + " conflicting instance port(s)." +
       (finalValidation && finalValidation.ok ? " Conflicts cleared." : " Some conflicts remain.")
   );
 
-  return { changed: allChanged.length, changes: allChanged, finalOk: Boolean(finalValidation && finalValidation.ok) };
+  return { changed: changes.length, changes, finalOk: Boolean(finalValidation && finalValidation.ok) };
 }
 
 function bridgeAutofixButtonsR37() {
@@ -1927,8 +1850,9 @@ function bridgeRefreshPortAutofixButtonsR37(_reason) {
   for (const button of bridgeAutofixButtonsR37()) {
     const net = String(button.dataset.net || "");
     const validation = bridgeValidatePortConflictsR5(net);
-    const plan = bridgePlanPortAutofixR37(net);
-    const enabled = Boolean(validation && !validation.ok && plan.changes.length);
+    const plan = wasmBridgePlanPortAutofixR37(net, validation || {}, bridgeInstances || {});
+    const planChanges = plan && Array.isArray(plan.changes) ? plan.changes : [];
+    const enabled = Boolean(validation && !validation.ok && planChanges.length);
 
     button.disabled = !enabled;
     button.classList.toggle("kgw-port-autofix-ready-r37", enabled);
