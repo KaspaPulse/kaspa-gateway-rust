@@ -5,16 +5,14 @@ use std::process::Command;
 
 const BRIDGE_SOURCE: &str =
     "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
+const BRIDGE_COMMAND_OPTIONS_SOURCE: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_command_options.rs";
 const WASM_JS: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 const WASM_BIN: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm_bg.wasm";
 
 const SLICES: &[(&str, &str)] = &[
-    (
-        "function kgwBridgeCommandInlineStateR7(",
-        "function kgwBridgeCommandInlineToggleR7(",
-    ),
     ("function bridgeNodeMode(", "function bridgeHasConfig("),
     (
         "function kgwBridgeR51Panel(",
@@ -24,10 +22,6 @@ const SLICES: &[(&str, &str)] = &[
     (
         "const BRIDGE_NETWORKS = wasmBridgeNetworkProfiles();",
         "const bridgeInstances = {",
-    ),
-    (
-        "function kgwBridgeInstanceCommandRecordR13B(",
-        "function kgwBridgeInstanceCommandCheckboxR13B(",
     ),
     (
         "function bridgeBuildUpstreamInstanceArg(",
@@ -121,7 +115,26 @@ const api = vm.runInContext(
   sandbox
 );
 
-const output = {};
+const directInstanceCheckbox = wasmModule.bridgeInstanceCommandCheckboxFromInstancesR13B(
+  sandbox.bridgeInstances,
+  "mainnet",
+  "one",
+  "instanceDiff"
+);
+const output = {
+  directOwners: {
+    inlineEnabled: wasmModule.bridgeCommandOptionEnabledR7("mainnet", "coinbaseTagSuffix"),
+    inlineToggleHasMarker: wasmModule.bridgeCommandInlineToggleR7("mainnet", "coinbaseTagSuffix").includes('data-bridge-command-option-toggle-r7="coinbaseTagSuffix"'),
+    instanceShouldInclude: wasmModule.bridgeInstanceCommandShouldIncludeFromInstancesR13B(
+      sandbox.bridgeInstances,
+      "mainnet",
+      "one",
+      "instanceDiff"
+    ),
+    instanceCheckboxHasId: directInstanceCheckbox.includes('data-instance-id="one"'),
+    instanceCheckboxChecked: directInstanceCheckbox.includes("checked")
+  }
+};
 for (const step of request.steps) {
   if (step.op === "parse") {
     output[step.label] = api.parse(step.value);
@@ -173,6 +186,41 @@ fn selected_source(root: &Path) -> Result<String, String> {
         selected.push('\n');
     }
     Ok(selected)
+}
+
+fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
+    let source = fs::read_to_string(root.join(BRIDGE_SOURCE))
+        .map_err(|error| format!("failed to read {BRIDGE_SOURCE}: {error}"))?;
+    let rust = fs::read_to_string(root.join(BRIDGE_COMMAND_OPTIONS_SOURCE))
+        .map_err(|error| format!("failed to read {BRIDGE_COMMAND_OPTIONS_SOURCE}: {error}"))?;
+
+    for needle in [
+        "bridgeInstanceCommandShouldIncludeFromInstancesR13B",
+        "bridgeInstanceCommandCheckboxFromInstancesR13B",
+    ] {
+        if !rust.contains(needle) {
+            return Err(format!(
+                "Bridge command-options Rust direct-owner export missing: {needle}"
+            ));
+        }
+    }
+
+    for forbidden in [
+        "function kgwBridgeInstanceCommandRecordR13B(",
+        "function kgwBridgeInstanceCommandShouldIncludeR13B(",
+        "function kgwBridgeInstanceCommandCheckboxR13B(",
+        "function kgwBridgeCommandInlineStateR7(",
+        "function kgwBridgeCommandOptionEnabledR7(",
+        "function kgwBridgeCommandInlineToggleR7(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge command-option wrapper remains in JavaScript: {forbidden}"
+            ));
+        }
+    }
+
+    Ok(())
 }
 
 fn request() -> Value {
@@ -321,8 +369,19 @@ fn expect_len(actual: &Value, pointer: &str, expected: usize) -> Result<(), Stri
 }
 
 pub fn run(root: &Path) -> Result<String, String> {
+    verify_direct_command_option_ownership(root)?;
     let selected = selected_source(root)?;
     let actual = run_bridge(root, &selected)?;
+
+    expect_pointer(&actual, "/directOwners/inlineEnabled", json!(true))?;
+    expect_pointer(&actual, "/directOwners/inlineToggleHasMarker", json!(true))?;
+    expect_pointer(&actual, "/directOwners/instanceShouldInclude", json!(true))?;
+    expect_pointer(&actual, "/directOwners/instanceCheckboxHasId", json!(true))?;
+    expect_pointer(
+        &actual,
+        "/directOwners/instanceCheckboxChecked",
+        json!(true),
+    )?;
 
     expect_pointer(&actual, "/parsed/instanceBlockWaitTime", json!("2500ms"))?;
     expect_pointer(&actual, "/parsed/instanceExtranonceSize", json!("4"))?;

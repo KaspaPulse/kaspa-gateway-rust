@@ -39,9 +39,9 @@ import initBridgeRust, {
   bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord,
   bridgeParseUnsignedV1 as wasmBridgeParseUnsignedV1,
   bridgeClearRawLogBuffer as wasmBridgeClearRawLogBuffer,
-  bridgeInstanceCommandCheckboxR13B as wasmBridgeInstanceCommandCheckboxR13B,
+  bridgeInstanceCommandCheckboxFromInstancesR13B as wasmBridgeInstanceCommandCheckboxFromInstancesR13B,
   bridgeInstanceCommandSetOptionR13B as wasmBridgeInstanceCommandSetOptionR13B,
-  bridgeInstanceCommandShouldIncludeR13B as wasmBridgeInstanceCommandShouldIncludeR13B,
+  bridgeInstanceCommandShouldIncludeFromInstancesR13B as wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B,
   bridgeInstancePreviewTextR8B as wasmBridgeInstancePreviewTextR8B,
   bridgeSyncInstancePreviewRowsR8B as wasmBridgeSyncInstancePreviewRowsR8B,
   bridgeReadInstanceField as wasmBridgeReadInstanceField,
@@ -189,28 +189,6 @@ let activeInstance = {
 
 // KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B
 
-function kgwBridgeInstanceCommandRecordR13B(net, instanceId) {
-  return (bridgeInstances[net] || []).find(item => String(item.id) === String(instanceId)) || null;
-}
-
-function kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, name) {
-  return wasmBridgeInstanceCommandShouldIncludeR13B(
-    String(net || ""),
-    instanceId,
-    String(name || ""),
-    kgwBridgeInstanceCommandRecordR13B(net, instanceId)
-  );
-}
-
-function kgwBridgeInstanceCommandCheckboxR13B(net, instanceId, name) {
-  return wasmBridgeInstanceCommandCheckboxR13B(
-    String(net || ""),
-    instanceId,
-    String(name || ""),
-    kgwBridgeInstanceCommandRecordR13B(net, instanceId)
-  );
-}
-
 function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
   wasmBridgeSmallOwnerTraceR44D(net, "command-checkbox", "r29b-bridge-instance-command-checkbox-begin", {
     patch: "R29B",
@@ -248,22 +226,12 @@ function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
 
 // KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
 
-function kgwBridgeCommandInlineStateR7(net) {
-  return wasmBridgeCommandInlineStateR7(String(net || ""));
-}
-
-function kgwBridgeCommandOptionEnabledR7(net, name) {
-  return wasmBridgeCommandOptionEnabledR7(String(net || ""), String(name || ""));
-}
-
-function kgwBridgeCommandInlineToggleR7(net, name) {
-  return wasmBridgeCommandInlineToggleR7(String(net || ""), String(name || "")); // KGW_BRIDGE_COMMAND_COMPOSER_CHECKBOX_ONLY_R9
-}
+// KGW_BRIDGE_COMMAND_COMPOSER_CHECKBOX_ONLY_R9 is Rust-owned in bridge_command_options.rs.
 
 function kgwBridgeRefreshInlineCommandTogglesR7(net) {
   document.querySelectorAll(`[data-bridge-command-option-toggle-r7][data-net="${CSS.escape(String(net))}"]`).forEach((el) => {
     const name = el.dataset.bridgeCommandOptionToggleR7;
-    const enabled = kgwBridgeCommandOptionEnabledR7(net, name);
+    const enabled = wasmBridgeCommandOptionEnabledR7(String(net || ""), String(name || ""));
     el.checked = enabled;
     el.setAttribute("aria-label", enabled ? "Included in command" : "Excluded from command");
     el.setAttribute("title", enabled ? "Included in command" : "Excluded from command");
@@ -409,7 +377,7 @@ function renderInstances(net) {
           data-bridge-instance-panel="${instance.id}">
           <label class="bridge-v7-card bridge-v7-instance-preview-card-r8b">
             <span class="kgw-command-option-title-row-r8e">
-              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instance")}
+              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instance")}
               <span class="kgw-command-option-title-text-r8e">Effective instance</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <input
@@ -423,7 +391,7 @@ function renderInstances(net) {
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
             <span class="kgw-command-option-title-row-r8e">
-              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instancePort")}
+              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instancePort")}
               <span class="kgw-command-option-title-text-r8e">port</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <input id="${wasmBridgeElementId(net, `instancePort-${instance.id}`)}" data-bridge-instance-field="instancePort" value="${wasmBridgeEscapeHtml(instance.instancePort || "")}" placeholder="${wasmBridgeEscapeHtml(wasmBridgeInstancePortPlaceholderR49(String(net || "")))}" />
@@ -431,7 +399,7 @@ function renderInstances(net) {
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
             <span class="kgw-command-option-title-row-r8e">
-              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceDiff")}
+              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceDiff")}
               <span class="kgw-command-option-title-text-r8e">diff</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <input id="${wasmBridgeElementId(net, `instanceDiff-${instance.id}`)}" data-bridge-instance-field="instanceDiff" value="${wasmBridgeEscapeHtml(instance.instanceDiff || "2048")}" placeholder="2048" ${wasmBridgeDifficultyInputAttrsR16C("instanceDiff")} />
@@ -439,7 +407,7 @@ function renderInstances(net) {
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
             <span class="kgw-command-option-title-row-r8e">
-              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceProm")}
+              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceProm")}
               <span class="kgw-command-option-title-text-r8e">prom</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <input id="${wasmBridgeElementId(net, `instanceProm-${instance.id}`)}" data-bridge-instance-field="instanceProm" value="${wasmBridgeEscapeHtml(instance.instanceProm || "")}" placeholder="${wasmBridgeEscapeHtml(wasmBridgeInstancePromPlaceholderR49(String(net || "")))}" />
@@ -447,7 +415,7 @@ function renderInstances(net) {
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
             <span class="kgw-command-option-title-row-r8e">
-              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceLogToFile")}
+              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceLogToFile")}
               <span class="kgw-command-option-title-text-r8e">log</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${wasmBridgeElementId(net, `instanceLogToFile-${instance.id}`)}" data-bridge-instance-field="instanceLogToFile">
@@ -459,7 +427,7 @@ function renderInstances(net) {
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
             <span class="kgw-command-option-title-row-r8e">
-              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceBlockWaitTime")}
+              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceBlockWaitTime")}
               <span class="kgw-command-option-title-text-r8e">wait</span>
             </span>
             <input id="${wasmBridgeElementId(net, `instanceBlockWaitTime-${instance.id}`)}" data-bridge-instance-field="instanceBlockWaitTime" value="${wasmBridgeEscapeHtml(instance.instanceBlockWaitTime || "")}" placeholder="Enable to override global milliseconds" />
@@ -467,7 +435,7 @@ function renderInstances(net) {
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
             <span class="kgw-command-option-title-row-r8e">
-              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceExtranonceSize")}
+              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceExtranonceSize")}
               <span class="kgw-command-option-title-text-r8e">extranonce</span>
             </span>
             <input id="${wasmBridgeElementId(net, `instanceExtranonceSize-${instance.id}`)}" data-bridge-instance-field="instanceExtranonceSize" value="${wasmBridgeEscapeHtml(instance.instanceExtranonceSize || "")}" placeholder="optional" />
@@ -475,7 +443,7 @@ function renderInstances(net) {
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
             <span class="kgw-command-option-title-row-r8e">
-              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceVarDiff")}
+              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceVarDiff")}
               <span class="kgw-command-option-title-text-r8e">var_diff</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${wasmBridgeElementId(net, `instanceVarDiff-${instance.id}`)}" data-bridge-instance-field="instanceVarDiff">
@@ -487,7 +455,7 @@ function renderInstances(net) {
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
             <span class="kgw-command-option-title-row-r8e">
-              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceVarDiffStats")}
+              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceVarDiffStats")}
               <span class="kgw-command-option-title-text-r8e">var_stats</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${wasmBridgeElementId(net, `instanceVarDiffStats-${instance.id}`)}" data-bridge-instance-field="instanceVarDiffStats">
@@ -499,7 +467,7 @@ function renderInstances(net) {
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
             <span class="kgw-command-option-title-row-r8e">
-              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instanceSharesPerMin")}
+              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceSharesPerMin")}
               <span class="kgw-command-option-title-text-r8e">shares/min</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <input id="${wasmBridgeElementId(net, `instanceSharesPerMin-${instance.id}`)}" data-bridge-instance-field="instanceSharesPerMin" value="${wasmBridgeEscapeHtml(instance.instanceSharesPerMin || "")}" placeholder="optional" ${wasmBridgeDifficultyInputAttrsR16C("instanceSharesPerMin")} />
@@ -507,7 +475,7 @@ function renderInstances(net) {
 
           <label class="bridge-v7-card bridge-v7-instance-card-r7b">
             <span class="kgw-command-option-title-row-r8e">
-              ${kgwBridgeInstanceCommandCheckboxR13B(net, instance.id, "instancePow2Clamp")}
+              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instancePow2Clamp")}
               <span class="kgw-command-option-title-text-r8e">pow2</span>
             </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
             <select id="${wasmBridgeElementId(net, `instancePow2Clamp-${instance.id}`)}" data-bridge-instance-field="instancePow2Clamp">
@@ -563,21 +531,21 @@ function renderInprocessNodeSettings(net) {
         <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessRpcListen")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessRpcListen")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.rpcListen">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.rpcListen", "--rpclisten"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessRpcListen")}" type="text" value="127.0.0.1:${wasmBridgeEscapeHtml(net.kaspadPort)}">
           </div>
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessRpcListenBorsh")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessRpcListenBorsh")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.rpcListenBorsh">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.rpcListenBorsh", "--rpclisten-borsh"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessRpcListenBorsh")}" type="text" value="">
           </div>
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessRpcListenJson")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessRpcListenJson")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.rpcListenJson">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.rpcListenJson", "--rpclisten-json"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessRpcListenJson")}" type="text" value="">
@@ -606,21 +574,21 @@ function renderInprocessNodeSettings(net) {
         <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessListen")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessListen")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.listen">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.listen", "--listen"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessListen")}" type="text" value="">
           </div>
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessAddPeer")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessAddPeer")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.addPeer">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.addPeer", "--addpeer"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessAddPeer")}" type="text" value="">
           </div>
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessConnect")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessConnect")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.connect">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.connect", "--connect"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessConnect")}" type="text" value="">
@@ -631,14 +599,14 @@ function renderInprocessNodeSettings(net) {
           </label>
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessMaxInpeers")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessMaxInpeers")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.maxInpeers">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.maxInpeers", "--maxinpeers"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessMaxInpeers")}" type="number" min="0" max="32" step="1" value="32">
           </div>
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessOutpeers")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessOutpeers")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.outpeers">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.outpeers", "--outpeers"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessOutpeers")}" type="number" min="0" max="8" step="1" value="8">
@@ -655,21 +623,21 @@ function renderInprocessNodeSettings(net) {
           </label>
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessPerfMetricsIntervalSec")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessPerfMetricsIntervalSec")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.perfMetricsIntervalSec">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.perfMetricsIntervalSec", "--perf-metrics-interval-sec"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessPerfMetricsIntervalSec")}" type="number" min="1" step="1" value="10">
           </div>
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessLogLevel")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessLogLevel")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.logLevel">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.logLevel", "--loglevel"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessLogLevel")}" type="text" value="info">
           </div>
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessRamScale")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessRamScale")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.ramScale">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.ramScale", "--ram-scale"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessRamScale")}" type="number" min="0.1" step="0.1" value="1">
@@ -681,7 +649,7 @@ function renderInprocessNodeSettings(net) {
         <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessConfigfile")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessConfigfile")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.configfile">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.configfile", "--configfile"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessConfigfile")}" type="text" value="" placeholder="unsupported: managed ownership">
@@ -697,7 +665,7 @@ function renderInprocessNodeSettings(net) {
         <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
           <div class="bridge-v7-card">
       <span class="kgw-command-option-title-row-r8e">
-        ${kgwBridgeCommandInlineToggleR7(net.key, "inprocessOverrideParamsFile")}
+        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessOverrideParamsFile")}
         <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.overrideParamsFile">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.overrideParamsFile", "--override-params-file"))}</span>
       </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
       <input id="${wasmBridgeElementId(net.key, "inprocessOverrideParamsFile")}" type="text" value="">
@@ -1137,7 +1105,7 @@ function bridgeNodeMode(net) {
 }
 
 function bridgeHasConfig(net) {
-  return kgwBridgeCommandOptionEnabledR7(net, "config") && Boolean(wasmBridgeValue(net, "config"));
+  return wasmBridgeCommandOptionEnabledR7(String(net || ""), "config") && Boolean(wasmBridgeValue(net, "config"));
 }
 
 function bridgeControl(net, name) {
@@ -3684,16 +3652,16 @@ function kgwBridgeForm(net) {
   return values;
 }
 function kgwBridgeValidateForm(net, focus = false) {
-  const errors = validateBridgeForm(kgwBridgeForm(net), kgwBridgeCommandInlineStateR7(net), net);
+  const errors = validateBridgeForm(kgwBridgeForm(net), wasmBridgeCommandInlineStateR7(String(net || "")), net);
   const panel = kgwBridgeR51Panel(net);
   for (const instance of net !== "mainnet" || bridgeHasConfig(net) ? [] : bridgeInstances[net] || []) {
-    if (!kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, "instance")) continue;
+    if (!wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instance")) continue;
     const waitField = wasmBridgeById(wasmBridgeElementId(net, "instanceBlockWaitTime-" + instance.id));
-    if (waitField && kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, "instanceBlockWaitTime") &&
+    if (waitField && wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceBlockWaitTime") &&
         !/^[1-9]\d*(ms|s)?$/.test(waitField.value.trim()))
       errors["instanceBlockWaitTime-" + instance.id] = "Enter a positive duration, for example 50ms or 1s.";
     for (const [name, min, max] of [["instanceDiff",1,4294967295],["instanceExtranonceSize",0,8],["instanceSharesPerMin",1,4294967295]]) {
-      if (!kgwBridgeInstanceCommandShouldIncludeR13B(net, instance.id, name)) continue;
+      if (!wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, name)) continue;
       const field = wasmBridgeById(wasmBridgeElementId(net, name + "-" + instance.id));
       if (!field) continue;
       const raw = String(field.value || "").trim();
@@ -3721,7 +3689,7 @@ function kgwBridgeRequireValidSettings(net) {
   kgwBridgeEffectiveSettingsV1(net, kgwBridgeR51ReadStructuredInstancesR26B(net));
 }
 function kgwBridgeSyncDependencies(net) {
-  const values = kgwBridgeForm(net), options = kgwBridgeCommandInlineStateR7(net);
+  const values = kgwBridgeForm(net), options = wasmBridgeCommandInlineStateR7(String(net || ""));
   const panel = kgwBridgeR51Panel(net);
   for (const name of Object.keys(values)) {
     const field = wasmBridgeById(wasmBridgeElementId(net, name)); if (!field) continue;
@@ -3760,7 +3728,7 @@ function kgwBridgeSyncDependencies(net) {
       if (field) { field.disabled = true; field.title = BRIDGE_MANAGED.logToFile; }
       return;
     }
-    const parentActive = !bridgeHasConfig(net) && kgwBridgeInstanceCommandShouldIncludeR13B(net, instanceId, "instance");
+    const parentActive = !bridgeHasConfig(net) && wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instanceId, "instance");
     toggle.disabled = bridgeHasConfig(net) || (name !== "instance" && !parentActive);
     if (field) {
       field.disabled = !toggle.checked || !parentActive;

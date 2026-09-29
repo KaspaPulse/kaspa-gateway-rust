@@ -1,4 +1,4 @@
-use js_sys::{Object, Reflect};
+use js_sys::{Array, Object, Reflect};
 use wasm_bindgen::prelude::*;
 
 use crate::settings_schema::{BRIDGE_MANAGED, BRIDGE_OPTIONAL, BRIDGE_REQUIRED};
@@ -154,6 +154,24 @@ fn record_field_has_text(record: &JsValue, name: &str) -> bool {
         .is_empty()
 }
 
+fn instance_record_from_instances(
+    bridge_instances: &JsValue,
+    net: &str,
+    instance_id: &JsValue,
+) -> JsValue {
+    let records = property(bridge_instances, net);
+    if !Array::is_array(&records) {
+        return JsValue::NULL;
+    }
+    let target = crate::js_string_owned(instance_id);
+    for record in Array::from(&records).iter() {
+        if crate::js_string_owned(&property(&record, "id")) == target {
+            return record;
+        }
+    }
+    JsValue::NULL
+}
+
 fn instance_option_enabled_impl(
     net: &str,
     instance_id: &str,
@@ -261,6 +279,18 @@ pub fn bridge_instance_command_should_include_r13b(
 ) -> bool {
     bridge_instance_command_option_enabled_r13b(net, instance_id, name, record)
 }
+
+#[wasm_bindgen(js_name = bridgeInstanceCommandShouldIncludeFromInstancesR13B)]
+pub fn bridge_instance_command_should_include_from_instances_r13b(
+    bridge_instances: JsValue,
+    net: String,
+    instance_id: JsValue,
+    name: String,
+) -> bool {
+    let record = instance_record_from_instances(&bridge_instances, &net, &instance_id);
+    bridge_instance_command_should_include_r13b(net, instance_id, name, record)
+}
+
 #[wasm_bindgen(js_name = bridgeInstanceCommandSetOptionR13B)]
 pub fn bridge_instance_command_set_option_r13b(
     net: String,
@@ -293,6 +323,18 @@ pub fn bridge_instance_command_checkbox_r13b(
         enabled,
     )
 }
+
+#[wasm_bindgen(js_name = bridgeInstanceCommandCheckboxFromInstancesR13B)]
+pub fn bridge_instance_command_checkbox_from_instances_r13b(
+    bridge_instances: JsValue,
+    net: String,
+    instance_id: JsValue,
+    name: String,
+) -> String {
+    let record = instance_record_from_instances(&bridge_instances, &net, &instance_id);
+    bridge_instance_command_checkbox_r13b(net, instance_id, name, record)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
