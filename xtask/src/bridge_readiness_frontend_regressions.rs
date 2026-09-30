@@ -202,19 +202,29 @@ const lastNetworkOwnership = {
 };
 
 const transportCalls = [];
-globalThis.__TAURI__ = {
-  core: {
-    invoke: async (command, args) => {
-      transportCalls.push({ command: String(command || ""), network: String(args?.network || "") });
-      return "transport-ok";
-    }
-  }
+const transportInvoke = async (command, args) => {
+  transportCalls.push({ command: String(command || ""), network: String(args?.network || "") });
+  return "transport-ok";
 };
+globalThis.__TAURI__ = { core: { invoke: transportInvoke } };
 const transportAvailable = wasm.bridgeRuntimeInvokeAvailable();
 const transportResult = await wasm.bridgeInvokeRuntimeCommand(
   "kgw_kgw_runtime_logs_v1",
   { network: "mainnet", runtimeRole: "bridge" }
 );
+const previewTransportResult = await wasm.bridgePreparePreview(
+  "mainnet",
+  { network: "mainnet", bridgeCommandPreview: "kaspad --test" }
+);
+const previewTransportCommand = String(transportCalls.at(-1)?.command || "");
+delete globalThis.__TAURI__;
+let previewUnavailableError = "";
+try {
+  await wasm.bridgePreparePreview("mainnet", { network: "mainnet" });
+} catch (error) {
+  previewUnavailableError = String(error?.message || error || "");
+}
+globalThis.__TAURI__ = { core: { invoke: transportInvoke } };
 
 class NodeLike {
   constructor() {
@@ -498,6 +508,7 @@ const sandbox = {
   wasmBridgeRuntimeActionOutcome: wasm.bridgeRuntimeActionOutcome,
   wasmBridgeStartWasInprocessR65F: wasm.bridgeStartWasInprocessR65F,
   wasmBridgeCurrentNodeModeFromUiR65F: wasm.bridgeCurrentNodeModeFromUiR65F,
+  wasmBridgeNodeMode: wasm.bridgeNodeMode,
   wasmBridgeSetOwnedNodeLockR65E: wasm.bridgeSetOwnedNodeLockR65E,
   wasmBridgeAssertNoPortConflictsR5: wasm.bridgeAssertNoPortConflictsR5,
   wasmBridgeTranslateRuntimeFeedback: wasm.bridgeTranslateRuntimeFeedback
@@ -516,7 +527,6 @@ sandbox.invokeBridgeIntegratedRuntime = (...args) => invokeRuntime(...args);
 sandbox.kgwBridgeRuntimeOwnerTraceR64D = () => {};
 sandbox.kgwBridgePreviewDeclaresInprocessR65F = () => false;
 sandbox.kgwBridgeR51KickRawLogLiveR134E = () => {};
-sandbox.bridgeNodeMode = () => "external";
 
 vm.createContext(sandbox);
 vm.runInContext(selected, sandbox, { filename: request.sourceName });
@@ -600,6 +610,11 @@ const output = {
     available: Boolean(transportAvailable),
     result: String(transportResult || ""),
     calls: transportCalls
+  },
+  previewTransport: {
+    result: String(previewTransportResult || ""),
+    command: previewTransportCommand,
+    unavailableError: previewUnavailableError
   },
   runtimeRunning: {
     liveOnly: api.runtimeRunning("role=node;network=mainnet;running=true"),
@@ -1060,14 +1075,33 @@ fn verify_static_contracts(
     for needle in [
         "bridgeRuntimeInvokeAvailable",
         "bridgeInvokeRuntimeCommand",
+        "bridgePreparePreview",
         "BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS",
         "BRIDGE_PREVIEW_INVOKE_TIMEOUT_MS",
+        "BRIDGE_PREVIEW_UNAVAILABLE_ERROR",
     ] {
         if !start_trace.contains(needle) {
             return Err(format!(
                 "Bridge start-trace Rust transport export missing: {needle}"
             ));
         }
+    }
+
+    if source.contains("async function kgwBridgePreparePreview(") {
+        return Err("Retired Bridge preview runtime dispatch JavaScript helper remains".to_owned());
+    }
+    if !source.contains("bridgePreparePreview as wasmBridgePreparePreview") {
+        return Err("Bridge preview runtime dispatch Rust/WASM import is missing".to_owned());
+    }
+    if source
+        .matches("wasmBridgePreparePreview(String(net || \"\"),")
+        .count()
+        != 3
+    {
+        return Err(
+            "Bridge preview runtime dispatch must use exactly three direct Rust/WASM call sites"
+                .to_owned(),
+        );
     }
 
     for forbidden in [
@@ -1140,6 +1174,17 @@ pub fn run(root: &Path) -> Result<String, String> {
         json!("kgw_kgw_runtime_logs_v1"),
     )?;
     expect(&actual, "/transport/calls/0/network", json!("mainnet"))?;
+    expect(&actual, "/previewTransport/result", json!("transport-ok"))?;
+    expect(
+        &actual,
+        "/previewTransport/command",
+        json!("kgw_runtime_settings_preview_v1"),
+    )?;
+    expect(
+        &actual,
+        "/previewTransport/unavailableError",
+        json!("The desktop runtime is unavailable."),
+    )?;
 
     expect(
         &actual,

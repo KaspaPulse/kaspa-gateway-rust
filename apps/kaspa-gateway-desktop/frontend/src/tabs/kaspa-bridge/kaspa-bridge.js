@@ -37,6 +37,7 @@ import initBridgeRust, {
   bridgeSamePortValueR98 as wasmBridgeSamePortValueR98,
   bridgeRuntimeInvokeAvailable as wasmBridgeRuntimeInvokeAvailable,
   bridgeInvokeRuntimeCommand as wasmBridgeInvokeRuntimeCommand,
+  bridgePreparePreview as wasmBridgePreparePreview,
   bridgeDefaultInstanceRecord as wasmBridgeDefaultInstanceRecord,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings,
@@ -1263,10 +1264,6 @@ function kgwBridgePreviewMessage(net, message, error = false) {
     applyStatusTone(status, error ? "error" : message.startsWith("Validating") ? "validating" : "verified");
   }
 }
-async function kgwBridgePreparePreview(net, payload) {
-  if (!wasmBridgeRuntimeInvokeAvailable()) throw new Error("The desktop runtime is unavailable.");
-  return await wasmBridgeInvokeRuntimeCommand("kgw_runtime_settings_preview_v1", payload);
-}
 function updateCommand(net) {
   const preview = wasmBridgeById(wasmBridgeElementId(net, "commandPreview"));
   if (!preview) return "";
@@ -1290,7 +1287,7 @@ function updateCommand(net) {
     kgwBridgePreviewMessage(net, "Validating effective settings...");
     request.timer = window.setTimeout(async () => {
       try {
-        const result = await kgwBridgePreparePreview(net, payload);
+        const result = await wasmBridgePreparePreview(String(net || ""), payload);
         if (KGW_BRIDGE_PREVIEW_REQUESTS.get(net) !== request) return;
         preview.value = JSON.stringify(result, null, 2);
         preview.dataset.effectiveSettings = JSON.stringify(result);
@@ -1595,7 +1592,7 @@ async function invokeBridgeIntegratedRuntime(command, net) {
   if (command === "kgw_kgw_apply_node_settings_v1") {
     const errors = kgwBridgeValidateForm(net, true);
     if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-    await kgwBridgePreparePreview(net, payload);
+    await wasmBridgePreparePreview(String(net || ""), payload);
   }
   return await wasmBridgeInvokeRuntimeCommand(command, payload);
 }
@@ -3135,7 +3132,7 @@ function installActions(root) {
           const errors = kgwBridgeValidateForm(net);
           if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
           const request = KGW_BRIDGE_PREVIEW_REQUESTS.get(net);
-          const result = await kgwBridgePreparePreview(net, buildApplyPayload(net, "kgw_kgw_apply_node_settings_v1"));
+          const result = await wasmBridgePreparePreview(String(net || ""), buildApplyPayload(net, "kgw_kgw_apply_node_settings_v1"));
           if (KGW_BRIDGE_PREVIEW_REQUESTS.get(net) !== request) throw new Error("Settings changed while copying. Try again.");
           text = JSON.stringify(result, null, 2);
         }

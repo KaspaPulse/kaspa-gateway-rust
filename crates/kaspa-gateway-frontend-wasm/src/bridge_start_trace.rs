@@ -328,6 +328,7 @@ fn resolve_invoke() -> Option<Function> {
 const BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS: u32 = 120_000;
 const BRIDGE_STOP_INVOKE_TIMEOUT_MS: u32 = 0;
 const BRIDGE_PREVIEW_INVOKE_TIMEOUT_MS: u32 = 10_000;
+const BRIDGE_PREVIEW_UNAVAILABLE_ERROR: &str = "The desktop runtime is unavailable.";
 
 fn runtime_invoke_timeout_ms(command: &str) -> u32 {
     match command {
@@ -948,6 +949,14 @@ pub async fn bridge_invoke_runtime_command(
     invoke_runtime_command_impl(&command, payload).await
 }
 
+#[wasm_bindgen(js_name = bridgePreparePreview)]
+pub async fn bridge_prepare_preview(_net: String, payload: JsValue) -> Result<JsValue, JsValue> {
+    if !runtime_invoke_available() {
+        return Err(JsValue::from_str(BRIDGE_PREVIEW_UNAVAILABLE_ERROR));
+    }
+    invoke_runtime_command_impl("kgw_runtime_settings_preview_v1", payload).await
+}
+
 #[wasm_bindgen(js_name = bridgeDispatchClipboardWrite)]
 pub async fn bridge_dispatch_clipboard_write(
     net: String,
@@ -1096,6 +1105,14 @@ mod tests {
         assert_eq!(
             runtime_invoke_timeout_ms("kgw_runtime_owner_status_v1"),
             120_000
+        );
+    }
+
+    #[test]
+    fn preview_unavailable_error_matches_bridge_legacy() {
+        assert_eq!(
+            BRIDGE_PREVIEW_UNAVAILABLE_ERROR,
+            "The desktop runtime is unavailable."
         );
     }
 
