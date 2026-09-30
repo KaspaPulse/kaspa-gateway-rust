@@ -1,14 +1,14 @@
 # CURRENT STATE
-- Current product boundary: OP248 Bridge R51 fields Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD a95367ffde9abd66905580cd5074d777bd4c973f, tree 52c6b34169dc52a49eedab8cf047906265c77234; no push.
+- Current product boundary: OP249 Bridge R51 ReadSettings Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD 51317fa0c426b4f9c5653fc60e6b1abe1b2c4e7e, tree 15b51191d7ee5e3040f2cd4874ab0a0e0037c795; R51 WriteSettings remains unchanged/out of scope; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
-- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`, current generation `2170` (OP248 CLOSED_LOCAL / VERIFIED_SUCCESS; parent task active).
+- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`, current generation `2175` (OP249 CLOSED_LOCAL / VERIFIED_SUCCESS; parent task active).
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP248 verified implementation checkpoint is `a95367ffde9abd66905580cd5074d777bd4c973f`, tree `52c6b34169dc52a49eedab8cf047906265c77234`.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP249 verified implementation checkpoint is `51317fa0c426b4f9c5653fc60e6b1abe1b2c4e7e`, tree `15b51191d7ee5e3040f2cd4874ab0a0e0037c795`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **CLEAN after the OP248 docs-only continuity closeout commit; verify dynamically before the next operation.** Product/test/generated OP248 files remain checkpointed and unchanged.
+- Working tree: **CLEAN after the OP249 docs-only continuity closeout commit; verify dynamically before the next operation.** Product/test/generated OP249 files remain checkpointed and unchanged.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -23,6 +23,7 @@
 - Rust source inventory: 222 (verified during OP218 post-codegen language-policy check/inventory).
 - Unapproved non-Rust source/execution: 0 / 0.
 - Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
+- Zero-touch continuity: the historical `tools/kgw_zero_touch_evidence.ps1` access/lock issue is no longer an active blocker because the file is currently readable. Real clipboard/evidence readiness remains a separate predicate and must be independently verified before live zero-touch execution.
 
 ## OP223 VERIFIED EVIDENCE
 - Three local Bridge JavaScript passthrough adapters were retired while preserving existing Rust/WASM owners and product behavior. Implementation checkpoint 0c052f7e5c39272bf67f743f0132efb45d265b10, tree d1bd16b502f9242061f68fa8bf90b3a6fed84f71; no push.
