@@ -57,6 +57,8 @@ import initBridgeRust, {
   bridgeNetworkPolicyMessage as wasmBridgeNetworkPolicyMessage,
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
+  bridgeResolveInnerTab as wasmBridgeResolveInnerTab,
+  bridgeSaveInnerTab as wasmBridgeSaveInnerTab,
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
   bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
@@ -719,29 +721,7 @@ function renderSections(net) {
  * Default Bridge inner tab is Live Bridge Monitor.
  * Last selected inner tab is saved per network.
  */
-function kgwBridgeInnerTabStorageKeyR101U(net) {
-  return `kgw.bridge.innerTab.${String(net || "unknown")}`;
-}
-
-function kgwBridgeNormalizeInnerTabR101U(value) {
-  return value === "settings" || value === "log" ? value : "log";
-}
-
-function kgwBridgeResolveInnerTabR101U(net) {
-  try {
-    return kgwBridgeNormalizeInnerTabR101U(localStorage.getItem(kgwBridgeInnerTabStorageKeyR101U(net)));
-  } catch (_) {
-    return "log";
-  }
-}
-
-function kgwBridgeSaveInnerTabR101U(net, selected) {
-  const normalized = kgwBridgeNormalizeInnerTabR101U(selected);
-  try {
-    localStorage.setItem(kgwBridgeInnerTabStorageKeyR101U(net), normalized);
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-  return normalized;
-}
+/* R101U inner-tab persistence is Rust-owned in bridge_frontend_helpers.rs. */
 
 function renderNetworkPanel(net, index) {
   /* KGW_BRIDGE_LIVE_MONITOR_TAB_LABEL_ORDER_R101S */
@@ -749,7 +729,7 @@ function renderNetworkPanel(net, index) {
    * Settings is no longer the default inner panel.
    * Default is Live Bridge Monitor unless a valid saved tab exists for this network.
    */
-  const activeInnerTab = kgwBridgeResolveInnerTabR101U(net.key);
+  const activeInnerTab = wasmBridgeResolveInnerTab(String(net.key || ""));
   const logActive = activeInnerTab === "log";
   const settingsActive = activeInnerTab === "settings";
 
@@ -1549,7 +1529,7 @@ function installDelegatedTabs(root) {
     const innerTab = event.target.closest("[data-bridge-inner-tab]");
     if (innerTab) {
       const net = innerTab.dataset.net;
-      const selected = kgwBridgeSaveInnerTabR101U(net, innerTab.dataset.bridgeInnerTab);
+      const selected = wasmBridgeSaveInnerTab(String(net || ""), innerTab.dataset.bridgeInnerTab);
       const panel = root.querySelector(`[data-bridge-network-panel="${net}"]`);
 
       kgwBridgeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-bridge-inner-tab-click", {

@@ -158,6 +158,39 @@ fn storage_set(key: &str, value: &str) {
     );
 }
 
+fn bridge_inner_tab_storage_key_text(net: &str) -> String {
+    format!(
+        "kgw.bridge.innerTab.{}",
+        if net.is_empty() { "unknown" } else { net }
+    )
+}
+
+fn normalize_bridge_inner_tab_text(value: &str) -> &'static str {
+    match value {
+        "settings" => "settings",
+        "log" => "log",
+        _ => "log",
+    }
+}
+
+#[wasm_bindgen(js_name = bridgeNormalizeInnerTab)]
+pub fn bridge_normalize_inner_tab(value: JsValue) -> String {
+    normalize_bridge_inner_tab_text(&crate::js_string_owned(&value)).to_owned()
+}
+
+#[wasm_bindgen(js_name = bridgeResolveInnerTab)]
+pub fn bridge_resolve_inner_tab(net: String) -> String {
+    let stored = storage_get(&bridge_inner_tab_storage_key_text(&net)).unwrap_or_default();
+    normalize_bridge_inner_tab_text(&stored).to_owned()
+}
+
+#[wasm_bindgen(js_name = bridgeSaveInnerTab)]
+pub fn bridge_save_inner_tab(net: String, selected: JsValue) -> String {
+    let normalized = bridge_normalize_inner_tab(selected);
+    storage_set(&bridge_inner_tab_storage_key_text(&net), &normalized);
+    normalized
+}
+
 fn profile_object(spec: &BridgeNetworkProfile) -> JsValue {
     let output = Object::new();
     for (key, value) in [
@@ -477,6 +510,22 @@ mod tests {
         );
         assert!(policy_message_text("testnet13").contains("no DNS seeders"));
         assert_eq!(policy_message_text("unknown"), "");
+    }
+
+    #[test]
+    fn inner_tab_persistence_policy_matches_legacy_contract() {
+        assert_eq!(
+            bridge_inner_tab_storage_key_text(""),
+            "kgw.bridge.innerTab.unknown"
+        );
+        assert_eq!(
+            bridge_inner_tab_storage_key_text("mainnet"),
+            "kgw.bridge.innerTab.mainnet"
+        );
+        assert_eq!(normalize_bridge_inner_tab_text("settings"), "settings");
+        assert_eq!(normalize_bridge_inner_tab_text("log"), "log");
+        assert_eq!(normalize_bridge_inner_tab_text("unknown"), "log");
+        assert_eq!(normalize_bridge_inner_tab_text(""), "log");
     }
 
     #[test]

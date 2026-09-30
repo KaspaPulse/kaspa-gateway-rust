@@ -51,6 +51,26 @@ const wasm = await import(pathToFileURL(wasmJsPath).href);
 await wasm.default({ module_or_path: await readFile(wasmPath) });
 
 globalThis.window = globalThis;
+const innerTabStore = new Map();
+globalThis.localStorage = {
+  getItem(key) {
+    return innerTabStore.has(String(key)) ? innerTabStore.get(String(key)) : null;
+  },
+  setItem(key, value) {
+    innerTabStore.set(String(key), String(value));
+  }
+};
+const innerTabOwnership = {
+  defaultMainnet: wasm.bridgeResolveInnerTab("mainnet"),
+  normalizeInvalid: wasm.bridgeNormalizeInnerTab("invalid"),
+  saveSettings: wasm.bridgeSaveInnerTab("mainnet", "settings"),
+  savedMainnet: wasm.bridgeResolveInnerTab("mainnet"),
+  defaultTestnet10: wasm.bridgeResolveInnerTab("testnet10"),
+  saveInvalid: wasm.bridgeSaveInnerTab("testnet10", "invalid"),
+  savedTestnet10: wasm.bridgeResolveInnerTab("testnet10"),
+  mainnetAfterTestnet: wasm.bridgeResolveInnerTab("mainnet")
+};
+
 const transportCalls = [];
 globalThis.__TAURI__ = {
   core: {
@@ -284,6 +304,7 @@ api.setActivity("mainnet", "Bridge start failed.");
 const visibleFailure = snapshot();
 
 const output = {
+  innerTabOwnership,
   transport: {
     available: Boolean(transportAvailable),
     result: String(transportResult || ""),
@@ -433,6 +454,45 @@ fn verify_static_contracts(
     }
 
     for needle in [
+        "#[wasm_bindgen(js_name = bridgeNormalizeInnerTab)]",
+        "#[wasm_bindgen(js_name = bridgeResolveInnerTab)]",
+        "#[wasm_bindgen(js_name = bridgeSaveInnerTab)]",
+        "kgw.bridge.innerTab.{}",
+    ] {
+        if !helpers.contains(needle) {
+            return Err(format!(
+                "Bridge R101U inner-tab Rust owner contract missing: {needle}"
+            ));
+        }
+    }
+
+    for needle in [
+        "bridgeResolveInnerTab as wasmBridgeResolveInnerTab",
+        "bridgeSaveInnerTab as wasmBridgeSaveInnerTab",
+        "wasmBridgeResolveInnerTab(String(net.key || \"\"))",
+        "wasmBridgeSaveInnerTab(String(net || \"\"), innerTab.dataset.bridgeInnerTab)",
+    ] {
+        if !source.contains(needle) {
+            return Err(format!(
+                "Bridge R101U direct Rust/WASM binding missing: {needle}"
+            ));
+        }
+    }
+
+    for forbidden in [
+        "function kgwBridgeInnerTabStorageKeyR101U(",
+        "function kgwBridgeNormalizeInnerTabR101U(",
+        "function kgwBridgeResolveInnerTabR101U(",
+        "function kgwBridgeSaveInnerTabR101U(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge R101U JavaScript owner remains: {forbidden}"
+            ));
+        }
+    }
+
+    for needle in [
         "bridgeStringifyRuntimeResult",
         "bridgeNormalizeRuntimeError",
         "bridgeParseRuntimeKeyValueResponse",
@@ -555,6 +615,27 @@ pub fn run(root: &Path) -> Result<String, String> {
         json!("kgw_kgw_runtime_logs_v1"),
     )?;
     expect(&actual, "/transport/calls/0/network", json!("mainnet"))?;
+
+    expect(&actual, "/innerTabOwnership/defaultMainnet", json!("log"))?;
+    expect(&actual, "/innerTabOwnership/normalizeInvalid", json!("log"))?;
+    expect(
+        &actual,
+        "/innerTabOwnership/saveSettings",
+        json!("settings"),
+    )?;
+    expect(
+        &actual,
+        "/innerTabOwnership/savedMainnet",
+        json!("settings"),
+    )?;
+    expect(&actual, "/innerTabOwnership/defaultTestnet10", json!("log"))?;
+    expect(&actual, "/innerTabOwnership/saveInvalid", json!("log"))?;
+    expect(&actual, "/innerTabOwnership/savedTestnet10", json!("log"))?;
+    expect(
+        &actual,
+        "/innerTabOwnership/mainnetAfterTestnet",
+        json!("settings"),
+    )?;
 
     expect(&actual, "/runtimeRunning/liveOnly", json!(false))?;
     expect(&actual, "/runtimeRunning/ready", json!(true))?;
