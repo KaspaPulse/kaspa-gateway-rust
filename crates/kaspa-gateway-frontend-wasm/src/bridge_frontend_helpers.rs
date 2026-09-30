@@ -263,6 +263,46 @@ fn storage_set(key: &str, value: &str) {
     );
 }
 
+const BRIDGE_R51_STORAGE_PREFIX: &str = "kgw.bridge.direct.v51.";
+
+fn bridge_r51_storage_key_text(key: &str) -> String {
+    format!("{BRIDGE_R51_STORAGE_PREFIX}{key}")
+}
+
+#[wasm_bindgen(js_name = bridgeR51Store)]
+pub fn bridge_r51_store(key: String, value: JsValue) -> Result<(), JsValue> {
+    let serialized = JSON::stringify(&value)?;
+    let storage = local_storage();
+    let setter = function(&storage, "setItem")
+        .ok_or_else(|| JsValue::from_str("localStorage.setItem is unavailable"))?;
+    setter.call2(
+        &storage,
+        &JsValue::from_str(&bridge_r51_storage_key_text(&key)),
+        serialized.as_ref(),
+    )?;
+    Ok(())
+}
+
+#[wasm_bindgen(js_name = bridgeR51Load)]
+pub fn bridge_r51_load(key: String) -> JsValue {
+    let storage = local_storage();
+    let Some(raw) = call1(
+        &storage,
+        "getItem",
+        &JsValue::from_str(&bridge_r51_storage_key_text(&key)),
+    ) else {
+        return JsValue::NULL;
+    };
+    if !present(&raw) {
+        return JsValue::NULL;
+    }
+    let text = crate::js_string_owned(&raw);
+    if text.is_empty() {
+        return JsValue::NULL;
+    }
+    JSON::parse(&text).unwrap_or(JsValue::NULL)
+}
+
 fn bridge_log_auto_scroll_key_text(net: &str) -> String {
     format!("kgw.bridge.log.autoscroll.{net}")
 }
@@ -955,6 +995,18 @@ mod tests {
             "mainnet"
         );
         assert_eq!(bridge_instance_network_key_text(None, None), "mainnet");
+    }
+
+    #[test]
+    fn r51_storage_prefix_matches_bridge_legacy_contract() {
+        assert_eq!(
+            bridge_r51_storage_key_text("saved:mainnet"),
+            "kgw.bridge.direct.v51.saved:mainnet"
+        );
+        assert_eq!(
+            bridge_r51_storage_key_text("factory:testnet10"),
+            "kgw.bridge.direct.v51.factory:testnet10"
+        );
     }
 
     #[test]

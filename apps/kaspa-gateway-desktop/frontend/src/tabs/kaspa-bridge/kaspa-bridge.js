@@ -27,6 +27,8 @@ import initBridgeRust, {
   bridgeParseRuntimeKeyValueResponse as wasmBridgeParseRuntimeKeyValueResponse,
   bridgeV7RuntimeRunningFromText as wasmBridgeV7RuntimeRunningFromText,
   bridgeR51IsRunning as wasmBridgeR51IsRunning,
+  bridgeR51Store as wasmBridgeR51Store,
+  bridgeR51Load as wasmBridgeR51Load,
   bridgeRuntimeErrorFromStatus as wasmBridgeRuntimeErrorFromStatus,
   bridgePreviewDeclaresInprocessR65F as wasmBridgePreviewDeclaresInprocessR65F,
   bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction,
@@ -104,7 +106,7 @@ function kgwBridgeSettingsOwnerCallbacksV19() {
     scope: "bridge",
     keys: () => kgwBridgeR51Keys(),
     readSettings: (net) => kgwBridgeR51ReadSettings(String(net || "")),
-    load: (key) => kgwBridgeR51Load(String(key || "")),
+    load: (key) => wasmBridgeR51Load(String(key || "")),
     validateForm: (net, focus = false) => kgwBridgeValidateForm(String(net || ""), Boolean(focus))
   };
 }
@@ -1900,7 +1902,6 @@ async function runBridgeIntegratedAction(action, net) {
   }
 }
 /* KGW_R51_DIRECT_BRIDGE_LOG_RUNTIME_SETTINGS_OWNER */
-const KGW_BRIDGE_R51_STORAGE_PREFIX = "kgw.bridge.direct.v51.";
 const KGW_BRIDGE_R51_LAST_STATUS = {};
 const KGW_BRIDGE_R51_LAST_LOGS = {};
 const KGW_BRIDGE_R51_LAST_ACTIVITY_NOTICE = {};
@@ -2296,29 +2297,17 @@ function kgwBridgeR51WriteSettings(net, values) {
   updateCommand(net);
 }
 
-function kgwBridgeR51Store(key, value) {
-  localStorage.setItem(KGW_BRIDGE_R51_STORAGE_PREFIX + key, JSON.stringify(value));
-}
-
-function kgwBridgeR51Load(key) {
-  try {
-    return JSON.parse(localStorage.getItem(KGW_BRIDGE_R51_STORAGE_PREFIX + key) || "null");
-  } catch {
-    return null;
-  }
-}
-
 function kgwBridgeR51CaptureFactoryDefaults() {
   for (const net of kgwBridgeR51Keys()) {
-    if (!kgwBridgeR51Load("factory:" + net)) {
-      kgwBridgeR51Store("factory:" + net, kgwBridgeR51ReadSettings(net));
+    if (!wasmBridgeR51Load("factory:" + net)) {
+      wasmBridgeR51Store("factory:" + net, kgwBridgeR51ReadSettings(net));
     }
   }
 }
 
 function kgwBridgeR51LoadSavedSettings() {
   for (const net of kgwBridgeR51Keys()) {
-    const saved = kgwBridgeR51Load("saved:" + net);
+    const saved = wasmBridgeR51Load("saved:" + net);
     if (saved) {
       kgwBridgeR51WriteSettings(net, kgwBridgeR95BNormalizeNetworkPortValues(net, saved, "load-saved-settings"));
     } else {
@@ -2351,9 +2340,9 @@ function kgwBridgeR51SaveSettings(net) {
     hasActiveStructuredInstance: Boolean(values && values.__kgwBridgeActiveInstanceR26B)
   });
 
-  kgwBridgeR51Store("saved:" + net, values);
+  wasmBridgeR51Store("saved:" + net, values);
 
-  const saved = kgwBridgeR51Load("saved:" + net);
+  const saved = wasmBridgeR51Load("saved:" + net);
   wasmBridgeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-complete", {
     patch: "R29B",
     owner: "bridge-r51-settings-owner",
@@ -2381,9 +2370,9 @@ function kgwBridgeR51SetAsDefaults(net) {
     hasActiveStructuredInstance: Boolean(values && values.__kgwBridgeActiveInstanceR26B)
   });
 
-  kgwBridgeR51Store("default:" + net, values);
+  wasmBridgeR51Store("default:" + net, values);
 
-  const stored = kgwBridgeR51Load("default:" + net);
+  const stored = wasmBridgeR51Load("default:" + net);
   wasmBridgeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-complete", {
     patch: "R29B",
     owner: "bridge-r51-settings-owner",
@@ -2402,7 +2391,7 @@ function kgwBridgeR51RestoreDefaults(net) {
   });
 
   {
-    const defaults = kgwBridgeR51Load("default:" + net) || kgwBridgeR51Load("factory:" + net);
+    const defaults = wasmBridgeR51Load("default:" + net) || wasmBridgeR51Load("factory:" + net);
     wasmBridgeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-loaded", {
       patch: "R29B",
       owner: "bridge-r51-settings-owner",
