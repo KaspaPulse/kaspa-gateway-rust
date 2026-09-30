@@ -212,6 +212,40 @@ pub fn bridge_current_node_mode_from_ui_r65f(net: String) -> String {
     String::new()
 }
 
+fn bridge_plain_port_only_text(value: &str) -> String {
+    let text = value.trim();
+    let digits = text.strip_prefix(':').unwrap_or(text);
+    if digits.is_empty() || digits.len() > 5 || !digits.as_bytes().iter().all(u8::is_ascii_digit) {
+        return text.to_owned();
+    }
+    let Ok(port) = digits.parse::<u32>() else {
+        return text.to_owned();
+    };
+    if !(1..=65_535).contains(&port) {
+        return text.to_owned();
+    }
+    port.to_string()
+}
+
+fn bridge_plain_port_only_js_text(value: &JsValue) -> String {
+    let text = if crate::js_boolean(value) {
+        crate::js_string_owned(value)
+    } else {
+        String::new()
+    };
+    bridge_plain_port_only_text(&text)
+}
+
+#[wasm_bindgen(js_name = bridgePlainPortOnlyValueR98)]
+pub fn bridge_plain_port_only_value_r98(value: JsValue) -> String {
+    bridge_plain_port_only_js_text(&value)
+}
+
+#[wasm_bindgen(js_name = bridgeSamePortValueR98)]
+pub fn bridge_same_port_value_r98(left: JsValue, right: JsValue) -> bool {
+    bridge_plain_port_only_js_text(&left) == bridge_plain_port_only_js_text(&right)
+}
+
 fn local_storage() -> JsValue {
     property(&window(), "localStorage")
 }
@@ -896,6 +930,34 @@ mod tests {
             "runtime.failed"
         );
         assert_eq!(runtime_feedback_terminal_text("", ""), "");
+    }
+
+    #[test]
+    fn port_only_normalization_matches_legacy_contract() {
+        for (input, expected) in [
+            ("5655", "5655"),
+            (":5655", "5655"),
+            ("  :080  ", "80"),
+            ("00001", "1"),
+            ("65535", "65535"),
+            ("0", "0"),
+            (":00000", ":00000"),
+            ("65536", "65536"),
+            ("123456", "123456"),
+            (":12x", ":12x"),
+            (" host:5655 ", "host:5655"),
+            ("", ""),
+        ] {
+            assert_eq!(bridge_plain_port_only_text(input), expected);
+        }
+        assert_eq!(
+            bridge_plain_port_only_text(":00080"),
+            bridge_plain_port_only_text("80")
+        );
+        assert_ne!(
+            bridge_plain_port_only_text("5556"),
+            bridge_plain_port_only_text("5655")
+        );
     }
 
     #[test]

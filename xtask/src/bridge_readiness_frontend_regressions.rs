@@ -61,6 +61,25 @@ globalThis.localStorage = {
   }
 };
 
+const portOnlyNormalizationOwnership = {
+  plain: wasm.bridgePlainPortOnlyValueR98("5655"),
+  colon: wasm.bridgePlainPortOnlyValueR98(":5655"),
+  trimmedLeadingZeros: wasm.bridgePlainPortOnlyValueR98("  :080  "),
+  numeric: wasm.bridgePlainPortOnlyValueR98(5655),
+  falseyZero: wasm.bridgePlainPortOnlyValueR98(0),
+  falseyFalse: wasm.bridgePlainPortOnlyValueR98(false),
+  falseyNull: wasm.bridgePlainPortOnlyValueR98(null),
+  zeroString: wasm.bridgePlainPortOnlyValueR98("0"),
+  colonZero: wasm.bridgePlainPortOnlyValueR98(":00000"),
+  max: wasm.bridgePlainPortOnlyValueR98("65535"),
+  tooHigh: wasm.bridgePlainPortOnlyValueR98("65536"),
+  tooLong: wasm.bridgePlainPortOnlyValueR98("123456"),
+  hostPort: wasm.bridgePlainPortOnlyValueR98(" host:5655 "),
+  sameColonLeadingZeros: wasm.bridgeSamePortValueR98(":00080", "80"),
+  sameWhitespace: wasm.bridgeSamePortValueR98(" 5655 ", ":5655"),
+  different: wasm.bridgeSamePortValueR98("5556", "5655")
+};
+
 const bridgeOwnedNodeLockEvents = [];
 globalThis.CustomEvent = function CustomEvent(type, options = {}) {
   this.type = String(type || "");
@@ -567,6 +586,7 @@ api.setActivity("mainnet", "Bridge start failed.");
 const visibleFailure = snapshot();
 
 const output = {
+  portOnlyNormalizationOwnership,
   currentNodeModeOwnership,
   bridgeOwnedNodeLockOwnership,
   runtimeTranslationOwnership,
@@ -948,6 +968,56 @@ fn verify_static_contracts(
     }
 
     for needle in [
+        "#[wasm_bindgen(js_name = bridgePlainPortOnlyValueR98)]",
+        "#[wasm_bindgen(js_name = bridgeSamePortValueR98)]",
+        "fn bridge_plain_port_only_text(",
+        "strip_prefix(':')",
+        "1..=65_535",
+        "u8::is_ascii_digit",
+    ] {
+        if !helpers.contains(needle) {
+            return Err(format!(
+                "Bridge R98 port-only normalization Rust owner contract missing: {needle}"
+            ));
+        }
+    }
+    for needle in [
+        "bridgePlainPortOnlyValueR98 as wasmBridgePlainPortOnlyValueR98",
+        "bridgeSamePortValueR98 as wasmBridgeSamePortValueR98",
+    ] {
+        if !source.contains(needle) {
+            return Err(format!(
+                "Bridge R98 direct Rust/WASM binding missing: {needle}"
+            ));
+        }
+    }
+    if source.matches("wasmBridgePlainPortOnlyValueR98(").count() != 3 {
+        return Err(
+            "Bridge R98 plain-port owner must have exactly three generated-WASM call sites"
+                .to_owned(),
+        );
+    }
+    if source.matches("wasmBridgeSamePortValueR98(").count() != 2 {
+        return Err(
+            "Bridge R98 same-port owner must have exactly two generated-WASM call sites".to_owned(),
+        );
+    }
+    for retired in [
+        "function kgwBridgeR98PlainPortOnlyValue(",
+        "function kgwBridgeR98SamePortValue(",
+        "function kgwBridgeR95BNormalizePlainPortValue(",
+        "kgwBridgeR98PlainPortOnlyValue(",
+        "kgwBridgeR98SamePortValue(",
+        "kgwBridgeR95BNormalizePlainPortValue(",
+    ] {
+        if source.contains(retired) {
+            return Err(format!(
+                "Retired Bridge R98/R95B JavaScript normalization owner remains: {retired}"
+            ));
+        }
+    }
+
+    for needle in [
         "bridgeStringifyRuntimeResult",
         "bridgeNormalizeRuntimeError",
         "bridgeParseRuntimeKeyValueResponse",
@@ -1070,6 +1140,87 @@ pub fn run(root: &Path) -> Result<String, String> {
         json!("kgw_kgw_runtime_logs_v1"),
     )?;
     expect(&actual, "/transport/calls/0/network", json!("mainnet"))?;
+
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/plain",
+        json!("5655"),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/colon",
+        json!("5655"),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/trimmedLeadingZeros",
+        json!("80"),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/numeric",
+        json!("5655"),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/falseyZero",
+        json!(""),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/falseyFalse",
+        json!(""),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/falseyNull",
+        json!(""),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/zeroString",
+        json!("0"),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/colonZero",
+        json!(":00000"),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/max",
+        json!("65535"),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/tooHigh",
+        json!("65536"),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/tooLong",
+        json!("123456"),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/hostPort",
+        json!("host:5655"),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/sameColonLeadingZeros",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/sameWhitespace",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/portOnlyNormalizationOwnership/different",
+        json!(false),
+    )?;
 
     expect(
         &actual,

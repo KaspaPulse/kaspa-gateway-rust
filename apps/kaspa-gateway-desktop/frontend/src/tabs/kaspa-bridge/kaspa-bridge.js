@@ -33,6 +33,8 @@ import initBridgeRust, {
   bridgeRuntimeActionOutcome as wasmBridgeRuntimeActionOutcome,
   bridgeStartWasInprocessR65F as wasmBridgeStartWasInprocessR65F,
   bridgeCurrentNodeModeFromUiR65F as wasmBridgeCurrentNodeModeFromUiR65F,
+  bridgePlainPortOnlyValueR98 as wasmBridgePlainPortOnlyValueR98,
+  bridgeSamePortValueR98 as wasmBridgeSamePortValueR98,
   bridgeRuntimeInvokeAvailable as wasmBridgeRuntimeInvokeAvailable,
   bridgeInvokeRuntimeCommand as wasmBridgeInvokeRuntimeCommand,
   bridgeDefaultInstanceRecord as wasmBridgeDefaultInstanceRecord,
@@ -2215,24 +2217,7 @@ function kgwBridgeR51ReadSettings(net) {
  * Port-only UI fields must display plain numbers such as 5655, not :5655.
  * Host:port fields and command preview syntax remain untouched.
  */
-function kgwBridgeR98PlainPortOnlyValue(value) {
-  const text = String(value || "").trim();
-  const match = text.match(/^:?(\d{1,5})$/);
-  if (!match) return text;
-
-  const port = Number(match[1]);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) return text;
-
-  return String(port);
-}
-
-function kgwBridgeR98SamePortValue(left, right) {
-  return kgwBridgeR98PlainPortOnlyValue(left) === kgwBridgeR98PlainPortOnlyValue(right);
-}
-
-function kgwBridgeR95BNormalizePlainPortValue(value) {
-  return kgwBridgeR98PlainPortOnlyValue(value);
-}
+// Bridge R98 plain-port normalization and same-port comparison are Rust-owned in bridge_frontend_helpers.rs.
 
 function kgwBridgeR95BStorageFieldId(net, fieldName) {
   return "bridge-" + String(net || "") + "-" + String(fieldName || "");
@@ -2244,7 +2229,7 @@ function kgwBridgeR95BPreferredPort(net, kind) {
     : (KGW_BRIDGE_PORT_PROFILES_R35B[String(net || "")] || KGW_BRIDGE_PORT_PROFILES_R35B.mainnet);
 
   const range = profile && profile[kind];
-  return range && range.preferred ? kgwBridgeR98PlainPortOnlyValue(range.preferred) : "";
+  return range && range.preferred ? wasmBridgePlainPortOnlyValueR98(range.preferred) : "";
 }
 
 function kgwBridgeR95BKnownStaleSequentialPort(net, fieldName) {
@@ -2280,12 +2265,12 @@ function kgwBridgeR95BNormalizeNetworkPortValues(net, values, reason) {
 
     if (!item || typeof item !== "object" || !("value" in item)) continue;
 
-    const current = kgwBridgeR95BNormalizePlainPortValue(item.value);
+    const current = wasmBridgePlainPortOnlyValueR98(item.value);
     const stale = kgwBridgeR95BKnownStaleSequentialPort(net, field.fieldName);
     const preferred = kgwBridgeR95BPreferredPort(net, field.kind);
 
-    if (stale && preferred && kgwBridgeR98SamePortValue(current, stale) && !kgwBridgeR98SamePortValue(current, preferred)) {
-      item.value = kgwBridgeR98PlainPortOnlyValue(preferred);
+    if (stale && preferred && wasmBridgeSamePortValueR98(current, stale) && !wasmBridgeSamePortValueR98(current, preferred)) {
+      item.value = wasmBridgePlainPortOnlyValueR98(preferred);
       changes.push({
         field: field.fieldName,
         from: current,
