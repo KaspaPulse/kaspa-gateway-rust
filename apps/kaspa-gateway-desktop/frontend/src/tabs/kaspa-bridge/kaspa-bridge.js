@@ -55,6 +55,9 @@ import initBridgeRust, {
   bridgeI18nTextR41 as wasmBridgeI18nTextR41,
   bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
   bridgeNetworkPolicyMessage as wasmBridgeNetworkPolicyMessage,
+  bridgeNormalizeNetwork as wasmBridgeNormalizeNetwork,
+  bridgeReadLastNetwork as wasmBridgeReadLastNetwork,
+  bridgeSaveLastNetwork as wasmBridgeSaveLastNetwork,
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
   bridgeResolveInnerTab as wasmBridgeResolveInnerTab,
@@ -1434,20 +1437,7 @@ function kgwBridgeExplicitTraceR27D(net, action, phase, details) {
   } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 }
 /* KGW_BRIDGE_LAST_NETWORK_RESTORE_R101W2 */
-const KGW_BRIDGE_LAST_NETWORK_KEY_R101W2 = "kgw.bridge.lastNetwork";
-function kgwBridgeNormalizeNetworkR101W2(value) {
-  const normalized = String(value || "").trim();
-  return normalized === "mainnet" || normalized === "testnet10" || normalized === "testnet13" ? normalized : "";
-}
-function kgwBridgeReadLastNetworkR101W2() {
-  try { return kgwBridgeNormalizeNetworkR101W2(localStorage.getItem(KGW_BRIDGE_LAST_NETWORK_KEY_R101W2)); } catch (_) { return ""; }
-}
-function kgwBridgeSaveLastNetworkR101W2(net) {
-  const normalized = kgwBridgeNormalizeNetworkR101W2(net);
-  if (!normalized) return "";
-  try { localStorage.setItem(KGW_BRIDGE_LAST_NETWORK_KEY_R101W2, normalized); } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-  return normalized;
-}
+/* R101W2 last-network persistence is Rust-owned in bridge_frontend_helpers.rs. */
 
 function installNetworkTabs(root) {
   // KGW_R63_DIRECT_BRIDGE_NETWORK_TAB_SWITCH_OWNER
@@ -1464,9 +1454,9 @@ function installNetworkTabs(root) {
   function allNetworkPanels() { return Array.from(root.querySelectorAll(networkPanelSelector)); }
 
   function selectBridgeNetwork(net, reason = "manual", persist = false) {
-    const normalized = kgwBridgeNormalizeNetworkR101W2(net);
+    const normalized = wasmBridgeNormalizeNetwork(net);
     if (!normalized) return;
-    if (persist) kgwBridgeSaveLastNetworkR101W2(normalized);
+    if (persist) wasmBridgeSaveLastNetwork(normalized);
 
     const tabs = allNetworkTabs();
     const panels = allNetworkPanels();
@@ -1515,7 +1505,7 @@ function installNetworkTabs(root) {
     selectBridgeNetwork(net, "click", true);
   }, true);
 
-  const saved = kgwBridgeReadLastNetworkR101W2();
+  const saved = wasmBridgeReadLastNetwork();
   const existingActiveTab = allNetworkTabs().find((tab) => tab.classList.contains("active") || tab.classList.contains("is-active") || tab.getAttribute("aria-selected") === "true" || tab.dataset.active === "true");
   const defaultTab = (saved && allNetworkTabs().find((tab) => normalizeNetFromElement(tab) === saved)) || existingActiveTab || allNetworkTabs().find((tab) => normalizeNetFromElement(tab) === "mainnet") || allNetworkTabs()[0];
   if (defaultTab) selectBridgeNetwork(normalizeNetFromElement(defaultTab), saved ? "saved-initial" : "initial", false);

@@ -70,6 +70,15 @@ const innerTabOwnership = {
   savedTestnet10: wasm.bridgeResolveInnerTab("testnet10"),
   mainnetAfterTestnet: wasm.bridgeResolveInnerTab("mainnet")
 };
+const lastNetworkOwnership = {
+  initial: wasm.bridgeReadLastNetwork(),
+  normalizeMainnet: wasm.bridgeNormalizeNetwork(" mainnet "),
+  normalizeInvalid: wasm.bridgeNormalizeNetwork("devnet"),
+  saveTestnet10: wasm.bridgeSaveLastNetwork(" testnet10 "),
+  savedAfterValid: wasm.bridgeReadLastNetwork(),
+  saveInvalid: wasm.bridgeSaveLastNetwork("devnet"),
+  savedAfterInvalid: wasm.bridgeReadLastNetwork()
+};
 
 const transportCalls = [];
 globalThis.__TAURI__ = {
@@ -305,6 +314,7 @@ const visibleFailure = snapshot();
 
 const output = {
   innerTabOwnership,
+  lastNetworkOwnership,
   transport: {
     available: Boolean(transportAvailable),
     result: String(transportResult || ""),
@@ -493,6 +503,47 @@ fn verify_static_contracts(
     }
 
     for needle in [
+        "#[wasm_bindgen(js_name = bridgeNormalizeNetwork)]",
+        "#[wasm_bindgen(js_name = bridgeReadLastNetwork)]",
+        "#[wasm_bindgen(js_name = bridgeSaveLastNetwork)]",
+        "kgw.bridge.lastNetwork",
+    ] {
+        if !helpers.contains(needle) {
+            return Err(format!(
+                "Bridge R101W2 last-network Rust owner contract missing: {needle}"
+            ));
+        }
+    }
+
+    for needle in [
+        "bridgeNormalizeNetwork as wasmBridgeNormalizeNetwork",
+        "bridgeReadLastNetwork as wasmBridgeReadLastNetwork",
+        "bridgeSaveLastNetwork as wasmBridgeSaveLastNetwork",
+        "wasmBridgeNormalizeNetwork(net)",
+        "wasmBridgeSaveLastNetwork(normalized)",
+        "wasmBridgeReadLastNetwork()",
+    ] {
+        if !source.contains(needle) {
+            return Err(format!(
+                "Bridge R101W2 direct Rust/WASM binding missing: {needle}"
+            ));
+        }
+    }
+
+    for retired in [
+        "const KGW_BRIDGE_LAST_NETWORK_KEY_R101W2 =",
+        "function kgwBridgeNormalizeNetworkR101W2(",
+        "function kgwBridgeReadLastNetworkR101W2(",
+        "function kgwBridgeSaveLastNetworkR101W2(",
+    ] {
+        if source.contains(retired) {
+            return Err(format!(
+                "Retired Bridge R101W2 JavaScript owner remains: {retired}"
+            ));
+        }
+    }
+
+    for needle in [
         "bridgeStringifyRuntimeResult",
         "bridgeNormalizeRuntimeError",
         "bridgeParseRuntimeKeyValueResponse",
@@ -635,6 +686,30 @@ pub fn run(root: &Path) -> Result<String, String> {
         &actual,
         "/innerTabOwnership/mainnetAfterTestnet",
         json!("settings"),
+    )?;
+
+    expect(&actual, "/lastNetworkOwnership/initial", json!(""))?;
+    expect(
+        &actual,
+        "/lastNetworkOwnership/normalizeMainnet",
+        json!("mainnet"),
+    )?;
+    expect(&actual, "/lastNetworkOwnership/normalizeInvalid", json!(""))?;
+    expect(
+        &actual,
+        "/lastNetworkOwnership/saveTestnet10",
+        json!("testnet10"),
+    )?;
+    expect(
+        &actual,
+        "/lastNetworkOwnership/savedAfterValid",
+        json!("testnet10"),
+    )?;
+    expect(&actual, "/lastNetworkOwnership/saveInvalid", json!(""))?;
+    expect(
+        &actual,
+        "/lastNetworkOwnership/savedAfterInvalid",
+        json!("testnet10"),
     )?;
 
     expect(&actual, "/runtimeRunning/liveOnly", json!(false))?;

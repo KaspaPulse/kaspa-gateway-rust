@@ -191,6 +191,37 @@ pub fn bridge_save_inner_tab(net: String, selected: JsValue) -> String {
     normalized
 }
 
+fn normalize_bridge_network_text(value: &str) -> String {
+    let normalized = value.trim();
+    match normalized {
+        "mainnet" | "testnet10" | "testnet13" => normalized.to_owned(),
+        _ => String::new(),
+    }
+}
+
+const BRIDGE_LAST_NETWORK_KEY: &str = "kgw.bridge.lastNetwork";
+
+#[wasm_bindgen(js_name = bridgeNormalizeNetwork)]
+pub fn bridge_normalize_network(value: JsValue) -> String {
+    normalize_bridge_network_text(&crate::js_string_owned(&value))
+}
+
+#[wasm_bindgen(js_name = bridgeReadLastNetwork)]
+pub fn bridge_read_last_network() -> String {
+    storage_get(BRIDGE_LAST_NETWORK_KEY)
+        .map(|value| normalize_bridge_network_text(&value))
+        .unwrap_or_default()
+}
+
+#[wasm_bindgen(js_name = bridgeSaveLastNetwork)]
+pub fn bridge_save_last_network(net: JsValue) -> String {
+    let normalized = bridge_normalize_network(net);
+    if !normalized.is_empty() {
+        storage_set(BRIDGE_LAST_NETWORK_KEY, &normalized);
+    }
+    normalized
+}
+
 fn profile_object(spec: &BridgeNetworkProfile) -> JsValue {
     let output = Object::new();
     for (key, value) in [
@@ -526,6 +557,16 @@ mod tests {
         assert_eq!(normalize_bridge_inner_tab_text("log"), "log");
         assert_eq!(normalize_bridge_inner_tab_text("unknown"), "log");
         assert_eq!(normalize_bridge_inner_tab_text(""), "log");
+    }
+
+    #[test]
+    fn last_network_persistence_policy_matches_legacy_contract() {
+        assert_eq!(BRIDGE_LAST_NETWORK_KEY, "kgw.bridge.lastNetwork");
+        assert_eq!(normalize_bridge_network_text(" mainnet "), "mainnet");
+        assert_eq!(normalize_bridge_network_text("testnet10"), "testnet10");
+        assert_eq!(normalize_bridge_network_text("testnet13"), "testnet13");
+        assert_eq!(normalize_bridge_network_text("devnet"), "");
+        assert_eq!(normalize_bridge_network_text(""), "");
     }
 
     #[test]
