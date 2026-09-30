@@ -32,6 +32,7 @@ import initBridgeRust, {
   bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction,
   bridgeRuntimeActionOutcome as wasmBridgeRuntimeActionOutcome,
   bridgeStartWasInprocessR65F as wasmBridgeStartWasInprocessR65F,
+  bridgeCurrentNodeModeFromUiR65F as wasmBridgeCurrentNodeModeFromUiR65F,
   bridgeRuntimeInvokeAvailable as wasmBridgeRuntimeInvokeAvailable,
   bridgeInvokeRuntimeCommand as wasmBridgeInvokeRuntimeCommand,
   bridgeDefaultInstanceRecord as wasmBridgeDefaultInstanceRecord,
@@ -1660,24 +1661,7 @@ async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {
 
 // KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E is Rust-owned in node_tab.rs.
 
-// KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_MAINNET_IMMEDIATE_R65F
-function kgwBridgeCurrentNodeModeFromUiR65F(net) {
-  try {
-    const direct = wasmBridgeById(wasmBridgeElementId(net, "nodeMode"));
-    if (direct && "value" in direct) return String(direct.value || "");
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-
-  try {
-    const panel = document.querySelector('[data-bridge-panel="' + String(net || "") + '"]') ||
-      document.querySelector('[data-net="' + String(net || "") + '"]');
-    if (panel) {
-      const select = panel.querySelector('[id$="-nodeMode"], [data-bridge-setting="nodeMode"], select[name="nodeMode"]');
-      if (select && "value" in select) return String(select.value || "");
-    }
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-
-  return "";
-}
+// KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_MAINNET_IMMEDIATE_R65F DOM read is Rust-owned in bridge_frontend_helpers.rs.
 
 async function runBridgeIntegratedAction(action, net) {
   function kgwBridgeRuntimeOwnerTraceR64D(phase, details) {
@@ -1862,7 +1846,7 @@ async function runBridgeIntegratedAction(action, net) {
         const bridgeNodeMode = String(fields.node_mode || fields.nodeMode || "").toLowerCase();
         const bridgeStartWasInprocess = wasmBridgeStartWasInprocessR65F(
           fields,
-          String(kgwBridgeCurrentNodeModeFromUiR65F(net) || ""),
+          String(wasmBridgeCurrentNodeModeFromUiR65F(String(net || "")) || ""),
           String(preview || "")
         );
         if (bridgeStartWasInprocess) {
@@ -1870,7 +1854,7 @@ async function runBridgeIntegratedAction(action, net) {
             source: "bridge-start-confirmed-r65f",
             action: "start",
             nodeMode: bridgeNodeMode,
-            uiNodeMode: kgwBridgeCurrentNodeModeFromUiR65F(net),
+            uiNodeMode: wasmBridgeCurrentNodeModeFromUiR65F(String(net || "")),
             previewDeclaredInprocess: wasmBridgePreviewDeclaresInprocessR65F(preview),
             pid: String(fields.pid || "")
           });
@@ -1878,7 +1862,7 @@ async function runBridgeIntegratedAction(action, net) {
         kgwBridgeRuntimeOwnerTraceR64D("r65f-bridge-owned-node-lock-evaluated", {
           patch: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_MAINNET_IMMEDIATE_R65F",
           bridgeNodeMode,
-          uiNodeMode: kgwBridgeCurrentNodeModeFromUiR65F(net),
+          uiNodeMode: wasmBridgeCurrentNodeModeFromUiR65F(String(net || "")),
           previewDeclaredInprocess: wasmBridgePreviewDeclaresInprocessR65F(preview),
           bridgeStartWasInprocess
         });

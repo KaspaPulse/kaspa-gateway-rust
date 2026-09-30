@@ -291,12 +291,50 @@ const panel = {
     return null;
   }
 };
+
+const directNodeMode = new Element();
+directNodeMode.value = "inprocess";
+elements.set(wasm.bridgeElementId("r65f-direct", "nodeMode"), directNodeMode);
+
+const primaryPanelNodeMode = new Element();
+primaryPanelNodeMode.value = "external";
+const primaryModePanel = {
+  querySelector(selector) {
+    return String(selector).includes("nodeMode") ? primaryPanelNodeMode : null;
+  }
+};
+
+const secondaryPanelNodeMode = new Element();
+secondaryPanelNodeMode.value = "secondary";
+const secondaryModePanel = {
+  querySelector(selector) {
+    return String(selector).includes("nodeMode") ? secondaryPanelNodeMode : null;
+  }
+};
+
+const precedenceDirectNodeMode = new Element();
+precedenceDirectNodeMode.value = "";
+elements.set(wasm.bridgeElementId("r65f-precedence", "nodeMode"), precedenceDirectNodeMode);
+const precedencePanelNodeMode = new Element();
+precedencePanelNodeMode.value = "must-not-win";
+const precedenceModePanel = {
+  querySelector(selector) {
+    return String(selector).includes("nodeMode") ? precedencePanelNodeMode : null;
+  }
+};
+
 const documentImpl = {
   getElementById(id) {
     return elements.get(id) || null;
   },
   querySelector(selector) {
-    return selector.includes('data-bridge-network-panel="mainnet"') ? panel : null;
+    const text = String(selector);
+    if (text.includes('data-bridge-network-panel="mainnet"')) return panel;
+    if (text.includes('data-bridge-panel="r65f-primary"')) return primaryModePanel;
+    if (text.includes('data-net="r65f-secondary"')) return secondaryModePanel;
+    if (text.includes('data-bridge-panel="r65f-precedence"')) return precedenceModePanel;
+    if (text.includes('r65f-error')) throw new Error("synthetic R65F selector failure");
+    return null;
   },
   createDocumentFragment() {
     return new NodeLike();
@@ -311,6 +349,15 @@ const documentImpl = {
   }
 };
 globalThis.document = documentImpl;
+
+const currentNodeModeOwnership = {
+  direct: wasm.bridgeCurrentNodeModeFromUiR65F("r65f-direct"),
+  primaryPanel: wasm.bridgeCurrentNodeModeFromUiR65F("r65f-primary"),
+  secondaryPanel: wasm.bridgeCurrentNodeModeFromUiR65F("r65f-secondary"),
+  directEmptyPrecedence: wasm.bridgeCurrentNodeModeFromUiR65F("r65f-precedence"),
+  missing: wasm.bridgeCurrentNodeModeFromUiR65F("r65f-missing"),
+  selectorError: wasm.bridgeCurrentNodeModeFromUiR65F("r65f-error")
+};
 
 const bridgeLogOutput = elements.get("bridge-mainnet-logOutput");
 const bridgeLogParent = new Element();
@@ -431,6 +478,7 @@ const sandbox = {
   wasmBridgeRuntimeCommandForAction: wasm.bridgeRuntimeCommandForAction,
   wasmBridgeRuntimeActionOutcome: wasm.bridgeRuntimeActionOutcome,
   wasmBridgeStartWasInprocessR65F: wasm.bridgeStartWasInprocessR65F,
+  wasmBridgeCurrentNodeModeFromUiR65F: wasm.bridgeCurrentNodeModeFromUiR65F,
   wasmBridgeSetOwnedNodeLockR65E: wasm.bridgeSetOwnedNodeLockR65E,
   wasmBridgeAssertNoPortConflictsR5: wasm.bridgeAssertNoPortConflictsR5,
   wasmBridgeTranslateRuntimeFeedback: wasm.bridgeTranslateRuntimeFeedback
@@ -447,7 +495,6 @@ sandbox.confirmUserAction = async () => true;
 sandbox.kgwBridgeV7BlockInprocessIfNodeOwnerRunning = async () => false;
 sandbox.invokeBridgeIntegratedRuntime = (...args) => invokeRuntime(...args);
 sandbox.kgwBridgeRuntimeOwnerTraceR64D = () => {};
-sandbox.kgwBridgeCurrentNodeModeFromUiR65F = () => "external";
 sandbox.kgwBridgePreviewDeclaresInprocessR65F = () => false;
 sandbox.kgwBridgeR51KickRawLogLiveR134E = () => {};
 sandbox.bridgeNodeMode = () => "external";
@@ -520,6 +567,7 @@ api.setActivity("mainnet", "Bridge start failed.");
 const visibleFailure = snapshot();
 
 const output = {
+  currentNodeModeOwnership,
   bridgeOwnedNodeLockOwnership,
   runtimeTranslationOwnership,
   innerTabOwnership,
@@ -863,6 +911,43 @@ fn verify_static_contracts(
     }
 
     for needle in [
+        "#[wasm_bindgen(js_name = bridgeCurrentNodeModeFromUiR65F)]",
+        "Reflect::has(target, &JsValue::from_str(\"value\"))",
+        "[data-bridge-panel=\\\"{selector_net}\\\"]",
+        "[data-net=\\\"{selector_net}\\\"]",
+        "[id$=\\\"-nodeMode\\\"], [data-bridge-setting=\\\"nodeMode\\\"], select[name=\\\"nodeMode\\\"]",
+    ] {
+        if !helpers.contains(needle) {
+            return Err(format!(
+                "Bridge R65F current-node-mode Rust DOM owner contract missing: {needle}"
+            ));
+        }
+    }
+    for needle in [
+        "bridgeCurrentNodeModeFromUiR65F as wasmBridgeCurrentNodeModeFromUiR65F",
+        "wasmBridgeCurrentNodeModeFromUiR65F(String(net || \"\"))",
+    ] {
+        if !source.contains(needle) {
+            return Err(format!(
+                "Bridge R65F current-node-mode direct Rust/WASM binding missing: {needle}"
+            ));
+        }
+    }
+    if source
+        .matches("wasmBridgeCurrentNodeModeFromUiR65F(String(net || \"\"))")
+        .count()
+        != 3
+    {
+        return Err(
+            "Bridge R65F current-node-mode owner must have exactly three generated-WASM call sites"
+                .to_owned(),
+        );
+    }
+    if source.contains("function kgwBridgeCurrentNodeModeFromUiR65F(") {
+        return Err("Retired Bridge R65F current-node-mode JavaScript owner remains".to_owned());
+    }
+
+    for needle in [
         "bridgeStringifyRuntimeResult",
         "bridgeNormalizeRuntimeError",
         "bridgeParseRuntimeKeyValueResponse",
@@ -985,6 +1070,33 @@ pub fn run(root: &Path) -> Result<String, String> {
         json!("kgw_kgw_runtime_logs_v1"),
     )?;
     expect(&actual, "/transport/calls/0/network", json!("mainnet"))?;
+
+    expect(
+        &actual,
+        "/currentNodeModeOwnership/direct",
+        json!("inprocess"),
+    )?;
+    expect(
+        &actual,
+        "/currentNodeModeOwnership/primaryPanel",
+        json!("external"),
+    )?;
+    expect(
+        &actual,
+        "/currentNodeModeOwnership/secondaryPanel",
+        json!("secondary"),
+    )?;
+    expect(
+        &actual,
+        "/currentNodeModeOwnership/directEmptyPrecedence",
+        json!(""),
+    )?;
+    expect(&actual, "/currentNodeModeOwnership/missing", json!(""))?;
+    expect(
+        &actual,
+        "/currentNodeModeOwnership/selectorError",
+        json!(""),
+    )?;
 
     expect(&actual, "/bridgeOwnedNodeLockOwnership/locked", json!(true))?;
     expect(

@@ -153,6 +153,65 @@ fn query_bridge(target: &JsValue, selector: &str) -> JsValue {
     call1(target, "querySelector", &JsValue::from_str(selector)).unwrap_or(JsValue::UNDEFINED)
 }
 
+fn query_bridge_result(target: &JsValue, selector: &str) -> Result<JsValue, JsValue> {
+    let Some(callback) = function(target, "querySelector") else {
+        return Err(JsValue::UNDEFINED);
+    };
+    callback.call1(target, &JsValue::from_str(selector))
+}
+
+fn bridge_value_property_text(target: &JsValue) -> Option<String> {
+    if !present(target) || !Reflect::has(target, &JsValue::from_str("value")).unwrap_or(false) {
+        return None;
+    }
+    let value = property(target, "value");
+    Some(if crate::js_boolean(&value) {
+        crate::js_string_owned(&value)
+    } else {
+        String::new()
+    })
+}
+
+#[wasm_bindgen(js_name = bridgeCurrentNodeModeFromUiR65F)]
+pub fn bridge_current_node_mode_from_ui_r65f(net: String) -> String {
+    let direct = bridge_by_id(bridge_element_id(net.clone(), "nodeMode".to_owned()));
+    if let Some(value) = bridge_value_property_text(&direct) {
+        return value;
+    }
+
+    let selector_net = net;
+    let document = document();
+    let primary = match query_bridge_result(
+        &document,
+        &format!("[data-bridge-panel=\"{selector_net}\"]"),
+    ) {
+        Ok(value) => value,
+        Err(_) => return String::new(),
+    };
+    let panel = if present(&primary) {
+        primary
+    } else {
+        match query_bridge_result(&document, &format!("[data-net=\"{selector_net}\"]")) {
+            Ok(value) => value,
+            Err(_) => return String::new(),
+        }
+    };
+    if present(&panel) {
+        let select = match query_bridge_result(
+            &panel,
+            "[id$=\"-nodeMode\"], [data-bridge-setting=\"nodeMode\"], select[name=\"nodeMode\"]",
+        ) {
+            Ok(value) => value,
+            Err(_) => return String::new(),
+        };
+        if let Some(value) = bridge_value_property_text(&select) {
+            return value;
+        }
+    }
+
+    String::new()
+}
+
 fn local_storage() -> JsValue {
     property(&window(), "localStorage")
 }
