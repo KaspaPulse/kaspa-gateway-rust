@@ -589,15 +589,11 @@ fn small_owner_trace(deps: &JsValue, net: &str, action: &str, phase: &str, detai
     );
 }
 
-fn clear_raw_log_buffer(deps: &JsValue, net: &str, instance_id: &str) {
-    let _ = dependency_apply(
-        deps,
-        "clearRawLogBuffer",
-        &[
-            JsValue::from_str(net),
-            JsValue::from_str("bridge"),
-            JsValue::from_str(instance_id),
-        ],
+fn clear_raw_log_buffer(net: &str, instance_id: &str) {
+    crate::bridge_raw_log::bridge_clear_raw_log_buffer(
+        net.to_owned(),
+        "bridge".to_owned(),
+        instance_id.to_owned(),
     );
 }
 
@@ -910,7 +906,7 @@ async fn handle_log_action_impl(
 
     if action == "clear-log" {
         let instance_id = active_raw_log_instance_id(deps, net);
-        clear_raw_log_buffer(deps, net, &instance_id);
+        clear_raw_log_buffer(net, &instance_id);
         dispatch_runtime_log_clear(deps, net);
         let deleted_label = translate_runtime(deps, "log.deleted", "Deleted");
         flash_log_action_button_impl(button, &deleted_label);

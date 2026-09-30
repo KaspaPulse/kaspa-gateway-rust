@@ -231,8 +231,18 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
         ),
         (
             &s.bridge,
-            "kgwBridgeApplyRuntimeLogReportV1",
-            "Bridge UI must consume typed raw log reports.",
+            "bridgeApplyRuntimeLogReport as wasmBridgeApplyRuntimeLogReport",
+            "Bridge UI must bind typed raw-log report application directly to Rust/WASM.",
+        ),
+        (
+            &s.bridge,
+            "bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer",
+            "Bridge UI must bind raw-log rendering directly to Rust/WASM.",
+        ),
+        (
+            &s.bridge_raw_log,
+            "#[wasm_bindgen(js_name = bridgeClearRawLogBuffer)]",
+            "Bridge raw-log clear ownership must remain exported by Rust/WASM.",
         ),
         (
             &s.bridge_raw_log,
@@ -302,6 +312,34 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
         &s.bridge,
         "kgwBridgeRawLogTextHasTransportWrapperV1",
         "Bridge transport-wrapper rejection must remain Rust-owned without a JavaScript compatibility wrapper.",
+    );
+    for (needle, message) in [
+        (
+            "function kgwBridgeRenderRawLogBufferV1(",
+            "Bridge raw-log rendering must remain Rust-owned without a JavaScript passthrough wrapper.",
+        ),
+        (
+            "function kgwBridgeApplyRuntimeLogReportV1(",
+            "Bridge typed raw-log report application must remain Rust-owned without a JavaScript passthrough wrapper.",
+        ),
+        (
+            "function kgwBridgeClearRawLogBufferV1(",
+            "Bridge raw-log clearing must remain Rust-owned without a JavaScript passthrough wrapper.",
+        ),
+    ] {
+        forbid(failures, &s.bridge, needle, message);
+    }
+    forbid(
+        failures,
+        &s.bridge_start_trace,
+        "\"clearRawLogBuffer\"",
+        "Bridge start-trace must not depend on the retired JavaScript clearRawLogBuffer callback.",
+    );
+    require(
+        failures,
+        &s.bridge_start_trace,
+        "crate::bridge_raw_log::bridge_clear_raw_log_buffer(",
+        "Bridge start-trace must call the Rust raw-log clear owner directly.",
     );
 
     for (needle, message) in [
@@ -600,8 +638,13 @@ mod tests {
                 r#"metadata_text(metadata, "runtimeRole", "node")"#,
             ]
             .join("\n"),
-            bridge: "kgwBridgeApplyRuntimeLogReportV1".to_owned(),
+            bridge: [
+                "bridgeApplyRuntimeLogReport as wasmBridgeApplyRuntimeLogReport",
+                "bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer",
+            ]
+            .join("\n"),
             bridge_raw_log: [
+                "#[wasm_bindgen(js_name = bridgeClearRawLogBuffer)]",
                 "fn transport_wrapper_text(value: &str) -> bool",
                 "if transport_wrapper_text(&legacy_transport_text(report))",
             ]
@@ -609,6 +652,7 @@ mod tests {
             bridge_start_trace: [
                 r#"metadata_text(metadata, "runtimeRole", "bridge")"#,
                 r#"metadata_text(metadata, "bridgeInstanceId", "")"#,
+                "crate::bridge_raw_log::bridge_clear_raw_log_buffer(",
             ]
             .join("\n"),
             runtime: ["KgwRuntimeRawLogEntryV1", "sequence", "raw_text"].join("\n"),

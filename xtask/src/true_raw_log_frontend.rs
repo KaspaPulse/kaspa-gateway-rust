@@ -357,7 +357,7 @@ function prepare(kind) {
     };
   } else {
     evalFrontend(bridgePath, window,
-      "window.__kgwRaw = { apply: kgwBridgeApplyRuntimeLogReportV1, action: kgwBridgeHandleLogActionV29, refresh: kgwBridgeR51RefreshOne, setButtons: kgwBridgeR51SetRuntimeButtons, appendLog: () => {} };");
+      "window.__kgwRaw = { apply: (net, role, report, instanceId) => wasmBridgeApplyRuntimeLogReport(String(net || \"\"), String(role || \"bridge\"), report, String(instanceId || \"\")), action: kgwBridgeHandleLogActionV29, refresh: kgwBridgeR51RefreshOne, setButtons: kgwBridgeR51SetRuntimeButtons, appendLog: () => {} };");
   }
   return { calls, window, api: window.__kgwRaw };
 }
@@ -630,15 +630,38 @@ pub fn run(root: &Path) -> Result<String, String> {
     }
 
     for symbol in [
-        "kgwBridgeApplyRuntimeLogReportV1",
         "kgwBridgeHandleLogActionV29",
         "kgwBridgeR51RefreshOne",
+        "bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer",
+        "bridgeApplyRuntimeLogReport as wasmBridgeApplyRuntimeLogReport",
     ] {
         if !bridge.contains(symbol) {
             return Err(format!(
-                "required Bridge frontend raw-log symbol missing: {symbol}"
+                "required Bridge frontend raw-log Rust owner binding missing: {symbol}"
             ));
         }
+    }
+    for retired in [
+        "function kgwBridgeRenderRawLogBufferV1(",
+        "function kgwBridgeApplyRuntimeLogReportV1(",
+        "function kgwBridgeClearRawLogBufferV1(",
+    ] {
+        if bridge.contains(retired) {
+            return Err(format!(
+                "retired Bridge raw-log JavaScript wrapper remains: {retired}"
+            ));
+        }
+    }
+    if bridge_start_trace_rust.contains("\"clearRawLogBuffer\"") {
+        return Err(
+            "Bridge start-trace still depends on the retired JavaScript clearRawLogBuffer callback"
+                .to_owned(),
+        );
+    }
+    if !bridge_start_trace_rust.contains("crate::bridge_raw_log::bridge_clear_raw_log_buffer(") {
+        return Err(
+            "Bridge start-trace does not call the Rust raw-log clear owner directly".to_owned(),
+        );
     }
     for symbol in [
         "#[wasm_bindgen(js_name = nodeApplyRuntimeLogReport)]",

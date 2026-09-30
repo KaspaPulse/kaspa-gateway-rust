@@ -39,7 +39,6 @@ import initBridgeRust, {
   bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings,
   bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord,
   bridgeParseUnsignedV1 as wasmBridgeParseUnsignedV1,
-  bridgeClearRawLogBuffer as wasmBridgeClearRawLogBuffer,
   bridgeInstanceCommandCheckboxFromInstancesR13B as wasmBridgeInstanceCommandCheckboxFromInstancesR13B,
   bridgeInstanceCommandSetOptionR13B as wasmBridgeInstanceCommandSetOptionR13B,
   bridgeInstanceCommandShouldIncludeFromInstancesR13B as wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B,
@@ -914,7 +913,7 @@ function bridgeInstallInstanceContainerOwnerR11(container, net) {
     if (action === "select-instance") {
       activeInstance[targetNet] = control.dataset.instanceId;
       bridgeRefreshInstances(targetNet);
-      kgwBridgeRenderRawLogBufferV1(targetNet, "bridge", String(activeInstance[targetNet] || ""));
+      wasmBridgeRenderRawLogBuffer(String(targetNet || ""), "bridge", String(activeInstance[targetNet] || ""));
       updateCommand(targetNet);
       return;
     }
@@ -986,7 +985,7 @@ function addInstance(net) {
   activeInstance[net] = next.id;
 
   bridgeRefreshInstances(net);
-  kgwBridgeRenderRawLogBufferV1(net, "bridge", String(activeInstance[net] || ""));
+  wasmBridgeRenderRawLogBuffer(String(net || ""), "bridge", String(activeInstance[net] || ""));
   updateCommand(net);
   wasmBridgeSmallOwnerTraceR44D(net, "add-instance", "r44d-owner-complete", {});
 }
@@ -1328,17 +1327,6 @@ function kgwInstallBridgeLogAutoScrollControlsR27() {
 }
 // KGW_BRIDGE_LOG_AUTOSCROLL_CONTROLS_R27_END
 
-function kgwBridgeRenderRawLogBufferV1(net, role = "bridge", instanceId = wasmBridgeActiveRawLogInstanceId(bridgeInstances, activeInstance, String(net || ""))) {
-  return wasmBridgeRenderRawLogBuffer(String(net || ""), String(role || "bridge"), String(instanceId || ""));
-}
-
-function kgwBridgeApplyRuntimeLogReportV1(net, role, report, instanceId = wasmBridgeActiveRawLogInstanceId(bridgeInstances, activeInstance, String(net || ""))) {
-  return wasmBridgeApplyRuntimeLogReport(String(net || ""), String(role || "bridge"), report, String(instanceId || ""));
-}
-
-function kgwBridgeClearRawLogBufferV1(net, role = "bridge", instanceId = wasmBridgeActiveRawLogInstanceId(bridgeInstances, activeInstance, String(net || ""))) {
-  return wasmBridgeClearRawLogBuffer(String(net || ""), String(role || "bridge"), String(instanceId || ""));
-}
 async function kgwBridgeDispatchRuntimeLogClearV1(net, _role = "bridge") {
   if (!wasmBridgeRuntimeInvokeAvailable()) return null;
   return await wasmBridgeInvokeRuntimeCommand(
@@ -1617,7 +1605,7 @@ function installDelegatedTabs(root) {
       const net = instanceTab.dataset.net;
       const selected = Number(instanceTab.dataset.instanceTab);
       activeInstance[net] = selected;
-      kgwBridgeRenderRawLogBufferV1(net, "bridge", String(selected));
+      wasmBridgeRenderRawLogBuffer(String(net || ""), "bridge", String(selected));
 
       kgwBridgeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-bridge-instance-tab-click", {
         patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
@@ -2283,7 +2271,7 @@ function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
       : String((bridgeInstances[net][0] && bridgeInstances[net][0].id) || "");
 
     bridgeRefreshInstances(net);
-    kgwBridgeRenderRawLogBufferV1(net, "bridge", String(activeInstance[net] || ""));
+    wasmBridgeRenderRawLogBuffer(String(net || ""), "bridge", String(activeInstance[net] || ""));
 
     try {
       wasmBridgeSmallOwnerTraceR44D(net, "settings-persistence", "r26b-structured-instances-restored", {
@@ -2758,7 +2746,7 @@ async function kgwBridgeR51RefreshOne(net, _reason = "live") {
       try {
         const report = await invokeBridgeIntegratedRuntime("kgw_kgw_runtime_logs_v1", net);
         const instanceId = wasmBridgeActiveRawLogInstanceId(bridgeInstances, activeInstance, String(net || ""));
-        kgwBridgeApplyRuntimeLogReportV1(net, "bridge", report, instanceId);
+        wasmBridgeApplyRuntimeLogReport(String(net || ""), "bridge", report, String(instanceId || ""));
         KGW_BRIDGE_R51_LAST_LOGS[net] = report;
       } catch (_) {
         // No raw buffer may exist before the child is spawned. Never fabricate text.
@@ -2942,7 +2930,6 @@ async function kgwBridgeHandleLogActionV29(action, net, button) {
     bridgeInstances,
     activeInstance,
     translateRuntime: kgwBridgeTranslateRuntimeV29,
-    clearRawLogBuffer: kgwBridgeClearRawLogBufferV1,
     dispatchRuntimeLogClear: kgwBridgeDispatchRuntimeLogClearV1
   });
 }
@@ -3311,7 +3298,7 @@ function installActions(root) {
     if (action === "select-instance") {
       activeInstance[net] = button.dataset.instanceId;
       bridgeRefreshInstances(net);
-      kgwBridgeRenderRawLogBufferV1(net, "bridge", String(activeInstance[net] || ""));
+      wasmBridgeRenderRawLogBuffer(String(net || ""), "bridge", String(activeInstance[net] || ""));
       scopedUpdate(net, "select-instance");
       return;
     }
