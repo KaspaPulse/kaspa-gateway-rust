@@ -58,8 +58,8 @@ import initBridgeRust, {
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
-  bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
+  bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
   bridgeValue as wasmBridgeValue,
   bridgeAssignMissingInstancePortsR9 as wasmBridgeAssignMissingInstancePortsR9,
   bridgeReassignInstancePortsFromExternalRangeR91 as wasmBridgeReassignInstancePortsFromExternalRangeR91,
@@ -2912,24 +2912,10 @@ function kgwBridgeTranslateRuntime(key, fallback) {
 
 
 /* KGW_LOG_ACTIONS_SCOPED_OWNER_V29_START */
-function kgwBridgeTranslateRuntimeV29(key, fallback) {
-  const runtime = window.kgwT || window.kgwI18n || window.__kgwT;
-  if (typeof runtime === "function") {
-    try {
-      const value = runtime(key, fallback);
-      if (value && value !== key) return value;
-    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-  }
-  return fallback || key;
-}
-
-
 async function kgwBridgeHandleLogActionV29(action, net, button) {
   return await wasmBridgeHandleLogAction(String(action || ""), String(net || ""), button, {
-    smallOwnerTrace: wasmBridgeSmallOwnerTraceR44D,
     bridgeInstances,
     activeInstance,
-    translateRuntime: kgwBridgeTranslateRuntimeV29,
     dispatchRuntimeLogClear: kgwBridgeDispatchRuntimeLogClearV1
   });
 }

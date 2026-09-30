@@ -341,6 +341,46 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
         "crate::bridge_raw_log::bridge_clear_raw_log_buffer(",
         "Bridge start-trace must call the Rust raw-log clear owner directly.",
     );
+    for (needle, message) in [
+        (
+            "function kgwBridgeTranslateRuntimeV29(",
+            "Bridge log-action translation must remain Rust-owned without a JavaScript helper.",
+        ),
+        (
+            "translateRuntime:",
+            "Bridge log-action translation must not return as a JavaScript callback seam.",
+        ),
+        (
+            "smallOwnerTrace:",
+            "Bridge log-action tracing must not return as a JavaScript callback seam.",
+        ),
+    ] {
+        forbid(failures, &s.bridge, needle, message);
+    }
+    forbid(
+        failures,
+        &s.bridge_start_trace,
+        "\"translateRuntime\"",
+        "Bridge start-trace must not depend on the retired translateRuntime callback.",
+    );
+    forbid(
+        failures,
+        &s.bridge_start_trace,
+        "\"smallOwnerTrace\"",
+        "Bridge start-trace must not depend on the retired smallOwnerTrace callback.",
+    );
+    require(
+        failures,
+        &s.bridge_start_trace,
+        "for name in [\"kgwT\", \"kgwI18n\", \"__kgwT\"]",
+        "Bridge start-trace must own runtime translation lookup in Rust/WASM.",
+    );
+    require(
+        failures,
+        &s.bridge_start_trace,
+        "crate::bridge_frontend_helpers::bridge_small_owner_trace_r44d(",
+        "Bridge start-trace must call the Rust small-owner trace owner directly.",
+    );
 
     for (needle, message) in [
         (
@@ -653,6 +693,8 @@ mod tests {
                 r#"metadata_text(metadata, "runtimeRole", "bridge")"#,
                 r#"metadata_text(metadata, "bridgeInstanceId", "")"#,
                 "crate::bridge_raw_log::bridge_clear_raw_log_buffer(",
+                r#"for name in ["kgwT", "kgwI18n", "__kgwT"]"#,
+                "crate::bridge_frontend_helpers::bridge_small_owner_trace_r44d(",
             ]
             .join("\n"),
             runtime: ["KgwRuntimeRawLogEntryV1", "sequence", "raw_text"].join("\n"),

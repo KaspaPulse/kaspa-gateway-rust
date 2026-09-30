@@ -663,6 +663,32 @@ pub fn run(root: &Path) -> Result<String, String> {
             "Bridge start-trace does not call the Rust raw-log clear owner directly".to_owned(),
         );
     }
+    for retired in ["\"translateRuntime\"", "\"smallOwnerTrace\""] {
+        if bridge_start_trace_rust.contains(retired) {
+            return Err(format!(
+                "Bridge start-trace still depends on retired JavaScript log-action callback: {retired}"
+            ));
+        }
+    }
+    for retired in [
+        "function kgwBridgeTranslateRuntimeV29(",
+        "translateRuntime:",
+        "smallOwnerTrace:",
+    ] {
+        if bridge.contains(retired) {
+            return Err(format!(
+                "retired Bridge log-action JavaScript seam remains: {retired}"
+            ));
+        }
+    }
+    if !bridge_start_trace_rust.contains("for name in [\"kgwT\", \"kgwI18n\", \"__kgwT\"]") {
+        return Err("Bridge runtime translation lookup is not Rust-owned".to_owned());
+    }
+    if !bridge_start_trace_rust
+        .contains("crate::bridge_frontend_helpers::bridge_small_owner_trace_r44d(")
+    {
+        return Err("Bridge log-action trace dispatch is not direct to the Rust owner".to_owned());
+    }
     for symbol in [
         "#[wasm_bindgen(js_name = nodeApplyRuntimeLogReport)]",
         "#[wasm_bindgen(js_name = nodeHandleLogAction)]",

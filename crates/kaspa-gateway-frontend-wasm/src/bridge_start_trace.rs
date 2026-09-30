@@ -553,17 +553,32 @@ fn dependency_apply(deps: &JsValue, name: &str, args: &[JsValue]) -> JsValue {
         .unwrap_or(JsValue::UNDEFINED)
 }
 
-fn translate_runtime(deps: &JsValue, key: &str, fallback: &str) -> String {
-    let value = dependency_apply(
-        deps,
-        "translateRuntime",
-        &[JsValue::from_str(key), JsValue::from_str(fallback)],
-    );
-    let text = crate::js_string_owned(&value);
-    if text.is_empty() {
-        fallback.to_owned()
+fn translate_runtime(key: &str, fallback: &str) -> String {
+    let win = window();
+    let mut runtime = JsValue::UNDEFINED;
+    for name in ["kgwT", "kgwI18n", "__kgwT"] {
+        let candidate = property(&win, name);
+        if crate::js_boolean(&candidate) {
+            runtime = candidate;
+            break;
+        }
+    }
+
+    if let Ok(function) = runtime.dyn_into::<Function>()
+        && let Ok(value) =
+            function.call2(&win, &JsValue::from_str(key), &JsValue::from_str(fallback))
+        && crate::js_boolean(&value)
+    {
+        let text = crate::js_string_owned(&value);
+        if text != key {
+            return text;
+        }
+    }
+
+    if fallback.is_empty() {
+        key.to_owned()
     } else {
-        text
+        fallback.to_owned()
     }
 }
 
@@ -576,16 +591,12 @@ fn active_raw_log_instance_id(deps: &JsValue, net: &str) -> String {
     .unwrap_or_default()
 }
 
-fn small_owner_trace(deps: &JsValue, net: &str, action: &str, phase: &str, details: JsValue) {
-    let _ = dependency_apply(
-        deps,
-        "smallOwnerTrace",
-        &[
-            JsValue::from_str(net),
-            JsValue::from_str(action),
-            JsValue::from_str(phase),
-            details,
-        ],
+fn small_owner_trace(net: &str, action: &str, phase: &str, details: JsValue) {
+    let _ = crate::bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+        JsValue::from_str(net),
+        JsValue::from_str(action),
+        JsValue::from_str(phase),
+        details,
     );
 }
 
@@ -631,16 +642,10 @@ fn clipboard_safe_error_value(error: &JsValue) -> String {
     clipboard_safe_error_text(&source)
 }
 
-fn copy_log_failure_impl(
-    net: &str,
-    button: &JsValue,
-    error: &JsValue,
-    details: &JsValue,
-    deps: &JsValue,
-) {
+fn copy_log_failure_impl(net: &str, button: &JsValue, error: &JsValue, details: &JsValue) {
     let safe_error = clipboard_safe_error_value(error);
     let _ = set_clipboard_status(net, &safe_error, "error");
-    let failed_label = translate_runtime(deps, "log.copyFailed", "Copy failed");
+    let failed_label = translate_runtime("log.copyFailed", "Copy failed");
     flash_log_action_button_impl(button, &failed_label);
 
     let trace_details = safe_details(details);
@@ -689,19 +694,12 @@ async fn handle_log_action_impl(
         &JsValue::from_str(crate::js_string_owned(&property(button, "textContent")).trim()),
     );
     small_owner_trace(
-        deps,
         net,
         trace_action,
         "r51b3-bridge-log-action-click",
         click_details.into(),
     );
-    small_owner_trace(
-        deps,
-        net,
-        trace_action,
-        "r44d-owner-begin",
-        Object::new().into(),
-    );
+    small_owner_trace(net, trace_action, "r44d-owner-begin", Object::new().into());
 
     if !present(&bridge_log_output(net)) {
         return Ok(());
@@ -759,7 +757,6 @@ async fn handle_log_action_impl(
                 button,
                 &JsValue::from_str("Copy Log is already in progress for this bridge buffer."),
                 duplicate_details.as_ref(),
-                deps,
             );
             return Ok(());
         }
@@ -852,7 +849,7 @@ async fn handle_log_action_impl(
             );
 
             dispatch_clipboard_write_impl(net, &normalized_text, metadata.as_ref()).await?;
-            let copied_label = translate_runtime(deps, "log.copied", "Copied");
+            let copied_label = translate_runtime("log.copied", "Copied");
             flash_log_action_button_impl(button, &copied_label);
             let _ = set_clipboard_status(net, &copied_label, "ok");
 
@@ -894,7 +891,7 @@ async fn handle_log_action_impl(
                 "belongsToLiveBridgeMonitor",
                 &JsValue::from_bool(belongs_to_live_bridge_monitor),
             );
-            copy_log_failure_impl(net, button, &error, failure_details.as_ref(), deps);
+            copy_log_failure_impl(net, button, &error, failure_details.as_ref());
         }
 
         if present(button) {
@@ -908,11 +905,10 @@ async fn handle_log_action_impl(
         let instance_id = active_raw_log_instance_id(deps, net);
         clear_raw_log_buffer(net, &instance_id);
         dispatch_runtime_log_clear(deps, net);
-        let deleted_label = translate_runtime(deps, "log.deleted", "Deleted");
+        let deleted_label = translate_runtime("log.deleted", "Deleted");
         flash_log_action_button_impl(button, &deleted_label);
     }
     small_owner_trace(
-        deps,
         net,
         trace_action,
         "r44d-owner-complete",
