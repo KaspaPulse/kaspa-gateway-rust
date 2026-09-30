@@ -1,13 +1,13 @@
 # CURRENT STATE
-- Current product boundary: OP224 Bridge has-config predicate Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 4cd4cd0609e1af100c23c1b9630ff05fb522a691, tree a9238b7d47477d07efa66122dcfd83764ee60c06; no push.
+- Current product boundary: OP225 effective-settings compatibility alias cutover is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 0555f331207a307aa421a2e363865f3bf5ba08cc, tree fc256d8e8ba8ccb55ce615d0576d6e74f3c4bb58; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP224 verified implementation checkpoint is 4cd4cd0609e1af100c23c1b9630ff05fb522a691, tree a9238b7d47477d07efa66122dcfd83764ee60c06.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP225 verified implementation checkpoint is 0555f331207a307aa421a2e363865f3bf5ba08cc, tree fc256d8e8ba8ccb55ce615d0576d6e74f3c4bb58.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP224 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
+- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP225 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -179,4 +179,4 @@
 
 ## NEXT ACTION
 
-OP224 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 4cd4cd0609e1af100c23c1b9630ff05fb522a691, tree a9238b7d47477d07efa66122dcfd83764ee60c06; no push. Audit remaining kaspa-bridge.js owned JavaScript boundaries read-only and persist a WAI before mutation.
+OP225 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 0555f331207a307aa421a2e363865f3bf5ba08cc, tree fc256d8e8ba8ccb55ce615d0576d6e74f3c4bb58; no push. Audit remaining kaspa-bridge.js owned JavaScript boundaries read-only and persist a WAI before mutation.
