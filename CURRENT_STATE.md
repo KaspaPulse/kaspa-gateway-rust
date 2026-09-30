@@ -1,14 +1,14 @@
 # CURRENT STATE
-- Current product boundary: OP243 Bridge Rusty-Kaspa root-only default-paths fire-and-forget Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 615c0121092b146324ff439a6474c72777e1628e, tree cd2066e481edc8a57b1b5f79f3009645b9f1f616; no push.
+- Current product boundary: OP244 Bridge programmatic-restore compatibility seam retirement is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint b4bef53d7909f0523c4d53a3504f4c43acb08cc6, tree 3b25a4119d38966de73e7e34c0283114996a5644; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
-- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`, closeout target generation `2145`.
+- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`, current generation `2148` (docs-only closeout pending).
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP243 verified implementation checkpoint is `615c0121092b146324ff439a6474c72777e1628e`, tree `cd2066e481edc8a57b1b5f79f3009645b9f1f616`.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP244 verified implementation checkpoint is `b4bef53d7909f0523c4d53a3504f4c43acb08cc6`, tree `3b25a4119d38966de73e7e34c0283114996a5644`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP243 continuity closeout, only ACTIVE_TASK.md and CURRENT_STATE.md are expected dirty; steady-state after closeout is CLEAN.
+- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP244 continuity transaction, ACTIVE_TASK.md and CURRENT_STATE.md are the only expected dirty paths; steady-state after closeout is CLEAN.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -156,6 +156,12 @@
 - `git diff --check`: PASS.
 - Primary evidence: `C:\Users\abuha\KaspaGateway-Rust100-20260923\header-live-metrics-rust-op101`.
 
+## OP244 VERIFIED EVIDENCE
+- Bridge programmatic-restore compatibility seam retirement is complete: the identity-only `kgwBridgeSettingsWithProgrammaticWriteR9B` JavaScript wrapper is removed, its sole callback body is inlined inside `kgwBridgeR51RestoreDefaults` with preserved execution order, and `static_contracts.rs` fails closed if the helper or wrapped call returns. Implementation checkpoint `b4bef53d7909f0523c4d53a3504f4c43acb08cc6`, tree `3b25a4119d38966de73e7e34c0283114996a5644`; no push.
+- Programmatic-restore targeted tests 2/2 PASS and static-contract-regressions PASS. The now-unused `regex_is_match` helper was proven zero-callsite and removed; final FMT, xtask strict Clippy and MSRV 1.97.1 checks PASS.
+- Node syntax and Desktop ESLint zero-warning PASS; language policy PASS at Rust 222 / source debt 2 / execution debt 8 / unapproved 0/0 / exceptions 39; project-continuity and diff-check PASS for qualification generation 2147.
+- OP243 frontend-WASM stable/MSRV, frontend-WASM strict Clippy, deterministic codegen/generated artifact hashes, and Bridge-readiness evidence were reused because OP244 changed only JavaScript/static-contract source and did not alter Rust product/generated predicates.
+
 ## OP243 VERIFIED EVIDENCE
 - Bridge Rusty-Kaspa root-only default-path fire-and-forget ownership is Rust/WASM-owned through `bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5`, which uses `spawn_local` around the existing async R5 owner and intentionally absorbs the background error exactly like the retired JavaScript helper. The JavaScript helper is absent and exactly two product call sites invoke generated WASM directly. Implementation checkpoint `615c0121092b146324ff439a6474c72777e1628e`, tree `cd2066e481edc8a57b1b5f79f3009645b9f1f616`; no push.
 - Direct generated-WASM readiness smoke verifies `kgw_settings_context_v1` dispatch for `mainnet`, writes `APPDIR-mainnet` into both `appdir` and `inprocessAppdirMirror` value/title fields, and invokes the supplied update callback exactly once with `mainnet`. Static ownership checks require the Rust export/import and exactly two direct product call sites while rejecting the retired helper.
@@ -279,11 +285,11 @@
 
 ## DO NOT REPEAT
 
-- Do not replay OP090-OP243 successful checks while their validity predicates remain unchanged.
+- Do not replay OP090-OP244 successful checks while their validity predicates remain unchanged.
 - Do not reset, clean, stash, discard, overwrite, or replace newer local work with remote state.
 - Do not force unsafe clipboard mutation, protected file unlocking, or broad requalification for reassurance.
 - Do not push merely to discover locally detectable failures.
 
 ## NEXT ACTION
 
-OP243 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint `615c0121092b146324ff439a6474c72777e1628e`, tree `cd2066e481edc8a57b1b5f79f3009645b9f1f616`; no push. After closeout verification, audit remaining `kaspa-bridge.js` owned JavaScript boundaries read-only and continue under V4.
+OP244 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint b4bef53d7909f0523c4d53a3504f4c43acb08cc6, tree 3b25a4119d38966de73e7e34c0283114996a5644; no push. Audit remaining kaspa-bridge.js owned JavaScript boundaries read-only and persist a V4 WAI before material mutation.
