@@ -61,6 +61,47 @@ globalThis.localStorage = {
   }
 };
 
+const bridgeOwnedNodeLockEvents = [];
+globalThis.CustomEvent = function CustomEvent(type, options = {}) {
+  this.type = String(type || "");
+  this.detail = options.detail || null;
+};
+globalThis.dispatchEvent = (event) => {
+  bridgeOwnedNodeLockEvents.push(event);
+  return true;
+};
+wasm.bridgeSetOwnedNodeLockR65E("", true, { ignored: true });
+wasm.bridgeSetOwnedNodeLockR65E("mainnet", true, { source: "op236-smoke", pid: "4242" });
+const bridgeOwnedNodeLockRecord =
+  globalThis.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E?.mainnet || null;
+const bridgeOwnedNodeLockOwnership = {
+  locked: Boolean(bridgeOwnedNodeLockRecord?.locked),
+  net: String(bridgeOwnedNodeLockRecord?.net || ""),
+  reason: String(bridgeOwnedNodeLockRecord?.reason || ""),
+  updatedAtPositive: Number(bridgeOwnedNodeLockRecord?.updatedAt || 0) > 0,
+  detailsSource: String(bridgeOwnedNodeLockRecord?.details?.source || ""),
+  detailsPid: String(bridgeOwnedNodeLockRecord?.details?.pid || ""),
+  lockEventType: String(bridgeOwnedNodeLockEvents[0]?.type || ""),
+  lockEventNet: String(bridgeOwnedNodeLockEvents[0]?.detail?.net || ""),
+  lockEventLocked: Boolean(bridgeOwnedNodeLockEvents[0]?.detail?.locked),
+  lockEventSource: String(bridgeOwnedNodeLockEvents[0]?.detail?.source || "")
+};
+wasm.bridgeSetOwnedNodeLockR65E("mainnet", false, { source: "op236-unlock" });
+bridgeOwnedNodeLockOwnership.unlockedAbsent =
+  !Object.prototype.hasOwnProperty.call(
+    globalThis.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E || {},
+    "mainnet"
+  );
+bridgeOwnedNodeLockOwnership.eventCount = bridgeOwnedNodeLockEvents.length;
+bridgeOwnedNodeLockOwnership.unlockEventType =
+  String(bridgeOwnedNodeLockEvents[1]?.type || "");
+bridgeOwnedNodeLockOwnership.unlockEventNet =
+  String(bridgeOwnedNodeLockEvents[1]?.detail?.net || "");
+bridgeOwnedNodeLockOwnership.unlockEventLocked =
+  Boolean(bridgeOwnedNodeLockEvents[1]?.detail?.locked);
+bridgeOwnedNodeLockOwnership.unlockEventSource =
+  String(bridgeOwnedNodeLockEvents[1]?.detail?.source || "");
+
 globalThis.kgwT = (key) =>
   key === "runtime.failed" ? "Runtime Function Failed" : key;
 const runtimeTranslationFunction = wasm.bridgeTranslateRuntimeFeedback(
@@ -390,6 +431,7 @@ const sandbox = {
   wasmBridgeRuntimeCommandForAction: wasm.bridgeRuntimeCommandForAction,
   wasmBridgeRuntimeActionOutcome: wasm.bridgeRuntimeActionOutcome,
   wasmBridgeStartWasInprocessR65F: wasm.bridgeStartWasInprocessR65F,
+  wasmBridgeSetOwnedNodeLockR65E: wasm.bridgeSetOwnedNodeLockR65E,
   wasmBridgeAssertNoPortConflictsR5: wasm.bridgeAssertNoPortConflictsR5,
   wasmBridgeTranslateRuntimeFeedback: wasm.bridgeTranslateRuntimeFeedback
 };
@@ -405,7 +447,6 @@ sandbox.confirmUserAction = async () => true;
 sandbox.kgwBridgeV7BlockInprocessIfNodeOwnerRunning = async () => false;
 sandbox.invokeBridgeIntegratedRuntime = (...args) => invokeRuntime(...args);
 sandbox.kgwBridgeRuntimeOwnerTraceR64D = () => {};
-sandbox.kgwSetBridgeOwnedNodeLockR65E = () => {};
 sandbox.kgwBridgeCurrentNodeModeFromUiR65F = () => "external";
 sandbox.kgwBridgePreviewDeclaresInprocessR65F = () => false;
 sandbox.kgwBridgeR51KickRawLogLiveR134E = () => {};
@@ -479,6 +520,7 @@ api.setActivity("mainnet", "Bridge start failed.");
 const visibleFailure = snapshot();
 
 const output = {
+  bridgeOwnedNodeLockOwnership,
   runtimeTranslationOwnership,
   innerTabOwnership,
   lastNetworkOwnership,
@@ -799,6 +841,28 @@ fn verify_static_contracts(
     }
 
     for needle in [
+        "bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E",
+        "wasmBridgeSetOwnedNodeLockR65E(String(net || \"\"), true, {",
+        "wasmBridgeSetOwnedNodeLockR65E(String(net || \"\"), false, {",
+    ] {
+        if !source.contains(needle) {
+            return Err(format!("Bridge R65E Rust/WASM binding missing: {needle}"));
+        }
+    }
+    for retired in [
+        "function kgwBridgeOwnedNodeLockStoreR65E(",
+        "function kgwSetBridgeOwnedNodeLockR65E(",
+        "kgwSetBridgeOwnedNodeLockR65E(",
+        "__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E",
+    ] {
+        if source.contains(retired) {
+            return Err(format!(
+                "Retired Bridge R65E JavaScript lock owner remains: {retired}"
+            ));
+        }
+    }
+
+    for needle in [
         "bridgeStringifyRuntimeResult",
         "bridgeNormalizeRuntimeError",
         "bridgeParseRuntimeKeyValueResponse",
@@ -921,6 +985,83 @@ pub fn run(root: &Path) -> Result<String, String> {
         json!("kgw_kgw_runtime_logs_v1"),
     )?;
     expect(&actual, "/transport/calls/0/network", json!("mainnet"))?;
+
+    expect(&actual, "/bridgeOwnedNodeLockOwnership/locked", json!(true))?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/net",
+        json!("mainnet"),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/reason",
+        json!("bridge-inprocess-owner"),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/updatedAtPositive",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/detailsSource",
+        json!("op236-smoke"),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/detailsPid",
+        json!("4242"),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/lockEventType",
+        json!("kgw-bridge-owned-node-lock-r65e"),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/lockEventNet",
+        json!("mainnet"),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/lockEventLocked",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/lockEventSource",
+        json!("KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E"),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/unlockedAbsent",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/eventCount",
+        json!(2),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/unlockEventType",
+        json!("kgw-bridge-owned-node-lock-r65e"),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/unlockEventNet",
+        json!("mainnet"),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/unlockEventLocked",
+        json!(false),
+    )?;
+    expect(
+        &actual,
+        "/bridgeOwnedNodeLockOwnership/unlockEventSource",
+        json!("KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E"),
+    )?;
 
     expect(
         &actual,

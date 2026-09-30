@@ -67,6 +67,7 @@ import initBridgeRust, {
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
   bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
+  bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E,
   bridgeValue as wasmBridgeValue,
   bridgeAssignMissingInstancePortsR9 as wasmBridgeAssignMissingInstancePortsR9,
   bridgeReassignInstancePortsFromExternalRangeR91 as wasmBridgeReassignInstancePortsFromExternalRangeR91,
@@ -1657,42 +1658,7 @@ async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {
   return true;
 }
 
-// KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E
-function kgwBridgeOwnedNodeLockStoreR65E() {
-  if (!window.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E || typeof window.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E !== "object") {
-    window.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E = {};
-  }
-  return window.__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E;
-}
-
-function kgwSetBridgeOwnedNodeLockR65E(net, locked, details) {
-  const key = String(net || "");
-  if (!key) return;
-  const store = kgwBridgeOwnedNodeLockStoreR65E();
-
-  if (locked) {
-    store[key] = {
-      locked: true,
-      net: key,
-      reason: "bridge-inprocess-owner",
-      updatedAt: Date.now(),
-      details: details && typeof details === "object" ? details : {}
-    };
-  } else {
-    delete store[key];
-  }
-
-  try {
-    window.dispatchEvent(new CustomEvent("kgw-bridge-owned-node-lock-r65e", {
-      detail: {
-        net: key,
-        locked: Boolean(locked),
-        source: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E"
-      }
-    }));
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-}
-
+// KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E is Rust-owned in node_tab.rs.
 
 // KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_MAINNET_IMMEDIATE_R65F
 function kgwBridgeCurrentNodeModeFromUiR65F(net) {
@@ -1900,7 +1866,7 @@ async function runBridgeIntegratedAction(action, net) {
           String(preview || "")
         );
         if (bridgeStartWasInprocess) {
-          kgwSetBridgeOwnedNodeLockR65E(net, true, {
+          wasmBridgeSetOwnedNodeLockR65E(String(net || ""), true, {
             source: "bridge-start-confirmed-r65f",
             action: "start",
             nodeMode: bridgeNodeMode,
@@ -1949,7 +1915,7 @@ async function runBridgeIntegratedAction(action, net) {
               ? "Official graceful shutdown failed, but the worker process exited. " + String(fields.reason || raw)
               : ""
         );
-        kgwSetBridgeOwnedNodeLockR65E(net, false, {
+        wasmBridgeSetOwnedNodeLockR65E(String(net || ""), false, {
           source: "bridge-stop-confirmed",
           action: "stop"
         });

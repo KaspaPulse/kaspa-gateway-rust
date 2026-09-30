@@ -295,6 +295,11 @@ fn set_bridge_lock(net: &str, locked: bool, details: JsValue) {
     dispatch_lock_event(net, locked);
 }
 
+#[wasm_bindgen(js_name = bridgeSetOwnedNodeLockR65E)]
+pub fn bridge_set_owned_node_lock_r65e(net: String, locked: bool, details: JsValue) {
+    set_bridge_lock(&net, locked, details);
+}
+
 fn settings_callbacks() -> JsValue {
     let callbacks = Object::new();
     let is_locked =
