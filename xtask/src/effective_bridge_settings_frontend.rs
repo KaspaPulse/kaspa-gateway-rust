@@ -23,10 +23,6 @@ const SLICES: &[(&str, &str)] = &[
         "const BRIDGE_NETWORKS = wasmBridgeNetworkProfiles();",
         "const bridgeInstances = {",
     ),
-    (
-        "function bridgeProfile(",
-        "/* KGW_BRIDGE_NETWORK_PORT_PROFILES_SOFT_POLICY_PATCH_R35B",
-    ),
 ];
 
 const NODE_BRIDGE: &str = r##"
@@ -225,6 +221,19 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
         return Err(
             "Bridge effective-settings compatibility export is not a direct Rust/WASM alias"
                 .to_owned(),
+        );
+    }
+
+    if source.contains("function bridgeProfile(") {
+        return Err("Retired Bridge profile lookup JavaScript seam remains".to_owned());
+    }
+    if source
+        .matches("wasmBridgeNetworkProfile(String(net || \"\"))")
+        .count()
+        != 2
+    {
+        return Err(
+            "Bridge profile lookup must use exactly two direct Rust/WASM call sites".to_owned(),
         );
     }
 

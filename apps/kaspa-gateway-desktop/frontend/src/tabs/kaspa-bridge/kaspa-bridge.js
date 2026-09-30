@@ -1005,11 +1005,6 @@ function renderAllNetworks(root) {
   setTimeout(window.kgwInstallBridgeLogScopedControlsV29, 0);
 }
 
-function bridgeProfile(net) {
-  return BRIDGE_NETWORKS.find((item) => item.key === net);
-}
-
-
 /* KGW_BRIDGE_NETWORK_PORT_PROFILES_SOFT_POLICY_PATCH_R35B
  * Network port profiles are soft policy:
  * - Used for defaults/suggestions/auto-assignment only.
@@ -1091,7 +1086,7 @@ function bridgeSetDisabled(net, name, disabled, reason = "") {
 }
 
 function bridgeSyncInprocessNodeSettingsV12D(net) {
-  const profile = bridgeProfile(net);
+  const profile = wasmBridgeNetworkProfile(String(net || ""));
   if (!profile) return;
 
   const nodeMode = bridgeNodeMode(net);
@@ -1174,7 +1169,7 @@ function bridgeSyncInprocessNodeSettingsV12D(net) {
 
 
 function bridgeSyncModeControls(net) {
-  const profile = bridgeProfile(net);
+  const profile = wasmBridgeNetworkProfile(String(net || ""));
   if (!profile) return;
 
   const configMode = wasmBridgeHasConfig(String(net || ""));
