@@ -33,6 +33,26 @@ fn call1(target: &JsValue, name: &str, first: &JsValue) -> Option<JsValue> {
     method.call1(target, first).ok()
 }
 
+fn required_function(target: &JsValue, name: &str) -> Result<js_sys::Function, JsValue> {
+    property(target, name)
+        .dyn_into::<js_sys::Function>()
+        .map_err(|_| JsValue::from_str(&format!("Bridge R51 callback is unavailable: {name}")))
+}
+
+fn call1_required(target: &JsValue, name: &str, first: &JsValue) -> Result<JsValue, JsValue> {
+    required_function(target, name)?.call1(target, first)
+}
+
+fn call3_required(
+    target: &JsValue,
+    name: &str,
+    first: &JsValue,
+    second: &JsValue,
+    third: &JsValue,
+) -> Result<JsValue, JsValue> {
+    required_function(target, name)?.call3(target, first, second, third)
+}
+
 fn query_selector(target: &JsValue, selector: &str) -> JsValue {
     call1(target, "querySelector", &JsValue::from_str(selector)).unwrap_or(JsValue::UNDEFINED)
 }
@@ -90,6 +110,19 @@ fn bridge_r51_fields_vec(net: &str) -> Vec<JsValue> {
             !present(&toolbar)
         })
         .collect()
+}
+
+fn bridge_r51_managed_field(name: &str) -> bool {
+    crate::settings_schema::BRIDGE_MANAGED
+        .iter()
+        .any(|(key, _)| *key == name)
+}
+
+fn object_key_count(value: &JsValue) -> u32 {
+    if !value.is_object() || value.is_null() {
+        return 0;
+    }
+    Object::keys(&Object::from(value.clone())).length()
 }
 
 fn bridge_form(net: &str) -> JsValue {
@@ -1097,6 +1130,98 @@ pub fn bridge_r51_fields(net: String) -> Array {
         output.push(&field);
     }
     output
+}
+
+#[wasm_bindgen(js_name = bridgeR51ReadSettings)]
+pub fn bridge_r51_read_settings(net: String, callbacks: JsValue) -> Result<JsValue, JsValue> {
+    const STRUCTURED_INSTANCES_KEY: &str = "__kgwBridgeStructuredInstancesR26B";
+    const ACTIVE_INSTANCE_KEY: &str = "__kgwBridgeActiveInstanceR26B";
+    const COMMAND_OPTIONS_KEY: &str = "__kgwBridgeCommandOptionsR38C";
+    const INSTANCE_COMMAND_OPTIONS_KEY: &str = "__kgwBridgeInstanceCommandOptionsR38C";
+
+    let net_value = JsValue::from_str(&net);
+    let values = Object::new();
+
+    let structured = call1_required(&callbacks, "readStructuredInstances", &net_value)?;
+    set(values.as_ref(), STRUCTURED_INSTANCES_KEY, &structured);
+    set(
+        values.as_ref(),
+        ACTIVE_INSTANCE_KEY,
+        &property(&structured, "activeInstance"),
+    );
+
+    let command_options = call1_required(&callbacks, "readCommandOptions", &net_value)?;
+    set(values.as_ref(), COMMAND_OPTIONS_KEY, &command_options);
+
+    let instance_command_options =
+        call1_required(&callbacks, "readInstanceCommandOptions", &net_value)?;
+    set(
+        values.as_ref(),
+        INSTANCE_COMMAND_OPTIONS_KEY,
+        &instance_command_options,
+    );
+
+    let prefix = format!("bridge-{net}-");
+    for field in bridge_r51_fields_vec(&net) {
+        let id = crate::js_string_owned(&property(&field, "id"));
+        if id.is_empty() {
+            continue;
+        }
+        let name = id.strip_prefix(&prefix).unwrap_or(&id);
+        if bridge_r51_managed_field(name) {
+            continue;
+        }
+
+        let item = Object::new();
+        if crate::js_string_owned(&property(&field, "type")) == "checkbox" {
+            set(item.as_ref(), "type", &JsValue::from_str("checkbox"));
+            set(
+                item.as_ref(),
+                "checked",
+                &JsValue::from_bool(crate::js_boolean(&property(&field, "checked"))),
+            );
+        } else {
+            set(item.as_ref(), "type", &JsValue::from_str("value"));
+            set(
+                item.as_ref(),
+                "value",
+                &JsValue::from_str(&crate::js_string_owned(&property(&field, "value"))),
+            );
+        }
+        set(values.as_ref(), &id, item.as_ref());
+    }
+
+    let trace = Object::new();
+    set(trace.as_ref(), "patch", &JsValue::from_str("R38C"));
+    set(
+        trace.as_ref(),
+        "owner",
+        &JsValue::from_str("bridge-r51-settings-owner"),
+    );
+    set(
+        trace.as_ref(),
+        "commandOptionCount",
+        &JsValue::from_f64(f64::from(object_key_count(&command_options))),
+    );
+    set(
+        trace.as_ref(),
+        "instanceCommandOptionInstanceCount",
+        &JsValue::from_f64(f64::from(object_key_count(&instance_command_options))),
+    );
+    bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+        net_value.clone(),
+        JsValue::from_str("settings-persistence"),
+        JsValue::from_str("r38c-read-settings-command-options"),
+        trace.into(),
+    );
+
+    call3_required(
+        &callbacks,
+        "normalizeNetworkPortValues",
+        &net_value,
+        values.as_ref(),
+        &JsValue::from_str("read-settings"),
+    )
 }
 
 #[wasm_bindgen(js_name = bridgeInstanceParseStructured)]

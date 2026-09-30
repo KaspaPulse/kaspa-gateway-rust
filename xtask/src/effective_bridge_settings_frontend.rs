@@ -138,6 +138,24 @@ const nodeModeNonExact = wasmModule.bridgeNodeMode("mainnet");
 nodeModeControl.value = "external";
 const r51FieldIds = Array.from(wasmModule.bridgeR51Fields("mainnet"))
   .map((field) => String(field?.id || ""));
+elements.set("bridge-mainnet-op249Checkbox", {
+  id: "bridge-mainnet-op249Checkbox",
+  value: "ignored",
+  checked: true,
+  type: "checkbox"
+});
+let r51ReadNormalizeReason = "";
+const r51ReadSettings = wasmModule.bridgeR51ReadSettings("mainnet", {
+  readStructuredInstances: () => request.structured,
+  readCommandOptions: () => ({ coinbaseTagSuffix: true }),
+  readInstanceCommandOptions: () => ({ one: { instanceDiff: true } }),
+  normalizeNetworkPortValues: (_net, values, reason) => {
+    r51ReadNormalizeReason = String(reason || "");
+    values.__op249Normalized = true;
+    return values;
+  }
+});
+elements.delete("bridge-mainnet-op249Checkbox");
 const output = {
   directOwners: {
     hasConfigInitially: wasmModule.bridgeHasConfig("mainnet"),
@@ -159,7 +177,21 @@ const output = {
     r51FieldsExcludesCommandPreview: !r51FieldIds.includes("bridge-mainnet-commandPreview"),
     r51FieldsExcludesLogOutput: !r51FieldIds.includes("bridge-mainnet-logOutput"),
     r51FieldsExcludesOtherNetwork: !r51FieldIds.includes("bridge-testnet10-foreign"),
-    r51FieldsExcludesToolbarOwned: !r51FieldIds.includes("bridge-mainnet-toolbarOwned")
+    r51FieldsExcludesToolbarOwned: !r51FieldIds.includes("bridge-mainnet-toolbarOwned"),
+    r51ReadActiveInstance: r51ReadSettings.__kgwBridgeActiveInstanceR26B,
+    r51ReadStructuredCount: r51ReadSettings.__kgwBridgeStructuredInstancesR26B?.instances?.length ?? -1,
+    r51ReadCommandOption: Boolean(r51ReadSettings.__kgwBridgeCommandOptionsR38C?.coinbaseTagSuffix),
+    r51ReadInstanceCommandOption: Boolean(r51ReadSettings.__kgwBridgeInstanceCommandOptionsR38C?.one?.instanceDiff),
+    r51ReadNodeModeType: r51ReadSettings["bridge-mainnet-nodeMode"]?.type ?? "",
+    r51ReadNodeModeValue: r51ReadSettings["bridge-mainnet-nodeMode"]?.value ?? "",
+    r51ReadCheckboxType: r51ReadSettings["bridge-mainnet-op249Checkbox"]?.type ?? "",
+    r51ReadCheckboxChecked: Boolean(r51ReadSettings["bridge-mainnet-op249Checkbox"]?.checked),
+    r51ReadExcludesManaged:
+      !("bridge-mainnet-logToFile" in r51ReadSettings) &&
+      !("bridge-mainnet-healthCheckPort" in r51ReadSettings) &&
+      !("bridge-mainnet-webDashboardPort" in r51ReadSettings),
+    r51ReadNormalized: Boolean(r51ReadSettings.__op249Normalized),
+    r51ReadNormalizeReason
   }
 };
 for (const step of request.steps) {
@@ -308,15 +340,50 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if !source.contains("bridgeR51Fields as wasmBridgeR51Fields") {
         return Err("Bridge R51 fields Rust/WASM import is missing".to_owned());
     }
-    if source.matches("wasmBridgeR51Fields(").count() != 2 {
+    if source.matches("wasmBridgeR51Fields(").count() != 1 {
         return Err(
-            "Bridge R51 fields must use exactly two direct Rust/WASM call sites".to_owned(),
+            "Bridge R51 fields must use exactly one direct JavaScript Rust/WASM call site after OP249 moves ReadSettings enumeration into Rust".to_owned(),
         );
     }
     if !instance_settings.contains("js_name = bridgeR51Fields")
         || !instance_settings.contains("fn bridge_r51_fields_vec(")
     {
         return Err("Bridge R51 fields Rust owner/export is missing".to_owned());
+    }
+
+    if source.contains("function kgwBridgeR51ReadSettings(") {
+        return Err("Retired Bridge R51 ReadSettings JavaScript owner remains".to_owned());
+    }
+    if !source.contains("bridgeR51ReadSettings as wasmBridgeR51ReadSettings") {
+        return Err("Bridge R51 ReadSettings Rust/WASM import is missing".to_owned());
+    }
+    if source.matches("wasmBridgeR51ReadSettings(").count() != 1 {
+        return Err(
+            "Bridge R51 ReadSettings must have exactly one thin Rust/WASM wrapper call".to_owned(),
+        );
+    }
+    if source.matches("kgwBridgeR51ReadSettingsR249(").count() != 6 {
+        return Err(
+            "Bridge R51 ReadSettings thin wrapper must own exactly five consumers plus its definition"
+                .to_owned(),
+        );
+    }
+    if !source.contains("function kgwBridgeR51WriteSettings(") {
+        return Err("Bridge R51 WriteSettings must remain out of OP249 scope".to_owned());
+    }
+    for needle in [
+        "js_name = bridgeR51ReadSettings",
+        "pub fn bridge_r51_read_settings(",
+        "readStructuredInstances",
+        "readCommandOptions",
+        "readInstanceCommandOptions",
+        "normalizeNetworkPortValues",
+    ] {
+        if !instance_settings.contains(needle) {
+            return Err(format!(
+                "Bridge R51 ReadSettings Rust ownership contract missing: {needle}"
+            ));
+        }
     }
 
     Ok(())
@@ -501,9 +568,32 @@ pub fn run(root: &Path) -> Result<String, String> {
         "/directOwners/r51FieldsExcludesLogOutput",
         "/directOwners/r51FieldsExcludesOtherNetwork",
         "/directOwners/r51FieldsExcludesToolbarOwned",
+        "/directOwners/r51ReadCommandOption",
+        "/directOwners/r51ReadInstanceCommandOption",
+        "/directOwners/r51ReadCheckboxChecked",
+        "/directOwners/r51ReadExcludesManaged",
+        "/directOwners/r51ReadNormalized",
     ] {
         expect_pointer(&actual, pointer, json!(true))?;
     }
+    expect_pointer(&actual, "/directOwners/r51ReadActiveInstance", json!("one"))?;
+    expect_pointer(&actual, "/directOwners/r51ReadStructuredCount", json!(2))?;
+    expect_pointer(&actual, "/directOwners/r51ReadNodeModeType", json!("value"))?;
+    expect_pointer(
+        &actual,
+        "/directOwners/r51ReadNodeModeValue",
+        json!("external"),
+    )?;
+    expect_pointer(
+        &actual,
+        "/directOwners/r51ReadCheckboxType",
+        json!("checkbox"),
+    )?;
+    expect_pointer(
+        &actual,
+        "/directOwners/r51ReadNormalizeReason",
+        json!("read-settings"),
+    )?;
 
     expect_pointer(&actual, "/parsed/instanceBlockWaitTime", json!("2500ms"))?;
     expect_pointer(&actual, "/parsed/instanceExtranonceSize", json!("4"))?;

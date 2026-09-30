@@ -110,7 +110,7 @@ const r51Sandbox = vm.createContext({
   wasmBridgeR51Store: wasm.bridgeR51Store,
   wasmBridgeR51Load: wasm.bridgeR51Load,
   wasmBridgeR51Keys: wasm.bridgeR51Keys,
-  kgwBridgeR51ReadSettings: () => r51Current,
+  kgwBridgeR51ReadSettingsR249: () => r51Current,
   kgwBridgeR51WriteSettings: (net, values) => r51Writes.push({ net: String(net), values }),
   kgwBridgeR95BNormalizeNetworkPortValues: (_net, values) => values,
   kgwBridgeRequireValidSettings: () => {},

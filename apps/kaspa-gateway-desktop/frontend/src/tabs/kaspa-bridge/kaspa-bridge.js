@@ -32,6 +32,7 @@ import initBridgeRust, {
   bridgeR51Keys as wasmBridgeR51Keys,
   bridgeR51Panel as wasmBridgeR51Panel,
   bridgeR51Fields as wasmBridgeR51Fields,
+  bridgeR51ReadSettings as wasmBridgeR51ReadSettings,
   bridgeRuntimeErrorFromStatus as wasmBridgeRuntimeErrorFromStatus,
   bridgePreviewDeclaresInprocessR65F as wasmBridgePreviewDeclaresInprocessR65F,
   bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction,
@@ -108,7 +109,7 @@ function kgwBridgeSettingsOwnerCallbacksV19() {
   return {
     scope: "bridge",
     keys: () => wasmBridgeR51Keys(),
-    readSettings: (net) => kgwBridgeR51ReadSettings(String(net || "")),
+    readSettings: (net) => kgwBridgeR51ReadSettingsR249(String(net || "")),
     load: (key) => wasmBridgeR51Load(String(key || "")),
     validateForm: (net, focus = false) => kgwBridgeValidateForm(String(net || ""), Boolean(focus))
   };
@@ -2112,31 +2113,21 @@ function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
 
 /* KGW_SETTINGS_FEEDBACK_LOCK_OWNER_R11_END */
 
-function kgwBridgeR51ReadSettings(net) {
-  const values = {};
+function kgwBridgeR51ReadSettingsCallbacksR249() {
+  return {
+    readStructuredInstances: (net) => kgwBridgeR51ReadStructuredInstancesR26B(String(net || "")),
+    readCommandOptions: (net) => kgwBridgeR51ReadCommandOptionsR38C(String(net || "")),
+    readInstanceCommandOptions: (net) => kgwBridgeR51ReadInstanceCommandOptionsR38C(String(net || "")),
+    normalizeNetworkPortValues: (net, values, reason) =>
+      kgwBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || ""))
+  };
+}
 
-  const structuredInstances = kgwBridgeR51ReadStructuredInstancesR26B(net);
-  values[KGW_BRIDGE_R51_STRUCTURED_INSTANCES_KEY_R26B] = structuredInstances;
-  values[KGW_BRIDGE_R51_ACTIVE_INSTANCE_KEY_R26B] = structuredInstances.activeInstance;
-  values[KGW_BRIDGE_R51_COMMAND_OPTIONS_KEY_R38C] = kgwBridgeR51ReadCommandOptionsR38C(net);
-  values[KGW_BRIDGE_R51_INSTANCE_COMMAND_OPTIONS_KEY_R38C] = kgwBridgeR51ReadInstanceCommandOptionsR38C(net);
-
-  for (const field of wasmBridgeR51Fields(net)) {
-    if (!field.id || BRIDGE_MANAGED[field.id.slice(("bridge-" + net + "-").length)]) continue;
-
-    values[field.id] = field.type === "checkbox"
-      ? { type: "checkbox", checked: Boolean(field.checked) }
-      : { type: "value", value: String(field.value ?? "") };
-  }
-
-  wasmBridgeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-read-settings-command-options", {
-    patch: "R38C",
-    owner: "bridge-r51-settings-owner",
-    commandOptionCount: Object.keys(values[KGW_BRIDGE_R51_COMMAND_OPTIONS_KEY_R38C] || {}).length,
-    instanceCommandOptionInstanceCount: Object.keys(values[KGW_BRIDGE_R51_INSTANCE_COMMAND_OPTIONS_KEY_R38C] || {}).length
-  });
-
-  return kgwBridgeR95BNormalizeNetworkPortValues(net, values, "read-settings");
+function kgwBridgeR51ReadSettingsR249(net) {
+  return wasmBridgeR51ReadSettings(
+    String(net || ""),
+    kgwBridgeR51ReadSettingsCallbacksR249()
+  );
 }
 
 /* KGW_BRIDGE_NETWORK_PORT_RANGE_R51_OWNER_FIX_R95B
@@ -2282,7 +2273,7 @@ function kgwBridgeR51WriteSettings(net, values) {
 function kgwBridgeR51CaptureFactoryDefaults() {
   for (const net of wasmBridgeR51Keys()) {
     if (!wasmBridgeR51Load("factory:" + net)) {
-      wasmBridgeR51Store("factory:" + net, kgwBridgeR51ReadSettings(net));
+      wasmBridgeR51Store("factory:" + net, kgwBridgeR51ReadSettingsR249(net));
     }
   }
 }
@@ -2293,7 +2284,7 @@ function kgwBridgeR51LoadSavedSettings() {
     if (saved) {
       kgwBridgeR51WriteSettings(net, kgwBridgeR95BNormalizeNetworkPortValues(net, saved, "load-saved-settings"));
     } else {
-      kgwBridgeR51WriteSettings(net, kgwBridgeR95BNormalizeNetworkPortValues(net, kgwBridgeR51ReadSettings(net), "load-current-settings"));
+      kgwBridgeR51WriteSettings(net, kgwBridgeR95BNormalizeNetworkPortValues(net, kgwBridgeR51ReadSettingsR249(net), "load-current-settings"));
     }
   }
 }
@@ -2311,7 +2302,7 @@ function kgwBridgeR51SaveSettings(net) {
     owner: "bridge-r51-settings-owner"
   });
 
-  const values = kgwBridgeR51ReadSettings(net);
+  const values = kgwBridgeR51ReadSettingsR249(net);
   wasmBridgeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-read-settings", {
     patch: "R29B",
     owner: "bridge-r51-settings-owner",
@@ -2341,7 +2332,7 @@ function kgwBridgeR51SetAsDefaults(net) {
     owner: "bridge-r51-settings-owner"
   });
 
-  const values = kgwBridgeR51ReadSettings(net);
+  const values = kgwBridgeR51ReadSettingsR249(net);
   wasmBridgeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-read-settings", {
     patch: "R29B",
     owner: "bridge-r51-settings-owner",
