@@ -1,13 +1,13 @@
 # CURRENT STATE
-- Current product boundary: OP223 Bridge local passthrough-adapter retirement is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 0c052f7e5c39272bf67f743f0132efb45d265b10, tree d1bd16b502f9242061f68fa8bf90b3a6fed84f71; Bridge SHA-256 5409d905838fe49f3fc3a65f25e30021476f03df3f09a96e0d2533f2ffb4077a; no product mutation or push is active.
+- Current product boundary: OP224 Bridge has-config predicate Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 4cd4cd0609e1af100c23c1b9630ff05fb522a691, tree a9238b7d47477d07efa66122dcfd83764ee60c06; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP223 verified implementation checkpoint is 0c052f7e5c39272bf67f743f0132efb45d265b10, tree d1bd16b502f9242061f68fa8bf90b3a6fed84f71.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP224 verified implementation checkpoint is 4cd4cd0609e1af100c23c1b9630ff05fb522a691, tree a9238b7d47477d07efa66122dcfd83764ee60c06.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP223 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
+- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP224 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -179,4 +179,4 @@
 
 ## NEXT ACTION
 
-OP223 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 0c052f7e5c39272bf67f743f0132efb45d265b10, tree d1bd16b502f9242061f68fa8bf90b3a6fed84f71; no push. Audit the remaining kaspa-bridge.js owned JavaScript boundaries read-only and select the next coherent Rust ownership boundary. Preserve the exported kgwBridgeEffectiveSettingsV1 compatibility contract until migrated deliberately. The separate zero-touch helper blocker remains unchanged.
+OP224 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 4cd4cd0609e1af100c23c1b9630ff05fb522a691, tree a9238b7d47477d07efa66122dcfd83764ee60c06; no push. Audit remaining kaspa-bridge.js owned JavaScript boundaries read-only and persist a WAI before mutation.
