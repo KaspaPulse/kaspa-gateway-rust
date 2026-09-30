@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. OP225 effective-settings compatibility alias cutover is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 0555f331207a307aa421a2e363865f3bf5ba08cc, tree fc256d8e8ba8ccb55ce615d0576d6e74f3c4bb58; no push.
+PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. OP226 Bridge scoped port-conflict direct Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint d606c44ec1d7917c104d7aaa151ce23f39d8d1e4, tree 6ac957608b4430779a2d64573cd539918217bbb5; no push.
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
 - Phase 1 foundation is committed locally as `33461f6511c69b457c5f3dd069b54322d9a236a0` / tree `e355550c6fa311fdfb4dd54a8cd29c4b45f0c583`.
@@ -87,7 +87,7 @@ The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access
 OP223 Bridge local passthrough-adapter retirement is CLOSED_LOCAL / VERIFIED_SUCCESS. Three local JavaScript adapters were retired: default-path scheduling now invokes the Rust/WASM owner directly, upstream instance serialization is direct, and DOM Bridge control lookup is direct through existing Rust/WASM exports. Implementation checkpoint 0c052f7e5c39272bf67f743f0132efb45d265b10 / tree d1bd16b502f9242061f68fa8bf90b3a6fed84f71; no push.
 
 ## Current Action
-OP225 implementation and qualification are complete. The public kgwBridgeEffectiveSettingsV1 compatibility name now re-exports the Rust/WASM owner directly; this boundary is in docs-only continuity closeout.
+OP226 implementation and qualification are complete. All former bridgeAssertNoPortConflictsR5 callers now invoke the existing Rust/WASM owner directly, and readiness exercises that real owner. This boundary is in docs-only continuity closeout.
 
 ## Next Action
 Audit remaining kaspa-bridge.js wrappers and owned JavaScript boundaries read-only; select the smallest coherent Rust ownership slice and persist a WAI before mutation. No push.
