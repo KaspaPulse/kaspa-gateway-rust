@@ -1,6 +1,6 @@
 use js_sys::{Array, Function, JSON, Object, Promise, Reflect, Uint8Array};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
-use wasm_bindgen_futures::JsFuture;
+use wasm_bindgen_futures::{JsFuture, spawn_local};
 
 const COMMAND: &str = "kgw_start_trace_frontend_v1";
 const REDACTED: &str = "[redacted]";
@@ -536,23 +536,6 @@ fn flash_log_action_button_impl(button: &JsValue, done_label: &str) {
     callback.forget();
 }
 
-fn dependency(deps: &JsValue, name: &str) -> Option<Function> {
-    property(deps, name).dyn_into::<Function>().ok()
-}
-
-fn dependency_apply(deps: &JsValue, name: &str, args: &[JsValue]) -> JsValue {
-    let Some(function) = dependency(deps, name) else {
-        return JsValue::UNDEFINED;
-    };
-    let values = Array::new();
-    for value in args {
-        values.push(value);
-    }
-    function
-        .apply(&JsValue::UNDEFINED, &values)
-        .unwrap_or(JsValue::UNDEFINED)
-}
-
 fn translate_runtime(key: &str, fallback: &str) -> String {
     let win = window();
     let mut runtime = JsValue::UNDEFINED;
@@ -608,19 +591,34 @@ fn clear_raw_log_buffer(net: &str, instance_id: &str) {
     );
 }
 
-fn dispatch_runtime_log_clear(deps: &JsValue, net: &str) {
-    let result = dependency_apply(
-        deps,
-        "dispatchRuntimeLogClear",
-        &[JsValue::from_str(net), JsValue::from_str("bridge")],
-    );
-    if !present(&result) {
-        return;
+fn active_runtime_bridge_instance_id(deps: &JsValue, net: &str) -> String {
+    let active_instance = property(deps, "activeInstance");
+    let value = property(&active_instance, net);
+    if crate::js_boolean(&value) {
+        crate::js_string_owned(&value)
+    } else {
+        String::new()
     }
-    let promise = Promise::resolve(&result);
-    let catch = Closure::wrap(Box::new(move |_error: JsValue| {}) as Box<dyn FnMut(JsValue)>);
-    let _ = promise.catch(&catch);
-    catch.forget();
+}
+
+fn dispatch_runtime_log_clear(deps: &JsValue, net: &str) {
+    let clear_net = net.to_owned();
+    let bridge_instance_id = active_runtime_bridge_instance_id(deps, net);
+    spawn_local(async move {
+        let payload = Object::new();
+        set(payload.as_ref(), "network", &JsValue::from_str(&clear_net));
+        set(
+            payload.as_ref(),
+            "runtimeRole",
+            &JsValue::from_str("bridge"),
+        );
+        set(
+            payload.as_ref(),
+            "bridgeInstanceId",
+            &JsValue::from_str(&bridge_instance_id),
+        );
+        let _ = invoke_runtime_command_impl("kgw_kgw_runtime_clear_logs_v1", payload.into()).await;
+    });
 }
 
 fn delete_dataset_key(target: &JsValue, key: &str) {

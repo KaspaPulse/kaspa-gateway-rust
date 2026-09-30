@@ -384,6 +384,53 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
 
     for (needle, message) in [
         (
+            "function kgwBridgeDispatchRuntimeLogClearV1(",
+            "Bridge Clear Log runtime dispatch must not remain JavaScript-owned.",
+        ),
+        (
+            "dispatchRuntimeLogClear:",
+            "Bridge Clear Log must not retain the JavaScript callback seam.",
+        ),
+        (
+            "kgw_kgw_runtime_clear_logs_v1",
+            "Bridge Clear Log runtime command ownership must not remain in JavaScript.",
+        ),
+    ] {
+        forbid(failures, &s.bridge, needle, message);
+    }
+    forbid(
+        failures,
+        &s.bridge_start_trace,
+        "\"dispatchRuntimeLogClear\"",
+        "Bridge start-trace must not depend on the retired dispatchRuntimeLogClear callback.",
+    );
+    for (needle, message) in [
+        (
+            "fn active_runtime_bridge_instance_id(",
+            "Bridge start-trace must derive Clear Log bridgeInstanceId in Rust.",
+        ),
+        (
+            "property(deps, \"activeInstance\")",
+            "Bridge start-trace must read the active Bridge instance from Rust-owned deps.",
+        ),
+        (
+            "spawn_local(async move",
+            "Bridge Clear Log runtime dispatch must remain fire-and-forget in Rust.",
+        ),
+        (
+            "\"kgw_kgw_runtime_clear_logs_v1\"",
+            "Bridge Clear Log runtime command must be Rust-owned.",
+        ),
+        (
+            "invoke_runtime_command_impl(",
+            "Bridge Clear Log runtime dispatch must use the existing Rust runtime transport.",
+        ),
+    ] {
+        require(failures, &s.bridge_start_trace, needle, message);
+    }
+
+    for (needle, message) in [
+        (
             "capture_from_clipboard",
             "Rust tooling must capture clipboard payloads at event time.",
         ),
@@ -695,6 +742,11 @@ mod tests {
                 "crate::bridge_raw_log::bridge_clear_raw_log_buffer(",
                 r#"for name in ["kgwT", "kgwI18n", "__kgwT"]"#,
                 "crate::bridge_frontend_helpers::bridge_small_owner_trace_r44d(",
+                "fn active_runtime_bridge_instance_id(",
+                r#"property(deps, "activeInstance")"#,
+                "spawn_local(async move",
+                r#""kgw_kgw_runtime_clear_logs_v1""#,
+                "invoke_runtime_command_impl(",
             ]
             .join("\n"),
             runtime: ["KgwRuntimeRawLogEntryV1", "sequence", "raw_text"].join("\n"),

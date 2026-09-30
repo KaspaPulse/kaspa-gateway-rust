@@ -389,7 +389,19 @@ async function rawScenario(kind) {
 
   if (kind === "node") api.apply("testnet10", kind, { entries: [input.testnetEntry] });
   else api.apply("testnet10", kind, { entries: [input.testnetEntry] }, "1");
+  window.__KGW_TEST_INVOKE_HANDLER = async (command) => {
+    if (command === "kgw_kgw_runtime_clear_logs_v1") {
+      throw new Error("synthetic clear-log transport rejection");
+    }
+    return true;
+  };
   await api.action("clear-log", "mainnet", window.document.querySelector(`[data-${kind}-action="clear-log"][data-net="mainnet"]`));
+  await waitForCondition(
+    () => callCount(calls, "kgw_kgw_runtime_clear_logs_v1") >= 1,
+    kind + " runtime clear dispatch"
+  );
+  const clearCall = calls.find((call) => call.command === "kgw_kgw_runtime_clear_logs_v1") || null;
+  delete window.__KGW_TEST_INVOKE_HANDLER;
   const result = {
     untyped1,
     afterUntyped1,
@@ -401,6 +413,10 @@ async function rawScenario(kind) {
     copyCount,
     copied,
     successTraceCount,
+    clearRuntimeCount: callCount(calls, "kgw_kgw_runtime_clear_logs_v1"),
+    clearRuntimeNetwork: String(clearCall?.payload?.network || ""),
+    clearRuntimeRole: String(clearCall?.payload?.runtimeRole || ""),
+    clearRuntimeBridgeInstanceId: String(clearCall?.payload?.bridgeInstanceId || ""),
     afterClearMainnet: mainnet.textContent,
     afterClearEmptyHidden: empty.hidden,
     testnetText: window.document.getElementById(kind + "-testnet10-logOutput").textContent,
@@ -689,6 +705,38 @@ pub fn run(root: &Path) -> Result<String, String> {
     {
         return Err("Bridge log-action trace dispatch is not direct to the Rust owner".to_owned());
     }
+    for retired in [
+        "function kgwBridgeDispatchRuntimeLogClearV1(",
+        "dispatchRuntimeLogClear:",
+        "kgw_kgw_runtime_clear_logs_v1",
+    ] {
+        if bridge.contains(retired) {
+            return Err(format!(
+                "retired Bridge Clear Log JavaScript runtime-dispatch ownership remains: {retired}"
+            ));
+        }
+    }
+    if bridge_start_trace_rust.contains("\"dispatchRuntimeLogClear\"") {
+        return Err(
+            "Bridge start-trace still depends on the retired dispatchRuntimeLogClear callback"
+                .to_owned(),
+        );
+    }
+    for needle in [
+        "fn active_runtime_bridge_instance_id(",
+        "property(deps, \"activeInstance\")",
+        "spawn_local(async move",
+        "\"kgw_kgw_runtime_clear_logs_v1\"",
+        "\"runtimeRole\"",
+        "\"bridgeInstanceId\"",
+        "invoke_runtime_command_impl(",
+    ] {
+        if !bridge_start_trace_rust.contains(needle) {
+            return Err(format!(
+                "Bridge Clear Log direct Rust runtime-dispatch contract missing: {needle}"
+            ));
+        }
+    }
     for symbol in [
         "#[wasm_bindgen(js_name = nodeApplyRuntimeLogReport)]",
         "#[wasm_bindgen(js_name = nodeHandleLogAction)]",
@@ -730,6 +778,10 @@ pub fn run(root: &Path) -> Result<String, String> {
     expect(&actual, "/node/copied/runtimeRole", json!("node"))?;
     expect(&actual, "/node/copied/bridgeInstanceId", json!(""))?;
     expect(&actual, "/node/successTraceCount", json!(1))?;
+    expect(&actual, "/node/clearRuntimeCount", json!(1))?;
+    expect(&actual, "/node/clearRuntimeNetwork", json!("mainnet"))?;
+    expect(&actual, "/node/clearRuntimeRole", json!("node"))?;
+    expect(&actual, "/node/clearRuntimeBridgeInstanceId", json!(""))?;
     expect(&actual, "/node/afterClearMainnet", json!(""))?;
     expect(&actual, "/node/afterClearEmptyHidden", json!(false))?;
     expect(&actual, "/node/testnetText", json!("testnet10 raw only"))?;
@@ -750,6 +802,10 @@ pub fn run(root: &Path) -> Result<String, String> {
     expect(&actual, "/bridge/copied/runtimeRole", json!("bridge"))?;
     expect(&actual, "/bridge/copied/bridgeInstanceId", json!("1"))?;
     expect(&actual, "/bridge/successTraceCount", json!(1))?;
+    expect(&actual, "/bridge/clearRuntimeCount", json!(1))?;
+    expect(&actual, "/bridge/clearRuntimeNetwork", json!("mainnet"))?;
+    expect(&actual, "/bridge/clearRuntimeRole", json!("bridge"))?;
+    expect(&actual, "/bridge/clearRuntimeBridgeInstanceId", json!("1"))?;
     expect(&actual, "/bridge/afterClearMainnet", json!(""))?;
     expect(&actual, "/bridge/afterClearEmptyHidden", json!(false))?;
     expect(

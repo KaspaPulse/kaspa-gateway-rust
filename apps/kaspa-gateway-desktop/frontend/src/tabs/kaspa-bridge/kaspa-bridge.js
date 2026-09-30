@@ -1241,14 +1241,6 @@ function bridgeSyncAllModeControls() {
 
 // Bridge R27 log-auto-scroll persistence, scroll behavior, and DOM installer are Rust-owned in bridge_frontend_helpers.rs.
 
-async function kgwBridgeDispatchRuntimeLogClearV1(net, _role = "bridge") {
-  if (!wasmBridgeRuntimeInvokeAvailable()) return null;
-  return await wasmBridgeInvokeRuntimeCommand(
-    "kgw_kgw_runtime_clear_logs_v1",
-    buildApplyPayload(net, "kgw_kgw_runtime_clear_logs_v1")
-  );
-}
-
 function buildCommandLines(net) {
   bridgeSyncModeControls(net);
   wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
@@ -1596,8 +1588,7 @@ function buildApplyPayload(net, command) {
   if (
     command === "kgw_kgw_disable_network_v1" ||
     command === "kgw_runtime_owner_status_v1" ||
-    command === "kgw_kgw_runtime_logs_v1" ||
-    command === "kgw_kgw_runtime_clear_logs_v1"
+    command === "kgw_kgw_runtime_logs_v1"
   ) {
     return { network: net, runtimeRole: "bridge", bridgeInstanceId: String(activeInstance?.[net] || "") };
   }
@@ -2779,8 +2770,7 @@ function kgwBridgeR51StartLiveRefresh() {
 async function kgwBridgeHandleLogActionV29(action, net, button) {
   return await wasmBridgeHandleLogAction(String(action || ""), String(net || ""), button, {
     bridgeInstances,
-    activeInstance,
-    dispatchRuntimeLogClear: kgwBridgeDispatchRuntimeLogClearV1
+    activeInstance
   });
 }
 /* KGW_LOG_ACTIONS_SCOPED_OWNER_V29_END */
