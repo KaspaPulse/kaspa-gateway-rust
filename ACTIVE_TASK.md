@@ -84,13 +84,13 @@ PHASE 10 - final Bridge frontend ownership migration is IN PROGRESS. OP237 is CL
 The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates. The remaining owned source debt is exactly kaspa-bridge.js plus that locked PowerShell helper; execution debt remains 8. Independent Bridge migration work continues.
 
 ## Last Completed Action
-OP242 Bridge instance network-key Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS. Rust/WASM owns bridgeInstanceNetworkKeyR15 with exact value-string/value.key/fallback-string/fallback.key precedence, known-network trim validation, and mainnet fallback; the JavaScript helper is retired and exactly ten product call sites invoke generated WASM directly. Implementation checkpoint e08c50737747e485250d9c08986c24e305cd4cd7 / tree 469df6ba85c4987b44a20259f8454167facd2013; no push.
+OP243 Bridge Rusty-Kaspa root-only default-paths fire-and-forget Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS. Rust/WASM owns the fire-and-forget refresh through spawn_local around the existing async R5 owner; the JavaScript helper is retired, exactly two product call sites invoke generated WASM directly, and readiness/static contracts prove transport, DOM writes, callback, and ownership. Implementation checkpoint 615c0121092b146324ff439a6474c72777e1628e / tree cd2066e481edc8a57b1b5f79f3009645b9f1f616; no push.
 
 ## Current Action
-OP242 implementation and qualification are complete. This boundary is in docs-only continuity closeout; product/generated/audit source is already checkpointed and unchanged.
+OP243 implementation and affected qualification are complete. This boundary is in docs-only continuity closeout; product/generated/audit source is checkpointed at 615c0121092b146324ff439a6474c72777e1628e and unchanged.
 
 ## Next Action
-Audit remaining kaspa-bridge.js owned JavaScript boundaries read-only and select the next smallest coherent Rust ownership slice. Continue under V4; persist write-ahead intent before material mutation; no push.
+After this docs-only closeout reaches V4 generation 2145 with a clean worktree, audit remaining kaspa-bridge.js owned JavaScript boundaries read-only and select the next smallest coherent Rust ownership slice. Persist V4 write-ahead intent before material mutation; no push.
 
 ## Verification Required
 - OP103 affected surface: legacy launcher frozen at SHA-256 `7229e1fd33546f0c14dc89dd34627b2626eaede00d07bdf08956721964cca0c5`; stable diagnostic/Windows-evidence/clipboard tests 5/5 each PASS; cargo check, FMT and strict xtask Clippy PASS; MSRV 1.97.1 check + diagnostic 5/5 PASS; aggregate true-raw-log gate PASS; full-local parser PASS; language inventory PASS at Rust 169 / source debt 16 / execution debt 10 / exceptions 30 / unapproved 0/0; diff-check PASS.

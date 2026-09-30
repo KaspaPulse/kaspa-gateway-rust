@@ -1,14 +1,14 @@
 # CURRENT STATE
-- Current product boundary: OP242 Bridge instance network-key Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint e08c50737747e485250d9c08986c24e305cd4cd7, tree 469df6ba85c4987b44a20259f8454167facd2013; no push.
+- Current product boundary: OP243 Bridge Rusty-Kaspa root-only default-paths fire-and-forget Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 615c0121092b146324ff439a6474c72777e1628e, tree cd2066e481edc8a57b1b5f79f3009645b9f1f616; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
-- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`, current generation `2141`.
+- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`, closeout target generation `2145`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP242 verified implementation checkpoint is `e08c50737747e485250d9c08986c24e305cd4cd7`, tree `469df6ba85c4987b44a20259f8454167facd2013`.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP243 verified implementation checkpoint is `615c0121092b146324ff439a6474c72777e1628e`, tree `cd2066e481edc8a57b1b5f79f3009645b9f1f616`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP242 continuity closeout, only ACTIVE_TASK.md and CURRENT_STATE.md are expected dirty; steady-state after closeout is CLEAN.
+- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP243 continuity closeout, only ACTIVE_TASK.md and CURRENT_STATE.md are expected dirty; steady-state after closeout is CLEAN.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -156,6 +156,13 @@
 - `git diff --check`: PASS.
 - Primary evidence: `C:\Users\abuha\KaspaGateway-Rust100-20260923\header-live-metrics-rust-op101`.
 
+## OP243 VERIFIED EVIDENCE
+- Bridge Rusty-Kaspa root-only default-path fire-and-forget ownership is Rust/WASM-owned through `bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5`, which uses `spawn_local` around the existing async R5 owner and intentionally absorbs the background error exactly like the retired JavaScript helper. The JavaScript helper is absent and exactly two product call sites invoke generated WASM directly. Implementation checkpoint `615c0121092b146324ff439a6474c72777e1628e`, tree `cd2066e481edc8a57b1b5f79f3009645b9f1f616`; no push.
+- Direct generated-WASM readiness smoke verifies `kgw_settings_context_v1` dispatch for `mainnet`, writes `APPDIR-mainnet` into both `appdir` and `inprocessAppdirMirror` value/title fields, and invokes the supplied update callback exactly once with `mainnet`. Static ownership checks require the Rust export/import and exactly two direct product call sites while rejecting the retired helper.
+- The first `programmatic_restore_real_contract_passes` attempt exposed a stale test-only function end marker (`kgwBridgeR51IsRunning`, retired by earlier migration). The contract was minimally rebound to the next live function `kgwBridgeR51SetRuntimeButtons`; the targeted contract and authoritative `static-contract-regressions` gate then PASS. Product behavior was not implicated.
+- FMT PASS; bridge_frontend_helpers tests 10/10 PASS; stable/MSRV 1.97.1 wasm32 PASS; frontend-WASM and xtask strict Clippy PASS; xtask MSRV PASS; deterministic frontend-WASM codegen WRITE/CHECK PASS with wasm-pack 0.15.0 and 19 artifacts; Node syntax and Desktop ESLint zero-warning PASS; `bridge-readiness-frontend-regressions` PASS.
+- Language policy PASS at Rust 222 / source debt 2 / execution debt 8 / unapproved 0/0 / exceptions 39; project-continuity PASS; diff-check PASS. V4 qualification generation 2143 is bound to exact source/generated SHA-256 identities and writer epoch 1.
+
 ## OP242 VERIFIED EVIDENCE
 - Bridge instance network-key resolution is Rust/WASM-owned through `bridgeInstanceNetworkKeyR15`: exact legacy candidate precedence is preserved (`value` string, `value.key`, fallback string, fallback.key), candidates are trimmed and accepted only when matching the known Bridge network keys, and unresolved input falls back to `mainnet`. The JavaScript helper is retired and exactly ten product call sites invoke generated WASM directly. Implementation checkpoint `e08c50737747e485250d9c08986c24e305cd4cd7`, tree `469df6ba85c4987b44a20259f8454167facd2013`; no push.
 - FMT PASS; bridge_frontend_helpers tests 10/10 PASS; stable/MSRV 1.97.1 wasm32 PASS; frontend-WASM and xtask strict Clippy PASS; xtask MSRV PASS; deterministic frontend-WASM codegen WRITE/CHECK PASS with wasm-pack 0.15.0 and 19 artifacts.
@@ -272,11 +279,11 @@
 
 ## DO NOT REPEAT
 
-- Do not replay OP090-OP242 successful checks while their validity predicates remain unchanged.
+- Do not replay OP090-OP243 successful checks while their validity predicates remain unchanged.
 - Do not reset, clean, stash, discard, overwrite, or replace newer local work with remote state.
 - Do not force unsafe clipboard mutation, protected file unlocking, or broad requalification for reassurance.
 - Do not push merely to discover locally detectable failures.
 
 ## NEXT ACTION
 
-OP242 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint `e08c50737747e485250d9c08986c24e305cd4cd7`, tree `469df6ba85c4987b44a20259f8454167facd2013`; no push. Audit remaining `kaspa-bridge.js` owned JavaScript boundaries read-only and continue under V4.
+OP243 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint `615c0121092b146324ff439a6474c72777e1628e`, tree `cd2066e481edc8a57b1b5f79f3009645b9f1f616`; no push. After closeout verification, audit remaining `kaspa-bridge.js` owned JavaScript boundaries read-only and continue under V4.
