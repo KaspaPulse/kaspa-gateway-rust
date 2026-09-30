@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 - final Bridge frontend ownership migration is IN PROGRESS overall. OP236 Bridge R65E owned-node display lock Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 005addf806ae6cd36068885df7cbf49b7aafbe15, tree d0e92f899eb4a189e0d57e3e6ef06f50c0f5a1e0; no push.
+PHASE 10 - final Bridge frontend ownership migration is IN PROGRESS overall. OP237 Bridge R65F current-node-mode DOM read Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint be25d6d3459309a22a099a7cefed2d548a124037, tree 3246bd35f72550da076cf4000669f4d4c09fc458; no push.
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
 - Phase 1 foundation is committed locally as `33461f6511c69b457c5f3dd069b54322d9a236a0` / tree `e355550c6fa311fdfb4dd54a8cd29c4b45f0c583`.
@@ -84,10 +84,10 @@ PHASE 10 - final Bridge frontend ownership migration is IN PROGRESS overall. OP2
 The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates. The remaining owned source debt is exactly kaspa-bridge.js plus that locked PowerShell helper; execution debt remains 8. Independent Bridge migration work continues.
 
 ## Last Completed Action
-OP236 Bridge R65E owned-node display lock Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS. The existing Rust lock store/set/event owner now serves Bridge through generated WASM; JavaScript lock helpers are retired and start/stop call sites invoke WASM directly. Direct generated-WASM evidence verifies the global lock record and lock/unlock CustomEvent contract. Implementation checkpoint 005addf806ae6cd36068885df7cbf49b7aafbe15 / tree d0e92f899eb4a189e0d57e3e6ef06f50c0f5a1e0; no push.
+OP237 Bridge R65F current-node-mode DOM read Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS. Rust/WASM owns direct-ID precedence, primary/secondary panel fallback selectors, value-property semantics, and empty/error fallback; the JavaScript helper is retired and all three call sites invoke generated WASM directly. Direct generated-WASM smoke verifies direct, both panel fallbacks, direct-empty precedence, missing, and selector-error behavior. Implementation checkpoint be25d6d3459309a22a099a7cefed2d548a124037 / tree 3246bd35f72550da076cf4000669f4d4c09fc458; no push.
 
 ## Current Action
-OP236 implementation and qualification are complete. This boundary is in docs-only continuity closeout; product/generated source is already checkpointed and unchanged.
+OP237 implementation and qualification are complete. This boundary is in docs-only continuity closeout; product/generated source is already checkpointed and unchanged.
 
 ## Next Action
 Audit remaining kaspa-bridge.js owned JavaScript boundaries read-only and select the next coherent Rust ownership slice. Persist a V3 WAI before any mutation; no push.
