@@ -1,14 +1,14 @@
 # CURRENT STATE
-- Current product boundary: OP245 Bridge R51 localStorage Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD b4c7fa7478c65552de07494a8af9038dfd4d7256, tree f36f5b3a937a5f060f4d9f94cd5209cf26330dfd; no push.
+- Current product boundary: OP246 Bridge R51 network-key Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD 8a4d221edbe9d400f34eba91dae6308d918fe1f5, tree 20f8fc4a1de8a1becb929af3dd9bc7bd2c6da2ed; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
-- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`, current generation `2154` (docs-only closeout pending).
+- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`, current generation `2159` (docs-only closeout pending).
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP245 verified implementation checkpoint is `b4c7fa7478c65552de07494a8af9038dfd4d7256`, tree `f36f5b3a937a5f060f4d9f94cd5209cf26330dfd`.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP246 verified implementation checkpoint is `8a4d221edbe9d400f34eba91dae6308d918fe1f5`, tree `20f8fc4a1de8a1becb929af3dd9bc7bd2c6da2ed`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **DIRTY — docs-only continuity closeout.** Expected dirty paths before the closeout commit are `ACTIVE_TASK.md` and `CURRENT_STATE.md` only; product/test/generated OP245 files are already checkpointed.
+- Working tree: **DIRTY — docs-only continuity closeout.** Expected dirty paths before the closeout commit are `ACTIVE_TASK.md` and `CURRENT_STATE.md` only; product/test/generated OP246 files are already checkpointed.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -285,8 +285,8 @@
 
 ## DO NOT REPEAT
 
-- Do not replay OP090-OP245 successful checks while their validity predicates remain unchanged.
-- Do not rewrite OP245 Rust exports/prefix test, the three migrated Store call sites, the migrated settings-owner Load callback, or the migrated factory-load call.
+- Do not replay OP090-OP246 successful checks while their validity predicates remain unchanged.
+- Do not rewrite OP245 storage ownership or OP246 bridgeR51Keys Rust/WASM ownership/readiness harness while their validity predicates remain unchanged.
 - Do not retry either blocked Load replacement command from this session.
 - Do not reset, clean, stash, discard, overwrite, or replace newer local work with remote state.
 - Do not force unsafe clipboard mutation, protected file unlocking, or broad requalification for reassurance.
@@ -294,4 +294,4 @@
 
 ## NEXT ACTION
 
-OP245 is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint `b4c7fa7478c65552de07494a8af9038dfd4d7256`, tree `f36f5b3a937a5f060f4d9f94cd5209cf26330dfd`; no push. Identify the next genuinely incomplete boundary of the same parent task from actual durable state and persist a V4 write-ahead intent before material mutation.
+OP246 is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint `8a4d221edbe9d400f34eba91dae6308d918fe1f5`, tree `20f8fc4a1de8a1becb929af3dd9bc7bd2c6da2ed`; no push. Complete this docs-only continuity closeout, verify clean state, then identify the next genuinely incomplete boundary of the same parent task from actual durable state and persist a V4 write-ahead intent before material mutation.

@@ -81,16 +81,16 @@ PHASE 10 - final Bridge frontend ownership migration is IN PROGRESS. OP237 is CL
 - Native/runtime/release evidence whose predicates exclude frontend Explorer utility behavior remains reusable. Frontend/app-boot/E2E evidence touching the changed module graph is now invalidated for final closure and must be requalified proportionally before the task can be declared complete.
 
 ## Current Blocker
-OP245 has no remaining local source/qualification blocker: R51 localStorage ownership is checkpointed in Rust/WASM at b4c7fa7478c65552de07494a8af9038dfd4d7256 / tree f36f5b3a937a5f060f4d9f94cd5209cf26330dfd. The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates; these are parent-task boundaries, not OP245 failures.
+OP246 has no remaining local source/qualification blocker: Bridge R51 network-key ownership is checkpointed in Rust/WASM at 8a4d221edbe9d400f34eba91dae6308d918fe1f5 / tree 20f8fc4a1de8a1becb929af3dd9bc7bd2c6da2ed. The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates; these are parent-task boundaries, not OP246 failures.
 
 ## Last Completed Action
-OP245 Bridge R51 localStorage Rust/WASM ownership implementation and affected qualification are VERIFIED_SUCCESS. Legacy R51 Load/Store calls are 0/0, WASM Load/Store calls are 7/3, generated-WASM/product behavior and fail-closed coverage pass, and the dead JavaScript storage-prefix declaration was removed after zero-consumer proof. Implementation checkpoint b4c7fa7478c65552de07494a8af9038dfd4d7256 / tree f36f5b3a937a5f060f4d9f94cd5209cf26330dfd; no push.
+OP246 Bridge R51 network-key Rust/WASM ownership implementation and affected qualification are VERIFIED_SUCCESS. Legacy kgwBridgeR51Keys owner/calls are 0, wasmBridgeR51Keys consumers are 4, canonical key order mainnet/testnet10/testnet13 is verified in Rust and readiness behavior, and the readiness harness now selects writes by network identity instead of last-write position. Implementation checkpoint 8a4d221edbe9d400f34eba91dae6308d918fe1f5 / tree 20f8fc4a1de8a1becb929af3dd9bc7bd2c6da2ed; no push.
 
 ## Current Action
-OP245 product/test/generated implementation is checkpointed and unchanged. V4 generation 2154 is a docs-only postcheckpoint continuity closeout; only ACTIVE_TASK.md and CURRENT_STATE.md are expected dirty paths before the closeout commit.
+OP246 product/test/generated implementation is checkpointed and unchanged. V4 generation 2159 is the docs-only postcheckpoint continuity closeout; only ACTIVE_TASK.md and CURRENT_STATE.md are expected dirty paths before the closeout commit.
 
 ## Next Action
-OP245 is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint b4c7fa7478c65552de07494a8af9038dfd4d7256 / tree f36f5b3a937a5f060f4d9f94cd5209cf26330dfd. Identify the next genuinely incomplete boundary of KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923 from actual durable state; do not reopen or repeat OP245 qualification, and do not push merely to discover failures.
+OP246 is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 8a4d221edbe9d400f34eba91dae6308d918fe1f5 / tree 20f8fc4a1de8a1becb929af3dd9bc7bd2c6da2ed. Complete this docs-only continuity closeout, verify clean state, then identify the next genuinely incomplete boundary of KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923 from actual durable state; do not reopen or repeat OP246 qualification, and do not push merely to discover failures.
 
 ## Verification Required
 - OP103 affected surface: legacy launcher frozen at SHA-256 `7229e1fd33546f0c14dc89dd34627b2626eaede00d07bdf08956721964cca0c5`; stable diagnostic/Windows-evidence/clipboard tests 5/5 each PASS; cargo check, FMT and strict xtask Clippy PASS; MSRV 1.97.1 check + diagnostic 5/5 PASS; aggregate true-raw-log gate PASS; full-local parser PASS; language inventory PASS at Rust 169 / source debt 16 / execution debt 10 / exceptions 30 / unapproved 0/0; diff-check PASS.
