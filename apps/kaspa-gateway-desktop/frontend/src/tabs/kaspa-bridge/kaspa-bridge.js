@@ -53,8 +53,7 @@ import initBridgeRust, {
   bridgeEscapeHtml as wasmBridgeEscapeHtml,
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
   bridgeI18nTextR41 as wasmBridgeI18nTextR41,
-  bridgeLogAutoScrollEnabled as wasmBridgeLogAutoScrollEnabled,
-  bridgeSetLogAutoScroll as wasmBridgeSetLogAutoScroll,
+  bridgeInstallLogAutoScrollControls as wasmBridgeInstallLogAutoScrollControls,
   bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
   bridgeNetworkPolicyMessage as wasmBridgeNetworkPolicyMessage,
   bridgeNormalizeNetwork as wasmBridgeNormalizeNetwork,
@@ -997,7 +996,7 @@ function renderAllNetworks(root) {
   installSettingsLayout(root);
 
 
-  setTimeout(kgwInstallBridgeLogAutoScrollControlsR27, 0);
+  setTimeout(wasmBridgeInstallLogAutoScrollControls, 0);
   setTimeout(window.kgwInstallBridgeLogScopedControlsV29, 0);
 }
 
@@ -1239,59 +1238,7 @@ function bridgeSyncAllModeControls() {
   BRIDGE_NETWORKS.forEach((item) => bridgeSyncModeControls(item.key));
 }
 
-// KGW_BRIDGE_LOG_AUTOSCROLL_CONTROLS_R27_START
-/* R27 log-auto-scroll persistence and scroll behavior are Rust-owned in bridge_frontend_helpers.rs. */
-
-function kgwInstallBridgeLogAutoScrollControlsR27() {
-  if (typeof document === "undefined") return;
-  if (!Array.isArray(BRIDGE_NETWORKS)) return;
-
-  for (const profile of BRIDGE_NETWORKS) {
-    const net = profile.key;
-    const out = wasmBridgeById(wasmBridgeElementId(net, "logOutput"));
-    if (!out) continue;
-
-    const controlId = wasmBridgeElementId(net, "logAutoScrollR27");
-    if (wasmBridgeById(controlId)) continue;
-
-    const label = document.createElement("label");
-    label.className = "kgw-log-autoscroll-toggle";
-    label.setAttribute("data-kgw-log-autoscroll", "bridge");
-    label.setAttribute("title", "Keep the log pinned to the newest raw line.");
-
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.id = controlId;
-    checkbox.checked = wasmBridgeLogAutoScrollEnabled(String(net || ""));
-    checkbox.addEventListener("change", (event) => {
-      wasmBridgeSmallOwnerTraceR44D(net, "log-autoscroll", "r51b3-bridge-log-autoscroll-change", {
-        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
-        trusted: Boolean(event && event.isTrusted),
-        controlId: String(controlId || ""),
-        checked: Boolean(checkbox.checked)
-      });
-      wasmBridgeSetLogAutoScroll(String(net || ""), Boolean(checkbox.checked));
-    });
-
-    const span = document.createElement("span");
-    span.textContent = wasmBridgeI18nTextR41("common.autoScroll", "Auto-scroll");
-
-    label.appendChild(checkbox);
-    label.appendChild(span);
-
-    const panel = out.closest(".bridge-v7-inner-panel, [data-bridge-inner-panel], [data-inner-panel], [data-bridge-panel], [data-panel]") || out.parentElement;
-    const toolbar =
-      panel?.querySelector(".bridge-v7-log-toolbar, .bridge-log-toolbar, [data-bridge-log-toolbar]") ||
-      out.parentElement?.querySelector(".bridge-v7-log-toolbar, .bridge-log-toolbar, [data-bridge-log-toolbar]");
-
-    if (toolbar) {
-      toolbar.appendChild(label);
-    } else {
-      out.parentElement?.insertBefore(label, out);
-    }
-  }
-}
-// KGW_BRIDGE_LOG_AUTOSCROLL_CONTROLS_R27_END
+// Bridge R27 log-auto-scroll persistence, scroll behavior, and DOM installer are Rust-owned in bridge_frontend_helpers.rs.
 
 async function kgwBridgeDispatchRuntimeLogClearV1(net, _role = "bridge") {
   if (!wasmBridgeRuntimeInvokeAvailable()) return null;
@@ -3356,7 +3303,7 @@ const bridgeRoot = root || document.getElementById("kaspa-bridge");
   kgwBridgeR51StartLiveRefresh();
 
 
-  setTimeout(kgwInstallBridgeLogAutoScrollControlsR27, 0);
+  setTimeout(wasmBridgeInstallLogAutoScrollControls, 0);
 }
 
 

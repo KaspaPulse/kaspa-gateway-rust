@@ -100,9 +100,18 @@ class NodeLike {
     this.children = [];
     this.textContent = "";
     this.className = "";
+    this.parentElement = null;
   }
   appendChild(node) {
+    if (node && typeof node === "object") node.parentElement = this;
     this.children.push(node);
+    return node;
+  }
+  insertBefore(node, reference) {
+    if (node && typeof node === "object") node.parentElement = this;
+    const index = this.children.indexOf(reference);
+    if (index >= 0) this.children.splice(index, 0, node);
+    else this.children.push(node);
     return node;
   }
   querySelector(selector) {
@@ -127,6 +136,7 @@ class Element extends NodeLike {
     this.dataset = {};
     this.value = "";
     this.attributes = {};
+    this.listeners = {};
     this.classList = {
       contains() { return false; },
       toggle() {},
@@ -138,11 +148,20 @@ class Element extends NodeLike {
     this.attributes[key] = String(value);
     this[key] = String(value);
   }
+  addEventListener(type, listener) {
+    this.listeners[String(type)] = listener;
+  }
+  closest() {
+    return null;
+  }
   removeAttribute(key) {
     delete this.attributes[key];
   }
   replaceChildren(...nodes) {
     this.children = nodes;
+    for (const node of nodes) {
+      if (node && typeof node === "object") node.parentElement = this;
+    }
   }
 }
 const elements = new Map();
@@ -192,7 +211,67 @@ const documentImpl = {
 globalThis.document = documentImpl;
 
 const bridgeLogOutput = elements.get("bridge-mainnet-logOutput");
+const bridgeLogParent = new Element();
+const bridgeLogToolbar = new Element();
+bridgeLogParent.querySelector = (selector) =>
+  String(selector).includes("bridge-log-toolbar") ? bridgeLogToolbar : null;
+bridgeLogOutput.parentElement = bridgeLogParent;
 bridgeLogOutput.scrollHeight = 321;
+bridgeLogOutput.scrollTop = 7;
+
+const bridgeTestnetLogOutput = new Element();
+elements.set("bridge-testnet10-logOutput", bridgeTestnetLogOutput);
+const bridgeTestnetLogParent = new Element();
+bridgeTestnetLogParent.appendChild(bridgeTestnetLogOutput);
+
+wasm.bridgeInstallLogAutoScrollControls();
+const installedLogAutoScrollLabel = bridgeLogToolbar.children[0] || null;
+const installedLogAutoScrollCheckbox =
+  installedLogAutoScrollLabel?.children?.[0] || null;
+const installedLogAutoScrollText =
+  installedLogAutoScrollLabel?.children?.[1] || null;
+const installedTestnetLogAutoScrollLabel =
+  bridgeTestnetLogParent.children[0] || null;
+const installedTestnetLogAutoScrollCheckbox =
+  installedTestnetLogAutoScrollLabel?.children?.[0] || null;
+const installedTestnetLogOutputAfter =
+  bridgeTestnetLogParent.children[1] || null;
+const logAutoScrollInstallerOwnership = {
+  toolbarChildren: bridgeLogToolbar.children.length,
+  labelClass: String(installedLogAutoScrollLabel?.className || ""),
+  scope: String(
+    installedLogAutoScrollLabel?.attributes?.["data-kgw-log-autoscroll"] || ""
+  ),
+  title: String(installedLogAutoScrollLabel?.attributes?.title || ""),
+  checkboxType: String(installedLogAutoScrollCheckbox?.type || ""),
+  checkboxId: String(installedLogAutoScrollCheckbox?.id || ""),
+  checkboxChecked: Boolean(installedLogAutoScrollCheckbox?.checked),
+  spanText: String(installedLogAutoScrollText?.textContent || ""),
+  changeListener: typeof installedLogAutoScrollCheckbox?.listeners?.change === "function",
+  fallbackChildren: bridgeTestnetLogParent.children.length,
+  fallbackInsertedBeforeOutput:
+    installedTestnetLogOutputAfter === bridgeTestnetLogOutput,
+  fallbackLabelClass: String(installedTestnetLogAutoScrollLabel?.className || ""),
+  fallbackCheckboxId: String(installedTestnetLogAutoScrollCheckbox?.id || "")
+};
+bridgeLogOutput.scrollTop = 11;
+installedLogAutoScrollCheckbox.checked = false;
+installedLogAutoScrollCheckbox.listeners.change({ isTrusted: true });
+const logAutoScrollInstallerDisabled = {
+  stored: innerTabStore.get("kgw.bridge.log.autoscroll.mainnet") || "",
+  scrollTop: bridgeLogOutput.scrollTop,
+  traceCommand: String(transportCalls.at(-1)?.command || "")
+};
+installedLogAutoScrollCheckbox.checked = true;
+installedLogAutoScrollCheckbox.listeners.change({ isTrusted: false });
+const logAutoScrollInstallerEnabled = {
+  stored: innerTabStore.get("kgw.bridge.log.autoscroll.mainnet") || "",
+  scrollTop: bridgeLogOutput.scrollTop,
+  traceCommand: String(transportCalls.at(-1)?.command || "")
+};
+
+// Preserve the independent OP232 persistence/scroll smoke baseline after the
+// OP233 DOM-installer event smoke mutates the same synthetic output element.
 bridgeLogOutput.scrollTop = 7;
 const logAutoScrollDefaultMainnet = wasm.bridgeLogAutoScrollEnabled("mainnet");
 wasm.bridgeSetLogAutoScroll("mainnet", false);
@@ -342,6 +421,9 @@ const output = {
   innerTabOwnership,
   lastNetworkOwnership,
   logAutoScrollOwnership,
+  logAutoScrollInstallerOwnership,
+  logAutoScrollInstallerDisabled,
+  logAutoScrollInstallerEnabled,
   transport: {
     available: Boolean(transportAvailable),
     result: String(transportResult || ""),
@@ -573,8 +655,12 @@ fn verify_static_contracts(
     for needle in [
         "#[wasm_bindgen(js_name = bridgeLogAutoScrollEnabled)]",
         "#[wasm_bindgen(js_name = bridgeSetLogAutoScroll)]",
+        "#[wasm_bindgen(js_name = bridgeInstallLogAutoScrollControls)]",
         "kgw.bridge.log.autoscroll.{net}",
         "bridge_log_auto_scroll_enabled_text",
+        "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
+        "r51b3-bridge-log-autoscroll-change",
+        ".bridge-v7-log-toolbar, .bridge-log-toolbar, [data-bridge-log-toolbar]",
     ] {
         if !helpers.contains(needle) {
             return Err(format!(
@@ -584,27 +670,37 @@ fn verify_static_contracts(
     }
 
     for needle in [
-        "bridgeLogAutoScrollEnabled as wasmBridgeLogAutoScrollEnabled",
-        "bridgeSetLogAutoScroll as wasmBridgeSetLogAutoScroll",
-        "wasmBridgeLogAutoScrollEnabled(String(net || \"\"))",
-        "wasmBridgeSetLogAutoScroll(String(net || \"\"), Boolean(checkbox.checked))",
-        "function kgwInstallBridgeLogAutoScrollControlsR27(",
+        "bridgeInstallLogAutoScrollControls as wasmBridgeInstallLogAutoScrollControls",
+        "setTimeout(wasmBridgeInstallLogAutoScrollControls, 0);",
     ] {
         if !source.contains(needle) {
             return Err(format!(
-                "Bridge R27 direct Rust/WASM binding missing: {needle}"
+                "Bridge R27 DOM installer Rust/WASM binding missing: {needle}"
             ));
         }
+    }
+    if source
+        .matches("setTimeout(wasmBridgeInstallLogAutoScrollControls, 0);")
+        .count()
+        != 2
+    {
+        return Err(
+            "Bridge R27 DOM installer must have exactly two generated-WASM scheduling call sites"
+                .to_owned(),
+        );
     }
 
     for retired in [
         "function kgwBridgeLogAutoScrollKeyR27(",
         "function kgwBridgeLogAutoScrollEnabledR27(",
         "function kgwBridgeSetLogAutoScrollR27(",
+        "function kgwInstallBridgeLogAutoScrollControlsR27(",
+        "wasmBridgeLogAutoScrollEnabled",
+        "wasmBridgeSetLogAutoScroll",
     ] {
         if source.contains(retired) {
             return Err(format!(
-                "Retired Bridge R27 JavaScript persistence owner remains: {retired}"
+                "Retired Bridge R27 JavaScript owner/seam remains: {retired}"
             ));
         }
     }
@@ -817,6 +913,98 @@ pub fn run(root: &Path) -> Result<String, String> {
         &actual,
         "/logAutoScrollOwnership/defaultTestnet10",
         json!(true),
+    )?;
+
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/toolbarChildren",
+        json!(1),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/labelClass",
+        json!("kgw-log-autoscroll-toggle"),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/scope",
+        json!("bridge"),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/title",
+        json!("Keep the log pinned to the newest raw line."),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/checkboxType",
+        json!("checkbox"),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/checkboxId",
+        json!("bridge-mainnet-logAutoScrollR27"),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/checkboxChecked",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/spanText",
+        json!("Auto-scroll"),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/changeListener",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/fallbackChildren",
+        json!(2),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/fallbackInsertedBeforeOutput",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/fallbackLabelClass",
+        json!("kgw-log-autoscroll-toggle"),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerOwnership/fallbackCheckboxId",
+        json!("bridge-testnet10-logAutoScrollR27"),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerDisabled/stored",
+        json!("0"),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerDisabled/scrollTop",
+        json!(11),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerDisabled/traceCommand",
+        json!("kgw_frontend_button_trace_v1"),
+    )?;
+    expect(&actual, "/logAutoScrollInstallerEnabled/stored", json!("1"))?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerEnabled/scrollTop",
+        json!(321),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollInstallerEnabled/traceCommand",
+        json!("kgw_frontend_button_trace_v1"),
     )?;
 
     expect(&actual, "/runtimeRunning/liveOnly", json!(false))?;

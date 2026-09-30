@@ -141,6 +141,18 @@ fn call2(target: &JsValue, name: &str, first: &JsValue, second: &JsValue) -> Opt
     function(target, name)?.call2(target, first, second).ok()
 }
 
+fn create_bridge_element(tag: &str) -> JsValue {
+    call1(&document(), "createElement", &JsValue::from_str(tag)).unwrap_or(JsValue::UNDEFINED)
+}
+
+fn append_bridge_child(parent: &JsValue, child: &JsValue) {
+    let _ = call1(parent, "appendChild", child);
+}
+
+fn query_bridge(target: &JsValue, selector: &str) -> JsValue {
+    call1(target, "querySelector", &JsValue::from_str(selector)).unwrap_or(JsValue::UNDEFINED)
+}
+
 fn local_storage() -> JsValue {
     property(&window(), "localStorage")
 }
@@ -186,6 +198,140 @@ pub fn bridge_set_log_auto_scroll(net: String, enabled: bool) {
     if present(&output) {
         let height = property(&output, "scrollHeight");
         set(&output, "scrollTop", &height);
+    }
+}
+
+#[wasm_bindgen(js_name = bridgeInstallLogAutoScrollControls)]
+pub fn bridge_install_log_auto_scroll_controls() {
+    let doc = document();
+    if !present(&doc) {
+        return;
+    }
+
+    for profile in NETWORKS {
+        let net = profile.key.to_owned();
+        let output = bridge_by_id(bridge_element_id(net.clone(), "logOutput".to_owned()));
+        if !present(&output) {
+            continue;
+        }
+
+        let control_id = bridge_element_id(net.clone(), "logAutoScrollR27".to_owned());
+        if present(&bridge_by_id(control_id.clone())) {
+            continue;
+        }
+
+        let label = create_bridge_element("label");
+        if !present(&label) {
+            continue;
+        }
+        set(
+            &label,
+            "className",
+            &JsValue::from_str("kgw-log-autoscroll-toggle"),
+        );
+        let _ = call2(
+            &label,
+            "setAttribute",
+            &JsValue::from_str("data-kgw-log-autoscroll"),
+            &JsValue::from_str("bridge"),
+        );
+        let _ = call2(
+            &label,
+            "setAttribute",
+            &JsValue::from_str("title"),
+            &JsValue::from_str("Keep the log pinned to the newest raw line."),
+        );
+
+        let checkbox = create_bridge_element("input");
+        set(&checkbox, "type", &JsValue::from_str("checkbox"));
+        set(&checkbox, "id", &JsValue::from_str(&control_id));
+        set(
+            &checkbox,
+            "checked",
+            &JsValue::from_bool(bridge_log_auto_scroll_enabled(net.clone())),
+        );
+
+        let net_for_change = net.clone();
+        let checkbox_for_change = checkbox.clone();
+        let control_for_change = control_id.clone();
+        let callback = Closure::wrap(Box::new(move |event: JsValue| {
+            let checked = crate::js_boolean(&property(&checkbox_for_change, "checked"));
+            let details = Object::new();
+            set(
+                details.as_ref(),
+                "patch",
+                &JsValue::from_str("KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3"),
+            );
+            set(
+                details.as_ref(),
+                "trusted",
+                &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+            );
+            set(
+                details.as_ref(),
+                "controlId",
+                &JsValue::from_str(&control_for_change),
+            );
+            set(details.as_ref(), "checked", &JsValue::from_bool(checked));
+            let _ = bridge_small_owner_trace_r44d(
+                JsValue::from_str(&net_for_change),
+                JsValue::from_str("log-autoscroll"),
+                JsValue::from_str("r51b3-bridge-log-autoscroll-change"),
+                details.into(),
+            );
+            bridge_set_log_auto_scroll(net_for_change.clone(), checked);
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &checkbox,
+            "addEventListener",
+            &JsValue::from_str("change"),
+            callback.as_ref().unchecked_ref(),
+        );
+        callback.forget();
+
+        let span = create_bridge_element("span");
+        set(
+            &span,
+            "textContent",
+            &translate_raw("common.autoScroll", "Auto-scroll"),
+        );
+        append_bridge_child(&label, &checkbox);
+        append_bridge_child(&label, &span);
+
+        let panel = {
+            let candidate = call1(
+                &output,
+                "closest",
+                &JsValue::from_str(
+                    ".bridge-v7-inner-panel, [data-bridge-inner-panel], [data-inner-panel], [data-bridge-panel], [data-panel]",
+                ),
+            )
+            .unwrap_or(JsValue::UNDEFINED);
+            if present(&candidate) {
+                candidate
+            } else {
+                property(&output, "parentElement")
+            }
+        };
+        let toolbar_selector =
+            ".bridge-v7-log-toolbar, .bridge-log-toolbar, [data-bridge-log-toolbar]";
+        let toolbar = {
+            let candidate = query_bridge(&panel, toolbar_selector);
+            if present(&candidate) {
+                candidate
+            } else {
+                query_bridge(&property(&output, "parentElement"), toolbar_selector)
+            }
+        };
+
+        if present(&toolbar) {
+            append_bridge_child(&toolbar, &label);
+        } else {
+            let parent = property(&output, "parentElement");
+            if present(&parent) {
+                let _ = call2(&parent, "insertBefore", &label, &output);
+            }
+        }
     }
 }
 
