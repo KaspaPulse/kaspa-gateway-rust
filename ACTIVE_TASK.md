@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. OP229 Bridge log-action translation/trace direct Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 366788c5bc8e8c6627271e57334a60b46efeee74, tree 27ed8ec9074fa2f1c305ba268695ac058e255b45; no push.
+PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. OP230 Bridge R101U inner-tab persistence Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint dc24c6f6aa3e8f4077ec34233422ffa0f05576fa, tree 0f236877835a68950cca8f9eeb1841c32bd3addc; no push.
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
 - Phase 1 foundation is committed locally as `33461f6511c69b457c5f3dd069b54322d9a236a0` / tree `e355550c6fa311fdfb4dd54a8cd29c4b45f0c583`.
@@ -84,10 +84,10 @@ PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. O
 The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates. The remaining owned source debt is exactly kaspa-bridge.js plus that locked PowerShell helper; execution debt remains 8. Independent Bridge migration work continues.
 
 ## Last Completed Action
-OP229 Bridge log-action translation/trace direct Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS. Rust/WASM owns runtime translation lookup and small-owner trace dispatch directly; JavaScript no longer supplies translateRuntime/smallOwnerTrace callbacks; dispatchRuntimeLogClear semantics remain unchanged. Implementation checkpoint 366788c5bc8e8c6627271e57334a60b46efeee74 / tree 27ed8ec9074fa2f1c305ba268695ac058e255b45; no push.
+OP230 Bridge R101U inner-tab persistence Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS. Rust/WASM owns inner-tab storage key policy, normalization, resolve and save; Bridge JavaScript calls the WASM owners directly. Direct generated-WASM storage smoke verified default log, settings persistence, invalid-to-log normalization and per-network isolation. Implementation checkpoint dc24c6f6aa3e8f4077ec34233422ffa0f05576fa / tree 0f236877835a68950cca8f9eeb1841c32bd3addc; no push.
 
 ## Current Action
-OP229 implementation and qualification are complete. This boundary is in docs-only continuity closeout; product/generated source is already checkpointed and unchanged.
+OP230 implementation and qualification are complete. This boundary is in docs-only continuity closeout; product/generated source is already checkpointed and unchanged.
 
 ## Next Action
 Audit remaining kaspa-bridge.js owned JavaScript boundaries read-only and select the next coherent Rust ownership slice. Persist a V3 WAI before any mutation; no push.
