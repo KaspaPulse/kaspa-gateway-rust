@@ -66,6 +66,7 @@ import initBridgeRust, {
   bridgeSaveLastNetwork as wasmBridgeSaveLastNetwork,
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
+  bridgeInstanceNetworkKeyR15 as wasmBridgeInstanceNetworkKeyR15,
   bridgeNodeMode as wasmBridgeNodeMode,
   bridgeResolveInnerTab as wasmBridgeResolveInnerTab,
   bridgeSaveInnerTab as wasmBridgeSaveInnerTab,
@@ -336,7 +337,7 @@ function kgwBridgeToggleCommandOptionR7(net, name) {
  * Display/help text only. Does not overwrite saved user ports.
  */
 function renderInstances(net) {
-  net = bridgeInstanceNetworkKeyR15(net, net);
+  net = wasmBridgeInstanceNetworkKeyR15(net, net);
   if (net !== "mainnet") return ""; // Testnet mining is embedded CPU-only, including restored settings.
   wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
 
@@ -840,7 +841,7 @@ function bridgeReadInstanceState(net, instanceId) {
 }
 
 function bridgeRefreshInstances(net) {
-  net = bridgeInstanceNetworkKeyR15(net, net);
+  net = wasmBridgeInstanceNetworkKeyR15(net, net);
 
   const container =
     wasmBridgeById(wasmBridgeElementId(net, "instances")) ||
@@ -867,7 +868,7 @@ function bridgeRefreshInstances(net) {
  * No document/window/global listener.
  */
 function bridgeInstallInstanceContainerOwnerR11(container, net) {
-  net = bridgeInstanceNetworkKeyR15(net, net);
+  net = wasmBridgeInstanceNetworkKeyR15(net, net);
   if (!container || !net) return;
 
   container.dataset.kgwBridgeInstancesClickOwner = "KGW_BRIDGE_INSTANCES_REBUILD_CLICK_OWNER_R11";
@@ -879,7 +880,7 @@ function bridgeInstallInstanceContainerOwnerR11(container, net) {
     if (!control || !container.contains(control)) return;
 
     const action = control.dataset.bridgeAction || "";
-    const targetNet = bridgeInstanceNetworkKeyR15(control.dataset.network, net);
+    const targetNet = wasmBridgeInstanceNetworkKeyR15(control.dataset.network, net);
 
     kgwBridgeExplicitTraceR27D(targetNet || "unknown", "internal-navigation", "r45d-bridge-instance-control-click", {
       patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
@@ -936,28 +937,6 @@ function bridgeInstallAllVisibleInstanceContainerOwnersR11(root) {
 
 
 
-/* KGW_BRIDGE_INSTANCES_NETWORK_KEY_FIX_R15
- * Canonical network-key resolver for Bridge Instances.
- * Normalizes Bridge Instances network keys for mainnet, testnet10, and testnet13.
- */
-function bridgeInstanceNetworkKeyR15(value, fallback) {
-  const known = new Set(BRIDGE_NETWORKS.map((item) => item.key));
-  const candidates = [];
-
-  if (typeof value === "string") candidates.push(value);
-  if (value && typeof value === "object" && typeof value.key === "string") candidates.push(value.key);
-
-  if (typeof fallback === "string") candidates.push(fallback);
-  if (fallback && typeof fallback === "object" && typeof fallback.key === "string") candidates.push(fallback.key);
-
-  for (const candidate of candidates) {
-    const normalized = String(candidate || "").trim();
-    if (known.has(normalized)) return normalized;
-  }
-
-  return "mainnet";
-}
-
 /* KGW_BRIDGE_INSTANCES_ADD_CLICK_BIND_R10
  * Scoped Bridge Instances button binder.
  * This is not a global listener. It binds only the rendered instance container
@@ -968,7 +947,7 @@ function bridgeInstanceNetworkKeyR15(value, fallback) {
 
 function addInstance(net) {
   wasmBridgeSmallOwnerTraceR44D(net, "add-instance", "r44d-owner-begin", {});
-  net = bridgeInstanceNetworkKeyR15(net, net);
+  net = wasmBridgeInstanceNetworkKeyR15(net, net);
   wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
 
   const next = wasmBridgeCreateInstanceRecordR9(bridgeInstances, String(net || ""));
@@ -1277,7 +1256,7 @@ function updateCommand(net) {
     bridgeSyncModeControls(net);
     wasmBridgeReassignInstancePortsFromExternalRangeR91(
       bridgeInstances,
-      String(bridgeInstanceNetworkKeyR15(net, net) || ""),
+      String(wasmBridgeInstanceNetworkKeyR15(net, net) || ""),
       "update-command"
     );
     wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
@@ -1948,7 +1927,7 @@ const KGW_BRIDGE_R51_ACTIVE_INSTANCE_KEY_R26B = "__kgwBridgeActiveInstanceR26B";
 
 function kgwBridgeR51CommitInstanceDomStateR26B(net) {
   try {
-    net = bridgeInstanceNetworkKeyR15(net, net);
+    net = wasmBridgeInstanceNetworkKeyR15(net, net);
     if (!net) return [];
 
     wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
@@ -1976,7 +1955,7 @@ function kgwBridgeR51CommitInstanceDomStateR26B(net) {
 }
 
 function kgwBridgeR51ReadStructuredInstancesR26B(net) {
-  net = bridgeInstanceNetworkKeyR15(net, net);
+  net = wasmBridgeInstanceNetworkKeyR15(net, net);
   const committed = kgwBridgeR51CommitInstanceDomStateR26B(net);
 
   const instances = committed.map((instance, index) => {
@@ -2080,7 +2059,7 @@ function kgwBridgeR51ApplyCommandOptionsR38C(net, values) {
 
 function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
   try {
-    net = bridgeInstanceNetworkKeyR15(net, net);
+    net = wasmBridgeInstanceNetworkKeyR15(net, net);
     if (!values || typeof values !== "object") return false;
 
     const payload = values[KGW_BRIDGE_R51_STRUCTURED_INSTANCES_KEY_R26B];
@@ -2316,7 +2295,7 @@ function kgwBridgeR51WriteSettings(net, values) {
 
   wasmBridgeReassignInstancePortsFromExternalRangeR91(
     bridgeInstances,
-    String(bridgeInstanceNetworkKeyR15(net, net) || ""),
+    String(wasmBridgeInstanceNetworkKeyR15(net, net) || ""),
     "r95b-r51-write-settings-normalized-network-ports"
   );
 

@@ -688,6 +688,34 @@ pub fn bridge_network_profile(net: String) -> JsValue {
     profile(&net).map(profile_object).unwrap_or(JsValue::NULL)
 }
 
+fn bridge_instance_network_key_candidate(value: &JsValue) -> Option<String> {
+    if let Some(value) = value.as_string() {
+        return Some(value);
+    }
+    if value.is_null() || crate::js_string_owned(&value.js_typeof()) != "object" {
+        return None;
+    }
+    property(value, "key").as_string()
+}
+
+fn bridge_instance_network_key_text(value: Option<&str>, fallback: Option<&str>) -> &'static str {
+    for candidate in [value, fallback].into_iter().flatten() {
+        let normalized = candidate.trim();
+        if let Some(item) = profile(normalized) {
+            return item.key;
+        }
+    }
+    "mainnet"
+}
+
+#[wasm_bindgen(js_name = bridgeInstanceNetworkKeyR15)]
+pub fn bridge_instance_network_key_r15(value: JsValue, fallback: JsValue) -> String {
+    let value_candidate = bridge_instance_network_key_candidate(&value);
+    let fallback_candidate = bridge_instance_network_key_candidate(&fallback);
+    bridge_instance_network_key_text(value_candidate.as_deref(), fallback_candidate.as_deref())
+        .to_owned()
+}
+
 #[wasm_bindgen(js_name = bridgeNetworkEnabled)]
 pub fn bridge_network_enabled(net: String) -> bool {
     let fallback = profile(&net).is_some_and(|item| item.enabled_by_default);
@@ -892,6 +920,31 @@ mod tests {
         );
         assert!(policy_message_text("testnet13").contains("no DNS seeders"));
         assert_eq!(policy_message_text("unknown"), "");
+    }
+
+    #[test]
+    fn instance_network_key_r15_matches_legacy_candidate_order() {
+        assert_eq!(
+            bridge_instance_network_key_text(Some(" testnet10 "), Some("mainnet")),
+            "testnet10"
+        );
+        assert_eq!(
+            bridge_instance_network_key_text(Some("mainnet"), Some("testnet13")),
+            "mainnet"
+        );
+        assert_eq!(
+            bridge_instance_network_key_text(Some("devnet"), Some(" testnet13 ")),
+            "testnet13"
+        );
+        assert_eq!(
+            bridge_instance_network_key_text(None, Some("testnet10")),
+            "testnet10"
+        );
+        assert_eq!(
+            bridge_instance_network_key_text(Some(""), Some("unknown")),
+            "mainnet"
+        );
+        assert_eq!(bridge_instance_network_key_text(None, None), "mainnet");
     }
 
     #[test]

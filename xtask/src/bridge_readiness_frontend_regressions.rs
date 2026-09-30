@@ -80,6 +80,20 @@ const portOnlyNormalizationOwnership = {
   different: wasm.bridgeSamePortValueR98("5556", "5655")
 };
 
+const instanceNetworkKeyOwnership = {
+  directString: wasm.bridgeInstanceNetworkKeyR15(" testnet10 ", "mainnet"),
+  directObject: wasm.bridgeInstanceNetworkKeyR15({ key: " testnet13 " }, "mainnet"),
+  fallbackString: wasm.bridgeInstanceNetworkKeyR15("devnet", " testnet10 "),
+  fallbackObject: wasm.bridgeInstanceNetworkKeyR15(null, { key: "testnet13" }),
+  directWins: wasm.bridgeInstanceNetworkKeyR15("mainnet", { key: "testnet10" }),
+  invalidDefault: wasm.bridgeInstanceNetworkKeyR15({ key: "devnet" }, "unknown"),
+  numericIgnored: wasm.bridgeInstanceNetworkKeyR15(10, "testnet10"),
+  nonStringObjectKeyIgnored: wasm.bridgeInstanceNetworkKeyR15(
+    { key: 10 },
+    { key: "testnet13" }
+  )
+};
+
 const bridgeOwnedNodeLockEvents = [];
 globalThis.CustomEvent = function CustomEvent(type, options = {}) {
   this.type = String(type || "");
@@ -597,6 +611,7 @@ const visibleFailure = snapshot();
 
 const output = {
   portOnlyNormalizationOwnership,
+  instanceNetworkKeyOwnership,
   currentNodeModeOwnership,
   bridgeOwnedNodeLockOwnership,
   runtimeTranslationOwnership,
@@ -983,6 +998,32 @@ fn verify_static_contracts(
     }
 
     for needle in [
+        "#[wasm_bindgen(js_name = bridgeInstanceNetworkKeyR15)]",
+        "fn bridge_instance_network_key_candidate(",
+        "fn bridge_instance_network_key_text(",
+        "property(value, \"key\").as_string()",
+        "profile(normalized)",
+    ] {
+        if !helpers.contains(needle) {
+            return Err(format!(
+                "Bridge R15 instance network-key Rust owner contract missing: {needle}"
+            ));
+        }
+    }
+    if !source.contains("bridgeInstanceNetworkKeyR15 as wasmBridgeInstanceNetworkKeyR15") {
+        return Err("Bridge R15 instance network-key Rust/WASM import is missing".to_owned());
+    }
+    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 10 {
+        return Err(
+            "Bridge R15 instance network-key owner must have exactly ten generated-WASM call sites"
+                .to_owned(),
+        );
+    }
+    if source.contains("function bridgeInstanceNetworkKeyR15(") {
+        return Err("Retired Bridge R15 JavaScript network-key owner remains".to_owned());
+    }
+
+    for needle in [
         "#[wasm_bindgen(js_name = bridgePlainPortOnlyValueR98)]",
         "#[wasm_bindgen(js_name = bridgeSamePortValueR98)]",
         "fn bridge_plain_port_only_text(",
@@ -1265,6 +1306,47 @@ pub fn run(root: &Path) -> Result<String, String> {
         &actual,
         "/portOnlyNormalizationOwnership/different",
         json!(false),
+    )?;
+
+    expect(
+        &actual,
+        "/instanceNetworkKeyOwnership/directString",
+        json!("testnet10"),
+    )?;
+    expect(
+        &actual,
+        "/instanceNetworkKeyOwnership/directObject",
+        json!("testnet13"),
+    )?;
+    expect(
+        &actual,
+        "/instanceNetworkKeyOwnership/fallbackString",
+        json!("testnet10"),
+    )?;
+    expect(
+        &actual,
+        "/instanceNetworkKeyOwnership/fallbackObject",
+        json!("testnet13"),
+    )?;
+    expect(
+        &actual,
+        "/instanceNetworkKeyOwnership/directWins",
+        json!("mainnet"),
+    )?;
+    expect(
+        &actual,
+        "/instanceNetworkKeyOwnership/invalidDefault",
+        json!("mainnet"),
+    )?;
+    expect(
+        &actual,
+        "/instanceNetworkKeyOwnership/numericIgnored",
+        json!("testnet10"),
+    )?;
+    expect(
+        &actual,
+        "/instanceNetworkKeyOwnership/nonStringObjectKeyIgnored",
+        json!("testnet13"),
     )?;
 
     expect(
