@@ -568,11 +568,12 @@ fn translate_runtime(deps: &JsValue, key: &str, fallback: &str) -> String {
 }
 
 fn active_raw_log_instance_id(deps: &JsValue, net: &str) -> String {
-    crate::js_string_owned(&dependency_apply(
-        deps,
-        "activeRawLogInstanceId",
-        &[JsValue::from_str(net)],
-    ))
+    crate::bridge_port_orchestration::bridge_active_raw_log_instance_id(
+        property(deps, "bridgeInstances"),
+        property(deps, "activeInstance"),
+        net.to_owned(),
+    )
+    .unwrap_or_default()
 }
 
 fn small_owner_trace(deps: &JsValue, net: &str, action: &str, phase: &str, details: JsValue) {

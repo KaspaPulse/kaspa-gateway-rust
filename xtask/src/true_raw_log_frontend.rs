@@ -8,6 +8,10 @@ const BRIDGE_SOURCE: &str =
     "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
 const NODE_RAW_RUST: &str = "crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs";
 const NODE_TAB_RUST: &str = "crates/kaspa-gateway-frontend-wasm/src/node_tab.rs";
+const BRIDGE_PORT_ORCHESTRATION_RUST: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_port_orchestration.rs";
+const BRIDGE_START_TRACE_RUST: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs";
 
 const NODE_BRIDGE: &str = r##"
 const fs = require("node:fs");
@@ -353,7 +357,7 @@ function prepare(kind) {
     };
   } else {
     evalFrontend(bridgePath, window,
-      "window.__kgwRaw = { apply: kgwBridgeApplyRuntimeLogReportV1, action: kgwBridgeHandleLogActionV29, refresh: kgwBridgeR51RefreshOne, setButtons: kgwBridgeR51SetRuntimeButtons, appendLog };");
+      "window.__kgwRaw = { apply: kgwBridgeApplyRuntimeLogReportV1, action: kgwBridgeHandleLogActionV29, refresh: kgwBridgeR51RefreshOne, setButtons: kgwBridgeR51SetRuntimeButtons, appendLog: () => {} };");
   }
   return { calls, window, api: window.__kgwRaw };
 }
@@ -602,6 +606,28 @@ pub fn run(root: &Path) -> Result<String, String> {
         .map_err(|error| format!("failed to read {NODE_RAW_RUST}: {error}"))?;
     let node_tab_rust = fs::read_to_string(root.join(NODE_TAB_RUST))
         .map_err(|error| format!("failed to read {NODE_TAB_RUST}: {error}"))?;
+    let bridge_port_orchestration_rust =
+        fs::read_to_string(root.join(BRIDGE_PORT_ORCHESTRATION_RUST))
+            .map_err(|error| format!("failed to read {BRIDGE_PORT_ORCHESTRATION_RUST}: {error}"))?;
+    let bridge_start_trace_rust = fs::read_to_string(root.join(BRIDGE_START_TRACE_RUST))
+        .map_err(|error| format!("failed to read {BRIDGE_START_TRACE_RUST}: {error}"))?;
+
+    if !bridge_port_orchestration_rust
+        .contains("#[wasm_bindgen(js_name = bridgeActiveRawLogInstanceId)]")
+    {
+        return Err("Bridge active raw-log instance Rust owner export is missing".to_owned());
+    }
+    if bridge_start_trace_rust.contains("\"activeRawLogInstanceId\"") {
+        return Err("Bridge start-trace still depends on the retired JavaScript activeRawLogInstanceId callback".to_owned());
+    }
+    if bridge.contains("function kgwBridgeActiveRawLogInstanceIdV1(") {
+        return Err("Retired Bridge active raw-log instance JavaScript helper remains".to_owned());
+    }
+    if !bridge.contains("bridgeActiveRawLogInstanceId as wasmBridgeActiveRawLogInstanceId") {
+        return Err(
+            "Bridge frontend does not import the Rust active raw-log instance owner".to_owned(),
+        );
+    }
 
     for symbol in [
         "kgwBridgeApplyRuntimeLogReportV1",

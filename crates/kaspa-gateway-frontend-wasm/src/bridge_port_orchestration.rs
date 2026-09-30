@@ -473,6 +473,32 @@ fn ensure_instance_state_impl(
     Ok(())
 }
 
+fn active_raw_log_instance_id_impl(
+    bridge_instances: &JsValue,
+    active_instance: &JsValue,
+    net: &str,
+) -> Result<String, JsValue> {
+    ensure_instance_state_impl(bridge_instances, active_instance, net)?;
+    let active = crate::js_string_owned(&property(active_instance, net));
+    if !active.is_empty() {
+        return Ok(active);
+    }
+    let instances = instance_list(bridge_instances, net);
+    if instances.length() == 0 {
+        return Ok(String::new());
+    }
+    Ok(crate::js_string_owned(&property(&instances.get(0), "id")))
+}
+
+#[wasm_bindgen(js_name = bridgeActiveRawLogInstanceId)]
+pub fn bridge_active_raw_log_instance_id(
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    net: String,
+) -> Result<String, JsValue> {
+    active_raw_log_instance_id_impl(&bridge_instances, &active_instance, &net)
+}
+
 #[wasm_bindgen(js_name = bridgeCollectConfiguredPortsR5)]
 pub fn bridge_collect_configured_ports_r5(
     bridge_instances: JsValue,

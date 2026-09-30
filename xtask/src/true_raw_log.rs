@@ -9,6 +9,8 @@ const LIVE_MATRIX: &str = "xtask/src/live_raw_log_matrix.rs";
 const NODE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
 const NODE_RAW_LOG_RS: &str = "crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs";
 const BRIDGE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
+const BRIDGE_RAW_LOG_RS: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_raw_log.rs";
+const BRIDGE_START_TRACE_RS: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs";
 const RUNTIME_RS: &str = "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs";
 const ZERO_TOUCH_E2E: &str = "xtask/src/zero_touch_e2e.rs";
 const ZERO_TOUCH_EVIDENCE: &str = "tools/kgw_zero_touch_evidence.ps1";
@@ -20,6 +22,8 @@ struct Sources {
     node: String,
     node_raw_log: String,
     bridge: String,
+    bridge_raw_log: String,
+    bridge_start_trace: String,
     runtime: String,
     clipboard_capture: String,
     live_matrix: String,
@@ -158,6 +162,8 @@ fn load_sources(root: &Path) -> Result<Sources, String> {
         node: read(root, NODE_JS)?,
         node_raw_log: read(root, NODE_RAW_LOG_RS)?,
         bridge: read(root, BRIDGE_JS)?,
+        bridge_raw_log: read(root, BRIDGE_RAW_LOG_RS)?,
+        bridge_start_trace: read(root, BRIDGE_START_TRACE_RS)?,
         runtime: read(root, RUNTIME_RS)?,
         clipboard_capture: read(root, CLIPBOARD_CAPTURE)?,
         live_matrix: read(root, LIVE_MATRIX)?,
@@ -219,9 +225,9 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
 
     for (source, needle, message) in [
         (
-            &s.node,
-            "kgwNodeApplyRuntimeLogReportV1",
-            "Node UI must consume typed raw log reports.",
+            &s.node_raw_log,
+            "#[wasm_bindgen(js_name = nodeApplyRuntimeLogReport)]",
+            "Node typed raw-log report ownership must remain in Rust/WASM.",
         ),
         (
             &s.bridge,
@@ -229,9 +235,9 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
             "Bridge UI must consume typed raw log reports.",
         ),
         (
-            &s.bridge,
-            "kgwBridgeRawLogTextHasTransportWrapperV1",
-            "Bridge UI must reject transport wrapper text before display or copy.",
+            &s.bridge_raw_log,
+            "fn transport_wrapper_text(value: &str) -> bool",
+            "Bridge transport-wrapper rejection must remain Rust-owned before display or copy.",
         ),
         (
             &s.node_raw_log,
@@ -239,9 +245,9 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
             "Node Rust owner must apply transport rejection only at the untyped report boundary.",
         ),
         (
-            &s.bridge,
-            "kgwBridgeRawLogTextHasTransportWrapperV1(legacyTransportText)",
-            "Bridge UI must apply transport rejection only at the untyped report boundary.",
+            &s.bridge_raw_log,
+            "if transport_wrapper_text(&legacy_transport_text(report))",
+            "Bridge Rust owner must apply transport rejection only at the untyped report boundary.",
         ),
         (
             &s.node_raw_log,
@@ -249,20 +255,24 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
             "Node Rust Copy Log owner must carry runtime role metadata to native clipboard traces.",
         ),
         (
-            &s.bridge,
-            r#"runtimeRole: metadata.runtimeRole || "bridge""#,
-            "Bridge Copy Log must carry runtime role metadata to native clipboard traces.",
+            &s.bridge_start_trace,
+            r#"metadata_text(metadata, "runtimeRole", "bridge")"#,
+            "Bridge Rust Copy Log owner must carry runtime role metadata to native clipboard traces.",
         ),
         (
-            &s.bridge,
-            r#"bridgeInstanceId: metadata.bridgeInstanceId || """#,
-            "Bridge Copy Log must carry bridge instance metadata to native clipboard traces.",
+            &s.bridge_start_trace,
+            r#"metadata_text(metadata, "bridgeInstanceId", "")"#,
+            "Bridge Rust Copy Log owner must carry bridge instance metadata to native clipboard traces.",
         ),
     ] {
         require(failures, source, needle, message);
     }
 
     for (needle, message) in [
+        (
+            "kgwNodeApplyRuntimeLogReportV1",
+            "Node typed raw-log application must remain Rust-owned without a JavaScript compatibility wrapper.",
+        ),
         (
             "kgwNodeRawLogTextHasTransportWrapperV1",
             "Node transport-wrapper rejection must be Rust-owned without a JavaScript compatibility wrapper.",
@@ -286,6 +296,13 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
     ] {
         forbid(failures, &s.node, needle, message);
     }
+
+    forbid(
+        failures,
+        &s.bridge,
+        "kgwBridgeRawLogTextHasTransportWrapperV1",
+        "Bridge transport-wrapper rejection must remain Rust-owned without a JavaScript compatibility wrapper.",
+    );
 
     for (needle, message) in [
         (
@@ -576,18 +593,22 @@ mod tests {
 
     fn sources() -> Sources {
         Sources {
-            node: ["kgwNodeApplyRuntimeLogReportV1"].join("\n"),
+            node: String::new(),
             node_raw_log: [
+                "#[wasm_bindgen(js_name = nodeApplyRuntimeLogReport)]",
                 "if raw_log_transport_wrapper_text(&legacy)",
                 r#"metadata_text(metadata, "runtimeRole", "node")"#,
             ]
             .join("\n"),
-            bridge: [
-                "kgwBridgeApplyRuntimeLogReportV1",
-                "kgwBridgeRawLogTextHasTransportWrapperV1",
-                "kgwBridgeRawLogTextHasTransportWrapperV1(legacyTransportText)",
-                r#"runtimeRole: metadata.runtimeRole || "bridge""#,
-                r#"bridgeInstanceId: metadata.bridgeInstanceId || """#,
+            bridge: "kgwBridgeApplyRuntimeLogReportV1".to_owned(),
+            bridge_raw_log: [
+                "fn transport_wrapper_text(value: &str) -> bool",
+                "if transport_wrapper_text(&legacy_transport_text(report))",
+            ]
+            .join("\n"),
+            bridge_start_trace: [
+                r#"metadata_text(metadata, "runtimeRole", "bridge")"#,
+                r#"metadata_text(metadata, "bridgeInstanceId", "")"#,
             ]
             .join("\n"),
             runtime: ["KgwRuntimeRawLogEntryV1", "sequence", "raw_text"].join("\n"),
