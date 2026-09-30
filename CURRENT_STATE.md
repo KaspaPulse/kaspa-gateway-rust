@@ -1,13 +1,13 @@
 # CURRENT STATE
-- Current product boundary: OP231 Bridge R101W2 last-network persistence Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 68e1e01438bfee4871fcc126235998f16500ee2c, tree 8f125e8de80c399d44618d1ccefe1e3aa5e149e6; no push.
+- Current product boundary: OP232 Bridge R27 log-auto-scroll persistence/scroll Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint 25f9eb70709923f9b0ee35ac3bd8f6d5d7f59b4d, tree 7d596ab6006bf4e95392dcac802401956ec147a3; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP231 verified implementation checkpoint is 68e1e01438bfee4871fcc126235998f16500ee2c, tree 8f125e8de80c399d44618d1ccefe1e3aa5e149e6.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP232 verified implementation checkpoint is 25f9eb70709923f9b0ee35ac3bd8f6d5d7f59b4d, tree 7d596ab6006bf4e95392dcac802401956ec147a3.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP231 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
+- Working tree: **VERIFY DYNAMICALLY before acting.** During this docs-only OP232 continuity transaction, CURRENT_STATE.md and ACTIVE_TASK.md are the only expected dirty paths; steady-state after closeout is CLEAN.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -155,6 +155,12 @@
 - `git diff --check`: PASS.
 - Primary evidence: `C:\Users\abuha\KaspaGateway-Rust100-20260923\header-live-metrics-rust-op101`.
 
+## OP232 VERIFIED EVIDENCE
+- Bridge R27 log-auto-scroll persistence/scroll behavior is Rust/WASM-owned: storage-key policy, enabled predicate, 0/1 persistence, and enable-scroll-to-height side effect. The three JavaScript persistence helpers are retired; the JavaScript DOM installer remains for this slice and calls generated WASM directly. Implementation checkpoint 25f9eb70709923f9b0ee35ac3bd8f6d5d7f59b4d, tree 7d596ab6006bf4e95392dcac802401956ec147a3; no push.
+- Rust helper tests 6/6 PASS; FMT PASS; stable/MSRV 1.97.1 wasm32 PASS; frontend-WASM and xtask strict Clippy PASS; deterministic codegen WRITE/CHECK PASS with wasm-pack 0.15.0 and 19 artifacts.
+- Node syntax and Desktop ESLint zero-warning PASS; readiness tests 2/2 and lifecycle gate PASS with direct generated-WASM log-auto-scroll smoke covering default-enabled, persisted 0/1, disabled no-scroll, enabled scroll-to-height and network isolation. One initial static-gate fixture marker mismatch was preserved diagnostically and repaired without product change.
+- Language policy PASS at Rust 222 / source debt 2 / execution debt 8 / unapproved 0/0; project-continuity PASS; diff-check PASS. Qualification generation 2067 is bound to V3 writer epoch 1 and exact source/generated SHA-256 values.
+
 ## OP231 VERIFIED EVIDENCE
 - Bridge R101W2 last-network persistence is Rust/WASM-owned: normalization, read and save. The JavaScript owner/constant is retired and product call sites invoke generated WASM directly. Implementation checkpoint 68e1e01438bfee4871fcc126235998f16500ee2c, tree 8f125e8de80c399d44618d1ccefe1e3aa5e149e6; no push.
 - Rust helper tests 5/5 PASS; FMT PASS; stable/MSRV 1.97.1 wasm32 PASS; frontend-WASM and xtask strict Clippy PASS; deterministic codegen WRITE/CHECK PASS with wasm-pack 0.15.0 and 19 artifacts.
@@ -204,11 +210,11 @@
 
 ## DO NOT REPEAT
 
-- Do not replay OP090-OP231 successful checks while their validity predicates remain unchanged.
+- Do not replay OP090-OP232 successful checks while their validity predicates remain unchanged.
 - Do not reset, clean, stash, discard, overwrite, or replace newer local work with remote state.
 - Do not force unsafe clipboard mutation, protected file unlocking, or broad requalification for reassurance.
 - Do not push merely to discover locally detectable failures.
 
 ## NEXT ACTION
 
-OP231 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 68e1e01438bfee4871fcc126235998f16500ee2c, tree 8f125e8de80c399d44618d1ccefe1e3aa5e149e6; no push. Audit remaining kaspa-bridge.js owned JavaScript boundaries read-only and persist a V3 WAI before mutation.
+OP232 is **CLOSED_LOCAL / VERIFIED_SUCCESS** at implementation checkpoint 25f9eb70709923f9b0ee35ac3bd8f6d5d7f59b4d, tree 7d596ab6006bf4e95392dcac802401956ec147a3; no push. Audit remaining kaspa-bridge.js owned JavaScript boundaries read-only and persist a V3 WAI before mutation.
