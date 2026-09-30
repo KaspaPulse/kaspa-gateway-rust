@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. OP233 Bridge R27 log-auto-scroll DOM installer Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint c23d651a90c92c88a788ab9176c4bade226bffff, tree 9a63a1860e265f339db9129adb4722e764892e16; no push.
+PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. OP234 Bridge runtime-feedback translation Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint ed44304556af5a33e5c1e45ad880de9d4d291753, tree 5e56863b5798d1dfc9576f77d1c3350834c5db4d; no push.
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
 - Phase 1 foundation is committed locally as `33461f6511c69b457c5f3dd069b54322d9a236a0` / tree `e355550c6fa311fdfb4dd54a8cd29c4b45f0c583`.
@@ -84,10 +84,10 @@ PHASE 10 — final Bridge frontend ownership migration is IN PROGRESS overall. O
 The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates. The remaining owned source debt is exactly kaspa-bridge.js plus that locked PowerShell helper; execution debt remains 8. Independent Bridge migration work continues.
 
 ## Last Completed Action
-OP233 Bridge R27 log-auto-scroll DOM installer Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS. Rust/WASM now owns the remaining installer including toolbar insertion, fallback insert-before, checkbox initialization, change listener, translation, trace payload and persistence/scroll dispatch. Direct generated-WASM DOM smoke verified toolbar and fallback paths plus event behavior. Implementation checkpoint c23d651a90c92c88a788ab9176c4bade226bffff / tree 9a63a1860e265f339db9129adb4722e764892e16; no push.
+OP234 Bridge runtime-feedback translation Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS. Rust/WASM now preserves the exact legacy runtime function lookup, flat/nested dictionary fallback and fallback-or-key terminal behavior; the sole runtime.failed product call site invokes generated WASM directly. Implementation checkpoint ed44304556af5a33e5c1e45ad880de9d4d291753 / tree 5e56863b5798d1dfc9576f77d1c3350834c5db4d; no push.
 
 ## Current Action
-OP233 implementation and qualification are complete. This boundary is in docs-only continuity closeout; product/generated source is already checkpointed and unchanged.
+OP234 implementation and qualification are complete. This boundary is in docs-only continuity closeout; product/generated source is already checkpointed and unchanged.
 
 ## Next Action
 Audit remaining kaspa-bridge.js owned JavaScript boundaries read-only and select the next coherent Rust ownership slice. Persist a V3 WAI before any mutation; no push.
