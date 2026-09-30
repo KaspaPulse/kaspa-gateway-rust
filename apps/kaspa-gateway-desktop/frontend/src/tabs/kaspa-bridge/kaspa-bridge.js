@@ -9,6 +9,7 @@ import initBridgeRust, {
   bridgeCommandInlineStateR7 as wasmBridgeCommandInlineStateR7,
   bridgeCommandInlineToggleR7 as wasmBridgeCommandInlineToggleR7,
   bridgeCommandOptionEnabledR7 as wasmBridgeCommandOptionEnabledR7,
+  bridgeHasConfig as wasmBridgeHasConfig,
   bridgeCommandSetOptionR7 as wasmBridgeCommandSetOptionR7,
   bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
   bridgeBuildCommandLines as wasmBridgeBuildCommandLines,
@@ -1096,10 +1097,6 @@ function bridgeNodeMode(net) {
   return value === "inprocess" ? "inprocess" : "external";
 }
 
-function bridgeHasConfig(net) {
-  return wasmBridgeCommandOptionEnabledR7(String(net || ""), "config") && Boolean(wasmBridgeValue(net, "config"));
-}
-
 function bridgeControlCard(el) {
   return el ? el.closest(".bridge-v7-card") : null;
 }
@@ -1122,7 +1119,7 @@ function bridgeSyncInprocessNodeSettingsV12D(net) {
   if (!profile) return;
 
   const nodeMode = bridgeNodeMode(net);
-  const active = nodeMode === "inprocess" && !bridgeHasConfig(net);
+  const active = nodeMode === "inprocess" && !wasmBridgeHasConfig(String(net || ""));
   const section = document.querySelector(`[data-bridge-inprocess-node-settings="${net}"]`);
 
   if (section) {
@@ -1204,7 +1201,7 @@ function bridgeSyncModeControls(net) {
   const profile = bridgeProfile(net);
   if (!profile) return;
 
-  const configMode = bridgeHasConfig(net);
+  const configMode = wasmBridgeHasConfig(String(net || ""));
   const nodeMode = bridgeNodeMode(net);
   const internalMinerEnabled = wasmBridgeChecked(net, "internalCpuMiner");
 
@@ -1670,7 +1667,7 @@ const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();
 function kgwBridgeStartOptions(net) {
   const enabled = net !== "mainnet" && wasmBridgeChecked(net, "internalCpuMiner");
   return {
-    configFile: bridgeHasConfig(net) ? wasmBridgeValue(net, "config") : null,
+    configFile: wasmBridgeHasConfig(String(net || "")) ? wasmBridgeValue(net, "config") : null,
     internalCpuMiner: enabled ? {
       enabled: true, address: wasmBridgeValue(net, "internalCpuMinerAddress"),
       threads: wasmBridgeParseUnsignedV1("CPU threads", wasmBridgeValue(net, "internalCpuMinerThreads"), 1, 256),
@@ -3642,7 +3639,7 @@ function kgwBridgeForm(net) {
 function kgwBridgeValidateForm(net, focus = false) {
   const errors = validateBridgeForm(kgwBridgeForm(net), wasmBridgeCommandInlineStateR7(String(net || "")), net);
   const panel = kgwBridgeR51Panel(net);
-  for (const instance of net !== "mainnet" || bridgeHasConfig(net) ? [] : bridgeInstances[net] || []) {
+  for (const instance of net !== "mainnet" || wasmBridgeHasConfig(String(net || "")) ? [] : bridgeInstances[net] || []) {
     if (!wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instance")) continue;
     const waitField = wasmBridgeById(wasmBridgeElementId(net, "instanceBlockWaitTime-" + instance.id));
     if (waitField && wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceBlockWaitTime") &&
@@ -3716,11 +3713,11 @@ function kgwBridgeSyncDependencies(net) {
       if (field) { field.disabled = true; field.title = BRIDGE_MANAGED.logToFile; }
       return;
     }
-    const parentActive = !bridgeHasConfig(net) && wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instanceId, "instance");
-    toggle.disabled = bridgeHasConfig(net) || (name !== "instance" && !parentActive);
+    const parentActive = !wasmBridgeHasConfig(String(net || "")) && wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instanceId, "instance");
+    toggle.disabled = wasmBridgeHasConfig(String(net || "")) || (name !== "instance" && !parentActive);
     if (field) {
       field.disabled = !toggle.checked || !parentActive;
-      setSettingFieldState(field, bridgeHasConfig(net) ? "Managed" : !parentActive ? "Not active" : !toggle.checked ? "Override off" : "Custom value");
+      setSettingFieldState(field, wasmBridgeHasConfig(String(net || "")) ? "Managed" : !parentActive ? "Not active" : !toggle.checked ? "Override off" : "Custom value");
     }
     const label = field?.closest(".bridge-v7-card")?.querySelector(".kgw-command-option-title-text-r8e");
     if (field && label) { label.id = field.id + "-label"; field.setAttribute("aria-labelledby", label.id); }

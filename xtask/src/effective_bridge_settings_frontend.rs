@@ -13,7 +13,7 @@ const WASM_BIN: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm_bg.wasm";
 
 const SLICES: &[(&str, &str)] = &[
-    ("function bridgeNodeMode(", "function bridgeHasConfig("),
+    ("function bridgeNodeMode(", "function bridgeControlCard("),
     (
         "function kgwBridgeR51Panel(",
         "function kgwBridgeR51Fields(",
@@ -31,7 +31,6 @@ const SLICES: &[(&str, &str)] = &[
         "function bridgeProfile(",
         "/* KGW_BRIDGE_NETWORK_PORT_PROFILES_SOFT_POLICY_PATCH_R35B",
     ),
-    ("function bridgeHasConfig(", "function bridgeControlCard("),
 ];
 
 const NODE_BRIDGE: &str = r##"
@@ -74,6 +73,7 @@ const sandbox = {
   wasmBridgeCommandInlineStateR7: wasmModule.bridgeCommandInlineStateR7,
   wasmBridgeCommandInlineToggleR7: wasmModule.bridgeCommandInlineToggleR7,
   wasmBridgeCommandOptionEnabledR7: wasmModule.bridgeCommandOptionEnabledR7,
+  wasmBridgeHasConfig: wasmModule.bridgeHasConfig,
   wasmBridgeCommandSetOptionR7: wasmModule.bridgeCommandSetOptionR7,
   wasmBridgeCommandShouldIncludeR7: wasmModule.bridgeCommandShouldIncludeR7,
   wasmBridgeCommandToggleOptionR7: wasmModule.bridgeCommandToggleOptionR7,
@@ -123,6 +123,7 @@ const directInstanceCheckbox = wasmModule.bridgeInstanceCommandCheckboxFromInsta
 );
 const output = {
   directOwners: {
+    hasConfigInitially: wasmModule.bridgeHasConfig("mainnet"),
     inlineEnabled: wasmModule.bridgeCommandOptionEnabledR7("mainnet", "coinbaseTagSuffix"),
     inlineToggleHasMarker: wasmModule.bridgeCommandInlineToggleR7("mainnet", "coinbaseTagSuffix").includes('data-bridge-command-option-toggle-r7="coinbaseTagSuffix"'),
     instanceShouldInclude: wasmModule.bridgeInstanceCommandShouldIncludeFromInstancesR13B(
@@ -158,6 +159,7 @@ for (const step of request.steps) {
     throw new Error("unknown effective-bridge step: " + step.op);
   }
 }
+output.directOwners.hasConfigEnabled = wasmModule.bridgeHasConfig("mainnet");
 await writeFile(resultPath, JSON.stringify(output), "utf8");
 "##;
 
@@ -197,6 +199,7 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     for needle in [
         "bridgeInstanceCommandShouldIncludeFromInstancesR13B",
         "bridgeInstanceCommandCheckboxFromInstancesR13B",
+        "bridgeHasConfig",
     ] {
         if !rust.contains(needle) {
             return Err(format!(
@@ -212,6 +215,7 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
         "function kgwBridgeCommandInlineStateR7(",
         "function kgwBridgeCommandOptionEnabledR7(",
         "function kgwBridgeCommandInlineToggleR7(",
+        "function bridgeHasConfig(",
     ] {
         if source.contains(forbidden) {
             return Err(format!(
@@ -373,6 +377,8 @@ pub fn run(root: &Path) -> Result<String, String> {
     let selected = selected_source(root)?;
     let actual = run_bridge(root, &selected)?;
 
+    expect_pointer(&actual, "/directOwners/hasConfigInitially", json!(false))?;
+    expect_pointer(&actual, "/directOwners/hasConfigEnabled", json!(true))?;
     expect_pointer(&actual, "/directOwners/inlineEnabled", json!(true))?;
     expect_pointer(&actual, "/directOwners/inlineToggleHasMarker", json!(true))?;
     expect_pointer(&actual, "/directOwners/instanceShouldInclude", json!(true))?;

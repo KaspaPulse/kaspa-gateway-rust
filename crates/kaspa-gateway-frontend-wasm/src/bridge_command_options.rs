@@ -90,6 +90,10 @@ fn inline_enabled_from_stored(name: &str, stored: Option<bool>) -> bool {
     }
 }
 
+fn has_config_from_enabled_value(enabled: bool, value: &str) -> bool {
+    enabled && !value.trim().is_empty()
+}
+
 fn inline_state(net: &str) -> JsValue {
     let win = window();
     let root = object_or_create(&win, INLINE_STATE_GLOBAL);
@@ -213,6 +217,13 @@ pub fn bridge_command_option_enabled_r7(net: String, name: String) -> bool {
         )
     };
     inline_enabled_from_stored(&name, stored)
+}
+
+#[wasm_bindgen(js_name = bridgeHasConfig)]
+pub fn bridge_has_config(net: String) -> bool {
+    let enabled = bridge_command_option_enabled_r7(net.clone(), "config".to_owned());
+    let value = crate::bridge_frontend_helpers::bridge_value(net, "config".to_owned());
+    has_config_from_enabled_value(enabled, &value)
 }
 
 #[wasm_bindgen(js_name = bridgeCommandShouldIncludeR7)]
@@ -362,6 +373,14 @@ mod tests {
         assert!(inline_enabled_from_stored("promPort", None));
         assert!(!inline_enabled_from_stored("promPort", Some(false)));
     }
+    #[test]
+    fn has_config_matches_legacy_enabled_and_nonempty_contract() {
+        assert!(!has_config_from_enabled_value(false, "config.toml"));
+        assert!(!has_config_from_enabled_value(true, ""));
+        assert!(!has_config_from_enabled_value(true, "   "));
+        assert!(has_config_from_enabled_value(true, "config.toml"));
+    }
+
     #[test]
     fn checkbox_html_preserves_legacy_shape() {
         let inline = checkbox_html(
