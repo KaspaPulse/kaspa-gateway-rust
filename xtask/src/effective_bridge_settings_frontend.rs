@@ -13,7 +13,6 @@ const WASM_BIN: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm_bg.wasm";
 
 const SLICES: &[(&str, &str)] = &[
-    ("function bridgeNodeMode(", "function bridgeControlCard("),
     (
         "function kgwBridgeR51Panel(",
         "function kgwBridgeR51Fields(",
@@ -113,6 +112,13 @@ const directInstanceCheckbox = wasmModule.bridgeInstanceCommandCheckboxFromInsta
   "one",
   "instanceDiff"
 );
+const nodeModeControl = elements.get("bridge-mainnet-nodeMode");
+const nodeModeInitial = wasmModule.bridgeNodeMode("mainnet");
+nodeModeControl.value = "inprocess";
+const nodeModeExactInprocess = wasmModule.bridgeNodeMode("mainnet");
+nodeModeControl.value = "In-Process";
+const nodeModeNonExact = wasmModule.bridgeNodeMode("mainnet");
+nodeModeControl.value = "external";
 const output = {
   directOwners: {
     hasConfigInitially: wasmModule.bridgeHasConfig("mainnet"),
@@ -125,7 +131,10 @@ const output = {
       "instanceDiff"
     ),
     instanceCheckboxHasId: directInstanceCheckbox.includes('data-instance-id="one"'),
-    instanceCheckboxChecked: directInstanceCheckbox.includes("checked")
+    instanceCheckboxChecked: directInstanceCheckbox.includes("checked"),
+    nodeModeInitial,
+    nodeModeExactInprocess,
+    nodeModeNonExact
   }
 };
 for (const step of request.steps) {
@@ -235,6 +244,20 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
         return Err(
             "Bridge profile lookup must use exactly two direct Rust/WASM call sites".to_owned(),
         );
+    }
+
+    if source.contains("function bridgeNodeMode(") {
+        return Err("Retired Bridge node-mode JavaScript owner remains".to_owned());
+    }
+    if !source.contains("bridgeNodeMode as wasmBridgeNodeMode") {
+        return Err("Bridge node-mode Rust/WASM import is missing".to_owned());
+    }
+    if source
+        .matches("wasmBridgeNodeMode(String(net || \"\"))")
+        .count()
+        != 6
+    {
+        return Err("Bridge node-mode must use exactly six direct Rust/WASM call sites".to_owned());
     }
 
     Ok(())
@@ -401,6 +424,13 @@ pub fn run(root: &Path) -> Result<String, String> {
         "/directOwners/instanceCheckboxChecked",
         json!(true),
     )?;
+    expect_pointer(&actual, "/directOwners/nodeModeInitial", json!("external"))?;
+    expect_pointer(
+        &actual,
+        "/directOwners/nodeModeExactInprocess",
+        json!("inprocess"),
+    )?;
+    expect_pointer(&actual, "/directOwners/nodeModeNonExact", json!("external"))?;
 
     expect_pointer(&actual, "/parsed/instanceBlockWaitTime", json!("2500ms"))?;
     expect_pointer(&actual, "/parsed/instanceExtranonceSize", json!("4"))?;

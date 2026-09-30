@@ -65,6 +65,7 @@ import initBridgeRust, {
   bridgeSaveLastNetwork as wasmBridgeSaveLastNetwork,
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
+  bridgeNodeMode as wasmBridgeNodeMode,
   bridgeResolveInnerTab as wasmBridgeResolveInnerTab,
   bridgeSaveInnerTab as wasmBridgeSaveInnerTab,
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
@@ -1063,11 +1064,6 @@ const KGW_BRIDGE_PORT_PROFILES_R35B = wasmBridgePortProfilesR35B();
  * Never return a raw bridge.autofixPorts.* key to the UI.
  */
 /* R54D3 Auto Fix text ownership lives in Rust bridge_port_ui.rs. */
-function bridgeNodeMode(net) {
-  const value = wasmBridgeValue(net, "nodeMode");
-  return value === "inprocess" ? "inprocess" : "external";
-}
-
 function bridgeControlCard(el) {
   return el ? el.closest(".bridge-v7-card") : null;
 }
@@ -1089,7 +1085,7 @@ function bridgeSyncInprocessNodeSettingsV12D(net) {
   const profile = wasmBridgeNetworkProfile(String(net || ""));
   if (!profile) return;
 
-  const nodeMode = bridgeNodeMode(net);
+  const nodeMode = wasmBridgeNodeMode(String(net || ""));
   const active = nodeMode === "inprocess" && !wasmBridgeHasConfig(String(net || ""));
   const section = document.querySelector(`[data-bridge-inprocess-node-settings="${net}"]`);
 
@@ -1173,7 +1169,7 @@ function bridgeSyncModeControls(net) {
   if (!profile) return;
 
   const configMode = wasmBridgeHasConfig(String(net || ""));
-  const nodeMode = bridgeNodeMode(net);
+  const nodeMode = wasmBridgeNodeMode(String(net || ""));
   const internalMinerEnabled = wasmBridgeChecked(net, "internalCpuMiner");
 
   const explicitBridgeFields = [
@@ -1248,7 +1244,7 @@ function buildCommandLines(net) {
   );
 }
 function kgwBridgeEffectiveInprocessNodeSettings(net) {
-  if (bridgeNodeMode(net) !== "inprocess") return null;
+  if (wasmBridgeNodeMode(String(net || "")) !== "inprocess") return null;
   const errors = kgwBridgeValidateForm(net);
   if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
   return wasmBridgeEffectiveInprocessNodeSettings(String(net || ""));
@@ -1550,7 +1546,7 @@ function buildApplyPayload(net, command) {
     );
 
     const preview = buildCommandLines(net).join(" ");
-    const nodeMode = bridgeNodeMode(net) === "inprocess" ? "inprocess" : "external";
+    const nodeMode = wasmBridgeNodeMode(String(net || "")) === "inprocess" ? "inprocess" : "external";
 
     // KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F
     // Start must honor the selected Bridge Instance, not only the generic network Stratum port.
@@ -1635,7 +1631,7 @@ function kgwBridgeMarkRestartRequiredV1(net) {
 }
 
 async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {
-  if (bridgeNodeMode(net) !== "inprocess") return false;
+  if (wasmBridgeNodeMode(String(net || "")) !== "inprocess") return false;
 
   if (!wasmBridgeRuntimeInvokeAvailable()) return false;
 
@@ -2480,7 +2476,7 @@ function kgwBridgeR51SetRuntimeButtons(net, running, transition = "", runtimeErr
   if (empty) empty.textContent = runtimeError ? "Bridge failed. Review the error in Settings and the logs below."
     : transition ? "Bridge is " + presentation.process.toLowerCase() + ". Waiting for runtime output."
     : running ? "Bridge is running. Waiting for log output."
-    : bridgeNodeMode(net) === "inprocess" ? "Bridge is stopped. Start Bridge to start its owned node and Stratum service."
+    : wasmBridgeNodeMode(String(net || "")) === "inprocess" ? "Bridge is stopped. Start Bridge to start its owned node and Stratum service."
     : "Bridge is stopped. Start Bridge checks the configured node connection before starting the service.";
   const settingsInvalid = Boolean(panel.querySelector('[aria-invalid="true"]') ||
     wasmBridgeById(wasmBridgeElementId(net, "previewStatus"))?.classList.contains("kgw-field-error"));

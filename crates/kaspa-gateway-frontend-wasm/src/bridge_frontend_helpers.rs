@@ -740,6 +740,19 @@ pub fn bridge_value(net: String, name: String) -> String {
         .to_owned()
 }
 
+fn bridge_node_mode_text(value: &str) -> &'static str {
+    if value == "inprocess" {
+        "inprocess"
+    } else {
+        "external"
+    }
+}
+
+#[wasm_bindgen(js_name = bridgeNodeMode)]
+pub fn bridge_node_mode(net: String) -> String {
+    bridge_node_mode_text(&bridge_value(net, "nodeMode".to_owned())).to_owned()
+}
+
 #[wasm_bindgen(js_name = bridgeChecked)]
 pub fn bridge_checked(net: String, name: String) -> bool {
     let element = bridge_by_id(bridge_element_id(net, name));
@@ -930,6 +943,16 @@ mod tests {
             "runtime.failed"
         );
         assert_eq!(runtime_feedback_terminal_text("", ""), "");
+    }
+
+    #[test]
+    fn node_mode_canonicalization_matches_exact_legacy_contract() {
+        assert_eq!(bridge_node_mode_text("inprocess"), "inprocess");
+        assert_eq!(bridge_node_mode_text("external"), "external");
+        assert_eq!(bridge_node_mode_text("In-Process"), "external");
+        assert_eq!(bridge_node_mode_text(" inprocess "), "external");
+        assert_eq!(bridge_node_mode_text(""), "external");
+        assert_eq!(bridge_node_mode_text("remote"), "external");
     }
 
     #[test]
