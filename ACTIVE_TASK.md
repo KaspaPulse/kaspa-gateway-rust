@@ -84,10 +84,10 @@ PHASE 10 - final Bridge frontend ownership migration is IN PROGRESS. OP237 is CL
 The locked tools/kgw_zero_touch_evidence.ps1 remains an external file-use/access-denied blocker and live zero-touch execution remains gated by safe clipboard/evidence predicates. The remaining owned source debt is exactly kaspa-bridge.js plus that locked PowerShell helper; execution debt remains 8. Independent Bridge migration work continues.
 
 ## Last Completed Action
-OP239 Bridge profile-lookup JavaScript seam retirement is CLOSED_LOCAL / VERIFIED_SUCCESS. The one-line bridgeProfile wrapper is retired; both product call sites invoke the existing Rust/WASM bridgeNetworkProfile owner directly, preserving known/unknown-network truthiness semantics. Implementation checkpoint a77ceab2b1fac90246c65f06bccf1817e1caebb2 / tree 15737541b541e9db86c41cea2b62736dc132e3c7; no push.
+OP240 Bridge node-mode exact canonicalization Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS. Rust/WASM returns inprocess only for the exact current value "inprocess" and external for every other value; the JavaScript bridgeNodeMode helper is retired and all six product call sites invoke generated WASM directly. Implementation checkpoint 1750d4d248a7a42349c1e4f5e6fa26238818ee69 / tree 51632b73ed709b8703a4b4406125e16275e6a851; no push.
 
 ## Current Action
-OP239 implementation and qualification are complete. This boundary is in docs-only continuity closeout; product/audit source is already checkpointed and unchanged.
+OP240 implementation and qualification are complete. This boundary is in docs-only continuity closeout; product/generated/audit source is already checkpointed and unchanged.
 
 ## Next Action
 Audit remaining kaspa-bridge.js owned JavaScript boundaries read-only and select the next coherent Rust ownership slice. Persist a V3 WAI before any mutation; no push.
