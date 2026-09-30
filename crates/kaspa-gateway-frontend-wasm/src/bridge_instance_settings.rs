@@ -63,6 +63,35 @@ fn bridge_panel(net: &str) -> JsValue {
     )
 }
 
+fn bridge_r51_fields_vec(net: &str) -> Vec<JsValue> {
+    let panel = bridge_panel(net);
+    if !present(&panel) {
+        return Vec::new();
+    }
+
+    let prefix = format!("bridge-{net}-");
+    query_selector_all(&panel, "input, select, textarea")
+        .into_iter()
+        .filter(|field| {
+            let id = property(field, "id").as_string().unwrap_or_default();
+            if id.is_empty()
+                || !id.starts_with(&prefix)
+                || id.ends_with("-commandPreview")
+                || id.ends_with("-logOutput")
+            {
+                return false;
+            }
+            let toolbar = call1(
+                field,
+                "closest",
+                &JsValue::from_str(".bridge-v7-log-toolbar"),
+            )
+            .unwrap_or(JsValue::UNDEFINED);
+            !present(&toolbar)
+        })
+        .collect()
+}
+
 fn bridge_form(net: &str) -> JsValue {
     let values = Object::new();
     set(values.as_ref(), "network", &JsValue::from_str(net));
@@ -1059,6 +1088,15 @@ fn effective_settings_impl(net: &str, structured_instances: &JsValue) -> Result<
 #[wasm_bindgen(js_name = bridgeR51Panel)]
 pub fn bridge_r51_panel(net: String) -> JsValue {
     bridge_panel(&net)
+}
+
+#[wasm_bindgen(js_name = bridgeR51Fields)]
+pub fn bridge_r51_fields(net: String) -> Array {
+    let output = Array::new();
+    for field in bridge_r51_fields_vec(&net) {
+        output.push(&field);
+    }
+    output
 }
 
 #[wasm_bindgen(js_name = bridgeInstanceParseStructured)]

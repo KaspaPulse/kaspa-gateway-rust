@@ -31,6 +31,7 @@ import initBridgeRust, {
   bridgeR51Load as wasmBridgeR51Load,
   bridgeR51Keys as wasmBridgeR51Keys,
   bridgeR51Panel as wasmBridgeR51Panel,
+  bridgeR51Fields as wasmBridgeR51Fields,
   bridgeRuntimeErrorFromStatus as wasmBridgeRuntimeErrorFromStatus,
   bridgePreviewDeclaresInprocessR65F as wasmBridgePreviewDeclaresInprocessR65F,
   bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction,
@@ -2098,19 +2099,6 @@ function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
   }
 }
 
-function kgwBridgeR51Fields(net) {
-  const panel = wasmBridgeR51Panel(net);
-  if (!panel) return [];
-
-  return Array.from(panel.querySelectorAll("input, select, textarea")).filter((field) => {
-    if (!field.id || !field.id.startsWith(`bridge-${net}-`)) return false;
-    if (field.id.endsWith("-commandPreview")) return false;
-    if (field.id.endsWith("-logOutput")) return false;
-    if (field.closest(".bridge-v7-log-toolbar")) return false;
-    return true;
-  });
-}
-
 
 /* KGW_BRIDGE_SETTINGS_LIFECYCLE_FIX_R6_START */
 
@@ -2133,7 +2121,7 @@ function kgwBridgeR51ReadSettings(net) {
   values[KGW_BRIDGE_R51_COMMAND_OPTIONS_KEY_R38C] = kgwBridgeR51ReadCommandOptionsR38C(net);
   values[KGW_BRIDGE_R51_INSTANCE_COMMAND_OPTIONS_KEY_R38C] = kgwBridgeR51ReadInstanceCommandOptionsR38C(net);
 
-  for (const field of kgwBridgeR51Fields(net)) {
+  for (const field of wasmBridgeR51Fields(net)) {
     if (!field.id || BRIDGE_MANAGED[field.id.slice(("bridge-" + net + "-").length)]) continue;
 
     values[field.id] = field.type === "checkbox"
@@ -2261,7 +2249,7 @@ function kgwBridgeR51WriteSettings(net, values) {
 
   kgwBridgeR51ApplyStructuredInstancesR26B(net, values);
 
-  for (const field of kgwBridgeR51Fields(net)) {
+  for (const field of wasmBridgeR51Fields(net)) {
     if (!field.id) continue;
 
     const name = field.id.slice(("bridge-" + net + "-").length);

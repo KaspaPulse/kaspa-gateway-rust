@@ -37,8 +37,25 @@ const elements = new Map();
 for (const [id, value] of Object.entries(request.values)) {
   elements.set(id, { id, value: String(value), checked: false, type: "text" });
 }
+let r51FieldsSelector = "";
+const r51FilterOnly = [
+  { id: "bridge-mainnet-commandPreview", closest() { return null; } },
+  { id: "bridge-mainnet-logOutput", closest() { return null; } },
+  { id: "bridge-testnet10-foreign", closest() { return null; } },
+  {
+    id: "bridge-mainnet-toolbarOwned",
+    closest(selector) { return String(selector) === ".bridge-v7-log-toolbar" ? {} : null; }
+  }
+];
 const panel = {
-  querySelectorAll() { return [...elements.values()]; }
+  querySelectorAll(selector) {
+    const text = String(selector);
+    if (text === "input, select, textarea") {
+      r51FieldsSelector = text;
+      return [...elements.values(), ...r51FilterOnly];
+    }
+    return [...elements.values()];
+  }
 };
 const sandbox = {
   document: {
@@ -54,6 +71,7 @@ const sandbox = {
   wasmBridgeNetworkProfiles: wasmModule.bridgeNetworkProfiles,
   wasmBridgeNetworkProfile: wasmModule.bridgeNetworkProfile,
   wasmBridgeR51Panel: wasmModule.bridgeR51Panel,
+  wasmBridgeR51Fields: wasmModule.bridgeR51Fields,
   wasmBridgeNetworkEnabled: wasmModule.bridgeNetworkEnabled,
   wasmBridgeById: wasmModule.bridgeById,
   wasmBridgeElementId: wasmModule.bridgeElementId,
@@ -118,6 +136,8 @@ const nodeModeExactInprocess = wasmModule.bridgeNodeMode("mainnet");
 nodeModeControl.value = "In-Process";
 const nodeModeNonExact = wasmModule.bridgeNodeMode("mainnet");
 nodeModeControl.value = "external";
+const r51FieldIds = Array.from(wasmModule.bridgeR51Fields("mainnet"))
+  .map((field) => String(field?.id || ""));
 const output = {
   directOwners: {
     hasConfigInitially: wasmModule.bridgeHasConfig("mainnet"),
@@ -133,7 +153,13 @@ const output = {
     instanceCheckboxChecked: directInstanceCheckbox.includes("checked"),
     nodeModeInitial,
     nodeModeExactInprocess,
-    nodeModeNonExact
+    nodeModeNonExact,
+    r51FieldsSelector,
+    r51FieldsIncludesNodeMode: r51FieldIds.includes("bridge-mainnet-nodeMode"),
+    r51FieldsExcludesCommandPreview: !r51FieldIds.includes("bridge-mainnet-commandPreview"),
+    r51FieldsExcludesLogOutput: !r51FieldIds.includes("bridge-mainnet-logOutput"),
+    r51FieldsExcludesOtherNetwork: !r51FieldIds.includes("bridge-testnet10-foreign"),
+    r51FieldsExcludesToolbarOwned: !r51FieldIds.includes("bridge-mainnet-toolbarOwned")
   }
 };
 for (const step of request.steps) {
@@ -267,13 +293,30 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if !source.contains("bridgeR51Panel as wasmBridgeR51Panel") {
         return Err("Bridge R51 panel Rust/WASM import is missing".to_owned());
     }
-    if source.matches("wasmBridgeR51Panel(").count() != 8 {
+    if source.matches("wasmBridgeR51Panel(").count() != 7 {
         return Err(
-            "Bridge R51 panel must use exactly eight direct Rust/WASM call sites".to_owned(),
+            "Bridge R51 panel must use exactly seven direct Rust/WASM call sites".to_owned(),
         );
     }
     if !instance_settings.contains("js_name = bridgeR51Panel") {
         return Err("Bridge R51 panel Rust export is missing".to_owned());
+    }
+
+    if source.contains("function kgwBridgeR51Fields(") {
+        return Err("Retired Bridge R51 fields JavaScript owner remains".to_owned());
+    }
+    if !source.contains("bridgeR51Fields as wasmBridgeR51Fields") {
+        return Err("Bridge R51 fields Rust/WASM import is missing".to_owned());
+    }
+    if source.matches("wasmBridgeR51Fields(").count() != 2 {
+        return Err(
+            "Bridge R51 fields must use exactly two direct Rust/WASM call sites".to_owned(),
+        );
+    }
+    if !instance_settings.contains("js_name = bridgeR51Fields")
+        || !instance_settings.contains("fn bridge_r51_fields_vec(")
+    {
+        return Err("Bridge R51 fields Rust owner/export is missing".to_owned());
     }
 
     Ok(())
@@ -447,6 +490,20 @@ pub fn run(root: &Path) -> Result<String, String> {
         json!("inprocess"),
     )?;
     expect_pointer(&actual, "/directOwners/nodeModeNonExact", json!("external"))?;
+    expect_pointer(
+        &actual,
+        "/directOwners/r51FieldsSelector",
+        json!("input, select, textarea"),
+    )?;
+    for pointer in [
+        "/directOwners/r51FieldsIncludesNodeMode",
+        "/directOwners/r51FieldsExcludesCommandPreview",
+        "/directOwners/r51FieldsExcludesLogOutput",
+        "/directOwners/r51FieldsExcludesOtherNetwork",
+        "/directOwners/r51FieldsExcludesToolbarOwned",
+    ] {
+        expect_pointer(&actual, pointer, json!(true))?;
+    }
 
     expect_pointer(&actual, "/parsed/instanceBlockWaitTime", json!("2500ms"))?;
     expect_pointer(&actual, "/parsed/instanceExtranonceSize", json!("4"))?;
