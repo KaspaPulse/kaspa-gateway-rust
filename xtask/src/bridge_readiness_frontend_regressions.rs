@@ -194,13 +194,15 @@ const sandbox = {
   wasmBridgePreviewDeclaresInprocessR65F: wasm.bridgePreviewDeclaresInprocessR65F,
   wasmBridgeRuntimeCommandForAction: wasm.bridgeRuntimeCommandForAction,
   wasmBridgeRuntimeActionOutcome: wasm.bridgeRuntimeActionOutcome,
-  wasmBridgeStartWasInprocessR65F: wasm.bridgeStartWasInprocessR65F
+  wasmBridgeStartWasInprocessR65F: wasm.bridgeStartWasInprocessR65F,
+  wasmBridgeAssertNoPortConflictsR5: wasm.bridgeAssertNoPortConflictsR5
 };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
+sandbox.bridgeInstances = { mainnet: [], testnet10: [], testnet13: [] };
+sandbox.activeInstance = { mainnet: "", testnet10: "", testnet13: "" };
 sandbox.kgwBridgeR51Panel = () => panel;
 sandbox.updateCommand = () => "--node-mode=external";
-sandbox.bridgeAssertNoPortConflictsR5 = () => ({ ok: true });
 sandbox.kgwBridgeValidateForm = () => ({});
 sandbox.c = () => false;
 sandbox.confirmUserAction = async () => true;
@@ -464,6 +466,10 @@ fn verify_static_contracts(
                 "Retired Bridge runtime parser remains in JavaScript: {forbidden}"
             ));
         }
+    }
+
+    if source.contains("function bridgeAssertNoPortConflictsR5(") {
+        return Err("Retired Bridge scoped port-conflict wrapper remains in JavaScript".to_owned());
     }
 
     for needle in [

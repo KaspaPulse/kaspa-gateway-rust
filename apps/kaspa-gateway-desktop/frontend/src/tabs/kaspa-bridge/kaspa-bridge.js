@@ -299,15 +299,6 @@ function kgwBridgeToggleCommandOptionR7(net, name) {
 
 // KGW_BRIDGE_AUTOFIX_BUTTON_INITIAL_LABEL_R111G
 /* KGW_BRIDGE_SCOPED_START_CONFLICT_R110H is Rust-owned in bridge_port_validation.rs. */
-function bridgeAssertNoPortConflictsR5(net) {
-  return wasmBridgeAssertNoPortConflictsR5(
-    String(net || ""),
-    typeof kgwBridgeR51ReadStructuredInstancesR26B === "function" ? kgwBridgeR51ReadStructuredInstancesR26B : null,
-    bridgeInstances,
-    activeInstance
-  );
-}
-
 
 /* KGW_BRIDGE_PORT_CONFLICT_START_GATE_PATCH_R33
  * Existing Bridge port conflict owner enhancement:
@@ -1675,7 +1666,12 @@ function kgwBridgeStartOptions(net) {
 
 function buildApplyPayload(net, command) {
   if (command === "kgw_kgw_apply_node_settings_v1") {
-    bridgeAssertNoPortConflictsR5(net);
+    wasmBridgeAssertNoPortConflictsR5(
+      String(net || ""),
+      typeof kgwBridgeR51ReadStructuredInstancesR26B === "function" ? kgwBridgeR51ReadStructuredInstancesR26B : null,
+      bridgeInstances,
+      activeInstance
+    );
 
     const preview = buildCommandLines(net).join(" ");
     const nodeMode = bridgeNodeMode(net) === "inprocess" ? "inprocess" : "external";
@@ -1901,7 +1897,12 @@ async function runBridgeIntegratedAction(action, net) {
 
     // KGW_BRIDGE_RUNTIME_START_SCOPED_CONFLICT_R111F
     // Use the registered scoped conflict owner instead of the retired global R33 pre-start blocker.
-    const scopedConflictResultR111F = bridgeAssertNoPortConflictsR5(net);
+    const scopedConflictResultR111F = wasmBridgeAssertNoPortConflictsR5(
+      String(net || ""),
+      typeof kgwBridgeR51ReadStructuredInstancesR26B === "function" ? kgwBridgeR51ReadStructuredInstancesR26B : null,
+      bridgeInstances,
+      activeInstance
+    );
 
     kgwBridgeRuntimeOwnerTraceR64D("r111f-scoped-conflict-owner-result", {
       owner: "bridgeRuntimeStartOwner",
@@ -3665,7 +3666,12 @@ function kgwBridgeValidateForm(net, focus = false) {
 function kgwBridgeRequireValidSettings(net) {
   const errors = kgwBridgeValidateForm(net, true);
   if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-  bridgeAssertNoPortConflictsR5(net);
+  wasmBridgeAssertNoPortConflictsR5(
+    String(net || ""),
+    typeof kgwBridgeR51ReadStructuredInstancesR26B === "function" ? kgwBridgeR51ReadStructuredInstancesR26B : null,
+    bridgeInstances,
+    activeInstance
+  );
   kgwBridgeEffectiveInprocessNodeSettings(net);
   wasmBridgeEffectiveSettingsV1(String(net || ""), kgwBridgeR51ReadStructuredInstancesR26B(net) || {});
 }
