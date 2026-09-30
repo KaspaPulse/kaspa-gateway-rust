@@ -30,6 +30,7 @@ import initBridgeRust, {
   bridgeR51Store as wasmBridgeR51Store,
   bridgeR51Load as wasmBridgeR51Load,
   bridgeR51Keys as wasmBridgeR51Keys,
+  bridgeR51Panel as wasmBridgeR51Panel,
   bridgeRuntimeErrorFromStatus as wasmBridgeRuntimeErrorFromStatus,
   bridgePreviewDeclaresInprocessR65F as wasmBridgePreviewDeclaresInprocessR65F,
   bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction,
@@ -211,7 +212,7 @@ function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
     String(name || ""),
     Boolean(enabled)
   );
-  kgwBridgeR51Panel(net)?.querySelectorAll("[data-bridge-instance-command-option-toggle-r13b]").forEach(toggle => {
+  wasmBridgeR51Panel(net)?.querySelectorAll("[data-bridge-instance-command-option-toggle-r13b]").forEach(toggle => {
     if (String(toggle.dataset.instanceId) !== String(instanceId) || toggle.dataset.bridgeInstanceCommandOptionToggleR13b !== name) return;
     toggle.checked = Boolean(enabled);
     toggle.title = enabled ? "Included in command" : "Excluded from command";
@@ -2097,12 +2098,8 @@ function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
   }
 }
 
-function kgwBridgeR51Panel(net) {
-  return document.querySelector(`[data-bridge-network-panel="${net}"]`);
-}
-
 function kgwBridgeR51Fields(net) {
-  const panel = kgwBridgeR51Panel(net);
+  const panel = wasmBridgeR51Panel(net);
   if (!panel) return [];
 
   return Array.from(panel.querySelectorAll("input, select, textarea")).filter((field) => {
@@ -2406,7 +2403,7 @@ function kgwBridgeR51RestoreDefaults(net) {
 }
 
 function kgwBridgeR51SetRuntimeButtons(net, running, transition = "", runtimeError = "", statusText = "") {
-  const panel = kgwBridgeR51Panel(net);
+  const panel = wasmBridgeR51Panel(net);
   if (!panel) return;
 
   const networkEnabled = wasmBridgeNetworkEnabled(net);
@@ -2467,7 +2464,7 @@ function kgwBridgeR51SetRuntimeButtons(net, running, transition = "", runtimeErr
 }
 
 function kgwBridgeR51SetRuntimeUnknown(net, message = "Runtime status is temporarily unavailable. Reconciling with the backend.", errorSource = "") {
-  const panel = kgwBridgeR51Panel(net);
+  const panel = wasmBridgeR51Panel(net);
   if (!panel) return;
   const policyStatus = wasmBridgeById(wasmBridgeElementId(net, "policyStatus"));
   if (policyStatus) {
@@ -3075,7 +3072,7 @@ function installActions(root) {
     }
 
     if (action === "monitor-next") {
-      const panel = kgwBridgeR51Panel(net);
+      const panel = wasmBridgeR51Panel(net);
       if (button.dataset.nextAction === "start") panel?.querySelector('[data-bridge-action="start"]')?.click();
       else panel?.querySelector('[data-bridge-inner-tab="settings"]')?.click();
       return;
@@ -3330,14 +3327,14 @@ try { wasmBridgeAutofixButtonInitialLabelUiR111G(document); } catch (_) { /* Bes
 
 function kgwBridgeForm(net) {
   const values = { network: net };
-  kgwBridgeR51Panel(net)?.querySelectorAll(".bridge-v7-card input[id], .bridge-v7-card select[id]").forEach(field => {
+  wasmBridgeR51Panel(net)?.querySelectorAll(".bridge-v7-card input[id], .bridge-v7-card select[id]").forEach(field => {
     values[field.id.slice(("bridge-" + net + "-").length)] = field.type === "checkbox" ? field.checked : field.value;
   });
   return values;
 }
 function kgwBridgeValidateForm(net, focus = false) {
   const errors = validateBridgeForm(kgwBridgeForm(net), wasmBridgeCommandInlineStateR7(String(net || "")), net);
-  const panel = kgwBridgeR51Panel(net);
+  const panel = wasmBridgeR51Panel(net);
   for (const instance of net !== "mainnet" || wasmBridgeHasConfig(String(net || "")) ? [] : bridgeInstances[net] || []) {
     if (!wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instance")) continue;
     const waitField = wasmBridgeById(wasmBridgeElementId(net, "instanceBlockWaitTime-" + instance.id));
@@ -3379,7 +3376,7 @@ function kgwBridgeRequireValidSettings(net) {
 }
 function kgwBridgeSyncDependencies(net) {
   const values = kgwBridgeForm(net), options = wasmBridgeCommandInlineStateR7(String(net || ""));
-  const panel = kgwBridgeR51Panel(net);
+  const panel = wasmBridgeR51Panel(net);
   for (const name of Object.keys(values)) {
     const field = wasmBridgeById(wasmBridgeElementId(net, name)); if (!field) continue;
     if (/^instance/.test(name)) continue;

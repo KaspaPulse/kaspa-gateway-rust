@@ -653,7 +653,7 @@ sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 sandbox.bridgeInstances = { mainnet: [], testnet10: [], testnet13: [] };
 sandbox.activeInstance = { mainnet: "", testnet10: "", testnet13: "" };
-sandbox.kgwBridgeR51Panel = () => panel;
+sandbox.wasmBridgeR51Panel = wasm.bridgeR51Panel;
 sandbox.updateCommand = () => "--node-mode=external";
 sandbox.kgwBridgeValidateForm = () => ({});
 sandbox.c = () => false;

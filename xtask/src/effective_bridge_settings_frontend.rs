@@ -7,16 +7,14 @@ const BRIDGE_SOURCE: &str =
     "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
 const BRIDGE_COMMAND_OPTIONS_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_command_options.rs";
+const BRIDGE_INSTANCE_SETTINGS_SOURCE: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs";
 const WASM_JS: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 const WASM_BIN: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm_bg.wasm";
 
 const SLICES: &[(&str, &str)] = &[
-    (
-        "function kgwBridgeR51Panel(",
-        "function kgwBridgeR51Fields(",
-    ),
     ("function kgwBridgeForm(", "function kgwBridgeValidateForm("),
     (
         "const BRIDGE_NETWORKS = wasmBridgeNetworkProfiles();",
@@ -55,6 +53,7 @@ const sandbox = {
     wasmModule.settingsBridgeFieldEnabled(name, values, options),
   wasmBridgeNetworkProfiles: wasmModule.bridgeNetworkProfiles,
   wasmBridgeNetworkProfile: wasmModule.bridgeNetworkProfile,
+  wasmBridgeR51Panel: wasmModule.bridgeR51Panel,
   wasmBridgeNetworkEnabled: wasmModule.bridgeNetworkEnabled,
   wasmBridgeById: wasmModule.bridgeById,
   wasmBridgeElementId: wasmModule.bridgeElementId,
@@ -196,6 +195,8 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
         .map_err(|error| format!("failed to read {BRIDGE_SOURCE}: {error}"))?;
     let rust = fs::read_to_string(root.join(BRIDGE_COMMAND_OPTIONS_SOURCE))
         .map_err(|error| format!("failed to read {BRIDGE_COMMAND_OPTIONS_SOURCE}: {error}"))?;
+    let instance_settings = fs::read_to_string(root.join(BRIDGE_INSTANCE_SETTINGS_SOURCE))
+        .map_err(|error| format!("failed to read {BRIDGE_INSTANCE_SETTINGS_SOURCE}: {error}"))?;
 
     for needle in [
         "bridgeInstanceCommandShouldIncludeFromInstancesR13B",
@@ -258,6 +259,21 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
         != 6
     {
         return Err("Bridge node-mode must use exactly six direct Rust/WASM call sites".to_owned());
+    }
+
+    if source.contains("function kgwBridgeR51Panel(") {
+        return Err("Retired Bridge R51 panel JavaScript owner remains".to_owned());
+    }
+    if !source.contains("bridgeR51Panel as wasmBridgeR51Panel") {
+        return Err("Bridge R51 panel Rust/WASM import is missing".to_owned());
+    }
+    if source.matches("wasmBridgeR51Panel(").count() != 8 {
+        return Err(
+            "Bridge R51 panel must use exactly eight direct Rust/WASM call sites".to_owned(),
+        );
+    }
+    if !instance_settings.contains("js_name = bridgeR51Panel") {
+        return Err("Bridge R51 panel Rust export is missing".to_owned());
     }
 
     Ok(())

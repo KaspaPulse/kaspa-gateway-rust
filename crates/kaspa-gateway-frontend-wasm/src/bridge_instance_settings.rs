@@ -1055,6 +1055,12 @@ fn effective_settings_impl(net: &str, structured_instances: &JsValue) -> Result<
     set(output.as_ref(), "instances", instances.as_ref());
     Ok(output.into())
 }
+
+#[wasm_bindgen(js_name = bridgeR51Panel)]
+pub fn bridge_r51_panel(net: String) -> JsValue {
+    bridge_panel(&net)
+}
+
 #[wasm_bindgen(js_name = bridgeInstanceParseStructured)]
 pub fn bridge_instance_parse_structured(value: JsValue) -> JsValue {
     parsed_object(&crate::js_string_owned(&value))
