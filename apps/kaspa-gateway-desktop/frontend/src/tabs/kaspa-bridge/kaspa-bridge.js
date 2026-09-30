@@ -2393,10 +2393,7 @@ function kgwBridgeR51SetAsDefaults(net) {
   });
 }
 
-/* R9B compatibility boundary: current input/change owners identify programmatic writes via Event.isTrusted. */
-function kgwBridgeSettingsWithProgrammaticWriteR9B(callback) {
-  return callback();
-}
+/* R9B programmatic restore relies on Event.isTrusted in the current input/change owners; no JavaScript callback wrapper is required. */
 
 function kgwBridgeR51RestoreDefaults(net) {
   wasmBridgeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-begin", {
@@ -2404,7 +2401,7 @@ function kgwBridgeR51RestoreDefaults(net) {
     owner: "bridge-r51-settings-owner"
   });
 
-  kgwBridgeSettingsWithProgrammaticWriteR9B(() => {
+  {
     const defaults = kgwBridgeR51Load("default:" + net) || kgwBridgeR51Load("factory:" + net);
     wasmBridgeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-loaded", {
       patch: "R29B",
@@ -2414,7 +2411,7 @@ function kgwBridgeR51RestoreDefaults(net) {
     });
     kgwBridgeR51WriteSettings(net, defaults);
     wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(String(net || ""), updateCommand);
-  });
+  }
 
   wasmBridgeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-complete", {
     patch: "R29B",

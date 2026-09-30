@@ -823,11 +823,10 @@ fn validate_programmatic_restore(node: &str, bridge: &str, node_owner: &str) -> 
         "Rust/WASM Node Restore Defaults owner must apply restored settings",
     )?;
 
-    if !regex_is_match(
-        bridge,
-        r"function kgwBridgeSettingsWithProgrammaticWriteR9B\(callback\)\s*\{\s*return callback\(\);\s*\}",
-    ) {
-        return Err("Bridge programmatic restore call boundary is missing".to_owned());
+    if bridge.contains("kgwBridgeSettingsWithProgrammaticWriteR9B(") {
+        return Err(
+            "Retired Bridge programmatic-restore JavaScript compatibility seam remains".to_owned(),
+        );
     }
     let bridge_restore = function_block(
         bridge,
@@ -836,8 +835,8 @@ fn validate_programmatic_restore(node: &str, bridge: &str, node_owner: &str) -> 
     )?;
     for (needle, message) in [
         (
-            "kgwBridgeSettingsWithProgrammaticWriteR9B(() =>",
-            "Bridge Restore Defaults must use the programmatic boundary",
+            "const defaults = kgwBridgeR51Load(\"default:\" + net) || kgwBridgeR51Load(\"factory:\" + net);",
+            "Bridge Restore Defaults must load defaults directly inside the restore owner",
         ),
         (
             "kgwBridgeR51WriteSettings(net, defaults)",
@@ -851,12 +850,6 @@ fn validate_programmatic_restore(node: &str, bridge: &str, node_owner: &str) -> 
         require_contains(bridge_restore, needle, message)?;
     }
     Ok(())
-}
-
-fn regex_is_match(source: &str, pattern: &str) -> bool {
-    Regex::new(pattern)
-        .expect("static contract regex must compile")
-        .is_match(source)
 }
 
 pub fn run(root: &Path) -> Result<String, String> {
