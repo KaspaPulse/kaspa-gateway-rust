@@ -24,10 +24,6 @@ const SLICES: &[(&str, &str)] = &[
         "const bridgeInstances = {",
     ),
     (
-        "function kgwBridgeEffectiveSettingsV1(",
-        "/* Port conflict registry/validation ownership lives in Rust bridge_port_core.rs. */",
-    ),
-    (
         "function bridgeProfile(",
         "/* KGW_BRIDGE_NETWORK_PORT_PROFILES_SOFT_POLICY_PATCH_R35B",
     ),
@@ -111,7 +107,7 @@ sandbox.__kgwBridgeInstanceCommandComposerR13B = {};
 vm.createContext(sandbox);
 vm.runInContext(selected, sandbox, { filename: request.sourceName });
 const api = vm.runInContext(
-  "({ parse: bridgeInstanceParseStructured, effective: kgwBridgeEffectiveSettingsV1 })",
+  "({ parse: bridgeInstanceParseStructured, effective: wasmBridgeEffectiveSettingsV1 })",
   sandbox
 );
 
@@ -216,12 +212,20 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
         "function kgwBridgeCommandOptionEnabledR7(",
         "function kgwBridgeCommandInlineToggleR7(",
         "function bridgeHasConfig(",
+        "function kgwBridgeEffectiveSettingsV1(",
     ] {
         if source.contains(forbidden) {
             return Err(format!(
                 "Retired Bridge command-option wrapper remains in JavaScript: {forbidden}"
             ));
         }
+    }
+
+    if !source.contains("wasmBridgeEffectiveSettingsV1 as kgwBridgeEffectiveSettingsV1") {
+        return Err(
+            "Bridge effective-settings compatibility export is not a direct Rust/WASM alias"
+                .to_owned(),
+        );
     }
 
     Ok(())

@@ -271,10 +271,6 @@ function kgwBridgeToggleCommandOptionR7(net, name) {
  * port/prom/diff/log/var_diff/shares_per_min/var_diff_stats/pow2_clamp.
  */
 /* KGW_BRIDGE_INSTANCE_EFFECTIVE_SETTINGS_RUST_OWNER_V1 */
-function kgwBridgeEffectiveSettingsV1(net, structuredInstances) {
-  return wasmBridgeEffectiveSettingsV1(String(net || ""), structuredInstances || {});
-}
-
 /* Port conflict registry/validation ownership lives in Rust bridge_port_core.rs. */
 /* KGW_BRIDGE_INSTANCES_PLUS_AUTOPORT_DETAILS_R8B
  * Existing Bridge Instances owner refinement:
@@ -1710,7 +1706,7 @@ function buildApplyPayload(net, command) {
       bridgeActiveInstancePort,
       bridgeStructuredInstances: JSON.stringify(structuredInstances || {}),
       effectiveNodeSettings: kgwBridgeEffectiveInprocessNodeSettings(net),
-      effectiveBridgeSettings: kgwBridgeEffectiveSettingsV1(net, structuredInstances),
+      effectiveBridgeSettings: wasmBridgeEffectiveSettingsV1(String(net || ""), structuredInstances || {}),
       bridgeOptions: kgwBridgeStartOptions(net),
       experimentalNetworkOptIn: net === "testnet13" && wasmBridgeNetworkEnabled(net),
     };
@@ -3671,7 +3667,7 @@ function kgwBridgeRequireValidSettings(net) {
   if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
   bridgeAssertNoPortConflictsR5(net);
   kgwBridgeEffectiveInprocessNodeSettings(net);
-  kgwBridgeEffectiveSettingsV1(net, kgwBridgeR51ReadStructuredInstancesR26B(net));
+  wasmBridgeEffectiveSettingsV1(String(net || ""), kgwBridgeR51ReadStructuredInstancesR26B(net) || {});
 }
 function kgwBridgeSyncDependencies(net) {
   const values = kgwBridgeForm(net), options = wasmBridgeCommandInlineStateR7(String(net || ""));
@@ -3724,4 +3720,4 @@ function kgwBridgeSyncDependencies(net) {
   });
   decorateSettingsFields(panel);
 }
-export { kgwBridgeEffectiveInprocessNodeSettings, kgwBridgeEffectiveSettingsV1, kgwBridgeValidateForm };
+export { kgwBridgeEffectiveInprocessNodeSettings, wasmBridgeEffectiveSettingsV1 as kgwBridgeEffectiveSettingsV1, kgwBridgeValidateForm };
