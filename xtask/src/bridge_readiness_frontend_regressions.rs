@@ -152,6 +152,7 @@ for (const name of [
   "policyStatus",
   "monitorState",
   "logEmpty",
+  "logOutput",
   "settingsAuthority",
   "previewStatus",
   "commandPreview"
@@ -189,6 +190,31 @@ const documentImpl = {
   }
 };
 globalThis.document = documentImpl;
+
+const bridgeLogOutput = elements.get("bridge-mainnet-logOutput");
+bridgeLogOutput.scrollHeight = 321;
+bridgeLogOutput.scrollTop = 7;
+const logAutoScrollDefaultMainnet = wasm.bridgeLogAutoScrollEnabled("mainnet");
+wasm.bridgeSetLogAutoScroll("mainnet", false);
+const logAutoScrollDisabledMainnet = wasm.bridgeLogAutoScrollEnabled("mainnet");
+const logAutoScrollStoredAfterDisable =
+  innerTabStore.get("kgw.bridge.log.autoscroll.mainnet") || "";
+const logAutoScrollScrollAfterDisable = bridgeLogOutput.scrollTop;
+wasm.bridgeSetLogAutoScroll("mainnet", true);
+const logAutoScrollEnabledMainnet = wasm.bridgeLogAutoScrollEnabled("mainnet");
+const logAutoScrollStoredAfterEnable =
+  innerTabStore.get("kgw.bridge.log.autoscroll.mainnet") || "";
+const logAutoScrollScrollAfterEnable = bridgeLogOutput.scrollTop;
+const logAutoScrollOwnership = {
+  defaultMainnet: logAutoScrollDefaultMainnet,
+  disabledMainnet: logAutoScrollDisabledMainnet,
+  storedAfterDisable: logAutoScrollStoredAfterDisable,
+  scrollAfterDisable: logAutoScrollScrollAfterDisable,
+  enabledMainnet: logAutoScrollEnabledMainnet,
+  storedAfterEnable: logAutoScrollStoredAfterEnable,
+  scrollAfterEnable: logAutoScrollScrollAfterEnable,
+  defaultTestnet10: wasm.bridgeLogAutoScrollEnabled("testnet10")
+};
 
 const local = new Map([["kgw.bridge.network.enabled.mainnet", "1"]]);
 let invokeRuntime = async () => "";
@@ -315,6 +341,7 @@ const visibleFailure = snapshot();
 const output = {
   innerTabOwnership,
   lastNetworkOwnership,
+  logAutoScrollOwnership,
   transport: {
     available: Boolean(transportAvailable),
     result: String(transportResult || ""),
@@ -544,6 +571,45 @@ fn verify_static_contracts(
     }
 
     for needle in [
+        "#[wasm_bindgen(js_name = bridgeLogAutoScrollEnabled)]",
+        "#[wasm_bindgen(js_name = bridgeSetLogAutoScroll)]",
+        "kgw.bridge.log.autoscroll.{net}",
+        "bridge_log_auto_scroll_enabled_text",
+    ] {
+        if !helpers.contains(needle) {
+            return Err(format!(
+                "Bridge R27 log-auto-scroll Rust owner contract missing: {needle}"
+            ));
+        }
+    }
+
+    for needle in [
+        "bridgeLogAutoScrollEnabled as wasmBridgeLogAutoScrollEnabled",
+        "bridgeSetLogAutoScroll as wasmBridgeSetLogAutoScroll",
+        "wasmBridgeLogAutoScrollEnabled(String(net || \"\"))",
+        "wasmBridgeSetLogAutoScroll(String(net || \"\"), Boolean(checkbox.checked))",
+        "function kgwInstallBridgeLogAutoScrollControlsR27(",
+    ] {
+        if !source.contains(needle) {
+            return Err(format!(
+                "Bridge R27 direct Rust/WASM binding missing: {needle}"
+            ));
+        }
+    }
+
+    for retired in [
+        "function kgwBridgeLogAutoScrollKeyR27(",
+        "function kgwBridgeLogAutoScrollEnabledR27(",
+        "function kgwBridgeSetLogAutoScrollR27(",
+    ] {
+        if source.contains(retired) {
+            return Err(format!(
+                "Retired Bridge R27 JavaScript persistence owner remains: {retired}"
+            ));
+        }
+    }
+
+    for needle in [
         "bridgeStringifyRuntimeResult",
         "bridgeNormalizeRuntimeError",
         "bridgeParseRuntimeKeyValueResponse",
@@ -710,6 +776,47 @@ pub fn run(root: &Path) -> Result<String, String> {
         &actual,
         "/lastNetworkOwnership/savedAfterInvalid",
         json!("testnet10"),
+    )?;
+
+    expect(
+        &actual,
+        "/logAutoScrollOwnership/defaultMainnet",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollOwnership/disabledMainnet",
+        json!(false),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollOwnership/storedAfterDisable",
+        json!("0"),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollOwnership/scrollAfterDisable",
+        json!(7),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollOwnership/enabledMainnet",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollOwnership/storedAfterEnable",
+        json!("1"),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollOwnership/scrollAfterEnable",
+        json!(321),
+    )?;
+    expect(
+        &actual,
+        "/logAutoScrollOwnership/defaultTestnet10",
+        json!(true),
     )?;
 
     expect(&actual, "/runtimeRunning/liveOnly", json!(false))?;

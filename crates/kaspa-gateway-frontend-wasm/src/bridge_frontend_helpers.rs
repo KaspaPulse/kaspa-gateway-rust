@@ -158,6 +158,37 @@ fn storage_set(key: &str, value: &str) {
     );
 }
 
+fn bridge_log_auto_scroll_key_text(net: &str) -> String {
+    format!("kgw.bridge.log.autoscroll.{net}")
+}
+
+fn bridge_log_auto_scroll_enabled_text(value: Option<&str>) -> bool {
+    value != Some("0")
+}
+
+#[wasm_bindgen(js_name = bridgeLogAutoScrollEnabled)]
+pub fn bridge_log_auto_scroll_enabled(net: String) -> bool {
+    bridge_log_auto_scroll_enabled_text(
+        storage_get(&bridge_log_auto_scroll_key_text(&net)).as_deref(),
+    )
+}
+
+#[wasm_bindgen(js_name = bridgeSetLogAutoScroll)]
+pub fn bridge_set_log_auto_scroll(net: String, enabled: bool) {
+    storage_set(
+        &bridge_log_auto_scroll_key_text(&net),
+        if enabled { "1" } else { "0" },
+    );
+    if !enabled {
+        return;
+    }
+    let output = bridge_by_id(bridge_element_id(net, "logOutput".to_owned()));
+    if present(&output) {
+        let height = property(&output, "scrollHeight");
+        set(&output, "scrollTop", &height);
+    }
+}
+
 fn bridge_inner_tab_storage_key_text(net: &str) -> String {
     format!(
         "kgw.bridge.innerTab.{}",
@@ -567,6 +598,18 @@ mod tests {
         assert_eq!(normalize_bridge_network_text("testnet13"), "testnet13");
         assert_eq!(normalize_bridge_network_text("devnet"), "");
         assert_eq!(normalize_bridge_network_text(""), "");
+    }
+
+    #[test]
+    fn log_auto_scroll_persistence_policy_matches_legacy_contract() {
+        assert_eq!(
+            bridge_log_auto_scroll_key_text("mainnet"),
+            "kgw.bridge.log.autoscroll.mainnet"
+        );
+        assert!(bridge_log_auto_scroll_enabled_text(None));
+        assert!(bridge_log_auto_scroll_enabled_text(Some("1")));
+        assert!(bridge_log_auto_scroll_enabled_text(Some("unexpected")));
+        assert!(!bridge_log_auto_scroll_enabled_text(Some("0")));
     }
 
     #[test]

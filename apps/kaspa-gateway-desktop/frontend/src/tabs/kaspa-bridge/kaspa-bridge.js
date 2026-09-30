@@ -53,6 +53,8 @@ import initBridgeRust, {
   bridgeEscapeHtml as wasmBridgeEscapeHtml,
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
   bridgeI18nTextR41 as wasmBridgeI18nTextR41,
+  bridgeLogAutoScrollEnabled as wasmBridgeLogAutoScrollEnabled,
+  bridgeSetLogAutoScroll as wasmBridgeSetLogAutoScroll,
   bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
   bridgeNetworkPolicyMessage as wasmBridgeNetworkPolicyMessage,
   bridgeNormalizeNetwork as wasmBridgeNormalizeNetwork,
@@ -1238,26 +1240,7 @@ function bridgeSyncAllModeControls() {
 }
 
 // KGW_BRIDGE_LOG_AUTOSCROLL_CONTROLS_R27_START
-function kgwBridgeLogAutoScrollKeyR27(net) {
-  return `kgw.bridge.log.autoscroll.${net}`;
-}
-
-function kgwBridgeLogAutoScrollEnabledR27(net) {
-  try {
-    return localStorage.getItem(kgwBridgeLogAutoScrollKeyR27(net)) !== "0";
-  } catch (_) {
-    return true;
-  }
-}
-
-function kgwBridgeSetLogAutoScrollR27(net, enabled) {
-  try {
-    localStorage.setItem(kgwBridgeLogAutoScrollKeyR27(net), enabled ? "1" : "0");
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-
-  const out = wasmBridgeById(wasmBridgeElementId(net, "logOutput"));
-  if (enabled && out) out.scrollTop = out.scrollHeight;
-}
+/* R27 log-auto-scroll persistence and scroll behavior are Rust-owned in bridge_frontend_helpers.rs. */
 
 function kgwInstallBridgeLogAutoScrollControlsR27() {
   if (typeof document === "undefined") return;
@@ -1279,7 +1262,7 @@ function kgwInstallBridgeLogAutoScrollControlsR27() {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.id = controlId;
-    checkbox.checked = kgwBridgeLogAutoScrollEnabledR27(net);
+    checkbox.checked = wasmBridgeLogAutoScrollEnabled(String(net || ""));
     checkbox.addEventListener("change", (event) => {
       wasmBridgeSmallOwnerTraceR44D(net, "log-autoscroll", "r51b3-bridge-log-autoscroll-change", {
         patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
@@ -1287,7 +1270,7 @@ function kgwInstallBridgeLogAutoScrollControlsR27() {
         controlId: String(controlId || ""),
         checked: Boolean(checkbox.checked)
       });
-      kgwBridgeSetLogAutoScrollR27(net, checkbox.checked);
+      wasmBridgeSetLogAutoScroll(String(net || ""), Boolean(checkbox.checked));
     });
 
     const span = document.createElement("span");
