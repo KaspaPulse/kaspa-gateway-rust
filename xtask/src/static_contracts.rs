@@ -832,7 +832,7 @@ fn validate_programmatic_restore(node: &str, bridge: &str, node_owner: &str) -> 
     let bridge_restore = function_block(
         bridge,
         "function kgwBridgeR51RestoreDefaults",
-        "function kgwBridgeR51IsRunning",
+        "function kgwBridgeR51SetRuntimeButtons",
     )?;
     for (needle, message) in [
         (
@@ -844,8 +844,8 @@ fn validate_programmatic_restore(node: &str, bridge: &str, node_owner: &str) -> 
             "Bridge Restore Defaults must write restored settings",
         ),
         (
-            "kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, { force: true })",
-            "Bridge Restore Defaults must refresh backend-owned default paths",
+            "wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(String(net || \"\"), updateCommand)",
+            "Bridge Restore Defaults must refresh backend-owned default paths through Rust/WASM",
         ),
     ] {
         require_contains(bridge_restore, needle, message)?;

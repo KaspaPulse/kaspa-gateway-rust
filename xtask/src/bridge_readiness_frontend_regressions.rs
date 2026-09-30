@@ -218,6 +218,9 @@ const lastNetworkOwnership = {
 const transportCalls = [];
 const transportInvoke = async (command, args) => {
   transportCalls.push({ command: String(command || ""), network: String(args?.network || "") });
+  if (String(command || "") === "kgw_settings_context_v1") {
+    return { appDir: "APPDIR-" + String(args?.network || "") };
+  }
   return "transport-ok";
 };
 globalThis.__TAURI__ = { core: { invoke: transportInvoke } };
@@ -319,7 +322,9 @@ for (const name of [
   "logOutput",
   "settingsAuthority",
   "previewStatus",
-  "commandPreview"
+  "commandPreview",
+  "appdir",
+  "inprocessAppdirMirror"
 ]) {
   elements.set("bridge-mainnet-" + name, new Element());
 }
@@ -392,6 +397,35 @@ const documentImpl = {
   }
 };
 globalThis.document = documentImpl;
+
+let defaultPathUpdateCalls = 0;
+let defaultPathUpdateNet = "";
+const defaultPathContextCallsBefore = transportCalls.filter(
+  (call) => call.command === "kgw_settings_context_v1"
+).length;
+wasm.bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(
+  "mainnet",
+  (net) => {
+    defaultPathUpdateCalls += 1;
+    defaultPathUpdateNet = String(net || "");
+  }
+);
+for (let attempt = 0; attempt < 8 && defaultPathUpdateCalls === 0; attempt += 1) {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+const defaultPathContextCalls = transportCalls.filter(
+  (call) => call.command === "kgw_settings_context_v1"
+);
+const defaultPathOwnership = {
+  appdir: String(elements.get("bridge-mainnet-appdir")?.value || ""),
+  appdirTitle: String(elements.get("bridge-mainnet-appdir")?.title || ""),
+  mirror: String(elements.get("bridge-mainnet-inprocessAppdirMirror")?.value || ""),
+  mirrorTitle: String(elements.get("bridge-mainnet-inprocessAppdirMirror")?.title || ""),
+  updateCalls: defaultPathUpdateCalls,
+  updateNet: defaultPathUpdateNet,
+  contextDelta: defaultPathContextCalls.length - defaultPathContextCallsBefore,
+  contextNetwork: String(defaultPathContextCalls.at(-1)?.network || "")
+};
 
 const currentNodeModeOwnership = {
   direct: wasm.bridgeCurrentNodeModeFromUiR65F("r65f-direct"),
@@ -610,6 +644,7 @@ api.setActivity("mainnet", "Bridge start failed.");
 const visibleFailure = snapshot();
 
 const output = {
+  defaultPathOwnership,
   portOnlyNormalizationOwnership,
   instanceNetworkKeyOwnership,
   currentNodeModeOwnership,
@@ -1128,6 +1163,39 @@ fn verify_static_contracts(
         }
     }
 
+    if source.contains("function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(") {
+        return Err(
+            "Retired Bridge Rusty-Kaspa default-paths fire-and-forget JavaScript helper remains"
+                .to_owned(),
+        );
+    }
+    if !source.contains(
+        "bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5 as wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5",
+    ) {
+        return Err(
+            "Bridge Rusty-Kaspa default-paths fire-and-forget Rust/WASM import is missing"
+                .to_owned(),
+        );
+    }
+    if source
+        .matches("wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(")
+        .count()
+        != 2
+    {
+        return Err(
+            "Bridge Rusty-Kaspa default-paths fire-and-forget owner must have exactly two direct Rust/WASM call sites"
+                .to_owned(),
+        );
+    }
+    if !helpers
+        .contains("#[wasm_bindgen(js_name = bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5)]")
+        || !helpers.contains("pub fn bridge_apply_rusty_kaspa_root_only_default_paths_soon_r5(")
+    {
+        return Err(
+            "Bridge Rusty-Kaspa default-paths fire-and-forget Rust owner is missing".to_owned(),
+        );
+    }
+
     if source.contains("async function kgwBridgePreparePreview(") {
         return Err("Retired Bridge preview runtime dispatch JavaScript helper remains".to_owned());
     }
@@ -1225,6 +1293,35 @@ pub fn run(root: &Path) -> Result<String, String> {
         &actual,
         "/previewTransport/unavailableError",
         json!("The desktop runtime is unavailable."),
+    )?;
+
+    expect(
+        &actual,
+        "/defaultPathOwnership/appdir",
+        json!("APPDIR-mainnet"),
+    )?;
+    expect(
+        &actual,
+        "/defaultPathOwnership/appdirTitle",
+        json!("APPDIR-mainnet"),
+    )?;
+    expect(
+        &actual,
+        "/defaultPathOwnership/mirror",
+        json!("APPDIR-mainnet"),
+    )?;
+    expect(
+        &actual,
+        "/defaultPathOwnership/mirrorTitle",
+        json!("APPDIR-mainnet"),
+    )?;
+    expect(&actual, "/defaultPathOwnership/updateCalls", json!(1))?;
+    expect(&actual, "/defaultPathOwnership/updateNet", json!("mainnet"))?;
+    expect(&actual, "/defaultPathOwnership/contextDelta", json!(1))?;
+    expect(
+        &actual,
+        "/defaultPathOwnership/contextNetwork",
+        json!("mainnet"),
     )?;
 
     expect(

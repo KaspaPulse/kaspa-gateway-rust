@@ -1,6 +1,6 @@
 use js_sys::{Array, Function, JSON, Object, Promise, Reflect};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
-use wasm_bindgen_futures::JsFuture;
+use wasm_bindgen_futures::{JsFuture, spawn_local};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct BridgeNetworkProfile {
@@ -891,6 +891,16 @@ pub async fn bridge_apply_rusty_kaspa_root_only_default_paths_r5(
     let output = Object::new();
     set(output.as_ref(), "appdir", &app_dir);
     Ok(output.into())
+}
+
+#[wasm_bindgen(js_name = bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5)]
+pub fn bridge_apply_rusty_kaspa_root_only_default_paths_soon_r5(
+    net: String,
+    update_command: Function,
+) {
+    spawn_local(async move {
+        let _ = bridge_apply_rusty_kaspa_root_only_default_paths_r5(net, update_command).await;
+    });
 }
 
 #[cfg(test)]

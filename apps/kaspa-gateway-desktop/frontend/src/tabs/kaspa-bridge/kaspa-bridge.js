@@ -3,7 +3,7 @@ import { BRIDGE_MANAGED, BRIDGE_OPTIONAL, bridgeFieldEnabled, validateBridgeForm
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initBridgeRust, {
   bridgeApplyRuntimeLogReport as wasmBridgeApplyRuntimeLogReport,
-  bridgeApplyRustyKaspaRootOnlyDefaultPathsR5 as wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsR5,
+  bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5 as wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5,
   bridgeById as wasmBridgeById,
   bridgeChecked as wasmBridgeChecked,
   bridgeCommandInlineStateR7 as wasmBridgeCommandInlineStateR7,
@@ -149,13 +149,6 @@ window.KGW_SETTINGS_OWNER_V19 = KGW_BRIDGE_SETTINGS_OWNER_V19;
 
 
 
-
-function kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, _options = {}) {
-  void wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsR5(
-    String(net || ""),
-    (resolvedNet) => updateCommand(resolvedNet)
-  ).catch(() => {});
-}
 
 /* KGW_BRIDGE_NETWORK_PORT_RANGES_DEFAULTS_PATCH_R42
  * Defaults now follow the agreed soft network port ranges.
@@ -2420,7 +2413,7 @@ function kgwBridgeR51RestoreDefaults(net) {
       defaultKeyCount: defaults && typeof defaults === "object" ? Object.keys(defaults).length : 0
     });
     kgwBridgeR51WriteSettings(net, defaults);
-    kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, { force: true });
+    wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(String(net || ""), updateCommand);
   });
 
   wasmBridgeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-complete", {
@@ -3151,7 +3144,7 @@ const bridgeRoot = root || document.getElementById("kaspa-bridge");
   installActions(bridgeRoot);
   bridgeSyncAllModeControls();
   updateAllCommands();
-  BRIDGE_NETWORKS.forEach((net) => kgwBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net.key, { force: false })); /* KGW_BRIDGE_DYNAMIC_PATHS_INIT_R3 */
+  BRIDGE_NETWORKS.forEach((net) => wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(String(net.key || ""), updateCommand)); /* KGW_BRIDGE_DYNAMIC_PATHS_INIT_R3 */
   window.setTimeout(updateAllCommands, 0);
   window.setTimeout(updateAllCommands, 150);
   bridgeSyncAllModeControls();
