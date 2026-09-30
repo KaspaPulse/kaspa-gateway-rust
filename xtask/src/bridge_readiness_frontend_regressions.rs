@@ -63,7 +63,10 @@ globalThis.localStorage = {
 
 const r51Storage = globalThis.localStorage;
 const r51Prefix = "kgw.bridge.direct.v51.";
-const r51StorageOwnership = { missing: wasm.bridgeR51Load("saved:missing") };
+const r51StorageOwnership = {
+  missing: wasm.bridgeR51Load("saved:missing"),
+  networkKeys: wasm.bridgeR51Keys()
+};
 for (const key of ["saved:mainnet", "default:testnet10", "factory:testnet13"]) {
   wasm.bridgeR51Store(key, { key, value: 51 });
 }
@@ -106,9 +109,9 @@ globalThis.localStorage = {
 const r51Sandbox = vm.createContext({
   wasmBridgeR51Store: wasm.bridgeR51Store,
   wasmBridgeR51Load: wasm.bridgeR51Load,
-  kgwBridgeR51Keys: () => ["mainnet"],
+  wasmBridgeR51Keys: wasm.bridgeR51Keys,
   kgwBridgeR51ReadSettings: () => r51Current,
-  kgwBridgeR51WriteSettings: (_net, values) => r51Writes.push(values),
+  kgwBridgeR51WriteSettings: (net, values) => r51Writes.push({ net: String(net), values }),
   kgwBridgeR95BNormalizeNetworkPortValues: (_net, values) => values,
   kgwBridgeRequireValidSettings: () => {},
   wasmBridgeSmallOwnerTraceR44D: () => {},
@@ -123,26 +126,26 @@ vm.runInContext("kgwBridgeR51CaptureFactoryDefaults()", r51Sandbox);
 r51StorageOwnership.factoryPreserved = wasm.bridgeR51Load("factory:mainnet");
 
 vm.runInContext("kgwBridgeR51LoadSavedSettings()", r51Sandbox);
-r51StorageOwnership.missingSavedUsesCurrent = r51Writes.at(-1);
+r51StorageOwnership.missingSavedUsesCurrent = r51Writes.filter((entry) => entry.net === "mainnet").at(-1)?.values ?? null;
 r51Current = { value: "saved" };
 vm.runInContext('kgwBridgeR51SaveSettings("mainnet")', r51Sandbox);
 r51Current = { value: "unsaved" };
 vm.runInContext("kgwBridgeR51LoadSavedSettings()", r51Sandbox);
-r51StorageOwnership.savedLoaded = r51Writes.at(-1);
+r51StorageOwnership.savedLoaded = r51Writes.filter((entry) => entry.net === "mainnet").at(-1)?.values ?? null;
 r51Current = { value: "default" };
 vm.runInContext('kgwBridgeR51SetAsDefaults("mainnet")', r51Sandbox);
 r51Reads.length = 0;
 vm.runInContext('kgwBridgeR51RestoreDefaults("mainnet")', r51Sandbox);
-r51StorageOwnership.defaultRestored = r51Writes.at(-1);
+r51StorageOwnership.defaultRestored = r51Writes.filter((entry) => entry.net === "mainnet").at(-1)?.values ?? null;
 r51StorageOwnership.defaultReadOrder = [...r51Reads];
 wasm.bridgeR51Store("default:mainnet", false);
 r51Reads.length = 0;
 vm.runInContext('kgwBridgeR51RestoreDefaults("mainnet")', r51Sandbox);
-r51StorageOwnership.factoryRestored = r51Writes.at(-1);
+r51StorageOwnership.factoryRestored = r51Writes.filter((entry) => entry.net === "mainnet").at(-1)?.values ?? null;
 r51StorageOwnership.fallbackReadOrder = [...r51Reads];
 innerTabStore.delete(r51Prefix + "factory:mainnet");
 vm.runInContext('kgwBridgeR51RestoreDefaults("mainnet")', r51Sandbox);
-r51StorageOwnership.noDefaults = r51Writes.at(-1);
+r51StorageOwnership.noDefaults = r51Writes.filter((entry) => entry.net === "mainnet").at(-1)?.values ?? null;
 globalThis.localStorage = r51Storage;
 innerTabStore.clear();
 
@@ -895,6 +898,24 @@ fn verify_r51_storage_ownership(source: &str, helpers: &str) -> Result<(), Strin
     Ok(())
 }
 
+fn verify_r51_keys_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    if source.contains("kgwBridgeR51Keys") {
+        return Err("Legacy JavaScript R51 keys owner remains".to_owned());
+    }
+    for required in ["bridgeR51Keys as wasmBridgeR51Keys", "wasmBridgeR51Keys()"] {
+        if !source.contains(required) {
+            return Err(format!("R51 keys Rust/WASM ownership missing: {required}"));
+        }
+    }
+    if source.matches("wasmBridgeR51Keys()").count() != 4
+        || !helpers.contains("js_name = bridgeR51Keys")
+        || !helpers.contains("fn bridge_r51_key_texts()")
+    {
+        return Err("R51 keys call count or Rust export drifted".to_owned());
+    }
+    Ok(())
+}
+
 fn verify_static_contracts(
     source: &str,
     helpers: &str,
@@ -1382,6 +1403,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     let start_trace_source = fs::read_to_string(root.join(BRIDGE_START_TRACE_SOURCE))
         .map_err(|error| format!("failed to read {BRIDGE_START_TRACE_SOURCE}: {error}"))?;
     verify_r51_storage_ownership(&full_source, &helper_source)?;
+    verify_r51_keys_ownership(&full_source, &helper_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -1396,6 +1418,7 @@ pub fn run(root: &Path) -> Result<String, String> {
         "/r51StorageOwnership",
         json!({
             "missing": null,
+            "networkKeys": ["mainnet", "testnet10", "testnet13"],
             "roundTrips": [
                 {"key": "saved:mainnet", "value": 51},
                 {"key": "default:testnet10", "value": 51},
@@ -2044,6 +2067,32 @@ mod tests {
             .is_err()
         );
         assert!(verify_r51_storage_ownership(source, "").is_err());
+    }
+
+    #[test]
+    fn r51_keys_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_r51_keys_ownership(source, helpers).is_ok());
+        for mutation in [
+            source.replacen("wasmBridgeR51Keys()", "kgwBridgeR51Keys()", 1),
+            source.replace(
+                "bridgeR51Keys as wasmBridgeR51Keys",
+                "unowned as wasmBridgeR51Keys",
+            ),
+        ] {
+            assert!(verify_r51_keys_ownership(&mutation, helpers).is_err());
+        }
+        assert!(
+            verify_r51_keys_ownership(
+                source,
+                &helpers.replace("js_name = bridgeR51Keys", "js_name = missingR51Keys")
+            )
+            .is_err()
+        );
     }
 
     #[test]

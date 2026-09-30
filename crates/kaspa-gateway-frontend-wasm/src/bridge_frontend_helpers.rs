@@ -58,6 +58,11 @@ const NETWORKS: [BridgeNetworkProfile; 3] = [
         runtime: "DAGKnight - Experimental",
     },
 ];
+
+fn bridge_r51_key_texts() -> impl Iterator<Item = &'static str> {
+    NETWORKS.iter().map(|item| item.key)
+}
+
 fn profile(net: &str) -> Option<&'static BridgeNetworkProfile> {
     NETWORKS.iter().find(|item| item.key == net)
 }
@@ -718,6 +723,15 @@ pub fn bridge_network_profiles() -> Array {
     output
 }
 
+#[wasm_bindgen(js_name = bridgeR51Keys)]
+pub fn bridge_r51_keys() -> Array {
+    let output = Array::new();
+    for key in bridge_r51_key_texts() {
+        output.push(&JsValue::from_str(key));
+    }
+    output
+}
+
 #[wasm_bindgen(js_name = bridgeNetworkPolicyKey)]
 pub fn bridge_network_policy_key(net: String) -> String {
     policy_key_text(&net)
@@ -957,6 +971,15 @@ mod tests {
         assert!(!NETWORKS[2].enabled_by_default);
         assert!(NETWORKS[2].experimental);
     }
+    #[test]
+    fn r51_keys_follow_canonical_network_order() {
+        let mut keys = bridge_r51_key_texts();
+        assert_eq!(keys.next(), Some("mainnet"));
+        assert_eq!(keys.next(), Some("testnet10"));
+        assert_eq!(keys.next(), Some("testnet13"));
+        assert_eq!(keys.next(), None);
+    }
+
     #[test]
     fn policy_contract_matches_bridge_copy() {
         assert_eq!(

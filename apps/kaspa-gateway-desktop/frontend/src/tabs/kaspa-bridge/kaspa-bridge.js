@@ -29,6 +29,7 @@ import initBridgeRust, {
   bridgeR51IsRunning as wasmBridgeR51IsRunning,
   bridgeR51Store as wasmBridgeR51Store,
   bridgeR51Load as wasmBridgeR51Load,
+  bridgeR51Keys as wasmBridgeR51Keys,
   bridgeRuntimeErrorFromStatus as wasmBridgeRuntimeErrorFromStatus,
   bridgePreviewDeclaresInprocessR65F as wasmBridgePreviewDeclaresInprocessR65F,
   bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction,
@@ -104,7 +105,7 @@ await initBridgeRust();
 function kgwBridgeSettingsOwnerCallbacksV19() {
   return {
     scope: "bridge",
-    keys: () => kgwBridgeR51Keys(),
+    keys: () => wasmBridgeR51Keys(),
     readSettings: (net) => kgwBridgeR51ReadSettings(String(net || "")),
     load: (key) => wasmBridgeR51Load(String(key || "")),
     validateForm: (net, focus = false) => kgwBridgeValidateForm(String(net || ""), Boolean(focus))
@@ -2096,10 +2097,6 @@ function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
   }
 }
 
-function kgwBridgeR51Keys() {
-  return BRIDGE_NETWORKS.map((item) => item.key);
-}
-
 function kgwBridgeR51Panel(net) {
   return document.querySelector(`[data-bridge-network-panel="${net}"]`);
 }
@@ -2298,7 +2295,7 @@ function kgwBridgeR51WriteSettings(net, values) {
 }
 
 function kgwBridgeR51CaptureFactoryDefaults() {
-  for (const net of kgwBridgeR51Keys()) {
+  for (const net of wasmBridgeR51Keys()) {
     if (!wasmBridgeR51Load("factory:" + net)) {
       wasmBridgeR51Store("factory:" + net, kgwBridgeR51ReadSettings(net));
     }
@@ -2306,7 +2303,7 @@ function kgwBridgeR51CaptureFactoryDefaults() {
 }
 
 function kgwBridgeR51LoadSavedSettings() {
-  for (const net of kgwBridgeR51Keys()) {
+  for (const net of wasmBridgeR51Keys()) {
     const saved = wasmBridgeR51Load("saved:" + net);
     if (saved) {
       kgwBridgeR51WriteSettings(net, kgwBridgeR95BNormalizeNetworkPortValues(net, saved, "load-saved-settings"));
@@ -2611,7 +2608,7 @@ function kgwBridgeR51KickRawLogLiveR134E(net, reason = "bridge-start") {
 }
 
 function kgwBridgeR51RefreshAll(reason = "live") {
-  for (const net of kgwBridgeR51Keys()) {
+  for (const net of wasmBridgeR51Keys()) {
     kgwBridgeR51RefreshOne(net, reason);
   }
 }
