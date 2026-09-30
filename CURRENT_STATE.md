@@ -281,7 +281,7 @@
 - Full-local wrapper retirement is complete; the live zero-touch branch remains externally gated by a current integrity-valid artifact or a safe live E2E environment.
 - Rust clipboard caller adoption is complete and the legacy PowerShell clipboard helper is retired. Live text mutation remains blocked by the read-only Rust preflight while non-text/OLE clipboard formats are present; OP114 performed no clipboard write.
 - Zero-touch matrix, `tauri-app.mjs`, and `windows.mjs` are now deterministic Rust-generated external/tool adapters; executing the live zero-touch scenario remains coupled to real clipboard SHA/evidence predicates.
-- `tools/kgw_zero_touch_evidence.ps1` retains its recorded external file-use/access-denied blocker; do not force-delete or force-unlock it.
+- Historical continuity records preserve the earlier `tools/kgw_zero_touch_evidence.ps1` file-use/access-denied incident, but the file is currently readable and that access blocker is no longer active. Live zero-touch execution remains separately gated by real clipboard SHA/evidence predicates; do not force-delete, force-unlock, or bypass safety predicates.
 - OP100 browser DOM headless dump is non-evidentiary; final frontend/native qualification remains required after migration.
 
 ## DO NOT REPEAT
