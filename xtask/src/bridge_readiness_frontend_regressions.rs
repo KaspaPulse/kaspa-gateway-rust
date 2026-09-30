@@ -60,6 +60,67 @@ globalThis.localStorage = {
     innerTabStore.set(String(key), String(value));
   }
 };
+
+globalThis.kgwT = (key) =>
+  key === "runtime.failed" ? "Runtime Function Failed" : key;
+const runtimeTranslationFunction = wasm.bridgeTranslateRuntimeFeedback(
+  "runtime.failed",
+  "Failed"
+);
+globalThis.kgwT = (key) => key;
+globalThis.__kgwI18nDictR107 = {
+  "runtime.failed": "Flat Dictionary Failed"
+};
+const runtimeTranslationFunctionKeyFallsThrough =
+  wasm.bridgeTranslateRuntimeFeedback("runtime.failed", "Failed");
+globalThis.kgwT = () => {
+  throw new Error("runtime translation failure");
+};
+globalThis.__kgwI18nDictR107 = {
+  "runtime.failed": "Dictionary After Runtime Throw"
+};
+const runtimeTranslationRuntimeThrows =
+  wasm.bridgeTranslateRuntimeFeedback("runtime.failed", "Failed");
+delete globalThis.kgwT;
+globalThis.__kgwI18nDictR107 = {
+  runtime: { failed: "Nested Dictionary Failed" }
+};
+const runtimeTranslationNested = wasm.bridgeTranslateRuntimeFeedback(
+  "runtime.failed",
+  "Failed"
+);
+globalThis.__kgwI18nDictR107 = {};
+const runtimeTranslationFallback = wasm.bridgeTranslateRuntimeFeedback(
+  "runtime.failed",
+  "Failed"
+);
+const runtimeTranslationFallbackToKey = wasm.bridgeTranslateRuntimeFeedback(
+  "runtime.failed",
+  ""
+);
+globalThis.kgwT = {};
+globalThis.kgwI18n = () => "Must Not Win";
+globalThis.__kgwI18nDictR107 = {
+  "runtime.failed": "First Truthy Non Function Uses Dictionary"
+};
+const runtimeTranslationFirstTruthyRuntime =
+  wasm.bridgeTranslateRuntimeFeedback("runtime.failed", "Failed");
+delete globalThis.kgwT;
+delete globalThis.kgwI18n;
+delete globalThis.__kgwI18nDictR107;
+delete globalThis.__kgwI18nDict;
+delete globalThis.kgwI18nDict;
+delete globalThis.__KGW_I18N_DICT__;
+const runtimeTranslationOwnership = {
+  runtimeFunction: String(runtimeTranslationFunction || ""),
+  runtimeKeyFallsThrough: String(runtimeTranslationFunctionKeyFallsThrough || ""),
+  runtimeThrows: String(runtimeTranslationRuntimeThrows || ""),
+  nestedDictionary: String(runtimeTranslationNested || ""),
+  fallback: String(runtimeTranslationFallback || ""),
+  fallbackToKey: String(runtimeTranslationFallbackToKey || ""),
+  firstTruthyRuntime: String(runtimeTranslationFirstTruthyRuntime || "")
+};
+
 const innerTabOwnership = {
   defaultMainnet: wasm.bridgeResolveInnerTab("mainnet"),
   normalizeInvalid: wasm.bridgeNormalizeInnerTab("invalid"),
@@ -329,7 +390,8 @@ const sandbox = {
   wasmBridgeRuntimeCommandForAction: wasm.bridgeRuntimeCommandForAction,
   wasmBridgeRuntimeActionOutcome: wasm.bridgeRuntimeActionOutcome,
   wasmBridgeStartWasInprocessR65F: wasm.bridgeStartWasInprocessR65F,
-  wasmBridgeAssertNoPortConflictsR5: wasm.bridgeAssertNoPortConflictsR5
+  wasmBridgeAssertNoPortConflictsR5: wasm.bridgeAssertNoPortConflictsR5,
+  wasmBridgeTranslateRuntimeFeedback: wasm.bridgeTranslateRuntimeFeedback
 };
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
@@ -347,7 +409,6 @@ sandbox.kgwSetBridgeOwnedNodeLockR65E = () => {};
 sandbox.kgwBridgeCurrentNodeModeFromUiR65F = () => "external";
 sandbox.kgwBridgePreviewDeclaresInprocessR65F = () => false;
 sandbox.kgwBridgeR51KickRawLogLiveR134E = () => {};
-sandbox.kgwBridgeTranslateRuntime = (_key, fallback) => fallback;
 sandbox.bridgeNodeMode = () => "external";
 
 vm.createContext(sandbox);
@@ -418,6 +479,7 @@ api.setActivity("mainnet", "Bridge start failed.");
 const visibleFailure = snapshot();
 
 const output = {
+  runtimeTranslationOwnership,
   innerTabOwnership,
   lastNetworkOwnership,
   logAutoScrollOwnership,
@@ -706,6 +768,37 @@ fn verify_static_contracts(
     }
 
     for needle in [
+        "#[wasm_bindgen(js_name = bridgeTranslateRuntimeFeedback)]",
+        "[\"kgwT\", \"kgwI18n\", \"__kgwT\"]",
+        "\"__kgwI18nDictR107\"",
+        "\"__kgwI18nDict\"",
+        "\"kgwI18nDict\"",
+        "\"__KGW_I18N_DICT__\"",
+        "runtime_feedback_terminal_text",
+    ] {
+        if !helpers.contains(needle) {
+            return Err(format!(
+                "Bridge runtime-feedback translation Rust owner contract missing: {needle}"
+            ));
+        }
+    }
+    for needle in [
+        "bridgeTranslateRuntimeFeedback as wasmBridgeTranslateRuntimeFeedback",
+        "wasmBridgeTranslateRuntimeFeedback(\"runtime.failed\", \"Failed\")",
+    ] {
+        if !source.contains(needle) {
+            return Err(format!(
+                "Bridge runtime-feedback translation direct Rust/WASM binding missing: {needle}"
+            ));
+        }
+    }
+    if source.contains("kgwBridgeTranslateRuntime(") {
+        return Err(
+            "Retired Bridge runtime-feedback translation JavaScript owner/call remains".to_owned(),
+        );
+    }
+
+    for needle in [
         "bridgeStringifyRuntimeResult",
         "bridgeNormalizeRuntimeError",
         "bridgeParseRuntimeKeyValueResponse",
@@ -828,6 +921,42 @@ pub fn run(root: &Path) -> Result<String, String> {
         json!("kgw_kgw_runtime_logs_v1"),
     )?;
     expect(&actual, "/transport/calls/0/network", json!("mainnet"))?;
+
+    expect(
+        &actual,
+        "/runtimeTranslationOwnership/runtimeFunction",
+        json!("Runtime Function Failed"),
+    )?;
+    expect(
+        &actual,
+        "/runtimeTranslationOwnership/runtimeKeyFallsThrough",
+        json!("Flat Dictionary Failed"),
+    )?;
+    expect(
+        &actual,
+        "/runtimeTranslationOwnership/runtimeThrows",
+        json!("Dictionary After Runtime Throw"),
+    )?;
+    expect(
+        &actual,
+        "/runtimeTranslationOwnership/nestedDictionary",
+        json!("Nested Dictionary Failed"),
+    )?;
+    expect(
+        &actual,
+        "/runtimeTranslationOwnership/fallback",
+        json!("Failed"),
+    )?;
+    expect(
+        &actual,
+        "/runtimeTranslationOwnership/fallbackToKey",
+        json!("runtime.failed"),
+    )?;
+    expect(
+        &actual,
+        "/runtimeTranslationOwnership/firstTruthyRuntime",
+        json!("First Truthy Non Function Uses Dictionary"),
+    )?;
 
     expect(&actual, "/innerTabOwnership/defaultMainnet", json!("log"))?;
     expect(&actual, "/innerTabOwnership/normalizeInvalid", json!("log"))?;

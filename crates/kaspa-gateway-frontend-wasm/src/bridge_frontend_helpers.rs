@@ -432,6 +432,74 @@ fn translator(owner: &JsValue, name: &str) -> Option<Function> {
     function(owner, name)
 }
 
+fn runtime_feedback_terminal_text<'a>(key: &'a str, fallback: &'a str) -> &'a str {
+    if fallback.is_empty() { key } else { fallback }
+}
+
+fn first_truthy_global(owner: &JsValue, names: &[&str]) -> JsValue {
+    for name in names {
+        let candidate = property(owner, name);
+        if crate::js_boolean(&candidate) {
+            return candidate;
+        }
+    }
+    JsValue::UNDEFINED
+}
+
+fn is_plain_js_object(value: &JsValue) -> bool {
+    !value.is_null() && crate::js_string_owned(&value.js_typeof()) == "object"
+}
+
+#[wasm_bindgen(js_name = bridgeTranslateRuntimeFeedback)]
+pub fn bridge_translate_runtime_feedback(key: String, fallback: String) -> JsValue {
+    let win = window();
+    let key_value = JsValue::from_str(&key);
+    let runtime = first_truthy_global(&win, &["kgwT", "kgwI18n", "__kgwT"]);
+    if let Ok(callback) = runtime.dyn_into::<Function>()
+        && let Ok(value) = callback.call1(&JsValue::UNDEFINED, &key_value)
+        && crate::js_boolean(&value)
+        && !Object::is(&value, &key_value)
+    {
+        return value;
+    }
+
+    let dict = first_truthy_global(
+        &win,
+        &[
+            "__kgwI18nDictR107",
+            "__kgwI18nDict",
+            "kgwI18nDict",
+            "__KGW_I18N_DICT__",
+        ],
+    );
+    if is_plain_js_object(&dict) {
+        let flat = property(&dict, &key);
+        if flat
+            .as_string()
+            .is_some_and(|value| !value.trim().is_empty())
+        {
+            return flat;
+        }
+
+        let mut node = dict;
+        for part in key.split('.') {
+            if !is_plain_js_object(&node) {
+                node = JsValue::NULL;
+                break;
+            }
+            node = property(&node, part);
+        }
+        if node
+            .as_string()
+            .is_some_and(|value| !value.trim().is_empty())
+        {
+            return node;
+        }
+    }
+
+    JsValue::from_str(runtime_feedback_terminal_text(&key, &fallback))
+}
+
 fn translate_raw(key: &str, fallback: &str) -> JsValue {
     let win = window();
     if let Some(callback) = translator(&win, "kgwT")
@@ -756,6 +824,19 @@ mod tests {
         assert!(bridge_log_auto_scroll_enabled_text(Some("1")));
         assert!(bridge_log_auto_scroll_enabled_text(Some("unexpected")));
         assert!(!bridge_log_auto_scroll_enabled_text(Some("0")));
+    }
+
+    #[test]
+    fn runtime_feedback_terminal_fallback_matches_legacy_contract() {
+        assert_eq!(
+            runtime_feedback_terminal_text("runtime.failed", "Failed"),
+            "Failed"
+        );
+        assert_eq!(
+            runtime_feedback_terminal_text("runtime.failed", ""),
+            "runtime.failed"
+        );
+        assert_eq!(runtime_feedback_terminal_text("", ""), "");
     }
 
     #[test]

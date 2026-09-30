@@ -54,6 +54,7 @@ import initBridgeRust, {
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
   bridgeI18nTextR41 as wasmBridgeI18nTextR41,
   bridgeInstallLogAutoScrollControls as wasmBridgeInstallLogAutoScrollControls,
+  bridgeTranslateRuntimeFeedback as wasmBridgeTranslateRuntimeFeedback,
   bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
   bridgeNetworkPolicyMessage as wasmBridgeNetworkPolicyMessage,
   bridgeNormalizeNetwork as wasmBridgeNormalizeNetwork,
@@ -2683,7 +2684,7 @@ async function kgwBridgeR51RefreshOne(net, _reason = "live") {
             kgwBridgeSetRuntimeActivityV1(net, "Bridge runtime failed after readiness.", "failed");
             const policyStatus = wasmBridgeById(wasmBridgeElementId(net, "policyStatus"));
             if (policyStatus) {
-              policyStatus.textContent = kgwBridgeTranslateRuntime("runtime.failed", "Failed");
+              policyStatus.textContent = wasmBridgeTranslateRuntimeFeedback("runtime.failed", "Failed");
               policyStatus.dataset.state = "failed";
               applyStatusTone(policyStatus, "failed");
             }
@@ -2761,43 +2762,6 @@ function kgwBridgeR51StartLiveRefresh() {
 
 
 /* KGW_BRIDGE_LOG_FEEDBACK_I18N_OWNER_V1 */
-
-function kgwBridgeTranslateRuntime(key, fallback) {
-  const runtime = window.kgwT || window.kgwI18n || window.__kgwT;
-  if (typeof runtime === "function") {
-    try {
-      const value = runtime(key);
-      if (value && value !== key) return value;
-    } catch {
-      // Translation fallback must never break button feedback.
-    }
-  }
-
-  const dict =
-    window.__kgwI18nDictR107 ||
-    window.__kgwI18nDict ||
-    window.kgwI18nDict ||
-    window.__KGW_I18N_DICT__;
-
-  if (dict && typeof dict === "object") {
-    const flat = dict[key];
-    if (typeof flat === "string" && flat.trim()) return flat;
-
-    let node = dict;
-    for (const part of String(key).split(".")) {
-      if (!node || typeof node !== "object") {
-        node = null;
-        break;
-      }
-      node = node[part];
-    }
-
-    if (typeof node === "string" && node.trim()) return node;
-  }
-
-  return fallback || key;
-}
-
 
 
 /* KGW_BRIDGE_SETTINGS_BUTTON_FEEDBACK_FIX_R1
