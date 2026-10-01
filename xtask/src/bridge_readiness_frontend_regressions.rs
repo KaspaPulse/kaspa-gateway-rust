@@ -1568,9 +1568,12 @@ fn verify_r95b_port_normalization_ownership(source: &str, helpers: &str) -> Resu
     if source
         .matches("wasmBridgeR95BNormalizeNetworkPortValues(")
         .count()
-        != 3
+        != 2
     {
-        return Err("Bridge R95B port-normalization direct-call count drifted".to_owned());
+        return Err(
+            "Bridge R95B port-normalization direct-call count drifted after OP296 moves R51 read-settings normalization wiring into Rust"
+                .to_owned(),
+        );
     }
     for required in [
         "fn r95b_storage_field_id(",
@@ -2641,6 +2644,72 @@ fn verify_instance_state_structured_reader_ownership(
         if !instance_settings.contains(required) {
             return Err(format!(
                 "Bridge instance-state/structured-reader Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_r51_read_settings_owned_ownership(
+    source: &str,
+    instance_settings: &str,
+) -> Result<(), String> {
+    for required in [
+        "bridgeR51ReadSettingsOwned as wasmBridgeR51ReadSettingsOwned",
+        "// KGW_BRIDGE_R51_READ_SETTINGS_RUST_OWNER_V1",
+        "function kgwBridgeR51ReadSettingsR249(net) {",
+        "return wasmBridgeR51ReadSettingsOwned(",
+        "bridgeInstances,",
+        "activeInstance",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge R51 read-settings Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    for forbidden in [
+        "function kgwBridgeR51ReadSettingsCallbacksR249(",
+        "bridgeR51ReadSettings as wasmBridgeR51ReadSettings",
+        "kgwBridgeR51ReadSettingsCallbacksR249()",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge R51 read-settings JavaScript callback wiring remains: {forbidden}"
+            ));
+        }
+    }
+
+    let wrapper = slice_between(
+        source,
+        "function kgwBridgeR51ReadSettingsR249(net) {",
+        "\n}",
+    )?;
+    for forbidden in [
+        "readStructuredInstances:",
+        "normalizeNetworkPortValues:",
+        "wasmBridgeR95BNormalizeNetworkPortValues(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge R51 read-settings JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeR51ReadSettingsOwned",
+        "pub fn bridge_r51_read_settings_owned(",
+        "bridge_r51_read_structured_instances(",
+        "bridge_r95b_normalize_network_port_values(",
+        "\"readStructuredInstances\"",
+        "\"normalizeNetworkPortValues\"",
+        "bridge_r51_read_settings(net, callbacks.into())",
+    ] {
+        if !instance_settings.contains(required) {
+            return Err(format!(
+                "Bridge R51 read-settings Rust owner contract missing: {required}"
             ));
         }
     }
@@ -3868,6 +3937,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_instance_command_option_ownership(&full_source, &command_options_source)?;
     verify_instance_mutation_ownership(&full_source, &instance_settings_source)?;
     verify_instance_state_structured_reader_ownership(&full_source, &instance_settings_source)?;
+    verify_r51_read_settings_owned_ownership(&full_source, &instance_settings_source)?;
     verify_preview_message_ownership(&full_source, &helper_source)?;
     verify_r95b_port_normalization_ownership(&full_source, &helper_source)?;
     verify_inline_command_toggle_ownership(&full_source, &command_options_source)?;
@@ -5599,6 +5669,26 @@ mod tests {
                 "Rust instance-state mutation {index} was not rejected"
             );
         }
+    }
+
+    #[test]
+    fn r51_read_settings_owned_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let owner = include_str!(
+            "../../crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs"
+        );
+        assert!(verify_r51_read_settings_owned_ownership(source, owner).is_ok());
+        let legacy = format!(
+            "{source}\nfunction kgwBridgeR51ReadSettingsCallbacksR249() {{ return {{}}; }}\n"
+        );
+        assert!(verify_r51_read_settings_owned_ownership(&legacy, owner).is_err());
+        let missing = owner.replace(
+            "js_name = bridgeR51ReadSettingsOwned",
+            "js_name = missingR51ReadSettingsOwned",
+        );
+        assert!(verify_r51_read_settings_owned_ownership(source, &missing).is_err());
     }
 
     #[test]

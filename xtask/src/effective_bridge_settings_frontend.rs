@@ -596,12 +596,13 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source.contains("function kgwBridgeR51ReadSettings(") {
         return Err("Retired Bridge R51 ReadSettings JavaScript owner remains".to_owned());
     }
-    if !source.contains("bridgeR51ReadSettings as wasmBridgeR51ReadSettings") {
-        return Err("Bridge R51 ReadSettings Rust/WASM import is missing".to_owned());
+    if !source.contains("bridgeR51ReadSettingsOwned as wasmBridgeR51ReadSettingsOwned") {
+        return Err("Bridge R51 ReadSettings owned Rust/WASM import is missing".to_owned());
     }
-    if source.matches("wasmBridgeR51ReadSettings(").count() != 1 {
+    if source.matches("wasmBridgeR51ReadSettingsOwned(").count() != 1 {
         return Err(
-            "Bridge R51 ReadSettings must have exactly one thin Rust/WASM wrapper call".to_owned(),
+            "Bridge R51 ReadSettings owned path must have exactly one thin Rust/WASM wrapper call"
+                .to_owned(),
         );
     }
     if source.matches("kgwBridgeR51ReadSettingsR249(").count() != 3 {
@@ -613,6 +614,8 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     for needle in [
         "js_name = bridgeR51ReadSettings",
         "pub fn bridge_r51_read_settings(",
+        "js_name = bridgeR51ReadSettingsOwned",
+        "pub fn bridge_r51_read_settings_owned(",
         "readStructuredInstances",
         "normalizeNetworkPortValues",
         "bridge_command_options::bridge_r51_read_command_options_r38c(&net)",
@@ -684,10 +687,10 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source
         .matches("kgwBridgeR51ReadStructuredInstancesR253(")
         .count()
-        != 2
+        != 1
     {
         return Err(
-            "Bridge R26B structured-read thin wrapper must own exactly one direct call plus its definition after OP270 passes the reader callback into the Rust apply-payload owner"
+            "Bridge R26B structured-read thin wrapper must remain as its definition only after OP296 moves the R51 read-settings structured-reader wiring into Rust"
                 .to_owned(),
         );
     }

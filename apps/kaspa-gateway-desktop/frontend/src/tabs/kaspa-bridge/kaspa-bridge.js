@@ -25,7 +25,7 @@ import initBridgeRust, {
   bridgeR51Keys as wasmBridgeR51Keys,
   bridgeR51Panel as wasmBridgeR51Panel,
   bridgeR51ReadStructuredInstances as wasmBridgeR51ReadStructuredInstances,
-  bridgeR51ReadSettings as wasmBridgeR51ReadSettings,
+  bridgeR51ReadSettingsOwned as wasmBridgeR51ReadSettingsOwned,
   bridgeR51WriteSettings as wasmBridgeR51WriteSettings,
   bridgePreviewDeclaresInprocessR65F as wasmBridgePreviewDeclaresInprocessR65F,
   bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction,
@@ -870,18 +870,12 @@ function kgwBridgeR51ReadStructuredInstancesR253(net) {
 
 /* KGW_SETTINGS_FEEDBACK_LOCK_OWNER_R11_END */
 
-function kgwBridgeR51ReadSettingsCallbacksR249() {
-  return {
-    readStructuredInstances: (net) => kgwBridgeR51ReadStructuredInstancesR253(String(net || "")),
-    normalizeNetworkPortValues: (net, values, reason) =>
-      wasmBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || ""))
-  };
-}
-
+// KGW_BRIDGE_R51_READ_SETTINGS_RUST_OWNER_V1
 function kgwBridgeR51ReadSettingsR249(net) {
-  return wasmBridgeR51ReadSettings(
+  return wasmBridgeR51ReadSettingsOwned(
     String(net || ""),
-    kgwBridgeR51ReadSettingsCallbacksR249()
+    bridgeInstances,
+    activeInstance
   );
 }
 

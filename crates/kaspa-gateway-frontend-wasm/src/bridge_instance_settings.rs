@@ -1,5 +1,5 @@
 use js_sys::{Array, Date, Math, Object, Reflect};
-use wasm_bindgen::prelude::*;
+use wasm_bindgen::{closure::Closure, prelude::*};
 
 use crate::{
     bridge_command_options, bridge_frontend_helpers, bridge_instance_ui, bridge_port_orchestration,
@@ -1916,6 +1916,53 @@ pub fn bridge_r51_read_settings(net: String, callbacks: JsValue) -> Result<JsVal
         values.as_ref(),
         &JsValue::from_str("read-settings"),
     )
+}
+
+#[wasm_bindgen(js_name = bridgeR51ReadSettingsOwned)]
+pub fn bridge_r51_read_settings_owned(
+    net: String,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+) -> Result<JsValue, JsValue> {
+    let callbacks = Object::new();
+
+    let read_instances = {
+        let bridge_instances = bridge_instances.clone();
+        let active_instance = active_instance.clone();
+        Closure::wrap(Box::new(move |net: JsValue| -> JsValue {
+            bridge_r51_read_structured_instances(
+                crate::js_string_owned(&net),
+                bridge_instances.clone(),
+                active_instance.clone(),
+            )
+        }) as Box<dyn FnMut(JsValue) -> JsValue>)
+    };
+    set(
+        callbacks.as_ref(),
+        "readStructuredInstances",
+        read_instances.as_ref(),
+    );
+
+    let normalize = Closure::wrap(Box::new(
+        move |net: JsValue, values: JsValue, reason: JsValue| -> JsValue {
+            bridge_frontend_helpers::bridge_r95b_normalize_network_port_values(
+                crate::js_string_owned(&net),
+                values,
+                crate::js_string_owned(&reason),
+            )
+        },
+    )
+        as Box<dyn FnMut(JsValue, JsValue, JsValue) -> JsValue>);
+    set(
+        callbacks.as_ref(),
+        "normalizeNetworkPortValues",
+        normalize.as_ref(),
+    );
+
+    let result = bridge_r51_read_settings(net, callbacks.into());
+    drop(normalize);
+    drop(read_instances);
+    result
 }
 
 fn bridge_r51_apply_structured_instances_r26b(
