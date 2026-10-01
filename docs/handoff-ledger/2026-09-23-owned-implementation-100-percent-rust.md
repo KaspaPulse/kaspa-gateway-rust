@@ -295,9 +295,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP284 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP285 - Bridge in-process node-settings renderer Rust/WASM ownership (INTENT)
+## OP285 - Bridge in-process node-settings renderer Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP284 closeout `2031a98e013233c76ec06600c9b78c90923f229b`; BASE_TREE `e3559201c0c4df87accf773b34deda0241e37b6d`; worktree clean at intent time.
-- BOUNDARY: move `renderInprocessNodeSettings` from JavaScript into Rust/WASM. Rust owns translated tab labels, tab/panel markup, network args, all in-process kaspad field markup/defaults/toggles, unsafe-RPC relocation into Dangerous, warning insertion, and returned HTML. JavaScript becomes a thin wrapper only.
-- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; tab/order/defaults/network semantics and dangerous-panel relocation preserved; obsolete JavaScript-only imports retired where no longer used; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `renderInprocessNodeSettings` moved into Rust/WASM `bridgeRenderInprocessNodeSettingsUi`; JavaScript is now a thin wrapper. Rust owns translated tab labels, tab/panel markup, network args, all in-process kaspad field markup/defaults/toggles, unsafe-RPC placement in Dangerous, warning insertion, and returned HTML.
+- IMPLEMENTATION_CHECKPOINT: `39fcdddec99a085a9bcc3f25286ae3d28f519409`, tree `45edc58a6af9be8ae754c5235d65d08c823a8740`. Closeout generation 2276.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 304/304 plus auxiliary suites; targeted in-process renderer ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: obsolete JavaScript-only renderer helper imports were retired after ownership moved into Rust; no ownership prohibition was weakened.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP285 qualification unless invalidated.
+- PUSHED: NO.
