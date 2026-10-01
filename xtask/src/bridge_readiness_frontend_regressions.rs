@@ -1548,19 +1548,32 @@ fn verify_r95b_port_normalization_ownership(source: &str, helpers: &str) -> Resu
     Ok(())
 }
 
-fn verify_start_options_ownership(source: &str, instance_settings: &str) -> Result<(), String> {
-    for forbidden in ["function kgwBridgeStartOptions(", "kgwBridgeStartOptions("] {
+fn verify_start_options_ownership(
+    source: &str,
+    helpers: &str,
+    instance_settings: &str,
+) -> Result<(), String> {
+    for forbidden in [
+        "function kgwBridgeStartOptions(",
+        "kgwBridgeStartOptions(",
+        "bridgeStartOptions as wasmBridgeStartOptions",
+        "wasmBridgeStartOptions(",
+    ] {
         if source.contains(forbidden) {
             return Err(format!(
-                "Retired Bridge start-options JavaScript ownership remains: {forbidden}"
+                "Retired Bridge start-options JavaScript ownership remains after OP270: {forbidden}"
             ));
         }
     }
-    if !source.contains("bridgeStartOptions as wasmBridgeStartOptions") {
-        return Err("Bridge start-options Rust/WASM binding missing".to_owned());
-    }
-    if source.matches("wasmBridgeStartOptions(").count() != 1 {
-        return Err("Bridge start-options direct-call count drifted".to_owned());
+    for required in [
+        "js_name = bridgeBuildApplyPayloadUi",
+        "crate::bridge_instance_settings::bridge_start_options(",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge start-options Rust caller contract missing after OP270: {required}"
+            ));
+        }
     }
     for required in [
         "fn bridge_start_options_inner(",
@@ -1739,6 +1752,76 @@ fn verify_dependency_sync_ownership(source: &str, helpers: &str) -> Result<(), S
         }
     }
 
+    Ok(())
+}
+
+fn verify_apply_payload_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi",
+        "// KGW_BRIDGE_APPLY_PAYLOAD_RUST_OWNER_V1",
+        "function buildApplyPayload(net, command) {",
+        "return wasmBridgeBuildApplyPayloadUi(",
+        "kgwBridgeR51ReadStructuredInstancesR253,",
+        "buildCommandLines",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge apply-payload Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    if source.matches("wasmBridgeBuildApplyPayloadUi(").count() != 1 {
+        return Err("Bridge apply-payload direct-call count drifted".to_owned());
+    }
+
+    let wrapper = slice_between(source, "function buildApplyPayload(net, command) {", "\n}")?;
+    for forbidden in [
+        "nodeKind:",
+        "bridgeKind:",
+        "bridgeActiveInstanceId",
+        "bridgeStructuredInstances",
+        "effectiveNodeSettings:",
+        "effectiveBridgeSettings:",
+        "bridgeOptions:",
+        "experimentalNetworkOptIn:",
+        "wasmBridgeBuildUpstreamInstanceArg(",
+        "wasmBridgeStartOptions(",
+        "wasmBridgeAssertNoPortConflictsR5(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge apply-payload JavaScript orchestration remains in wrapper: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeBuildApplyPayloadUi",
+        "pub fn bridge_build_apply_payload_ui(",
+        "kgw_kgw_apply_node_settings_v1",
+        "kgw_kgw_disable_network_v1",
+        "kgw_runtime_owner_status_v1",
+        "kgw_kgw_runtime_logs_v1",
+        "crate::bridge_port_validation::bridge_assert_no_port_conflicts_r5(",
+        "bridge_apply_payload_command_preview(",
+        "bridge_apply_payload_structured_instances(",
+        "bridge_apply_payload_active_record(",
+        "bridge_apply_payload_active_instance_id(",
+        "bridge_effective_inprocess_node_settings_checked(",
+        "crate::bridge_instance_settings::bridge_effective_settings_v1(",
+        "crate::bridge_instance_settings::bridge_start_options(",
+        "crate::bridge_instance_settings::bridge_build_upstream_instance_arg(",
+        "\"official-inprocess-node\"",
+        "\"official-external-node\"",
+        "\"experimentalNetworkOptIn\"",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge apply-payload Rust owner contract missing: {required}"
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -2390,13 +2473,14 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_mark_restart_required_ownership(&full_source, &runtime_core_source)?;
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
-    verify_start_options_ownership(&full_source, &instance_settings_source)?;
+    verify_start_options_ownership(&full_source, &helper_source, &instance_settings_source)?;
     verify_preview_message_ownership(&full_source, &helper_source)?;
     verify_r95b_port_normalization_ownership(&full_source, &helper_source)?;
     verify_inline_command_toggle_ownership(&full_source, &command_options_source)?;
     verify_dependency_sync_ownership(&full_source, &helper_source)?;
     verify_full_form_validation_ownership(&full_source, &helper_source)?;
     verify_require_valid_settings_ownership(&full_source, &helper_source)?;
+    verify_apply_payload_ownership(&full_source, &helper_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -3566,22 +3650,36 @@ mod tests {
         let source = include_str!(
             "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
         );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
         let instance_settings = include_str!(
             "../../crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs"
         );
-        assert!(verify_start_options_ownership(source, instance_settings).is_ok());
+        assert!(verify_start_options_ownership(source, helpers, instance_settings).is_ok());
+
         for mutation in [
-            source.replacen("wasmBridgeStartOptions(", "kgwBridgeStartOptions(", 1),
-            source.replace(
-                "bridgeStartOptions as wasmBridgeStartOptions",
-                "missingStartOptions as wasmBridgeStartOptions",
-            ),
             format!(
                 "{source}\nfunction kgwBridgeStartOptions(net) {{ return {{ configFile: net }}; }}\n"
             ),
+            format!("{source}\nconst legacyStartOptions = wasmBridgeStartOptions(\"mainnet\");\n"),
+            format!("{source}\n// bridgeStartOptions as wasmBridgeStartOptions\n"),
         ] {
-            assert!(verify_start_options_ownership(&mutation, instance_settings).is_err());
+            assert!(verify_start_options_ownership(&mutation, helpers, instance_settings).is_err());
         }
+
+        for mutation in [
+            helpers.replace(
+                "js_name = bridgeBuildApplyPayloadUi",
+                "js_name = missingBuildApplyPayloadUi",
+            ),
+            helpers.replace(
+                "crate::bridge_instance_settings::bridge_start_options(",
+                "crate::bridge_instance_settings::missing_bridge_start_options(",
+            ),
+        ] {
+            assert!(verify_start_options_ownership(source, &mutation, instance_settings).is_err());
+        }
+
         for mutation in [
             instance_settings.replace(
                 "js_name = bridgeStartOptions",
@@ -3594,7 +3692,7 @@ mod tests {
             instance_settings.replace("net != \"mainnet\"", "net != \"testnet\""),
             instance_settings.replace("\"CPU threads\"", "\"Missing CPU threads\""),
         ] {
-            assert!(verify_start_options_ownership(source, &mutation).is_err());
+            assert!(verify_start_options_ownership(source, helpers, &mutation).is_err());
         }
     }
 
@@ -3719,6 +3817,52 @@ mod tests {
             helpers.replace("settings_reveal_field(", "missing_reveal_field("),
         ] {
             assert!(verify_full_form_validation_ownership(source, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn apply_payload_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_apply_payload_ownership(source, helpers).is_ok());
+
+        for mutation in [
+            source.replace(
+                "bridgeBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi",
+                "missingBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi",
+            ),
+            source.replace(
+                "return wasmBridgeBuildApplyPayloadUi(",
+                "return { network: net, nodeKind: \"remote\" }; // ",
+            ),
+            source.replacen(
+                "function buildApplyPayload(net, command) {",
+                "function buildApplyPayload(net, command) {\n  const bridgeOptions = wasmBridgeStartOptions(String(net || \"\"));",
+                1,
+            ),
+        ] {
+            assert!(verify_apply_payload_ownership(&mutation, helpers).is_err());
+        }
+
+        for mutation in [
+            helpers.replace(
+                "js_name = bridgeBuildApplyPayloadUi",
+                "js_name = missingBuildApplyPayloadUi",
+            ),
+            helpers.replace(
+                "crate::bridge_port_validation::bridge_assert_no_port_conflicts_r5(",
+                "missing_assert_no_port_conflicts(",
+            ),
+            helpers.replace(
+                "crate::bridge_instance_settings::bridge_start_options(",
+                "missing_bridge_start_options(",
+            ),
+            helpers.replace("\"official-inprocess-node\"", "\"missing-inprocess-node\""),
+        ] {
+            assert!(verify_apply_payload_ownership(source, &mutation).is_err());
         }
     }
 

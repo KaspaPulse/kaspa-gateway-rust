@@ -1476,6 +1476,230 @@ pub fn bridge_require_valid_settings_ui(
     crate::bridge_instance_settings::bridge_effective_settings_v1(net, structured)?;
     Ok(())
 }
+fn bridge_apply_payload_structured_instances(
+    net: &str,
+    bridge_instances: &JsValue,
+    active_instance: &JsValue,
+    structured_reader: &JsValue,
+) -> Result<JsValue, JsValue> {
+    if let Ok(reader) = structured_reader.clone().dyn_into::<Function>() {
+        let value = reader.call1(&JsValue::UNDEFINED, &JsValue::from_str(net))?;
+        if crate::js_boolean(&value) {
+            return Ok(value);
+        }
+    }
+
+    let fallback = Object::new();
+    set(
+        fallback.as_ref(),
+        "activeInstance",
+        &property(active_instance, net),
+    );
+    let instances = property(bridge_instances, net);
+    let instances = if Array::is_array(&instances) {
+        instances
+    } else {
+        Array::new().into()
+    };
+    set(fallback.as_ref(), "instances", &instances);
+    Ok(fallback.into())
+}
+
+fn bridge_apply_payload_command_preview(
+    net: &str,
+    build_command_lines: &JsValue,
+) -> Result<String, JsValue> {
+    let builder: Function = build_command_lines.clone().dyn_into().map_err(|_| {
+        JsValue::from(Error::new(
+            "Bridge build-command-lines callback is unavailable",
+        ))
+    })?;
+    let lines = builder.call1(&JsValue::UNDEFINED, &JsValue::from_str(net))?;
+    let lines = Array::from(&lines);
+    let mut parts = Vec::with_capacity(lines.length() as usize);
+    for value in lines.iter() {
+        parts.push(crate::js_string_owned(&value));
+    }
+    Ok(parts.join(" "))
+}
+
+fn bridge_apply_payload_active_record(
+    structured_instances: &JsValue,
+    active_instance_id: &str,
+) -> JsValue {
+    let raw_instances = property(structured_instances, "instances");
+    if !Array::is_array(&raw_instances) {
+        return JsValue::NULL;
+    }
+    let instances = Array::from(&raw_instances);
+    let first = instances.get(0);
+    for item in instances.iter() {
+        if crate::js_string_owned(&property(&item, "id")) == active_instance_id {
+            return item;
+        }
+    }
+    first
+}
+
+fn bridge_apply_payload_active_instance_id(
+    net: &str,
+    structured_instances: &JsValue,
+    active_instance: &JsValue,
+) -> String {
+    let structured_id = property(structured_instances, "activeInstance");
+    if crate::js_boolean(&structured_id) {
+        crate::js_string_owned(&structured_id)
+    } else {
+        crate::js_string_owned(&property(active_instance, net))
+    }
+}
+
+#[wasm_bindgen(js_name = bridgeBuildApplyPayloadUi)]
+pub fn bridge_build_apply_payload_ui(
+    net: String,
+    command: String,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    structured_reader: JsValue,
+    build_command_lines: JsValue,
+) -> Result<JsValue, JsValue> {
+    let payload = Object::new();
+    set(payload.as_ref(), "network", &JsValue::from_str(&net));
+
+    if command == "kgw_kgw_apply_node_settings_v1" {
+        crate::bridge_port_validation::bridge_assert_no_port_conflicts_r5(
+            net.clone(),
+            structured_reader.clone(),
+            bridge_instances.clone(),
+            active_instance.clone(),
+        )?;
+
+        let preview = bridge_apply_payload_command_preview(&net, &build_command_lines)?;
+        let node_mode = bridge_node_mode(net.clone());
+        let structured_instances = bridge_apply_payload_structured_instances(
+            &net,
+            &bridge_instances,
+            &active_instance,
+            &structured_reader,
+        )?;
+        let active_instance_id =
+            bridge_apply_payload_active_instance_id(&net, &structured_instances, &active_instance);
+        let active_record =
+            bridge_apply_payload_active_record(&structured_instances, &active_instance_id);
+        let active_arg = if active_record.is_null() || active_record.is_undefined() {
+            String::new()
+        } else {
+            crate::bridge_instance_settings::bridge_build_upstream_instance_arg(
+                net.clone(),
+                active_record.clone(),
+            )
+        };
+        let active_port = if active_record.is_null() || active_record.is_undefined() {
+            String::new()
+        } else {
+            crate::js_string_owned(&property(&active_record, "instancePort"))
+                .trim()
+                .trim_start_matches(':')
+                .to_owned()
+        };
+
+        set(
+            payload.as_ref(),
+            "runtimeRole",
+            &JsValue::from_str("bridge"),
+        );
+        set(
+            payload.as_ref(),
+            "nodeKind",
+            &JsValue::from_str(if node_mode == "inprocess" {
+                "integrated-inproc"
+            } else {
+                "remote"
+            }),
+        );
+        set(
+            payload.as_ref(),
+            "bridgeKind",
+            &JsValue::from_str(if node_mode == "inprocess" {
+                "official-inprocess-node"
+            } else {
+                "official-external-node"
+            }),
+        );
+        set(
+            payload.as_ref(),
+            "nodeCommandPreview",
+            &JsValue::from_str(""),
+        );
+        set(
+            payload.as_ref(),
+            "bridgeCommandPreview",
+            &JsValue::from_str(&preview),
+        );
+        set(
+            payload.as_ref(),
+            "bridgeActiveInstanceId",
+            &JsValue::from_str(&active_instance_id),
+        );
+        set(
+            payload.as_ref(),
+            "bridgeActiveInstance",
+            &JsValue::from_str(&active_arg),
+        );
+        set(
+            payload.as_ref(),
+            "bridgeActiveInstancePort",
+            &JsValue::from_str(&active_port),
+        );
+        let structured_text = JSON::stringify(&structured_instances)?
+            .as_string()
+            .unwrap_or_else(|| "{}".to_owned());
+        set(
+            payload.as_ref(),
+            "bridgeStructuredInstances",
+            &JsValue::from_str(&structured_text),
+        );
+        let effective_node =
+            bridge_effective_inprocess_node_settings_checked(net.clone(), bridge_instances)?;
+        set(payload.as_ref(), "effectiveNodeSettings", &effective_node);
+        let effective_bridge = crate::bridge_instance_settings::bridge_effective_settings_v1(
+            net.clone(),
+            structured_instances,
+        )?;
+        set(
+            payload.as_ref(),
+            "effectiveBridgeSettings",
+            &effective_bridge,
+        );
+        let bridge_options = crate::bridge_instance_settings::bridge_start_options(net.clone())?;
+        set(payload.as_ref(), "bridgeOptions", &bridge_options);
+        set(
+            payload.as_ref(),
+            "experimentalNetworkOptIn",
+            &JsValue::from_bool(net == "testnet13" && bridge_network_enabled(net)),
+        );
+        return Ok(payload.into());
+    }
+
+    if matches!(
+        command.as_str(),
+        "kgw_kgw_disable_network_v1" | "kgw_runtime_owner_status_v1" | "kgw_kgw_runtime_logs_v1"
+    ) {
+        set(
+            payload.as_ref(),
+            "runtimeRole",
+            &JsValue::from_str("bridge"),
+        );
+        set(
+            payload.as_ref(),
+            "bridgeInstanceId",
+            &JsValue::from_str(&crate::js_string_owned(&property(&active_instance, &net))),
+        );
+    }
+
+    Ok(payload.into())
+}
+
 fn bridge_node_mode_text(value: &str) -> &'static str {
     if value == "inprocess" {
         "inprocess"

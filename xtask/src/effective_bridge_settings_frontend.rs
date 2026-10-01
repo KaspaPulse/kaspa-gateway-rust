@@ -348,6 +348,34 @@ const r51WriteEmptyOptionalInstanceDisabled =
     "instanceSharesPerMin",
     r51WriteBridgeInstances.mainnet[1]
   );
+const op270BridgeInstances = {
+  mainnet: request.structured.instances.map((item) => ({ ...item })),
+  testnet10: [],
+  testnet13: []
+};
+const op270ActiveInstance = { mainnet: String(request.structured.activeInstance || "one") };
+const op270BuildCalls = [];
+const op270ApplyPayload = wasmModule.bridgeBuildApplyPayloadUi(
+  "mainnet",
+  "kgw_kgw_apply_node_settings_v1",
+  op270BridgeInstances,
+  op270ActiveInstance,
+  () => request.structured,
+  (net) => {
+    op270BuildCalls.push(String(net));
+    return ["kgw-stratum-bridge", "--node-mode=external"];
+  }
+);
+const op270RuntimeLogsPayload = wasmModule.bridgeBuildApplyPayloadUi(
+  "mainnet",
+  "kgw_kgw_runtime_logs_v1",
+  op270BridgeInstances,
+  op270ActiveInstance,
+  () => request.structured,
+  () => []
+);
+const op270Structured = JSON.parse(String(op270ApplyPayload.bridgeStructuredInstances || "{}"));
+
 const output = {
   directOwners: {
     hasConfigInitially: wasmModule.bridgeHasConfig("mainnet"),
@@ -406,7 +434,17 @@ const output = {
     r51WriteOptionalInlineDisabled,
     r51WriteInstanceEnabled,
     r51WriteOptionalInstanceEnabled,
-    r51WriteEmptyOptionalInstanceDisabled
+    r51WriteEmptyOptionalInstanceDisabled,
+    op270ApplyRuntimeRole: String(op270ApplyPayload.runtimeRole || ""),
+    op270ApplyNodeKind: String(op270ApplyPayload.nodeKind || ""),
+    op270ApplyBridgeKind: String(op270ApplyPayload.bridgeKind || ""),
+    op270ApplyPreview: String(op270ApplyPayload.bridgeCommandPreview || ""),
+    op270ApplyActiveId: String(op270ApplyPayload.bridgeActiveInstanceId || ""),
+    op270ApplyActivePort: String(op270ApplyPayload.bridgeActiveInstancePort || ""),
+    op270ApplyStructuredCount: Array.isArray(op270Structured.instances) ? op270Structured.instances.length : -1,
+    op270ApplyBuildCalls: op270BuildCalls,
+    op270RuntimeLogsRole: String(op270RuntimeLogsPayload.runtimeRole || ""),
+    op270RuntimeLogsInstanceId: String(op270RuntimeLogsPayload.bridgeInstanceId || "")
   }
 };
 for (const step of request.steps) {
@@ -529,10 +567,10 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source
         .matches("wasmBridgeNodeMode(String(net || \"\"))")
         .count()
-        != 3
+        != 2
     {
         return Err(
-            "Bridge node-mode must use exactly three direct Rust/WASM call sites after OP269 moves the effective-inprocess check into Rust"
+            "Bridge node-mode must use exactly two direct Rust/WASM call sites after OP270 moves apply-payload mode selection into Rust"
                 .to_owned(),
         );
     }
@@ -652,10 +690,10 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source
         .matches("kgwBridgeR51ReadStructuredInstancesR253(")
         .count()
-        != 3
+        != 2
     {
         return Err(
-            "Bridge R26B structured-read thin wrapper must own exactly two direct calls plus its definition after OP269 passes the reader callback into Rust"
+            "Bridge R26B structured-read thin wrapper must own exactly one direct call plus its definition after OP270 passes the reader callback into the Rust apply-payload owner"
                 .to_owned(),
         );
     }
@@ -1048,6 +1086,40 @@ pub fn run(root: &Path) -> Result<String, String> {
             "bridge-mainnet-op250Checkbox:input:true",
             "bridge-mainnet-op250Checkbox:change:true"
         ]),
+    )?;
+    expect_pointer(
+        &actual,
+        "/directOwners/op270ApplyRuntimeRole",
+        json!("bridge"),
+    )?;
+    expect_pointer(&actual, "/directOwners/op270ApplyNodeKind", json!("remote"))?;
+    expect_pointer(
+        &actual,
+        "/directOwners/op270ApplyBridgeKind",
+        json!("official-external-node"),
+    )?;
+    expect_pointer(
+        &actual,
+        "/directOwners/op270ApplyPreview",
+        json!("kgw-stratum-bridge --node-mode=external"),
+    )?;
+    expect_pointer(&actual, "/directOwners/op270ApplyActiveId", json!("one"))?;
+    expect_pointer(&actual, "/directOwners/op270ApplyActivePort", json!("5556"))?;
+    expect_pointer(&actual, "/directOwners/op270ApplyStructuredCount", json!(2))?;
+    expect_pointer(
+        &actual,
+        "/directOwners/op270ApplyBuildCalls",
+        json!(["mainnet"]),
+    )?;
+    expect_pointer(
+        &actual,
+        "/directOwners/op270RuntimeLogsRole",
+        json!("bridge"),
+    )?;
+    expect_pointer(
+        &actual,
+        "/directOwners/op270RuntimeLogsInstanceId",
+        json!("one"),
     )?;
 
     expect_pointer(&actual, "/parsed/instanceBlockWaitTime", json!("2500ms"))?;

@@ -10,7 +10,7 @@ import initBridgeRust, {
   bridgeCommandSetOptionR7 as wasmBridgeCommandSetOptionR7,
   bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
   bridgeBuildCommandLines as wasmBridgeBuildCommandLines,
-  bridgeBuildUpstreamInstanceArg as wasmBridgeBuildUpstreamInstanceArg,
+  bridgeBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi,
   bridgeDifficultyDatalistR16C as wasmBridgeDifficultyDatalistR16C,
   bridgeDifficultyInputAttrsR16C as wasmBridgeDifficultyInputAttrsR16C,
   bridgeCardInput as wasmBridgeCardInput,
@@ -50,7 +50,6 @@ import initBridgeRust, {
   bridgePreviewMessage as wasmBridgePreviewMessage,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord,
-  bridgeStartOptions as wasmBridgeStartOptions,
   bridgeInstanceCommandCheckboxFromInstancesR13B as wasmBridgeInstanceCommandCheckboxFromInstancesR13B,
   bridgeInstanceCommandSetOptionR13B as wasmBridgeInstanceCommandSetOptionR13B,
   bridgeInstancePreviewTextR8B as wasmBridgeInstancePreviewTextR8B,
@@ -1484,59 +1483,16 @@ const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();
 
 /* KGW_BRIDGE_START_OPTIONS is Rust-owned in bridge_instance_settings.rs. */
 
+// KGW_BRIDGE_APPLY_PAYLOAD_RUST_OWNER_V1
 function buildApplyPayload(net, command) {
-  if (command === "kgw_kgw_apply_node_settings_v1") {
-    wasmBridgeAssertNoPortConflictsR5(
-      String(net || ""),
-      typeof kgwBridgeR51ReadStructuredInstancesR253 === "function" ? kgwBridgeR51ReadStructuredInstancesR253 : null,
-      bridgeInstances,
-      activeInstance
-    );
-
-    const preview = buildCommandLines(net).join(" ");
-    const nodeMode = wasmBridgeNodeMode(String(net || "")) === "inprocess" ? "inprocess" : "external";
-
-    // KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F
-    // Start must honor the selected Bridge Instance, not only the generic network Stratum port.
-    const structuredInstances = typeof kgwBridgeR51ReadStructuredInstancesR253 === "function"
-      ? kgwBridgeR51ReadStructuredInstancesR253(net)
-      : { activeInstance: String(activeInstance?.[net] || ""), instances: Array.isArray(bridgeInstances?.[net]) ? bridgeInstances[net] : [] };
-    const bridgeActiveInstanceId = String(structuredInstances?.activeInstance || activeInstance?.[net] || "");
-    const bridgeActiveInstanceRecord = Array.isArray(structuredInstances?.instances)
-      ? structuredInstances.instances.find((item) => String(item?.id || "") === bridgeActiveInstanceId) || structuredInstances.instances[0] || null
-      : null;
-    const bridgeActiveInstance = bridgeActiveInstanceRecord
-      ? wasmBridgeBuildUpstreamInstanceArg(String(net || ""), bridgeActiveInstanceRecord || {})
-      : "";
-    const bridgeActiveInstancePort = String(bridgeActiveInstanceRecord?.instancePort || "").trim().replace(/^:/, "");
-
-    return {
-      network: net,
-      runtimeRole: "bridge",
-      nodeKind: nodeMode === "inprocess" ? "integrated-inproc" : "remote",
-      bridgeKind: nodeMode === "inprocess" ? "official-inprocess-node" : "official-external-node",
-      nodeCommandPreview: "",
-      bridgeCommandPreview: preview,
-      bridgeActiveInstanceId,
-      bridgeActiveInstance,
-      bridgeActiveInstancePort,
-      bridgeStructuredInstances: JSON.stringify(structuredInstances || {}),
-      effectiveNodeSettings: kgwBridgeEffectiveInprocessNodeSettings(net),
-      effectiveBridgeSettings: wasmBridgeEffectiveSettingsV1(String(net || ""), structuredInstances || {}),
-      bridgeOptions: wasmBridgeStartOptions(String(net || "")),
-      experimentalNetworkOptIn: net === "testnet13" && wasmBridgeNetworkEnabled(net),
-    };
-  }
-
-  if (
-    command === "kgw_kgw_disable_network_v1" ||
-    command === "kgw_runtime_owner_status_v1" ||
-    command === "kgw_kgw_runtime_logs_v1"
-  ) {
-    return { network: net, runtimeRole: "bridge", bridgeInstanceId: String(activeInstance?.[net] || "") };
-  }
-
-  return { network: net };
+  return wasmBridgeBuildApplyPayloadUi(
+    String(net || ""),
+    String(command || ""),
+    bridgeInstances,
+    activeInstance,
+    kgwBridgeR51ReadStructuredInstancesR253,
+    buildCommandLines
+  );
 }
 async function invokeBridgeIntegratedRuntime(command, net) {
   const payload = buildApplyPayload(net, command);

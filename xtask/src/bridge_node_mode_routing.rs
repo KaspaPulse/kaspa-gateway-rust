@@ -10,9 +10,11 @@ const INTEGRATED_RUNTIME: &str =
     "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs";
 const TAURI_LIB: &str = "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs";
 const RK_BRIDGE: &str = "crates/kaspa-gateway-rk-bridge/src/lib.rs";
+const BRIDGE_HELPERS: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs";
 
-const REQUIRED_FILES: [(&str, &str); 5] = [
+const REQUIRED_FILES: [(&str, &str); 6] = [
     ("bridgeJs", BRIDGE_JS),
+    ("bridgeHelpers", BRIDGE_HELPERS),
     ("nodeJs", NODE_JS),
     ("integratedRuntime", INTEGRATED_RUNTIME),
     ("tauriLib", TAURI_LIB),
@@ -265,6 +267,7 @@ pub fn run(repo_root: &Path, report_dir: &Path) -> Result<AuditResult, String> {
         .map_err(|error| format!("failed to create extracts: {error}"))?;
 
     let bridge_js = read_file(repo_root, BRIDGE_JS);
+    let bridge_helpers = read_file(repo_root, BRIDGE_HELPERS);
     let node_js = read_file(repo_root, NODE_JS);
     let integrated_runtime = read_file(repo_root, INTEGRATED_RUNTIME);
     let tauri_lib = read_file(repo_root, TAURI_LIB);
@@ -272,6 +275,7 @@ pub fn run(repo_root: &Path, report_dir: &Path) -> Result<AuditResult, String> {
 
     let loaded = [
         &bridge_js,
+        &bridge_helpers,
         &node_js,
         &integrated_runtime,
         &tauri_lib,
@@ -293,6 +297,7 @@ pub fn run(repo_root: &Path, report_dir: &Path) -> Result<AuditResult, String> {
     for (key, rel) in REQUIRED_FILES {
         let exists = match key {
             "bridgeJs" => bridge_js.exists,
+            "bridgeHelpers" => bridge_helpers.exists,
             "nodeJs" => node_js.exists,
             "integratedRuntime" => integrated_runtime.exists,
             "tauriLib" => tauri_lib.exists,
@@ -321,6 +326,17 @@ pub fn run(repo_root: &Path, report_dir: &Path) -> Result<AuditResult, String> {
             "official-inprocess-node",
             "invoke(",
         ];
+        let helper_needles = [
+            "bridgeBuildApplyPayloadUi",
+            "bridge_build_apply_payload_ui",
+            "bridge_node_mode",
+            "official-external-node",
+            "official-inprocess-node",
+            "integrated-inproc",
+            "runtimeRole",
+            "nodeKind",
+            "bridgeKind",
+        ];
         let rust_needles = [
             "kgw_apply_command_preview_overrides",
             "kgw_worker_start",
@@ -344,6 +360,10 @@ pub fn run(repo_root: &Path, report_dir: &Path) -> Result<AuditResult, String> {
             needle_map(&bridge_js.text, &frontend_needles, 50),
         );
         evidence.insert(
+            "bridgeHelpersNeedles".to_owned(),
+            needle_map(&bridge_helpers.text, &helper_needles, 80),
+        );
+        evidence.insert(
             "tauriLibNeedles".to_owned(),
             needle_map(&tauri_lib.text, &rust_needles, 80),
         );
@@ -364,11 +384,18 @@ pub fn run(repo_root: &Path, report_dir: &Path) -> Result<AuditResult, String> {
             "buildCommandLines",
             &mut extracted,
         )?;
-        let build_apply_payload = save_extract(
+        let _build_apply_payload_js = save_extract(
             report_dir,
             "bridgeJs_buildApplyPayload",
             &bridge_js,
             "buildApplyPayload",
+            &mut extracted,
+        )?;
+        let build_apply_payload_rust = save_extract(
+            report_dir,
+            "bridgeHelpers_buildApplyPayloadUi",
+            &bridge_helpers,
+            "bridge_build_apply_payload_ui",
             &mut extracted,
         )?;
         let _install_actions = save_extract(
@@ -436,33 +463,36 @@ pub fn run(repo_root: &Path, report_dir: &Path) -> Result<AuditResult, String> {
         )?;
         evidence.insert("extractedFunctions".to_owned(), Value::Object(extracted));
 
-        let has_frontend_node_mode = Regex::new(r"\bnodeMode\b")
-            .unwrap()
-            .is_match(&bridge_js.text)
-            && bridge_js.text.contains("--node-mode");
-        let payload_forces_external =
-            Regex::new(r#"bridgeKind\s*:\s*["']official-external-node["']"#)
-                .unwrap()
-                .is_match(&build_apply_payload)
-                || Regex::new(r#"nodeKind\s*:\s*["']remote["']"#)
-                    .unwrap()
-                    .is_match(&build_apply_payload);
+        let has_frontend_node_mode = bridge_js
+            .text
+            .contains("bridgeNodeMode as wasmBridgeNodeMode")
+            && bridge_helpers.text.contains("pub fn bridge_node_mode(");
+        let payload_has_external = build_apply_payload_rust.contains("\"official-external-node\"")
+            && build_apply_payload_rust.contains("\"remote\"");
+        let payload_has_inprocess = build_apply_payload_rust
+            .contains("\"official-inprocess-node\"")
+            && build_apply_payload_rust.contains("\"integrated-inproc\"");
+        let payload_selects_node_mode =
+            build_apply_payload_rust.contains("let node_mode = bridge_node_mode(net.clone())");
+        let payload_forces_external = payload_has_external && !payload_has_inprocess;
+        let payload_preserves_mode =
+            payload_has_external && payload_has_inprocess && payload_selects_node_mode;
 
         if has_frontend_node_mode {
             add_finding(
                 &mut findings,
                 "INFO",
                 "frontend-preview",
-                "Bridge tab appears to build or display --node-mode from a nodeMode setting.",
-                json!({"file": BRIDGE_JS}),
+                "Bridge frontend node-mode selection is Rust/WASM-owned and imported by the Bridge tab.",
+                json!({"file": BRIDGE_HELPERS}),
             );
         } else {
             add_finding(
                 &mut findings,
                 "HIGH",
                 "frontend-preview",
-                "Bridge tab did not show a clear nodeMode / --node-mode preview owner.",
-                json!({"file": BRIDGE_JS}),
+                "Bridge frontend did not show the expected Rust/WASM node-mode owner/binding.",
+                json!({"file": BRIDGE_HELPERS}),
             );
         }
 
@@ -471,16 +501,24 @@ pub fn run(repo_root: &Path, report_dir: &Path) -> Result<AuditResult, String> {
                 &mut findings,
                 "CRITICAL",
                 "frontend-start-payload",
-                "Bridge Start payload appears to force external-node semantics even when preview may show inprocess.",
-                json!({"file": BRIDGE_JS}),
+                "Rust-owned Bridge Start payload appears to force external-node semantics without an in-process branch.",
+                json!({"file": BRIDGE_HELPERS}),
+            );
+        } else if payload_preserves_mode {
+            add_finding(
+                &mut findings,
+                "INFO",
+                "frontend-start-payload",
+                "Rust-owned Bridge Start payload preserves node-mode selection across external and in-process payload semantics.",
+                json!({"file": BRIDGE_HELPERS}),
             );
         } else {
             add_finding(
                 &mut findings,
                 "WARN",
                 "frontend-start-payload",
-                "Bridge Start payload did not clearly force external mode in the extracted buildApplyPayload function; inspect extract manually.",
-                json!({"file": BRIDGE_JS}),
+                "Rust-owned Bridge Start payload did not expose the expected paired external/in-process mode branches; inspect the Rust extract.",
+                json!({"file": BRIDGE_HELPERS}),
             );
         }
 
