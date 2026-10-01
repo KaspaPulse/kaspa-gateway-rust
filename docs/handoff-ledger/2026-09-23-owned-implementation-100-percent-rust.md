@@ -197,9 +197,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP275 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP276 - Bridge instance add/remove Rust/WASM ownership (INTENT)
+## OP276 - Bridge instance add/remove Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP275 closeout `01d7afb04bc1e4b181201c84b035bd1bb0fe2cc0`; BASE_TREE `15396d394a133c0debb222f3f2a9457bb34fe4bf`; worktree clean at intent time.
-- BOUNDARY: move `addInstance` and `removeInstance` state mutation/orchestration into Rust/WASM while retaining thin JavaScript callback wrappers for current render/log/preview side effects. Rust owns network canonicalization, instance-state assurance, record creation/push, active-instance selection, last-instance protection, removal-index fallback, and mutation trace lifecycle.
-- ACCEPTANCE: Rust add/remove exports + thin JS wrappers; fail-closed ownership regression rejects legacy JavaScript state mutation; generated WASM consistent; targeted behavior/state contracts plus fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `addInstance` and `removeInstance` state mutation/orchestration moved into Rust/WASM exports `bridgeAddInstanceUi` and `bridgeRemoveInstanceUi`; JavaScript retains thin callback-binding wrappers for current refresh/preview side effects. Rust now owns network canonicalization, instance-state assurance, record creation/push, active-instance selection, last-instance protection, removal-index fallback, raw-log render on add, and mutation trace lifecycle.
+- IMPLEMENTATION_CHECKPOINT: `25953bcff8b6871696ae80a39947f149434ab5dc`, tree `10b787e8816d275f199ea75c07cde341c53f3c27`. Closeout generation 2267.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 295/295 plus auxiliary suites; targeted instance-mutation ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: R15 instance network-key direct-call count was narrowed from five to four to match the post-OP276 surface after add/remove network canonicalization moved into Rust; no ownership prohibition was weakened.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP276 qualification unless invalidated.
+- PUSHED: NO.
