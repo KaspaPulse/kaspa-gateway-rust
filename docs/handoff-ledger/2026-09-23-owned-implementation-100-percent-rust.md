@@ -390,3 +390,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: mode-controls gate now fails closed on reintroduced JavaScript wrapper/binding while allowing unrelated generated-WASM calls elsewhere.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP293 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP294 - Bridge integrated runtime invoke Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP293 closeout `128ed5c`; worktree clean at intent time.
+- BOUNDARY: move `invokeBridgeIntegratedRuntime` payload-build/validation/preview/invoke orchestration into Rust/WASM. Rust owns apply-payload construction, apply-form rejection, preview-before-apply ordering, and runtime invocation; JavaScript becomes a thin async wrapper passing existing state/callbacks.
+- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; existing apply/preview semantics preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
