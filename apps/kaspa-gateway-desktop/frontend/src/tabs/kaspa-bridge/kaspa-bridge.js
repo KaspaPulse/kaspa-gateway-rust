@@ -53,6 +53,7 @@ import initBridgeRust, {
   bridgeSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B,
   bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi,
   bridgeRefreshInstancesUi as wasmBridgeRefreshInstancesUi,
+  bridgeInstallAllVisibleInstanceContainerOwnersR11 as wasmBridgeInstallAllVisibleInstanceContainerOwnersR11,
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeElementId as wasmBridgeElementId,
@@ -705,16 +706,13 @@ function bridgeInstallInstanceContainerOwnerR11(container, net) {
   };
 }
 
+// KGW_BRIDGE_VISIBLE_INSTANCE_OWNERS_RUST_OWNER_V1
 function bridgeInstallAllVisibleInstanceContainerOwnersR11(root) {
-  const scope = root || document;
-  if (!scope) return;
-
-  for (const profile of BRIDGE_NETWORKS) {
-    const container = wasmBridgeById(wasmBridgeElementId(profile.key, "instances"));
-    if (container) {
-      bridgeInstallInstanceContainerOwnerR11(container, profile.key);
-    }
-  }
+  void root;
+  return wasmBridgeInstallAllVisibleInstanceContainerOwnersR11({
+    installInstanceContainerOwner: (container, targetNet) =>
+      bridgeInstallInstanceContainerOwnerR11(container, String(targetNet || ""))
+  });
 }
 
 /* KGW_BRIDGE_INSTANCES_TEMP_TRACE_REMOVED

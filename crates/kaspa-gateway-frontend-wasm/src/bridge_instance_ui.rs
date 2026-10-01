@@ -458,6 +458,29 @@ pub fn bridge_refresh_instances_ui(
     Ok(net)
 }
 
+#[wasm_bindgen(js_name = bridgeInstallAllVisibleInstanceContainerOwnersR11)]
+pub fn bridge_install_all_visible_instance_container_owners_r11(
+    callbacks: JsValue,
+) -> Result<u32, JsValue> {
+    let mut installed = 0_u32;
+    for net in ["mainnet", "testnet10", "testnet13"] {
+        let container_id =
+            bridge_frontend_helpers::bridge_element_id(net.to_owned(), "instances".to_owned());
+        let container = bridge_frontend_helpers::bridge_by_id(container_id);
+        if !present(&container) {
+            continue;
+        }
+        let _ = call2_required(
+            &callbacks,
+            "installInstanceContainerOwner",
+            &container,
+            &JsValue::from_str(net),
+        )?;
+        installed += 1;
+    }
+    Ok(installed)
+}
+
 #[wasm_bindgen(js_name = bridgeInstancePreviewTextR8B)]
 pub fn bridge_instance_preview_text_r8b(net: String, instance: JsValue) -> String {
     preview_text(&net, &instance)

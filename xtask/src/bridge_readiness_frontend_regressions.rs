@@ -1605,6 +1605,57 @@ fn verify_start_options_ownership(
     Ok(())
 }
 
+fn verify_visible_instance_owners_ownership(source: &str, instance_ui: &str) -> Result<(), String> {
+    for required in [
+        "bridgeInstallAllVisibleInstanceContainerOwnersR11 as wasmBridgeInstallAllVisibleInstanceContainerOwnersR11",
+        "// KGW_BRIDGE_VISIBLE_INSTANCE_OWNERS_RUST_OWNER_V1",
+        "function bridgeInstallAllVisibleInstanceContainerOwnersR11(root) {",
+        "return wasmBridgeInstallAllVisibleInstanceContainerOwnersR11({",
+        "installInstanceContainerOwner: (container, targetNet) =>",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge visible-instance-owner Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    let wrapper = slice_between(
+        source,
+        "function bridgeInstallAllVisibleInstanceContainerOwnersR11(root) {",
+        "\n}",
+    )?;
+    for forbidden in [
+        "for (const profile of BRIDGE_NETWORKS)",
+        "wasmBridgeById(",
+        "wasmBridgeElementId(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge visible-instance-owner JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeInstallAllVisibleInstanceContainerOwnersR11",
+        "pub fn bridge_install_all_visible_instance_container_owners_r11(",
+        "for net in [\"mainnet\", \"testnet10\", \"testnet13\"]",
+        "bridge_element_id(net.to_owned(), \"instances\".to_owned())",
+        "bridge_by_id(container_id)",
+        "\"installInstanceContainerOwner\"",
+        "installed += 1",
+    ] {
+        if !instance_ui.contains(required) {
+            return Err(format!(
+                "Bridge visible-instance-owner Rust contract missing: {required}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn verify_instance_refresh_ownership(source: &str, instance_ui: &str) -> Result<(), String> {
     for required in [
         "bridgeRefreshInstancesUi as wasmBridgeRefreshInstancesUi",
@@ -3020,6 +3071,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_start_options_ownership(&full_source, &helper_source, &instance_settings_source)?;
+    verify_visible_instance_owners_ownership(&full_source, &instance_ui_source)?;
     verify_instance_refresh_ownership(&full_source, &instance_ui_source)?;
     verify_instances_renderer_ownership(&full_source, &instance_ui_source)?;
     verify_instance_command_option_ownership(&full_source, &command_options_source)?;
@@ -4249,6 +4301,29 @@ mod tests {
         ] {
             assert!(verify_start_options_ownership(source, helpers, &mutation).is_err());
         }
+    }
+
+    #[test]
+    fn visible_instance_owners_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let instance_ui =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_instance_ui.rs");
+        assert!(verify_visible_instance_owners_ownership(source, instance_ui).is_ok());
+
+        let legacy = source.replacen(
+            "function bridgeInstallAllVisibleInstanceContainerOwnersR11(root) {",
+            "function bridgeInstallAllVisibleInstanceContainerOwnersR11(root) {\n  for (const profile of BRIDGE_NETWORKS) { wasmBridgeById(profile.key); }",
+            1,
+        );
+        assert!(verify_visible_instance_owners_ownership(&legacy, instance_ui).is_err());
+
+        let missing = instance_ui.replace(
+            "js_name = bridgeInstallAllVisibleInstanceContainerOwnersR11",
+            "js_name = missingInstallAllVisibleInstanceContainerOwnersR11",
+        );
+        assert!(verify_visible_instance_owners_ownership(source, &missing).is_err());
     }
 
     #[test]
