@@ -47,6 +47,9 @@ import initBridgeRust, {
   bridgeInvokeRuntimeCommand as wasmBridgeInvokeRuntimeCommand,
   bridgePreparePreview as wasmBridgePreparePreview,
   bridgePreviewMessage as wasmBridgePreviewMessage,
+  bridgePreviewSequence as wasmBridgePreviewSequence,
+  bridgeUpdateCommandUi as wasmBridgeUpdateCommandUi,
+  bridgeUpdateAllCommandsUi as wasmBridgeUpdateAllCommandsUi,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord,
   bridgeInstanceCommandCheckboxFromInstancesR13B as wasmBridgeInstanceCommandCheckboxFromInstancesR13B,
@@ -84,7 +87,6 @@ import initBridgeRust, {
   bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E,
   bridgeValue as wasmBridgeValue,
   bridgeAssignMissingInstancePortsR9 as wasmBridgeAssignMissingInstancePortsR9,
-  bridgeReassignInstancePortsFromExternalRangeR91 as wasmBridgeReassignInstancePortsFromExternalRangeR91,
   bridgeCreateInstanceRecordR9 as wasmBridgeCreateInstanceRecordR9,
   bridgeEnsureInstanceState as wasmBridgeEnsureInstanceState,
   bridgeActiveRawLogInstanceId as wasmBridgeActiveRawLogInstanceId,
@@ -1051,59 +1053,24 @@ function kgwBridgeEffectiveInprocessNodeSettings(net) {
 
 
 
-const KGW_BRIDGE_PREVIEW_REQUESTS = new Map();
-/* KGW_BRIDGE_PREVIEW_MESSAGE is Rust-owned in bridge_frontend_helpers.rs. */
+// KGW_BRIDGE_COMMAND_PREVIEW_RUST_OWNER_V1
 function updateCommand(net) {
-  const preview = wasmBridgeById(wasmBridgeElementId(net, "commandPreview"));
-  if (!preview) return "";
-  const previous = KGW_BRIDGE_PREVIEW_REQUESTS.get(net);
-  if (previous?.timer) window.clearTimeout(previous.timer);
-  const request = {sequence: (previous?.sequence || 0) + 1, timer: null};
-  KGW_BRIDGE_PREVIEW_REQUESTS.set(net, request);
-  preview.value = "";
-  delete preview.dataset.effectiveSettings;
-  try {
-    bridgeSyncModeControls(net);
-    wasmBridgeReassignInstancePortsFromExternalRangeR91(
-      bridgeInstances,
-      String(wasmBridgeInstanceNetworkKeyR15(net, net) || ""),
-      "update-command"
-    );
-    wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
-    const errors = kgwBridgeValidateForm(net);
-    if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-    const payload = buildApplyPayload(net, "kgw_kgw_apply_node_settings_v1");
-    wasmBridgePreviewMessage(String(net || ""), "Validating effective settings...", false);
-    request.timer = window.setTimeout(async () => {
-      try {
-        const result = await wasmBridgePreparePreview(String(net || ""), payload);
-        if (KGW_BRIDGE_PREVIEW_REQUESTS.get(net) !== request) return;
-        preview.value = JSON.stringify(result, null, 2);
-        preview.dataset.effectiveSettings = JSON.stringify(result);
-        wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
-        preview.dataset.kgwBridgeCommandOwner = "typed-effective-settings-preview";
-        preview.dataset.kgwBridgeNetwork = net;
-        preview.classList.remove("bridge-v7-command-warning");
-        for (const name of ["appdir", "inprocessAppdirMirror"]) {
-          const field = wasmBridgeById(wasmBridgeElementId(net, name)); if (field) { field.value = result.appDir; field.title = result.appDir; }
-        }
-        wasmBridgePreviewMessage(String(net || ""), "Validated by the same settings resolver used by Start. Embedded libraries; no external executable.", false);
-      } catch (error) {
-        if (KGW_BRIDGE_PREVIEW_REQUESTS.get(net) !== request) return;
-        preview.value = "";
-        wasmBridgePreviewMessage(String(net || ""), wasmBridgeNormalizeRuntimeError(error), true);
-      }
-    }, 180);
-    return payload.bridgeCommandPreview;
-  } catch (error) {
-    wasmBridgePreviewMessage(String(net || ""), wasmBridgeNormalizeRuntimeError(error), true);
-    return "";
-  }
+  return wasmBridgeUpdateCommandUi(
+    String(net || ""),
+    bridgeInstances,
+    activeInstance,
+    kgwBridgeR51ReadStructuredInstancesR253,
+    buildCommandLines
+  );
 }
 
 function updateAllCommands() {
-  bridgeSyncAllModeControls();
-  BRIDGE_NETWORKS.forEach((net) => updateCommand(net.key));
+  return wasmBridgeUpdateAllCommandsUi(
+    bridgeInstances,
+    activeInstance,
+    kgwBridgeR51ReadStructuredInstancesR253,
+    buildCommandLines
+  );
 }
 
 
@@ -2258,9 +2225,9 @@ function installActions(root) {
         if (action === "copy-command") {
           const errors = kgwBridgeValidateForm(net);
           if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-          const request = KGW_BRIDGE_PREVIEW_REQUESTS.get(net);
+          const requestSequence = wasmBridgePreviewSequence(String(net || ""));
           const result = await wasmBridgePreparePreview(String(net || ""), buildApplyPayload(net, "kgw_kgw_apply_node_settings_v1"));
-          if (KGW_BRIDGE_PREVIEW_REQUESTS.get(net) !== request) throw new Error("Settings changed while copying. Try again.");
+          if (wasmBridgePreviewSequence(String(net || "")) !== requestSequence) throw new Error("Settings changed while copying. Try again.");
           text = JSON.stringify(result, null, 2);
         }
         if (!text) throw new Error("There is no validated value to copy.");

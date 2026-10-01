@@ -13,6 +13,8 @@ use super::settings_layout::{
 };
 use super::settings_schema::BRIDGE_MANAGED;
 use js_sys::{Array, Error, Function, JSON, Object, Promise, Reflect};
+use std::cell::RefCell;
+use std::collections::BTreeMap;
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 use wasm_bindgen_futures::{JsFuture, spawn_local};
 
@@ -1676,6 +1678,276 @@ fn bridge_preview_message_inner(net: &str, message: &str, error: bool) -> bool {
 #[wasm_bindgen(js_name = bridgePreviewMessage)]
 pub fn bridge_preview_message(net: String, message: String, error: bool) -> bool {
     bridge_preview_message_inner(&net, &message, error)
+}
+
+#[derive(Default)]
+struct BridgePreviewState {
+    sequence: u64,
+    timer: Option<JsValue>,
+}
+
+thread_local! {
+    static BRIDGE_PREVIEWS: RefCell<BTreeMap<String, BridgePreviewState>> =
+        const { RefCell::new(BTreeMap::new()) };
+}
+
+fn clear_bridge_preview_timer(timer: Option<JsValue>) {
+    let Some(timer) = timer else {
+        return;
+    };
+    if let Some(clear) = function(&window(), "clearTimeout") {
+        let _ = clear.call1(&window(), &timer);
+    }
+}
+
+fn begin_bridge_preview_sequence(net: &str) -> u64 {
+    BRIDGE_PREVIEWS.with(|states| {
+        let mut states = states.borrow_mut();
+        let state = states.entry(net.to_owned()).or_default();
+        clear_bridge_preview_timer(state.timer.take());
+        state.sequence = state.sequence.saturating_add(1);
+        state.sequence
+    })
+}
+
+fn store_bridge_preview_timer(net: &str, sequence: u64, timer: JsValue) {
+    BRIDGE_PREVIEWS.with(|states| {
+        let mut states = states.borrow_mut();
+        let state = states.entry(net.to_owned()).or_default();
+        if state.sequence == sequence {
+            state.timer = Some(timer);
+        }
+    });
+}
+
+fn bridge_preview_sequence_value(net: &str) -> u64 {
+    BRIDGE_PREVIEWS.with(|states| {
+        states
+            .borrow()
+            .get(net)
+            .map(|state| state.sequence)
+            .unwrap_or_default()
+    })
+}
+
+fn bridge_preview_sequence_is_current(net: &str, sequence: u64) -> bool {
+    bridge_preview_sequence_value(net) == sequence
+}
+
+fn bridge_preview_element(net: &str) -> JsValue {
+    bridge_by_id(bridge_element_id(
+        net.to_owned(),
+        "commandPreview".to_owned(),
+    ))
+}
+
+fn bridge_preview_result_json(result: &JsValue) -> String {
+    JSON::stringify(result)
+        .ok()
+        .map(|value| crate::js_string_owned(value.as_ref()))
+        .unwrap_or_else(|| "{}".to_owned())
+}
+
+async fn finish_bridge_preview_update(
+    net: String,
+    sequence: u64,
+    payload: JsValue,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+) {
+    let result = crate::bridge_start_trace::bridge_prepare_preview(net.clone(), payload).await;
+    if !bridge_preview_sequence_is_current(&net, sequence) {
+        return;
+    }
+
+    let preview = bridge_preview_element(&net);
+    if !present(&preview) {
+        return;
+    }
+
+    match result {
+        Ok(result) => {
+            let serialized = bridge_preview_result_json(&result);
+            set(&preview, "value", &JsValue::from_str(&serialized));
+            let dataset = property(&preview, "dataset");
+            set(
+                &dataset,
+                "effectiveSettings",
+                &JsValue::from_str(&serialized),
+            );
+            let _ = crate::bridge_instance_ui::bridge_sync_instance_preview_rows_r8b(
+                net.clone(),
+                bridge_instances,
+                active_instance,
+            );
+            set(
+                &dataset,
+                "kgwBridgeCommandOwner",
+                &JsValue::from_str("typed-effective-settings-preview"),
+            );
+            set(&dataset, "kgwBridgeNetwork", &JsValue::from_str(&net));
+            let class_list = property(&preview, "classList");
+            let _ = call1(
+                &class_list,
+                "remove",
+                &JsValue::from_str("bridge-v7-command-warning"),
+            );
+
+            let app_dir = property(&result, "appDir");
+            for name in ["appdir", "inprocessAppdirMirror"] {
+                let field = bridge_by_id(bridge_element_id(net.clone(), name.to_owned()));
+                if present(&field) {
+                    set(&field, "value", &app_dir);
+                    set(&field, "title", &app_dir);
+                }
+            }
+            bridge_preview_message_inner(
+                &net,
+                "Validated by the same settings resolver used by Start. Embedded libraries; no external executable.",
+                false,
+            );
+        }
+        Err(error) => {
+            set(&preview, "value", &JsValue::from_str(""));
+            bridge_preview_message_inner(
+                &net,
+                &crate::bridge_runtime_core::bridge_normalize_runtime_error(error),
+                true,
+            );
+        }
+    }
+}
+
+fn bridge_update_command_inner(
+    net: &str,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    structured_reader: JsValue,
+    build_command_lines: JsValue,
+) -> String {
+    let preview = bridge_preview_element(net);
+    if !present(&preview) {
+        return String::new();
+    }
+
+    let sequence = begin_bridge_preview_sequence(net);
+    set(&preview, "value", &JsValue::from_str(""));
+    let dataset = property(&preview, "dataset");
+    let dataset_object = Object::from(dataset.clone());
+    let _ = Reflect::delete_property(&dataset_object, &JsValue::from_str("effectiveSettings"));
+
+    let result = (|| -> Result<(JsValue, String), JsValue> {
+        bridge_sync_mode_controls_ui(net.to_owned(), bridge_instances.clone());
+        let active_net =
+            bridge_instance_network_key_r15(JsValue::from_str(net), JsValue::from_str(net));
+        let _ = crate::bridge_port_orchestration::bridge_reassign_instance_ports_from_external_range_r91(
+            bridge_instances.clone(),
+            active_net,
+            "update-command".to_owned(),
+        )?;
+        crate::bridge_instance_ui::bridge_sync_instance_preview_rows_r8b(
+            net.to_owned(),
+            bridge_instances.clone(),
+            active_instance.clone(),
+        )?;
+        let errors = bridge_validate_form_ui(net.to_owned(), bridge_instances.clone(), false);
+        if let Some(message) = bridge_first_validation_error(&errors) {
+            return Err(Error::new(&message).into());
+        }
+
+        let payload = bridge_build_apply_payload_ui(
+            net.to_owned(),
+            "kgw_kgw_apply_node_settings_v1".to_owned(),
+            bridge_instances.clone(),
+            active_instance.clone(),
+            structured_reader,
+            build_command_lines,
+        )?;
+        let command_preview = crate::js_string_owned(&property(&payload, "bridgeCommandPreview"));
+        Ok((payload, command_preview))
+    })();
+
+    let (payload, command_preview) = match result {
+        Ok(value) => value,
+        Err(error) => {
+            bridge_preview_message_inner(
+                net,
+                &crate::bridge_runtime_core::bridge_normalize_runtime_error(error),
+                true,
+            );
+            return String::new();
+        }
+    };
+
+    bridge_preview_message_inner(net, "Validating effective settings...", false);
+    let net_for_timer = net.to_owned();
+    let instances_for_timer = bridge_instances;
+    let active_for_timer = active_instance;
+    let callback = Closure::once_into_js(move || {
+        let net_for_task = net_for_timer.clone();
+        let payload_for_task = payload.clone();
+        let instances_for_task = instances_for_timer.clone();
+        let active_for_task = active_for_timer.clone();
+        spawn_local(async move {
+            finish_bridge_preview_update(
+                net_for_task,
+                sequence,
+                payload_for_task,
+                instances_for_task,
+                active_for_task,
+            )
+            .await;
+        });
+    });
+    if let Some(set_timeout) = function(&window(), "setTimeout")
+        && let Ok(timer) = set_timeout.call2(&window(), &callback, &JsValue::from_f64(180.0))
+    {
+        store_bridge_preview_timer(net, sequence, timer);
+    }
+
+    command_preview
+}
+
+#[wasm_bindgen(js_name = bridgeUpdateCommandUi)]
+pub fn bridge_update_command_ui(
+    net: String,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    structured_reader: JsValue,
+    build_command_lines: JsValue,
+) -> String {
+    bridge_update_command_inner(
+        &net,
+        bridge_instances,
+        active_instance,
+        structured_reader,
+        build_command_lines,
+    )
+}
+
+#[wasm_bindgen(js_name = bridgeUpdateAllCommandsUi)]
+pub fn bridge_update_all_commands_ui(
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    structured_reader: JsValue,
+    build_command_lines: JsValue,
+) -> bool {
+    bridge_sync_all_mode_controls_ui(bridge_instances.clone());
+    for net in bridge_r51_key_texts() {
+        let _ = bridge_update_command_inner(
+            net,
+            bridge_instances.clone(),
+            active_instance.clone(),
+            structured_reader.clone(),
+            build_command_lines.clone(),
+        );
+    }
+    true
+}
+
+#[wasm_bindgen(js_name = bridgePreviewSequence)]
+pub fn bridge_preview_sequence(net: String) -> u64 {
+    bridge_preview_sequence_value(&net)
 }
 
 #[wasm_bindgen(js_name = bridgeById)]

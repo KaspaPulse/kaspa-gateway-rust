@@ -1603,6 +1603,92 @@ fn verify_start_options_ownership(
     Ok(())
 }
 
+fn verify_command_preview_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeUpdateCommandUi as wasmBridgeUpdateCommandUi",
+        "bridgeUpdateAllCommandsUi as wasmBridgeUpdateAllCommandsUi",
+        "// KGW_BRIDGE_COMMAND_PREVIEW_RUST_OWNER_V1",
+        "function updateCommand(net) {",
+        "return wasmBridgeUpdateCommandUi(",
+        "function updateAllCommands() {",
+        "return wasmBridgeUpdateAllCommandsUi(",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge command-preview Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    if source.matches("wasmBridgeUpdateCommandUi(").count() != 1 {
+        return Err("Bridge update-command direct-call count drifted".to_owned());
+    }
+    if source.matches("wasmBridgeUpdateAllCommandsUi(").count() != 1 {
+        return Err("Bridge update-all-commands direct-call count drifted".to_owned());
+    }
+    if source.contains("KGW_BRIDGE_PREVIEW_REQUESTS") {
+        return Err("Retired Bridge preview request map remains in JavaScript".to_owned());
+    }
+
+    let update_wrapper = slice_between(source, "function updateCommand(net) {", "\n}")?;
+    let update_all_wrapper = slice_between(source, "function updateAllCommands() {", "\n}")?;
+    for forbidden in [
+        "setTimeout(",
+        "clearTimeout(",
+        "wasmBridgePreparePreview(",
+        "wasmBridgeReassignInstancePortsFromExternalRangeR91(",
+        "wasmBridgeSyncInstancePreviewRowsR8B(",
+        "kgwBridgeValidateForm(",
+        "wasmBridgePreviewMessage(",
+        "bridgeSyncModeControls(",
+        "bridgeSyncAllModeControls(",
+        "BRIDGE_NETWORKS.forEach(",
+    ] {
+        if update_wrapper.contains(forbidden) || update_all_wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge command-preview JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "struct BridgePreviewState",
+        "static BRIDGE_PREVIEWS:",
+        "fn clear_bridge_preview_timer(",
+        "fn begin_bridge_preview_sequence(",
+        "fn store_bridge_preview_timer(",
+        "fn bridge_preview_sequence_is_current(",
+        "async fn finish_bridge_preview_update(",
+        "fn bridge_update_command_inner(",
+        "js_name = bridgeUpdateCommandUi",
+        "pub fn bridge_update_command_ui(",
+        "js_name = bridgeUpdateAllCommandsUi",
+        "pub fn bridge_update_all_commands_ui(",
+        "js_name = bridgePreviewSequence",
+        "pub fn bridge_preview_sequence(",
+        "bridge_sync_mode_controls_ui(",
+        "bridge_reassign_instance_ports_from_external_range_r91(",
+        "bridge_sync_instance_preview_rows_r8b(",
+        "bridge_validate_form_ui(",
+        "bridge_build_apply_payload_ui(",
+        "crate::bridge_start_trace::bridge_prepare_preview(",
+        "bridge_preview_message_inner(",
+        "\"clearTimeout\"",
+        "\"setTimeout\"",
+        "JsValue::from_f64(180.0)",
+        "\"typed-effective-settings-preview\"",
+        "\"effectiveSettings\"",
+        "\"kgwBridgeCommandOwner\"",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge command-preview Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_preview_message_ownership(source: &str, helpers: &str) -> Result<(), String> {
     for forbidden in [
         "function kgwBridgePreviewMessage(",
@@ -1617,8 +1703,11 @@ fn verify_preview_message_ownership(source: &str, helpers: &str) -> Result<(), S
     if !source.contains("bridgePreviewMessage as wasmBridgePreviewMessage") {
         return Err("Bridge preview-message Rust/WASM binding missing".to_owned());
     }
-    if source.matches("wasmBridgePreviewMessage(").count() != 6 {
-        return Err("Bridge preview-message direct-call count drifted".to_owned());
+    if source.matches("wasmBridgePreviewMessage(").count() != 2 {
+        return Err(
+            "Bridge preview-message must have exactly two remaining direct JavaScript calls after OP274 moves command-preview status ownership into Rust"
+                .to_owned(),
+        );
     }
     for required in [
         "fn bridge_preview_message_inner(",
@@ -2407,9 +2496,9 @@ fn verify_static_contracts(
     if !source.contains("bridgeInstanceNetworkKeyR15 as wasmBridgeInstanceNetworkKeyR15") {
         return Err("Bridge R15 instance network-key Rust/WASM import is missing".to_owned());
     }
-    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 6 {
+    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 5 {
         return Err(
-            "Bridge R15 instance network-key owner must have exactly six direct generated-WASM call sites after OP255 moves the R51 persistence lifecycle into Rust"
+            "Bridge R15 instance network-key owner must have exactly five remaining direct generated-WASM call sites after OP274 moves update-command network-key selection into Rust"
                 .to_owned(),
         );
     }
@@ -2555,10 +2644,10 @@ fn verify_static_contracts(
     if source
         .matches("wasmBridgePreparePreview(String(net || \"\"),")
         .count()
-        != 3
+        != 2
     {
         return Err(
-            "Bridge preview runtime dispatch must use exactly three direct Rust/WASM call sites"
+            "Bridge preview runtime dispatch must use exactly two remaining direct JavaScript Rust/WASM call sites after OP274 moves update-command preview dispatch into Rust"
                 .to_owned(),
         );
     }
@@ -2636,6 +2725,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_dependency_sync_ownership(&full_source, &helper_source)?;
     verify_mode_controls_ownership(&full_source, &helper_source)?;
     verify_command_orchestration_ownership(&full_source, &helper_source)?;
+    verify_command_preview_ownership(&full_source, &helper_source)?;
     verify_inprocess_mode_controls_ownership(&full_source, &helper_source)?;
     verify_full_form_validation_ownership(&full_source, &helper_source)?;
     verify_require_valid_settings_ownership(&full_source, &helper_source)?;
@@ -3852,6 +3942,51 @@ mod tests {
             instance_settings.replace("\"CPU threads\"", "\"Missing CPU threads\""),
         ] {
             assert!(verify_start_options_ownership(source, helpers, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn command_preview_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_command_preview_ownership(source, helpers).is_ok());
+
+        for mutation in [
+            source.replace(
+                "bridgeUpdateCommandUi as wasmBridgeUpdateCommandUi",
+                "missingUpdateCommandUi as wasmBridgeUpdateCommandUi",
+            ),
+            source.replace(
+                "return wasmBridgeUpdateCommandUi(",
+                "return wasmBridgePreparePreview(",
+            ),
+            source.replacen(
+                "function updateAllCommands() {",
+                "function updateAllCommands() {\n  bridgeSyncAllModeControls();",
+                1,
+            ),
+        ] {
+            assert!(verify_command_preview_ownership(&mutation, helpers).is_err());
+        }
+
+        for mutation in [
+            helpers.replace(
+                "js_name = bridgeUpdateCommandUi",
+                "js_name = missingUpdateCommandUi",
+            ),
+            helpers.replace(
+                "fn begin_bridge_preview_sequence(",
+                "fn missing_begin_bridge_preview_sequence(",
+            ),
+            helpers.replace(
+                "crate::bridge_start_trace::bridge_prepare_preview(",
+                "crate::bridge_start_trace::missing_bridge_prepare_preview(",
+            ),
+        ] {
+            assert!(verify_command_preview_ownership(source, &mutation).is_err());
         }
     }
 
