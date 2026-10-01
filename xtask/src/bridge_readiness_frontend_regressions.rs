@@ -22,7 +22,7 @@ const SLICES: &[(&str, &str)] = &[
         "const bridgeInstances = {",
     ),
     (
-        "function kgwBridgeSetRuntimeErrorV1(",
+        "function kgwBridgeMarkRestartRequiredV1(",
         "async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning",
     ),
     (
@@ -34,7 +34,7 @@ const SLICES: &[(&str, &str)] = &[
         "/* KGW_R51_DIRECT_BRIDGE_LOG_RUNTIME_SETTINGS_OWNER */",
     ),
     (
-        "function kgwBridgeR51RuntimePresentationCallbacksR256(",
+        "function kgwBridgeR51LiveRefreshCallbacksR257(",
         "// KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E",
     ),
 ];
@@ -631,6 +631,8 @@ const sandbox = {
   wasmBridgeR51IsRunning: wasm.bridgeR51IsRunning,
   wasmBridgeR51SetRuntimeButtons: wasm.bridgeR51SetRuntimeButtons,
   wasmBridgeR51SetRuntimeUnknown: wasm.bridgeR51SetRuntimeUnknown,
+  wasmBridgeSetRuntimeErrorV1: wasm.bridgeSetRuntimeErrorV1,
+  wasmBridgeSetRuntimeActivityV1: wasm.bridgeSetRuntimeActivityV1,
   wasmBridgeR51RefreshOne: wasm.bridgeR51RefreshOne,
   wasmBridgeR51StartLiveRefresh: wasm.bridgeR51StartLiveRefresh,
   wasmBridgeActiveRawLogInstanceId: wasm.bridgeActiveRawLogInstanceId,
@@ -663,7 +665,7 @@ sandbox.kgwBridgeR51KickRawLogLiveR134E = () => {};
 
 vm.createContext(sandbox);
 vm.runInContext(selected, sandbox, { filename: request.sourceName });
-const api = vm.runInContext("({ runtimeRunning: wasmBridgeV7RuntimeRunningFromText, isRunning: wasmBridgeR51IsRunning, setButtons: (net, running, transition = \"\", runtimeError = \"\", statusText = \"\") => wasmBridgeR51SetRuntimeButtons(String(net || \"\"), Boolean(running), String(transition || \"\"), String(runtimeError || \"\"), String(statusText || \"\")), setUnknown: (net, message, source = \"\") => wasmBridgeR51SetRuntimeUnknown(String(net || \"\"), String(message || \"\"), String(source || \"\"), kgwBridgeR51RuntimePresentationCallbacksR256()), refreshOne: (net, reason = \"harness\") => wasmBridgeR51RefreshOne(String(net || \"\"), String(reason || \"harness\"), kgwBridgeR51LiveRefreshCallbacksR257()), setError: kgwBridgeSetRuntimeErrorV1, setActivity: kgwBridgeSetRuntimeActivityV1, runAction: runBridgeIntegratedAction })", sandbox);
+const api = vm.runInContext("({ runtimeRunning: wasmBridgeV7RuntimeRunningFromText, isRunning: wasmBridgeR51IsRunning, setButtons: (net, running, transition = \"\", runtimeError = \"\", statusText = \"\") => wasmBridgeR51SetRuntimeButtons(String(net || \"\"), Boolean(running), String(transition || \"\"), String(runtimeError || \"\"), String(statusText || \"\")), setUnknown: (net, message, source = \"\") => wasmBridgeR51SetRuntimeUnknown(String(net || \"\"), String(message || \"\"), String(source || \"\")), refreshOne: (net, reason = \"harness\") => wasmBridgeR51RefreshOne(String(net || \"\"), String(reason || \"harness\"), kgwBridgeR51LiveRefreshCallbacksR257()), setError: wasmBridgeSetRuntimeErrorV1, setActivity: wasmBridgeSetRuntimeActivityV1, runAction: runBridgeIntegratedAction })", sandbox);
 
 function snapshot() {
   return {
@@ -952,7 +954,6 @@ fn verify_r51_runtime_presentation_ownership(
     for required in [
         "bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons",
         "bridgeR51SetRuntimeUnknown as wasmBridgeR51SetRuntimeUnknown",
-        "function kgwBridgeR51RuntimePresentationCallbacksR256(",
     ] {
         if !source.contains(required) {
             return Err(format!(
@@ -962,15 +963,8 @@ fn verify_r51_runtime_presentation_ownership(
     }
     if source.matches("wasmBridgeR51SetRuntimeButtons(").count() != 9
         || source.matches("wasmBridgeR51SetRuntimeUnknown(").count() != 1
-        || source
-            .matches("kgwBridgeR51RuntimePresentationCallbacksR256()")
-            .count()
-            != 2
     {
-        return Err(
-            "Bridge R51 runtime-presentation direct-call or callback-factory count drifted"
-                .to_owned(),
-        );
+        return Err("Bridge R51 runtime-presentation direct-call count drifted".to_owned());
     }
     for required in [
         "js_name = bridgeR51SetRuntimeButtons",
@@ -980,11 +974,69 @@ fn verify_r51_runtime_presentation_ownership(
         "Bridge: Reconciling | RPC/synchronization/mining: unknown",
         "Enable Profile in Settings",
         "Reconciling runtime state.",
-        "setRuntimeError",
     ] {
         if !runtime_core.contains(required) {
             return Err(format!(
                 "Bridge R51 runtime-presentation Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_runtime_notice_ownership(source: &str, runtime_core: &str) -> Result<(), String> {
+    for forbidden in [
+        "function kgwBridgeSetRuntimeErrorV1(",
+        "function kgwBridgeSetRuntimeActivityV1(",
+        "kgwBridgeSetRuntimeErrorV1(",
+        "kgwBridgeSetRuntimeActivityV1(",
+        "function kgwBridgeR51RuntimePresentationCallbacksR256(",
+        "kgwBridgeR51RuntimePresentationCallbacksR256()",
+        "setRuntimeError:",
+        "setRuntimeActivity:",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge runtime-notice JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "bridgeSetRuntimeErrorV1 as wasmBridgeSetRuntimeErrorV1",
+        "bridgeSetRuntimeActivityV1 as wasmBridgeSetRuntimeActivityV1",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge runtime-notice Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    if source.matches("wasmBridgeSetRuntimeErrorV1(").count() != 13
+        || source.matches("wasmBridgeSetRuntimeActivityV1(").count() != 9
+    {
+        return Err("Bridge runtime-notice direct-call count drifted".to_owned());
+    }
+    for required in [
+        "fn set_runtime_error_inner(",
+        "fn set_runtime_activity_inner(",
+        "js_name = bridgeSetRuntimeErrorV1",
+        "pub fn bridge_set_runtime_error_v1(",
+        "js_name = bridgeSetRuntimeActivityV1",
+        "pub fn bridge_set_runtime_activity_v1(",
+        "\"runtimeError\".to_owned()",
+        "\"runtimeStatus\".to_owned()",
+        "\"runtimeErrorSource\"",
+    ] {
+        if !runtime_core.contains(required) {
+            return Err(format!(
+                "Bridge runtime-notice Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    for retired_callback in ["\"setRuntimeError\"", "\"setRuntimeActivity\""] {
+        if runtime_core.contains(retired_callback) {
+            return Err(format!(
+                "Retired Bridge runtime-notice callback dispatch remains in Rust: {retired_callback}"
             ));
         }
     }
@@ -1567,6 +1619,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_storage_ownership(&full_source, &helper_source)?;
     verify_r51_keys_ownership(&full_source, &helper_source)?;
     verify_r51_runtime_presentation_ownership(&full_source, &runtime_core_source)?;
+    verify_runtime_notice_ownership(&full_source, &runtime_core_source)?;
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_static_contracts(
         &full_source,
@@ -2297,6 +2350,57 @@ mod tests {
                 &runtime_core.replace(
                     "js_name = bridgeR51SetRuntimeUnknown",
                     "js_name = missingR51SetRuntimeUnknown",
+                ),
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn runtime_notice_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let runtime_core =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_runtime_core.rs");
+        assert!(verify_runtime_notice_ownership(source, runtime_core).is_ok());
+        for mutation in [
+            source.replacen(
+                "wasmBridgeSetRuntimeErrorV1(",
+                "kgwBridgeSetRuntimeErrorV1(",
+                1,
+            ),
+            source.replacen(
+                "wasmBridgeSetRuntimeActivityV1(",
+                "kgwBridgeSetRuntimeActivityV1(",
+                1,
+            ),
+            source.replace(
+                "bridgeSetRuntimeErrorV1 as wasmBridgeSetRuntimeErrorV1",
+                "missingRuntimeErrorV1 as wasmBridgeSetRuntimeErrorV1",
+            ),
+            format!(
+                "{source}\nfunction kgwBridgeR51RuntimePresentationCallbacksR256() {{ return {{ setRuntimeError: () => null }}; }}\n"
+            ),
+        ] {
+            assert!(verify_runtime_notice_ownership(&mutation, runtime_core).is_err());
+        }
+        assert!(
+            verify_runtime_notice_ownership(
+                source,
+                &runtime_core.replace(
+                    "js_name = bridgeSetRuntimeActivityV1",
+                    "js_name = missingSetRuntimeActivityV1",
+                ),
+            )
+            .is_err()
+        );
+        assert!(
+            verify_runtime_notice_ownership(
+                source,
+                &runtime_core.replace(
+                    "fn set_runtime_error_inner(",
+                    "fn missing_set_runtime_error_inner(",
                 ),
             )
             .is_err()

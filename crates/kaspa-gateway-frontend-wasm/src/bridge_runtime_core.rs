@@ -49,18 +49,6 @@ fn call2(target: &JsValue, name: &str, first: &JsValue, second: &JsValue) -> Opt
     function(target, name)?.call2(target, first, second).ok()
 }
 
-fn call3(
-    target: &JsValue,
-    name: &str,
-    first: &JsValue,
-    second: &JsValue,
-    third: &JsValue,
-) -> Option<JsValue> {
-    function(target, name)?
-        .call3(target, first, second, third)
-        .ok()
-}
-
 fn query(target: &JsValue, selector: &str) -> JsValue {
     call1(target, "querySelector", &JsValue::from_str(selector)).unwrap_or(JsValue::UNDEFINED)
 }
@@ -128,24 +116,74 @@ fn r51_active_raw_log_instance_id(callbacks: &JsValue, net: &str) -> String {
         .unwrap_or_default()
 }
 
-fn r51_set_runtime_error(callbacks: &JsValue, net: &str, message: &str, source: &str) {
-    let _ = call3(
-        callbacks,
-        "setRuntimeError",
-        &JsValue::from_str(net),
-        &JsValue::from_str(message),
-        &JsValue::from_str(source),
-    );
+fn js_or_empty(value: &JsValue) -> String {
+    if crate::js_boolean(value) {
+        text(value)
+    } else {
+        String::new()
+    }
 }
 
-fn r51_set_runtime_activity(callbacks: &JsValue, net: &str, message: &str, state: &str) {
-    let _ = call3(
-        callbacks,
-        "setRuntimeActivity",
-        &JsValue::from_str(net),
-        &JsValue::from_str(message),
-        &JsValue::from_str(state),
+fn set_runtime_error_inner(net: &str, error_text: &JsValue, error_source: &JsValue) -> bool {
+    let error_node = crate::bridge_frontend_helpers::bridge_by_id(
+        crate::bridge_frontend_helpers::bridge_element_id(
+            net.to_owned(),
+            "runtimeError".to_owned(),
+        ),
     );
+    if !present(&error_node) {
+        return false;
+    }
+    let message = js_or_empty(error_text).trim().to_owned();
+    set(&error_node, "textContent", &JsValue::from_str(&message));
+    set(
+        &error_node,
+        "hidden",
+        &JsValue::from_bool(message.is_empty()),
+    );
+    set(
+        &dataset(&error_node),
+        "runtimeErrorSource",
+        &JsValue::from_str(&js_or_empty(error_source)),
+    );
+    let _ = crate::apply_status_tone(error_node, JsValue::from_str("error"));
+    true
+}
+
+fn set_runtime_activity_inner(net: &str, message: &JsValue, state: &JsValue) -> bool {
+    let status_node = crate::bridge_frontend_helpers::bridge_by_id(
+        crate::bridge_frontend_helpers::bridge_element_id(
+            net.to_owned(),
+            "runtimeStatus".to_owned(),
+        ),
+    );
+    if !present(&status_node) {
+        return false;
+    }
+    let message = js_or_empty(message).trim().to_owned();
+    set(&status_node, "textContent", &JsValue::from_str(&message));
+    let explicit_state = js_or_empty(state);
+    let tone = if explicit_state.is_empty() {
+        let policy_status = crate::bridge_frontend_helpers::bridge_by_id(
+            crate::bridge_frontend_helpers::bridge_element_id(
+                net.to_owned(),
+                "policyStatus".to_owned(),
+            ),
+        );
+        text(&property(&dataset(&policy_status), "state"))
+    } else {
+        explicit_state
+    };
+    let _ = crate::apply_status_tone(status_node, JsValue::from_str(&tone));
+    true
+}
+
+fn r51_set_runtime_error(net: &str, message: &str, source: &str) {
+    let _ = set_runtime_error_inner(net, &JsValue::from_str(message), &JsValue::from_str(source));
+}
+
+fn r51_set_runtime_activity(net: &str, message: &str, state: &str) {
+    let _ = set_runtime_activity_inner(net, &JsValue::from_str(message), &JsValue::from_str(state));
 }
 
 fn stringify_runtime_result_value(value: &JsValue) -> String {
@@ -472,9 +510,8 @@ fn r51_status_task(net: &str, callbacks: &JsValue) -> Option<Promise> {
                     && text(&property(&dataset(&error_node), "runtimeErrorSource"))
                         == "status-refresh"
                 {
-                    r51_set_runtime_error(&callbacks_owned, &net_owned, "", "");
+                    r51_set_runtime_error(&net_owned, "", "");
                     r51_set_runtime_activity(
-                        &callbacks_owned,
                         &net_owned,
                         if running {
                             "Bridge is running."
@@ -494,9 +531,8 @@ fn r51_status_task(net: &str, callbacks: &JsValue) -> Option<Promise> {
                 );
 
                 if !running && !runtime_error.is_empty() {
-                    r51_set_runtime_error(&callbacks_owned, &net_owned, &runtime_error, "");
+                    r51_set_runtime_error(&net_owned, &runtime_error, "");
                     r51_set_runtime_activity(
-                        &callbacks_owned,
                         &net_owned,
                         "Bridge runtime failed after readiness.",
                         "failed",
@@ -571,7 +607,6 @@ fn r51_status_task(net: &str, callbacks: &JsValue) -> Option<Promise> {
                     net_owned.clone(),
                     message,
                     "status-refresh".to_owned(),
-                    callbacks_owned.clone(),
                 );
             }
         }
@@ -837,13 +872,22 @@ pub fn bridge_r51_set_runtime_buttons(
     }
 }
 
-#[wasm_bindgen(js_name = bridgeR51SetRuntimeUnknown)]
-pub fn bridge_r51_set_runtime_unknown(
+#[wasm_bindgen(js_name = bridgeSetRuntimeErrorV1)]
+pub fn bridge_set_runtime_error_v1(
     net: String,
-    message: String,
-    error_source: String,
-    callbacks: JsValue,
-) {
+    error_text: JsValue,
+    error_source: JsValue,
+) -> bool {
+    set_runtime_error_inner(&net, &error_text, &error_source)
+}
+
+#[wasm_bindgen(js_name = bridgeSetRuntimeActivityV1)]
+pub fn bridge_set_runtime_activity_v1(net: String, message: JsValue, state: JsValue) -> bool {
+    set_runtime_activity_inner(&net, &message, &state)
+}
+
+#[wasm_bindgen(js_name = bridgeR51SetRuntimeUnknown)]
+pub fn bridge_r51_set_runtime_unknown(net: String, message: String, error_source: String) {
     let panel = crate::bridge_instance_settings::bridge_r51_panel(net.clone());
     if !present(&panel) {
         return;
@@ -896,13 +940,7 @@ pub fn bridge_r51_set_runtime_unknown(
         set(&button, "title", &JsValue::from_str(&message));
     }
 
-    let net_value = JsValue::from_str(&net);
-    let _ = call2(
-        &callbacks,
-        "setRuntimeActivity",
-        &net_value,
-        &JsValue::from_str("Reconciling runtime state."),
-    );
+    r51_set_runtime_activity(&net, "Reconciling runtime state.", "");
 
     let current_error = crate::bridge_frontend_helpers::bridge_by_id(
         crate::bridge_frontend_helpers::bridge_element_id(net.clone(), "runtimeError".to_owned()),
@@ -913,13 +951,7 @@ pub fn bridge_r51_set_runtime_unknown(
             .is_empty()
         && text(&property(&dataset(&current_error), "runtimeErrorSource")) != "status-refresh";
     if !preserve_action_error {
-        let _ = call3(
-            &callbacks,
-            "setRuntimeError",
-            &net_value,
-            &JsValue::from_str(&message),
-            &JsValue::from_str(&error_source),
-        );
+        r51_set_runtime_error(&net, &message, &error_source);
     }
 }
 

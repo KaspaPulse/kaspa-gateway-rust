@@ -25,6 +25,8 @@ import initBridgeRust, {
   bridgeV7RuntimeRunningFromText as wasmBridgeV7RuntimeRunningFromText,
   bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons,
   bridgeR51SetRuntimeUnknown as wasmBridgeR51SetRuntimeUnknown,
+  bridgeSetRuntimeErrorV1 as wasmBridgeSetRuntimeErrorV1,
+  bridgeSetRuntimeActivityV1 as wasmBridgeSetRuntimeActivityV1,
   bridgeR51RefreshOne as wasmBridgeR51RefreshOne,
   bridgeR51StartLiveRefresh as wasmBridgeR51StartLiveRefresh,
   bridgeR51CaptureFactoryDefaults as wasmBridgeR51CaptureFactoryDefaults,
@@ -1589,23 +1591,6 @@ async function invokeBridgeIntegratedRuntime(command, net) {
 
 
 // KGW_BRIDGE_INPROCESS_SAME_DB_OWNER_V7
-function kgwBridgeSetRuntimeErrorV1(net, errorText = "", errorSource = "") {
-  const errorNode = wasmBridgeById(wasmBridgeElementId(net, "runtimeError"));
-  if (!errorNode) return;
-  const text = String(errorText || "").trim();
-  errorNode.textContent = text;
-  errorNode.hidden = !text;
-  errorNode.dataset.runtimeErrorSource = errorSource;
-  applyStatusTone(errorNode, "error");
-}
-
-function kgwBridgeSetRuntimeActivityV1(net, message = "", state = "") {
-  const statusNode = wasmBridgeById(wasmBridgeElementId(net, "runtimeStatus"));
-  if (!statusNode) return;
-  statusNode.textContent = String(message || "").trim();
-  applyStatusTone(statusNode, state || wasmBridgeById(wasmBridgeElementId(net, "policyStatus"))?.dataset.state);
-}
-
 function kgwBridgeMarkRestartRequiredV1(net) {
   const authority = wasmBridgeById(wasmBridgeElementId(net, "settingsAuthority"));
   if (!authority) return;
@@ -1685,7 +1670,7 @@ async function runBridgeIntegratedAction(action, net) {
   }
 
   if (action === "start" && !wasmBridgeNetworkEnabled(net)) {
-    kgwBridgeSetRuntimeErrorV1(
+    wasmBridgeSetRuntimeErrorV1(
       net,
       "Bridge start blocked: this network is disabled. Enable it in the network policy bar first."
     );
@@ -1722,7 +1707,7 @@ async function runBridgeIntegratedAction(action, net) {
     });
 
     if (scopedConflictResultR111F && typeof scopedConflictResultR111F === "object" && scopedConflictResultR111F.ok === false) {
-      kgwBridgeSetRuntimeErrorV1(net, String(scopedConflictResultR111F.message || "Bridge listener port conflict."));
+      wasmBridgeSetRuntimeErrorV1(net, String(scopedConflictResultR111F.message || "Bridge listener port conflict."));
       kgwBridgeRuntimeOwnerTraceR64D("r111f-scoped-conflict-start-blocked-return", {
         reason: "scoped-port-conflict",
         conflictCount: Number(scopedConflictResultR111F.conflictCount || 0),
@@ -1738,7 +1723,7 @@ async function runBridgeIntegratedAction(action, net) {
     });
 
     if (blockedBySameNetworkNode) {
-      kgwBridgeSetRuntimeErrorV1(
+      wasmBridgeSetRuntimeErrorV1(
         net,
         "Bridge start blocked: same-network node is already running in in-process mode."
       );
@@ -1759,7 +1744,7 @@ async function runBridgeIntegratedAction(action, net) {
   });
 
   if (KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(inFlightKey)) {
-    kgwBridgeSetRuntimeActivityV1(net, "Bridge " + action + " already in progress.");
+    wasmBridgeSetRuntimeActivityV1(net, "Bridge " + action + " already in progress.");
 
     kgwBridgeRuntimeOwnerTraceR64D("r64d-inflight-duplicate-return", {
       inFlightKey
@@ -1769,7 +1754,7 @@ async function runBridgeIntegratedAction(action, net) {
   }
 
   KGW_BRIDGE_RUNTIME_IN_FLIGHT.add(inFlightKey);
-  kgwBridgeSetRuntimeErrorV1(net, "");
+  wasmBridgeSetRuntimeErrorV1(net, "");
   wasmBridgeR51SetRuntimeButtons(String(net || ""), action === "stop", action === "start" ? "starting" : "stopping", "", "");
 
   kgwBridgeRuntimeOwnerTraceR64D("r64d-inflight-added", {
@@ -1788,7 +1773,7 @@ async function runBridgeIntegratedAction(action, net) {
       previewLength: String(preview || "").length
     });
 
-    kgwBridgeSetRuntimeActivityV1(net, "Bridge " + action + " requested.");
+    wasmBridgeSetRuntimeActivityV1(net, "Bridge " + action + " requested.");
 
     kgwBridgeRuntimeOwnerTraceR64D("r64d-invoke-begin", {
       command,
@@ -1821,7 +1806,7 @@ async function runBridgeIntegratedAction(action, net) {
       });
 
       if (confirmedStarted && !blocked) {
-        kgwBridgeSetRuntimeErrorV1(net, "");
+        wasmBridgeSetRuntimeErrorV1(net, "");
         wasmBridgeR51SetRuntimeButtons(String(net || ""), true, "", "", "");
         const bridgeNodeMode = String(fields.node_mode || fields.nodeMode || "").toLowerCase();
         const bridgeStartWasInprocess = wasmBridgeStartWasInprocessR65F(
@@ -1846,16 +1831,16 @@ async function runBridgeIntegratedAction(action, net) {
           previewDeclaredInprocess: wasmBridgePreviewDeclaresInprocessR65F(preview),
           bridgeStartWasInprocess
         });
-        kgwBridgeSetRuntimeActivityV1(net, "Bridge READY attestation confirmed.", "ready");
+        wasmBridgeSetRuntimeActivityV1(net, "Bridge READY attestation confirmed.", "ready");
         kgwBridgeR51KickRawLogLiveR134E(net, "bridge-start-confirmed");
       } else if (blocked) {
         wasmBridgeR51SetRuntimeButtons(String(net || ""), false, "", "", "");
-        kgwBridgeSetRuntimeErrorV1(net, raw);
-        kgwBridgeSetRuntimeActivityV1(net, "Bridge start failed.", "failed");
+        wasmBridgeSetRuntimeErrorV1(net, raw);
+        wasmBridgeSetRuntimeActivityV1(net, "Bridge start failed.", "failed");
       } else {
         wasmBridgeR51SetRuntimeButtons(String(net || ""), false, "", "", "");
-        kgwBridgeSetRuntimeErrorV1(net, "Backend Start did not provide READY attestation: " + raw);
-        kgwBridgeSetRuntimeActivityV1(net, "Bridge start was not confirmed by READY attestation.", "warning");
+        wasmBridgeSetRuntimeErrorV1(net, "Backend Start did not provide READY attestation: " + raw);
+        wasmBridgeSetRuntimeActivityV1(net, "Bridge start was not confirmed by READY attestation.", "warning");
       }
     }
 
@@ -1871,7 +1856,7 @@ async function runBridgeIntegratedAction(action, net) {
         const stopFailed = Boolean(outcome?.stopFailed);
         KGW_BRIDGE_RUNTIME_IN_FLIGHT.delete(inFlightKey);
         wasmBridgeR51SetRuntimeButtons(String(net || ""), false, "", "", "");
-        kgwBridgeSetRuntimeErrorV1(
+        wasmBridgeSetRuntimeErrorV1(
           net,
           forced
             ? "Stop required FORCED termination. " + String(fields.reason || raw)
@@ -1883,7 +1868,7 @@ async function runBridgeIntegratedAction(action, net) {
           source: "bridge-stop-confirmed",
           action: "stop"
         });
-        kgwBridgeSetRuntimeActivityV1(
+        wasmBridgeSetRuntimeActivityV1(
           net,
           forced ? "Bridge FORCED termination confirmed." : stopFailed ? "Bridge worker exited after graceful shutdown failure." : fields.graceful === "true" ? "Bridge graceful official shutdown confirmed." : "Bridge already stopped."
         );
@@ -1907,10 +1892,9 @@ async function runBridgeIntegratedAction(action, net) {
     wasmBridgeR51SetRuntimeUnknown(
       String(net || ""),
       String(message || "Runtime status is temporarily unavailable. Reconciling with the backend."),
-      "",
-      kgwBridgeR51RuntimePresentationCallbacksR256()
+      ""
     );
-    kgwBridgeSetRuntimeActivityV1(net, "Bridge " + action + " failed; reconciling runtime state.");
+    wasmBridgeSetRuntimeActivityV1(net, "Bridge " + action + " failed; reconciling runtime state.");
 
     return true;
   } finally {
@@ -2126,15 +2110,6 @@ function kgwBridgeR51PersistenceCallbacksR255() {
 
 /* R9B programmatic restore relies on Event.isTrusted in the current input/change owners; no JavaScript callback wrapper is required. */
 
-function kgwBridgeR51RuntimePresentationCallbacksR256() {
-  return {
-    setRuntimeActivity: (net, message) =>
-      kgwBridgeSetRuntimeActivityV1(String(net || ""), String(message || "")),
-    setRuntimeError: (net, message, errorSource) =>
-      kgwBridgeSetRuntimeErrorV1(String(net || ""), String(message || ""), String(errorSource || ""))
-  };
-}
-
 function kgwBridgeR51LiveRefreshCallbacksR257() {
   return {
     invokeRuntime: (command, net) =>
@@ -2147,18 +2122,6 @@ function kgwBridgeR51LiveRefreshCallbacksR257() {
         bridgeInstances,
         activeInstance,
         String(net || "")
-      ),
-    setRuntimeActivity: (net, message, state) =>
-      kgwBridgeSetRuntimeActivityV1(
-        String(net || ""),
-        String(message || ""),
-        String(state || "")
-      ),
-    setRuntimeError: (net, message, errorSource) =>
-      kgwBridgeSetRuntimeErrorV1(
-        String(net || ""),
-        String(message || ""),
-        String(errorSource || "")
       )
   };
 }
@@ -2265,7 +2228,7 @@ function installActions(root) {
       event.stopPropagation();
 
       const net = button.dataset.net || "";
-      const result = wasmBridgeApplyPortAutofixUiR37(String(net || ""), bridgeInstances, activeInstance, (targetNet) => bridgeRefreshInstances(targetNet), (targetNet) => updateCommand(targetNet), (targetNet, message) => kgwBridgeSetRuntimeActivityV1(targetNet, message));
+      const result = wasmBridgeApplyPortAutofixUiR37(String(net || ""), bridgeInstances, activeInstance, (targetNet) => bridgeRefreshInstances(targetNet), (targetNet) => updateCommand(targetNet), (targetNet, message) => wasmBridgeSetRuntimeActivityV1(targetNet, message));
 
       button.textContent = result.changed ? "Fixed " + String(result.changed) + " Port(s)" : "No Fix Needed";
       window.setTimeout(() => wasmBridgeRefreshPortAutofixButtonsUiR37("button-feedback", bridgeInstances, activeInstance), 1200);
@@ -2539,7 +2502,7 @@ function installActions(root) {
           enabled = (await confirmUserAction("Testnet 13 is experimental and uses a separate non-production runtime. Enable it only for isolated testing. Continue?")) === true;
         } catch (error) {
           enabled = false;
-          kgwBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
+          wasmBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
         } finally { target.disabled = false; target.checked = enabled; }
       }
 
@@ -2599,7 +2562,7 @@ function installActions(root) {
         button.dataset.kgwSettingsActionResult = "success";
       } catch (error) {
         button.dataset.kgwSettingsActionResult = "failed";
-        kgwBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
+        wasmBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
       }
       scopedUpdate(net, "save-settings");
       return;
@@ -2611,7 +2574,7 @@ function installActions(root) {
         button.dataset.kgwSettingsActionResult = "success";
       } catch (error) {
         button.dataset.kgwSettingsActionResult = "failed";
-        kgwBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
+        wasmBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
       }
       scopedUpdate(net, "set-defaults");
       return;
@@ -2623,7 +2586,7 @@ function installActions(root) {
         button.dataset.kgwSettingsActionResult = "success";
       } catch (error) {
         button.dataset.kgwSettingsActionResult = "failed";
-        kgwBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
+        wasmBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
       }
       scopedUpdate(net, "restore-defaults");
       return;
@@ -2662,8 +2625,8 @@ function installActions(root) {
       if (typeof runBridgeIntegratedAction === "function") {
         runBridgeIntegratedAction(action, net).catch(function (error) {
           wasmBridgeR51SetRuntimeButtons(String(net || ""), false, "", "", "");
-          kgwBridgeSetRuntimeErrorV1(net, error && error.message ? error.message : String(error));
-          kgwBridgeSetRuntimeActivityV1(net, "Bridge " + action + " failed.");
+          wasmBridgeSetRuntimeErrorV1(net, error && error.message ? error.message : String(error));
+          wasmBridgeSetRuntimeActivityV1(net, "Bridge " + action + " failed.");
         });
       }
     }
