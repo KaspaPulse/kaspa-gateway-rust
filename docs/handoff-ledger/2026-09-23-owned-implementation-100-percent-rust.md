@@ -229,3 +229,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: R15 instance network-key direct-call count was narrowed from four to three after renderer network canonicalization moved into Rust; obsolete renderer-only JavaScript WASM imports were removed. No ownership prohibition was weakened.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP278 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP279 - Bridge instance refresh orchestration Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP278 closeout `b0577d86cd339cf416496a2a3dccfd8184d5b1cc`; BASE_TREE `e7ed8d1168e9536b349eb2006600d0549db13e4b`; worktree clean at intent time.
+- BOUNDARY: move `bridgeRefreshInstances` orchestration into Rust/WASM while preserving explicit JavaScript callbacks only for settings decoration, instance-container owner installation, and command-preview refresh. Rust owns network canonicalization, instances-container lookup/id assignment, Rust renderer invocation, innerHTML replacement, and callback sequencing.
+- ACCEPTANCE: Rust export + thin JS wrapper; fail-closed ownership regression rejects legacy JavaScript refresh orchestration; generated WASM consistent; targeted behavior/static contracts plus fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
