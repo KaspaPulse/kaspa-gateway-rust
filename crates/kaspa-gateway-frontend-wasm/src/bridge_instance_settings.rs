@@ -503,6 +503,62 @@ fn js_option_string(value: Option<String>) -> JsValue {
         .unwrap_or(JsValue::NULL)
 }
 
+fn bridge_start_options_inner(net: &str) -> Result<JsValue, JsValue> {
+    let output = Object::new();
+    let config_file = if bridge_command_options::bridge_has_config(net.to_owned()) {
+        JsValue::from_str(&field_value(net, "config"))
+    } else {
+        JsValue::NULL
+    };
+    set(output.as_ref(), "configFile", &config_file);
+
+    let miner = Object::new();
+    let enabled = net != "mainnet"
+        && bridge_frontend_helpers::bridge_checked(net.to_owned(), "internalCpuMiner".to_owned());
+    set(miner.as_ref(), "enabled", &JsValue::from_bool(enabled));
+
+    if enabled {
+        set(
+            miner.as_ref(),
+            "address",
+            &JsValue::from_str(&field_value(net, "internalCpuMinerAddress")),
+        );
+        let threads = parse_unsigned_text(
+            "CPU threads",
+            &field_value(net, "internalCpuMinerThreads"),
+            Some(1),
+            256,
+        )
+        .map_err(|error| JsValue::from_str(&error))?;
+        set(miner.as_ref(), "threads", &js_option_number(threads));
+
+        let throttle_ms = parse_unsigned_text(
+            "CPU throttle",
+            &field_value(net, "internalCpuMinerThrottleMs"),
+            None,
+            60_000,
+        )
+        .map_err(|error| JsValue::from_str(&error))?;
+        set(miner.as_ref(), "throttleMs", &js_option_number(throttle_ms));
+
+        let template_poll_ms = parse_unsigned_text(
+            "Template poll interval",
+            &field_value(net, "internalCpuMinerTemplatePollMs"),
+            None,
+            60_000,
+        )
+        .map_err(|error| JsValue::from_str(&error))?;
+        set(
+            miner.as_ref(),
+            "templatePollMs",
+            &js_option_number(template_poll_ms),
+        );
+    }
+
+    set(output.as_ref(), "internalCpuMiner", miner.as_ref());
+    Ok(output.into())
+}
+
 fn copy_object_fields(source: &JsValue, output: &Object) {
     if !source.is_object() || source.is_null() {
         return;
@@ -1893,6 +1949,11 @@ pub fn bridge_port_listen_v1(value: JsValue, fallback: JsValue) -> JsValue {
         &crate::js_string_owned(&value),
         &crate::js_string_owned(&fallback),
     ))
+}
+
+#[wasm_bindgen(js_name = bridgeStartOptions)]
+pub fn bridge_start_options(net: String) -> Result<JsValue, JsValue> {
+    bridge_start_options_inner(&net)
 }
 
 #[wasm_bindgen(js_name = bridgeParseUnsignedV1)]

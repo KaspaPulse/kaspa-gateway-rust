@@ -53,7 +53,7 @@ import initBridgeRust, {
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings,
   bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord,
-  bridgeParseUnsignedV1 as wasmBridgeParseUnsignedV1,
+  bridgeStartOptions as wasmBridgeStartOptions,
   bridgeInstanceCommandCheckboxFromInstancesR13B as wasmBridgeInstanceCommandCheckboxFromInstancesR13B,
   bridgeInstanceCommandSetOptionR13B as wasmBridgeInstanceCommandSetOptionR13B,
   bridgeInstanceCommandShouldIncludeFromInstancesR13B as wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B,
@@ -1512,18 +1512,7 @@ const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();
 
 /* KGW_BRIDGE_START_TRACE_V1 is Rust-owned in bridge_start_trace.rs. */
 
-function kgwBridgeStartOptions(net) {
-  const enabled = net !== "mainnet" && wasmBridgeChecked(net, "internalCpuMiner");
-  return {
-    configFile: wasmBridgeHasConfig(String(net || "")) ? wasmBridgeValue(net, "config") : null,
-    internalCpuMiner: enabled ? {
-      enabled: true, address: wasmBridgeValue(net, "internalCpuMinerAddress"),
-      threads: wasmBridgeParseUnsignedV1("CPU threads", wasmBridgeValue(net, "internalCpuMinerThreads"), 1, 256),
-      throttleMs: wasmBridgeParseUnsignedV1("CPU throttle", wasmBridgeValue(net, "internalCpuMinerThrottleMs"), null, 60000),
-      templatePollMs: wasmBridgeParseUnsignedV1("Template poll interval", wasmBridgeValue(net, "internalCpuMinerTemplatePollMs"), null, 60000),
-    } : { enabled: false },
-  };
-}
+/* KGW_BRIDGE_START_OPTIONS is Rust-owned in bridge_instance_settings.rs. */
 
 function buildApplyPayload(net, command) {
   if (command === "kgw_kgw_apply_node_settings_v1") {
@@ -1564,7 +1553,7 @@ function buildApplyPayload(net, command) {
       bridgeStructuredInstances: JSON.stringify(structuredInstances || {}),
       effectiveNodeSettings: kgwBridgeEffectiveInprocessNodeSettings(net),
       effectiveBridgeSettings: wasmBridgeEffectiveSettingsV1(String(net || ""), structuredInstances || {}),
-      bridgeOptions: kgwBridgeStartOptions(net),
+      bridgeOptions: wasmBridgeStartOptions(String(net || "")),
       experimentalNetworkOptIn: net === "testnet13" && wasmBridgeNetworkEnabled(net),
     };
   }

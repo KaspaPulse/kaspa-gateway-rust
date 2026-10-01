@@ -11,6 +11,8 @@ const BRIDGE_RUNTIME_CORE_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_runtime_core.rs";
 const BRIDGE_START_TRACE_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs";
+const BRIDGE_INSTANCE_SETTINGS_SOURCE: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs";
 const WASM_JS: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 const WASM_BIN: &str =
@@ -522,6 +524,49 @@ const inprocessNodeOwnerGuard = {
 mainnetNodeMode.value = "external";
 transportOwnerStatus = "transport-ok";
 
+const mainnetMinerKey = wasm.bridgeElementId("mainnet", "internalCpuMiner");
+const previousMainnetMiner = elements.get(mainnetMinerKey) || null;
+const mainnetMiner = previousMainnetMiner || new Element();
+const previousMainnetMinerChecked = Boolean(mainnetMiner.checked);
+mainnetMiner.checked = true;
+elements.set(mainnetMinerKey, mainnetMiner);
+const startOptionsMainnet = wasm.bridgeStartOptions("mainnet");
+mainnetMiner.checked = previousMainnetMinerChecked;
+if (!previousMainnetMiner) elements.delete(mainnetMinerKey);
+
+function op261Field(name, value = "", checked = false) {
+  const field = new Element();
+  field.value = String(value);
+  field.checked = Boolean(checked);
+  elements.set(wasm.bridgeElementId("op261", name), field);
+  return field;
+}
+op261Field("config", "C:\\bridge-op261.toml");
+op261Field("internalCpuMiner", "", true);
+op261Field("internalCpuMinerAddress", "kaspa:op261-address");
+const op261Threads = op261Field("internalCpuMinerThreads", "");
+op261Field("internalCpuMinerThrottleMs", "250");
+op261Field("internalCpuMinerTemplatePollMs", "");
+wasm.bridgeCommandSetOptionR7("op261", "config", true);
+const startOptionsEnabled = wasm.bridgeStartOptions("op261");
+wasm.bridgeCommandSetOptionR7("op261", "config", false);
+const startOptionsConfigDisabled = wasm.bridgeStartOptions("op261");
+wasm.bridgeCommandSetOptionR7("op261", "config", true);
+op261Threads.value = "257";
+let startOptionsInvalidError = "";
+try {
+  wasm.bridgeStartOptions("op261");
+} catch (error) {
+  startOptionsInvalidError = String(error?.message || error || "");
+}
+op261Threads.value = "";
+const startOptionsOwnership = {
+  mainnet: startOptionsMainnet,
+  enabled: startOptionsEnabled,
+  configDisabled: startOptionsConfigDisabled,
+  invalidError: startOptionsInvalidError
+};
+
 let defaultPathUpdateCalls = 0;
 let defaultPathUpdateNet = "";
 const defaultPathContextCallsBefore = transportCalls.filter(
@@ -830,6 +875,7 @@ const output = {
     unavailableError: previewUnavailableError
   },
   inprocessNodeOwnerGuard,
+  startOptionsOwnership,
   runtimeRunning: {
     liveOnly: api.runtimeRunning("role=node;network=mainnet;running=true"),
     ready: api.runtimeRunning("role=node;network=mainnet;running=true;readiness=READY")
@@ -1260,6 +1306,48 @@ fn verify_inprocess_node_owner_guard_ownership(
         if !start_trace.contains(required) {
             return Err(format!(
                 "Bridge in-process node-owner guard Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_start_options_ownership(source: &str, instance_settings: &str) -> Result<(), String> {
+    for forbidden in ["function kgwBridgeStartOptions(", "kgwBridgeStartOptions("] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge start-options JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+    if !source.contains("bridgeStartOptions as wasmBridgeStartOptions") {
+        return Err("Bridge start-options Rust/WASM binding missing".to_owned());
+    }
+    if source.matches("wasmBridgeStartOptions(").count() != 1 {
+        return Err("Bridge start-options direct-call count drifted".to_owned());
+    }
+    for required in [
+        "fn bridge_start_options_inner(",
+        "js_name = bridgeStartOptions",
+        "pub fn bridge_start_options(",
+        "bridge_command_options::bridge_has_config",
+        "bridge_frontend_helpers::bridge_checked",
+        "net != \"mainnet\"",
+        "\"configFile\"",
+        "\"internalCpuMiner\"",
+        "\"internalCpuMinerAddress\"",
+        "\"internalCpuMinerThreads\"",
+        "\"internalCpuMinerThrottleMs\"",
+        "\"internalCpuMinerTemplatePollMs\"",
+        "\"CPU threads\"",
+        "\"CPU throttle\"",
+        "\"Template poll interval\"",
+        "Some(1)",
+        "60_000",
+    ] {
+        if !instance_settings.contains(required) {
+            return Err(format!(
+                "Bridge start-options Rust owner contract missing: {required}"
             ));
         }
     }
@@ -1765,6 +1853,10 @@ pub fn run(root: &Path) -> Result<String, String> {
         .map_err(|error| format!("failed to read {BRIDGE_RUNTIME_CORE_SOURCE}: {error}"))?;
     let start_trace_source = fs::read_to_string(root.join(BRIDGE_START_TRACE_SOURCE))
         .map_err(|error| format!("failed to read {BRIDGE_START_TRACE_SOURCE}: {error}"))?;
+    let instance_settings_source = fs::read_to_string(root.join(BRIDGE_INSTANCE_SETTINGS_SOURCE))
+        .map_err(|error| {
+        format!("failed to read {BRIDGE_INSTANCE_SETTINGS_SOURCE}: {error}")
+    })?;
     verify_r51_storage_ownership(&full_source, &helper_source)?;
     verify_r51_keys_ownership(&full_source, &helper_source)?;
     verify_r51_runtime_presentation_ownership(&full_source, &runtime_core_source)?;
@@ -1772,6 +1864,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_mark_restart_required_ownership(&full_source, &runtime_core_source)?;
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
+    verify_start_options_ownership(&full_source, &instance_settings_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -1846,6 +1939,52 @@ pub fn run(root: &Path) -> Result<String, String> {
         json!(
             "Cannot start bridge in in-process mode because the same-network node is already running. Stop the node first, or switch bridge node mode to External."
         ),
+    )?;
+
+    expect(
+        &actual,
+        "/startOptionsOwnership/mainnet/internalCpuMiner/enabled",
+        json!(false),
+    )?;
+    expect(
+        &actual,
+        "/startOptionsOwnership/enabled/configFile",
+        json!("C:\\bridge-op261.toml"),
+    )?;
+    expect(
+        &actual,
+        "/startOptionsOwnership/enabled/internalCpuMiner/enabled",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/startOptionsOwnership/enabled/internalCpuMiner/address",
+        json!("kaspa:op261-address"),
+    )?;
+    expect(
+        &actual,
+        "/startOptionsOwnership/enabled/internalCpuMiner/threads",
+        json!(1),
+    )?;
+    expect(
+        &actual,
+        "/startOptionsOwnership/enabled/internalCpuMiner/throttleMs",
+        json!(250),
+    )?;
+    expect(
+        &actual,
+        "/startOptionsOwnership/enabled/internalCpuMiner/templatePollMs",
+        Value::Null,
+    )?;
+    expect(
+        &actual,
+        "/startOptionsOwnership/configDisabled/configFile",
+        Value::Null,
+    )?;
+    expect(
+        &actual,
+        "/startOptionsOwnership/invalidError",
+        json!("CPU threads is outside the supported range"),
     )?;
 
     expect(&actual, "/previewTransport/result", json!("transport-ok"))?;
@@ -2678,6 +2817,43 @@ mod tests {
             start_trace.replace("\"runtimeRole\"", "\"missingRuntimeRole\""),
         ] {
             assert!(verify_inprocess_node_owner_guard_ownership(source, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn start_options_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let instance_settings = include_str!(
+            "../../crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs"
+        );
+        assert!(verify_start_options_ownership(source, instance_settings).is_ok());
+        for mutation in [
+            source.replacen("wasmBridgeStartOptions(", "kgwBridgeStartOptions(", 1),
+            source.replace(
+                "bridgeStartOptions as wasmBridgeStartOptions",
+                "missingStartOptions as wasmBridgeStartOptions",
+            ),
+            format!(
+                "{source}\nfunction kgwBridgeStartOptions(net) {{ return {{ configFile: net }}; }}\n"
+            ),
+        ] {
+            assert!(verify_start_options_ownership(&mutation, instance_settings).is_err());
+        }
+        for mutation in [
+            instance_settings.replace(
+                "js_name = bridgeStartOptions",
+                "js_name = missingBridgeStartOptions",
+            ),
+            instance_settings.replace(
+                "bridge_command_options::bridge_has_config",
+                "bridge_command_options::missing_bridge_has_config",
+            ),
+            instance_settings.replace("net != \"mainnet\"", "net != \"testnet\""),
+            instance_settings.replace("\"CPU threads\"", "\"Missing CPU threads\""),
+        ] {
+            assert!(verify_start_options_ownership(source, &mutation).is_err());
         }
     }
 
