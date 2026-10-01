@@ -379,3 +379,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 311/311 plus auxiliary suites; targeted log-font ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP292 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP293 - Bridge scoped action post-update Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP292 closeout `dfd2eaa360708f78146fbe674e1b6ea996d484a5`; BASE_TREE `e4eebc45b861eee6e99ec13e93e1a49ef51893ab`; worktree clean at intent time.
+- BOUNDARY: move specialized root-action scoped post-update orchestration into the existing Rust root action owner. Rust owns mode-control refresh, command update, and settings-scope trace after select/add/remove/save/default operations. Retire JavaScript `scopedUpdate` and its now-single-use `kgwBridgeExplicitTraceR27D` owner.
+- ACCEPTANCE: root-action Rust owner receives bridge instance state/update callback and performs scoped post-update; no JS scoped-update/explicit-trace functions remain; fail-closed regression and full qualification pass; no Push.
