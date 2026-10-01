@@ -146,9 +146,12 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP270 qualification unless invalidated.
 - PUSHED: NO
 
-## OP271 - Bridge in-process mode-controls Rust/WASM ownership (INTENT)
+## OP271 - Bridge in-process mode-controls Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP270 closeout `29162c5f849de940454d4e24824ed5daa367431f`; BASE_TREE `567bb4fe1b0549011712b252fe43f4bb6338ec11`; worktree clean at intent time.
-- BOUNDARY: move `bridgeControlCard`, `bridgeSetDisabled`, and `bridgeSyncInprocessNodeSettingsV12D` UI/state orchestration into Rust/WASM. JavaScript keeps thin compatibility wrappers only where current callers still need them. Rust owns field disable/card state, in-process section active/inactive state, appdir/network-args mirrors, mainnet danger gating, and read-only enforcement.
-- ACCEPTANCE: Rust exports + fail-closed ownership regression; exact JS wrappers only; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `bridgeControlCard`, `bridgeSetDisabled`, and `bridgeSyncInprocessNodeSettingsV12D` UI/state orchestration moved into Rust/WASM. JavaScript keeps thin compatibility wrappers only where current callers still need them. Rust owns field disable/card state, in-process section active/inactive state, appdir/network-args mirrors, mainnet danger gating, and read-only enforcement.
+- IMPLEMENTATION_CHECKPOINT: `bad5436dcf98464e84046dea810212ea7b52a414`, tree `686e31a77709d4e02353c141c5aa5df629bcdeef`. Closeout generation 2262.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests; full xtask suite; targeted in-process mode-controls ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate with adjusted direct-call ownership counts; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP271 qualification unless invalidated.
+- PUSHED: NO
