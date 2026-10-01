@@ -156,9 +156,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP271 qualification unless invalidated.
 - PUSHED: NO
 
-## OP272 - Bridge mode-controls orchestration Rust/WASM ownership (INTENT)
+## OP272 - Bridge mode-controls orchestration Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP271 closeout `9d77e444caeec8ac89b10cf90fc749da8480235c`; BASE_TREE `bc7a861ec3ea9033da1455ac9449f9e3f9788e4a`; worktree clean at intent time.
-- BOUNDARY: move `bridgeSyncModeControls` orchestration into Rust/WASM while preserving a thin JavaScript wrapper for current callers. Rust owns config-mode disabling, in-process settings sync delegation, network identity lock, external/in-process kaspad-address gating, internal CPU miner dependent fields, and dependency-sync sequencing.
-- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; stale ownership counts repaired narrowly; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `bridgeSyncModeControls` orchestration moved into Rust/WASM `bridgeSyncModeControlsUi` with one thin JavaScript wrapper retained for current callers. Rust now owns config-mode disabling, in-process settings sync delegation, network identity lock, external/in-process kaspad-address gating, internal CPU miner dependent fields, and dependency-sync sequencing. Obsolete JavaScript compatibility wrappers/imports for dependency-sync, set-disabled, in-process settings sync, node-mode, and has-config were retired because OP272 removed their final callers.
+- IMPLEMENTATION_CHECKPOINT: `213379e13f9b8e1a22667bd4036ed95a68ced384`, tree `9a34d170dde2f90b3d39523f69626b84738500c1`. Closeout generation 2263.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 291/291 plus auxiliary suites; targeted mode-controls/in-process/dependency-sync ownership regressions; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning using direct local eslint binary after one blocked npm-wrapper dispatch; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: stale direct-call assumptions were narrowed to the actual OP272 post-migration ownership surface. The gates now require the remaining single JavaScript profile lookup, forbid all direct JavaScript node-mode calls/bindings, and require dependency/in-process helper ownership in Rust rather than obsolete wrappers.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP272 qualification unless invalidated.
+- PUSHED: NO
