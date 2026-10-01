@@ -370,9 +370,12 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: continue migrating specialized Bridge action callbacks and remaining JavaScript ownership seams; do not repeat OP291 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP292 - Bridge scoped log font controls Rust/WASM ownership (INTENT)
+## OP292 - Bridge scoped log font controls Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP291 closeout `d6b329c0a391c802ceadd14ad2381e5526656787`; BASE_TREE `9fbf4d9c354477eb5b21fc74fb8e84f09914bfe8`; worktree clean at intent time.
-- BOUNDARY: move the standalone Bridge V29 log font-size toolbar/storage/event IIFE into Rust/WASM, aligned with the already Rust-owned Node implementation. Rust owns clamp/read/write storage, toolbar discovery, controls construction, style application, click traces, retry/install lifecycle.
-- ACCEPTANCE: JavaScript V29 font-control IIFE fully retired; Rust installer invoked from Bridge init; existing 10..18/default12 behavior and storage key compatibility preserved; fail-closed regression; full qualification pass; no Push.
+- BOUNDARY: standalone Bridge V29 log font-size toolbar/storage/event IIFE moved into Rust/WASM `bridgeInstallLogFontControlsV29`, aligned with Node Rust ownership. Rust owns clamp/read/write storage, toolbar discovery, control construction, style application, click traces, and install lifecycle; the legacy JavaScript IIFE is retired.
+- IMPLEMENTATION_CHECKPOINT: `f8d846ff42e52b465177912eed1270ca4e5bc217`, tree `ae825e1414e829123d37b65f63e3dfac882b8c50`. Closeout generation 2283.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 311/311 plus auxiliary suites; targeted log-font ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP292 qualification unless invalidated.
+- PUSHED: NO.
