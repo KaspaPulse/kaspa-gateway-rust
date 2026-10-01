@@ -261,3 +261,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: the final JavaScript `bridgeInstanceNetworkKeyR15` binding/calls were retired after OP281 moved the last container-click network canonicalization into Rust; the fail-closed gate now rejects any reintroduction.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP281 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP282 - Bridge render-all-networks orchestration Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP281 closeout `5bcc13f2481134d3ddbda5b322eee775e10126db`; BASE_TREE `9ff76c71d1940b6ec73c0dc02165a4500df4bbef`; worktree clean at intent time.
+- BOUNDARY: move `renderAllNetworks` orchestration into Rust/WASM while preserving explicit callbacks only for per-network panel rendering and settings-layout decoration. Rust owns `bridgeNetworkPanels` lookup, canonical network-profile iteration/order, panel HTML aggregation and assignment, callback sequencing, and deferred Bridge log-control installation.
+- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; no semantic drift in network ordering or deferred control installers; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
