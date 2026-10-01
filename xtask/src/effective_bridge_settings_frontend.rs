@@ -605,9 +605,9 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
                 .to_owned(),
         );
     }
-    if source.matches("kgwBridgeR51ReadSettingsR249(").count() != 3 {
+    if source.matches("kgwBridgeR51ReadSettingsR249(").count() != 2 {
         return Err(
-            "Bridge R51 ReadSettings thin wrapper must own exactly two consumers plus its definition"
+            "Bridge R51 ReadSettings thin wrapper must own exactly one remaining JavaScript consumer plus its definition after OP297 moves Settings Owner read wiring into Rust"
                 .to_owned(),
         );
     }

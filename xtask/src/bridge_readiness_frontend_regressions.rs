@@ -1190,37 +1190,40 @@ fn verify_r51_storage_ownership(source: &str, helpers: &str) -> Result<(), Strin
             ));
         }
     }
-    for required in ["bridgeR51Load as wasmBridgeR51Load", "wasmBridgeR51Load("] {
-        if !source.contains(required) {
+    for forbidden in ["bridgeR51Load as wasmBridgeR51Load", "wasmBridgeR51Load("] {
+        if source.contains(forbidden) {
             return Err(format!(
-                "R51 generated-WASM load ownership missing: {required}"
+                "Retired R51 JavaScript load binding remains after OP297: {forbidden}"
             ));
         }
     }
-    if source.matches("wasmBridgeR51Load(").count() != 1
-        || !helpers.contains("js_name = bridgeR51Store")
+    if !helpers.contains("js_name = bridgeR51Store")
         || !helpers.contains("js_name = bridgeR51Load")
         || !helpers.contains("\"kgw.bridge.direct.v51.\"")
+        || !helpers.contains("bridge_r51_load(crate::js_string_owned(&key))")
     {
-        return Err("R51 storage call counts, exports or prefix drifted".to_owned());
+        return Err("R51 storage Rust ownership or prefix drifted after OP297".to_owned());
     }
     Ok(())
 }
 
 fn verify_r51_keys_ownership(source: &str, helpers: &str) -> Result<(), String> {
-    if source.contains("kgwBridgeR51Keys") {
-        return Err("Legacy JavaScript R51 keys owner remains".to_owned());
-    }
-    for required in ["bridgeR51Keys as wasmBridgeR51Keys", "wasmBridgeR51Keys()"] {
-        if !source.contains(required) {
-            return Err(format!("R51 keys Rust/WASM ownership missing: {required}"));
+    for forbidden in [
+        "kgwBridgeR51Keys",
+        "bridgeR51Keys as wasmBridgeR51Keys",
+        "wasmBridgeR51Keys()",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired R51 JavaScript keys binding remains after OP297: {forbidden}"
+            ));
         }
     }
-    if source.matches("wasmBridgeR51Keys()").count() != 1
-        || !helpers.contains("js_name = bridgeR51Keys")
+    if !helpers.contains("js_name = bridgeR51Keys")
         || !helpers.contains("fn bridge_r51_key_texts()")
+        || !helpers.contains("bridge_r51_keys().into()")
     {
-        return Err("R51 keys call count or Rust export drifted".to_owned());
+        return Err("R51 keys Rust callback ownership drifted after OP297".to_owned());
     }
     Ok(())
 }
@@ -2650,6 +2653,51 @@ fn verify_instance_state_structured_reader_ownership(
     Ok(())
 }
 
+fn verify_settings_owner_callbacks_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeSettingsOwnerCallbacksV19 as wasmBridgeSettingsOwnerCallbacksV19",
+        "// KGW_BRIDGE_SETTINGS_OWNER_CALLBACKS_RUST_OWNER_V1",
+        "wasmBridgeSettingsOwnerCallbacksV19(bridgeInstances, activeInstance)",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge Settings Owner callback Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    for forbidden in [
+        "function kgwBridgeSettingsOwnerCallbacksV19(",
+        "bridgeR51Keys as wasmBridgeR51Keys",
+        "bridgeR51Load as wasmBridgeR51Load",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge Settings Owner JavaScript callback factory remains: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeSettingsOwnerCallbacksV19",
+        "pub fn bridge_settings_owner_callbacks_v19(",
+        "BRIDGE_SETTINGS_OWNER_CALLBACKS_V19",
+        "\"scope\"",
+        "\"keys\"",
+        "\"readSettings\"",
+        "\"load\"",
+        "\"validateForm\"",
+        "bridge_r51_read_settings_owned(",
+        "bridge_r51_load(",
+        "bridge_validate_form_ui(",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge Settings Owner Rust callback contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_r51_read_settings_owned_ownership(
     source: &str,
     instance_settings: &str,
@@ -3937,6 +3985,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_instance_command_option_ownership(&full_source, &command_options_source)?;
     verify_instance_mutation_ownership(&full_source, &instance_settings_source)?;
     verify_instance_state_structured_reader_ownership(&full_source, &instance_settings_source)?;
+    verify_settings_owner_callbacks_ownership(&full_source, &helper_source)?;
     verify_r51_read_settings_owned_ownership(&full_source, &instance_settings_source)?;
     verify_preview_message_ownership(&full_source, &helper_source)?;
     verify_r95b_port_normalization_ownership(&full_source, &helper_source)?;
@@ -4894,16 +4943,8 @@ mod tests {
             include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
         assert!(verify_r51_storage_ownership(source, helpers).is_ok());
         for mutation in [
-            source.replacen("wasmBridgeR51Load(", "kgwBridgeR51Load(", 1),
-            source.replacen("wasmBridgeR51Load(", "wasmBridgeR51Store(", 1),
-            source.replace(
-                "bridgeR51Load as wasmBridgeR51Load,",
-                "bridgeR51Load as wasmBridgeR51Load,\n  bridgeR51Store as wasmBridgeR51Store,",
-            ),
-            source.replace(
-                "bridgeR51Load as wasmBridgeR51Load",
-                "unowned as wasmBridgeR51Load",
-            ),
+            format!("{source}\n// bridgeR51Load as wasmBridgeR51Load\n"),
+            format!("{source}\n// wasmBridgeR51Load(\"saved:mainnet\")\n"),
         ] {
             assert!(verify_r51_storage_ownership(&mutation, helpers).is_err());
         }
@@ -4926,11 +4967,9 @@ mod tests {
             include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
         assert!(verify_r51_keys_ownership(source, helpers).is_ok());
         for mutation in [
-            source.replacen("wasmBridgeR51Keys()", "kgwBridgeR51Keys()", 1),
-            source.replace(
-                "bridgeR51Keys as wasmBridgeR51Keys",
-                "unowned as wasmBridgeR51Keys",
-            ),
+            format!("{source}\n// kgwBridgeR51Keys\n"),
+            format!("{source}\n// bridgeR51Keys as wasmBridgeR51Keys\n"),
+            format!("{source}\n// wasmBridgeR51Keys()\n"),
         ] {
             assert!(verify_r51_keys_ownership(&mutation, helpers).is_err());
         }
@@ -5669,6 +5708,24 @@ mod tests {
                 "Rust instance-state mutation {index} was not rejected"
             );
         }
+    }
+
+    #[test]
+    fn settings_owner_callbacks_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_settings_owner_callbacks_ownership(source, helpers).is_ok());
+        let legacy =
+            format!("{source}\nfunction kgwBridgeSettingsOwnerCallbacksV19() {{ return {{}}; }}\n");
+        assert!(verify_settings_owner_callbacks_ownership(&legacy, helpers).is_err());
+        let missing = helpers.replace(
+            "js_name = bridgeSettingsOwnerCallbacksV19",
+            "js_name = missingSettingsOwnerCallbacksV19",
+        );
+        assert!(verify_settings_owner_callbacks_ownership(source, &missing).is_err());
     }
 
     #[test]

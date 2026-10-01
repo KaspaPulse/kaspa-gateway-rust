@@ -21,8 +21,7 @@ import initBridgeRust, {
   bridgeR51SaveSettings as wasmBridgeR51SaveSettings,
   bridgeR51SetAsDefaults as wasmBridgeR51SetAsDefaults,
   bridgeR51RestoreDefaults as wasmBridgeR51RestoreDefaults,
-  bridgeR51Load as wasmBridgeR51Load,
-  bridgeR51Keys as wasmBridgeR51Keys,
+  bridgeSettingsOwnerCallbacksV19 as wasmBridgeSettingsOwnerCallbacksV19,
   bridgeR51Panel as wasmBridgeR51Panel,
   bridgeR51ReadStructuredInstances as wasmBridgeR51ReadStructuredInstances,
   bridgeR51ReadSettingsOwned as wasmBridgeR51ReadSettingsOwned,
@@ -82,20 +81,10 @@ import initBridgeRust, {
 await initBridgeRust();
 
 // KGW_SETTINGS_OWNER_V19
-// Shared Rust owner: Bridge keeps only callback bindings and compatibility globals.
-function kgwBridgeSettingsOwnerCallbacksV19() {
-  return {
-    scope: "bridge",
-    keys: () => wasmBridgeR51Keys(),
-    readSettings: (net) => kgwBridgeR51ReadSettingsR249(String(net || "")),
-    load: (key) => wasmBridgeR51Load(String(key || "")),
-    validateForm: (net, focus = false) => kgwBridgeValidateForm(String(net || ""), Boolean(focus))
-  };
-}
-
+// KGW_BRIDGE_SETTINGS_OWNER_CALLBACKS_RUST_OWNER_V1
 const KGW_BRIDGE_SETTINGS_OWNER_V19 = {
   install(root) {
-    return wasmSettingsOwnerInstall(root, kgwBridgeSettingsOwnerCallbacksV19());
+    return wasmSettingsOwnerInstall(root, wasmBridgeSettingsOwnerCallbacksV19(bridgeInstances, activeInstance));
   },
   setDisabled(root, network, disabled, reason = "") {
     return wasmSettingsOwnerSetDisabled(
@@ -103,7 +92,7 @@ const KGW_BRIDGE_SETTINGS_OWNER_V19 = {
       String(network || ""),
       Boolean(disabled),
       String(reason || ""),
-      kgwBridgeSettingsOwnerCallbacksV19()
+      wasmBridgeSettingsOwnerCallbacksV19(bridgeInstances, activeInstance)
     );
   },
   buttons(root, network = "all") {

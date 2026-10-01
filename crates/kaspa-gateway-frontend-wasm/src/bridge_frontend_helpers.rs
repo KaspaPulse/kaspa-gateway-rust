@@ -2868,6 +2868,68 @@ pub fn bridge_r51_keys() -> Array {
     output
 }
 
+thread_local! {
+    static BRIDGE_SETTINGS_OWNER_CALLBACKS_V19: RefCell<Option<JsValue>> =
+        const { RefCell::new(None) };
+}
+
+#[wasm_bindgen(js_name = bridgeSettingsOwnerCallbacksV19)]
+pub fn bridge_settings_owner_callbacks_v19(
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+) -> JsValue {
+    if let Some(cached) = BRIDGE_SETTINGS_OWNER_CALLBACKS_V19.with(|value| value.borrow().clone()) {
+        return cached;
+    }
+
+    let callbacks = Object::new();
+    set(callbacks.as_ref(), "scope", &JsValue::from_str("bridge"));
+
+    let keys =
+        Closure::wrap(Box::new(move || -> JsValue { bridge_r51_keys().into() })
+            as Box<dyn FnMut() -> JsValue>);
+    set(callbacks.as_ref(), "keys", keys.as_ref());
+
+    let read_settings = {
+        let bridge_instances = bridge_instances.clone();
+        let active_instance = active_instance.clone();
+        Closure::wrap(Box::new(move |net: JsValue| -> Result<JsValue, JsValue> {
+            crate::bridge_instance_settings::bridge_r51_read_settings_owned(
+                crate::js_string_owned(&net),
+                bridge_instances.clone(),
+                active_instance.clone(),
+            )
+        })
+            as Box<dyn FnMut(JsValue) -> Result<JsValue, JsValue>>)
+    };
+    set(callbacks.as_ref(), "readSettings", read_settings.as_ref());
+
+    let load = Closure::wrap(Box::new(move |key: JsValue| -> JsValue {
+        bridge_r51_load(crate::js_string_owned(&key))
+    }) as Box<dyn FnMut(JsValue) -> JsValue>);
+    set(callbacks.as_ref(), "load", load.as_ref());
+
+    let validate_instances = bridge_instances;
+    let validate = Closure::wrap(Box::new(move |net: JsValue, focus: JsValue| -> JsValue {
+        bridge_validate_form_ui(
+            crate::js_string_owned(&net),
+            validate_instances.clone(),
+            crate::js_boolean(&focus),
+        )
+    }) as Box<dyn FnMut(JsValue, JsValue) -> JsValue>);
+    set(callbacks.as_ref(), "validateForm", validate.as_ref());
+
+    keys.forget();
+    read_settings.forget();
+    load.forget();
+    validate.forget();
+    let output: JsValue = callbacks.into();
+    BRIDGE_SETTINGS_OWNER_CALLBACKS_V19.with(|value| {
+        *value.borrow_mut() = Some(output.clone());
+    });
+    output
+}
+
 #[wasm_bindgen(js_name = bridgeNetworkPolicyKey)]
 pub fn bridge_network_policy_key(net: String) -> String {
     policy_key_text(&net)
