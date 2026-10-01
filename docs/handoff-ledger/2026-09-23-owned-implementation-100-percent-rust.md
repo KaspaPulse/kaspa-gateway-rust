@@ -349,9 +349,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP289 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP290 - Bridge scoped settings input/change event owners Rust/WASM ownership (INTENT)
+## OP290 - Bridge scoped settings input/change event owners Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP289 closeout `856bb5c5aaeee5bc5a571e096cb09c2d0b79fbc4`; BASE_TREE `72dd2cec5f5093bddcdf501b49711c503a1bc8d3`; worktree clean at intent time.
-- BOUNDARY: move `installActions` generic settings input/change ownership into Rust/WASM: network extraction, restart-required marking, scoped mode/command refresh, experimental Testnet13 enable confirmation, policy persistence, runtime-button refresh, and stop-on-disable dispatch. JavaScript keeps only explicit callbacks that are not yet Rust-owned.
-- ACCEPTANCE: Rust export + thin JS call + fail-closed regression; generated WASM consistent; trusted/programmatic reasons preserved; no click-action migration in this boundary; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `installActions` generic settings input/change ownership moved into Rust/WASM `bridgeInstallSettingsEventOwnersUi`: Rust owns network extraction, restart-required marking, scoped mode/command refresh, experimental Testnet13 enable confirmation, policy persistence, runtime-button refresh, and stop-on-disable dispatch. JavaScript retains only explicit callbacks not yet migrated.
+- IMPLEMENTATION_CHECKPOINT: `16f38135aadd989f09d7a29b9e40a41cb141a014`, tree `bda27f39a3511ff1e9434abd477dd1c664afb7d5`. Closeout generation 2281.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 309/309 plus auxiliary suites; targeted settings-event and repaired mark-restart regressions; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: stale direct-call counts were narrowed to actual post-OP290 ownership; obsolete JavaScript profile/set-network/mark-restart bindings were retired and corresponding gates now fail closed on reintroduction.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP290 qualification unless invalidated.
+- PUSHED: NO.
