@@ -316,3 +316,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: R51 live-refresh direct-call counts and R101W2 ownership assertions were reconciled to the newly Rust-owned network-tab path while preserving fail-closed checks against JavaScript reintroduction.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP286 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP287 - Bridge delegated inner/section/instance tabs Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP286 closeout `2494b4f0908b6c59e2517ef19cd761914a438823`; BASE_TREE `06982b2483fe6569b63c0c256fb971cf81f6fd57`; worktree clean at intent time.
+- BOUNDARY: move `installDelegatedTabs` click orchestration into Rust/WASM. Rust owns inner-tab persistence/trace, section-tab selection/ARIA, instance-tab active-state/raw-log update, panel discovery, and DOM active/hidden mutation. JavaScript may remain as the explicit `activeInstance` state object passed into Rust.
+- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; inner/section/instance semantics preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
