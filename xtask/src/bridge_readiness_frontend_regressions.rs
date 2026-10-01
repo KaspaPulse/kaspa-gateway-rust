@@ -1251,10 +1251,10 @@ fn verify_r51_runtime_presentation_ownership(
             ));
         }
     }
-    if source.matches("wasmBridgeR51SetRuntimeButtons(").count() != 9
+    if source.matches("wasmBridgeR51SetRuntimeButtons(").count() != 8
         || source.matches("wasmBridgeR51SetRuntimeUnknown(").count() != 1
     {
-        return Err("Bridge R51 runtime-presentation direct-call count drifted".to_owned());
+        return Err("Bridge R51 runtime-presentation direct-call count drifted after OP290 moves network-policy refresh into Rust".to_owned());
     }
     for required in [
         "js_name = bridgeR51SetRuntimeButtons",
@@ -1301,10 +1301,10 @@ fn verify_runtime_notice_ownership(source: &str, runtime_core: &str) -> Result<(
             ));
         }
     }
-    if source.matches("wasmBridgeSetRuntimeErrorV1(").count() != 13
+    if source.matches("wasmBridgeSetRuntimeErrorV1(").count() != 12
         || source.matches("wasmBridgeSetRuntimeActivityV1(").count() != 9
     {
-        return Err("Bridge runtime-notice direct-call count drifted".to_owned());
+        return Err("Bridge runtime-notice direct-call count drifted after OP290 moves network-policy error handling into Rust".to_owned());
     }
     for required in [
         "fn set_runtime_error_inner(",
@@ -1344,11 +1344,10 @@ fn verify_mark_restart_required_ownership(source: &str, runtime_core: &str) -> R
             ));
         }
     }
-    if !source.contains("bridgeMarkRestartRequiredV1 as wasmBridgeMarkRestartRequiredV1") {
-        return Err("Bridge mark-restart-required Rust/WASM binding missing".to_owned());
-    }
-    if source.matches("wasmBridgeMarkRestartRequiredV1(").count() != 2 {
-        return Err("Bridge mark-restart-required direct-call count drifted".to_owned());
+    if source.contains("bridgeMarkRestartRequiredV1 as wasmBridgeMarkRestartRequiredV1")
+        || source.contains("wasmBridgeMarkRestartRequiredV1(")
+    {
+        return Err("Bridge mark-restart-required JavaScript binding/calls must be fully retired after OP290 moves scoped settings events into Rust".to_owned());
     }
     for required in [
         "fn mark_restart_required_inner(",
@@ -2005,6 +2004,55 @@ fn verify_action_event_owners_ownership(source: &str, helpers: &str) -> Result<(
         if !helpers.contains(required) {
             return Err(format!(
                 "Bridge action-event Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_settings_event_owners_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeInstallSettingsEventOwnersUi as wasmBridgeInstallSettingsEventOwnersUi",
+        "wasmBridgeInstallSettingsEventOwnersUi(root, bridgeInstances, {",
+        "runIntegratedAction: (action, net) => runBridgeIntegratedAction(",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge settings-event owners Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    let actions = slice_between(source, "function installActions(root) {", "\n}")?;
+    for forbidden in [
+        "root.addEventListener(\"input\"",
+        "root.addEventListener(\"change\"",
+        "wasmBridgeMarkRestartRequiredV1(",
+        "wasmBridgeSetNetworkEnabled(",
+        "wasmBridgeNetworkEnabled(",
+        "wasmBridgeNetworkProfile(",
+    ] {
+        if actions.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge settings-event JavaScript ownership remains after OP290: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeInstallSettingsEventOwnersUi",
+        "pub fn bridge_install_settings_event_owners_ui(",
+        "bridge_settings_net_from_element(",
+        "bridge_mark_restart_required_v1(",
+        "[data-bridge-network-enabled]",
+        "confirm_user_action(",
+        "bridge_set_network_enabled(",
+        "bridge_r51_set_runtime_buttons(",
+        "runIntegratedAction",
+        "trusted-input",
+        "programmatic-change",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge settings-event Rust owner contract missing: {required}"
             ));
         }
     }
@@ -3615,6 +3663,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_network_tabs_ownership(&full_source, &helper_source)?;
     verify_delegated_tabs_ownership(&full_source, &helper_source)?;
     verify_action_event_owners_ownership(&full_source, &helper_source)?;
+    verify_settings_event_owners_ownership(&full_source, &helper_source)?;
     verify_port_event_owners_ownership(&full_source, &bridge_port_ui_source)?;
     verify_inprocess_node_settings_renderer_ownership(&full_source, &bridge_render_source)?;
     verify_settings_sections_ownership(&full_source, &helper_source)?;
@@ -4724,15 +4773,10 @@ mod tests {
             include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_runtime_core.rs");
         assert!(verify_mark_restart_required_ownership(source, runtime_core).is_ok());
         for mutation in [
-            source.replacen(
-                "wasmBridgeMarkRestartRequiredV1(",
-                "kgwBridgeMarkRestartRequiredV1(",
-                1,
+            format!(
+                "{source}\n// bridgeMarkRestartRequiredV1 as wasmBridgeMarkRestartRequiredV1\n"
             ),
-            source.replace(
-                "bridgeMarkRestartRequiredV1 as wasmBridgeMarkRestartRequiredV1",
-                "missingMarkRestartRequiredV1 as wasmBridgeMarkRestartRequiredV1",
-            ),
+            format!("{source}\n// wasmBridgeMarkRestartRequiredV1(\"mainnet\");\n"),
             format!("{source}\nfunction kgwBridgeMarkRestartRequiredV1(net) {{ return net; }}\n"),
         ] {
             assert!(verify_mark_restart_required_ownership(&mutation, runtime_core).is_err());
@@ -5045,6 +5089,29 @@ mod tests {
             "js_name = missingInstallActionEventOwnersUi",
         );
         assert!(verify_action_event_owners_ownership(source, &missing).is_err());
+    }
+
+    #[test]
+    fn settings_event_owners_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_settings_event_owners_ownership(source, helpers).is_ok());
+
+        let legacy = source.replacen(
+            "function installActions(root) {",
+            "function installActions(root) {\n  root.addEventListener(\"input\", () => {});",
+            1,
+        );
+        assert!(verify_settings_event_owners_ownership(&legacy, helpers).is_err());
+
+        let missing = helpers.replace(
+            "js_name = bridgeInstallSettingsEventOwnersUi",
+            "js_name = missingInstallSettingsEventOwnersUi",
+        );
+        assert!(verify_settings_event_owners_ownership(source, &missing).is_err());
     }
 
     #[test]

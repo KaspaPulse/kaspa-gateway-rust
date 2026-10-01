@@ -13,7 +13,6 @@ import initBridgeRust, {
   bridgeR51SetRuntimeUnknown as wasmBridgeR51SetRuntimeUnknown,
   bridgeSetRuntimeErrorV1 as wasmBridgeSetRuntimeErrorV1,
   bridgeSetRuntimeActivityV1 as wasmBridgeSetRuntimeActivityV1,
-  bridgeMarkRestartRequiredV1 as wasmBridgeMarkRestartRequiredV1,
   bridgeR51RefreshOne as wasmBridgeR51RefreshOne,
   bridgeR51StartLiveRefresh as wasmBridgeR51StartLiveRefresh,
   bridgeR51CaptureFactoryDefaults as wasmBridgeR51CaptureFactoryDefaults,
@@ -48,13 +47,13 @@ import initBridgeRust, {
   bridgeInstallDelegatedTabsUi as wasmBridgeInstallDelegatedTabsUi,
   bridgeInstallActionEventOwnersUi as wasmBridgeInstallActionEventOwnersUi,
   bridgeInstallPortEventOwnersUi as wasmBridgeInstallPortEventOwnersUi,
+  bridgeInstallSettingsEventOwnersUi as wasmBridgeInstallSettingsEventOwnersUi,
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeElementId as wasmBridgeElementId,
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
   bridgeInstallLogAutoScrollControls as wasmBridgeInstallLogAutoScrollControls,
   bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
-  bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
   bridgeRenderInprocessNodeSettingsUi as wasmBridgeRenderInprocessNodeSettingsUi,
   bridgeRenderSectionsUi as wasmBridgeRenderSectionsUi,
@@ -62,7 +61,6 @@ import initBridgeRust, {
   bridgeRenderAllNetworksUi as wasmBridgeRenderAllNetworksUi,
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
-  bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
   bridgeValidateFormUi as wasmBridgeValidateFormUi,
   bridgeRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi,
   bridgeEffectiveInprocessNodeSettingsChecked as wasmBridgeEffectiveInprocessNodeSettingsChecked,
@@ -1034,8 +1032,10 @@ function installActions(root) {
     runtimeActivity: (net, message) =>
       wasmBridgeSetRuntimeActivityV1(String(net || ""), String(message || ""))
   });
-
-
+  wasmBridgeInstallSettingsEventOwnersUi(root, bridgeInstances, {
+    updateCommand: (net) => updateCommand(String(net || "")),
+    runIntegratedAction: (action, net) => runBridgeIntegratedAction(String(action || ""), String(net || ""))
+  });
 
   // KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26: Bridge settings actions are scoped to the exact bridge/network that changed.
   if (window.KGW_BRIDGE_SETTINGS_OWNER_V19 && typeof window.KGW_BRIDGE_SETTINGS_OWNER_V19.install === "function") {
@@ -1066,10 +1066,6 @@ function installActions(root) {
         carrier && carrier.className
       ].filter(Boolean).join(" ")
     );
-  }
-
-  function netFromEvent(event) {
-    return netFromElement(event && event.target);
   }
 
 
@@ -1118,51 +1114,6 @@ function installActions(root) {
     });
   }
   bridgeInstallAllVisibleInstanceContainerOwnersR11(root);
-
-  root.addEventListener("input", (event) => {
-    const target = event.target;
-    if (!target || !target.matches || !target.matches("input, select, textarea")) return;
-    if (target.readOnly || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
-
-    const net = netFromEvent(event);
-    wasmBridgeMarkRestartRequiredV1(net);
-    scopedUpdate(net, event.isTrusted ? "trusted-input" : "programmatic-input");
-  }, true);
-
-  root.addEventListener("change", async (event) => {
-    const target = event.target;
-    if (!target || !target.matches || !target.matches("input, select, textarea")) return;
-    if (target.readOnly || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
-
-    const net = netFromEvent(event);
-    wasmBridgeMarkRestartRequiredV1(net);
-
-    if (target.matches("[data-bridge-network-enabled]")) {
-      const profile = wasmBridgeNetworkProfile(net);
-      const wasEnabled = wasmBridgeNetworkEnabled(net);
-      let enabled = Boolean(target.checked);
-
-      if (enabled && profile?.experimental) {
-        target.checked = false;
-        target.disabled = true;
-        try {
-          enabled = (await confirmUserAction("Testnet 13 is experimental and uses a separate non-production runtime. Enable it only for isolated testing. Continue?")) === true;
-        } catch (error) {
-          enabled = false;
-          wasmBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
-        } finally { target.disabled = false; target.checked = enabled; }
-      }
-
-      wasmBridgeSetNetworkEnabled(net, enabled);
-      wasmBridgeR51SetRuntimeButtons(String(net || ""), false, "", "", "");
-
-      if (!enabled && wasEnabled) {
-        void runBridgeIntegratedAction("stop", net);
-      }
-    }
-
-    scopedUpdate(net, event.isTrusted ? "trusted-change" : "programmatic-change");
-  }, true);
 
   root.addEventListener("click", (event) => {
     const button = event.target && event.target.closest ? event.target.closest("[data-bridge-action]") : null;

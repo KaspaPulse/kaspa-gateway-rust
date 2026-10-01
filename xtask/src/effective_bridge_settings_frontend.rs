@@ -540,9 +540,11 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source.contains("function bridgeProfile(") {
         return Err("Retired Bridge profile lookup JavaScript seam remains".to_owned());
     }
-    if source.matches("wasmBridgeNetworkProfile(").count() != 1 {
+    if source.contains("bridgeNetworkProfile as wasmBridgeNetworkProfile")
+        || source.contains("wasmBridgeNetworkProfile(")
+    {
         return Err(
-            "Bridge profile lookup must have exactly one remaining direct JavaScript Rust/WASM call site after OP272 moves mode-controls orchestration into Rust"
+            "Bridge profile lookup JavaScript binding/calls must be fully retired after OP290 moves network-policy change ownership into Rust"
                 .to_owned(),
         );
     }

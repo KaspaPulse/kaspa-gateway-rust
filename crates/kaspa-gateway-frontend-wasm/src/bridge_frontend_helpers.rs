@@ -1193,6 +1193,235 @@ pub fn bridge_install_delegated_tabs_ui(root: JsValue, active_instance: JsValue)
     true
 }
 
+fn bridge_settings_net_from_element(element: &JsValue) -> String {
+    if !present(element) {
+        return String::new();
+    }
+    let carrier = call1(
+        element,
+        "closest",
+        &JsValue::from_str(
+            "[data-net], [data-network], [data-bridge-network-panel], [data-bridge-inner-panel], [data-bridge-section-panel], [data-bridge-instance-panel]",
+        ),
+    )
+    .unwrap_or(JsValue::UNDEFINED);
+    let mut values = Vec::new();
+    for value in [
+        property(&property(element, "dataset"), "net"),
+        property(&property(element, "dataset"), "network"),
+        property(&property(&carrier, "dataset"), "net"),
+        property(&property(&carrier, "dataset"), "network"),
+        property(&property(&carrier, "dataset"), "bridgeNetworkPanel"),
+        property(element, "id"),
+        property(&carrier, "id"),
+        property(&carrier, "className"),
+    ] {
+        let value = crate::js_string_owned(&value);
+        if !value.is_empty() {
+            values.push(value);
+        }
+    }
+    let joined = values.join(" ").to_ascii_lowercase();
+    if joined.contains("testnet13") || joined.contains("tn13") {
+        "testnet13".to_owned()
+    } else if joined.contains("testnet10") || joined.contains("tn10") {
+        "testnet10".to_owned()
+    } else if joined.contains("mainnet") {
+        "mainnet".to_owned()
+    } else {
+        String::new()
+    }
+}
+
+fn bridge_settings_scoped_update(
+    net: &str,
+    reason: &str,
+    bridge_instances: &JsValue,
+    callbacks: &JsValue,
+) {
+    if net.is_empty() {
+        return;
+    }
+    let _ = bridge_sync_mode_controls_ui(net.to_owned(), bridge_instances.clone());
+    let _ = bridge_update_command_callback(callbacks, net);
+    let details = Object::new();
+    set(
+        details.as_ref(),
+        "previousPatch",
+        &JsValue::from_str("KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26"),
+    );
+    set(details.as_ref(), "reason", &JsValue::from_str(reason));
+    let _ = bridge_small_owner_trace_r44d(
+        JsValue::from_str(net),
+        JsValue::from_str("settings-scope"),
+        JsValue::from_str("r27d-scoped-update"),
+        details.into(),
+    );
+}
+
+#[wasm_bindgen(js_name = bridgeInstallSettingsEventOwnersUi)]
+pub fn bridge_install_settings_event_owners_ui(
+    root: JsValue,
+    bridge_instances: JsValue,
+    callbacks: JsValue,
+) -> bool {
+    if !present(&root) {
+        return false;
+    }
+
+    let instances_input = bridge_instances.clone();
+    let callbacks_input = callbacks.clone();
+    let input = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+        let matches = call1(
+            &target,
+            "matches",
+            &JsValue::from_str("input, select, textarea"),
+        )
+        .is_some_and(|value| crate::js_boolean(&value));
+        if !matches || crate::js_boolean(&property(&target, "readOnly")) {
+            return;
+        }
+        let id = crate::js_string_owned(&property(&target, "id"));
+        if id.ends_with("-commandPreview") || id.ends_with("-logOutput") {
+            return;
+        }
+        let net = bridge_settings_net_from_element(&target);
+        let _ = crate::bridge_runtime_core::bridge_mark_restart_required_v1(net.clone());
+        bridge_settings_scoped_update(
+            &net,
+            if crate::js_boolean(&property(&event, "isTrusted")) {
+                "trusted-input"
+            } else {
+                "programmatic-input"
+            },
+            &instances_input,
+            &callbacks_input,
+        );
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call3(
+        &root,
+        "addEventListener",
+        &JsValue::from_str("input"),
+        input.as_ref().unchecked_ref(),
+        &JsValue::TRUE,
+    );
+    input.forget();
+
+    let instances_change = bridge_instances;
+    let callbacks_change = callbacks;
+    let change = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+        let matches = call1(
+            &target,
+            "matches",
+            &JsValue::from_str("input, select, textarea"),
+        )
+        .is_some_and(|value| crate::js_boolean(&value));
+        if !matches || crate::js_boolean(&property(&target, "readOnly")) {
+            return;
+        }
+        let id = crate::js_string_owned(&property(&target, "id"));
+        if id.ends_with("-commandPreview") || id.ends_with("-logOutput") {
+            return;
+        }
+
+        let net = bridge_settings_net_from_element(&target);
+        let _ = crate::bridge_runtime_core::bridge_mark_restart_required_v1(net.clone());
+        let trusted = crate::js_boolean(&property(&event, "isTrusted"));
+        let network_enabled = call1(
+            &target,
+            "matches",
+            &JsValue::from_str("[data-bridge-network-enabled]"),
+        )
+        .is_some_and(|value| crate::js_boolean(&value));
+
+        if !network_enabled {
+            bridge_settings_scoped_update(
+                &net,
+                if trusted {
+                    "trusted-change"
+                } else {
+                    "programmatic-change"
+                },
+                &instances_change,
+                &callbacks_change,
+            );
+            return;
+        }
+
+        let target_async = target.clone();
+        let net_async = net.clone();
+        let instances_async = instances_change.clone();
+        let callbacks_async = callbacks_change.clone();
+        spawn_local(async move {
+            let profile = bridge_network_profile(net_async.clone());
+            let was_enabled = bridge_network_enabled(net_async.clone());
+            let mut enabled = crate::js_boolean(&property(&target_async, "checked"));
+            if enabled && crate::js_boolean(&property(&profile, "experimental")) {
+                set(&target_async, "checked", &JsValue::FALSE);
+                set(&target_async, "disabled", &JsValue::TRUE);
+                let message = "Testnet 13 is experimental and uses a separate non-production runtime. Enable it only for isolated testing. Continue?";
+                match crate::settings_contract::confirm_user_action(JsValue::from_str(message))
+                    .await
+                {
+                    Ok(confirmed) => enabled = confirmed,
+                    Err(error) => {
+                        enabled = false;
+                        let normalized =
+                            crate::bridge_runtime_core::bridge_normalize_runtime_error(error);
+                        let _ = crate::bridge_runtime_core::bridge_set_runtime_error_v1(
+                            net_async.clone(),
+                            JsValue::from_str(&normalized),
+                            JsValue::from_str("settings-network-policy"),
+                        );
+                    }
+                }
+                set(&target_async, "disabled", &JsValue::FALSE);
+                set(&target_async, "checked", &JsValue::from_bool(enabled));
+            }
+
+            bridge_set_network_enabled(net_async.clone(), enabled);
+            crate::bridge_runtime_core::bridge_r51_set_runtime_buttons(
+                net_async.clone(),
+                false,
+                String::new(),
+                String::new(),
+                String::new(),
+            );
+            if !enabled
+                && was_enabled
+                && let Some(run) = function(&callbacks_async, "runIntegratedAction")
+            {
+                let _ = run.call2(
+                    &callbacks_async,
+                    &JsValue::from_str("stop"),
+                    &JsValue::from_str(&net_async),
+                );
+            }
+            bridge_settings_scoped_update(
+                &net_async,
+                if trusted {
+                    "trusted-change"
+                } else {
+                    "programmatic-change"
+                },
+                &instances_async,
+                &callbacks_async,
+            );
+        });
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call3(
+        &root,
+        "addEventListener",
+        &JsValue::from_str("change"),
+        change.as_ref().unchecked_ref(),
+        &JsValue::TRUE,
+    );
+    change.forget();
+    true
+}
+
 fn bridge_queue_microtask(callback: Closure<dyn FnMut()>) {
     if let Some(queue) = function(&global(), "queueMicrotask") {
         let _ = queue.call1(&global(), callback.as_ref().unchecked_ref());
