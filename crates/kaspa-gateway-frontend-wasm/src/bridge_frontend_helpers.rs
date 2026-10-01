@@ -1324,6 +1324,103 @@ pub fn bridge_sync_inprocess_node_settings_v12d(net: String) -> bool {
     true
 }
 
+#[wasm_bindgen(js_name = bridgeSyncModeControlsUi)]
+pub fn bridge_sync_mode_controls_ui(net: String, bridge_instances: JsValue) -> bool {
+    let Some(network_profile) = profile(&net) else {
+        return false;
+    };
+
+    let config_mode = bridge_has_config(net.clone());
+    let node_mode = bridge_node_mode(net.clone());
+    let internal_miner_enabled = bridge_checked(net.clone(), "internalCpuMiner".to_owned());
+
+    const EXPLICIT_BRIDGE_FIELDS: &[&str] = &[
+        "testnet",
+        "nodeMode",
+        "appdir",
+        "kaspadAddress",
+        "blockWaitTime",
+        "printStats",
+        "logToFile",
+        "healthCheckPort",
+        "webDashboardPort",
+        "varDiff",
+        "sharesPerMin",
+        "varDiffStats",
+        "extranonceSize",
+        "pow2Clamp",
+        "coinbaseTagSuffix",
+        "approxGeoLookup",
+        "stratumPort",
+        "minShareDiff",
+        "promPort",
+        "internalCpuMiner",
+        "internalCpuMinerAddress",
+        "internalCpuMinerThreads",
+        "internalCpuMinerThrottleMs",
+        "internalCpuMinerTemplatePollMs",
+    ];
+
+    for name in EXPLICIT_BRIDGE_FIELDS {
+        bridge_set_disabled_ui(
+            net.clone(),
+            (*name).to_owned(),
+            config_mode,
+            "Config mode is active. Clear --config to edit explicit CLI flags.".to_owned(),
+        );
+    }
+
+    bridge_sync_inprocess_node_settings_v12d(net.clone());
+
+    if config_mode {
+        bridge_sync_dependencies(net, bridge_instances);
+        return true;
+    }
+
+    let testnet_control = bridge_by_id(bridge_element_id(net.clone(), "testnet".to_owned()));
+    if present(&testnet_control) {
+        set(
+            &testnet_control,
+            "checked",
+            &JsValue::from_bool(network_profile.testnet),
+        );
+    }
+    bridge_set_disabled_ui(
+        net.clone(),
+        "testnet".to_owned(),
+        true,
+        "Network identity is owned by the selected Mainnet/Testnet tab.".to_owned(),
+    );
+
+    bridge_set_disabled_ui(
+        net.clone(),
+        "kaspadAddress".to_owned(),
+        node_mode != "external",
+        if node_mode == "external" {
+            String::new()
+        } else {
+            "In-process mode owns kaspad args after the -- separator.".to_owned()
+        },
+    );
+
+    for name in [
+        "internalCpuMinerAddress",
+        "internalCpuMinerThreads",
+        "internalCpuMinerThrottleMs",
+        "internalCpuMinerTemplatePollMs",
+    ] {
+        bridge_set_disabled_ui(
+            net.clone(),
+            name.to_owned(),
+            !internal_miner_enabled,
+            "Enable --internal-cpu-miner first.".to_owned(),
+        );
+    }
+
+    bridge_sync_dependencies(net, bridge_instances);
+    true
+}
+
 #[wasm_bindgen(js_name = bridgeSyncDependencies)]
 pub fn bridge_sync_dependencies(net: String, bridge_instances: JsValue) -> bool {
     let values = bridge_form_values_inner(&net);

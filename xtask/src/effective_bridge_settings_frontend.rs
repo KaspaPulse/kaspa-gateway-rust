@@ -548,13 +548,9 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source.contains("function bridgeProfile(") {
         return Err("Retired Bridge profile lookup JavaScript seam remains".to_owned());
     }
-    if source
-        .matches("wasmBridgeNetworkProfile(String(net || \"\"))")
-        .count()
-        != 1
-    {
+    if source.matches("wasmBridgeNetworkProfile(").count() != 1 {
         return Err(
-            "Bridge profile lookup must use exactly one direct JavaScript Rust/WASM call site after OP271 moves in-process settings sync into Rust"
+            "Bridge profile lookup must have exactly one remaining direct JavaScript Rust/WASM call site after OP272 moves mode-controls orchestration into Rust"
                 .to_owned(),
         );
     }
@@ -562,16 +558,11 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source.contains("function bridgeNodeMode(") {
         return Err("Retired Bridge node-mode JavaScript owner remains".to_owned());
     }
-    if !source.contains("bridgeNodeMode as wasmBridgeNodeMode") {
-        return Err("Bridge node-mode Rust/WASM import is missing".to_owned());
-    }
-    if source
-        .matches("wasmBridgeNodeMode(String(net || \"\"))")
-        .count()
-        != 1
+    if source.contains("bridgeNodeMode as wasmBridgeNodeMode")
+        || source.contains("wasmBridgeNodeMode(")
     {
         return Err(
-            "Bridge node-mode must use exactly one direct JavaScript Rust/WASM call site after OP271 moves in-process settings sync into Rust"
+            "Bridge node-mode JavaScript binding/calls must be fully retired after OP272 moves mode-controls orchestration into Rust"
                 .to_owned(),
         );
     }

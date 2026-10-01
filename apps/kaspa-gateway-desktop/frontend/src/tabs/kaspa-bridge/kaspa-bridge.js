@@ -6,7 +6,6 @@ import initBridgeRust, {
   bridgeChecked as wasmBridgeChecked,
   bridgeCommandInlineToggleR7 as wasmBridgeCommandInlineToggleR7,
   bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7,
-  bridgeHasConfig as wasmBridgeHasConfig,
   bridgeCommandSetOptionR7 as wasmBridgeCommandSetOptionR7,
   bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
   bridgeBuildCommandLines as wasmBridgeBuildCommandLines,
@@ -72,7 +71,6 @@ import initBridgeRust, {
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
   bridgeInstanceNetworkKeyR15 as wasmBridgeInstanceNetworkKeyR15,
-  bridgeNodeMode as wasmBridgeNodeMode,
   bridgeResolveInnerTab as wasmBridgeResolveInnerTab,
   bridgeSaveInnerTab as wasmBridgeSaveInnerTab,
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
@@ -81,9 +79,7 @@ import initBridgeRust, {
   bridgeValidateFormUi as wasmBridgeValidateFormUi,
   bridgeRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi,
   bridgeEffectiveInprocessNodeSettingsChecked as wasmBridgeEffectiveInprocessNodeSettingsChecked,
-  bridgeSetDisabledUi as wasmBridgeSetDisabledUi,
-  bridgeSyncInprocessNodeSettingsV12D as wasmBridgeSyncInprocessNodeSettingsV12D,
-  bridgeSyncDependencies as wasmBridgeSyncDependencies,
+  bridgeSyncModeControlsUi as wasmBridgeSyncModeControlsUi,
   bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E,
   bridgeValue as wasmBridgeValue,
   bridgeAssignMissingInstancePortsR9 as wasmBridgeAssignMissingInstancePortsR9,
@@ -1027,80 +1023,10 @@ function renderAllNetworks(root) {
  * Never return a raw bridge.autofixPorts.* key to the UI.
  */
 /* R54D3 Auto Fix text ownership lives in Rust bridge_port_ui.rs. */
-// KGW_BRIDGE_INPROCESS_MODE_CONTROLS_RUST_OWNER_V1
-function bridgeSetDisabled(net, name, disabled, reason = "") {
-  return wasmBridgeSetDisabledUi(String(net || ""), String(name || ""), Boolean(disabled), String(reason || ""));
-}
 
-function bridgeSyncInprocessNodeSettingsV12D(net) {
-  return wasmBridgeSyncInprocessNodeSettingsV12D(String(net || ""));
-}
-
-
+// KGW_BRIDGE_MODE_CONTROLS_RUST_OWNER_V1
 function bridgeSyncModeControls(net) {
-  const profile = wasmBridgeNetworkProfile(String(net || ""));
-  if (!profile) return;
-
-  const configMode = wasmBridgeHasConfig(String(net || ""));
-  const nodeMode = wasmBridgeNodeMode(String(net || ""));
-  const internalMinerEnabled = wasmBridgeChecked(net, "internalCpuMiner");
-
-  const explicitBridgeFields = [
-    "testnet",
-    "nodeMode",
-    "appdir",
-    "kaspadAddress",
-    "blockWaitTime",
-    "printStats",
-    "logToFile",
-    "healthCheckPort",
-    "webDashboardPort",
-    "varDiff",
-    "sharesPerMin",
-    "varDiffStats",
-    "extranonceSize",
-    "pow2Clamp",
-    "coinbaseTagSuffix",
-    "approxGeoLookup",
-    "stratumPort",
-    "minShareDiff",
-    "promPort",
-    "internalCpuMiner",
-    "internalCpuMinerAddress",
-    "internalCpuMinerThreads",
-    "internalCpuMinerThrottleMs",
-    "internalCpuMinerTemplatePollMs"
-  ];
-
-  for (const name of explicitBridgeFields) {
-    bridgeSetDisabled(net, name, configMode, "Config mode is active. Clear --config to edit explicit CLI flags.");
-  }
-
-  bridgeSyncInprocessNodeSettingsV12D(net);
-
-  if (configMode) { kgwBridgeSyncDependencies(net); return; }
-
-  const testnetControl = wasmBridgeById(wasmBridgeElementId(net, "testnet"));
-  if (testnetControl) {
-    testnetControl.checked = Boolean(profile.testnet);
-  }
-  bridgeSetDisabled(net, "testnet", true, "Network identity is owned by the selected Mainnet/Testnet tab.");
-
-  if (nodeMode === "external") {
-    bridgeSetDisabled(net, "kaspadAddress", false, "");
-  } else {
-    bridgeSetDisabled(net, "kaspadAddress", true, "In-process mode owns kaspad args after the -- separator.");
-  }
-
-  for (const name of [
-    "internalCpuMinerAddress",
-    "internalCpuMinerThreads",
-    "internalCpuMinerThrottleMs",
-    "internalCpuMinerTemplatePollMs"
-  ]) {
-    bridgeSetDisabled(net, name, !internalMinerEnabled, "Enable --internal-cpu-miner first.");
-  }
-  kgwBridgeSyncDependencies(net);
+  return wasmBridgeSyncModeControlsUi(String(net || ""), bridgeInstances);
 }
 
 function bridgeSyncAllModeControls() {
@@ -2580,9 +2506,5 @@ function kgwBridgeValidateForm(net, focus = false) {
 }
 function kgwBridgeRequireValidSettings(net) {
   return wasmBridgeRequireValidSettingsUi(String(net || ""), bridgeInstances, activeInstance, kgwBridgeR51ReadStructuredInstancesR253);
-}
-// KGW_BRIDGE_DEPENDENCY_SYNC_RUST_OWNER_V1
-function kgwBridgeSyncDependencies(net) {
-  return wasmBridgeSyncDependencies(String(net || ""), bridgeInstances);
 }
 export { kgwBridgeEffectiveInprocessNodeSettings, wasmBridgeEffectiveSettingsV1 as kgwBridgeEffectiveSettingsV1, kgwBridgeValidateForm };

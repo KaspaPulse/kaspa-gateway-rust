@@ -1703,23 +1703,10 @@ fn verify_inline_command_toggle_ownership(
 }
 
 fn verify_dependency_sync_ownership(source: &str, helpers: &str) -> Result<(), String> {
-    for required in [
-        "bridgeSyncDependencies as wasmBridgeSyncDependencies",
-        "// KGW_BRIDGE_DEPENDENCY_SYNC_RUST_OWNER_V1",
-        "return wasmBridgeSyncDependencies(String(net || \"\"), bridgeInstances);",
-    ] {
-        if !source.contains(required) {
-            return Err(format!(
-                "Bridge dependency-sync Rust/WASM binding missing: {required}"
-            ));
-        }
-    }
-
-    if source.matches("wasmBridgeSyncDependencies(").count() != 1 {
-        return Err("Bridge dependency-sync direct-call count drifted".to_owned());
-    }
-
     for forbidden in [
+        "bridgeSyncDependencies as wasmBridgeSyncDependencies",
+        "function kgwBridgeSyncDependencies(",
+        "wasmBridgeSyncDependencies(",
         "bridgeFieldEnabled(name, values, options)",
         "setSettingFieldState(field,",
         "const values = kgwBridgeForm(net), options =",
@@ -1755,22 +1742,65 @@ fn verify_dependency_sync_ownership(source: &str, helpers: &str) -> Result<(), S
     Ok(())
 }
 
-fn verify_inprocess_mode_controls_ownership(source: &str, helpers: &str) -> Result<(), String> {
+fn verify_mode_controls_ownership(source: &str, helpers: &str) -> Result<(), String> {
     for required in [
-        "bridgeSetDisabledUi as wasmBridgeSetDisabledUi",
-        "bridgeSyncInprocessNodeSettingsV12D as wasmBridgeSyncInprocessNodeSettingsV12D",
-        "// KGW_BRIDGE_INPROCESS_MODE_CONTROLS_RUST_OWNER_V1",
-        "return wasmBridgeSetDisabledUi(String(net || \"\"), String(name || \"\"), Boolean(disabled), String(reason || \"\"));",
-        "return wasmBridgeSyncInprocessNodeSettingsV12D(String(net || \"\"));",
+        "bridgeSyncModeControlsUi as wasmBridgeSyncModeControlsUi",
+        "// KGW_BRIDGE_MODE_CONTROLS_RUST_OWNER_V1",
+        "function bridgeSyncModeControls(net) {",
+        "return wasmBridgeSyncModeControlsUi(String(net || \"\"), bridgeInstances);",
     ] {
         if !source.contains(required) {
             return Err(format!(
-                "Bridge in-process mode-controls Rust/WASM binding missing: {required}"
+                "Bridge mode-controls Rust/WASM binding missing: {required}"
             ));
         }
     }
 
+    let wrapper = slice_between(source, "function bridgeSyncModeControls(net) {", "\n}")?;
     for forbidden in [
+        "wasmBridgeNetworkProfile(",
+        "wasmBridgeHasConfig(",
+        "wasmBridgeNodeMode(",
+        "wasmBridgeChecked(",
+        "bridgeSetDisabled(",
+        "bridgeSyncInprocessNodeSettingsV12D(",
+        "kgwBridgeSyncDependencies(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge mode-controls JavaScript orchestration remains in wrapper: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeSyncModeControlsUi",
+        "pub fn bridge_sync_mode_controls_ui(",
+        "Config mode is active. Clear --config to edit explicit CLI flags.",
+        "Network identity is owned by the selected Mainnet/Testnet tab.",
+        "In-process mode owns kaspad args after the -- separator.",
+        "Enable --internal-cpu-miner first.",
+        "bridge_sync_inprocess_node_settings_v12d(net.clone())",
+        "bridge_sync_dependencies(net, bridge_instances)",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge mode-controls Rust owner contract missing: {required}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn verify_inprocess_mode_controls_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for forbidden in [
+        "bridgeSetDisabledUi as wasmBridgeSetDisabledUi",
+        "bridgeSyncInprocessNodeSettingsV12D as wasmBridgeSyncInprocessNodeSettingsV12D",
+        "function bridgeSetDisabled(",
+        "function bridgeSyncInprocessNodeSettingsV12D(",
+        "wasmBridgeSetDisabledUi(",
+        "wasmBridgeSyncInprocessNodeSettingsV12D(",
         "function bridgeControlCard(",
         "const fields = [\n    \"inprocessAppdirMirror\"",
         "section.classList.toggle(\"bridge-v12d-inprocess-inactive\"",
@@ -2534,6 +2564,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r95b_port_normalization_ownership(&full_source, &helper_source)?;
     verify_inline_command_toggle_ownership(&full_source, &command_options_source)?;
     verify_dependency_sync_ownership(&full_source, &helper_source)?;
+    verify_mode_controls_ownership(&full_source, &helper_source)?;
     verify_inprocess_mode_controls_ownership(&full_source, &helper_source)?;
     verify_full_form_validation_ownership(&full_source, &helper_source)?;
     verify_require_valid_settings_ownership(&full_source, &helper_source)?;
@@ -3878,6 +3909,51 @@ mod tests {
     }
 
     #[test]
+    fn mode_controls_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_mode_controls_ownership(source, helpers).is_ok());
+
+        for mutation in [
+            source.replace(
+                "bridgeSyncModeControlsUi as wasmBridgeSyncModeControlsUi",
+                "missingSyncModeControlsUi as wasmBridgeSyncModeControlsUi",
+            ),
+            source.replace(
+                "return wasmBridgeSyncModeControlsUi(String(net || \"\"), bridgeInstances);",
+                "return false;",
+            ),
+            source.replacen(
+                "function bridgeSyncModeControls(net) {",
+                "function bridgeSyncModeControls(net) {\n  const nodeMode = wasmBridgeNodeMode(String(net || \"\"));",
+                1,
+            ),
+        ] {
+            assert!(verify_mode_controls_ownership(&mutation, helpers).is_err());
+        }
+
+        for mutation in [
+            helpers.replace(
+                "js_name = bridgeSyncModeControlsUi",
+                "js_name = missingSyncModeControlsUi",
+            ),
+            helpers.replace(
+                "Network identity is owned by the selected Mainnet/Testnet tab.",
+                "missing network identity guard",
+            ),
+            helpers.replace(
+                "bridge_sync_dependencies(net, bridge_instances)",
+                "missing_dependency_sync(net, bridge_instances)",
+            ),
+        ] {
+            assert!(verify_mode_controls_ownership(source, &mutation).is_err());
+        }
+    }
+
+    #[test]
     fn inprocess_mode_controls_ownership_rejects_legacy_and_contract_drift() {
         let source = include_str!(
             "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
@@ -3887,13 +3963,9 @@ mod tests {
         assert!(verify_inprocess_mode_controls_ownership(source, helpers).is_ok());
 
         for mutation in [
-            source.replace(
-                "bridgeSetDisabledUi as wasmBridgeSetDisabledUi",
-                "missingSetDisabledUi as wasmBridgeSetDisabledUi",
-            ),
-            source.replace(
-                "return wasmBridgeSyncInprocessNodeSettingsV12D(String(net || \"\"));",
-                "return false;",
+            format!("{source}\n// bridgeSetDisabledUi as wasmBridgeSetDisabledUi\n"),
+            format!(
+                "{source}\nfunction bridgeSyncInprocessNodeSettingsV12D(net) {{ return wasmBridgeSyncInprocessNodeSettingsV12D(net); }}\n"
             ),
             format!(
                 "{source}\nfunction bridgeControlCard(el) {{ return el?.closest(\".bridge-v7-card\"); }}\n"
@@ -4026,13 +4098,9 @@ mod tests {
         assert!(verify_dependency_sync_ownership(source, helpers).is_ok());
 
         for mutation in [
-            source.replace(
-                "bridgeSyncDependencies as wasmBridgeSyncDependencies",
-                "missingSyncDependencies as wasmBridgeSyncDependencies",
-            ),
-            source.replace(
-                "return wasmBridgeSyncDependencies(String(net || \"\"), bridgeInstances);",
-                "return false;",
+            format!("{source}\n// bridgeSyncDependencies as wasmBridgeSyncDependencies\n"),
+            format!(
+                "{source}\nfunction kgwBridgeSyncDependencies(net) {{ return wasmBridgeSyncDependencies(net, bridgeInstances); }}\n"
             ),
             format!(
                 "{source}\nfunction legacyBridgeDependencyOwner(name, values, options) {{ return bridgeFieldEnabled(name, values, options); }}\n"
