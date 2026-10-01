@@ -1742,6 +1742,95 @@ fn verify_dependency_sync_ownership(source: &str, helpers: &str) -> Result<(), S
     Ok(())
 }
 
+fn verify_require_valid_settings_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi",
+        "bridgeEffectiveInprocessNodeSettingsChecked as wasmBridgeEffectiveInprocessNodeSettingsChecked",
+        "// KGW_BRIDGE_REQUIRE_VALID_SETTINGS_RUST_OWNER_V1",
+        "return wasmBridgeEffectiveInprocessNodeSettingsChecked(String(net || \"\"), bridgeInstances);",
+        "return wasmBridgeRequireValidSettingsUi(String(net || \"\"), bridgeInstances, activeInstance, kgwBridgeR51ReadStructuredInstancesR253);",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge require-valid-settings Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    for call in [
+        "wasmBridgeRequireValidSettingsUi(",
+        "wasmBridgeEffectiveInprocessNodeSettingsChecked(",
+    ] {
+        if source.matches(call).count() != 1 {
+            return Err(format!(
+                "Bridge require-valid-settings direct-call count drifted: {call}"
+            ));
+        }
+    }
+
+    if source.contains("wasmBridgeEffectiveInprocessNodeSettings(") {
+        return Err(
+            "Retired Bridge require-valid-settings JavaScript orchestration remains: wasmBridgeEffectiveInprocessNodeSettings("
+                .to_owned(),
+        );
+    }
+
+    let effective_wrapper = slice_between(
+        source,
+        "function kgwBridgeEffectiveInprocessNodeSettings(net) {",
+        "\n}",
+    )?;
+    for forbidden in [
+        "kgwBridgeValidateForm(",
+        "Object.keys(errors)",
+        "throw new Error",
+    ] {
+        if effective_wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge effective-inprocess JavaScript orchestration remains in wrapper: {forbidden}"
+            ));
+        }
+    }
+
+    let require_wrapper = slice_between(
+        source,
+        "function kgwBridgeRequireValidSettings(net) {",
+        "\n}",
+    )?;
+    for forbidden in [
+        "kgwBridgeValidateForm(",
+        "Object.keys(errors)",
+        "throw new Error",
+        "wasmBridgeAssertNoPortConflictsR5(",
+        "kgwBridgeEffectiveInprocessNodeSettings(net);",
+        "wasmBridgeEffectiveSettingsV1(",
+    ] {
+        if require_wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge require-valid-settings JavaScript orchestration remains in wrapper: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeRequireValidSettingsUi",
+        "pub fn bridge_require_valid_settings_ui(",
+        "js_name = bridgeEffectiveInprocessNodeSettingsChecked",
+        "pub fn bridge_effective_inprocess_node_settings_checked(",
+        "fn bridge_first_validation_error(",
+        "crate::bridge_port_validation::bridge_assert_no_port_conflicts_r5(",
+        "crate::bridge_instance_settings::bridge_effective_inprocess_node_settings(",
+        "crate::bridge_instance_settings::bridge_effective_settings_v1(",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge require-valid-settings Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_full_form_validation_ownership(source: &str, helpers: &str) -> Result<(), String> {
     for required in [
         "bridgeValidateFormUi as wasmBridgeValidateFormUi",
@@ -2307,6 +2396,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_inline_command_toggle_ownership(&full_source, &command_options_source)?;
     verify_dependency_sync_ownership(&full_source, &helper_source)?;
     verify_full_form_validation_ownership(&full_source, &helper_source)?;
+    verify_require_valid_settings_ownership(&full_source, &helper_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -3629,6 +3719,56 @@ mod tests {
             helpers.replace("settings_reveal_field(", "missing_reveal_field("),
         ] {
             assert!(verify_full_form_validation_ownership(source, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn require_valid_settings_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_require_valid_settings_ownership(source, helpers).is_ok());
+
+        for mutation in [
+            source.replace(
+                "bridgeRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi",
+                "missingRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi",
+            ),
+            source.replace(
+                "return wasmBridgeEffectiveInprocessNodeSettingsChecked(String(net || \"\"), bridgeInstances);",
+                "return null;",
+            ),
+            source.replacen(
+                "function kgwBridgeRequireValidSettings(net) {\n  return wasmBridgeRequireValidSettingsUi(String(net || \"\"), bridgeInstances, activeInstance, kgwBridgeR51ReadStructuredInstancesR253);",
+                "function kgwBridgeRequireValidSettings(net) {\n  const errors = kgwBridgeValidateForm(net, true);\n  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);\n  return wasmBridgeRequireValidSettingsUi(String(net || \"\"), bridgeInstances, activeInstance, kgwBridgeR51ReadStructuredInstancesR253);",
+                1,
+            ),
+            format!("{source}\nconst legacy = wasmBridgeEffectiveInprocessNodeSettings(\"mainnet\");\n"),
+        ] {
+            assert!(verify_require_valid_settings_ownership(&mutation, helpers).is_err());
+        }
+
+        for mutation in [
+            helpers.replace(
+                "js_name = bridgeRequireValidSettingsUi",
+                "js_name = missingRequireValidSettingsUi",
+            ),
+            helpers.replace(
+                "crate::bridge_port_validation::bridge_assert_no_port_conflicts_r5(",
+                "missing_assert_no_port_conflicts(",
+            ),
+            helpers.replace(
+                "crate::bridge_instance_settings::bridge_effective_settings_v1(",
+                "missing_effective_settings_v1(",
+            ),
+            helpers.replace(
+                "fn bridge_first_validation_error(",
+                "fn missing_first_validation_error(",
+            ),
+        ] {
+            assert!(verify_require_valid_settings_ownership(source, &mutation).is_err());
         }
     }
 

@@ -529,10 +529,11 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source
         .matches("wasmBridgeNodeMode(String(net || \"\"))")
         .count()
-        != 4
+        != 3
     {
         return Err(
-            "Bridge node-mode must use exactly four direct Rust/WASM call sites".to_owned(),
+            "Bridge node-mode must use exactly three direct Rust/WASM call sites after OP269 moves the effective-inprocess check into Rust"
+                .to_owned(),
         );
     }
 
@@ -651,10 +652,10 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source
         .matches("kgwBridgeR51ReadStructuredInstancesR253(")
         .count()
-        != 4
+        != 3
     {
         return Err(
-            "Bridge R26B structured-read thin wrapper must own exactly three direct calls plus its definition"
+            "Bridge R26B structured-read thin wrapper must own exactly two direct calls plus its definition after OP269 passes the reader callback into Rust"
                 .to_owned(),
         );
     }

@@ -12,7 +12,7 @@ use super::settings_layout::{
     set_field_state as settings_set_field_state,
 };
 use super::settings_schema::BRIDGE_MANAGED;
-use js_sys::{Array, Function, JSON, Object, Promise, Reflect};
+use js_sys::{Array, Error, Function, JSON, Object, Promise, Reflect};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 use wasm_bindgen_futures::{JsFuture, spawn_local};
 
@@ -1417,6 +1417,65 @@ pub fn bridge_value(net: String, name: String) -> String {
         .to_owned()
 }
 
+fn bridge_first_validation_error(errors: &JsValue) -> Option<String> {
+    if !errors.is_object() || errors.is_null() {
+        return None;
+    }
+    let values = Object::values(&Object::from(errors.clone()));
+    if values.length() > 0 {
+        Some(crate::js_string_owned(&values.get(0)))
+    } else {
+        None
+    }
+}
+
+#[wasm_bindgen(js_name = bridgeEffectiveInprocessNodeSettingsChecked)]
+pub fn bridge_effective_inprocess_node_settings_checked(
+    net: String,
+    bridge_instances: JsValue,
+) -> Result<JsValue, JsValue> {
+    if bridge_node_mode(net.clone()) != "inprocess" {
+        return Ok(JsValue::NULL);
+    }
+    let errors = bridge_validate_form_ui(net.clone(), bridge_instances, false);
+    if let Some(message) = bridge_first_validation_error(&errors) {
+        return Err(Error::new(&message).into());
+    }
+    crate::bridge_instance_settings::bridge_effective_inprocess_node_settings(net)
+}
+
+#[wasm_bindgen(js_name = bridgeRequireValidSettingsUi)]
+pub fn bridge_require_valid_settings_ui(
+    net: String,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    structured_reader: JsValue,
+) -> Result<(), JsValue> {
+    let errors = bridge_validate_form_ui(net.clone(), bridge_instances.clone(), true);
+    if let Some(message) = bridge_first_validation_error(&errors) {
+        return Err(Error::new(&message).into());
+    }
+    crate::bridge_port_validation::bridge_assert_no_port_conflicts_r5(
+        net.clone(),
+        structured_reader.clone(),
+        bridge_instances.clone(),
+        active_instance,
+    )?;
+    bridge_effective_inprocess_node_settings_checked(net.clone(), bridge_instances)?;
+    let reader: Function = structured_reader.dyn_into().map_err(|_| {
+        JsValue::from(Error::new(
+            "Bridge structured instance reader is unavailable",
+        ))
+    })?;
+    let structured = reader.call1(&JsValue::NULL, &JsValue::from_str(&net))?;
+    let structured = if crate::js_boolean(&structured) {
+        structured
+    } else {
+        Object::new().into()
+    };
+    crate::bridge_instance_settings::bridge_effective_settings_v1(net, structured)?;
+    Ok(())
+}
 fn bridge_node_mode_text(value: &str) -> &'static str {
     if value == "inprocess" {
         "inprocess"

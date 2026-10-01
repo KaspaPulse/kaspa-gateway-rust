@@ -49,7 +49,6 @@ import initBridgeRust, {
   bridgePreparePreview as wasmBridgePreparePreview,
   bridgePreviewMessage as wasmBridgePreviewMessage,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
-  bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings,
   bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord,
   bridgeStartOptions as wasmBridgeStartOptions,
   bridgeInstanceCommandCheckboxFromInstancesR13B as wasmBridgeInstanceCommandCheckboxFromInstancesR13B,
@@ -81,6 +80,8 @@ import initBridgeRust, {
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
   bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
   bridgeValidateFormUi as wasmBridgeValidateFormUi,
+  bridgeRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi,
+  bridgeEffectiveInprocessNodeSettingsChecked as wasmBridgeEffectiveInprocessNodeSettingsChecked,
   bridgeSyncDependencies as wasmBridgeSyncDependencies,
   bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E,
   bridgeValue as wasmBridgeValue,
@@ -1204,11 +1205,9 @@ function buildCommandLines(net) {
     wasmBridgeBuildCommandLines(String(net || ""), bridgeInstances[net] || [])
   );
 }
+// KGW_BRIDGE_REQUIRE_VALID_SETTINGS_RUST_OWNER_V1
 function kgwBridgeEffectiveInprocessNodeSettings(net) {
-  if (wasmBridgeNodeMode(String(net || "")) !== "inprocess") return null;
-  const errors = kgwBridgeValidateForm(net);
-  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-  return wasmBridgeEffectiveInprocessNodeSettings(String(net || ""));
+  return wasmBridgeEffectiveInprocessNodeSettingsChecked(String(net || ""), bridgeInstances);
 }
 
 
@@ -2712,16 +2711,7 @@ function kgwBridgeValidateForm(net, focus = false) {
   return wasmBridgeValidateFormUi(String(net || ""), bridgeInstances, Boolean(focus));
 }
 function kgwBridgeRequireValidSettings(net) {
-  const errors = kgwBridgeValidateForm(net, true);
-  if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-  wasmBridgeAssertNoPortConflictsR5(
-    String(net || ""),
-    typeof kgwBridgeR51ReadStructuredInstancesR253 === "function" ? kgwBridgeR51ReadStructuredInstancesR253 : null,
-    bridgeInstances,
-    activeInstance
-  );
-  kgwBridgeEffectiveInprocessNodeSettings(net);
-  wasmBridgeEffectiveSettingsV1(String(net || ""), kgwBridgeR51ReadStructuredInstancesR253(net) || {});
+  return wasmBridgeRequireValidSettingsUi(String(net || ""), bridgeInstances, activeInstance, kgwBridgeR51ReadStructuredInstancesR253);
 }
 // KGW_BRIDGE_DEPENDENCY_SYNC_RUST_OWNER_V1
 function kgwBridgeSyncDependencies(net) {
