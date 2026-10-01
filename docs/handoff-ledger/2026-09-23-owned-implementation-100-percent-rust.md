@@ -186,3 +186,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: stale JavaScript direct-call counts for R15 network-key and preview runtime dispatch were narrowed to the OP274 post-migration surface. The ownership regression now rejects the retired preview request/timer map and legacy update-command/update-all orchestration.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP274 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP275 - Bridge instance-state / structured-reader Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP274 closeout `5e3f3ac4455425dd0044fb41271c214c3cd154c6`; BASE_TREE `60ab96053bdbbb16fcc74a800ab9a01ea802ec5f`; worktree clean at intent time.
+- BOUNDARY: move `bridgeReadInstanceState` record/default/DOM-field orchestration into Rust/WASM and remove the JavaScript read-instance callback from `kgwBridgeR51ReadStructuredInstancesR253`. Rust owns current-record lookup, fallback identity, DOM field reads/defaults, missing-port assignment, and structured-instance commit/read sequencing. JavaScript may retain only the thin structured-reader compatibility wrapper required by existing callers.
+- ACCEPTANCE: Rust instance-state export + callback-free structured-reader path + thin JS wrapper; fail-closed ownership regression rejects legacy JavaScript record assembly/callback ownership; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
