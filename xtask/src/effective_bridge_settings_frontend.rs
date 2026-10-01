@@ -551,10 +551,11 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source
         .matches("wasmBridgeNetworkProfile(String(net || \"\"))")
         .count()
-        != 2
+        != 1
     {
         return Err(
-            "Bridge profile lookup must use exactly two direct Rust/WASM call sites".to_owned(),
+            "Bridge profile lookup must use exactly one direct JavaScript Rust/WASM call site after OP271 moves in-process settings sync into Rust"
+                .to_owned(),
         );
     }
 
@@ -567,10 +568,10 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source
         .matches("wasmBridgeNodeMode(String(net || \"\"))")
         .count()
-        != 2
+        != 1
     {
         return Err(
-            "Bridge node-mode must use exactly two direct Rust/WASM call sites after OP270 moves apply-payload mode selection into Rust"
+            "Bridge node-mode must use exactly one direct JavaScript Rust/WASM call site after OP271 moves in-process settings sync into Rust"
                 .to_owned(),
         );
     }

@@ -81,6 +81,8 @@ import initBridgeRust, {
   bridgeValidateFormUi as wasmBridgeValidateFormUi,
   bridgeRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi,
   bridgeEffectiveInprocessNodeSettingsChecked as wasmBridgeEffectiveInprocessNodeSettingsChecked,
+  bridgeSetDisabledUi as wasmBridgeSetDisabledUi,
+  bridgeSyncInprocessNodeSettingsV12D as wasmBridgeSyncInprocessNodeSettingsV12D,
   bridgeSyncDependencies as wasmBridgeSyncDependencies,
   bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E,
   bridgeValue as wasmBridgeValue,
@@ -1025,103 +1027,13 @@ function renderAllNetworks(root) {
  * Never return a raw bridge.autofixPorts.* key to the UI.
  */
 /* R54D3 Auto Fix text ownership lives in Rust bridge_port_ui.rs. */
-function bridgeControlCard(el) {
-  return el ? el.closest(".bridge-v7-card") : null;
-}
-
+// KGW_BRIDGE_INPROCESS_MODE_CONTROLS_RUST_OWNER_V1
 function bridgeSetDisabled(net, name, disabled, reason = "") {
-  const el = wasmBridgeById(wasmBridgeElementId(net, name));
-  if (!el) return;
-
-  el.disabled = Boolean(disabled);
-
-  const card = bridgeControlCard(el);
-  if (card) {
-    card.classList.toggle("bridge-v7-mode-disabled", Boolean(disabled));
-    card.title = disabled ? reason : "";
-  }
+  return wasmBridgeSetDisabledUi(String(net || ""), String(name || ""), Boolean(disabled), String(reason || ""));
 }
 
 function bridgeSyncInprocessNodeSettingsV12D(net) {
-  const profile = wasmBridgeNetworkProfile(String(net || ""));
-  if (!profile) return;
-
-  const nodeMode = wasmBridgeNodeMode(String(net || ""));
-  const active = nodeMode === "inprocess" && !wasmBridgeHasConfig(String(net || ""));
-  const section = document.querySelector(`[data-bridge-inprocess-node-settings="${net}"]`);
-
-  if (section) {
-    section.classList.toggle("bridge-v12d-inprocess-inactive", !active);
-    section.classList.toggle("bridge-v12d-inprocess-active", active);
-    section.dataset.kgwInprocessNodeActive = active ? "true" : "false";
-  }
-
-  const appdirMirror = wasmBridgeById(wasmBridgeElementId(net, "inprocessAppdirMirror"));
-  if (appdirMirror) {
-    appdirMirror.value = wasmBridgeValue(net, "appdir") || wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.sameAsAppdir", "same as --appdir");
-    appdirMirror.readOnly = true;
-  }
-
-  const networkArgs = wasmBridgeById(wasmBridgeElementId(net, "inprocessNetworkArgs"));
-  if (networkArgs) {
-    networkArgs.value = profile.testnet
-      ? `--testnet${profile.netsuffix ? " --netsuffix=" + profile.netsuffix : ""}`
-      : "mainnet";
-    networkArgs.readOnly = true;
-  }
-
-  const fields = [
-    "inprocessAppdirMirror",
-    "inprocessNetworkArgs",
-    "inprocessRpcListen",
-    "inprocessRpcListenBorsh",
-    "inprocessRpcListenJson",
-    "inprocessUnsafeRpc",
-    "inprocessUtxoIndex",
-    "inprocessArchival",
-    "inprocessListen",
-    "inprocessAddPeer",
-    "inprocessConnect",
-    "inprocessDisableUpnp",
-    "inprocessMaxInpeers",
-    "inprocessOutpeers",
-    "inprocessPerfMetrics",
-    "inprocessPerfMetricsIntervalSec",
-    "inprocessLogLevel",
-    "inprocessRamScale",
-    "inprocessConfigfile",
-    "inprocessYes",
-    "inprocessOverrideParamsFile",
-    "inprocessDevnet",
-    "inprocessSimnet",
-    "inprocessEnableUnsyncedMining"
-  ];
-
-  for (const name of fields) {
-    const mainnetDanger =
-      net === "mainnet" &&
-      [
-        "inprocessOverrideParamsFile",
-        "inprocessDevnet",
-        "inprocessSimnet",
-        "inprocessEnableUnsyncedMining"
-      ].includes(name);
-
-    bridgeSetDisabled(
-      net,
-      name,
-      !active || mainnetDanger,
-      mainnetDanger
-        ? "Dangerous development-only kaspad flag is disabled on mainnet."
-        : wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.externalInactive", "Used only when Bridge Node Mode is In-Process.")
-    );
-  }
-
-  const readonlyFields = ["inprocessAppdirMirror", "inprocessNetworkArgs"];
-  for (const name of readonlyFields) {
-    const control = wasmBridgeById(wasmBridgeElementId(net, name));
-    if (control) control.readOnly = true;
-  }
+  return wasmBridgeSyncInprocessNodeSettingsV12D(String(net || ""));
 }
 
 

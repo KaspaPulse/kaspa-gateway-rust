@@ -1755,6 +1755,62 @@ fn verify_dependency_sync_ownership(source: &str, helpers: &str) -> Result<(), S
     Ok(())
 }
 
+fn verify_inprocess_mode_controls_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeSetDisabledUi as wasmBridgeSetDisabledUi",
+        "bridgeSyncInprocessNodeSettingsV12D as wasmBridgeSyncInprocessNodeSettingsV12D",
+        "// KGW_BRIDGE_INPROCESS_MODE_CONTROLS_RUST_OWNER_V1",
+        "return wasmBridgeSetDisabledUi(String(net || \"\"), String(name || \"\"), Boolean(disabled), String(reason || \"\"));",
+        "return wasmBridgeSyncInprocessNodeSettingsV12D(String(net || \"\"));",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge in-process mode-controls Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    for forbidden in [
+        "function bridgeControlCard(",
+        "const fields = [\n    \"inprocessAppdirMirror\"",
+        "section.classList.toggle(\"bridge-v12d-inprocess-inactive\"",
+        "appdirMirror.value =",
+        "networkArgs.value = profile.testnet",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge in-process mode-controls JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeSetDisabledUi",
+        "pub fn bridge_set_disabled_ui(",
+        "fn bridge_control_card_inner(",
+        "\"bridge-v7-mode-disabled\"",
+        "js_name = bridgeSyncInprocessNodeSettingsV12D",
+        "pub fn bridge_sync_inprocess_node_settings_v12d(",
+        "\"bridge-v12d-inprocess-inactive\"",
+        "\"bridge-v12d-inprocess-active\"",
+        "\"kgwInprocessNodeActive\"",
+        "\"inprocessAppdirMirror\"",
+        "\"inprocessNetworkArgs\"",
+        "\"inprocessOverrideParamsFile\"",
+        "\"inprocessEnableUnsyncedMining\"",
+        "Dangerous development-only kaspad flag is disabled on mainnet.",
+        "Used only when Bridge Node Mode is In-Process.",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge in-process mode-controls Rust owner contract missing: {required}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn verify_apply_payload_ownership(source: &str, helpers: &str) -> Result<(), String> {
     for required in [
         "bridgeBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi",
@@ -2478,6 +2534,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r95b_port_normalization_ownership(&full_source, &helper_source)?;
     verify_inline_command_toggle_ownership(&full_source, &command_options_source)?;
     verify_dependency_sync_ownership(&full_source, &helper_source)?;
+    verify_inprocess_mode_controls_ownership(&full_source, &helper_source)?;
     verify_full_form_validation_ownership(&full_source, &helper_source)?;
     verify_require_valid_settings_ownership(&full_source, &helper_source)?;
     verify_apply_payload_ownership(&full_source, &helper_source)?;
@@ -3817,6 +3874,49 @@ mod tests {
             helpers.replace("settings_reveal_field(", "missing_reveal_field("),
         ] {
             assert!(verify_full_form_validation_ownership(source, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn inprocess_mode_controls_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_inprocess_mode_controls_ownership(source, helpers).is_ok());
+
+        for mutation in [
+            source.replace(
+                "bridgeSetDisabledUi as wasmBridgeSetDisabledUi",
+                "missingSetDisabledUi as wasmBridgeSetDisabledUi",
+            ),
+            source.replace(
+                "return wasmBridgeSyncInprocessNodeSettingsV12D(String(net || \"\"));",
+                "return false;",
+            ),
+            format!(
+                "{source}\nfunction bridgeControlCard(el) {{ return el?.closest(\".bridge-v7-card\"); }}\n"
+            ),
+        ] {
+            assert!(verify_inprocess_mode_controls_ownership(&mutation, helpers).is_err());
+        }
+
+        for mutation in [
+            helpers.replace(
+                "js_name = bridgeSyncInprocessNodeSettingsV12D",
+                "js_name = missingSyncInprocessNodeSettingsV12D",
+            ),
+            helpers.replace(
+                "\"bridge-v12d-inprocess-active\"",
+                "\"missing-inprocess-active\"",
+            ),
+            helpers.replace(
+                "Dangerous development-only kaspad flag is disabled on mainnet.",
+                "missing mainnet guard",
+            ),
+        ] {
+            assert!(verify_inprocess_mode_controls_ownership(source, &mutation).is_err());
         }
     }
 

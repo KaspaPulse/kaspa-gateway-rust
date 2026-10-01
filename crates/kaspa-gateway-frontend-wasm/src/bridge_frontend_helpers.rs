@@ -1160,6 +1160,170 @@ pub fn bridge_validate_form_ui(net: String, bridge_instances: JsValue, focus: bo
     errors
 }
 
+fn bridge_control_card_inner(element: &JsValue) -> JsValue {
+    if !present(element) {
+        return JsValue::UNDEFINED;
+    }
+    call1(element, "closest", &JsValue::from_str(".bridge-v7-card")).unwrap_or(JsValue::UNDEFINED)
+}
+
+#[wasm_bindgen(js_name = bridgeSetDisabledUi)]
+pub fn bridge_set_disabled_ui(net: String, name: String, disabled: bool, reason: String) -> bool {
+    let element = bridge_by_id(bridge_element_id(net, name));
+    if !present(&element) {
+        return false;
+    }
+
+    set(&element, "disabled", &JsValue::from_bool(disabled));
+    let card = bridge_control_card_inner(&element);
+    if present(&card) {
+        let class_list = property(&card, "classList");
+        let _ = call2(
+            &class_list,
+            "toggle",
+            &JsValue::from_str("bridge-v7-mode-disabled"),
+            &JsValue::from_bool(disabled),
+        );
+        set(
+            &card,
+            "title",
+            &JsValue::from_str(if disabled { &reason } else { "" }),
+        );
+    }
+    true
+}
+
+#[wasm_bindgen(js_name = bridgeSyncInprocessNodeSettingsV12D)]
+pub fn bridge_sync_inprocess_node_settings_v12d(net: String) -> bool {
+    let Some(network_profile) = profile(&net) else {
+        return false;
+    };
+
+    let active = bridge_node_mode(net.clone()) == "inprocess" && !bridge_has_config(net.clone());
+    let section = query_bridge(
+        &document(),
+        &format!("[data-bridge-inprocess-node-settings=\"{net}\"]"),
+    );
+    if present(&section) {
+        let class_list = property(&section, "classList");
+        let _ = call2(
+            &class_list,
+            "toggle",
+            &JsValue::from_str("bridge-v12d-inprocess-inactive"),
+            &JsValue::from_bool(!active),
+        );
+        let _ = call2(
+            &class_list,
+            "toggle",
+            &JsValue::from_str("bridge-v12d-inprocess-active"),
+            &JsValue::from_bool(active),
+        );
+        let dataset = property(&section, "dataset");
+        set(
+            &dataset,
+            "kgwInprocessNodeActive",
+            &JsValue::from_str(if active { "true" } else { "false" }),
+        );
+    }
+
+    let appdir_mirror = bridge_by_id(bridge_element_id(
+        net.clone(),
+        "inprocessAppdirMirror".to_owned(),
+    ));
+    if present(&appdir_mirror) {
+        let appdir = bridge_value(net.clone(), "appdir".to_owned());
+        let value = if appdir.is_empty() {
+            crate::js_string_owned(&translate_raw(
+                "bridge.inprocessNodeSettings.sameAsAppdir",
+                "same as --appdir",
+            ))
+        } else {
+            appdir
+        };
+        set(&appdir_mirror, "value", &JsValue::from_str(&value));
+        set(&appdir_mirror, "readOnly", &JsValue::TRUE);
+    }
+
+    let network_args = bridge_by_id(bridge_element_id(
+        net.clone(),
+        "inprocessNetworkArgs".to_owned(),
+    ));
+    if present(&network_args) {
+        let value = if network_profile.testnet {
+            if network_profile.netsuffix.is_empty() {
+                "--testnet".to_owned()
+            } else {
+                format!("--testnet --netsuffix={}", network_profile.netsuffix)
+            }
+        } else {
+            "mainnet".to_owned()
+        };
+        set(&network_args, "value", &JsValue::from_str(&value));
+        set(&network_args, "readOnly", &JsValue::TRUE);
+    }
+
+    const FIELDS: &[&str] = &[
+        "inprocessAppdirMirror",
+        "inprocessNetworkArgs",
+        "inprocessRpcListen",
+        "inprocessRpcListenBorsh",
+        "inprocessRpcListenJson",
+        "inprocessUnsafeRpc",
+        "inprocessUtxoIndex",
+        "inprocessArchival",
+        "inprocessListen",
+        "inprocessAddPeer",
+        "inprocessConnect",
+        "inprocessDisableUpnp",
+        "inprocessMaxInpeers",
+        "inprocessOutpeers",
+        "inprocessPerfMetrics",
+        "inprocessPerfMetricsIntervalSec",
+        "inprocessLogLevel",
+        "inprocessRamScale",
+        "inprocessConfigfile",
+        "inprocessYes",
+        "inprocessOverrideParamsFile",
+        "inprocessDevnet",
+        "inprocessSimnet",
+        "inprocessEnableUnsyncedMining",
+    ];
+    const MAINNET_DANGER: &[&str] = &[
+        "inprocessOverrideParamsFile",
+        "inprocessDevnet",
+        "inprocessSimnet",
+        "inprocessEnableUnsyncedMining",
+    ];
+    let inactive_reason = crate::js_string_owned(&translate_raw(
+        "bridge.inprocessNodeSettings.externalInactive",
+        "Used only when Bridge Node Mode is In-Process.",
+    ));
+
+    for name in FIELDS {
+        let mainnet_danger = net == "mainnet" && MAINNET_DANGER.contains(name);
+        let reason = if mainnet_danger {
+            "Dangerous development-only kaspad flag is disabled on mainnet.".to_owned()
+        } else {
+            inactive_reason.clone()
+        };
+        bridge_set_disabled_ui(
+            net.clone(),
+            (*name).to_owned(),
+            !active || mainnet_danger,
+            reason,
+        );
+    }
+
+    for name in ["inprocessAppdirMirror", "inprocessNetworkArgs"] {
+        let control = bridge_by_id(bridge_element_id(net.clone(), name.to_owned()));
+        if present(&control) {
+            set(&control, "readOnly", &JsValue::TRUE);
+        }
+    }
+
+    true
+}
+
 #[wasm_bindgen(js_name = bridgeSyncDependencies)]
 pub fn bridge_sync_dependencies(net: String, bridge_instances: JsValue) -> bool {
     let values = bridge_form_values_inner(&net);
