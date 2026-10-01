@@ -434,3 +434,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: stale R51 load/keys regression mutations were updated to fail closed against the post-OP297 Rust-owned boundary; direct JS read-settings consumer count moved 2→1.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP297 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP298 - Bridge integrated runtime action Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 3, same canonical writer/session.
+- PREVIOUS_CLOSED_OPERATION: OP297 closeout `db4bcd32d6a95acf71e617d481d23d0daf276866`; BASE_TREE `f3911c7bf10d95824fe1f8a06bf6c26775cd4065`; worktree clean at intent time.
+- BOUNDARY: move `runBridgeIntegratedAction` orchestration into Rust/WASM. Rust owns action validation, network-policy/start validation, risky-start confirmation dispatch, scoped port-conflict preflight, same-network node guard, in-flight fencing, runtime trace lifecycle, preview/invoke/outcome interpretation, runtime button/error/activity state, owned-node lock transitions, raw-log kick scheduling, error reconciliation, and finally refresh. JavaScript becomes a thin async wrapper providing only explicit callbacks for confirmation/update/invoke/live-refresh where needed.
+- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; current runtime behavior and trace markers preserved; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
