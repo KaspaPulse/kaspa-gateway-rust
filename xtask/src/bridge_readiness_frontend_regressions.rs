@@ -292,10 +292,18 @@ const lastNetworkOwnership = {
 };
 
 const transportCalls = [];
+let transportOwnerStatus = "transport-ok";
 const transportInvoke = async (command, args) => {
-  transportCalls.push({ command: String(command || ""), network: String(args?.network || "") });
+  transportCalls.push({
+    command: String(command || ""),
+    network: String(args?.network || ""),
+    runtimeRole: String(args?.runtimeRole || "")
+  });
   if (String(command || "") === "kgw_settings_context_v1") {
     return { appDir: "APPDIR-" + String(args?.network || "") };
+  }
+  if (String(command || "") === "kgw_runtime_owner_status_v1") {
+    return transportOwnerStatus;
   }
   return "transport-ok";
 };
@@ -404,6 +412,9 @@ for (const name of [
 ]) {
   elements.set("bridge-mainnet-" + name, new Element());
 }
+const mainnetNodeMode = new Element();
+mainnetNodeMode.value = "external";
+elements.set(wasm.bridgeElementId("mainnet", "nodeMode"), mainnetNodeMode);
 const start = new Element();
 const stop = new Element();
 const next = new Element();
@@ -473,6 +484,43 @@ const documentImpl = {
   }
 };
 globalThis.document = documentImpl;
+
+const inprocessNodeOwnerGuardAlerts = [];
+globalThis.alert = (message) => {
+  inprocessNodeOwnerGuardAlerts.push(String(message || ""));
+};
+
+mainnetNodeMode.value = "external";
+transportOwnerStatus = "role=node;network=mainnet;running=true;readiness=READY";
+const guardExternalCallsBefore = transportCalls.length;
+const guardExternal = await wasm.bridgeV7BlockInprocessIfNodeOwnerRunning("mainnet");
+const guardExternalCalls = transportCalls.length - guardExternalCallsBefore;
+
+mainnetNodeMode.value = "inprocess";
+const guardRunningCallsBefore = transportCalls.length;
+const guardRunning = await wasm.bridgeV7BlockInprocessIfNodeOwnerRunning("mainnet");
+const guardRunningCalls = transportCalls.length - guardRunningCallsBefore;
+const guardRunningCall = transportCalls.at(-1) || {};
+
+transportOwnerStatus = "role=node;network=mainnet;running=false;readiness=READY";
+const guardStoppedCallsBefore = transportCalls.length;
+const guardStopped = await wasm.bridgeV7BlockInprocessIfNodeOwnerRunning("mainnet");
+const guardStoppedCalls = transportCalls.length - guardStoppedCallsBefore;
+
+const inprocessNodeOwnerGuard = {
+  external: guardExternal,
+  externalCalls: guardExternalCalls,
+  running: guardRunning,
+  runningCalls: guardRunningCalls,
+  stopped: guardStopped,
+  stoppedCalls: guardStoppedCalls,
+  command: String(guardRunningCall.command || ""),
+  network: String(guardRunningCall.network || ""),
+  runtimeRole: String(guardRunningCall.runtimeRole || ""),
+  alert: String(inprocessNodeOwnerGuardAlerts.at(-1) || "")
+};
+mainnetNodeMode.value = "external";
+transportOwnerStatus = "transport-ok";
 
 let defaultPathUpdateCalls = 0;
 let defaultPathUpdateNet = "";
@@ -624,6 +672,7 @@ const sandbox = {
   wasmBridgeNormalizeRuntimeError: wasm.bridgeNormalizeRuntimeError,
   wasmBridgeParseRuntimeKeyValueResponse: wasm.bridgeParseRuntimeKeyValueResponse,
   wasmBridgeV7RuntimeRunningFromText: wasm.bridgeV7RuntimeRunningFromText,
+  wasmBridgeV7BlockInprocessIfNodeOwnerRunning: wasm.bridgeV7BlockInprocessIfNodeOwnerRunning,
   wasmBridgeR51IsRunning: wasm.bridgeR51IsRunning,
   wasmBridgeR51SetRuntimeButtons: wasm.bridgeR51SetRuntimeButtons,
   wasmBridgeR51SetRuntimeUnknown: wasm.bridgeR51SetRuntimeUnknown,
@@ -654,7 +703,6 @@ sandbox.updateCommand = () => "--node-mode=external";
 sandbox.kgwBridgeValidateForm = () => ({});
 sandbox.c = () => false;
 sandbox.confirmUserAction = async () => true;
-sandbox.kgwBridgeV7BlockInprocessIfNodeOwnerRunning = async () => false;
 sandbox.invokeBridgeIntegratedRuntime = (...args) => invokeRuntime(...args);
 sandbox.kgwBridgeRuntimeOwnerTraceR64D = () => {};
 sandbox.kgwBridgePreviewDeclaresInprocessR65F = () => false;
@@ -781,6 +829,7 @@ const output = {
     command: previewTransportCommand,
     unavailableError: previewUnavailableError
   },
+  inprocessNodeOwnerGuard,
   runtimeRunning: {
     liveOnly: api.runtimeRunning("role=node;network=mainnet;running=true"),
     ready: api.runtimeRunning("role=node;network=mainnet;running=true;readiness=READY")
@@ -1161,6 +1210,56 @@ fn verify_r51_live_refresh_ownership(source: &str, runtime_core: &str) -> Result
         if !runtime_core.contains(required) {
             return Err(format!(
                 "Bridge R51 live-refresh Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_inprocess_node_owner_guard_ownership(
+    source: &str,
+    start_trace: &str,
+) -> Result<(), String> {
+    for forbidden in [
+        "async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(",
+        "kgwBridgeV7BlockInprocessIfNodeOwnerRunning(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge in-process node-owner guard JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+    if !source.contains(
+        "bridgeV7BlockInprocessIfNodeOwnerRunning as wasmBridgeV7BlockInprocessIfNodeOwnerRunning",
+    ) {
+        return Err("Bridge in-process node-owner guard Rust/WASM binding missing".to_owned());
+    }
+    if source
+        .matches("wasmBridgeV7BlockInprocessIfNodeOwnerRunning(")
+        .count()
+        != 1
+    {
+        return Err("Bridge in-process node-owner guard call count drifted".to_owned());
+    }
+    for required in [
+        "INPROCESS_NODE_OWNER_RUNNING_MESSAGE",
+        "async fn block_inprocess_if_node_owner_running_impl(",
+        "js_name = bridgeV7BlockInprocessIfNodeOwnerRunning",
+        "pub async fn bridge_v7_block_inprocess_if_node_owner_running(",
+        "bridge_frontend_helpers::bridge_node_mode",
+        "runtime_invoke_available()",
+        "invoke_runtime_command_impl(\"kgw_runtime_owner_status_v1\"",
+        "\"network\"",
+        "\"runtimeRole\"",
+        "\"node\"",
+        "bridge_runtime_core::bridge_v7_runtime_running_from_text",
+        "function(&window(), \"alert\")",
+        "Cannot start bridge in in-process mode because the same-network node is already running. Stop the node first, or switch bridge node mode to External.",
+    ] {
+        if !start_trace.contains(required) {
+            return Err(format!(
+                "Bridge in-process node-owner guard Rust owner contract missing: {required}"
             ));
         }
     }
@@ -1672,6 +1771,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_runtime_notice_ownership(&full_source, &runtime_core_source)?;
     verify_mark_restart_required_ownership(&full_source, &runtime_core_source)?;
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
+    verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -1719,6 +1819,35 @@ pub fn run(root: &Path) -> Result<String, String> {
         json!("kgw_kgw_runtime_logs_v1"),
     )?;
     expect(&actual, "/transport/calls/0/network", json!("mainnet"))?;
+    expect(&actual, "/inprocessNodeOwnerGuard/external", json!(false))?;
+    expect(&actual, "/inprocessNodeOwnerGuard/externalCalls", json!(0))?;
+    expect(&actual, "/inprocessNodeOwnerGuard/running", json!(true))?;
+    expect(&actual, "/inprocessNodeOwnerGuard/runningCalls", json!(1))?;
+    expect(&actual, "/inprocessNodeOwnerGuard/stopped", json!(false))?;
+    expect(&actual, "/inprocessNodeOwnerGuard/stoppedCalls", json!(1))?;
+    expect(
+        &actual,
+        "/inprocessNodeOwnerGuard/command",
+        json!("kgw_runtime_owner_status_v1"),
+    )?;
+    expect(
+        &actual,
+        "/inprocessNodeOwnerGuard/network",
+        json!("mainnet"),
+    )?;
+    expect(
+        &actual,
+        "/inprocessNodeOwnerGuard/runtimeRole",
+        json!("node"),
+    )?;
+    expect(
+        &actual,
+        "/inprocessNodeOwnerGuard/alert",
+        json!(
+            "Cannot start bridge in in-process mode because the same-network node is already running. Stop the node first, or switch bridge node mode to External."
+        ),
+    )?;
+
     expect(&actual, "/previewTransport/result", json!("transport-ok"))?;
     expect(
         &actual,
@@ -2509,6 +2638,47 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn inprocess_node_owner_guard_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let start_trace =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs");
+        assert!(verify_inprocess_node_owner_guard_ownership(source, start_trace).is_ok());
+        for mutation in [
+            source.replacen(
+                "wasmBridgeV7BlockInprocessIfNodeOwnerRunning(",
+                "kgwBridgeV7BlockInprocessIfNodeOwnerRunning(",
+                1,
+            ),
+            source.replace(
+                "bridgeV7BlockInprocessIfNodeOwnerRunning as wasmBridgeV7BlockInprocessIfNodeOwnerRunning",
+                "missingBlockInprocessGuard as wasmBridgeV7BlockInprocessIfNodeOwnerRunning",
+            ),
+            format!(
+                "{source}\nasync function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {{ return Boolean(net); }}\n"
+            ),
+        ] {
+            assert!(
+                verify_inprocess_node_owner_guard_ownership(&mutation, start_trace).is_err()
+            );
+        }
+        for mutation in [
+            start_trace.replace(
+                "js_name = bridgeV7BlockInprocessIfNodeOwnerRunning",
+                "js_name = missingV7BlockInprocessIfNodeOwnerRunning",
+            ),
+            start_trace.replace(
+                "invoke_runtime_command_impl(\"kgw_runtime_owner_status_v1\"",
+                "invoke_runtime_command_impl(\"missing_runtime_owner_status\"",
+            ),
+            start_trace.replace("\"runtimeRole\"", "\"missingRuntimeRole\""),
+        ] {
+            assert!(verify_inprocess_node_owner_guard_ownership(source, &mutation).is_err());
+        }
     }
 
     #[test]

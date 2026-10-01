@@ -338,8 +338,35 @@ fn runtime_invoke_timeout_ms(command: &str) -> u32 {
     }
 }
 
+const INPROCESS_NODE_OWNER_RUNNING_MESSAGE: &str = "Cannot start bridge in in-process mode because the same-network node is already running. Stop the node first, or switch bridge node mode to External.";
+
 fn runtime_invoke_available() -> bool {
     resolve_invoke().is_some()
+}
+
+async fn block_inprocess_if_node_owner_running_impl(net: &str) -> Result<bool, JsValue> {
+    if crate::bridge_frontend_helpers::bridge_node_mode(net.to_owned()) != "inprocess" {
+        return Ok(false);
+    }
+    if !runtime_invoke_available() {
+        return Ok(false);
+    }
+
+    let payload = Object::new();
+    set(payload.as_ref(), "network", &JsValue::from_str(net));
+    set(payload.as_ref(), "runtimeRole", &JsValue::from_str("node"));
+    let result = invoke_runtime_command_impl("kgw_runtime_owner_status_v1", payload.into()).await?;
+    if !crate::bridge_runtime_core::bridge_v7_runtime_running_from_text(result) {
+        return Ok(false);
+    }
+
+    if let Some(alert) = function(&window(), "alert") {
+        let _ = alert.call1(
+            &window(),
+            &JsValue::from_str(INPROCESS_NODE_OWNER_RUNNING_MESSAGE),
+        );
+    }
+    Ok(true)
 }
 
 async fn invoke_runtime_command_impl(command: &str, payload: JsValue) -> Result<JsValue, JsValue> {
@@ -934,6 +961,11 @@ pub fn bridge_restore_log_action_label(button: JsValue) {
 #[wasm_bindgen(js_name = bridgeFlashLogActionButton)]
 pub fn bridge_flash_log_action_button(button: JsValue, done_label: String) {
     flash_log_action_button_impl(&button, &done_label);
+}
+
+#[wasm_bindgen(js_name = bridgeV7BlockInprocessIfNodeOwnerRunning)]
+pub async fn bridge_v7_block_inprocess_if_node_owner_running(net: String) -> Result<bool, JsValue> {
+    block_inprocess_if_node_owner_running_impl(&net).await
 }
 
 #[wasm_bindgen(js_name = bridgeRuntimeInvokeAvailable)]

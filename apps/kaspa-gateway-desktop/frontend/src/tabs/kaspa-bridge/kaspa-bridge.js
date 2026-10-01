@@ -22,7 +22,7 @@ import initBridgeRust, {
   bridgeRenderPorts as wasmBridgeRenderPorts,
   bridgeRenderCpuMiner as wasmBridgeRenderCpuMiner,
   bridgeNormalizeRuntimeError as wasmBridgeNormalizeRuntimeError,
-  bridgeV7RuntimeRunningFromText as wasmBridgeV7RuntimeRunningFromText,
+  bridgeV7BlockInprocessIfNodeOwnerRunning as wasmBridgeV7BlockInprocessIfNodeOwnerRunning,
   bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons,
   bridgeR51SetRuntimeUnknown as wasmBridgeR51SetRuntimeUnknown,
   bridgeSetRuntimeErrorV1 as wasmBridgeSetRuntimeErrorV1,
@@ -48,7 +48,6 @@ import initBridgeRust, {
   bridgeCurrentNodeModeFromUiR65F as wasmBridgeCurrentNodeModeFromUiR65F,
   bridgePlainPortOnlyValueR98 as wasmBridgePlainPortOnlyValueR98,
   bridgeSamePortValueR98 as wasmBridgeSamePortValueR98,
-  bridgeRuntimeInvokeAvailable as wasmBridgeRuntimeInvokeAvailable,
   bridgeInvokeRuntimeCommand as wasmBridgeInvokeRuntimeCommand,
   bridgePreparePreview as wasmBridgePreparePreview,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
@@ -1591,28 +1590,7 @@ async function invokeBridgeIntegratedRuntime(command, net) {
 }
 
 
-// KGW_BRIDGE_INPROCESS_SAME_DB_OWNER_V7
-async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {
-  if (wasmBridgeNodeMode(String(net || "")) !== "inprocess") return false;
-
-  if (!wasmBridgeRuntimeInvokeAvailable()) return false;
-
-  const result = await wasmBridgeInvokeRuntimeCommand(
-    "kgw_runtime_owner_status_v1",
-    { network: net, runtimeRole: "node" }
-  );
-
-  if (!wasmBridgeV7RuntimeRunningFromText(result)) return false;
-
-  const message =
-    "Cannot start bridge in in-process mode because the same-network node is already running. Stop the node first, or switch bridge node mode to External.";
-
-  try {
-    window.alert(message);
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-
-  return true;
-}
+// KGW_BRIDGE_INPROCESS_SAME_DB_OWNER_V7 is Rust-owned in bridge_start_trace.rs.
 
 // KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E is Rust-owned in node_tab.rs.
 
@@ -1706,7 +1684,7 @@ async function runBridgeIntegratedAction(action, net) {
       return true;
     }
 
-    const blockedBySameNetworkNode = await kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net);
+    const blockedBySameNetworkNode = await wasmBridgeV7BlockInprocessIfNodeOwnerRunning(String(net || ""));
 
     kgwBridgeRuntimeOwnerTraceR64D("r64d-preflight-result", {
       blockedBySameNetworkNode: Boolean(blockedBySameNetworkNode)
