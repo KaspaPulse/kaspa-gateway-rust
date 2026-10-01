@@ -1605,6 +1605,55 @@ fn verify_start_options_ownership(
     Ok(())
 }
 
+fn verify_render_all_networks_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeRenderAllNetworksUi as wasmBridgeRenderAllNetworksUi",
+        "// KGW_BRIDGE_RENDER_ALL_NETWORKS_RUST_OWNER_V1",
+        "function renderAllNetworks(root) {",
+        "return wasmBridgeRenderAllNetworksUi(root, {",
+        "renderNetworkPanel: (profile, index) => renderNetworkPanel(profile, index)",
+        "installSettingsLayout: (targetRoot) => installSettingsLayout(targetRoot)",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge render-all-networks Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    let wrapper = slice_between(source, "function renderAllNetworks(root) {", "\n}")?;
+    for forbidden in [
+        "querySelector(\"#bridgeNetworkPanels\")",
+        "BRIDGE_NETWORKS.map(",
+        "host.innerHTML =",
+        "setTimeout(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge render-all-networks JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeRenderAllNetworksUi",
+        "pub fn bridge_render_all_networks_ui(",
+        "query_bridge(&root, \"#bridgeNetworkPanels\")",
+        "for (index, profile) in NETWORKS.iter().enumerate()",
+        "set(&host, \"innerHTML\"",
+        "\"renderNetworkPanel\"",
+        "\"installSettingsLayout\"",
+        "bridge_install_log_auto_scroll_controls();",
+        "\"kgwInstallBridgeLogScopedControlsV29\"",
+        "\"setTimeout\"",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge render-all-networks Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_instance_click_owner_ownership(source: &str, instance_ui: &str) -> Result<(), String> {
     for required in [
         "bridgeInstallInstanceContainerOwnerR11 as wasmBridgeInstallInstanceContainerOwnerR11",
@@ -2763,10 +2812,10 @@ fn verify_static_contracts(
     if source
         .matches("setTimeout(wasmBridgeInstallLogAutoScrollControls, 0);")
         .count()
-        != 2
+        != 1
     {
         return Err(
-            "Bridge R27 DOM installer must have exactly two generated-WASM scheduling call sites"
+            "Bridge R27 DOM installer must have exactly one remaining direct JavaScript scheduling call site after OP282 moves render-all-networks deferred installation into Rust"
                 .to_owned(),
         );
     }
@@ -3121,6 +3170,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_start_options_ownership(&full_source, &helper_source, &instance_settings_source)?;
+    verify_render_all_networks_ownership(&full_source, &helper_source)?;
     verify_instance_click_owner_ownership(&full_source, &instance_ui_source)?;
     verify_visible_instance_owners_ownership(&full_source, &instance_ui_source)?;
     verify_instance_refresh_ownership(&full_source, &instance_ui_source)?;
@@ -4352,6 +4402,29 @@ mod tests {
         ] {
             assert!(verify_start_options_ownership(source, helpers, &mutation).is_err());
         }
+    }
+
+    #[test]
+    fn render_all_networks_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_render_all_networks_ownership(source, helpers).is_ok());
+
+        let legacy = source.replacen(
+            "function renderAllNetworks(root) {",
+            "function renderAllNetworks(root) {\n  const host = root.querySelector(\"#bridgeNetworkPanels\"); host.innerHTML = BRIDGE_NETWORKS.map(renderNetworkPanel).join(\"\");",
+            1,
+        );
+        assert!(verify_render_all_networks_ownership(&legacy, helpers).is_err());
+
+        let missing = helpers.replace(
+            "js_name = bridgeRenderAllNetworksUi",
+            "js_name = missingRenderAllNetworksUi",
+        );
+        assert!(verify_render_all_networks_ownership(source, &missing).is_err());
     }
 
     #[test]

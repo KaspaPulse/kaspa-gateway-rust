@@ -69,6 +69,7 @@ import initBridgeRust, {
   bridgeSaveLastNetwork as wasmBridgeSaveLastNetwork,
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
+  bridgeRenderAllNetworksUi as wasmBridgeRenderAllNetworksUi,
   bridgeResolveInnerTab as wasmBridgeResolveInnerTab,
   bridgeSaveInnerTab as wasmBridgeSaveInnerTab,
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
@@ -723,15 +724,12 @@ function removeInstance(net, instanceId) {
 }
 
 
+// KGW_BRIDGE_RENDER_ALL_NETWORKS_RUST_OWNER_V1
 function renderAllNetworks(root) {
-  const host = root.querySelector("#bridgeNetworkPanels");
-  if (!host) return;
-  host.innerHTML = BRIDGE_NETWORKS.map(renderNetworkPanel).join("");
-  installSettingsLayout(root);
-
-
-  setTimeout(wasmBridgeInstallLogAutoScrollControls, 0);
-  setTimeout(window.kgwInstallBridgeLogScopedControlsV29, 0);
+  return wasmBridgeRenderAllNetworksUi(root, {
+    renderNetworkPanel: (profile, index) => renderNetworkPanel(profile, index),
+    installSettingsLayout: (targetRoot) => installSettingsLayout(targetRoot)
+  });
 }
 
 /* KGW_BRIDGE_NETWORK_PORT_PROFILES_SOFT_POLICY_PATCH_R35B

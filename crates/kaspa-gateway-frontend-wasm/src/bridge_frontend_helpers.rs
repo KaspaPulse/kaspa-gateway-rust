@@ -855,6 +855,56 @@ pub fn bridge_backend_invoke_r5(command: String, payload: JsValue) -> Result<Pro
     Ok(Promise::resolve(&result))
 }
 
+#[wasm_bindgen(js_name = bridgeRenderAllNetworksUi)]
+pub fn bridge_render_all_networks_ui(root: JsValue, callbacks: JsValue) -> Result<bool, JsValue> {
+    let host = query_bridge(&root, "#bridgeNetworkPanels");
+    if !present(&host) {
+        return Ok(false);
+    }
+
+    let render: Function = property(&callbacks, "renderNetworkPanel")
+        .dyn_into()
+        .map_err(|_| {
+            JsValue::from(Error::new(
+                "Bridge render-network-panel callback is unavailable",
+            ))
+        })?;
+    let install_layout: Function = property(&callbacks, "installSettingsLayout")
+        .dyn_into()
+        .map_err(|_| JsValue::from(Error::new("Bridge settings-layout callback is unavailable")))?;
+
+    let mut panels = Vec::with_capacity(NETWORKS.len());
+    for (index, profile) in NETWORKS.iter().enumerate() {
+        let rendered = render.call2(
+            &callbacks,
+            &profile_object(profile),
+            &JsValue::from_f64(index as f64),
+        )?;
+        panels.push(crate::js_string_owned(&rendered));
+    }
+    set(&host, "innerHTML", &JsValue::from_str(&panels.join("")));
+    let _ = install_layout.call1(&callbacks, &root)?;
+
+    let auto_scroll = Closure::once_into_js(move || {
+        bridge_install_log_auto_scroll_controls();
+    });
+    if let Some(set_timeout) = function(&window(), "setTimeout") {
+        let _ = set_timeout.call2(&window(), &auto_scroll, &JsValue::from_f64(0.0));
+    }
+
+    let scoped_controls = Closure::once_into_js(move || {
+        let current_window = window();
+        if let Some(installer) = function(&current_window, "kgwInstallBridgeLogScopedControlsV29") {
+            let _ = installer.call0(&current_window);
+        }
+    });
+    if let Some(set_timeout) = function(&window(), "setTimeout") {
+        let _ = set_timeout.call2(&window(), &scoped_controls, &JsValue::from_f64(0.0));
+    }
+
+    Ok(true)
+}
+
 #[wasm_bindgen(js_name = bridgeNetworkProfiles)]
 pub fn bridge_network_profiles() -> Array {
     let output = Array::new();
