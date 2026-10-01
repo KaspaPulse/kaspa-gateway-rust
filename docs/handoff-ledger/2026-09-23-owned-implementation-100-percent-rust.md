@@ -328,9 +328,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP287 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP288 - Bridge command-checkbox and in-process-tab event owners Rust/WASM ownership (INTENT)
+## OP288 - Bridge command-checkbox and in-process-tab event owners Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP287 closeout `08574afb2a318fb24a312df012b710cdc456743d`; BASE_TREE `1674467edb8e113a8bee7b634d1af166af9974d5`; worktree clean at intent time.
-- BOUNDARY: move the instance command-checkbox owner, command-composer inline checkbox pointer/change/click/keydown owner, and in-process node sub-tab click owner from `installActions` into Rust/WASM. Rust owns the event filtering, state mutation, trace emission, keyboard/click semantics, active/hidden panel state, and update-command callback dispatch.
-- ACCEPTANCE: one Rust installer + thin JavaScript call; generated WASM consistent; R13B/R7/R31/V12B semantics preserved; fail-closed ownership regression; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: instance command-checkbox, inline command-composer pointer/change/click/keydown, and in-process node sub-tab event ownership moved from `installActions` into Rust/WASM `bridgeInstallActionEventOwnersUi`. Rust owns event filtering, state mutation, trace emission, keyboard/click semantics, active/hidden panel state, and update-command callback dispatch.
+- IMPLEMENTATION_CHECKPOINT: `fd4e2057df66d04fb1e58e728cc19bda3eba593b`, tree `ea57d031c301b34a5df450bc1c1236b1b0a9b334`. Closeout generation 2279.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 307/307 plus auxiliary suites; targeted action-event and inline-toggle ownership regressions; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: inline-toggle gate now requires only the one valid R51 write-settings refresh binding/call and fails closed on reintroduced direct JavaScript toggle ownership; stale regression mutation updated to test forbidden reintroduction rather than a removed call site.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP288 qualification unless invalidated.
+- PUSHED: NO.
