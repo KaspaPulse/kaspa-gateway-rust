@@ -84,7 +84,8 @@ import initBridgeRust, {
   bridgeSyncAllModeControlsUi as wasmBridgeSyncAllModeControlsUi,
   bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E,
   bridgeValue as wasmBridgeValue,
-  bridgeCreateInstanceRecordR9 as wasmBridgeCreateInstanceRecordR9,
+  bridgeAddInstanceUi as wasmBridgeAddInstanceUi,
+  bridgeRemoveInstanceUi as wasmBridgeRemoveInstanceUi,
   bridgeEnsureInstanceState as wasmBridgeEnsureInstanceState,
   bridgeActiveRawLogInstanceId as wasmBridgeActiveRawLogInstanceId,
   bridgeAssertNoPortConflictsR5 as wasmBridgeAssertNoPortConflictsR5,
@@ -905,33 +906,31 @@ function bridgeInstallAllVisibleInstanceContainerOwnersR11(root) {
 
 
 
+// KGW_BRIDGE_INSTANCE_MUTATION_RUST_OWNER_V1
 function addInstance(net) {
-  wasmBridgeSmallOwnerTraceR44D(net, "add-instance", "r44d-owner-begin", {});
-  net = wasmBridgeInstanceNetworkKeyR15(net, net);
-  wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
-
-  const next = wasmBridgeCreateInstanceRecordR9(bridgeInstances, String(net || ""));
-  bridgeInstances[net].push(next);
-  activeInstance[net] = next.id;
-
-  bridgeRefreshInstances(net);
-  wasmBridgeRenderRawLogBuffer(String(net || ""), "bridge", String(activeInstance[net] || ""));
-  updateCommand(net);
-  wasmBridgeSmallOwnerTraceR44D(net, "add-instance", "r44d-owner-complete", {});
+  return wasmBridgeAddInstanceUi(
+    String(net || ""),
+    bridgeInstances,
+    activeInstance,
+    {
+      refreshInstances: (targetNet) => bridgeRefreshInstances(String(targetNet || "")),
+      updateCommand: (targetNet) => updateCommand(String(targetNet || ""))
+    }
+  );
 }
 
 
 function removeInstance(net, instanceId) {
-  wasmBridgeSmallOwnerTraceR44D(net, "remove-instance", "r44d-owner-begin", { instanceId: String(instanceId || "") });
-  wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
-  if (bridgeInstances[net].length <= 1) return;
-  const removedIndex = bridgeInstances[net].findIndex(instance => String(instance.id) === String(instanceId));
-  bridgeInstances[net] = bridgeInstances[net].filter((instance) => String(instance.id) !== String(instanceId));
-  if (!bridgeInstances[net].some(instance => String(instance.id) === String(activeInstance[net]))) {
-    activeInstance[net] = bridgeInstances[net][Math.max(0, removedIndex - 1)].id;
-  }
-  bridgeRefreshInstances(net);
-  wasmBridgeSmallOwnerTraceR44D(net, "remove-instance", "r44d-owner-complete", { instanceId: String(instanceId || "") });
+  return wasmBridgeRemoveInstanceUi(
+    String(net || ""),
+    instanceId,
+    bridgeInstances,
+    activeInstance,
+    {
+      refreshInstances: (targetNet) => bridgeRefreshInstances(String(targetNet || "")),
+      updateCommand: (targetNet) => updateCommand(String(targetNet || ""))
+    }
+  );
 }
 
 

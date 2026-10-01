@@ -1603,6 +1603,70 @@ fn verify_start_options_ownership(
     Ok(())
 }
 
+fn verify_instance_mutation_ownership(source: &str, instance_settings: &str) -> Result<(), String> {
+    for required in [
+        "bridgeAddInstanceUi as wasmBridgeAddInstanceUi",
+        "bridgeRemoveInstanceUi as wasmBridgeRemoveInstanceUi",
+        "// KGW_BRIDGE_INSTANCE_MUTATION_RUST_OWNER_V1",
+        "function addInstance(net) {",
+        "return wasmBridgeAddInstanceUi(",
+        "function removeInstance(net, instanceId) {",
+        "return wasmBridgeRemoveInstanceUi(",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge instance-mutation Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    let add_wrapper = slice_between(source, "function addInstance(net) {", "\n}")?;
+    let remove_wrapper =
+        slice_between(source, "function removeInstance(net, instanceId) {", "\n}")?;
+    for forbidden in [
+        "wasmBridgeSmallOwnerTraceR44D(",
+        "wasmBridgeEnsureInstanceState(",
+        "wasmBridgeCreateInstanceRecordR9(",
+        "bridgeInstances[net].push(",
+        "bridgeInstances[net] = bridgeInstances[net].filter(",
+        ".findIndex(",
+        "Math.max(",
+    ] {
+        if add_wrapper.contains(forbidden) || remove_wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge instance-mutation JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeAddInstanceUi",
+        "pub fn bridge_add_instance_ui(",
+        "js_name = bridgeRemoveInstanceUi",
+        "pub fn bridge_remove_instance_ui(",
+        "bridge_port_orchestration::bridge_ensure_instance_state(",
+        "bridge_port_orchestration::bridge_create_instance_record_r9(",
+        "instances.push(&next)",
+        "set(&active_instance, &net, &next_id)",
+        "input.length() <= 1",
+        "removed_index: Option<u32>",
+        "saturating_sub(1)",
+        "call1_required(&callbacks, \"refreshInstances\"",
+        "call1_required(&callbacks, \"updateCommand\"",
+        "bridge_raw_log::bridge_render_raw_log_buffer(",
+        "JsValue::from_str(\"r44d-owner-begin\")",
+        "JsValue::from_str(\"r44d-owner-complete\")",
+    ] {
+        if !instance_settings.contains(required) {
+            return Err(format!(
+                "Bridge instance-mutation Rust owner contract missing: {required}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn verify_instance_state_structured_reader_ownership(
     source: &str,
     instance_settings: &str,
@@ -2559,9 +2623,9 @@ fn verify_static_contracts(
     if !source.contains("bridgeInstanceNetworkKeyR15 as wasmBridgeInstanceNetworkKeyR15") {
         return Err("Bridge R15 instance network-key Rust/WASM import is missing".to_owned());
     }
-    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 5 {
+    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 4 {
         return Err(
-            "Bridge R15 instance network-key owner must have exactly five remaining direct generated-WASM call sites after OP274 moves update-command network-key selection into Rust"
+            "Bridge R15 instance network-key owner must have exactly four remaining direct generated-WASM call sites after OP276 moves add/remove network canonicalization into Rust"
                 .to_owned(),
         );
     }
@@ -2782,6 +2846,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_start_options_ownership(&full_source, &helper_source, &instance_settings_source)?;
+    verify_instance_mutation_ownership(&full_source, &instance_settings_source)?;
     verify_instance_state_structured_reader_ownership(&full_source, &instance_settings_source)?;
     verify_preview_message_ownership(&full_source, &helper_source)?;
     verify_r95b_port_normalization_ownership(&full_source, &helper_source)?;
@@ -4006,6 +4071,53 @@ mod tests {
             instance_settings.replace("\"CPU threads\"", "\"Missing CPU threads\""),
         ] {
             assert!(verify_start_options_ownership(source, helpers, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn instance_mutation_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let instance_settings = include_str!(
+            "../../crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs"
+        );
+        assert!(verify_instance_mutation_ownership(source, instance_settings).is_ok());
+
+        for mutation in [
+            source.replace(
+                "bridgeAddInstanceUi as wasmBridgeAddInstanceUi",
+                "missingAddInstanceUi as wasmBridgeAddInstanceUi",
+            ),
+            source.replacen(
+                "function addInstance(net) {",
+                "function addInstance(net) {\n  bridgeInstances[net].push({});",
+                1,
+            ),
+            source.replacen(
+                "function removeInstance(net, instanceId) {",
+                "function removeInstance(net, instanceId) {\n  const removedIndex = bridgeInstances[net].findIndex(() => true);",
+                1,
+            ),
+        ] {
+            assert!(verify_instance_mutation_ownership(&mutation, instance_settings).is_err());
+        }
+
+        for mutation in [
+            instance_settings.replace(
+                "js_name = bridgeAddInstanceUi",
+                "js_name = missingAddInstanceUi",
+            ),
+            instance_settings.replace(
+                "bridge_port_orchestration::bridge_create_instance_record_r9(",
+                "bridge_port_orchestration::missing_create_instance_record(",
+            ),
+            instance_settings.replace(
+                "removed_index: Option<u32>",
+                "removed_index_missing: Option<u32>",
+            ),
+        ] {
+            assert!(verify_instance_mutation_ownership(source, &mutation).is_err());
         }
     }
 

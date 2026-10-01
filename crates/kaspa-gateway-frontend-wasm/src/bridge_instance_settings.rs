@@ -1377,6 +1377,152 @@ pub fn bridge_read_instance_state_ui(
     bridge_read_instance_state_impl(&net, &bridge_instances, &instance_id)
 }
 
+#[wasm_bindgen(js_name = bridgeAddInstanceUi)]
+pub fn bridge_add_instance_ui(
+    net: String,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    callbacks: JsValue,
+) -> Result<bool, JsValue> {
+    let net = bridge_frontend_helpers::bridge_instance_network_key_r15(
+        JsValue::from_str(&net),
+        JsValue::from_str(&net),
+    );
+    if net.is_empty() {
+        return Ok(false);
+    }
+
+    let _ = bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+        JsValue::from_str(&net),
+        JsValue::from_str("add-instance"),
+        JsValue::from_str("r44d-owner-begin"),
+        Object::new().into(),
+    );
+    bridge_port_orchestration::bridge_ensure_instance_state(
+        bridge_instances.clone(),
+        active_instance.clone(),
+        net.clone(),
+    )?;
+
+    let next = bridge_port_orchestration::bridge_create_instance_record_r9(
+        bridge_instances.clone(),
+        net.clone(),
+    )?;
+    let current = property(&bridge_instances, &net);
+    let instances = if Array::is_array(&current) {
+        Array::from(&current)
+    } else {
+        Array::new()
+    };
+    instances.push(&next);
+    set(&bridge_instances, &net, instances.as_ref());
+
+    let next_id = property(&next, "id");
+    set(&active_instance, &net, &next_id);
+
+    let net_value = JsValue::from_str(&net);
+    let _ = call1_required(&callbacks, "refreshInstances", &net_value)?;
+    let _ = bridge_raw_log::bridge_render_raw_log_buffer(
+        net.clone(),
+        "bridge".to_owned(),
+        crate::js_string_owned(&next_id),
+    );
+    let _ = call1_required(&callbacks, "updateCommand", &net_value)?;
+
+    let _ = bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+        net_value,
+        JsValue::from_str("add-instance"),
+        JsValue::from_str("r44d-owner-complete"),
+        Object::new().into(),
+    );
+    Ok(true)
+}
+
+#[wasm_bindgen(js_name = bridgeRemoveInstanceUi)]
+pub fn bridge_remove_instance_ui(
+    net: String,
+    instance_id: JsValue,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    callbacks: JsValue,
+) -> Result<bool, JsValue> {
+    let net = bridge_frontend_helpers::bridge_instance_network_key_r15(
+        JsValue::from_str(&net),
+        JsValue::from_str(&net),
+    );
+    if net.is_empty() {
+        return Ok(false);
+    }
+
+    let details = Object::new();
+    set(
+        details.as_ref(),
+        "instanceId",
+        &JsValue::from_str(&crate::js_string_owned(&instance_id)),
+    );
+    let _ = bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+        JsValue::from_str(&net),
+        JsValue::from_str("remove-instance"),
+        JsValue::from_str("r44d-owner-begin"),
+        details.into(),
+    );
+
+    bridge_port_orchestration::bridge_ensure_instance_state(
+        bridge_instances.clone(),
+        active_instance.clone(),
+        net.clone(),
+    )?;
+    let current = property(&bridge_instances, &net);
+    let input = if Array::is_array(&current) {
+        Array::from(&current)
+    } else {
+        Array::new()
+    };
+    if input.length() <= 1 {
+        return Ok(false);
+    }
+
+    let wanted = crate::js_string_owned(&instance_id);
+    let output = Array::new();
+    let mut removed_index: Option<u32> = None;
+    for (index, instance) in input.iter().enumerate() {
+        if crate::js_string_owned(&property(&instance, "id")) == wanted {
+            removed_index = Some(index as u32);
+        } else {
+            output.push(&instance);
+        }
+    }
+    set(&bridge_instances, &net, output.as_ref());
+
+    let active = crate::js_string_owned(&property(&active_instance, &net));
+    let active_exists = output
+        .iter()
+        .any(|instance| crate::js_string_owned(&property(&instance, "id")) == active);
+    if !active_exists && output.length() > 0 {
+        let index = removed_index
+            .unwrap_or(0)
+            .saturating_sub(1)
+            .min(output.length() - 1);
+        set(&active_instance, &net, &property(&output.get(index), "id"));
+    }
+
+    let net_value = JsValue::from_str(&net);
+    let _ = call1_required(&callbacks, "refreshInstances", &net_value)?;
+    let complete_details = Object::new();
+    set(
+        complete_details.as_ref(),
+        "instanceId",
+        &JsValue::from_str(&wanted),
+    );
+    let _ = bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+        net_value,
+        JsValue::from_str("remove-instance"),
+        JsValue::from_str("r44d-owner-complete"),
+        complete_details.into(),
+    );
+    Ok(true)
+}
+
 fn bridge_r51_commit_instance_dom_state_r26b(
     net: &str,
     bridge_instances: &JsValue,
