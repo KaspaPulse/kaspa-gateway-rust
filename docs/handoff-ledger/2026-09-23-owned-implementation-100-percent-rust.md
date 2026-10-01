@@ -391,9 +391,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP293 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP294 - Bridge integrated runtime invoke Rust/WASM ownership (INTENT)
+## OP294 - Bridge integrated runtime invoke Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP293 closeout `128ed5c`; worktree clean at intent time.
-- BOUNDARY: move `invokeBridgeIntegratedRuntime` payload-build/validation/preview/invoke orchestration into Rust/WASM. Rust owns apply-payload construction, apply-form rejection, preview-before-apply ordering, and runtime invocation; JavaScript becomes a thin async wrapper passing existing state/callbacks.
-- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; existing apply/preview semantics preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `invokeBridgeIntegratedRuntime` payload-build/validation/preview/invoke orchestration moved into Rust/WASM `bridgeInvokeIntegratedRuntimeUi`. Rust owns apply-payload construction, apply-form rejection, preview-before-apply ordering, and runtime invocation; JavaScript is a thin async wrapper passing existing state/callbacks.
+- IMPLEMENTATION_CHECKPOINT: `b34dd65e50843de5a6cf927f345f0e03bd6490fb`, tree `fe997e0b422021eb2513efaf354ea5f1c3031a9f`. Closeout generation 2285.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 312/312 plus auxiliary suites; targeted integrated-runtime invoke ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: preview-dispatch direct JavaScript call count updated from two to one because OP294 moved the integrated-runtime preview path into Rust while preserving the remaining independent preview action.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP294 qualification unless invalidated.
+- PUSHED: NO.
