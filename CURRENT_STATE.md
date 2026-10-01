@@ -1,5 +1,5 @@
 # CURRENT STATE
-- Current product boundary: OP269 Bridge require-valid-settings Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD 20f6f4d72a66cb0f8fef952c9eec67c62109e7e4, tree f19dba615fc4f08d19dc1cfc79ce9818ff93c9b9; OP268 stale raw-log gate repair and OP267 writer-coordination hardening remain closed and valid; no push. Next parent boundary is read-only discovery of the next genuinely incomplete Bridge JavaScript ownership seam.
+- Current product boundary: OP270 Bridge apply-payload Rust/WASM ownership is INTENT_ADOPTED / IMPLEMENTATION_PENDING from clean base HEAD 6fd7d21b4016a86ee168846bbbc7b88795c48536, tree 5ea29a0c2fcf3b7d341701444947fdb3b80a86a6. OP269 require-valid-settings ownership is CLOSED_LOCAL / VERIFIED_SUCCESS; OP268 and OP267 remain closed and valid; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
@@ -8,7 +8,7 @@
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
 - Current HEAD: **VERIFY DYNAMICALLY** from Git; OP265 verified implementation checkpoint is `dc8b632062ed435d1c9ebfbe8a4cc28bf4e433f0`, tree `e7399ab6634ed9aeebb1b05e06950468026b0012`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: OP269 implementation is committed; continuity closeout is pending in the current worktree. Verify dynamically before the next operation. Do not reset, clean, stash, discard, or overwrite newer local work.
+- Working tree: OP270 intent/continuity update is pending commit; product source remains unchanged from the clean OP269 closeout base. Verify dynamically before product mutation. Do not reset, clean, stash, discard, or overwrite newer local work.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE

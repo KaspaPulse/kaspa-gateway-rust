@@ -134,3 +134,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - ACCEPTANCE: new Rust exports + unit-level contract, xtask ownership regression rejecting legacy JS orchestration, wasm codegen regenerated and consistent, fmt/clippy/xtask suite/effective-bridge gate/language-policy/ESLint/node check pass, no ownership check weakened.
 - WRITER_TAKEOVER: generation 2259. Previous `claude-chat-rdc` epoch 1 showed no renewal/activity after session deletion, was explicitly released, and is fenced. Canonical writer is now `chatgpt-gpt56-sol-rdc`, session `2b8e048e2c1e8d9d5b07915f83a62931`, epoch 2, 1800-second lease.
 - TAKEOVER_PRESERVATION: existing OP269 dirty worktree preserved; no reset/stash/clean/discard. Continue same OP269 from actual content.
+
+## OP270 - Bridge apply-payload Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP269 closeout `6fd7d21b4016a86ee168846bbbc7b88795c48536`; BASE_TREE `5ea29a0c2fcf3b7d341701444947fdb3b80a86a6`; worktree clean at intent time.
+- BOUNDARY: move `buildApplyPayload` branch/orchestration into a Rust/WASM owner while preserving the existing JavaScript `buildCommandLines` and structured-instance reader only as explicit callbacks. Rust owns apply-node-settings payload composition, node/bridge mode semantics, active-instance selection, effective settings, runtime-role payload variants, and experimental-network opt-in. JavaScript is reduced to one thin export call.
+- ACCEPTANCE: durable Rust export and helper contract; thin JS wrapper only; fail-closed xtask regression rejects legacy payload assembly and stale audit assumptions; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
