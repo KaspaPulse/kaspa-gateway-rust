@@ -305,3 +305,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: obsolete JavaScript-only renderer helper imports were retired after ownership moved into Rust; no ownership prohibition was weakened.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP285 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP286 - Bridge network-tab installer Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP285 closeout `753018743673d78dd81fca258878087cf1e08b22`; BASE_TREE `55fe030e1c2de6d3657ea3752a9afe6653f5ad8c`; worktree clean at intent time.
+- BOUNDARY: move `installNetworkTabs` orchestration into Rust/WASM. Rust owns network-tab/panel discovery, normalization, active-state/ARIA/display mutation, saved-network restoration, click interception/trace, persist semantics, refresh callback scheduling, and external selector installation.
+- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; existing R63/R101W2 semantics preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
