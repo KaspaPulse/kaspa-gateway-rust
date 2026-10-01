@@ -1810,22 +1810,88 @@ fn verify_instance_refresh_ownership(source: &str, instance_ui: &str) -> Result<
     Ok(())
 }
 
-fn verify_instances_renderer_ownership(source: &str, instance_ui: &str) -> Result<(), String> {
+fn verify_settings_sections_ownership(source: &str, helpers: &str) -> Result<(), String> {
     for required in [
-        "bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi",
-        "// KGW_BRIDGE_INSTANCES_RENDERER_RUST_OWNER_V1",
-        "function renderInstances(net) {",
-        "return wasmBridgeRenderInstancesUi(String(net || \"\"), bridgeInstances, activeInstance);",
+        "bridgeRenderSectionsUi as wasmBridgeRenderSectionsUi",
+        "// KGW_BRIDGE_SETTINGS_SECTIONS_RUST_OWNER_V1",
+        "function renderSections(net) {",
+        "return wasmBridgeRenderSectionsUi(net || {}, {",
+        "renderInprocessNodeSettings: (profile) => renderInprocessNodeSettings(profile)",
+        "bridgeInstances,",
+        "activeInstance",
     ] {
         if !source.contains(required) {
             return Err(format!(
-                "Bridge instances-renderer Rust/WASM binding missing: {required}"
+                "Bridge settings-sections Rust/WASM binding missing: {required}"
             ));
         }
     }
-
-    let wrapper = slice_between(source, "function renderInstances(net) {", "\n}")?;
+    let wrapper = slice_between(source, "function renderSections(net) {", "\n}")?;
     for forbidden in [
+        "document.createElement(\"template\")",
+        "new Map()",
+        "renderSettingsTabs(",
+        "wasmBridgeRenderRuntime(",
+        "wasmBridgeRenderDifficulty(",
+        "wasmBridgeRenderLogging(",
+        "wasmBridgeRenderPorts(",
+        "wasmBridgeRenderCpuMiner(",
+        "wasmBridgeDifficultyDatalistR16C(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge settings-sections JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+    for forbidden in [
+        "renderSettingsTabs, installSettingsLayout",
+        "bridgeDifficultyDatalistR16C as wasmBridgeDifficultyDatalistR16C",
+        "bridgeRenderRuntime as wasmBridgeRenderRuntime",
+        "bridgeRenderDifficulty as wasmBridgeRenderDifficulty",
+        "bridgeRenderLogging as wasmBridgeRenderLogging",
+        "bridgeRenderPorts as wasmBridgeRenderPorts",
+        "bridgeRenderCpuMiner as wasmBridgeRenderCpuMiner",
+        "bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi",
+        "function renderInstances(net) {",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge settings-section/render helper JavaScript binding remains: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeRenderSectionsUi",
+        "pub fn bridge_render_sections_ui(",
+        "crate::bridge_render::bridge_render_runtime(",
+        "crate::bridge_render::bridge_render_logging(",
+        "crate::bridge_render::bridge_render_difficulty(",
+        "crate::bridge_render::bridge_render_ports(",
+        "crate::bridge_render::bridge_render_cpu_miner(",
+        "querySelectorAll",
+        "bridge_take_setting_cards(",
+        "\"renderInprocessNodeSettings\"",
+        "crate::bridge_instance_ui::bridge_render_instances_ui(",
+        "crate::bridge_render::bridge_difficulty_datalist_r16c()",
+        "crate::settings_layout::render_tabs_native(",
+        "Ungrouped Bridge settings:",
+        "Raw stdout/stderr logs are available in Live Bridge Monitor.",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge settings-sections Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_instances_renderer_ownership(source: &str, instance_ui: &str) -> Result<(), String> {
+    for forbidden in [
+        "bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi",
+        "function renderInstances(net) {",
+        "wasmBridgeRenderInstancesUi(",
         "bridgeInstances[net].map(",
         "wasmBridgeEnsureInstanceState(",
         "wasmBridgeInstanceCommandCheckboxFromInstancesR13B(",
@@ -1833,9 +1899,9 @@ fn verify_instances_renderer_ownership(source: &str, instance_ui: &str) -> Resul
         "wasmBridgeInstancePortPlaceholderR49(",
         "wasmBridgeInstancePromPlaceholderR49(",
     ] {
-        if wrapper.contains(forbidden) {
+        if source.contains(forbidden) {
             return Err(format!(
-                "Retired Bridge instances-renderer JavaScript ownership remains: {forbidden}"
+                "Retired Bridge instances-renderer JavaScript binding/ownership remains after OP283: {forbidden}"
             ));
         }
     }
@@ -3174,6 +3240,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_instance_click_owner_ownership(&full_source, &instance_ui_source)?;
     verify_visible_instance_owners_ownership(&full_source, &instance_ui_source)?;
     verify_instance_refresh_ownership(&full_source, &instance_ui_source)?;
+    verify_settings_sections_ownership(&full_source, &helper_source)?;
     verify_instances_renderer_ownership(&full_source, &instance_ui_source)?;
     verify_instance_command_option_ownership(&full_source, &command_options_source)?;
     verify_instance_mutation_ownership(&full_source, &instance_settings_source)?;
@@ -4515,6 +4582,29 @@ mod tests {
     }
 
     #[test]
+    fn settings_sections_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_settings_sections_ownership(source, helpers).is_ok());
+
+        let legacy = source.replacen(
+            "function renderSections(net) {",
+            "function renderSections(net) {\n  const template = document.createElement(\"template\"); const cards = new Map();",
+            1,
+        );
+        assert!(verify_settings_sections_ownership(&legacy, helpers).is_err());
+
+        let missing = helpers.replace(
+            "js_name = bridgeRenderSectionsUi",
+            "js_name = missingRenderSectionsUi",
+        );
+        assert!(verify_settings_sections_ownership(source, &missing).is_err());
+    }
+
+    #[test]
     fn instances_renderer_ownership_rejects_legacy_and_contract_drift() {
         let source = include_str!(
             "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
@@ -4524,14 +4614,9 @@ mod tests {
         assert!(verify_instances_renderer_ownership(source, instance_ui).is_ok());
 
         for mutation in [
-            source.replace(
-                "bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi",
-                "missingRenderInstancesUi as wasmBridgeRenderInstancesUi",
-            ),
-            source.replacen(
-                "function renderInstances(net) {",
-                "function renderInstances(net) {\n  return bridgeInstances[net].map(() => \"legacy\").join(\"\");",
-                1,
+            format!("{source}\n// bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi\n"),
+            format!(
+                "{source}\nfunction renderInstances(net) {{ return wasmBridgeRenderInstancesUi(net, bridgeInstances, activeInstance); }}\n"
             ),
         ] {
             assert!(verify_instances_renderer_ownership(&mutation, instance_ui).is_err());

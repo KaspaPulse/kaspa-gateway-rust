@@ -855,6 +855,200 @@ pub fn bridge_backend_invoke_r5(command: String, payload: JsValue) -> Result<Pro
     Ok(Promise::resolve(&result))
 }
 
+fn bridge_take_setting_cards(cards: &mut BTreeMap<String, String>, names: &str) -> String {
+    let fields = names
+        .split_whitespace()
+        .map(|name| cards.remove(name).unwrap_or_default())
+        .collect::<String>();
+    format!("<div class=\"kgw-settings-grid\">{fields}</div>")
+}
+
+#[wasm_bindgen(js_name = bridgeRenderSectionsUi)]
+pub fn bridge_render_sections_ui(
+    profile_value: JsValue,
+    callbacks: JsValue,
+) -> Result<String, JsValue> {
+    let net = crate::js_string_owned(&property(&profile_value, "key"));
+    if profile(&net).is_none() {
+        return Err(JsValue::from(Error::new("Unknown Bridge network profile")));
+    }
+
+    let mut source = String::new();
+    source.push_str(&crate::bridge_render::bridge_render_runtime(
+        profile_value.clone(),
+    ));
+    source.push_str(&crate::bridge_render::bridge_render_logging(
+        profile_value.clone(),
+    ));
+    source.push_str(&crate::bridge_render::bridge_render_difficulty(
+        profile_value.clone(),
+    ));
+    source.push_str(&crate::bridge_render::bridge_render_ports(
+        profile_value.clone(),
+    ));
+    if net != "mainnet" {
+        source.push_str(&crate::bridge_render::bridge_render_cpu_miner(
+            profile_value.clone(),
+        ));
+    }
+
+    let template = create_bridge_element("template");
+    set(&template, "innerHTML", &JsValue::from_str(&source));
+    let content = property(&template, "content");
+    let cards_collection = call1(
+        &content,
+        "querySelectorAll",
+        &JsValue::from_str(".bridge-v7-card"),
+    )
+    .ok_or_else(|| JsValue::from(Error::new("Bridge settings cards are unavailable")))?;
+
+    let mut cards = BTreeMap::<String, String>::new();
+    let prefix = format!("bridge-{net}-");
+    for index in 0..bridge_collection_len(&cards_collection) {
+        let Some(card) = bridge_collection_item(&cards_collection, index) else {
+            continue;
+        };
+        let field = query_bridge(&card, "[id]");
+        if !present(&field) {
+            continue;
+        }
+        let id = crate::js_string_owned(&property(&field, "id"));
+        let Some(name) = id.strip_prefix(&prefix) else {
+            continue;
+        };
+        let testnet_allowed = matches!(name, "nodeMode" | "kaspadAddress" | "appdir" | "testnet")
+            || name.starts_with("internalCpuMiner");
+        if net == "mainnet" || testnet_allowed {
+            cards.insert(
+                name.to_owned(),
+                crate::js_string_owned(&property(&card, "outerHTML")),
+            );
+        }
+    }
+
+    let render_inprocess: Function = property(&callbacks, "renderInprocessNodeSettings")
+        .dyn_into()
+        .map_err(|_| {
+            JsValue::from(Error::new(
+                "Bridge in-process renderer callback is unavailable",
+            ))
+        })?;
+    let inprocess_markup = render_inprocess.call1(&callbacks, &profile_value)?;
+    let inprocess = create_bridge_element("template");
+    set(
+        &inprocess,
+        "innerHTML",
+        &JsValue::from_str(&crate::js_string_owned(&inprocess_markup)),
+    );
+    let inprocess_content = property(&inprocess, "content");
+    let danger = query_bridge(
+        &inprocess_content,
+        "[data-bridge-inprocess-node-panel=\"danger\"]",
+    );
+    if !present(&danger) {
+        return Err(JsValue::from(Error::new(
+            "Bridge in-process dangerous panel is unavailable",
+        )));
+    }
+    let danger_body = crate::js_string_owned(&property(&danger, "innerHTML"));
+    let _ = call0(&danger, "remove");
+    let danger_tab = query_bridge(
+        &inprocess_content,
+        "[data-bridge-inprocess-node-tab=\"danger\"]",
+    );
+    if present(&danger_tab) {
+        let _ = call0(&danger_tab, "remove");
+    }
+    let inprocess_html = crate::js_string_owned(&property(&inprocess, "innerHTML"));
+
+    let mut groups: Vec<(&str, &str, &str, String)> = Vec::new();
+    groups.push((
+        "general",
+        "connection",
+        "Connection",
+        bridge_take_setting_cards(&mut cards, "nodeMode kaspadAddress appdir testnet"),
+    ));
+    if net == "mainnet" {
+        groups.push((
+            "general",
+            "ports",
+            "Ports",
+            bridge_take_setting_cards(
+                &mut cards,
+                "stratumPort promPort healthCheckPort webDashboardPort",
+            ),
+        ));
+    }
+    groups.push((
+        "general",
+        "mining",
+        if net == "mainnet" { "Mining" } else { "CPU Mining" },
+        bridge_take_setting_cards(
+            &mut cards,
+            if net == "mainnet" {
+                "minShareDiff blockWaitTime extranonceSize coinbaseTagSuffix"
+            } else {
+                "internalCpuMiner internalCpuMinerAddress internalCpuMinerThreads internalCpuMinerThrottleMs internalCpuMinerTemplatePollMs"
+            },
+        ),
+    ));
+    groups.push((
+        "general",
+        "monitoring",
+        "Monitoring",
+        if net == "mainnet" {
+            bridge_take_setting_cards(&mut cards, "printStats")
+        } else {
+            "<p class=\"kgw-settings-info\">The embedded rkstratum_cpu_miner uses this network&#39;s node. Live Bridge Monitor shows runtime state and raw logs.</p>".to_owned()
+        },
+    ));
+    if net == "mainnet" {
+        let instances = format!(
+            "<div id=\"{}\">{}</div>",
+            bridge_element_id(net.clone(), "instances".to_owned()),
+            crate::bridge_instance_ui::bridge_render_instances_ui(
+                net.clone(),
+                property(&callbacks, "bridgeInstances"),
+                property(&callbacks, "activeInstance"),
+            )?
+        );
+        groups.push(("advanced", "instances", "Instances", instances));
+    }
+    groups.push(("advanced", "inprocessor", "In-Processor", inprocess_html));
+    if net == "mainnet" {
+        groups.push((
+            "advanced",
+            "difficulty",
+            "Difficulty",
+            bridge_take_setting_cards(&mut cards, "varDiff sharesPerMin varDiffStats pow2Clamp"),
+        ));
+    }
+    groups.push((
+        "advanced",
+        "diagnostics",
+        "Logging / Diagnostics",
+        if net == "mainnet" {
+            bridge_take_setting_cards(&mut cards, "config logToFile approxGeoLookup")
+        } else {
+            "<p class=\"kgw-settings-info\">Raw stdout/stderr logs are available in Live Bridge Monitor. Managed logging and network ownership remain unchanged.</p>".to_owned()
+        },
+    ));
+    groups.push(("advanced", "dangerous", "Dangerous", danger_body));
+
+    if !cards.is_empty() {
+        return Err(JsValue::from(Error::new(&format!(
+            "Ungrouped Bridge settings: {}",
+            cards.keys().cloned().collect::<Vec<_>>().join(", ")
+        ))));
+    }
+
+    Ok(format!(
+        "{}{}",
+        crate::bridge_render::bridge_difficulty_datalist_r16c(),
+        crate::settings_layout::render_tabs_native("bridge", &net, &groups),
+    ))
+}
+
 #[wasm_bindgen(js_name = bridgeRenderAllNetworksUi)]
 pub fn bridge_render_all_networks_ui(root: JsValue, callbacks: JsValue) -> Result<bool, JsValue> {
     let host = query_bridge(&root, "#bridgeNetworkPanels");

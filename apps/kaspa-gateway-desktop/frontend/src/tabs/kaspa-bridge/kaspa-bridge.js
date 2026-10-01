@@ -1,5 +1,5 @@
 import { confirmUserAction } from "../../settings-contract.js";
-import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields } from "../../settings-layout.js";
+import { installSettingsLayout, decorateSettingsFields } from "../../settings-layout.js";
 import initBridgeRust, {
   bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5 as wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5,
   bridgeById as wasmBridgeById,
@@ -10,13 +10,7 @@ import initBridgeRust, {
   bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
   bridgeBuildCommandLinesUi as wasmBridgeBuildCommandLinesUi,
   bridgeBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi,
-  bridgeDifficultyDatalistR16C as wasmBridgeDifficultyDatalistR16C,
   bridgeCardInput as wasmBridgeCardInput,
-  bridgeRenderRuntime as wasmBridgeRenderRuntime,
-  bridgeRenderDifficulty as wasmBridgeRenderDifficulty,
-  bridgeRenderLogging as wasmBridgeRenderLogging,
-  bridgeRenderPorts as wasmBridgeRenderPorts,
-  bridgeRenderCpuMiner as wasmBridgeRenderCpuMiner,
   bridgeNormalizeRuntimeError as wasmBridgeNormalizeRuntimeError,
   bridgeV7BlockInprocessIfNodeOwnerRunning as wasmBridgeV7BlockInprocessIfNodeOwnerRunning,
   bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons,
@@ -51,7 +45,6 @@ import initBridgeRust, {
   bridgeUpdateAllCommandsUi as wasmBridgeUpdateAllCommandsUi,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B,
-  bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi,
   bridgeRefreshInstancesUi as wasmBridgeRefreshInstancesUi,
   bridgeInstallInstanceContainerOwnerR11 as wasmBridgeInstallInstanceContainerOwnerR11,
   bridgeInstallAllVisibleInstanceContainerOwnersR11 as wasmBridgeInstallAllVisibleInstanceContainerOwnersR11,
@@ -69,6 +62,7 @@ import initBridgeRust, {
   bridgeSaveLastNetwork as wasmBridgeSaveLastNetwork,
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
+  bridgeRenderSectionsUi as wasmBridgeRenderSectionsUi,
   bridgeRenderAllNetworksUi as wasmBridgeRenderAllNetworksUi,
   bridgeResolveInnerTab as wasmBridgeResolveInnerTab,
   bridgeSaveInnerTab as wasmBridgeSaveInnerTab,
@@ -292,12 +286,6 @@ function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
  * Field-level instance port placeholders now follow the active network profile.
  * Display/help text only. Does not overwrite saved user ports.
  */
-// KGW_BRIDGE_INSTANCES_RENDERER_RUST_OWNER_V1
-function renderInstances(net) {
-  return wasmBridgeRenderInstancesUi(String(net || ""), bridgeInstances, activeInstance);
-}
-
-
 // KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D
 function renderInprocessNodeSettings(net) {
   const tabs = [
@@ -501,46 +489,13 @@ function renderInprocessNodeSettings(net) {
   if (danger) danger.insertAdjacentHTML("beforebegin", '<p class="kgw-danger-warning">Unsafe RPC exposes RPC beyond loopback. Unsynced mining bypasses synchronization. Enable only when you understand the risk.</p>');
   return template.innerHTML;
 }
+// KGW_BRIDGE_SETTINGS_SECTIONS_RUST_OWNER_V1
 function renderSections(net) {
-  const template = document.createElement("template");
-  template.innerHTML = [wasmBridgeRenderRuntime(net || {}), wasmBridgeRenderLogging(net || {}), wasmBridgeRenderDifficulty(net || {}), wasmBridgeRenderPorts(net || {}),
-    ...(net.key === "mainnet" ? [] : [wasmBridgeRenderCpuMiner(net || {})])].join("");
-  const cards = new Map();
-  template.content.querySelectorAll(".bridge-v7-card").forEach(card => {
-    const field = card.querySelector("[id]");
-    if (!field) return;
-    const name = field.id.slice(("bridge-" + net.key + "-").length);
-    const testnetAllowed = ["nodeMode", "kaspadAddress", "appdir", "testnet"].includes(name) || name.startsWith("internalCpuMiner");
-    if (net.key === "mainnet" || testnetAllowed) cards.set(name, card.outerHTML);
+  return wasmBridgeRenderSectionsUi(net || {}, {
+    renderInprocessNodeSettings: (profile) => renderInprocessNodeSettings(profile),
+    bridgeInstances,
+    activeInstance
   });
-  const take = names => {
-    const fields = names.split(" ").map(name => { const card = cards.get(name) || ""; cards.delete(name); return card; }).join("");
-    return '<div class="kgw-settings-grid">' + fields + "</div>";
-  };
-  const inprocess = document.createElement("template");
-  inprocess.innerHTML = renderInprocessNodeSettings(net);
-  const danger = inprocess.content.querySelector('[data-bridge-inprocess-node-panel="danger"]');
-  const dangerBody = danger.innerHTML;
-  danger.remove();
-  inprocess.content.querySelector('[data-bridge-inprocess-node-tab="danger"]').remove();
-  const groups = [
-    ["general", "connection", "Connection", take("nodeMode kaspadAddress appdir testnet")],
-    ...(net.key === "mainnet" ? [["general", "ports", "Ports", take("stratumPort promPort healthCheckPort webDashboardPort")]] : []),
-    ["general", "mining", net.key === "mainnet" ? "Mining" : "CPU Mining",
-      take(net.key === "mainnet" ? "minShareDiff blockWaitTime extranonceSize coinbaseTagSuffix" :
-        "internalCpuMiner internalCpuMinerAddress internalCpuMinerThreads internalCpuMinerThrottleMs internalCpuMinerTemplatePollMs")],
-    ["general", "monitoring", "Monitoring", net.key === "mainnet" ? take("printStats") :
-      '<p class="kgw-settings-info">The embedded rkstratum_cpu_miner uses this network&#39;s node. Live Bridge Monitor shows runtime state and raw logs.</p>'],
-    ...(net.key === "mainnet" ? [["advanced", "instances", "Instances",
-      '<div id="' + wasmBridgeElementId(net.key, "instances") + '">' + renderInstances(net.key) + "</div>"]] : []),
-    ["advanced", "inprocessor", "In-Processor", inprocess.innerHTML],
-    ...(net.key === "mainnet" ? [["advanced", "difficulty", "Difficulty", take("varDiff sharesPerMin varDiffStats pow2Clamp")]] : []),
-    ["advanced", "diagnostics", "Logging / Diagnostics", net.key === "mainnet" ? take("config logToFile approxGeoLookup") :
-      '<p class="kgw-settings-info">Raw stdout/stderr logs are available in Live Bridge Monitor. Managed logging and network ownership remain unchanged.</p>'],
-    ["advanced", "dangerous", "Dangerous", dangerBody]
-  ];
-  if (cards.size) throw new Error("Ungrouped Bridge settings: " + [...cards.keys()].join(", "));
-  return wasmBridgeDifficultyDatalistR16C() + renderSettingsTabs("bridge", net.key, groups);
 }
 
 /* KGW_BRIDGE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U
