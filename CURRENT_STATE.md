@@ -1,5 +1,5 @@
 # CURRENT STATE
-- Current product boundary: OP275 Bridge instance-state / structured-reader Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD ec41e34e05d5698802ddc7e09417b156767d5958, tree 48c3b9afca41b3d093768c66a9d8a9471a9fa56b. OP274 and earlier operations remain closed and valid; no push. Next parent boundary is read-only discovery of the next genuinely incomplete Bridge JavaScript ownership seam.
+- Current product boundary: OP276 Bridge instance add/remove Rust/WASM ownership is INTENT_ADOPTED / IMPLEMENTATION_PENDING from clean base HEAD 01d7afb04bc1e4b181201c84b035bd1bb0fe2cc0, tree 15396d394a133c0debb222f3f2a9457bb34fe4bf. OP275 and earlier operations remain closed and valid; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
@@ -8,7 +8,7 @@
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
 - Current HEAD: **VERIFY DYNAMICALLY** from Git; OP265 verified implementation checkpoint is `dc8b632062ed435d1c9ebfbe8a4cc28bf4e433f0`, tree `e7399ab6634ed9aeebb1b05e06950468026b0012`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: OP275 implementation is committed; continuity closeout is pending in the current worktree. Verify dynamically before the next operation. Do not reset, clean, stash, discard, or overwrite newer local work.
+- Working tree: OP276 intent/continuity update is pending commit; product source remains unchanged from the clean OP275 closeout base. Verify dynamically before product mutation. Do not reset, clean, stash, discard, or overwrite newer local work.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
