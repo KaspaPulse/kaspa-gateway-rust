@@ -294,3 +294,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: R101U persisted inner-tab gate now requires resolve ownership inside the Rust network-panel renderer while retaining only the JavaScript save binding/call; any reintroduced JavaScript resolve binding/call fails closed.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP284 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP285 - Bridge in-process node-settings renderer Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP284 closeout `2031a98e013233c76ec06600c9b78c90923f229b`; BASE_TREE `e3559201c0c4df87accf773b34deda0241e37b6d`; worktree clean at intent time.
+- BOUNDARY: move `renderInprocessNodeSettings` from JavaScript into Rust/WASM. Rust owns translated tab labels, tab/panel markup, network args, all in-process kaspad field markup/defaults/toggles, unsafe-RPC relocation into Dangerous, warning insertion, and returned HTML. JavaScript becomes a thin wrapper only.
+- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; tab/order/defaults/network semantics and dangerous-panel relocation preserved; obsolete JavaScript-only imports retired where no longer used; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
