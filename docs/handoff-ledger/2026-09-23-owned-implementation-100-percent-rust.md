@@ -176,9 +176,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP273 qualification unless invalidated.
 - PUSHED: NO
 
-## OP274 - Bridge command-preview orchestration Rust/WASM ownership (INTENT)
+## OP274 - Bridge command-preview orchestration Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP273 closeout `a6a22c79d769f5b2edbd953f59e9a4ecffd1ddc4`; BASE_TREE `6391d4845f5af43127ca004a2afe482567c82e84`; worktree clean at intent time.
-- BOUNDARY: move `updateCommand` and `updateAllCommands`, including per-network preview sequencing/timer ownership and validated preview DOM updates, into Rust/WASM. JavaScript may retain only thin wrappers/callback bindings needed for the still-JavaScript structured-instance reader. Reuse existing Rust owners for mode controls, command building, validation, apply-payload construction, preview backend validation, instance-preview refresh, and preview messages.
-- ACCEPTANCE: Rust preview-sequence/timer owner + Rust update-command/update-all exports + thin JS wrappers; stale/legacy JS preview orchestration rejected by fail-closed regression; generated WASM consistent; behavioral preview contract covered; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `updateCommand` and `updateAllCommands`, including per-network preview sequencing/timer ownership and validated preview DOM updates, moved into Rust/WASM. JavaScript now retains thin callback-binding wrappers; copy-command stale-result detection uses the Rust-owned preview sequence instead of the retired JavaScript request map.
+- IMPLEMENTATION_CHECKPOINT: `5858dab8d0f8679aa9e5de7c9a044414576ad523`, tree `9f06230ebee660c0e625be3ce2b38a2d4d0c63b1`. Closeout generation 2265.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 293/293 plus auxiliary suites; targeted command-preview ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: stale JavaScript direct-call counts for R15 network-key and preview runtime dispatch were narrowed to the OP274 post-migration surface. The ownership regression now rejects the retired preview request/timer map and legacy update-command/update-all orchestration.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP274 qualification unless invalidated.
+- PUSHED: NO.
