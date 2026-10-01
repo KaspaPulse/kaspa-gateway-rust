@@ -424,9 +424,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP296 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP297 - Bridge Settings Owner V19 callback factory Rust/WASM ownership (INTENT)
+## OP297 - Bridge Settings Owner V19 callback factory Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim lease expired during handoff and the same canonical writer/session re-acquired via CAS at epoch 3 before protected mutation; no competing writer was observed.
 - PREVIOUS_CLOSED_OPERATION: OP296 closeout `5e1348a64396bd0205d99985745d6fcdafcd6211`; BASE_TREE `553c4aa4c4b5c22b6ea93020b66496dacd75317c`; worktree clean at intent time.
-- BOUNDARY: move `kgwBridgeSettingsOwnerCallbacksV19` callback-object construction into Rust/WASM. Rust owns scope/keys/read/load/validate callback wiring; JavaScript Settings Owner methods only request the Rust callback object and preserve compatibility globals.
-- ACCEPTANCE: Rust export + retired JS callback factory + fail-closed ownership regression; Settings Owner V19 semantics preserved; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `kgwBridgeSettingsOwnerCallbacksV19` JavaScript callback-object construction retired. Rust/WASM `bridgeSettingsOwnerCallbacksV19` now owns scope/keys/read/load/validate callback wiring; JavaScript Settings Owner methods request the Rust callback object and preserve compatibility globals.
+- IMPLEMENTATION_CHECKPOINT: `6c62feb903f2f71da1a73fdc49ec2e9c9da6d0c7`, tree `defc8830bfea17627fc7dd199b4dac4c21d928f2`. Closeout generation 2288.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 315/315 plus auxiliary suites; targeted Settings Owner callback ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: stale R51 load/keys regression mutations were updated to fail closed against the post-OP297 Rust-owned boundary; direct JS read-settings consumer count moved 2→1.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP297 qualification unless invalidated.
+- PUSHED: NO.
