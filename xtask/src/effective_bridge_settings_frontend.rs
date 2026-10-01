@@ -57,11 +57,40 @@ const panel = {
     return [...elements.values()];
   }
 };
+const r51InlineToggle = {
+  checked: true,
+  dataset: {
+    bridgeCommandOptionToggleR7: "coinbaseTagSuffix",
+    net: "mainnet"
+  }
+};
+const r51InstanceToggle = {
+  checked: true,
+  dataset: {
+    instanceId: "one",
+    bridgeInstanceCommandOptionToggleR13b: "instanceDiff",
+    net: "mainnet"
+  }
+};
+const bridgeRoot = {
+  querySelectorAll(selector) {
+    const text = String(selector);
+    if (text === '[data-bridge-command-option-toggle-r7][data-net="mainnet"]') {
+      return [r51InlineToggle];
+    }
+    if (text === '[data-bridge-instance-command-option-toggle-r13b][data-net="mainnet"]') {
+      return [r51InstanceToggle];
+    }
+    return [];
+  }
+};
 const sandbox = {
   Event: globalThis.Event,
   document: {
     querySelector() { return panel; },
-    getElementById(id) { return elements.get(id) || null; }
+    getElementById(id) {
+      return String(id) === "kaspa-bridge" ? bridgeRoot : (elements.get(id) || null);
+    }
   },
   console,
   BRIDGE_MANAGED: wasmModule.settingsBridgeManaged(),
@@ -148,8 +177,6 @@ elements.set("bridge-mainnet-op249Checkbox", {
 let r51ReadNormalizeReason = "";
 const r51ReadSettings = wasmModule.bridgeR51ReadSettings("mainnet", {
   readStructuredInstances: () => request.structured,
-  readCommandOptions: () => ({ coinbaseTagSuffix: true }),
-  readInstanceCommandOptions: () => ({ one: { instanceDiff: true } }),
   normalizeNetworkPortValues: (_net, values, reason) => {
     r51ReadNormalizeReason = String(reason || "");
     values.__op249Normalized = true;
@@ -441,13 +468,40 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
         "js_name = bridgeR51ReadSettings",
         "pub fn bridge_r51_read_settings(",
         "readStructuredInstances",
-        "readCommandOptions",
-        "readInstanceCommandOptions",
         "normalizeNetworkPortValues",
+        "bridge_command_options::bridge_r51_read_command_options_r38c(&net)",
+        "bridge_command_options::bridge_r51_read_instance_command_options_r38c(&net)",
     ] {
         if !instance_settings.contains(needle) {
             return Err(format!(
                 "Bridge R51 ReadSettings Rust ownership contract missing: {needle}"
+            ));
+        }
+    }
+    for forbidden in [
+        "function kgwBridgeR51ReadCommandOptionsR38C(",
+        "function kgwBridgeR51ReadInstanceCommandOptionsR38C(",
+        "readCommandOptions:",
+        "readInstanceCommandOptions:",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge R38C command-option reader JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+    for needle in [
+        "pub(crate) fn bridge_r51_read_command_options_r38c(",
+        "pub(crate) fn bridge_r51_read_instance_command_options_r38c(",
+        "data-bridge-command-option-toggle-r7][data-net=",
+        "data-bridge-instance-command-option-toggle-r13b][data-net=",
+        "bridgeCommandOptionToggleR7",
+        "bridgeInstanceCommandOptionToggleR13b",
+        "instanceId",
+    ] {
+        if !rust.contains(needle) {
+            return Err(format!(
+                "Bridge R38C command-option Rust reader contract missing: {needle}"
             ));
         }
     }

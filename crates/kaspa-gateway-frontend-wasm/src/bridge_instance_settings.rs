@@ -1183,11 +1183,11 @@ pub fn bridge_r51_read_settings(net: String, callbacks: JsValue) -> Result<JsVal
         &property(&structured, "activeInstance"),
     );
 
-    let command_options = call1_required(&callbacks, "readCommandOptions", &net_value)?;
+    let command_options = bridge_command_options::bridge_r51_read_command_options_r38c(&net);
     set(values.as_ref(), COMMAND_OPTIONS_KEY, &command_options);
 
     let instance_command_options =
-        call1_required(&callbacks, "readInstanceCommandOptions", &net_value)?;
+        bridge_command_options::bridge_r51_read_instance_command_options_r38c(&net);
     set(
         values.as_ref(),
         INSTANCE_COMMAND_OPTIONS_KEY,

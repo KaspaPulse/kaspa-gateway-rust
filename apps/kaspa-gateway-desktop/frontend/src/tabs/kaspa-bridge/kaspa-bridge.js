@@ -1978,38 +1978,6 @@ function kgwBridgeR51ReadStructuredInstancesR26B(net) {
 const KGW_BRIDGE_R51_COMMAND_OPTIONS_KEY_R38C = "__kgwBridgeCommandOptionsR38C";
 const KGW_BRIDGE_R51_INSTANCE_COMMAND_OPTIONS_KEY_R38C = "__kgwBridgeInstanceCommandOptionsR38C";
 
-function kgwBridgeR51ReadCommandOptionsR38C(net) {
-  const state = {};
-  try {
-    const root = document.getElementById("kaspa-bridge");
-    if (!root) return state;
-
-    for (const item of root.querySelectorAll('[data-bridge-command-option-toggle-r7][data-net="' + String(net || "") + '"]')) {
-      const name = String(item.dataset.bridgeCommandOptionToggleR7 || "");
-      if (!name) continue;
-      state[name] = Boolean(item.checked);
-    }
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-  return state;
-}
-
-function kgwBridgeR51ReadInstanceCommandOptionsR38C(net) {
-  const state = {};
-  try {
-    const root = document.getElementById("kaspa-bridge");
-    if (!root) return state;
-
-    for (const item of root.querySelectorAll('[data-bridge-instance-command-option-toggle-r13b][data-net="' + String(net || "") + '"]')) {
-      const instanceId = String(item.dataset.instanceId || "");
-      const name = String(item.dataset.bridgeInstanceCommandOptionToggleR13b || "");
-      if (!instanceId || !name) continue;
-      state[instanceId] = state[instanceId] || {};
-      state[instanceId][name] = Boolean(item.checked);
-    }
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-  return state;
-}
-
 function kgwBridgeR51ApplyCommandOptionsR38C(net, values) {
   try {
     const commandOptions = values && values[KGW_BRIDGE_R51_COMMAND_OPTIONS_KEY_R38C];
@@ -2116,8 +2084,6 @@ function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
 function kgwBridgeR51ReadSettingsCallbacksR249() {
   return {
     readStructuredInstances: (net) => kgwBridgeR51ReadStructuredInstancesR26B(String(net || "")),
-    readCommandOptions: (net) => kgwBridgeR51ReadCommandOptionsR38C(String(net || "")),
-    readInstanceCommandOptions: (net) => kgwBridgeR51ReadInstanceCommandOptionsR38C(String(net || "")),
     normalizeNetworkPortValues: (net, values, reason) =>
       kgwBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || ""))
   };

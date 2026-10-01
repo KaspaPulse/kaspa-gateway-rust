@@ -25,6 +25,34 @@ fn property(target: &JsValue, name: &str) -> JsValue {
     }
     Reflect::get(target, &JsValue::from_str(name)).unwrap_or(JsValue::UNDEFINED)
 }
+
+fn call1(target: &JsValue, name: &str, first: &JsValue) -> Option<JsValue> {
+    let method = property(target, name).dyn_into::<js_sys::Function>().ok()?;
+    method.call1(target, first).ok()
+}
+
+fn document() -> JsValue {
+    property(&window(), "document")
+}
+
+fn by_id(id: &str) -> JsValue {
+    call1(&document(), "getElementById", &JsValue::from_str(id)).unwrap_or(JsValue::UNDEFINED)
+}
+
+fn query_all(target: &JsValue, selector: &str) -> Vec<JsValue> {
+    let Some(list) = call1(target, "querySelectorAll", &JsValue::from_str(selector)) else {
+        return Vec::new();
+    };
+    let length = property(&list, "length").as_f64().unwrap_or(0.0).max(0.0) as u32;
+    (0..length)
+        .filter_map(|index| {
+            Reflect::get(&list, &JsValue::from_f64(index as f64))
+                .ok()
+                .filter(|value| !value.is_null() && !value.is_undefined())
+        })
+        .collect()
+}
+
 fn set_property(target: &JsValue, name: &str, value: &JsValue) {
     let _ = Reflect::set(target, &JsValue::from_str(name), value);
 }
@@ -76,6 +104,69 @@ fn required(name: &str) -> bool {
 
 fn optional(name: &str) -> bool {
     BRIDGE_OPTIONAL.contains(&name)
+}
+
+pub(crate) fn bridge_r51_read_command_options_r38c(net: &str) -> JsValue {
+    let state = Object::new();
+    let root = by_id("kaspa-bridge");
+    if root.is_null() || root.is_undefined() {
+        return state.into();
+    }
+
+    let selector = format!(
+        "[data-bridge-command-option-toggle-r7][data-net=\"{}\"]",
+        net
+    );
+    for item in query_all(&root, &selector) {
+        let dataset = property(&item, "dataset");
+        let name = crate::js_string_owned(&property(&dataset, "bridgeCommandOptionToggleR7"));
+        if name.is_empty() {
+            continue;
+        }
+        set_property(
+            state.as_ref(),
+            &name,
+            &JsValue::from_bool(crate::js_boolean(&property(&item, "checked"))),
+        );
+    }
+    state.into()
+}
+
+pub(crate) fn bridge_r51_read_instance_command_options_r38c(net: &str) -> JsValue {
+    let state = Object::new();
+    let root = by_id("kaspa-bridge");
+    if root.is_null() || root.is_undefined() {
+        return state.into();
+    }
+
+    let selector = format!(
+        "[data-bridge-instance-command-option-toggle-r13b][data-net=\"{}\"]",
+        net
+    );
+    for item in query_all(&root, &selector) {
+        let dataset = property(&item, "dataset");
+        let instance_id = crate::js_string_owned(&property(&dataset, "instanceId"));
+        let name =
+            crate::js_string_owned(&property(&dataset, "bridgeInstanceCommandOptionToggleR13b"));
+        if instance_id.is_empty() || name.is_empty() {
+            continue;
+        }
+
+        let current = property(state.as_ref(), &instance_id);
+        let instance_state = if current.is_object() && !current.is_null() {
+            current
+        } else {
+            let created = Object::new();
+            set_property(state.as_ref(), &instance_id, created.as_ref());
+            created.into()
+        };
+        set_property(
+            &instance_state,
+            &name,
+            &JsValue::from_bool(crate::js_boolean(&property(&item, "checked"))),
+        );
+    }
+    state.into()
 }
 
 fn inline_enabled_from_stored(name: &str, stored: Option<bool>) -> bool {
