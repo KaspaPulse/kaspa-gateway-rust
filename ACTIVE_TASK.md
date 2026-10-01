@@ -16,7 +16,7 @@ Make Rust the only owned programming implementation language in Kaspa Gateway wi
 - No Production, DNS, Cloudflare, live runtime, production credentials, or protected-checkpoint mutation.
 
 ## Current Phase
-PHASE 10 - final Bridge frontend ownership migration is IN PROGRESS. OP287 Bridge delegated inner/section/instance tabs Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD 5352997e85578b18eb87338cd0cfb56dd50a2ef8, tree dc9c459b61dbd33170b8b5570b14541e0441aa7c. OP286 and OP285-OP249 remain closed and valid. Current language policy remains migration-in-progress at Rust 223 / owned non-Rust source debt 2 / execution debt 8 / unapproved 0/0. No push. Next parent boundary requires read-only discovery of the next genuinely incomplete Bridge JavaScript ownership seam.
+PHASE 10 - final Bridge frontend ownership migration is IN PROGRESS. OP288 Bridge command-checkbox and in-process-tab event owners Rust/WASM ownership is the active boundary (INTENT_ADOPTED / IMPLEMENTATION_PENDING) from clean base HEAD 08574afb2a318fb24a312df012b710cdc456743d. OP287 and OP286-OP249 remain closed and valid. Current language policy remains migration-in-progress at Rust 223 / owned non-Rust source debt 2 / execution debt 8 / unapproved 0/0. No push.
 ## Confirmed Progress
 - GitHub baseline was reconciled to `aaf2c635672c0fd35a5705579610be8de188b031` / tree `0d19e16d115dc093a3f47967ec57b0cc3e81bfa1`.
 - Phase 1 foundation is committed locally as `33461f6511c69b457c5f3dd069b54322d9a236a0` / tree `e355550c6fa311fdfb4dd54a8cd29c4b45f0c583`.

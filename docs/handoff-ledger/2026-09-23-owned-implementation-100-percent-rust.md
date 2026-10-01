@@ -327,3 +327,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: R101U direct save-inner-tab binding was retired and the gate now requires persistence ownership through the Rust delegated-tab installer. The now-unused duplicate module-visible explicit-trace helper was removed; the active action trace owner remains unchanged.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP287 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP288 - Bridge command-checkbox and in-process-tab event owners Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP287 closeout `08574afb2a318fb24a312df012b710cdc456743d`; BASE_TREE `1674467edb8e113a8bee7b634d1af166af9974d5`; worktree clean at intent time.
+- BOUNDARY: move the instance command-checkbox owner, command-composer inline checkbox pointer/change/click/keydown owner, and in-process node sub-tab click owner from `installActions` into Rust/WASM. Rust owns the event filtering, state mutation, trace emission, keyboard/click semantics, active/hidden panel state, and update-command callback dispatch.
+- ACCEPTANCE: one Rust installer + thin JavaScript call; generated WASM consistent; R13B/R7/R31/V12B semantics preserved; fail-closed ownership regression; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
