@@ -166,3 +166,9 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: stale direct-call assumptions were narrowed to the actual OP272 post-migration ownership surface. The gates now require the remaining single JavaScript profile lookup, forbid all direct JavaScript node-mode calls/bindings, and require dependency/in-process helper ownership in Rust rather than obsolete wrappers.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP272 qualification unless invalidated.
 - PUSHED: NO
+## OP273 - Bridge command orchestration Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP272 closeout `9f64dfe94a1ecb0a22bac53d92077731c7a132ab`; BASE_TREE `527f96be12e9606d863a734f0d3500db0e44a5a4`; worktree clean at intent time.
+- BOUNDARY: move `bridgeSyncAllModeControls` and `buildCommandLines` orchestration into Rust/WASM while preserving only thin JavaScript wrappers for current callers. Rust will own canonical network iteration, mode-control sequencing, instance-state assurance, instance-array selection, and command-line builder invocation. Retire direct JavaScript imports of `bridgeEnsureInstanceState` and `bridgeBuildCommandLines` if no callers remain.
+- ACCEPTANCE: Rust exports + thin JS wrappers + fail-closed ownership regression; generated WASM consistent; stale ownership counts repaired narrowly; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
