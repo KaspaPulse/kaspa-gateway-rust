@@ -155,3 +155,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests; full xtask suite; targeted in-process mode-controls ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate with adjusted direct-call ownership counts; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP271 qualification unless invalidated.
 - PUSHED: NO
+
+## OP272 - Bridge mode-controls orchestration Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP271 closeout `9d77e444caeec8ac89b10cf90fc749da8480235c`; BASE_TREE `bc7a861ec3ea9033da1455ac9449f9e3f9788e4a`; worktree clean at intent time.
+- BOUNDARY: move `bridgeSyncModeControls` orchestration into Rust/WASM while preserving a thin JavaScript wrapper for current callers. Rust owns config-mode disabling, in-process settings sync delegation, network identity lock, external/in-process kaspad-address gating, internal CPU miner dependent fields, and dependency-sync sequencing.
+- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; stale ownership counts repaired narrowly; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
