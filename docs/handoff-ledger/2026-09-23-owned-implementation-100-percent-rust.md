@@ -360,9 +360,12 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP290 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP291 - Bridge root action-click dispatcher Rust/WASM ownership (INTENT)
+## OP291 - Bridge root action-click dispatcher Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP290 closeout `1b4e43b4b0b6272ac1af5e13608651587f6c3db1`; BASE_TREE `2f3feaf05082b51e92b257026fef572cc85dce55`; worktree clean at intent time.
-- BOUNDARY: move the remaining root `[data-bridge-action]` click routing/trace/network extraction from `installActions` into Rust/WASM. Rust owns action detection, network resolution, click trace, and dispatch selection; existing specialized behavior may remain callback-owned for later boundaries.
-- ACCEPTANCE: one Rust event owner + thin JS callback table; no root Bridge action click router remains in JS; fail-closed regression; fmt/clippy/tests/gates/codegen/node/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: the remaining root `[data-bridge-action]` click routing/trace/network extraction moved from `installActions` into Rust/WASM `bridgeInstallRootActionClickOwnerUi`. Rust owns action detection, network resolution, click trace, and dispatch selection; specialized behavior remains explicit callback-owned for later boundaries.
+- IMPLEMENTATION_CHECKPOINT: `1541b5a719bd69030a941d7599266e93eeaefa11`, tree `dd189e3685692523d877a0b31423200f1c771c47`. Closeout generation 2282.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 310/310 plus auxiliary suites; targeted root action-click ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- NEXT: continue migrating specialized Bridge action callbacks and remaining JavaScript ownership seams; do not repeat OP291 qualification unless invalidated.
+- PUSHED: NO.
