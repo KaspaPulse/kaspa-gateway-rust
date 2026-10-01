@@ -31,6 +31,11 @@ fn call1(target: &JsValue, name: &str, first: &JsValue) -> Option<JsValue> {
     method.call1(target, first).ok()
 }
 
+fn call2(target: &JsValue, name: &str, first: &JsValue, second: &JsValue) -> Option<JsValue> {
+    let method = property(target, name).dyn_into::<js_sys::Function>().ok()?;
+    method.call2(target, first, second).ok()
+}
+
 fn required_function(target: &JsValue, name: &str) -> Result<js_sys::Function, JsValue> {
     property(target, name)
         .dyn_into::<js_sys::Function>()
@@ -105,6 +110,24 @@ fn query_all(target: &JsValue, selector: &str) -> Vec<JsValue> {
 
 fn set_property(target: &JsValue, name: &str, value: &JsValue) {
     let _ = Reflect::set(target, &JsValue::from_str(name), value);
+}
+
+fn set_attribute(target: &JsValue, name: &str, value: &str) {
+    let _ = call2(
+        target,
+        "setAttribute",
+        &JsValue::from_str(name),
+        &JsValue::from_str(value),
+    );
+}
+
+fn toggle_class(target: &JsValue, name: &str, enabled: bool) {
+    let _ = call2(
+        &property(target, "classList"),
+        "toggle",
+        &JsValue::from_str(name),
+        &JsValue::from_bool(enabled),
+    );
 }
 
 fn object_or_create(owner: &JsValue, name: &str) -> JsValue {
@@ -452,6 +475,27 @@ fn instance_option_enabled_impl(
     }
     true
 }
+fn refresh_inline_command_toggles_r7(net: &str) {
+    for item in query_all(&document(), "[data-bridge-command-option-toggle-r7]") {
+        let dataset = property(&item, "dataset");
+        if crate::js_string_owned(&property(&dataset, "net")) != net {
+            continue;
+        }
+        let name = crate::js_string_owned(&property(&dataset, "bridgeCommandOptionToggleR7"));
+        let enabled = bridge_command_option_enabled_r7(net.to_owned(), name);
+        set_property(&item, "checked", &JsValue::from_bool(enabled));
+        let label = if enabled {
+            "Included in command"
+        } else {
+            "Excluded from command"
+        };
+        set_attribute(&item, "aria-label", label);
+        set_attribute(&item, "title", label);
+        toggle_class(&item, "is-on", enabled);
+        toggle_class(&item, "is-off", !enabled);
+    }
+}
+
 #[wasm_bindgen(js_name = bridgeCommandInlineStateKeyR7)]
 pub fn bridge_command_inline_state_key_r7(net: String) -> String {
     inline_key_text(&net)
@@ -497,12 +541,18 @@ pub fn bridge_command_set_option_r7(net: String, name: String, enabled: bool) ->
     enabled
 }
 
+#[wasm_bindgen(js_name = bridgeRefreshInlineCommandTogglesR7)]
+pub fn bridge_refresh_inline_command_toggles_r7(net: String) {
+    refresh_inline_command_toggles_r7(&net);
+}
+
 #[wasm_bindgen(js_name = bridgeCommandToggleOptionR7)]
 pub fn bridge_command_toggle_option_r7(net: String, name: String) -> bool {
     let state = inline_state(&net);
     let current = property(&state, &name);
     let enabled = current.as_bool() == Some(false);
     set_property(&state, &name, &JsValue::from_bool(enabled));
+    refresh_inline_command_toggles_r7(&net);
     enabled
 }
 

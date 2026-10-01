@@ -13,6 +13,8 @@ const BRIDGE_START_TRACE_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs";
 const BRIDGE_INSTANCE_SETTINGS_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs";
+const BRIDGE_COMMAND_OPTIONS_SOURCE: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_command_options.rs";
 const WASM_JS: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 const WASM_BIN: &str =
@@ -430,11 +432,28 @@ class Element extends NodeLike {
     this.value = "";
     this.attributes = {};
     this.listeners = {};
+    const classes = new Set();
     this.classList = {
-      contains() { return false; },
-      toggle() {},
-      add() {},
-      remove() {}
+      contains(name) { return classes.has(String(name)); },
+      toggle(name, force) {
+        const token = String(name);
+        if (force === undefined) {
+          if (classes.has(token)) {
+            classes.delete(token);
+            return false;
+          }
+          classes.add(token);
+          return true;
+        }
+        if (force) {
+          classes.add(token);
+          return true;
+        }
+        classes.delete(token);
+        return false;
+      },
+      add(...names) { for (const name of names) classes.add(String(name)); },
+      remove(...names) { for (const name of names) classes.delete(String(name)); }
     };
   }
   setAttribute(key, value) {
@@ -519,9 +538,25 @@ const precedenceModePanel = {
   }
 };
 
+function op264InlineToggle(net, name) {
+  const toggle = new Element();
+  toggle.dataset.net = String(net || "");
+  toggle.dataset.bridgeCommandOptionToggleR7 = String(name || "");
+  return toggle;
+}
+const op264MainAlpha = op264InlineToggle("op264", "customAlpha");
+const op264MainBeta = op264InlineToggle("op264", "customBeta");
+const op264OtherAlpha = op264InlineToggle("op264-other", "customAlpha");
+const op264InlineToggles = [op264MainAlpha, op264MainBeta, op264OtherAlpha];
+
 const documentImpl = {
   getElementById(id) {
     return elements.get(id) || null;
+  },
+  querySelectorAll(selector) {
+    const text = String(selector);
+    if (text === "[data-bridge-command-option-toggle-r7]") return op264InlineToggles;
+    return [];
   },
   querySelector(selector) {
     const text = String(selector);
@@ -545,6 +580,39 @@ const documentImpl = {
   }
 };
 globalThis.document = documentImpl;
+
+wasm.bridgeCommandSetOptionR7("op264", "customAlpha", true);
+wasm.bridgeCommandSetOptionR7("op264", "customBeta", false);
+wasm.bridgeCommandSetOptionR7("op264-other", "customAlpha", false);
+op264OtherAlpha.checked = true;
+op264OtherAlpha.title = "untouched";
+wasm.bridgeRefreshInlineCommandTogglesR7("op264");
+const inlineCommandToggleOwnership = {
+  initial: {
+    alphaChecked: Boolean(op264MainAlpha.checked),
+    alphaAria: String(op264MainAlpha.attributes["aria-label"] || ""),
+    alphaTitle: String(op264MainAlpha.title || ""),
+    alphaIsOn: op264MainAlpha.classList.contains("is-on"),
+    alphaIsOff: op264MainAlpha.classList.contains("is-off"),
+    betaChecked: Boolean(op264MainBeta.checked),
+    betaAria: String(op264MainBeta.attributes["aria-label"] || ""),
+    betaTitle: String(op264MainBeta.title || ""),
+    betaIsOn: op264MainBeta.classList.contains("is-on"),
+    betaIsOff: op264MainBeta.classList.contains("is-off"),
+    otherChecked: Boolean(op264OtherAlpha.checked),
+    otherTitle: String(op264OtherAlpha.title || "")
+  },
+  toggledEnabled: wasm.bridgeCommandToggleOptionR7("op264", "customAlpha"),
+  afterToggle: {
+    alphaChecked: Boolean(op264MainAlpha.checked),
+    alphaAria: String(op264MainAlpha.attributes["aria-label"] || ""),
+    alphaTitle: String(op264MainAlpha.title || ""),
+    alphaIsOn: op264MainAlpha.classList.contains("is-on"),
+    alphaIsOff: op264MainAlpha.classList.contains("is-off"),
+    otherChecked: Boolean(op264OtherAlpha.checked),
+    otherTitle: String(op264OtherAlpha.title || "")
+  }
+};
 
 const inprocessNodeOwnerGuardAlerts = [];
 globalThis.alert = (message) => {
@@ -984,6 +1052,7 @@ const output = {
     unavailableError: previewUnavailableError
   },
   inprocessNodeOwnerGuard,
+  inlineCommandToggleOwnership,
   startOptionsOwnership,
   previewMessageOwnership,
   runtimeRunning: {
@@ -1559,6 +1628,67 @@ fn verify_preview_message_ownership(source: &str, helpers: &str) -> Result<(), S
     Ok(())
 }
 
+fn verify_inline_command_toggle_ownership(
+    source: &str,
+    command_options: &str,
+) -> Result<(), String> {
+    for forbidden in [
+        "function kgwBridgeRefreshInlineCommandTogglesR7(",
+        "function kgwBridgeToggleCommandOptionR7(",
+        "kgwBridgeRefreshInlineCommandTogglesR7(",
+        "kgwBridgeToggleCommandOptionR7(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge inline command-toggle JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7",
+        "bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge inline command-toggle Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    if source
+        .matches("wasmBridgeRefreshInlineCommandTogglesR7(")
+        .count()
+        != 2
+        || source.matches("wasmBridgeCommandToggleOptionR7(").count() != 2
+    {
+        return Err("Bridge inline command-toggle direct-call count drifted".to_owned());
+    }
+
+    for required in [
+        "fn refresh_inline_command_toggles_r7(",
+        "js_name = bridgeRefreshInlineCommandTogglesR7",
+        "pub fn bridge_refresh_inline_command_toggles_r7(",
+        "js_name = bridgeCommandToggleOptionR7",
+        "pub fn bridge_command_toggle_option_r7(",
+        "[data-bridge-command-option-toggle-r7]",
+        "bridgeCommandOptionToggleR7",
+        "\"checked\"",
+        "\"aria-label\"",
+        "\"title\"",
+        "\"is-on\"",
+        "\"is-off\"",
+        "refresh_inline_command_toggles_r7(&net);",
+    ] {
+        if !command_options.contains(required) {
+            return Err(format!(
+                "Bridge inline command-toggle Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_static_contracts(
     source: &str,
     helpers: &str,
@@ -2053,6 +2183,8 @@ pub fn run(root: &Path) -> Result<String, String> {
         .map_err(|error| {
         format!("failed to read {BRIDGE_INSTANCE_SETTINGS_SOURCE}: {error}")
     })?;
+    let command_options_source = fs::read_to_string(root.join(BRIDGE_COMMAND_OPTIONS_SOURCE))
+        .map_err(|error| format!("failed to read {BRIDGE_COMMAND_OPTIONS_SOURCE}: {error}"))?;
     verify_r51_storage_ownership(&full_source, &helper_source)?;
     verify_r51_keys_ownership(&full_source, &helper_source)?;
     verify_r51_runtime_presentation_ownership(&full_source, &runtime_core_source)?;
@@ -2063,6 +2195,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_start_options_ownership(&full_source, &instance_settings_source)?;
     verify_preview_message_ownership(&full_source, &helper_source)?;
     verify_r95b_port_normalization_ownership(&full_source, &helper_source)?;
+    verify_inline_command_toggle_ownership(&full_source, &command_options_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -2137,6 +2270,107 @@ pub fn run(root: &Path) -> Result<String, String> {
         json!(
             "Cannot start bridge in in-process mode because the same-network node is already running. Stop the node first, or switch bridge node mode to External."
         ),
+    )?;
+
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/initial/alphaChecked",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/initial/alphaAria",
+        json!("Included in command"),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/initial/alphaTitle",
+        json!("Included in command"),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/initial/alphaIsOn",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/initial/alphaIsOff",
+        json!(false),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/initial/betaChecked",
+        json!(false),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/initial/betaAria",
+        json!("Excluded from command"),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/initial/betaTitle",
+        json!("Excluded from command"),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/initial/betaIsOn",
+        json!(false),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/initial/betaIsOff",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/initial/otherChecked",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/initial/otherTitle",
+        json!("untouched"),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/toggledEnabled",
+        json!(false),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/afterToggle/alphaChecked",
+        json!(false),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/afterToggle/alphaAria",
+        json!("Excluded from command"),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/afterToggle/alphaTitle",
+        json!("Excluded from command"),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/afterToggle/alphaIsOn",
+        json!(false),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/afterToggle/alphaIsOff",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/afterToggle/otherChecked",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/inlineCommandToggleOwnership/afterToggle/otherTitle",
+        json!("untouched"),
     )?;
 
     expect(
@@ -3237,6 +3471,56 @@ mod tests {
             ),
         ] {
             assert!(verify_r95b_port_normalization_ownership(source, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn inline_command_toggle_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let command_options =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_command_options.rs");
+        assert!(verify_inline_command_toggle_ownership(source, command_options).is_ok());
+
+        for mutation in [
+            source.replacen(
+                "wasmBridgeRefreshInlineCommandTogglesR7(",
+                "kgwBridgeRefreshInlineCommandTogglesR7(",
+                1,
+            ),
+            source.replacen(
+                "wasmBridgeCommandToggleOptionR7(",
+                "kgwBridgeToggleCommandOptionR7(",
+                1,
+            ),
+            source.replace(
+                "bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7",
+                "missingRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7",
+            ),
+            format!(
+                "{source}\nfunction kgwBridgeRefreshInlineCommandTogglesR7(net) {{ return net; }}\n"
+            ),
+        ] {
+            assert!(verify_inline_command_toggle_ownership(&mutation, command_options).is_err());
+        }
+
+        for mutation in [
+            command_options.replace(
+                "js_name = bridgeRefreshInlineCommandTogglesR7",
+                "js_name = missingRefreshInlineCommandTogglesR7",
+            ),
+            command_options.replace(
+                "[data-bridge-command-option-toggle-r7]",
+                "[data-missing-command-option-toggle]",
+            ),
+            command_options.replace("\"is-off\"", "\"missing-is-off\""),
+            command_options.replace(
+                "refresh_inline_command_toggles_r7(&net);",
+                "missing_refresh(&net);",
+            ),
+        ] {
+            assert!(verify_inline_command_toggle_ownership(source, &mutation).is_err());
         }
     }
 

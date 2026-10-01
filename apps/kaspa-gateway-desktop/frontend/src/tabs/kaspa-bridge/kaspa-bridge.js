@@ -6,7 +6,7 @@ import initBridgeRust, {
   bridgeChecked as wasmBridgeChecked,
   bridgeCommandInlineStateR7 as wasmBridgeCommandInlineStateR7,
   bridgeCommandInlineToggleR7 as wasmBridgeCommandInlineToggleR7,
-  bridgeCommandOptionEnabledR7 as wasmBridgeCommandOptionEnabledR7,
+  bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7,
   bridgeHasConfig as wasmBridgeHasConfig,
   bridgeCommandSetOptionR7 as wasmBridgeCommandSetOptionR7,
   bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
@@ -235,27 +235,9 @@ function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
 }
 
 
-// KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7
+// KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7 is Rust-owned in bridge_command_options.rs.
 
 // KGW_BRIDGE_COMMAND_COMPOSER_CHECKBOX_ONLY_R9 is Rust-owned in bridge_command_options.rs.
-
-function kgwBridgeRefreshInlineCommandTogglesR7(net) {
-  document.querySelectorAll(`[data-bridge-command-option-toggle-r7][data-net="${CSS.escape(String(net))}"]`).forEach((el) => {
-    const name = el.dataset.bridgeCommandOptionToggleR7;
-    const enabled = wasmBridgeCommandOptionEnabledR7(String(net || ""), String(name || ""));
-    el.checked = enabled;
-    el.setAttribute("aria-label", enabled ? "Included in command" : "Excluded from command");
-    el.setAttribute("title", enabled ? "Included in command" : "Excluded from command");
-    el.classList.toggle("is-on", enabled);
-    el.classList.toggle("is-off", !enabled);
-  });
-}
-
-function kgwBridgeToggleCommandOptionR7(net, name) {
-  wasmBridgeCommandToggleOptionR7(String(net || ""), String(name || ""));
-  kgwBridgeRefreshInlineCommandTogglesR7(net);
-  updateCommand(net);
-}
 
 
 // KGW_BRIDGE_DIFFICULTY_DATALIST_R16C
@@ -1939,7 +1921,7 @@ function kgwBridgeR51WriteSettingsCallbacksR250() {
     refreshInstances: (net) =>
       bridgeRefreshInstances(String(net || "")),
     refreshInlineCommandToggles: (net) =>
-      kgwBridgeRefreshInlineCommandTogglesR7(String(net || "")),
+      wasmBridgeRefreshInlineCommandTogglesR7(String(net || "")),
     setInstanceCommandOption: (net, instanceId, name, enabled) =>
       kgwBridgeSetInstanceCommandOptionR13B(
         String(net || ""),
@@ -2164,9 +2146,7 @@ function installActions(root) {
       try {
         wasmBridgeCommandSetOptionR7(String(net || ""), String(option || ""), enabled);
         updateCommand(net);
-        if (typeof kgwBridgeRefreshInlineCommandTogglesR7 === "function") {
-          kgwBridgeRefreshInlineCommandTogglesR7(net);
-        }
+        wasmBridgeRefreshInlineCommandTogglesR7(String(net || ""));
 
         queueMicrotask(() => {
           wasmBridgeSmallOwnerTraceR44D(net, "command-checkbox", "r31-bridge-command-checkbox-change-after-microtask", {
@@ -2217,7 +2197,11 @@ function installActions(root) {
 
         event.preventDefault();
         event.stopPropagation();
-        kgwBridgeToggleCommandOptionR7(toggle.dataset.net, toggle.dataset.bridgeCommandOptionToggleR7);
+        wasmBridgeCommandToggleOptionR7(
+          String(toggle.dataset.net || ""),
+          String(toggle.dataset.bridgeCommandOptionToggleR7 || "")
+        );
+        updateCommand(toggle.dataset.net);
       }
     });
 
@@ -2227,7 +2211,11 @@ function installActions(root) {
       if (toggle && root.contains(toggle)) {
         event.preventDefault();
         event.stopPropagation();
-        kgwBridgeToggleCommandOptionR7(toggle.dataset.net, toggle.dataset.bridgeCommandOptionToggleR7);
+        wasmBridgeCommandToggleOptionR7(
+          String(toggle.dataset.net || ""),
+          String(toggle.dataset.bridgeCommandOptionToggleR7 || "")
+        );
+        updateCommand(toggle.dataset.net);
       }
     });
   }
