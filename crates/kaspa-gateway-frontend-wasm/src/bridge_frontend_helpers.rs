@@ -1,3 +1,12 @@
+use super::bridge_command_options::{
+    bridge_command_inline_state_r7, bridge_has_config,
+    bridge_instance_command_should_include_from_instances_r13b,
+};
+use super::settings_contract::bridge_field_enabled as settings_bridge_field_enabled;
+use super::settings_layout::{
+    decorate_fields as settings_decorate_fields, set_field_state as settings_set_field_state,
+};
+use super::settings_schema::BRIDGE_MANAGED;
 use js_sys::{Array, Function, JSON, Object, Promise, Reflect};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 use wasm_bindgen_futures::{JsFuture, spawn_local};
@@ -910,6 +919,284 @@ pub fn bridge_network_policy_message(net: String) -> String {
     policy_message_text(&net)
 }
 
+fn bridge_managed_message(name: &str) -> Option<&'static str> {
+    BRIDGE_MANAGED
+        .iter()
+        .find_map(|(key, value)| (*key == name).then_some(*value))
+}
+
+fn bridge_dependency_forbidden(net: &str, name: &str) -> bool {
+    net == "mainnet" && matches!(name, "internalCpuMiner" | "inprocessEnableUnsyncedMining")
+}
+
+fn bridge_dependency_state(managed: Option<&str>, forbidden: bool, active: bool) -> &'static str {
+    if let Some(message) = managed {
+        if message.to_ascii_lowercase().contains("unsupported") {
+            "Unsupported"
+        } else {
+            "Managed"
+        }
+    } else if forbidden {
+        "Test networks only"
+    } else if !active {
+        "Not active"
+    } else {
+        ""
+    }
+}
+
+fn bridge_dependency_toggle_disabled(
+    name: &str,
+    managed: bool,
+    node_mode: &str,
+    internal_cpu_miner: bool,
+    inprocess_perf_metrics: bool,
+) -> bool {
+    managed
+        || (name.starts_with("inprocess") && node_mode != "inprocess")
+        || (name.starts_with("internalCpuMiner")
+            && name != "internalCpuMiner"
+            && !internal_cpu_miner)
+        || (name == "inprocessPerfMetricsIntervalSec" && !inprocess_perf_metrics)
+}
+
+fn bridge_collection_len(collection: &JsValue) -> u32 {
+    crate::js_number(&property(collection, "length")).max(0.0) as u32
+}
+
+fn bridge_collection_item(collection: &JsValue, index: u32) -> Option<JsValue> {
+    Reflect::get(collection, &JsValue::from_f64(index as f64)).ok()
+}
+
+fn bridge_form_values_inner(net: &str) -> JsValue {
+    let values = Object::new();
+    set(values.as_ref(), "network", &JsValue::from_str(net));
+
+    let panel = crate::bridge_instance_settings::bridge_r51_panel(net.to_owned());
+    if !present(&panel) {
+        return values.into();
+    }
+
+    let Some(fields) = call1(
+        &panel,
+        "querySelectorAll",
+        &JsValue::from_str(".bridge-v7-card input[id], .bridge-v7-card select[id]"),
+    ) else {
+        return values.into();
+    };
+
+    let prefix = format!("bridge-{net}-");
+    for index in 0..bridge_collection_len(&fields) {
+        let Some(field) = bridge_collection_item(&fields, index) else {
+            continue;
+        };
+        let id = crate::js_string_owned(&property(&field, "id"));
+        let Some(name) = id.strip_prefix(&prefix) else {
+            continue;
+        };
+        let value = if crate::js_string_owned(&property(&field, "type")) == "checkbox" {
+            property(&field, "checked")
+        } else {
+            property(&field, "value")
+        };
+        set(values.as_ref(), name, &value);
+    }
+
+    values.into()
+}
+
+#[wasm_bindgen(js_name = bridgeSyncDependencies)]
+pub fn bridge_sync_dependencies(net: String, bridge_instances: JsValue) -> bool {
+    let values = bridge_form_values_inner(&net);
+    let options = bridge_command_inline_state_r7(net.clone());
+    let panel = crate::bridge_instance_settings::bridge_r51_panel(net.clone());
+    if !present(&panel) {
+        return false;
+    }
+
+    let keys = Object::keys(&Object::from(values.clone()));
+    for key in keys.iter() {
+        let name = crate::js_string_owned(&key);
+        if name.starts_with("instance") {
+            continue;
+        }
+        let field = bridge_by_id(bridge_element_id(net.clone(), name.clone()));
+        if !present(&field) {
+            continue;
+        }
+
+        let managed = bridge_managed_message(&name);
+        let forbidden = bridge_dependency_forbidden(&net, &name);
+        let active = settings_bridge_field_enabled(name.clone(), values.clone(), options.clone())
+            && !forbidden;
+        let disabled = !active && !matches!(name.as_str(), "appdir" | "inprocessAppdirMirror");
+
+        set(&field, "disabled", &JsValue::from_bool(disabled));
+        set(&field, "readOnly", &JsValue::from_bool(managed.is_some()));
+
+        let title = if let Some(message) = managed {
+            message.to_owned()
+        } else if forbidden {
+            "Test networks only.".to_owned()
+        } else if !active {
+            "Enable the parent option to use this value.".to_owned()
+        } else {
+            crate::js_string_owned(&property(&field, "value"))
+        };
+        set(&field, "title", &JsValue::from_str(&title));
+
+        if let Some(card) = call1(&field, "closest", &JsValue::from_str(".bridge-v7-card")) {
+            let class_list = property(&card, "classList");
+            let _ = call2(
+                &class_list,
+                "toggle",
+                &JsValue::from_str("kgw-field-inactive"),
+                &JsValue::from_bool(!active),
+            );
+            set(&card, "title", &JsValue::from_str(&title));
+            let _ = call1(
+                &card,
+                "removeAttribute",
+                &JsValue::from_str("data-i18n-title"),
+            );
+
+            let label = query_bridge(&card, ".kgw-command-option-title-text-r8e, span");
+            if present(&label) {
+                let label_id = format!("{}-label", crate::js_string_owned(&property(&field, "id")));
+                set(&label, "id", &JsValue::from_str(&label_id));
+                let _ = call2(
+                    &field,
+                    "setAttribute",
+                    &JsValue::from_str("aria-labelledby"),
+                    &JsValue::from_str(&label_id),
+                );
+            }
+        }
+
+        let _ = settings_set_field_state(
+            field,
+            bridge_dependency_state(managed, forbidden, active).to_owned(),
+        );
+    }
+
+    if let Some(toggles) = call1(
+        &panel,
+        "querySelectorAll",
+        &JsValue::from_str("[data-bridge-command-option-toggle-r7]"),
+    ) {
+        let node_mode = crate::js_string_owned(&property(&values, "nodeMode"));
+        let internal_cpu_miner = crate::js_boolean(&property(&values, "internalCpuMiner"));
+        let inprocess_perf_metrics = crate::js_boolean(&property(&values, "inprocessPerfMetrics"));
+
+        for index in 0..bridge_collection_len(&toggles) {
+            let Some(toggle) = bridge_collection_item(&toggles, index) else {
+                continue;
+            };
+            let name = crate::js_string_owned(&property(
+                &property(&toggle, "dataset"),
+                "bridgeCommandOptionToggleR7",
+            ));
+            let disabled = bridge_dependency_toggle_disabled(
+                &name,
+                bridge_managed_message(&name).is_some(),
+                &node_mode,
+                internal_cpu_miner,
+                inprocess_perf_metrics,
+            );
+            set(&toggle, "disabled", &JsValue::from_bool(disabled));
+        }
+    }
+
+    let has_config = bridge_has_config(net.clone());
+    if let Some(toggles) = call1(
+        &panel,
+        "querySelectorAll",
+        &JsValue::from_str("[data-bridge-instance-command-option-toggle-r13b]"),
+    ) {
+        for index in 0..bridge_collection_len(&toggles) {
+            let Some(toggle) = bridge_collection_item(&toggles, index) else {
+                continue;
+            };
+            let dataset = property(&toggle, "dataset");
+            let instance_id = crate::js_string_owned(&property(&dataset, "instanceId"));
+            let name = crate::js_string_owned(&property(
+                &dataset,
+                "bridgeInstanceCommandOptionToggleR13b",
+            ));
+            if instance_id.is_empty() || name.is_empty() {
+                continue;
+            }
+
+            let field = bridge_by_id(bridge_element_id(
+                net.clone(),
+                format!("{name}-{instance_id}"),
+            ));
+
+            if name == "instanceLogToFile" {
+                set(&toggle, "disabled", &JsValue::TRUE);
+                if present(&field) {
+                    set(&field, "disabled", &JsValue::TRUE);
+                    if let Some(message) = bridge_managed_message("logToFile") {
+                        set(&field, "title", &JsValue::from_str(message));
+                    }
+                }
+                continue;
+            }
+
+            let parent_active = !has_config
+                && bridge_instance_command_should_include_from_instances_r13b(
+                    bridge_instances.clone(),
+                    net.clone(),
+                    JsValue::from_str(&instance_id),
+                    "instance".to_owned(),
+                );
+            set(
+                &toggle,
+                "disabled",
+                &JsValue::from_bool(has_config || (name != "instance" && !parent_active)),
+            );
+
+            if present(&field) {
+                let checked = crate::js_boolean(&property(&toggle, "checked"));
+                set(
+                    &field,
+                    "disabled",
+                    &JsValue::from_bool(!checked || !parent_active),
+                );
+                let state = if has_config {
+                    "Managed"
+                } else if !parent_active {
+                    "Not active"
+                } else if !checked {
+                    "Override off"
+                } else {
+                    "Custom value"
+                };
+                let _ = settings_set_field_state(field.clone(), state.to_owned());
+
+                if let Some(card) = call1(&field, "closest", &JsValue::from_str(".bridge-v7-card"))
+                {
+                    let label = query_bridge(&card, ".kgw-command-option-title-text-r8e");
+                    if present(&label) {
+                        let label_id =
+                            format!("{}-label", crate::js_string_owned(&property(&field, "id")));
+                        set(&label, "id", &JsValue::from_str(&label_id));
+                        let _ = call2(
+                            &field,
+                            "setAttribute",
+                            &JsValue::from_str("aria-labelledby"),
+                            &JsValue::from_str(&label_id),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    let _ = settings_decorate_fields(panel);
+    true
+}
+
 fn bridge_preview_message_inner(net: &str, message: &str, error: bool) -> bool {
     let element = bridge_by_id(bridge_element_id(
         net.to_owned(),
@@ -1113,6 +1400,68 @@ pub fn bridge_apply_rusty_kaspa_root_only_default_paths_soon_r5(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bridge_dependency_policy_matches_legacy_contract() {
+        assert!(bridge_dependency_forbidden("mainnet", "internalCpuMiner"));
+        assert!(bridge_dependency_forbidden(
+            "mainnet",
+            "inprocessEnableUnsyncedMining"
+        ));
+        assert!(!bridge_dependency_forbidden(
+            "testnet10",
+            "internalCpuMiner"
+        ));
+        assert_eq!(
+            bridge_dependency_state(Some("unsupported by runtime"), false, true),
+            "Unsupported"
+        );
+        assert_eq!(
+            bridge_dependency_state(Some("Managed by KGW"), false, true),
+            "Managed"
+        );
+        assert_eq!(
+            bridge_dependency_state(None, true, true),
+            "Test networks only"
+        );
+        assert_eq!(bridge_dependency_state(None, false, false), "Not active");
+        assert_eq!(bridge_dependency_state(None, false, true), "");
+    }
+
+    #[test]
+    fn bridge_dependency_toggle_rules_match_legacy_contract() {
+        assert!(bridge_dependency_toggle_disabled(
+            "config", true, "external", false, false
+        ));
+        assert!(bridge_dependency_toggle_disabled(
+            "inprocessPerfMetricsIntervalSec",
+            false,
+            "external",
+            false,
+            false
+        ));
+        assert!(bridge_dependency_toggle_disabled(
+            "internalCpuMinerThreads",
+            false,
+            "inprocess",
+            false,
+            true
+        ));
+        assert!(!bridge_dependency_toggle_disabled(
+            "internalCpuMiner",
+            false,
+            "inprocess",
+            false,
+            true
+        ));
+        assert!(!bridge_dependency_toggle_disabled(
+            "inprocessPerfMetricsIntervalSec",
+            false,
+            "inprocess",
+            false,
+            true
+        ));
+    }
 
     #[test]
     fn bridge_network_profiles_match_legacy_defaults() {

@@ -1,5 +1,5 @@
-import { BRIDGE_MANAGED, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, confirmUserAction } from "../../settings-contract.js";
-import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
+import { validateBridgeForm, renderFieldErrors, confirmUserAction } from "../../settings-contract.js";
+import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField } from "../../settings-layout.js";
 import initBridgeRust, {
   bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5 as wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5,
   bridgeById as wasmBridgeById,
@@ -82,6 +82,7 @@ import initBridgeRust, {
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
   bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
+  bridgeSyncDependencies as wasmBridgeSyncDependencies,
   bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E,
   bridgeValue as wasmBridgeValue,
   bridgeAssignMissingInstancePortsR9 as wasmBridgeAssignMissingInstancePortsR9,
@@ -2756,55 +2757,8 @@ function kgwBridgeRequireValidSettings(net) {
   kgwBridgeEffectiveInprocessNodeSettings(net);
   wasmBridgeEffectiveSettingsV1(String(net || ""), kgwBridgeR51ReadStructuredInstancesR253(net) || {});
 }
+// KGW_BRIDGE_DEPENDENCY_SYNC_RUST_OWNER_V1
 function kgwBridgeSyncDependencies(net) {
-  const values = kgwBridgeForm(net), options = wasmBridgeCommandInlineStateR7(String(net || ""));
-  const panel = wasmBridgeR51Panel(net);
-  for (const name of Object.keys(values)) {
-    const field = wasmBridgeById(wasmBridgeElementId(net, name)); if (!field) continue;
-    if (/^instance/.test(name)) continue;
-    const managed = BRIDGE_MANAGED[name];
-    const forbidden = net === "mainnet" && ["internalCpuMiner", "inprocessEnableUnsyncedMining"].includes(name);
-    const active = bridgeFieldEnabled(name, values, options) && !forbidden;
-    field.disabled = !active && !["appdir", "inprocessAppdirMirror"].includes(name);
-    field.readOnly = Boolean(managed);
-    field.title = managed || (forbidden ? "Test networks only." : !active ? "Enable the parent option to use this value." : field.value || "");
-    const card = field.closest(".bridge-v7-card");
-    card?.classList.toggle("kgw-field-inactive", !active);
-    if (card) { card.title = field.title; card.removeAttribute("data-i18n-title"); }
-    const state = managed ? (/unsupported/i.test(managed) ? "Unsupported" : "Managed")
-      : forbidden ? "Test networks only"
-      : !active ? "Not active" : "";
-    setSettingFieldState(field, state);
-    if (field.tagName === "INPUT" || field.tagName === "SELECT") {
-      const label = card?.querySelector(".kgw-command-option-title-text-r8e, span");
-      if (label) { label.id = field.id + "-label"; field.setAttribute("aria-labelledby", label.id); }
-    }
-  }
-  panel?.querySelectorAll("[data-bridge-command-option-toggle-r7]").forEach(toggle => {
-    const name = toggle.dataset.bridgeCommandOptionToggleR7;
-    toggle.disabled = Boolean(BRIDGE_MANAGED[name] ||
-      (name.startsWith("inprocess") && values.nodeMode !== "inprocess") ||
-      (name.startsWith("internalCpuMiner") && name !== "internalCpuMiner" && !values.internalCpuMiner) ||
-      (name === "inprocessPerfMetricsIntervalSec" && !values.inprocessPerfMetrics));
-  });
-  panel?.querySelectorAll("[data-bridge-instance-command-option-toggle-r13b]").forEach(toggle => {
-    const instanceId = toggle.dataset.instanceId, name = toggle.dataset.bridgeInstanceCommandOptionToggleR13b;
-    if (!instanceId || !name) return;
-    const field = wasmBridgeById(wasmBridgeElementId(net, name + "-" + instanceId));
-    if (name === "instanceLogToFile") {
-      toggle.disabled = true;
-      if (field) { field.disabled = true; field.title = BRIDGE_MANAGED.logToFile; }
-      return;
-    }
-    const parentActive = !wasmBridgeHasConfig(String(net || "")) && wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instanceId, "instance");
-    toggle.disabled = wasmBridgeHasConfig(String(net || "")) || (name !== "instance" && !parentActive);
-    if (field) {
-      field.disabled = !toggle.checked || !parentActive;
-      setSettingFieldState(field, wasmBridgeHasConfig(String(net || "")) ? "Managed" : !parentActive ? "Not active" : !toggle.checked ? "Override off" : "Custom value");
-    }
-    const label = field?.closest(".bridge-v7-card")?.querySelector(".kgw-command-option-title-text-r8e");
-    if (field && label) { label.id = field.id + "-label"; field.setAttribute("aria-labelledby", label.id); }
-  });
-  decorateSettingsFields(panel);
+  return wasmBridgeSyncDependencies(String(net || ""), bridgeInstances);
 }
 export { kgwBridgeEffectiveInprocessNodeSettings, wasmBridgeEffectiveSettingsV1 as kgwBridgeEffectiveSettingsV1, kgwBridgeValidateForm };

@@ -1689,6 +1689,59 @@ fn verify_inline_command_toggle_ownership(
     Ok(())
 }
 
+fn verify_dependency_sync_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeSyncDependencies as wasmBridgeSyncDependencies",
+        "// KGW_BRIDGE_DEPENDENCY_SYNC_RUST_OWNER_V1",
+        "return wasmBridgeSyncDependencies(String(net || \"\"), bridgeInstances);",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge dependency-sync Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    if source.matches("wasmBridgeSyncDependencies(").count() != 1 {
+        return Err("Bridge dependency-sync direct-call count drifted".to_owned());
+    }
+
+    for forbidden in [
+        "bridgeFieldEnabled(name, values, options)",
+        "setSettingFieldState(field,",
+        "const values = kgwBridgeForm(net), options =",
+        "toggle.disabled = Boolean(BRIDGE_MANAGED[name]",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge dependency-sync JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeSyncDependencies",
+        "pub fn bridge_sync_dependencies(",
+        "settings_bridge_field_enabled(",
+        "[data-bridge-command-option-toggle-r7]",
+        "[data-bridge-instance-command-option-toggle-r13b]",
+        "bridgeCommandOptionToggleR7",
+        "bridgeInstanceCommandOptionToggleR13b",
+        "\"aria-labelledby\"",
+        "settings_set_field_state(",
+        "settings_decorate_fields(panel)",
+        "bridge_dependency_toggle_disabled(",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge dependency-sync Rust owner contract missing: {required}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn verify_static_contracts(
     source: &str,
     helpers: &str,
@@ -2196,6 +2249,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_preview_message_ownership(&full_source, &helper_source)?;
     verify_r95b_port_normalization_ownership(&full_source, &helper_source)?;
     verify_inline_command_toggle_ownership(&full_source, &command_options_source)?;
+    verify_dependency_sync_ownership(&full_source, &helper_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -3471,6 +3525,53 @@ mod tests {
             ),
         ] {
             assert!(verify_r95b_port_normalization_ownership(source, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn dependency_sync_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_dependency_sync_ownership(source, helpers).is_ok());
+
+        for mutation in [
+            source.replace(
+                "bridgeSyncDependencies as wasmBridgeSyncDependencies",
+                "missingSyncDependencies as wasmBridgeSyncDependencies",
+            ),
+            source.replace(
+                "return wasmBridgeSyncDependencies(String(net || \"\"), bridgeInstances);",
+                "return false;",
+            ),
+            format!(
+                "{source}\nfunction legacyBridgeDependencyOwner(name, values, options) {{ return bridgeFieldEnabled(name, values, options); }}\n"
+            ),
+        ] {
+            assert!(verify_dependency_sync_ownership(&mutation, helpers).is_err());
+        }
+
+        for mutation in [
+            helpers.replace(
+                "js_name = bridgeSyncDependencies",
+                "js_name = missingBridgeSyncDependencies",
+            ),
+            helpers.replace(
+                "[data-bridge-instance-command-option-toggle-r13b]",
+                "[data-missing-instance-command-toggle]",
+            ),
+            helpers.replace(
+                "settings_bridge_field_enabled(",
+                "missing_bridge_field_enabled(",
+            ),
+            helpers.replace(
+                "settings_decorate_fields(panel)",
+                "missing_decorate_fields(panel)",
+            ),
+        ] {
+            assert!(verify_dependency_sync_ownership(source, &mutation).is_err());
         }
     }
 
