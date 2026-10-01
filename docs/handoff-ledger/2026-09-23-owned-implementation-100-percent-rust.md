@@ -284,9 +284,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP283 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP284 - Bridge network-panel renderer Rust/WASM ownership (INTENT)
+## OP284 - Bridge network-panel renderer Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP283 closeout `4f6c80071655e1b1a98612c79ad5edd4619939ae`; BASE_TREE `5d204d0da5a38601e6f2c94aa7385cd7b1c655b8`; worktree clean at intent time.
-- BOUNDARY: move `renderNetworkPanel` HTML/policy/inner-tab renderer into Rust/WASM while preserving `renderSections` only as an explicit callback for its already Rust-owned settings-section boundary. Rust owns persisted inner-tab interpretation, panel active/hidden state, network policy/experimental markup, enabled-state checkbox, preview/status/action markup, settings/log panel markup, and DOM-id construction.
-- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; mainnet/testnet/experimental and persisted-tab semantics preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `renderNetworkPanel` HTML/policy/inner-tab rendering moved into Rust/WASM `bridgeRenderNetworkPanelUi`; JavaScript preserves only `renderSections` as an explicit callback. Rust owns persisted inner-tab interpretation, panel active/hidden state, network policy/experimental markup, enabled-state checkbox, preview/status/action markup, settings/log panel markup, and DOM-id construction.
+- IMPLEMENTATION_CHECKPOINT: `1b727c9399b1a67af488a7cbf59bff98857a1901`, tree `1ea269a87b040724de9516a501986b2c043664a9`. Closeout generation 2275.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 303/303 plus auxiliary suites; targeted network-panel ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: R101U persisted inner-tab gate now requires resolve ownership inside the Rust network-panel renderer while retaining only the JavaScript save binding/call; any reintroduced JavaScript resolve binding/call fails closed.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP284 qualification unless invalidated.
+- PUSHED: NO.
