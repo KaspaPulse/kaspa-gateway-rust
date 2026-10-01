@@ -262,9 +262,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP281 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP282 - Bridge render-all-networks orchestration Rust/WASM ownership (INTENT)
+## OP282 - Bridge render-all-networks orchestration Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP281 closeout `5bcc13f2481134d3ddbda5b322eee775e10126db`; BASE_TREE `9ff76c71d1940b6ec73c0dc02165a4500df4bbef`; worktree clean at intent time.
-- BOUNDARY: move `renderAllNetworks` orchestration into Rust/WASM while preserving explicit callbacks only for per-network panel rendering and settings-layout decoration. Rust owns `bridgeNetworkPanels` lookup, canonical network-profile iteration/order, panel HTML aggregation and assignment, callback sequencing, and deferred Bridge log-control installation.
-- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; no semantic drift in network ordering or deferred control installers; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `renderAllNetworks` orchestration moved into Rust/WASM `bridgeRenderAllNetworksUi`; JavaScript retains only per-network panel-rendering and settings-layout callbacks. Rust owns `bridgeNetworkPanels` lookup, canonical network-profile iteration/order, panel HTML aggregation/assignment, callback sequencing, and deferred Bridge log-control installation.
+- IMPLEMENTATION_CHECKPOINT: `25f69583413c361a4aaf228582eaafe9993133da`, tree `1ee52a7b3125857fe2084eaff0dadcc7f9274c11`. Closeout generation 2273.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 301/301 plus auxiliary suites; targeted render-all-networks ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: Bridge R27 direct JavaScript log-auto-scroll scheduling expectation narrowed from two to one because OP282 moved the render-all-networks deferred installer into Rust; the new Rust ownership gate explicitly requires both deferred Rust installers.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP282 qualification unless invalidated.
+- PUSHED: NO.
