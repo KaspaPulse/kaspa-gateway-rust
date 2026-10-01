@@ -1605,6 +1605,60 @@ fn verify_start_options_ownership(
     Ok(())
 }
 
+fn verify_instance_refresh_ownership(source: &str, instance_ui: &str) -> Result<(), String> {
+    for required in [
+        "bridgeRefreshInstancesUi as wasmBridgeRefreshInstancesUi",
+        "// KGW_BRIDGE_INSTANCE_REFRESH_RUST_OWNER_V1",
+        "function bridgeRefreshInstances(net) {",
+        "return wasmBridgeRefreshInstancesUi(",
+        "decorateSettingsFields: (container) => decorateSettingsFields(container)",
+        "installInstanceContainerOwner: (container, targetNet) =>",
+        "updateCommand: (targetNet) => updateCommand(String(targetNet || \"\"))",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge instance-refresh Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    let wrapper = slice_between(source, "function bridgeRefreshInstances(net) {", "\n}")?;
+    for forbidden in [
+        "wasmBridgeInstanceNetworkKeyR15(",
+        "document.querySelector(",
+        "container.innerHTML =",
+        "container.id =",
+        "renderInstances(net)",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge instance-refresh JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeRefreshInstancesUi",
+        "pub fn bridge_refresh_instances_ui(",
+        "bridge_instance_network_key_r15(",
+        "bridge_element_id(net.clone(), \"instances\".to_owned())",
+        "querySelector",
+        "bridge_render_instances_ui(",
+        "set(&container, \"innerHTML\"",
+        "call1_required(&callbacks, \"decorateSettingsFields\"",
+        "\"installInstanceContainerOwner\"",
+        "call1_required(&callbacks, \"updateCommand\"",
+    ] {
+        if !instance_ui.contains(required) {
+            return Err(format!(
+                "Bridge instance-refresh Rust owner contract missing: {required}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn verify_instances_renderer_ownership(source: &str, instance_ui: &str) -> Result<(), String> {
     for required in [
         "bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi",
@@ -2741,9 +2795,9 @@ fn verify_static_contracts(
     if !source.contains("bridgeInstanceNetworkKeyR15 as wasmBridgeInstanceNetworkKeyR15") {
         return Err("Bridge R15 instance network-key Rust/WASM import is missing".to_owned());
     }
-    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 3 {
+    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 2 {
         return Err(
-            "Bridge R15 instance network-key owner must have exactly three remaining direct generated-WASM call sites after OP278 moves instances-renderer network canonicalization into Rust"
+            "Bridge R15 instance network-key owner must have exactly two remaining direct generated-WASM call sites after OP279 moves instance-refresh network canonicalization into Rust"
                 .to_owned(),
         );
     }
@@ -2966,6 +3020,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_start_options_ownership(&full_source, &helper_source, &instance_settings_source)?;
+    verify_instance_refresh_ownership(&full_source, &instance_ui_source)?;
     verify_instances_renderer_ownership(&full_source, &instance_ui_source)?;
     verify_instance_command_option_ownership(&full_source, &command_options_source)?;
     verify_instance_mutation_ownership(&full_source, &instance_settings_source)?;
@@ -4193,6 +4248,47 @@ mod tests {
             instance_settings.replace("\"CPU threads\"", "\"Missing CPU threads\""),
         ] {
             assert!(verify_start_options_ownership(source, helpers, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn instance_refresh_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let instance_ui =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_instance_ui.rs");
+        assert!(verify_instance_refresh_ownership(source, instance_ui).is_ok());
+
+        for mutation in [
+            source.replace(
+                "bridgeRefreshInstancesUi as wasmBridgeRefreshInstancesUi",
+                "missingRefreshInstancesUi as wasmBridgeRefreshInstancesUi",
+            ),
+            source.replacen(
+                "function bridgeRefreshInstances(net) {",
+                "function bridgeRefreshInstances(net) {\n  const container = document.querySelector(\"[data-bridge-section-panel=instances]\");",
+                1,
+            ),
+        ] {
+            assert!(verify_instance_refresh_ownership(&mutation, instance_ui).is_err());
+        }
+
+        for mutation in [
+            instance_ui.replace(
+                "js_name = bridgeRefreshInstancesUi",
+                "js_name = missingRefreshInstancesUi",
+            ),
+            instance_ui.replace(
+                "bridge_render_instances_ui(",
+                "missing_render_instances_ui(",
+            ),
+            instance_ui.replace(
+                "call1_required(&callbacks, \"updateCommand\"",
+                "call1_required(&callbacks, \"missingUpdateCommand\"",
+            ),
+        ] {
+            assert!(verify_instance_refresh_ownership(source, &mutation).is_err());
         }
     }
 

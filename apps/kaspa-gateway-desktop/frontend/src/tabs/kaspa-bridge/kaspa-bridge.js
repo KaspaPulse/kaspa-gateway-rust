@@ -52,6 +52,7 @@ import initBridgeRust, {
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B,
   bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi,
+  bridgeRefreshInstancesUi as wasmBridgeRefreshInstancesUi,
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeElementId as wasmBridgeElementId,
@@ -631,24 +632,19 @@ function renderNetworkPanel(net, index) {
 }
 
 
+// KGW_BRIDGE_INSTANCE_REFRESH_RUST_OWNER_V1
 function bridgeRefreshInstances(net) {
-  net = wasmBridgeInstanceNetworkKeyR15(net, net);
-
-  const container =
-    wasmBridgeById(wasmBridgeElementId(net, "instances")) ||
-    document.querySelector(`[data-bridge-network-panel="${net}"] [data-bridge-section-panel="instances"]`);
-
-  if (container) {
-    if (!container.id) {
-      container.id = wasmBridgeElementId(net, "instances");
+  return wasmBridgeRefreshInstancesUi(
+    String(net || ""),
+    bridgeInstances,
+    activeInstance,
+    {
+      decorateSettingsFields: (container) => decorateSettingsFields(container),
+      installInstanceContainerOwner: (container, targetNet) =>
+        bridgeInstallInstanceContainerOwnerR11(container, String(targetNet || "")),
+      updateCommand: (targetNet) => updateCommand(String(targetNet || ""))
     }
-
-    container.innerHTML = renderInstances(net);
-    decorateSettingsFields(container);
-    bridgeInstallInstanceContainerOwnerR11(container, net);
-  }
-
-  updateCommand(net);
+  );
 }
 
 /* KGW_BRIDGE_INSTANCES_PATCHMARKER_RUNTIME_FIX_R13B: fixes undefined runtime owner marker assignment. */

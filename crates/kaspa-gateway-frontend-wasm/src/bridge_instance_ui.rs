@@ -31,6 +31,32 @@ fn call1(target: &JsValue, name: &str, first: &JsValue) -> Option<JsValue> {
     function(target, name)?.call1(target, first).ok()
 }
 
+fn required_function(target: &JsValue, name: &str) -> Result<Function, JsValue> {
+    function(target, name).ok_or_else(|| {
+        JsValue::from_str(&format!(
+            "Bridge instance UI callback is unavailable: {name}"
+        ))
+    })
+}
+
+fn call1_required(target: &JsValue, name: &str, first: &JsValue) -> Result<JsValue, JsValue> {
+    required_function(target, name)?.call1(target, first)
+}
+
+fn call2_required(
+    target: &JsValue,
+    name: &str,
+    first: &JsValue,
+    second: &JsValue,
+) -> Result<JsValue, JsValue> {
+    required_function(target, name)?.call2(target, first, second)
+}
+
+fn document() -> JsValue {
+    let global: JsValue = js_sys::global().into();
+    property(&property(&global, "window"), "document")
+}
+
 fn query_all(root: &JsValue, selector: &str) -> Vec<JsValue> {
     let Some(list) = call1(root, "querySelectorAll", &JsValue::from_str(selector)) else {
         return Vec::new();
@@ -381,6 +407,55 @@ pub fn bridge_render_instances_ui(
       {panels}
     </div>"#
     ))
+}
+
+#[wasm_bindgen(js_name = bridgeRefreshInstancesUi)]
+pub fn bridge_refresh_instances_ui(
+    net: String,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    callbacks: JsValue,
+) -> Result<String, JsValue> {
+    let net = bridge_frontend_helpers::bridge_instance_network_key_r15(
+        JsValue::from_str(&net),
+        JsValue::from_str(&net),
+    );
+    if net.is_empty() {
+        return Ok(net);
+    }
+
+    let container_id =
+        bridge_frontend_helpers::bridge_element_id(net.clone(), "instances".to_owned());
+    let mut container = bridge_frontend_helpers::bridge_by_id(container_id.clone());
+    if !present(&container) {
+        let selector = format!(
+            r#"[data-bridge-network-panel="{net}"] [data-bridge-section-panel="instances"]"#
+        );
+        container = call1(&document(), "querySelector", &JsValue::from_str(&selector))
+            .unwrap_or(JsValue::UNDEFINED);
+    }
+
+    if present(&container) {
+        if crate::js_string_owned(&property(&container, "id")).is_empty() {
+            set(&container, "id", &JsValue::from_str(&container_id));
+        }
+        let html = bridge_render_instances_ui(
+            net.clone(),
+            bridge_instances.clone(),
+            active_instance.clone(),
+        )?;
+        set(&container, "innerHTML", &JsValue::from_str(&html));
+        let _ = call1_required(&callbacks, "decorateSettingsFields", &container)?;
+        let _ = call2_required(
+            &callbacks,
+            "installInstanceContainerOwner",
+            &container,
+            &JsValue::from_str(&net),
+        )?;
+    }
+
+    let _ = call1_required(&callbacks, "updateCommand", &JsValue::from_str(&net))?;
+    Ok(net)
 }
 
 #[wasm_bindgen(js_name = bridgeInstancePreviewTextR8B)]
