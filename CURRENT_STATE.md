@@ -1,14 +1,14 @@
 # CURRENT STATE
-- Current product boundary: OP258 Bridge runtime notice Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD c8a26343637de67482c4ea1a0aa38870b919e264, tree 8106fba572290be46ea35d4140b1669f6d7ce609; OP249-OP257 remain closed and valid; no push.
+- Current product boundary: OP259 Bridge mark-restart-required Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD b432c417fe40b0ee588b4be36c3fa42e4106d88a, tree c76a54a13b2530cc1d8274ff5d8549822b0bdf4c; OP249-OP258 remain closed and valid; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
-- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`, target closeout generation `2221` (OP258 CLOSED_LOCAL / VERIFIED_SUCCESS; parent task active).
+- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`, target closeout generation `2226` (OP259 CLOSED_LOCAL / VERIFIED_SUCCESS; parent task active).
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP258 verified implementation checkpoint is `c8a26343637de67482c4ea1a0aa38870b919e264`, tree `8106fba572290be46ea35d4140b1669f6d7ce609`.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP259 verified implementation checkpoint is `b432c417fe40b0ee588b4be36c3fa42e4106d88a`, tree `c76a54a13b2530cc1d8274ff5d8549822b0bdf4c`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **CLEAN after the OP258 docs-only continuity closeout commit; verify dynamically before the next operation.** Product/test/generated OP258 files remain checkpointed and unchanged.
+- Working tree: **CLEAN after the OP259 docs-only continuity closeout commit; verify dynamically before the next operation.** Product/test/generated OP259 files remain checkpointed and unchanged.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
