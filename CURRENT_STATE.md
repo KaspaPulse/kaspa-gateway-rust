@@ -1,14 +1,14 @@
 # CURRENT STATE
-- Current product boundary: OP251 Bridge R51 R38C command-option reader Rust ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD 572cc84d47e4dcbb8c18cb2482a39cd78f165f9d, tree 8331f82f14976311818d1346e693a449f7e96684; OP249 ReadSettings and OP250 WriteSettings remain closed and valid; no push.
+- Current product boundary: OP252 Bridge R51 R38C ApplyCommandOptions Rust ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD a59aeb2080bc030c6799927a84952867f370d017, tree 9bf150797a9ee50b119df7826bea1e3fb94ea486; OP249-OP251 remain closed and valid; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
-- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`, current generation `2185` (OP251 CLOSED_LOCAL / VERIFIED_SUCCESS; parent task active).
+- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`, current generation `2190` (OP252 CLOSED_LOCAL / VERIFIED_SUCCESS; parent task active).
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP251 verified implementation checkpoint is `572cc84d47e4dcbb8c18cb2482a39cd78f165f9d`, tree `8331f82f14976311818d1346e693a449f7e96684`.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP252 verified implementation checkpoint is `a59aeb2080bc030c6799927a84952867f370d017`, tree `9bf150797a9ee50b119df7826bea1e3fb94ea486`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: **CLEAN after the OP251 docs-only continuity closeout commit; verify dynamically before the next operation.** Product/test/generated OP251 files remain checkpointed and unchanged.
+- Working tree: **CLEAN after the OP252 docs-only continuity closeout commit; verify dynamically before the next operation.** Product/test/generated OP252 files remain checkpointed and unchanged.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
