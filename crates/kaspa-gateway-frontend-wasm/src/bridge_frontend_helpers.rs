@@ -166,6 +166,18 @@ fn call2(target: &JsValue, name: &str, first: &JsValue, second: &JsValue) -> Opt
     function(target, name)?.call2(target, first, second).ok()
 }
 
+fn call3(
+    target: &JsValue,
+    name: &str,
+    first: &JsValue,
+    second: &JsValue,
+    third: &JsValue,
+) -> Option<JsValue> {
+    function(target, name)?
+        .call3(target, first, second, third)
+        .ok()
+}
+
 fn create_bridge_element(tag: &str) -> JsValue {
     call1(&document(), "createElement", &JsValue::from_str(tag)).unwrap_or(JsValue::UNDEFINED)
 }
@@ -676,6 +688,309 @@ pub fn bridge_save_last_network(net: JsValue) -> String {
         storage_set(BRIDGE_LAST_NETWORK_KEY, &normalized);
     }
     normalized
+}
+
+fn bridge_tab_dataset_text(element: &JsValue, name: &str) -> String {
+    crate::js_string_owned(&property(&property(element, "dataset"), name))
+}
+
+fn bridge_tab_network(element: &JsValue) -> String {
+    for name in ["net", "bridgeNetworkTab", "bridgeNetworkPanel"] {
+        let value = bridge_tab_dataset_text(element, name);
+        if !value.is_empty() {
+            return value;
+        }
+    }
+    String::new()
+}
+
+fn bridge_tab_collection(root: &JsValue, selector: &str) -> Vec<JsValue> {
+    let Some(collection) = call1(root, "querySelectorAll", &JsValue::from_str(selector)) else {
+        return Vec::new();
+    };
+    let mut values = Vec::new();
+    let len = crate::js_number(&property(&collection, "length")).max(0.0) as u32;
+    for index in 0..len {
+        if let Ok(value) = Reflect::get(&collection, &JsValue::from_f64(index as f64))
+            && present(&value)
+        {
+            values.push(value);
+        }
+    }
+    values
+}
+
+fn bridge_tab_class_contains(element: &JsValue, name: &str) -> bool {
+    call1(
+        &property(element, "classList"),
+        "contains",
+        &JsValue::from_str(name),
+    )
+    .is_some_and(|value| crate::js_boolean(&value))
+}
+
+fn bridge_tab_class_toggle(element: &JsValue, name: &str, enabled: bool) {
+    let _ = call2(
+        &property(element, "classList"),
+        "toggle",
+        &JsValue::from_str(name),
+        &JsValue::from_bool(enabled),
+    );
+}
+
+fn bridge_tab_attribute_text(element: &JsValue, name: &str) -> String {
+    call1(element, "getAttribute", &JsValue::from_str(name))
+        .map(|value| crate::js_string_owned(&value))
+        .unwrap_or_default()
+}
+
+fn bridge_tab_set_attribute(element: &JsValue, name: &str, value: &str) {
+    let _ = call2(
+        element,
+        "setAttribute",
+        &JsValue::from_str(name),
+        &JsValue::from_str(value),
+    );
+}
+
+fn bridge_tab_refresh_later(net: String, reason: String, callbacks: JsValue, delay_ms: i32) {
+    let callback = Closure::wrap(Box::new(move || {
+        let net = net.clone();
+        let reason = reason.clone();
+        let callbacks = callbacks.clone();
+        spawn_local(async move {
+            crate::bridge_runtime_core::bridge_r51_refresh_one(net, reason, callbacks).await;
+        });
+    }) as Box<dyn FnMut()>);
+    if let Some(set_timeout) = function(&window(), "setTimeout") {
+        let _ = set_timeout.call2(
+            &window(),
+            callback.as_ref().unchecked_ref(),
+            &JsValue::from_f64(delay_ms as f64),
+        );
+    }
+    callback.forget();
+}
+
+fn bridge_tab_select(
+    tabs: &[JsValue],
+    panels: &[JsValue],
+    callbacks: &JsValue,
+    selected: &str,
+    reason: &str,
+    persist: bool,
+) -> String {
+    let normalized = normalize_bridge_network_text(selected);
+    if normalized.is_empty() {
+        return String::new();
+    }
+    if persist {
+        storage_set(BRIDGE_LAST_NETWORK_KEY, &normalized);
+    }
+
+    for tab in tabs {
+        let active = normalize_bridge_network_text(&bridge_tab_network(tab)) == normalized;
+        for class_name in ["active", "is-active", "selected"] {
+            bridge_tab_class_toggle(tab, class_name, active);
+        }
+        bridge_tab_set_attribute(tab, "aria-selected", if active { "true" } else { "false" });
+        set(
+            &property(tab, "dataset"),
+            "active",
+            &JsValue::from_str(if active { "true" } else { "false" }),
+        );
+    }
+
+    for panel in panels {
+        let active = normalize_bridge_network_text(&bridge_tab_network(panel)) == normalized;
+        set(panel, "hidden", &JsValue::from_bool(!active));
+        for class_name in ["active", "is-active"] {
+            bridge_tab_class_toggle(panel, class_name, active);
+        }
+        set(
+            &property(panel, "dataset"),
+            "active",
+            &JsValue::from_str(if active { "true" } else { "false" }),
+        );
+        set(
+            &property(panel, "style"),
+            "display",
+            &JsValue::from_str(if active { "" } else { "none" }),
+        );
+    }
+
+    if let Some(update) = function(callbacks, "updateCommand") {
+        let _ = update.call1(callbacks, &JsValue::from_str(&normalized));
+    }
+    let live_callbacks_value = property(callbacks, "liveRefreshCallbacks");
+    let live_callbacks = live_callbacks_value
+        .clone()
+        .dyn_into::<Function>()
+        .ok()
+        .and_then(|callback| callback.call0(callbacks).ok())
+        .unwrap_or(live_callbacks_value);
+    bridge_tab_refresh_later(
+        normalized.clone(),
+        format!("network-tab-{reason}"),
+        live_callbacks.clone(),
+        50,
+    );
+    bridge_tab_refresh_later(
+        normalized.clone(),
+        format!("network-tab-{reason}+700ms"),
+        live_callbacks,
+        700,
+    );
+    normalized
+}
+
+#[wasm_bindgen(js_name = bridgeInstallNetworkTabsUi)]
+pub fn bridge_install_network_tabs_ui(root: JsValue, callbacks: JsValue) -> bool {
+    if !present(&root) {
+        return false;
+    }
+    let tabs = bridge_tab_collection(&root, "[data-bridge-network-tab]");
+    let panels = bridge_tab_collection(&root, "[data-bridge-network-panel]");
+
+    let tabs_for_click = tabs.clone();
+    let panels_for_click = panels.clone();
+    let callbacks_for_click = callbacks.clone();
+    let root_for_click = root.clone();
+    let click = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+        let tab = call1(
+            &target,
+            "closest",
+            &JsValue::from_str("[data-bridge-network-tab]"),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        if !present(&tab)
+            || !call1(&root_for_click, "contains", &tab)
+                .is_some_and(|value| crate::js_boolean(&value))
+        {
+            return;
+        }
+        let net = bridge_tab_network(&tab);
+        if normalize_bridge_network_text(&net).is_empty() {
+            return;
+        }
+        if let Some(prevent) = function(&event, "preventDefault") {
+            let _ = prevent.call0(&event);
+        }
+        if let Some(stop) = function(&event, "stopPropagation") {
+            let _ = stop.call0(&event);
+        }
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "patch",
+            &JsValue::from_str(
+                "KGW_INTERNAL_NAV_TRACE_OWNER_R45D+KGW_BRIDGE_LAST_NETWORK_RESTORE_R101W2",
+            ),
+        );
+        set(
+            details.as_ref(),
+            "trusted",
+            &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+        );
+        set(details.as_ref(), "selected", &JsValue::from_str(&net));
+        set(
+            details.as_ref(),
+            "text",
+            &JsValue::from_str(crate::js_string_owned(&property(&tab, "textContent")).trim()),
+        );
+        set(details.as_ref(), "persisted", &JsValue::TRUE);
+        let _ = bridge_small_owner_trace_r44d(
+            JsValue::from_str(&net),
+            JsValue::from_str("internal-navigation"),
+            JsValue::from_str("r45d-bridge-network-tab-click"),
+            details.into(),
+        );
+        bridge_tab_select(
+            &tabs_for_click,
+            &panels_for_click,
+            &callbacks_for_click,
+            &net,
+            "click",
+            true,
+        );
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call3(
+        &root,
+        "addEventListener",
+        &JsValue::from_str("click"),
+        click.as_ref().unchecked_ref(),
+        &JsValue::TRUE,
+    );
+    click.forget();
+
+    let saved = bridge_read_last_network();
+    let default_tab = if !saved.is_empty() {
+        tabs.iter()
+            .find(|tab| normalize_bridge_network_text(&bridge_tab_network(tab)) == saved)
+            .cloned()
+    } else {
+        None
+    }
+    .or_else(|| {
+        tabs.iter()
+            .find(|tab| {
+                bridge_tab_class_contains(tab, "active")
+                    || bridge_tab_class_contains(tab, "is-active")
+                    || bridge_tab_attribute_text(tab, "aria-selected") == "true"
+                    || bridge_tab_dataset_text(tab, "active") == "true"
+            })
+            .cloned()
+    })
+    .or_else(|| {
+        tabs.iter()
+            .find(|tab| bridge_tab_network(tab) == "mainnet")
+            .cloned()
+    })
+    .or_else(|| tabs.first().cloned());
+
+    if let Some(default_tab) = default_tab {
+        let selected = bridge_tab_network(&default_tab);
+        bridge_tab_select(
+            &tabs,
+            &panels,
+            &callbacks,
+            &selected,
+            if saved.is_empty() {
+                "initial"
+            } else {
+                "saved-initial"
+            },
+            false,
+        );
+    }
+
+    let tabs_external = tabs.clone();
+    let panels_external = panels.clone();
+    let callbacks_external = callbacks.clone();
+    let external = Closure::wrap(Box::new(move |net: JsValue| {
+        let selected = crate::js_string_owned(&net);
+        bridge_tab_select(
+            &tabs_external,
+            &panels_external,
+            &callbacks_external,
+            &selected,
+            "external",
+            true,
+        );
+    }) as Box<dyn FnMut(JsValue)>);
+    set(
+        &window(),
+        "kgwBridgeSelectNetworkTabR63",
+        external.as_ref().unchecked_ref(),
+    );
+    set(
+        &window(),
+        "kgwBridgeSelectNetworkTabR101W2",
+        external.as_ref().unchecked_ref(),
+    );
+    external.forget();
+    true
 }
 
 fn profile_object(spec: &BridgeNetworkProfile) -> JsValue {

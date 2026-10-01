@@ -1400,12 +1400,12 @@ fn verify_r51_live_refresh_ownership(source: &str, runtime_core: &str) -> Result
             ));
         }
     }
-    if source.matches("wasmBridgeR51RefreshOne(").count() != 7
+    if source.matches("wasmBridgeR51RefreshOne(").count() != 5
         || source.matches("wasmBridgeR51StartLiveRefresh(").count() != 2
         || source
             .matches("kgwBridgeR51LiveRefreshCallbacksR257()")
             .count()
-            != 10
+            != 9
     {
         return Err(
             "Bridge R51 live-refresh direct-call or callback-factory count drifted".to_owned(),
@@ -1876,6 +1876,38 @@ fn verify_instance_refresh_ownership(source: &str, instance_ui: &str) -> Result<
         }
     }
 
+    Ok(())
+}
+
+fn verify_network_tabs_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    if !source.contains("bridgeInstallNetworkTabsUi as wasmBridgeInstallNetworkTabsUi")
+        || !source.contains("// KGW_BRIDGE_NETWORK_TABS_RUST_OWNER_V1")
+        || !source.contains("return wasmBridgeInstallNetworkTabsUi(root, {")
+    {
+        return Err("Bridge network-tabs Rust/WASM binding missing".to_owned());
+    }
+    let wrapper = slice_between(source, "function installNetworkTabs(root) {", "\n}")?;
+    if wrapper.contains("root.addEventListener(")
+        || wrapper.contains("wasmBridgeNormalizeNetwork(")
+        || wrapper.contains("querySelectorAll(")
+    {
+        return Err("Retired Bridge network-tabs JavaScript orchestration remains".to_owned());
+    }
+    for required in [
+        "js_name = bridgeInstallNetworkTabsUi",
+        "pub fn bridge_install_network_tabs_ui(",
+        "r45d-bridge-network-tab-click",
+        "kgwBridgeSelectNetworkTabR63",
+        "kgwBridgeSelectNetworkTabR101W2",
+        "bridge_r51_refresh_one(",
+        "network-tab-{reason}+700ms",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge network-tabs Rust owner contract missing: {required}"
+            ));
+        }
+    }
     Ok(())
 }
 
@@ -2974,17 +3006,29 @@ fn verify_static_contracts(
         }
     }
 
-    for needle in [
+    for forbidden in [
         "bridgeNormalizeNetwork as wasmBridgeNormalizeNetwork",
         "bridgeReadLastNetwork as wasmBridgeReadLastNetwork",
         "bridgeSaveLastNetwork as wasmBridgeSaveLastNetwork",
-        "wasmBridgeNormalizeNetwork(net)",
-        "wasmBridgeSaveLastNetwork(normalized)",
-        "wasmBridgeReadLastNetwork()",
+        "wasmBridgeNormalizeNetwork(",
+        "wasmBridgeSaveLastNetwork(",
+        "wasmBridgeReadLastNetwork(",
     ] {
-        if !source.contains(needle) {
+        if source.contains(forbidden) {
             return Err(format!(
-                "Bridge R101W2 direct Rust/WASM binding missing: {needle}"
+                "Bridge R101W2 direct JavaScript binding must remain retired after OP286: {forbidden}"
+            ));
+        }
+    }
+    for needle in [
+        "pub fn bridge_install_network_tabs_ui(",
+        "normalize_bridge_network_text(selected)",
+        "storage_set(BRIDGE_LAST_NETWORK_KEY, &normalized)",
+        "let saved = bridge_read_last_network();",
+    ] {
+        if !helpers.contains(needle) {
+            return Err(format!(
+                "Bridge R101W2 network-tab Rust owner contract missing after OP286: {needle}"
             ));
         }
     }
@@ -3397,6 +3441,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_instance_click_owner_ownership(&full_source, &instance_ui_source)?;
     verify_visible_instance_owners_ownership(&full_source, &instance_ui_source)?;
     verify_instance_refresh_ownership(&full_source, &instance_ui_source)?;
+    verify_network_tabs_ownership(&full_source, &helper_source)?;
     verify_inprocess_node_settings_renderer_ownership(&full_source, &bridge_render_source)?;
     verify_settings_sections_ownership(&full_source, &helper_source)?;
     verify_instances_renderer_ownership(&full_source, &instance_ui_source)?;
@@ -4760,6 +4805,29 @@ mod tests {
         ] {
             assert!(verify_instance_refresh_ownership(source, &mutation).is_err());
         }
+    }
+
+    #[test]
+    fn network_tabs_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_network_tabs_ownership(source, helpers).is_ok());
+
+        let legacy = source.replacen(
+            "function installNetworkTabs(root) {",
+            "function installNetworkTabs(root) {\n  root.addEventListener(\"click\", () => {});",
+            1,
+        );
+        assert!(verify_network_tabs_ownership(&legacy, helpers).is_err());
+
+        let missing = helpers.replace(
+            "js_name = bridgeInstallNetworkTabsUi",
+            "js_name = missingInstallNetworkTabsUi",
+        );
+        assert!(verify_network_tabs_ownership(source, &missing).is_err());
     }
 
     #[test]

@@ -46,15 +46,13 @@ import initBridgeRust, {
   bridgeRefreshInstancesUi as wasmBridgeRefreshInstancesUi,
   bridgeInstallInstanceContainerOwnerR11 as wasmBridgeInstallInstanceContainerOwnerR11,
   bridgeInstallAllVisibleInstanceContainerOwnersR11 as wasmBridgeInstallAllVisibleInstanceContainerOwnersR11,
+  bridgeInstallNetworkTabsUi as wasmBridgeInstallNetworkTabsUi,
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeElementId as wasmBridgeElementId,
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
   bridgeInstallLogAutoScrollControls as wasmBridgeInstallLogAutoScrollControls,
   bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
-  bridgeNormalizeNetwork as wasmBridgeNormalizeNetwork,
-  bridgeReadLastNetwork as wasmBridgeReadLastNetwork,
-  bridgeSaveLastNetwork as wasmBridgeSaveLastNetwork,
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
   bridgeRenderInprocessNodeSettingsUi as wasmBridgeRenderInprocessNodeSettingsUi,
@@ -548,89 +546,12 @@ function kgwBridgeExplicitTraceR27D(net, action, phase, details) {
 /* KGW_BRIDGE_LAST_NETWORK_RESTORE_R101W2 */
 /* R101W2 last-network persistence is Rust-owned in bridge_frontend_helpers.rs. */
 
+// KGW_BRIDGE_NETWORK_TABS_RUST_OWNER_V1
 function installNetworkTabs(root) {
-  // KGW_R63_DIRECT_BRIDGE_NETWORK_TAB_SWITCH_OWNER
-  // KGW_BRIDGE_LAST_NETWORK_RESTORE_R101W2
-  const networkTabSelector = "[data-bridge-network-tab]";
-  const networkPanelSelector = "[data-bridge-network-panel]";
-
-  function normalizeNetFromElement(element) {
-    if (!element) return "";
-    return element.dataset.net || element.dataset.bridgeNetworkTab || element.dataset.bridgeNetworkPanel || "";
-  }
-
-  function allNetworkTabs() { return Array.from(root.querySelectorAll(networkTabSelector)); }
-  function allNetworkPanels() { return Array.from(root.querySelectorAll(networkPanelSelector)); }
-
-  function selectBridgeNetwork(net, reason = "manual", persist = false) {
-    const normalized = wasmBridgeNormalizeNetwork(net);
-    if (!normalized) return;
-    if (persist) wasmBridgeSaveLastNetwork(normalized);
-
-    const tabs = allNetworkTabs();
-    const panels = allNetworkPanels();
-
-    for (const tab of tabs) {
-      const tabNet = normalizeNetFromElement(tab);
-      const active = tabNet === normalized;
-      tab.classList.toggle("active", active);
-      tab.classList.toggle("is-active", active);
-      tab.classList.toggle("selected", active);
-      tab.setAttribute("aria-selected", active ? "true" : "false");
-      tab.dataset.active = active ? "true" : "false";
-    }
-
-    for (const panel of panels) {
-      const panelNet = normalizeNetFromElement(panel);
-      const active = panelNet === normalized;
-      panel.hidden = !active;
-      panel.classList.toggle("active", active);
-      panel.classList.toggle("is-active", active);
-      panel.dataset.active = active ? "true" : "false";
-      panel.style.display = active ? "" : "none";
-    }
-
-    if (typeof updateCommand === "function") updateCommand(normalized);
-    window.setTimeout(() => {
-      void wasmBridgeR51RefreshOne(
-        String(normalized || ""),
-        "network-tab-" + reason,
-        kgwBridgeR51LiveRefreshCallbacksR257()
-      );
-    }, 50);
-    window.setTimeout(() => {
-      void wasmBridgeR51RefreshOne(
-        String(normalized || ""),
-        "network-tab-" + reason + "+700ms",
-        kgwBridgeR51LiveRefreshCallbacksR257()
-      );
-    }, 700);
-  }
-
-  root.addEventListener("click", (event) => {
-    const tab = event.target.closest(networkTabSelector);
-    if (!tab || !root.contains(tab)) return;
-    const net = normalizeNetFromElement(tab);
-    if (!net) return;
-    event.preventDefault();
-    event.stopPropagation();
-    kgwBridgeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-bridge-network-tab-click", {
-      patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D+KGW_BRIDGE_LAST_NETWORK_RESTORE_R101W2",
-      trusted: Boolean(event && event.isTrusted),
-      selected: String(net || ""),
-      text: String(tab.textContent || "").trim(),
-      persisted: true
-    });
-    selectBridgeNetwork(net, "click", true);
-  }, true);
-
-  const saved = wasmBridgeReadLastNetwork();
-  const existingActiveTab = allNetworkTabs().find((tab) => tab.classList.contains("active") || tab.classList.contains("is-active") || tab.getAttribute("aria-selected") === "true" || tab.dataset.active === "true");
-  const defaultTab = (saved && allNetworkTabs().find((tab) => normalizeNetFromElement(tab) === saved)) || existingActiveTab || allNetworkTabs().find((tab) => normalizeNetFromElement(tab) === "mainnet") || allNetworkTabs()[0];
-  if (defaultTab) selectBridgeNetwork(normalizeNetFromElement(defaultTab), saved ? "saved-initial" : "initial", false);
-
-  window.kgwBridgeSelectNetworkTabR63 = (net) => selectBridgeNetwork(net, "external", true);
-  window.kgwBridgeSelectNetworkTabR101W2 = window.kgwBridgeSelectNetworkTabR63;
+  return wasmBridgeInstallNetworkTabsUi(root, {
+    updateCommand: (net) => updateCommand(String(net || "")),
+    liveRefreshCallbacks: () => kgwBridgeR51LiveRefreshCallbacksR257()
+  });
 }
 
 function installDelegatedTabs(root) {
