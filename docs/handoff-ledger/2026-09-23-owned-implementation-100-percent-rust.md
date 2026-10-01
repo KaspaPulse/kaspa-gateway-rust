@@ -135,9 +135,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - WRITER_TAKEOVER: generation 2259. Previous `claude-chat-rdc` epoch 1 showed no renewal/activity after session deletion, was explicitly released, and is fenced. Canonical writer is now `chatgpt-gpt56-sol-rdc`, session `2b8e048e2c1e8d9d5b07915f83a62931`, epoch 2, 1800-second lease.
 - TAKEOVER_PRESERVATION: existing OP269 dirty worktree preserved; no reset/stash/clean/discard. Continue same OP269 from actual content.
 
-## OP270 - Bridge apply-payload Rust/WASM ownership (INTENT)
+## OP270 - Bridge apply-payload Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP269 closeout `6fd7d21b4016a86ee168846bbbc7b88795c48536`; BASE_TREE `5ea29a0c2fcf3b7d341701444947fdb3b80a86a6`; worktree clean at intent time.
-- BOUNDARY: move `buildApplyPayload` branch/orchestration into a Rust/WASM owner while preserving the existing JavaScript `buildCommandLines` and structured-instance reader only as explicit callbacks. Rust owns apply-node-settings payload composition, node/bridge mode semantics, active-instance selection, effective settings, runtime-role payload variants, and experimental-network opt-in. JavaScript is reduced to one thin export call.
-- ACCEPTANCE: durable Rust export and helper contract; thin JS wrapper only; fail-closed xtask regression rejects legacy payload assembly and stale audit assumptions; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `buildApplyPayload` branch/orchestration moved into Rust/WASM `bridgeBuildApplyPayloadUi`; JavaScript is now a thin callback-binding wrapper. Rust owns apply-node-settings payload composition, node/bridge mode semantics, active-instance selection, effective settings, runtime-role payload variants, and experimental-network opt-in. Existing `buildCommandLines` and structured-instance reader remain explicit callbacks for their own later boundaries.
+- IMPLEMENTATION_CHECKPOINT: `4088ed810cd698ddde6d05c709a22f704ed1b9da`, tree `7aecf97f586302140dff78b140d314ca5a2a9056`. Closeout generation 2261.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests; full xtask suite; targeted apply-payload/start-options ownership regressions; bridge-readiness frontend gate; effective-bridge-settings behavioral gate including real generated-WASM payload assertions; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- AUDIT_REPAIR: bridge-node-mode-routing audit now reads the Rust payload owner instead of the retired JavaScript body. Frontend payload/node-mode findings are informational; the pre-existing Tauri self-worker routing risk remains separate and unchanged.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP270 qualification unless invalidated.
+- PUSHED: NO
