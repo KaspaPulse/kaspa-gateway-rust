@@ -1605,6 +1605,74 @@ fn verify_start_options_ownership(
     Ok(())
 }
 
+fn verify_network_panel_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeRenderNetworkPanelUi as wasmBridgeRenderNetworkPanelUi",
+        "// KGW_BRIDGE_NETWORK_PANEL_RUST_OWNER_V1",
+        "function renderNetworkPanel(net, index) {",
+        "return wasmBridgeRenderNetworkPanelUi(net || {}, Number(index) || 0, {",
+        "renderSections: (profile) => renderSections(profile)",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge network-panel Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    let wrapper = slice_between(source, "function renderNetworkPanel(net, index) {", "\n}")?;
+    for forbidden in [
+        "wasmBridgeResolveInnerTab(",
+        "wasmBridgeNetworkPolicyMessage(",
+        "wasmBridgeElementId(",
+        "kgw-network-policy",
+        "kgw-preview-row",
+        "kgw-monitor-state",
+        "data-bridge-inner-tab=",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge network-panel JavaScript rendering remains: {forbidden}"
+            ));
+        }
+    }
+
+    for forbidden in [
+        "bridgeResolveInnerTab as wasmBridgeResolveInnerTab",
+        "bridgeNetworkPolicyMessage as wasmBridgeNetworkPolicyMessage",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge network-panel-only JavaScript binding remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeRenderNetworkPanelUi",
+        "pub fn bridge_render_network_panel_ui(",
+        "bridge_resolve_inner_tab(net.clone())",
+        "bridge_network_enabled(net.clone())",
+        "bridge_network_policy_message(net.clone())",
+        "bridge_element_id(net.clone(), \"policyStatus\".to_owned())",
+        "\"renderSections\"",
+        "kgw-experimental-badge",
+        "data-bridge-inner-tab=\"log\"",
+        "data-bridge-inner-tab=\"settings\"",
+        "data-bridge-action=\"start\"",
+        "data-bridge-action=\"save-settings\"",
+        "data-bridge-action=\"monitor-next\"",
+        "data-testid=\"kgw-bridge-log-output-{net}\"",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge network-panel Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_render_all_networks_ownership(source: &str, helpers: &str) -> Result<(), String> {
     for required in [
         "bridgeRenderAllNetworksUi as wasmBridgeRenderAllNetworksUi",
@@ -2782,16 +2850,30 @@ fn verify_static_contracts(
     }
 
     for needle in [
-        "bridgeResolveInnerTab as wasmBridgeResolveInnerTab",
         "bridgeSaveInnerTab as wasmBridgeSaveInnerTab",
-        "wasmBridgeResolveInnerTab(String(net.key || \"\"))",
         "wasmBridgeSaveInnerTab(String(net || \"\"), innerTab.dataset.bridgeInnerTab)",
     ] {
         if !source.contains(needle) {
             return Err(format!(
-                "Bridge R101U direct Rust/WASM binding missing: {needle}"
+                "Bridge R101U remaining direct Rust/WASM binding missing: {needle}"
             ));
         }
+    }
+    for forbidden in [
+        "bridgeResolveInnerTab as wasmBridgeResolveInnerTab",
+        "wasmBridgeResolveInnerTab(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Bridge R101U resolve binding/call must remain retired after OP284: {forbidden}"
+            ));
+        }
+    }
+    if !helpers.contains("bridge_resolve_inner_tab(net.clone())") {
+        return Err(
+            "Bridge R101U network-panel Rust owner must resolve persisted inner-tab state"
+                .to_owned(),
+        );
     }
 
     for forbidden in [
@@ -3236,6 +3318,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_start_options_ownership(&full_source, &helper_source, &instance_settings_source)?;
+    verify_network_panel_ownership(&full_source, &helper_source)?;
     verify_render_all_networks_ownership(&full_source, &helper_source)?;
     verify_instance_click_owner_ownership(&full_source, &instance_ui_source)?;
     verify_visible_instance_owners_ownership(&full_source, &instance_ui_source)?;
@@ -4469,6 +4552,29 @@ mod tests {
         ] {
             assert!(verify_start_options_ownership(source, helpers, &mutation).is_err());
         }
+    }
+
+    #[test]
+    fn network_panel_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_network_panel_ownership(source, helpers).is_ok());
+
+        let legacy = source.replacen(
+            "function renderNetworkPanel(net, index) {",
+            "function renderNetworkPanel(net, index) {\n  const activeInnerTab = wasmBridgeResolveInnerTab(String(net.key || \"\"));",
+            1,
+        );
+        assert!(verify_network_panel_ownership(&legacy, helpers).is_err());
+
+        let missing = helpers.replace(
+            "js_name = bridgeRenderNetworkPanelUi",
+            "js_name = missingRenderNetworkPanelUi",
+        );
+        assert!(verify_network_panel_ownership(source, &missing).is_err());
     }
 
     #[test]

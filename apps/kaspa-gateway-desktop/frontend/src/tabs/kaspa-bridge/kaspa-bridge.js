@@ -56,15 +56,14 @@ import initBridgeRust, {
   bridgeI18nTextR41 as wasmBridgeI18nTextR41,
   bridgeInstallLogAutoScrollControls as wasmBridgeInstallLogAutoScrollControls,
   bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
-  bridgeNetworkPolicyMessage as wasmBridgeNetworkPolicyMessage,
   bridgeNormalizeNetwork as wasmBridgeNormalizeNetwork,
   bridgeReadLastNetwork as wasmBridgeReadLastNetwork,
   bridgeSaveLastNetwork as wasmBridgeSaveLastNetwork,
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
   bridgeRenderSectionsUi as wasmBridgeRenderSectionsUi,
+  bridgeRenderNetworkPanelUi as wasmBridgeRenderNetworkPanelUi,
   bridgeRenderAllNetworksUi as wasmBridgeRenderAllNetworksUi,
-  bridgeResolveInnerTab as wasmBridgeResolveInnerTab,
   bridgeSaveInnerTab as wasmBridgeSaveInnerTab,
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
@@ -504,88 +503,11 @@ function renderSections(net) {
  */
 /* R101U inner-tab persistence is Rust-owned in bridge_frontend_helpers.rs. */
 
+// KGW_BRIDGE_NETWORK_PANEL_RUST_OWNER_V1
 function renderNetworkPanel(net, index) {
-  /* KGW_BRIDGE_LIVE_MONITOR_TAB_LABEL_ORDER_R101S */
-  /* KGW_BRIDGE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U
-   * Settings is no longer the default inner panel.
-   * Default is Live Bridge Monitor unless a valid saved tab exists for this network.
-   */
-  const activeInnerTab = wasmBridgeResolveInnerTab(String(net.key || ""));
-  const logActive = activeInnerTab === "log";
-  const settingsActive = activeInnerTab === "settings";
-
-  return `
-    <div class="bridge-v7-network-panel${index === 0 ? " active" : ""}" data-bridge-network-panel="${net.key}" data-testid="kgw-bridge-panel-${net.key}"${index === 0 ? "" : " hidden"}>
-      <section class="kgw-network-policy${net.experimental ? " is-experimental" : ""}" data-net="${net.key}" data-testid="kgw-bridge-policy-${net.key}">
-        <div>
-          <strong>${net.label}</strong>${net.experimental ? '<span class="kgw-experimental-badge">Experimental - opt-in required</span>' : ""}
-          <span>${wasmBridgeEscapeHtml(wasmBridgeNetworkPolicyMessage(net.key))}</span>
-        </div>
-        <div class="kgw-network-policy-controls">
-          <span id="${wasmBridgeElementId(net.key, "policyStatus")}" class="kgw-network-policy-status">Stopped</span>
-          <label>
-            <input type="checkbox" data-bridge-network-enabled="${net.key}" data-testid="kgw-bridge-policy-enabled-${net.key}" data-net="${net.key}"${wasmBridgeNetworkEnabled(net.key) ? " checked" : ""}>
-            Profile enabled
-          </label>
-        </div>
-      </section>
-      <div class="bridge-v7-inner-tabs">
-        <button type="button" class="bridge-v7-inner-tab${logActive ? " active" : ""}" data-net="${net.key}" data-bridge-inner-tab="log" data-testid="kgw-bridge-live-monitor-${net.key}">Live Bridge Monitor</button>
-        <button type="button" class="bridge-v7-inner-tab${settingsActive ? " active" : ""}" data-net="${net.key}" data-bridge-inner-tab="settings" data-testid="kgw-bridge-settings-${net.key}">Settings</button>
-      </div>
-
-      <div class="bridge-v7-inner-panel${settingsActive ? " active" : ""}" data-net="${net.key}" data-bridge-inner-panel="settings"${settingsActive ? "" : " hidden"}>
-        <div class="kgw-settings-scroll">
-        <section class="bridge-v7-command kgw-effective-preview">
-          <div class="kgw-preview-row">
-            <strong>Effective bridge settings</strong>
-            <button type="button" data-settings-preview-toggle aria-expanded="false" aria-controls="${wasmBridgeElementId(net.key, "previewBody")}">Expand</button>
-            <button type="button" class="bridge-v7-copy" data-bridge-action="copy-command" data-net="${net.key}" title="Copy effective settings">Copy settings</button>
-            <button type="button" data-bridge-action="copy-path" data-net="${net.key}">Copy data directory</button>
-          </div>
-          <p id="${wasmBridgeElementId(net.key, "previewStatus")}" class="kgw-preview-status" role="status" aria-live="polite"></p>
-          <div class="kgw-preview-body" id="${wasmBridgeElementId(net.key, "previewBody")}" hidden>
-            <p class="kgw-preview-help">The embedded node and bridge libraries consume these settings inside KaspaGateway self-workers.</p>
-            <textarea id="${wasmBridgeElementId(net.key, "commandPreview")}" aria-label="Effective bridge settings preview" readonly spellcheck="false" wrap="soft"></textarea>
-          </div>
-        </section>
-
-        <section class="bridge-v7-toolbar">
-          <div class="bridge-v7-buttons">
-            <button type="button" class="good" data-bridge-action="start" data-testid="kgw-bridge-start-${net.key}" data-net="${net.key}">Start</button>
-            <button type="button" data-bridge-action="stop" data-testid="kgw-bridge-stop-${net.key}" data-net="${net.key}">Stop</button>
-          </div>
-
-          <div class="bridge-v7-status">
-            <span id="${wasmBridgeElementId(net.key, "settingsAuthority")}" class="bridge-v7-runtime-status">Effective settings apply on next Start</span>
-          </div>
-          <div id="${wasmBridgeElementId(net.key, "runtimeStatus")}" class="bridge-v7-runtime-status" role="status" aria-live="polite"></div>
-          <div id="${wasmBridgeElementId(net.key, "runtimeError")}" class="bridge-v7-runtime-error" role="status" aria-live="polite" hidden></div>
-        </section>
-
-        ${renderSections(net)}
-        </div>
-
-        <div class="settings-bottom-actions bridge-settings-bottom-actions">
-        <button type="button" data-bridge-action="save-settings" data-net="${net.key}">Save Settings</button>
-        <button type="button" data-bridge-action="restore-defaults" data-net="${net.key}">Restore Defaults</button>
-        <button type="button" data-bridge-action="set-defaults" data-net="${net.key}">Set as Defaults</button>
-        <p class="kgw-settings-help" data-settings-defaults-context="${net.key}">Restore uses KaspaGateway defaults. Settings apply on the next Start.</p>
-        </div>
-
-      </div>
-
-      <div class="bridge-v7-inner-panel${logActive ? " active" : ""}" data-net="${net.key}" data-bridge-inner-panel="log" data-testid="kgw-bridge-live-panel-${net.key}"${logActive ? "" : " hidden"}>
-        <p id="${wasmBridgeElementId(net.key, "monitorState")}" class="kgw-monitor-state" role="status">Bridge: Stopped. Node connection: not checked.</p>
-        <div class="bridge-v7-log-toolbar">
-          <button type="button" data-bridge-action="monitor-next" data-net="${net.key}">Configure Node</button>
-          <button type="button" data-bridge-action="copy-log" data-testid="kgw-bridge-copy-log-${net.key}" data-net="${net.key}">Copy Log</button>
-          <button type="button" data-bridge-action="clear-log" data-testid="kgw-bridge-clear-log-${net.key}" data-net="${net.key}">Clear Log</button>
-        </div>
-        <div id="${wasmBridgeElementId(net.key, "logEmpty")}" class="bridge-v7-log-empty" data-bridge-log-empty="${net.key}">Bridge is stopped. Choose a node connection in Settings, then start the bridge.</div>
-        <pre id="${wasmBridgeElementId(net.key, "logOutput")}" class="bridge-v7-log" data-testid="kgw-bridge-log-output-${net.key}"></pre>
-      </div>
-</div>`;
+  return wasmBridgeRenderNetworkPanelUi(net || {}, Number(index) || 0, {
+    renderSections: (profile) => renderSections(profile)
+  });
 }
 
 

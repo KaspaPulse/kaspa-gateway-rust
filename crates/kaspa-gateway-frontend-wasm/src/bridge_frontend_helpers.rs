@@ -1049,6 +1049,133 @@ pub fn bridge_render_sections_ui(
     ))
 }
 
+#[wasm_bindgen(js_name = bridgeRenderNetworkPanelUi)]
+pub fn bridge_render_network_panel_ui(
+    profile_value: JsValue,
+    index: u32,
+    callbacks: JsValue,
+) -> Result<String, JsValue> {
+    let net = crate::js_string_owned(&property(&profile_value, "key"));
+    let Some(network_profile) = profile(&net) else {
+        return Err(JsValue::from(Error::new("Unknown Bridge network profile")));
+    };
+
+    let render_sections: Function = property(&callbacks, "renderSections")
+        .dyn_into()
+        .map_err(|_| JsValue::from(Error::new("Bridge render-sections callback is unavailable")))?;
+    let sections = crate::js_string_owned(&render_sections.call1(&callbacks, &profile_value)?);
+
+    let active_inner_tab = bridge_resolve_inner_tab(net.clone());
+    let log_active = active_inner_tab == "log";
+    let settings_active = active_inner_tab == "settings";
+    let panel_active = index == 0;
+    let experimental = network_profile.experimental;
+    let enabled = bridge_network_enabled(net.clone());
+    let policy = escape_html_text(&bridge_network_policy_message(net.clone()));
+
+    let policy_status = bridge_element_id(net.clone(), "policyStatus".to_owned());
+    let preview_body = bridge_element_id(net.clone(), "previewBody".to_owned());
+    let preview_status = bridge_element_id(net.clone(), "previewStatus".to_owned());
+    let command_preview = bridge_element_id(net.clone(), "commandPreview".to_owned());
+    let settings_authority = bridge_element_id(net.clone(), "settingsAuthority".to_owned());
+    let runtime_status = bridge_element_id(net.clone(), "runtimeStatus".to_owned());
+    let runtime_error = bridge_element_id(net.clone(), "runtimeError".to_owned());
+    let monitor_state = bridge_element_id(net.clone(), "monitorState".to_owned());
+    let log_empty = bridge_element_id(net.clone(), "logEmpty".to_owned());
+    let log_output = bridge_element_id(net.clone(), "logOutput".to_owned());
+    let badge = if experimental {
+        "<span class=\"kgw-experimental-badge\">Experimental - opt-in required</span>"
+    } else {
+        ""
+    };
+
+    Ok(format!(
+        r#"
+    <div class="bridge-v7-network-panel{panel_class}" data-bridge-network-panel="{net}" data-testid="kgw-bridge-panel-{net}"{panel_hidden}>
+      <section class="kgw-network-policy{experimental_class}" data-net="{net}" data-testid="kgw-bridge-policy-{net}">
+        <div>
+          <strong>{label}</strong>{badge}
+          <span>{policy}</span>
+        </div>
+        <div class="kgw-network-policy-controls">
+          <span id="{policy_status}" class="kgw-network-policy-status">Stopped</span>
+          <label>
+            <input type="checkbox" data-bridge-network-enabled="{net}" data-testid="kgw-bridge-policy-enabled-{net}" data-net="{net}"{enabled_checked}>
+            Profile enabled
+          </label>
+        </div>
+      </section>
+      <div class="bridge-v7-inner-tabs">
+        <button type="button" class="bridge-v7-inner-tab{log_tab_class}" data-net="{net}" data-bridge-inner-tab="log" data-testid="kgw-bridge-live-monitor-{net}">Live Bridge Monitor</button>
+        <button type="button" class="bridge-v7-inner-tab{settings_tab_class}" data-net="{net}" data-bridge-inner-tab="settings" data-testid="kgw-bridge-settings-{net}">Settings</button>
+      </div>
+
+      <div class="bridge-v7-inner-panel{settings_panel_class}" data-net="{net}" data-bridge-inner-panel="settings"{settings_hidden}>
+        <div class="kgw-settings-scroll">
+        <section class="bridge-v7-command kgw-effective-preview">
+          <div class="kgw-preview-row">
+            <strong>Effective bridge settings</strong>
+            <button type="button" data-settings-preview-toggle aria-expanded="false" aria-controls="{preview_body}">Expand</button>
+            <button type="button" class="bridge-v7-copy" data-bridge-action="copy-command" data-net="{net}" title="Copy effective settings">Copy settings</button>
+            <button type="button" data-bridge-action="copy-path" data-net="{net}">Copy data directory</button>
+          </div>
+          <p id="{preview_status}" class="kgw-preview-status" role="status" aria-live="polite"></p>
+          <div class="kgw-preview-body" id="{preview_body}" hidden>
+            <p class="kgw-preview-help">The embedded node and bridge libraries consume these settings inside KaspaGateway self-workers.</p>
+            <textarea id="{command_preview}" aria-label="Effective bridge settings preview" readonly spellcheck="false" wrap="soft"></textarea>
+          </div>
+        </section>
+
+        <section class="bridge-v7-toolbar">
+          <div class="bridge-v7-buttons">
+            <button type="button" class="good" data-bridge-action="start" data-testid="kgw-bridge-start-{net}" data-net="{net}">Start</button>
+            <button type="button" data-bridge-action="stop" data-testid="kgw-bridge-stop-{net}" data-net="{net}">Stop</button>
+          </div>
+
+          <div class="bridge-v7-status">
+            <span id="{settings_authority}" class="bridge-v7-runtime-status">Effective settings apply on next Start</span>
+          </div>
+          <div id="{runtime_status}" class="bridge-v7-runtime-status" role="status" aria-live="polite"></div>
+          <div id="{runtime_error}" class="bridge-v7-runtime-error" role="status" aria-live="polite" hidden></div>
+        </section>
+
+        {sections}
+        </div>
+
+        <div class="settings-bottom-actions bridge-settings-bottom-actions">
+        <button type="button" data-bridge-action="save-settings" data-net="{net}">Save Settings</button>
+        <button type="button" data-bridge-action="restore-defaults" data-net="{net}">Restore Defaults</button>
+        <button type="button" data-bridge-action="set-defaults" data-net="{net}">Set as Defaults</button>
+        <p class="kgw-settings-help" data-settings-defaults-context="{net}">Restore uses KaspaGateway defaults. Settings apply on the next Start.</p>
+        </div>
+
+      </div>
+
+      <div class="bridge-v7-inner-panel{log_panel_class}" data-net="{net}" data-bridge-inner-panel="log" data-testid="kgw-bridge-live-panel-{net}"{log_hidden}>
+        <p id="{monitor_state}" class="kgw-monitor-state" role="status">Bridge: Stopped. Node connection: not checked.</p>
+        <div class="bridge-v7-log-toolbar">
+          <button type="button" data-bridge-action="monitor-next" data-net="{net}">Configure Node</button>
+          <button type="button" data-bridge-action="copy-log" data-testid="kgw-bridge-copy-log-{net}" data-net="{net}">Copy Log</button>
+          <button type="button" data-bridge-action="clear-log" data-testid="kgw-bridge-clear-log-{net}" data-net="{net}">Clear Log</button>
+        </div>
+        <div id="{log_empty}" class="bridge-v7-log-empty" data-bridge-log-empty="{net}">Bridge is stopped. Choose a node connection in Settings, then start the bridge.</div>
+        <pre id="{log_output}" class="bridge-v7-log" data-testid="kgw-bridge-log-output-{net}"></pre>
+      </div>
+</div>"#,
+        panel_class = if panel_active { " active" } else { "" },
+        panel_hidden = if panel_active { "" } else { " hidden" },
+        experimental_class = if experimental { " is-experimental" } else { "" },
+        label = network_profile.label,
+        enabled_checked = if enabled { " checked" } else { "" },
+        log_tab_class = if log_active { " active" } else { "" },
+        settings_tab_class = if settings_active { " active" } else { "" },
+        settings_panel_class = if settings_active { " active" } else { "" },
+        settings_hidden = if settings_active { "" } else { " hidden" },
+        log_panel_class = if log_active { " active" } else { "" },
+        log_hidden = if log_active { "" } else { " hidden" },
+    ))
+}
+
 #[wasm_bindgen(js_name = bridgeRenderAllNetworksUi)]
 pub fn bridge_render_all_networks_ui(root: JsValue, callbacks: JsValue) -> Result<bool, JsValue> {
     let host = query_bridge(&root, "#bridgeNetworkPanels");
