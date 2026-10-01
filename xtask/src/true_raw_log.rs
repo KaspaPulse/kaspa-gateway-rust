@@ -230,9 +230,9 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
             "Node typed raw-log report ownership must remain in Rust/WASM.",
         ),
         (
-            &s.bridge,
-            "bridgeApplyRuntimeLogReport as wasmBridgeApplyRuntimeLogReport",
-            "Bridge UI must bind typed raw-log report application directly to Rust/WASM.",
+            &s.bridge_raw_log,
+            "#[wasm_bindgen(js_name = bridgeApplyRuntimeLogReport)]",
+            "Bridge typed raw-log report application must remain Rust/WASM-owned.",
         ),
         (
             &s.bridge,
@@ -725,12 +725,9 @@ mod tests {
                 r#"metadata_text(metadata, "runtimeRole", "node")"#,
             ]
             .join("\n"),
-            bridge: [
-                "bridgeApplyRuntimeLogReport as wasmBridgeApplyRuntimeLogReport",
-                "bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer",
-            ]
-            .join("\n"),
+            bridge: ["bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer"].join("\n"),
             bridge_raw_log: [
+                "#[wasm_bindgen(js_name = bridgeApplyRuntimeLogReport)]",
                 "#[wasm_bindgen(js_name = bridgeClearRawLogBuffer)]",
                 "fn transport_wrapper_text(value: &str) -> bool",
                 "if transport_wrapper_text(&legacy_transport_text(report))",

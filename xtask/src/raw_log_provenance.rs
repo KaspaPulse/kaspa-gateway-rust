@@ -11,6 +11,7 @@ const NODE_FRONTEND: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-
 const NODE_FRONTEND_RUST: &str = "crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs";
 const BRIDGE_FRONTEND: &str =
     "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
+const BRIDGE_FRONTEND_RUST: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_raw_log.rs";
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct Check {
@@ -27,6 +28,7 @@ struct Sources {
     node_frontend: String,
     node_frontend_rust: String,
     bridge_frontend: String,
+    bridge_frontend_rust: String,
     true_raw_gate_rust: String,
     full_local_gate: String,
 }
@@ -62,6 +64,7 @@ fn load_sources(root: &Path) -> Result<Sources, String> {
         node_frontend: read(root, NODE_FRONTEND)?,
         node_frontend_rust: read(root, NODE_FRONTEND_RUST)?,
         bridge_frontend: read(root, BRIDGE_FRONTEND)?,
+        bridge_frontend_rust: read(root, BRIDGE_FRONTEND_RUST)?,
         true_raw_gate_rust: read(root, "xtask/src/true_raw_log.rs")?,
         full_local_gate: read(root, "xtask/src/full_local_gate.rs")?,
     })
@@ -311,35 +314,39 @@ fn evaluate(s: &Sources) -> Result<Vec<Check>, String> {
             && !s.node_frontend.contains("wasmNodeNormalizeRawLogEntry"),
     );
 
-    let bridge_normalizer = function_body(&s.bridge_frontend, "kgwBridgeNormalizeRawLogEntryV1")?;
+    let bridge_normalizer = function_body(&s.bridge_frontend_rust, "normalize_entry")?;
     check(
         &mut checks,
         "Bridge frontend has no raw content blacklist",
         !s.bridge_frontend.contains("RawLogTextHasTransportWrapper")
-            && !bridge_normalizer.contains("rawTextValue).includes"),
+            && !s
+                .bridge_frontend
+                .contains("kgwBridgeNormalizeRawLogEntryV1")
+            && !bridge_normalizer.contains("transport_wrapper_text")
+            && !bridge_normalizer.contains("raw_text.contains"),
     );
 
-    let append_mutation = Regex::new(r"(textContent|records\.|\.push\(|\.set\()").unwrap();
     check(
         &mut checks,
         "Node legacy appendLog is inert",
-        !append_mutation.is_match(&function_body(&s.node_frontend, "appendLog")?),
+        !s.node_frontend.contains("function appendLog("),
     );
     check(
         &mut checks,
         "Bridge legacy appendLog is inert",
-        !append_mutation.is_match(&function_body(&s.bridge_frontend, "appendLog")?),
+        !s.bridge_frontend.contains("function appendLog("),
     );
-    let bridge_key = function_body(&s.bridge_frontend, "kgwBridgeRawLogBufferKeyV1")?;
+    let bridge_key = function_body(&s.bridge_frontend_rust, "buffer_key")?;
     check(
         &mut checks,
         "Bridge raw buffer key is process-level",
-        bridge_key.contains("void instanceId") && !bridge_key.contains("String(instanceId"),
+        !bridge_key.contains("instance"),
     );
     check(
         &mut checks,
         "Bridge raw normalizer ignores UI listener selection",
-        bridge_normalizer.contains("void expectedInstanceId"),
+        s.bridge_frontend_rust.contains("_instance_id: String")
+            && !bridge_normalizer.contains("instance"),
     );
 
     let self_worker = function_body(&s.lib, "try_run_kgw_self_worker_from_args")?;
@@ -414,7 +421,7 @@ function after() { return 1; }
     }
 
     #[test]
-    fn current_repository_matches_known_transport_filter_debt() {
+    fn current_repository_has_no_raw_log_provenance_failures() {
         let sources = load_sources(&repo_root()).unwrap();
         let checks = evaluate(&sources).unwrap();
         let failed: Vec<_> = checks
@@ -422,7 +429,7 @@ function after() { return 1; }
             .filter(|check| !check.ok)
             .map(|check| check.name.as_str())
             .collect();
-        assert_eq!(failed, vec!["Bridge frontend has no raw content blacklist"]);
+        assert!(failed.is_empty(), "failed provenance checks: {failed:?}");
         assert_eq!(checks.len(), 27);
     }
 }
