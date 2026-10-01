@@ -145,3 +145,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - AUDIT_REPAIR: bridge-node-mode-routing audit now reads the Rust payload owner instead of the retired JavaScript body. Frontend payload/node-mode findings are informational; the pre-existing Tauri self-worker routing risk remains separate and unchanged.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP270 qualification unless invalidated.
 - PUSHED: NO
+
+## OP271 - Bridge in-process mode-controls Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP270 closeout `29162c5f849de940454d4e24824ed5daa367431f`; BASE_TREE `567bb4fe1b0549011712b252fe43f4bb6338ec11`; worktree clean at intent time.
+- BOUNDARY: move `bridgeControlCard`, `bridgeSetDisabled`, and `bridgeSyncInprocessNodeSettingsV12D` UI/state orchestration into Rust/WASM. JavaScript keeps thin compatibility wrappers only where current callers still need them. Rust owns field disable/card state, in-process section active/inactive state, appdir/network-args mirrors, mainnet danger gating, and read-only enforcement.
+- ACCEPTANCE: Rust exports + fail-closed ownership regression; exact JS wrappers only; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
