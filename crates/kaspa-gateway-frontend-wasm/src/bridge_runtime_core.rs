@@ -1,5 +1,26 @@
-use js_sys::{Function, JSON, Object, Reflect};
-use wasm_bindgen::{JsCast, prelude::*};
+use js_sys::{Date, Function, JSON, Object, Promise, Reflect};
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
+use wasm_bindgen_futures::{JsFuture, future_to_promise, spawn_local};
+
+const R51_LIVE_REFRESH_MS: f64 = 700.0;
+
+thread_local! {
+    static R51_LAST_STATUS: RefCell<BTreeMap<String, String>> = const { RefCell::new(BTreeMap::new()) };
+    static R51_LAST_ACTIVITY_NOTICE: RefCell<BTreeMap<String, f64>> = const { RefCell::new(BTreeMap::new()) };
+    static R51_STATUS_IN_FLIGHT: RefCell<BTreeMap<String, Promise>> = const { RefCell::new(BTreeMap::new()) };
+    static R51_LOGS_IN_FLIGHT: RefCell<BTreeMap<String, Promise>> = const { RefCell::new(BTreeMap::new()) };
+    static R51_LIVE_TIMER: RefCell<JsValue> = const { RefCell::new(JsValue::UNDEFINED) };
+}
+
+fn global() -> JsValue {
+    js_sys::global().into()
+}
+
+fn window() -> JsValue {
+    property(&global(), "window")
+}
 
 fn present(value: &JsValue) -> bool {
     !value.is_null() && !value.is_undefined()
@@ -76,6 +97,55 @@ fn text(value: &JsValue) -> String {
     } else {
         String::new()
     }
+}
+
+async fn r51_invoke_runtime(
+    callbacks: &JsValue,
+    command: &str,
+    net: &str,
+) -> Result<JsValue, JsValue> {
+    let Some(callback) = function(callbacks, "invokeRuntime") else {
+        return Err(JsValue::from_str(
+            "Bridge refresh invokeRuntime callback is unavailable",
+        ));
+    };
+    let result = callback.call2(
+        callbacks,
+        &JsValue::from_str(command),
+        &JsValue::from_str(net),
+    )?;
+    JsFuture::from(Promise::resolve(&result)).await
+}
+
+fn r51_transition_active(callbacks: &JsValue, net: &str) -> bool {
+    call1(callbacks, "transitionActive", &JsValue::from_str(net))
+        .is_some_and(|value| crate::js_boolean(&value))
+}
+
+fn r51_active_raw_log_instance_id(callbacks: &JsValue, net: &str) -> String {
+    call1(callbacks, "activeRawLogInstanceId", &JsValue::from_str(net))
+        .map(|value| text(&value))
+        .unwrap_or_default()
+}
+
+fn r51_set_runtime_error(callbacks: &JsValue, net: &str, message: &str, source: &str) {
+    let _ = call3(
+        callbacks,
+        "setRuntimeError",
+        &JsValue::from_str(net),
+        &JsValue::from_str(message),
+        &JsValue::from_str(source),
+    );
+}
+
+fn r51_set_runtime_activity(callbacks: &JsValue, net: &str, message: &str, state: &str) {
+    let _ = call3(
+        callbacks,
+        "setRuntimeActivity",
+        &JsValue::from_str(net),
+        &JsValue::from_str(message),
+        &JsValue::from_str(state),
+    );
 }
 
 fn stringify_runtime_result_value(value: &JsValue) -> String {
@@ -326,6 +396,250 @@ pub fn bridge_start_was_inprocess_r65f(fields: JsValue, ui_mode: String, preview
         property(&fields, "nodeMode")
     };
     start_was_inprocess_text(&crate::js_string_owned(&field_value), &ui_mode, &preview)
+}
+
+fn r51_maybe_activity_notice(net: &str, status_text: &str) {
+    let now = Date::now();
+    let previous =
+        R51_LAST_ACTIVITY_NOTICE.with(|items| items.borrow().get(net).copied().unwrap_or(0.0));
+    if now - previous < 15_000.0 || !r51_running_text(status_text) {
+        return;
+    }
+    R51_LAST_ACTIVITY_NOTICE.with(|items| {
+        items.borrow_mut().insert(net.to_owned(), now);
+    });
+}
+
+fn r51_logs_task(net: &str, callbacks: &JsValue) -> Promise {
+    if let Some(existing) = R51_LOGS_IN_FLIGHT.with(|items| items.borrow().get(net).cloned()) {
+        return existing;
+    }
+    let net_owned = net.to_owned();
+    let callbacks_owned = callbacks.clone();
+    let promise = future_to_promise(async move {
+        if let Ok(report) =
+            r51_invoke_runtime(&callbacks_owned, "kgw_kgw_runtime_logs_v1", &net_owned).await
+        {
+            let instance_id = r51_active_raw_log_instance_id(&callbacks_owned, &net_owned);
+            let _ = crate::bridge_raw_log::bridge_apply_runtime_log_report(
+                net_owned.clone(),
+                "bridge".to_owned(),
+                report,
+                instance_id,
+            );
+        }
+        R51_LOGS_IN_FLIGHT.with(|items| {
+            items.borrow_mut().remove(&net_owned);
+        });
+        Ok(JsValue::UNDEFINED)
+    });
+    R51_LOGS_IN_FLIGHT.with(|items| {
+        items.borrow_mut().insert(net.to_owned(), promise.clone());
+    });
+    promise
+}
+
+fn r51_status_task(net: &str, callbacks: &JsValue) -> Option<Promise> {
+    if r51_transition_active(callbacks, net) {
+        return None;
+    }
+    if let Some(existing) = R51_STATUS_IN_FLIGHT.with(|items| items.borrow().get(net).cloned()) {
+        return Some(existing);
+    }
+    let net_owned = net.to_owned();
+    let callbacks_owned = callbacks.clone();
+    let promise = future_to_promise(async move {
+        match r51_invoke_runtime(&callbacks_owned, "kgw_runtime_owner_status_v1", &net_owned).await
+        {
+            Ok(raw) => {
+                let status = stringify_runtime_result_value(&raw);
+                let running = r51_running_text(&status);
+                let runtime_error = runtime_error_text(&status);
+                let fields = parse_runtime_fields_text(&status);
+                let role = last_field(&fields, "role").unwrap_or("");
+                let network = last_field(&fields, "network").unwrap_or("");
+                let running_field = last_field(&fields, "running").unwrap_or("");
+                let error_node = crate::bridge_frontend_helpers::bridge_by_id(
+                    crate::bridge_frontend_helpers::bridge_element_id(
+                        net_owned.clone(),
+                        "runtimeError".to_owned(),
+                    ),
+                );
+                if runtime_error.is_empty()
+                    && role == "bridge"
+                    && network == net_owned
+                    && matches!(running_field, "true" | "false")
+                    && text(&property(&dataset(&error_node), "runtimeErrorSource"))
+                        == "status-refresh"
+                {
+                    r51_set_runtime_error(&callbacks_owned, &net_owned, "", "");
+                    r51_set_runtime_activity(
+                        &callbacks_owned,
+                        &net_owned,
+                        if running {
+                            "Bridge is running."
+                        } else {
+                            "Bridge is stopped."
+                        },
+                        if running { "running" } else { "stopped" },
+                    );
+                }
+
+                bridge_r51_set_runtime_buttons(
+                    net_owned.clone(),
+                    running,
+                    String::new(),
+                    runtime_error.clone(),
+                    status.clone(),
+                );
+
+                if !running && !runtime_error.is_empty() {
+                    r51_set_runtime_error(&callbacks_owned, &net_owned, &runtime_error, "");
+                    r51_set_runtime_activity(
+                        &callbacks_owned,
+                        &net_owned,
+                        "Bridge runtime failed after readiness.",
+                        "failed",
+                    );
+                    let policy_status = crate::bridge_frontend_helpers::bridge_by_id(
+                        crate::bridge_frontend_helpers::bridge_element_id(
+                            net_owned.clone(),
+                            "policyStatus".to_owned(),
+                        ),
+                    );
+                    if present(&policy_status) {
+                        let failed =
+                            crate::bridge_frontend_helpers::bridge_translate_runtime_feedback(
+                                "runtime.failed".to_owned(),
+                                "Failed".to_owned(),
+                            );
+                        set(&policy_status, "textContent", &failed);
+                        set(
+                            &dataset(&policy_status),
+                            "state",
+                            &JsValue::from_str("failed"),
+                        );
+                        let _ =
+                            crate::apply_status_tone(policy_status, JsValue::from_str("failed"));
+                    }
+                }
+
+                let changed = R51_LAST_STATUS.with(|items| {
+                    items
+                        .borrow()
+                        .get(&net_owned)
+                        .is_none_or(|value| value != &status)
+                });
+                if changed {
+                    R51_LAST_STATUS.with(|items| {
+                        items.borrow_mut().insert(net_owned.clone(), status.clone());
+                    });
+                    let authority = crate::bridge_frontend_helpers::bridge_by_id(
+                        crate::bridge_frontend_helpers::bridge_element_id(
+                            net_owned.clone(),
+                            "settingsAuthority".to_owned(),
+                        ),
+                    );
+                    if present(&authority)
+                        && (!running
+                            || text(&property(&dataset(&authority), "restartRequired")) != "true")
+                    {
+                        set(
+                            &authority,
+                            "textContent",
+                            &JsValue::from_str(if running {
+                                "Effective settings are active for this runtime"
+                            } else {
+                                "Effective settings apply on next Start"
+                            }),
+                        );
+                        set(
+                            &dataset(&authority),
+                            "restartRequired",
+                            &JsValue::from_str("false"),
+                        );
+                    }
+                }
+                r51_maybe_activity_notice(&net_owned, &status);
+            }
+            Err(error) => {
+                let message = format!(
+                    "Status refresh failed: {}",
+                    normalize_runtime_error_value(&error)
+                );
+                bridge_r51_set_runtime_unknown(
+                    net_owned.clone(),
+                    message,
+                    "status-refresh".to_owned(),
+                    callbacks_owned.clone(),
+                );
+            }
+        }
+        R51_STATUS_IN_FLIGHT.with(|items| {
+            items.borrow_mut().remove(&net_owned);
+        });
+        Ok(JsValue::UNDEFINED)
+    });
+    R51_STATUS_IN_FLIGHT.with(|items| {
+        items.borrow_mut().insert(net.to_owned(), promise.clone());
+    });
+    Some(promise)
+}
+
+async fn r51_refresh_one_impl(net: String, callbacks: JsValue) {
+    let logs = r51_logs_task(&net, &callbacks);
+    let status = r51_status_task(&net, &callbacks);
+    let _ = JsFuture::from(logs).await;
+    if let Some(status) = status {
+        let _ = JsFuture::from(status).await;
+    }
+}
+
+fn r51_refresh_all_impl(_reason: &str, callbacks: &JsValue) {
+    for net in crate::bridge_frontend_helpers::bridge_r51_keys().iter() {
+        let net = text(&net);
+        if !net.is_empty() {
+            spawn_local(r51_refresh_one_impl(net, callbacks.clone()));
+        }
+    }
+}
+
+fn r51_start_live_refresh_impl(callbacks: JsValue) {
+    R51_LIVE_TIMER.with(|timer| {
+        let existing = timer.borrow().clone();
+        if present(&existing) {
+            let _ = call1(&window(), "clearInterval", &existing);
+        }
+    });
+    r51_refresh_all_impl("initial", &callbacks);
+    let poll_callbacks = callbacks.clone();
+    let callback = Closure::wrap(Box::new(move || {
+        r51_refresh_all_impl("poll", &poll_callbacks);
+    }) as Box<dyn FnMut()>);
+    let timer = call2(
+        &window(),
+        "setInterval",
+        callback.as_ref(),
+        &JsValue::from_f64(R51_LIVE_REFRESH_MS),
+    )
+    .unwrap_or(JsValue::UNDEFINED);
+    R51_LIVE_TIMER.with(|value| *value.borrow_mut() = timer);
+    callback.forget();
+}
+
+#[wasm_bindgen(js_name = bridgeR51RefreshOne)]
+pub async fn bridge_r51_refresh_one(net: String, _reason: String, callbacks: JsValue) {
+    r51_refresh_one_impl(net, callbacks).await;
+}
+
+#[wasm_bindgen(js_name = bridgeR51RefreshAll)]
+pub fn bridge_r51_refresh_all(reason: String, callbacks: JsValue) {
+    r51_refresh_all_impl(&reason, &callbacks);
+}
+
+#[wasm_bindgen(js_name = bridgeR51StartLiveRefresh)]
+pub fn bridge_r51_start_live_refresh(callbacks: JsValue) {
+    r51_start_live_refresh_impl(callbacks);
 }
 
 #[wasm_bindgen(js_name = bridgeR51SetRuntimeButtons)]

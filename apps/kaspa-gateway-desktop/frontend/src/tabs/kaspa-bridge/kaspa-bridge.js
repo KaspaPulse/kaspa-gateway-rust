@@ -2,7 +2,6 @@ import { applyStatusTone } from "../../status.js";
 import { BRIDGE_MANAGED, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initBridgeRust, {
-  bridgeApplyRuntimeLogReport as wasmBridgeApplyRuntimeLogReport,
   bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5 as wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5,
   bridgeById as wasmBridgeById,
   bridgeChecked as wasmBridgeChecked,
@@ -22,13 +21,12 @@ import initBridgeRust, {
   bridgeRenderLogging as wasmBridgeRenderLogging,
   bridgeRenderPorts as wasmBridgeRenderPorts,
   bridgeRenderCpuMiner as wasmBridgeRenderCpuMiner,
-  bridgeStringifyRuntimeResult as wasmBridgeStringifyRuntimeResult,
   bridgeNormalizeRuntimeError as wasmBridgeNormalizeRuntimeError,
-  bridgeParseRuntimeKeyValueResponse as wasmBridgeParseRuntimeKeyValueResponse,
   bridgeV7RuntimeRunningFromText as wasmBridgeV7RuntimeRunningFromText,
-  bridgeR51IsRunning as wasmBridgeR51IsRunning,
   bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons,
   bridgeR51SetRuntimeUnknown as wasmBridgeR51SetRuntimeUnknown,
+  bridgeR51RefreshOne as wasmBridgeR51RefreshOne,
+  bridgeR51StartLiveRefresh as wasmBridgeR51StartLiveRefresh,
   bridgeR51CaptureFactoryDefaults as wasmBridgeR51CaptureFactoryDefaults,
   bridgeR51LoadSavedSettings as wasmBridgeR51LoadSavedSettings,
   bridgeR51SaveSettings as wasmBridgeR51SaveSettings,
@@ -40,7 +38,6 @@ import initBridgeRust, {
   bridgeR51ReadStructuredInstances as wasmBridgeR51ReadStructuredInstances,
   bridgeR51ReadSettings as wasmBridgeR51ReadSettings,
   bridgeR51WriteSettings as wasmBridgeR51WriteSettings,
-  bridgeRuntimeErrorFromStatus as wasmBridgeRuntimeErrorFromStatus,
   bridgePreviewDeclaresInprocessR65F as wasmBridgePreviewDeclaresInprocessR65F,
   bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction,
   bridgeRuntimeActionOutcome as wasmBridgeRuntimeActionOutcome,
@@ -70,7 +67,6 @@ import initBridgeRust, {
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
   bridgeI18nTextR41 as wasmBridgeI18nTextR41,
   bridgeInstallLogAutoScrollControls as wasmBridgeInstallLogAutoScrollControls,
-  bridgeTranslateRuntimeFeedback as wasmBridgeTranslateRuntimeFeedback,
   bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
   bridgeNetworkPolicyMessage as wasmBridgeNetworkPolicyMessage,
   bridgeNormalizeNetwork as wasmBridgeNormalizeNetwork,
@@ -1381,10 +1377,20 @@ function installNetworkTabs(root) {
     }
 
     if (typeof updateCommand === "function") updateCommand(normalized);
-    if (typeof kgwBridgeR51RefreshOne === "function") {
-      window.setTimeout(() => kgwBridgeR51RefreshOne(normalized, "network-tab-" + reason), 50);
-      window.setTimeout(() => kgwBridgeR51RefreshOne(normalized, "network-tab-" + reason + "+700ms"), 700);
-    }
+    window.setTimeout(() => {
+      void wasmBridgeR51RefreshOne(
+        String(normalized || ""),
+        "network-tab-" + reason,
+        kgwBridgeR51LiveRefreshCallbacksR257()
+      );
+    }, 50);
+    window.setTimeout(() => {
+      void wasmBridgeR51RefreshOne(
+        String(normalized || ""),
+        "network-tab-" + reason + "+700ms",
+        kgwBridgeR51LiveRefreshCallbacksR257()
+      );
+    }, 700);
   }
 
   root.addEventListener("click", (event) => {
@@ -1909,7 +1915,13 @@ async function runBridgeIntegratedAction(action, net) {
     return true;
   } finally {
     KGW_BRIDGE_RUNTIME_IN_FLIGHT.delete(inFlightKey);
-    window.setTimeout(() => { if (typeof kgwBridgeR51RefreshOne === "function") void kgwBridgeR51RefreshOne(net, "action-settled"); }, 0);
+    window.setTimeout(() => {
+      void wasmBridgeR51RefreshOne(
+        String(net || ""),
+        "action-settled",
+        kgwBridgeR51LiveRefreshCallbacksR257()
+      );
+    }, 0);
 
     kgwBridgeRuntimeOwnerTraceR64D("r64d-runtime-owner-finally", {
       inFlightKey
@@ -1917,12 +1929,6 @@ async function runBridgeIntegratedAction(action, net) {
   }
 }
 /* KGW_R51_DIRECT_BRIDGE_LOG_RUNTIME_SETTINGS_OWNER */
-const KGW_BRIDGE_R51_LAST_STATUS = {};
-const KGW_BRIDGE_R51_LAST_LOGS = {};
-const KGW_BRIDGE_R51_LAST_ACTIVITY_NOTICE = {};
-const KGW_BRIDGE_R51_STATUS_IN_FLIGHT = new Map();
-const KGW_BRIDGE_R51_LOGS_IN_FLIGHT = new Map();
-let KGW_BRIDGE_R51_TIMER = null;
 
 
 /* KGW_BRIDGE_SETTINGS_STRUCTURED_INSTANCES_PERSISTENCE_PATCH_R26B
@@ -2129,140 +2135,54 @@ function kgwBridgeR51RuntimePresentationCallbacksR256() {
   };
 }
 
-function kgwBridgeR51MaybeActivityNotice(net, statusText) {
-  const now = Date.now();
-  const last = KGW_BRIDGE_R51_LAST_ACTIVITY_NOTICE[net] || 0;
-
-  if (now - last < 15000) return;
-
-  if (!wasmBridgeR51IsRunning(statusText)) return;
-
-  KGW_BRIDGE_R51_LAST_ACTIVITY_NOTICE[net] = now;
-
+function kgwBridgeR51LiveRefreshCallbacksR257() {
+  return {
+    invokeRuntime: (command, net) =>
+      invokeBridgeIntegratedRuntime(String(command || ""), String(net || "")),
+    transitionActive: (net) =>
+      KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(String(net || "") + ":start") ||
+      KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(String(net || "") + ":stop"),
+    activeRawLogInstanceId: (net) =>
+      wasmBridgeActiveRawLogInstanceId(
+        bridgeInstances,
+        activeInstance,
+        String(net || "")
+      ),
+    setRuntimeActivity: (net, message, state) =>
+      kgwBridgeSetRuntimeActivityV1(
+        String(net || ""),
+        String(message || ""),
+        String(state || "")
+      ),
+    setRuntimeError: (net, message, errorSource) =>
+      kgwBridgeSetRuntimeErrorV1(
+        String(net || ""),
+        String(message || ""),
+        String(errorSource || "")
+      )
+  };
 }
-
-async function kgwBridgeR51RefreshOne(net, _reason = "live") {
-  const transitionActive = KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(net + ":start") ||
-    KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(net + ":stop");
-
-  let logsTask = KGW_BRIDGE_R51_LOGS_IN_FLIGHT.get(net);
-  if (!logsTask) {
-    logsTask = (async () => {
-      try {
-        const report = await invokeBridgeIntegratedRuntime("kgw_kgw_runtime_logs_v1", net);
-        const instanceId = wasmBridgeActiveRawLogInstanceId(bridgeInstances, activeInstance, String(net || ""));
-        wasmBridgeApplyRuntimeLogReport(String(net || ""), "bridge", report, String(instanceId || ""));
-        KGW_BRIDGE_R51_LAST_LOGS[net] = report;
-      } catch (_) {
-        // No raw buffer may exist before the child is spawned. Never fabricate text.
-      } finally {
-        if (KGW_BRIDGE_R51_LOGS_IN_FLIGHT.get(net) === logsTask) {
-          KGW_BRIDGE_R51_LOGS_IN_FLIGHT.delete(net);
-        }
-      }
-    })();
-    KGW_BRIDGE_R51_LOGS_IN_FLIGHT.set(net, logsTask);
-  }
-
-  let statusTask = Promise.resolve();
-  if (!transitionActive) {
-    statusTask = KGW_BRIDGE_R51_STATUS_IN_FLIGHT.get(net);
-    if (!statusTask) {
-      statusTask = (async () => {
-        try {
-          const status = wasmBridgeStringifyRuntimeResult(await invokeBridgeIntegratedRuntime("kgw_runtime_owner_status_v1", net));
-          const running = wasmBridgeR51IsRunning(status);
-          const runtimeError = wasmBridgeRuntimeErrorFromStatus(status);
-          const statusFields = wasmBridgeParseRuntimeKeyValueResponse(status).fields || {};
-          const errorNode = wasmBridgeById(wasmBridgeElementId(net, "runtimeError"));
-          // Clear only recovered polling feedback; preserve Start/Stop and runtime errors.
-          if (!runtimeError && statusFields.role === "bridge" && statusFields.network === String(net) &&
-              ["true", "false"].includes(statusFields.running) &&
-              errorNode?.dataset.runtimeErrorSource === "status-refresh") {
-            kgwBridgeSetRuntimeErrorV1(net, "");
-            kgwBridgeSetRuntimeActivityV1(net, running ? "Bridge is running." : "Bridge is stopped.", running ? "running" : "stopped");
-          }
-          wasmBridgeR51SetRuntimeButtons(String(net || ""), Boolean(running), "", String(runtimeError || ""), String(status || ""));
-          if (!running && runtimeError) {
-            kgwBridgeSetRuntimeErrorV1(net, runtimeError);
-            kgwBridgeSetRuntimeActivityV1(net, "Bridge runtime failed after readiness.", "failed");
-            const policyStatus = wasmBridgeById(wasmBridgeElementId(net, "policyStatus"));
-            if (policyStatus) {
-              policyStatus.textContent = wasmBridgeTranslateRuntimeFeedback("runtime.failed", "Failed");
-              policyStatus.dataset.state = "failed";
-              applyStatusTone(policyStatus, "failed");
-            }
-          }
-
-          if (KGW_BRIDGE_R51_LAST_STATUS[net] !== status) {
-            KGW_BRIDGE_R51_LAST_STATUS[net] = status;
-            const authority = wasmBridgeById(wasmBridgeElementId(net, "settingsAuthority"));
-            if (authority && (!running || authority.dataset.restartRequired !== "true")) {
-              authority.textContent = running
-                ? "Effective settings are active for this runtime"
-                : "Effective settings apply on next Start";
-              authority.dataset.restartRequired = "false";
-            }
-          }
-          kgwBridgeR51MaybeActivityNotice(net, status);
-        } catch (error) {
-          wasmBridgeR51SetRuntimeUnknown(
-            String(net || ""),
-            "Status refresh failed: " + wasmBridgeNormalizeRuntimeError(error),
-            "status-refresh",
-            kgwBridgeR51RuntimePresentationCallbacksR256()
-          );
-        } finally {
-          if (KGW_BRIDGE_R51_STATUS_IN_FLIGHT.get(net) === statusTask) {
-            KGW_BRIDGE_R51_STATUS_IN_FLIGHT.delete(net);
-          }
-        }
-      })();
-      KGW_BRIDGE_R51_STATUS_IN_FLIGHT.set(net, statusTask);
-    }
-  }
-
-  await Promise.allSettled([logsTask, statusTask]);
-}
-
 
 // KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E
 // Raw bridge log live helper only: no parsing, no ASIC table, no bridge behavior duplication.
 function kgwBridgeR51KickRawLogLiveR134E(net, reason = "bridge-start") {
   try {
-    KGW_BRIDGE_R51_LAST_LOGS[net] = "";
-
-    if (typeof kgwBridgeR51StartLiveRefresh === "function") {
-      kgwBridgeR51StartLiveRefresh();
-    }
-
-    if (typeof kgwBridgeR51RefreshOne === "function") {
-      window.setTimeout(function () { kgwBridgeR51RefreshOne(net, reason + "-0"); }, 0);
-      window.setTimeout(function () { kgwBridgeR51RefreshOne(net, reason + "-350"); }, 350);
-      window.setTimeout(function () { kgwBridgeR51RefreshOne(net, reason + "-1000"); }, 1000);
-      window.setTimeout(function () { kgwBridgeR51RefreshOne(net, reason + "-2500"); }, 2500);
-    }
+    wasmBridgeR51StartLiveRefresh(kgwBridgeR51LiveRefreshCallbacksR257());
+    window.setTimeout(function () {
+      void wasmBridgeR51RefreshOne(String(net || ""), reason + "-0", kgwBridgeR51LiveRefreshCallbacksR257());
+    }, 0);
+    window.setTimeout(function () {
+      void wasmBridgeR51RefreshOne(String(net || ""), reason + "-350", kgwBridgeR51LiveRefreshCallbacksR257());
+    }, 350);
+    window.setTimeout(function () {
+      void wasmBridgeR51RefreshOne(String(net || ""), reason + "-1000", kgwBridgeR51LiveRefreshCallbacksR257());
+    }, 1000);
+    window.setTimeout(function () {
+      void wasmBridgeR51RefreshOne(String(net || ""), reason + "-2500", kgwBridgeR51LiveRefreshCallbacksR257());
+    }, 2500);
   } catch (error) {
     console.warn("[KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E_FAILED]", error);
   }
-}
-
-function kgwBridgeR51RefreshAll(reason = "live") {
-  for (const net of wasmBridgeR51Keys()) {
-    kgwBridgeR51RefreshOne(net, reason);
-  }
-}
-
-function kgwBridgeR51StartLiveRefresh() {
-  if (KGW_BRIDGE_R51_TIMER != null) {
-    clearInterval(KGW_BRIDGE_R51_TIMER);
-  }
-
-  kgwBridgeR51RefreshAll("initial");
-
-  KGW_BRIDGE_R51_TIMER = setInterval(() => {
-    kgwBridgeR51RefreshAll("poll");
-  }, 700);
 }
 
 
@@ -2772,7 +2692,7 @@ const bridgeRoot = root || document.getElementById("kaspa-bridge");
   window.setTimeout(updateAllCommands, 150);
   bridgeSyncAllModeControls();
   updateAllCommands();
-  kgwBridgeR51StartLiveRefresh();
+  wasmBridgeR51StartLiveRefresh(kgwBridgeR51LiveRefreshCallbacksR257());
 
 
   setTimeout(wasmBridgeInstallLogAutoScrollControls, 0);
