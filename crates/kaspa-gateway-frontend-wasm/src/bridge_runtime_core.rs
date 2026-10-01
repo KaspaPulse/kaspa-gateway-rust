@@ -1,5 +1,5 @@
-use js_sys::{JSON, Object, Reflect};
-use wasm_bindgen::prelude::*;
+use js_sys::{Function, JSON, Object, Reflect};
+use wasm_bindgen::{JsCast, prelude::*};
 
 fn present(value: &JsValue) -> bool {
     !value.is_null() && !value.is_undefined()
@@ -14,6 +14,68 @@ fn property(target: &JsValue, name: &str) -> JsValue {
 
 fn set(target: &JsValue, name: &str, value: &JsValue) {
     let _ = Reflect::set(target, &JsValue::from_str(name), value);
+}
+
+fn function(target: &JsValue, name: &str) -> Option<Function> {
+    property(target, name).dyn_into::<Function>().ok()
+}
+
+fn call1(target: &JsValue, name: &str, arg: &JsValue) -> Option<JsValue> {
+    function(target, name)?.call1(target, arg).ok()
+}
+
+fn call2(target: &JsValue, name: &str, first: &JsValue, second: &JsValue) -> Option<JsValue> {
+    function(target, name)?.call2(target, first, second).ok()
+}
+
+fn call3(
+    target: &JsValue,
+    name: &str,
+    first: &JsValue,
+    second: &JsValue,
+    third: &JsValue,
+) -> Option<JsValue> {
+    function(target, name)?
+        .call3(target, first, second, third)
+        .ok()
+}
+
+fn query(target: &JsValue, selector: &str) -> JsValue {
+    call1(target, "querySelector", &JsValue::from_str(selector)).unwrap_or(JsValue::UNDEFINED)
+}
+
+fn dataset(target: &JsValue) -> JsValue {
+    property(target, "dataset")
+}
+
+fn set_attribute(target: &JsValue, name: &str, value: &str) {
+    let _ = call2(
+        target,
+        "setAttribute",
+        &JsValue::from_str(name),
+        &JsValue::from_str(value),
+    );
+}
+
+fn set_style(target: &JsValue, name: &str, value: &str) {
+    set(&property(target, "style"), name, &JsValue::from_str(value));
+}
+
+fn class_contains(target: &JsValue, class_name: &str) -> bool {
+    call1(
+        &property(target, "classList"),
+        "contains",
+        &JsValue::from_str(class_name),
+    )
+    .is_some_and(|value| crate::js_boolean(&value))
+}
+
+fn text(value: &JsValue) -> String {
+    if present(value) {
+        crate::js_string_owned(value)
+    } else {
+        String::new()
+    }
 }
 
 fn stringify_runtime_result_value(value: &JsValue) -> String {
@@ -264,6 +326,287 @@ pub fn bridge_start_was_inprocess_r65f(fields: JsValue, ui_mode: String, preview
         property(&fields, "nodeMode")
     };
     start_was_inprocess_text(&crate::js_string_owned(&field_value), &ui_mode, &preview)
+}
+
+#[wasm_bindgen(js_name = bridgeR51SetRuntimeButtons)]
+pub fn bridge_r51_set_runtime_buttons(
+    net: String,
+    running: bool,
+    transition: String,
+    runtime_error: String,
+    status_text: String,
+) {
+    let panel = crate::bridge_instance_settings::bridge_r51_panel(net.clone());
+    if !present(&panel) {
+        return;
+    }
+
+    let network_enabled = crate::bridge_frontend_helpers::bridge_network_enabled(net.clone());
+    let start = query(
+        &panel,
+        &format!(r#"[data-bridge-action="start"][data-net="{net}"]"#),
+    );
+    let stop = query(
+        &panel,
+        &format!(r#"[data-bridge-action="stop"][data-net="{net}"]"#),
+    );
+    let policy_status = crate::bridge_frontend_helpers::bridge_by_id(
+        crate::bridge_frontend_helpers::bridge_element_id(net.clone(), "policyStatus".to_owned()),
+    );
+
+    let state = Object::new();
+    set(state.as_ref(), "role", &JsValue::from_str("Bridge"));
+    set(
+        state.as_ref(),
+        "enabled",
+        &JsValue::from_bool(network_enabled),
+    );
+    set(state.as_ref(), "running", &JsValue::from_bool(running));
+    set(
+        state.as_ref(),
+        "transition",
+        &JsValue::from_str(&transition),
+    );
+    set(state.as_ref(), "error", &JsValue::from_str(&runtime_error));
+    let presentation =
+        crate::settings_runtime::runtime_presentation(state.into()).unwrap_or(JsValue::UNDEFINED);
+    let process = text(&property(&presentation, "process"));
+    let process_label = text(&property(&presentation, "processLabel"));
+    let profile = text(&property(&presentation, "profile"));
+
+    if present(&policy_status) {
+        set(
+            &policy_status,
+            "textContent",
+            &JsValue::from_str(&process_label),
+        );
+        set(
+            &dataset(&policy_status),
+            "state",
+            &JsValue::from_str(&process.to_lowercase()),
+        );
+        let _ = crate::apply_status_tone(policy_status.clone(), JsValue::from_str(&process));
+    }
+
+    let summary = crate::bridge_frontend_helpers::bridge_by_id(
+        crate::bridge_frontend_helpers::bridge_element_id(net.clone(), "monitorState".to_owned()),
+    );
+    let parsed = bridge_parse_runtime_key_value_response(JsValue::from_str(&status_text));
+    let fields = property(&parsed, "fields");
+    let observation = crate::settings_runtime::runtime_observation_summary(
+        fields,
+        JsValue::from_bool(running),
+        JsValue::from_bool(net != "mainnet"),
+    )
+    .unwrap_or_default();
+    let summary_text = format!(
+        "{process_label} | Profile: {profile} | Startup readiness: {} | {observation}",
+        if running {
+            "Verified"
+        } else if !transition.is_empty() {
+            "Pending"
+        } else {
+            "Not ready"
+        }
+    );
+    let _ = crate::render_status_summary(summary, JsValue::from_str(&summary_text));
+
+    let empty = crate::bridge_frontend_helpers::bridge_by_id(
+        crate::bridge_frontend_helpers::bridge_element_id(net.clone(), "logEmpty".to_owned()),
+    );
+    if present(&empty) {
+        let empty_text = if !runtime_error.is_empty() {
+            "Bridge failed. Review the error in Settings and the logs below.".to_owned()
+        } else if !transition.is_empty() {
+            format!(
+                "Bridge is {}. Waiting for runtime output.",
+                process.to_lowercase()
+            )
+        } else if running {
+            "Bridge is running. Waiting for log output.".to_owned()
+        } else if crate::bridge_frontend_helpers::bridge_node_mode(net.clone()) == "inprocess" {
+            "Bridge is stopped. Start Bridge to start its owned node and Stratum service."
+                .to_owned()
+        } else {
+            "Bridge is stopped. Start Bridge checks the configured node connection before starting the service.".to_owned()
+        };
+        set(&empty, "textContent", &JsValue::from_str(&empty_text));
+    }
+
+    let settings_invalid = present(&query(&panel, r#"[aria-invalid="true"]"#))
+        || class_contains(
+            &crate::bridge_frontend_helpers::bridge_by_id(
+                crate::bridge_frontend_helpers::bridge_element_id(
+                    net.clone(),
+                    "previewStatus".to_owned(),
+                ),
+            ),
+            "kgw-field-error",
+        );
+
+    let next = query(&panel, r#"[data-bridge-action="monitor-next"]"#);
+    if present(&next) {
+        set(
+            &next,
+            "hidden",
+            &JsValue::from_bool(running || !transition.is_empty()),
+        );
+        let next_text = if !network_enabled {
+            "Enable Profile in Settings"
+        } else if settings_invalid {
+            "Review Settings"
+        } else {
+            "Start Bridge"
+        };
+        set(&next, "textContent", &JsValue::from_str(next_text));
+        set(
+            &dataset(&next),
+            "nextAction",
+            &JsValue::from_str(if network_enabled && !settings_invalid {
+                "start"
+            } else {
+                "settings"
+            }),
+        );
+    }
+
+    if present(&start) {
+        let start_blocked = running
+            || transition == "starting"
+            || transition == "stopping"
+            || !network_enabled
+            || settings_invalid;
+        set(&start, "disabled", &JsValue::from_bool(start_blocked));
+        set_attribute(
+            &start,
+            "aria-disabled",
+            if start_blocked { "true" } else { "false" },
+        );
+        set_style(&start, "opacity", if start_blocked { "0.45" } else { "" });
+        set_style(
+            &start,
+            "cursor",
+            if start_blocked { "not-allowed" } else { "" },
+        );
+        let title = if !network_enabled {
+            "Enable this network before starting it."
+        } else if running {
+            "Bridge is running. Stop it before starting again."
+        } else {
+            "Start bridge"
+        };
+        set(&start, "title", &JsValue::from_str(title));
+    }
+
+    if present(&stop) {
+        let stop_enabled = running && transition != "starting" && transition != "stopping";
+        set(&stop, "disabled", &JsValue::from_bool(!stop_enabled));
+        set_attribute(
+            &stop,
+            "aria-disabled",
+            if stop_enabled { "false" } else { "true" },
+        );
+        set_style(&stop, "opacity", if stop_enabled { "" } else { "0.45" });
+        set_style(
+            &stop,
+            "cursor",
+            if stop_enabled { "" } else { "not-allowed" },
+        );
+        let title = if transition == "starting" {
+            "Bridge startup is in progress. Stop becomes available after READY."
+        } else if stop_enabled {
+            "Stop bridge"
+        } else {
+            "Bridge is not running"
+        };
+        set(&stop, "title", &JsValue::from_str(title));
+    }
+}
+
+#[wasm_bindgen(js_name = bridgeR51SetRuntimeUnknown)]
+pub fn bridge_r51_set_runtime_unknown(
+    net: String,
+    message: String,
+    error_source: String,
+    callbacks: JsValue,
+) {
+    let panel = crate::bridge_instance_settings::bridge_r51_panel(net.clone());
+    if !present(&panel) {
+        return;
+    }
+
+    let policy_status = crate::bridge_frontend_helpers::bridge_by_id(
+        crate::bridge_frontend_helpers::bridge_element_id(net.clone(), "policyStatus".to_owned()),
+    );
+    if present(&policy_status) {
+        set(
+            &policy_status,
+            "textContent",
+            &JsValue::from_str("Reconciling"),
+        );
+        set(
+            &dataset(&policy_status),
+            "state",
+            &JsValue::from_str("reconciling"),
+        );
+        let _ = crate::apply_status_tone(policy_status, JsValue::from_str("reconciling"));
+        let summary = crate::bridge_frontend_helpers::bridge_by_id(
+            crate::bridge_frontend_helpers::bridge_element_id(
+                net.clone(),
+                "monitorState".to_owned(),
+            ),
+        );
+        let _ = crate::render_status_summary(
+            summary,
+            JsValue::from_str("Bridge: Reconciling | RPC/synchronization/mining: unknown"),
+        );
+    }
+
+    for button in [
+        query(
+            &panel,
+            &format!(r#"[data-bridge-action="start"][data-net="{net}"]"#),
+        ),
+        query(
+            &panel,
+            &format!(r#"[data-bridge-action="stop"][data-net="{net}"]"#),
+        ),
+    ] {
+        if !present(&button) {
+            continue;
+        }
+        set(&button, "disabled", &JsValue::TRUE);
+        set_attribute(&button, "aria-disabled", "true");
+        set_style(&button, "opacity", "0.45");
+        set_style(&button, "cursor", "not-allowed");
+        set(&button, "title", &JsValue::from_str(&message));
+    }
+
+    let net_value = JsValue::from_str(&net);
+    let _ = call2(
+        &callbacks,
+        "setRuntimeActivity",
+        &net_value,
+        &JsValue::from_str("Reconciling runtime state."),
+    );
+
+    let current_error = crate::bridge_frontend_helpers::bridge_by_id(
+        crate::bridge_frontend_helpers::bridge_element_id(net.clone(), "runtimeError".to_owned()),
+    );
+    let preserve_action_error = error_source == "status-refresh"
+        && !text(&property(&current_error, "textContent"))
+            .trim()
+            .is_empty()
+        && text(&property(&dataset(&current_error), "runtimeErrorSource")) != "status-refresh";
+    if !preserve_action_error {
+        let _ = call3(
+            &callbacks,
+            "setRuntimeError",
+            &net_value,
+            &JsValue::from_str(&message),
+            &JsValue::from_str(&error_source),
+        );
+    }
 }
 
 #[wasm_bindgen(js_name = bridgeStringifyRuntimeResult)]

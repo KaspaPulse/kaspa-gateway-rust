@@ -34,7 +34,7 @@ const SLICES: &[(&str, &str)] = &[
         "/* KGW_R51_DIRECT_BRIDGE_LOG_RUNTIME_SETTINGS_OWNER */",
     ),
     (
-        "function kgwBridgeR51SetRuntimeButtons(",
+        "function kgwBridgeR51RuntimePresentationCallbacksR256(",
         "function kgwBridgeR51MaybeActivityNotice(",
     ),
 ];
@@ -629,6 +629,8 @@ const sandbox = {
   wasmBridgeParseRuntimeKeyValueResponse: wasm.bridgeParseRuntimeKeyValueResponse,
   wasmBridgeV7RuntimeRunningFromText: wasm.bridgeV7RuntimeRunningFromText,
   wasmBridgeR51IsRunning: wasm.bridgeR51IsRunning,
+  wasmBridgeR51SetRuntimeButtons: wasm.bridgeR51SetRuntimeButtons,
+  wasmBridgeR51SetRuntimeUnknown: wasm.bridgeR51SetRuntimeUnknown,
   wasmBridgeRuntimeErrorFromStatus: wasm.bridgeRuntimeErrorFromStatus,
   wasmBridgeNormalizeNodeModeR65F: wasm.bridgeNormalizeNodeModeR65F,
   wasmBridgePreviewDeclaresInprocessR65F: wasm.bridgePreviewDeclaresInprocessR65F,
@@ -658,7 +660,7 @@ sandbox.kgwBridgeR51KickRawLogLiveR134E = () => {};
 
 vm.createContext(sandbox);
 vm.runInContext(selected, sandbox, { filename: request.sourceName });
-const api = vm.runInContext("({ runtimeRunning: wasmBridgeV7RuntimeRunningFromText, isRunning: wasmBridgeR51IsRunning, setButtons: kgwBridgeR51SetRuntimeButtons, setError: kgwBridgeSetRuntimeErrorV1, setActivity: kgwBridgeSetRuntimeActivityV1, runAction: runBridgeIntegratedAction })", sandbox);
+const api = vm.runInContext("({ runtimeRunning: wasmBridgeV7RuntimeRunningFromText, isRunning: wasmBridgeR51IsRunning, setButtons: (net, running, transition = \"\", runtimeError = \"\", statusText = \"\") => wasmBridgeR51SetRuntimeButtons(String(net || \"\"), Boolean(running), String(transition || \"\"), String(runtimeError || \"\"), String(statusText || \"\")), setUnknown: (net, message, source = \"\") => wasmBridgeR51SetRuntimeUnknown(String(net || \"\"), String(message || \"\"), String(source || \"\"), kgwBridgeR51RuntimePresentationCallbacksR256()), setError: kgwBridgeSetRuntimeErrorV1, setActivity: kgwBridgeSetRuntimeActivityV1, runAction: runBridgeIntegratedAction })", sandbox);
 
 function snapshot() {
   return {
@@ -906,6 +908,64 @@ fn verify_r51_keys_ownership(source: &str, helpers: &str) -> Result<(), String> 
         || !helpers.contains("fn bridge_r51_key_texts()")
     {
         return Err("R51 keys call count or Rust export drifted".to_owned());
+    }
+    Ok(())
+}
+
+fn verify_r51_runtime_presentation_ownership(
+    source: &str,
+    runtime_core: &str,
+) -> Result<(), String> {
+    for forbidden in [
+        "function kgwBridgeR51SetRuntimeButtons(",
+        "function kgwBridgeR51SetRuntimeUnknown(",
+        "kgwBridgeR51SetRuntimeButtons(",
+        "kgwBridgeR51SetRuntimeUnknown(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge R51 runtime-presentation JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons",
+        "bridgeR51SetRuntimeUnknown as wasmBridgeR51SetRuntimeUnknown",
+        "function kgwBridgeR51RuntimePresentationCallbacksR256(",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge R51 runtime-presentation Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    if source.matches("wasmBridgeR51SetRuntimeButtons(").count() != 10
+        || source.matches("wasmBridgeR51SetRuntimeUnknown(").count() != 2
+        || source
+            .matches("kgwBridgeR51RuntimePresentationCallbacksR256()")
+            .count()
+            != 3
+    {
+        return Err(
+            "Bridge R51 runtime-presentation direct-call or callback-factory count drifted"
+                .to_owned(),
+        );
+    }
+    for required in [
+        "js_name = bridgeR51SetRuntimeButtons",
+        "pub fn bridge_r51_set_runtime_buttons(",
+        "js_name = bridgeR51SetRuntimeUnknown",
+        "pub fn bridge_r51_set_runtime_unknown(",
+        "Bridge: Reconciling | RPC/synchronization/mining: unknown",
+        "Enable Profile in Settings",
+        "Reconciling runtime state.",
+        "setRuntimeError",
+    ] {
+        if !runtime_core.contains(required) {
+            return Err(format!(
+                "Bridge R51 runtime-presentation Rust owner contract missing: {required}"
+            ));
+        }
     }
     Ok(())
 }
@@ -1398,6 +1458,7 @@ pub fn run(root: &Path) -> Result<String, String> {
         .map_err(|error| format!("failed to read {BRIDGE_START_TRACE_SOURCE}: {error}"))?;
     verify_r51_storage_ownership(&full_source, &helper_source)?;
     verify_r51_keys_ownership(&full_source, &helper_source)?;
+    verify_r51_runtime_presentation_ownership(&full_source, &runtime_core_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -2087,6 +2148,44 @@ mod tests {
             verify_r51_keys_ownership(
                 source,
                 &helpers.replace("js_name = bridgeR51Keys", "js_name = missingR51Keys")
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn r51_runtime_presentation_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let runtime_core =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_runtime_core.rs");
+        assert!(verify_r51_runtime_presentation_ownership(source, runtime_core).is_ok());
+        for mutation in [
+            source.replacen(
+                "wasmBridgeR51SetRuntimeButtons(",
+                "kgwBridgeR51SetRuntimeButtons(",
+                1,
+            ),
+            source.replacen(
+                "wasmBridgeR51SetRuntimeUnknown(",
+                "kgwBridgeR51SetRuntimeUnknown(",
+                1,
+            ),
+            source.replace(
+                "bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons",
+                "missingRuntimeButtons as wasmBridgeR51SetRuntimeButtons",
+            ),
+        ] {
+            assert!(verify_r51_runtime_presentation_ownership(&mutation, runtime_core).is_err());
+        }
+        assert!(
+            verify_r51_runtime_presentation_ownership(
+                source,
+                &runtime_core.replace(
+                    "js_name = bridgeR51SetRuntimeUnknown",
+                    "js_name = missingR51SetRuntimeUnknown",
+                ),
             )
             .is_err()
         );
