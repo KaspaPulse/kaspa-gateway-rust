@@ -789,6 +789,38 @@ pub fn bridge_network_policy_message(net: String) -> String {
     policy_message_text(&net)
 }
 
+fn bridge_preview_message_inner(net: &str, message: &str, error: bool) -> bool {
+    let element = bridge_by_id(bridge_element_id(
+        net.to_owned(),
+        "previewStatus".to_owned(),
+    ));
+    if !present(&element) {
+        return false;
+    }
+    set(&element, "textContent", &JsValue::from_str(message));
+    let class_list = property(&element, "classList");
+    let _ = call2(
+        &class_list,
+        "toggle",
+        &JsValue::from_str("kgw-field-error"),
+        &JsValue::from_bool(error),
+    );
+    let tone = if error {
+        "error"
+    } else if message.starts_with("Validating") {
+        "validating"
+    } else {
+        "verified"
+    };
+    let _ = crate::apply_status_tone_js(element, JsValue::from_str(tone));
+    true
+}
+
+#[wasm_bindgen(js_name = bridgePreviewMessage)]
+pub fn bridge_preview_message(net: String, message: String, error: bool) -> bool {
+    bridge_preview_message_inner(&net, &message, error)
+}
+
 #[wasm_bindgen(js_name = bridgeById)]
 pub fn bridge_by_id(id: String) -> JsValue {
     call1(&document(), "getElementById", &JsValue::from_str(&id)).unwrap_or(JsValue::NULL)

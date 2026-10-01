@@ -567,6 +567,54 @@ const startOptionsOwnership = {
   invalidError: startOptionsInvalidError
 };
 
+const previewMessageClasses = new Set();
+const previewMessageNode = new Element();
+previewMessageNode.classList = {
+  contains(name) { return previewMessageClasses.has(String(name)); },
+  toggle(name, force) {
+    const key = String(name);
+    const enabled = force === undefined ? !previewMessageClasses.has(key) : Boolean(force);
+    if (enabled) previewMessageClasses.add(key);
+    else previewMessageClasses.delete(key);
+    return enabled;
+  },
+  add(name) { previewMessageClasses.add(String(name)); },
+  remove(name) { previewMessageClasses.delete(String(name)); }
+};
+elements.set(wasm.bridgeElementId("op262", "previewStatus"), previewMessageNode);
+const previewMessageMissing = wasm.bridgePreviewMessage("op262-missing", "Missing", false);
+const previewMessageValidatingResult = wasm.bridgePreviewMessage(
+  "op262",
+  "Validating effective settings...",
+  false
+);
+const previewMessageValidating = {
+  result: previewMessageValidatingResult,
+  text: String(previewMessageNode.textContent || ""),
+  tone: String(previewMessageNode.dataset.statusTone || ""),
+  errorClass: previewMessageNode.classList.contains("kgw-field-error")
+};
+const previewMessageErrorResult = wasm.bridgePreviewMessage("op262", "Preview failed", true);
+const previewMessageError = {
+  result: previewMessageErrorResult,
+  text: String(previewMessageNode.textContent || ""),
+  tone: String(previewMessageNode.dataset.statusTone || ""),
+  errorClass: previewMessageNode.classList.contains("kgw-field-error")
+};
+const previewMessageVerifiedResult = wasm.bridgePreviewMessage("op262", "Preview verified", false);
+const previewMessageVerified = {
+  result: previewMessageVerifiedResult,
+  text: String(previewMessageNode.textContent || ""),
+  tone: String(previewMessageNode.dataset.statusTone || ""),
+  errorClass: previewMessageNode.classList.contains("kgw-field-error")
+};
+const previewMessageOwnership = {
+  missing: previewMessageMissing,
+  validating: previewMessageValidating,
+  error: previewMessageError,
+  verified: previewMessageVerified
+};
+
 let defaultPathUpdateCalls = 0;
 let defaultPathUpdateNet = "";
 const defaultPathContextCallsBefore = transportCalls.filter(
@@ -712,6 +760,7 @@ const sandbox = {
   wasmBridgeNetworkEnabled: wasm.bridgeNetworkEnabled,
   wasmBridgeById: wasm.bridgeById,
   wasmBridgeElementId: wasm.bridgeElementId,
+  wasmBridgePreviewMessage: wasm.bridgePreviewMessage,
   wasmBridgeChecked: wasm.bridgeChecked,
   wasmBridgeStringifyRuntimeResult: wasm.bridgeStringifyRuntimeResult,
   wasmBridgeNormalizeRuntimeError: wasm.bridgeNormalizeRuntimeError,
@@ -876,6 +925,7 @@ const output = {
   },
   inprocessNodeOwnerGuard,
   startOptionsOwnership,
+  previewMessageOwnership,
   runtimeRunning: {
     liveOnly: api.runtimeRunning("role=node;network=mainnet;running=true"),
     ready: api.runtimeRunning("role=node;network=mainnet;running=true;readiness=READY")
@@ -1348,6 +1398,44 @@ fn verify_start_options_ownership(source: &str, instance_settings: &str) -> Resu
         if !instance_settings.contains(required) {
             return Err(format!(
                 "Bridge start-options Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_preview_message_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for forbidden in [
+        "function kgwBridgePreviewMessage(",
+        "kgwBridgePreviewMessage(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge preview-message JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+    if !source.contains("bridgePreviewMessage as wasmBridgePreviewMessage") {
+        return Err("Bridge preview-message Rust/WASM binding missing".to_owned());
+    }
+    if source.matches("wasmBridgePreviewMessage(").count() != 6 {
+        return Err("Bridge preview-message direct-call count drifted".to_owned());
+    }
+    for required in [
+        "fn bridge_preview_message_inner(",
+        "js_name = bridgePreviewMessage",
+        "pub fn bridge_preview_message(",
+        "\"previewStatus\".to_owned()",
+        "\"kgw-field-error\"",
+        "message.starts_with(\"Validating\")",
+        "\"error\"",
+        "\"validating\"",
+        "\"verified\"",
+        "apply_status_tone_js",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge preview-message Rust owner contract missing: {required}"
             ));
         }
     }
@@ -1865,6 +1953,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_start_options_ownership(&full_source, &instance_settings_source)?;
+    verify_preview_message_ownership(&full_source, &helper_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -1985,6 +2074,68 @@ pub fn run(root: &Path) -> Result<String, String> {
         &actual,
         "/startOptionsOwnership/invalidError",
         json!("CPU threads is outside the supported range"),
+    )?;
+
+    expect(&actual, "/previewMessageOwnership/missing", json!(false))?;
+    expect(
+        &actual,
+        "/previewMessageOwnership/validating/result",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/previewMessageOwnership/validating/text",
+        json!("Validating effective settings..."),
+    )?;
+    expect(
+        &actual,
+        "/previewMessageOwnership/validating/tone",
+        json!("warning"),
+    )?;
+    expect(
+        &actual,
+        "/previewMessageOwnership/validating/errorClass",
+        json!(false),
+    )?;
+    expect(
+        &actual,
+        "/previewMessageOwnership/error/result",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/previewMessageOwnership/error/text",
+        json!("Preview failed"),
+    )?;
+    expect(
+        &actual,
+        "/previewMessageOwnership/error/tone",
+        json!("negative"),
+    )?;
+    expect(
+        &actual,
+        "/previewMessageOwnership/error/errorClass",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/previewMessageOwnership/verified/result",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/previewMessageOwnership/verified/text",
+        json!("Preview verified"),
+    )?;
+    expect(
+        &actual,
+        "/previewMessageOwnership/verified/tone",
+        json!("ready"),
+    )?;
+    expect(
+        &actual,
+        "/previewMessageOwnership/verified/errorClass",
+        json!(false),
     )?;
 
     expect(&actual, "/previewTransport/result", json!("transport-ok"))?;
@@ -2854,6 +3005,41 @@ mod tests {
             instance_settings.replace("\"CPU threads\"", "\"Missing CPU threads\""),
         ] {
             assert!(verify_start_options_ownership(source, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn preview_message_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_preview_message_ownership(source, helpers).is_ok());
+        for mutation in [
+            source.replacen("wasmBridgePreviewMessage(", "kgwBridgePreviewMessage(", 1),
+            source.replace(
+                "bridgePreviewMessage as wasmBridgePreviewMessage",
+                "missingPreviewMessage as wasmBridgePreviewMessage",
+            ),
+            format!(
+                "{source}\nfunction kgwBridgePreviewMessage(net, message) {{ return [net, message]; }}\n"
+            ),
+        ] {
+            assert!(verify_preview_message_ownership(&mutation, helpers).is_err());
+        }
+        for mutation in [
+            helpers.replace(
+                "js_name = bridgePreviewMessage",
+                "js_name = missingBridgePreviewMessage",
+            ),
+            helpers.replace("\"kgw-field-error\"", "\"missing-field-error\""),
+            helpers.replace(
+                "message.starts_with(\"Validating\")",
+                "message.starts_with(\"Checking\")",
+            ),
+        ] {
+            assert!(verify_preview_message_ownership(source, &mutation).is_err());
         }
     }
 

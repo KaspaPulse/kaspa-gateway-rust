@@ -1,4 +1,3 @@
-import { applyStatusTone } from "../../status.js";
 import { BRIDGE_MANAGED, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initBridgeRust, {
@@ -50,6 +49,7 @@ import initBridgeRust, {
   bridgeSamePortValueR98 as wasmBridgeSamePortValueR98,
   bridgeInvokeRuntimeCommand as wasmBridgeInvokeRuntimeCommand,
   bridgePreparePreview as wasmBridgePreparePreview,
+  bridgePreviewMessage as wasmBridgePreviewMessage,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings,
   bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord,
@@ -1238,14 +1238,7 @@ function kgwBridgeEffectiveInprocessNodeSettings(net) {
 
 
 const KGW_BRIDGE_PREVIEW_REQUESTS = new Map();
-function kgwBridgePreviewMessage(net, message, error = false) {
-  const status = wasmBridgeById(wasmBridgeElementId(net, "previewStatus"));
-  if (status) {
-    status.textContent = message;
-    status.classList.toggle("kgw-field-error", error);
-    applyStatusTone(status, error ? "error" : message.startsWith("Validating") ? "validating" : "verified");
-  }
-}
+/* KGW_BRIDGE_PREVIEW_MESSAGE is Rust-owned in bridge_frontend_helpers.rs. */
 function updateCommand(net) {
   const preview = wasmBridgeById(wasmBridgeElementId(net, "commandPreview"));
   if (!preview) return "";
@@ -1266,7 +1259,7 @@ function updateCommand(net) {
     const errors = kgwBridgeValidateForm(net);
     if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
     const payload = buildApplyPayload(net, "kgw_kgw_apply_node_settings_v1");
-    kgwBridgePreviewMessage(net, "Validating effective settings...");
+    wasmBridgePreviewMessage(String(net || ""), "Validating effective settings...", false);
     request.timer = window.setTimeout(async () => {
       try {
         const result = await wasmBridgePreparePreview(String(net || ""), payload);
@@ -1280,16 +1273,16 @@ function updateCommand(net) {
         for (const name of ["appdir", "inprocessAppdirMirror"]) {
           const field = wasmBridgeById(wasmBridgeElementId(net, name)); if (field) { field.value = result.appDir; field.title = result.appDir; }
         }
-        kgwBridgePreviewMessage(net, "Validated by the same settings resolver used by Start. Embedded libraries; no external executable.");
+        wasmBridgePreviewMessage(String(net || ""), "Validated by the same settings resolver used by Start. Embedded libraries; no external executable.", false);
       } catch (error) {
         if (KGW_BRIDGE_PREVIEW_REQUESTS.get(net) !== request) return;
         preview.value = "";
-        kgwBridgePreviewMessage(net, wasmBridgeNormalizeRuntimeError(error), true);
+        wasmBridgePreviewMessage(String(net || ""), wasmBridgeNormalizeRuntimeError(error), true);
       }
     }, 180);
     return payload.bridgeCommandPreview;
   } catch (error) {
-    kgwBridgePreviewMessage(net, wasmBridgeNormalizeRuntimeError(error), true);
+    wasmBridgePreviewMessage(String(net || ""), wasmBridgeNormalizeRuntimeError(error), true);
     return "";
   }
 }
@@ -2573,8 +2566,8 @@ function installActions(root) {
         }
         if (!text) throw new Error("There is no validated value to copy.");
         await wasmBridgeDispatchClipboardWrite(String(net || ""), String(text ?? ""), {characterCount: [...text].length, lineCount: text.split(/\r?\n/).length});
-        kgwBridgePreviewMessage(net, action === "copy-path" ? "Data directory copied." : "Effective settings copied.");
-      })().catch(error => kgwBridgePreviewMessage(net, "Copy failed: " + wasmBridgeNormalizeRuntimeError(error), true));
+        wasmBridgePreviewMessage(String(net || ""), action === "copy-path" ? "Data directory copied." : "Effective settings copied.", false);
+      })().catch(error => wasmBridgePreviewMessage(String(net || ""), "Copy failed: " + wasmBridgeNormalizeRuntimeError(error), true));
       return;
     }
 
