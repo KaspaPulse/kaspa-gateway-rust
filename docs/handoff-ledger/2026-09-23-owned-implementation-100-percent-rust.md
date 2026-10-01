@@ -273,9 +273,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP282 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP283 - Bridge settings-section grouping Rust/WASM ownership (INTENT)
+## OP283 - Bridge settings-section grouping Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP282 closeout `3054f9351557a6aea4983eeb91763624a5ec4803`; BASE_TREE `12a02608d375a9d0bdfff08bafa60797fad216fe`; worktree clean at intent time.
-- BOUNDARY: move `renderSections` settings-card grouping/layout orchestration into Rust/WASM while preserving only the in-process node-settings renderer as an explicit callback for its own later boundary. Rust owns canonical Bridge card renderer aggregation, card extraction/filtering, grouping/order, mainnet/testnet policy branching, dangerous-panel extraction, ungrouped-field fail-closed detection, difficulty datalist prefix, and settings-tab rendering.
-- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; grouping/order and mainnet/testnet policy preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `renderSections` settings-card grouping/layout orchestration moved into Rust/WASM `bridgeRenderSectionsUi`; JavaScript preserves only the in-process node-settings renderer callback for its own later boundary. Rust owns canonical Bridge card renderer aggregation, card extraction/filtering, grouping/order, mainnet/testnet policy branching, dangerous-panel extraction, ungrouped-field fail-closed detection, difficulty datalist prefix, and settings-tab rendering.
+- IMPLEMENTATION_CHECKPOINT: `e6b3143c6212c82ed6d3bbfdffcd98dacbaeb254`, tree `6d184e08f4d45a9c05ef6b06443ba6416eeb8a64`. Closeout generation 2274.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 302/302 plus auxiliary suites; targeted settings-sections and instances-renderer regressions; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: the now-dead JavaScript `renderInstances` wrapper and its generated-WASM binding were retired because the Rust settings-section owner calls the Rust instances renderer directly; the renderer gate now fails closed on any JavaScript reintroduction while preserving the Rust owner contract.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP283 qualification unless invalidated.
+- PUSHED: NO.
