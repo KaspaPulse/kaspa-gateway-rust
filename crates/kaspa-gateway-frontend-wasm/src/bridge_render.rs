@@ -203,6 +203,427 @@ pub fn bridge_difficulty_datalist_id_r16c() -> String {
     DIFFICULTY_DATALIST_ID.to_owned()
 }
 
+fn inprocess_label(key: &str, fallback: &str) -> String {
+    let value =
+        crate::bridge_frontend_helpers::bridge_i18n_text_r41(key.to_owned(), fallback.to_owned());
+    escape_html_text(&crate::js_string_owned(&value))
+}
+
+fn inprocess_toggle(net: &str, name: &str) -> String {
+    crate::bridge_command_options::bridge_command_inline_toggle_r7(net.to_owned(), name.to_owned())
+}
+
+fn inprocess_toggle_input(
+    net: &str,
+    name: &str,
+    i18n_key: &str,
+    fallback: &str,
+    input_type: &str,
+    attrs: &str,
+    value: &str,
+) -> String {
+    format!(
+        r#"<div class="bridge-v7-card">
+      <span class="kgw-command-option-title-row-r8e">
+        {}
+        <span class="kgw-command-option-title-text-r8e" data-i18n="{}">{}</span>
+      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
+      <input id="{}" type="{}" {} value="{}">
+    </div>"#,
+        inprocess_toggle(net, name),
+        escape_html_text(i18n_key),
+        inprocess_label(i18n_key, fallback),
+        element_id(net, name),
+        escape_html_text(input_type),
+        attrs,
+        escape_html_text(value),
+    )
+}
+
+fn inprocess_check(
+    net: &str,
+    name: &str,
+    i18n_key: &str,
+    fallback: &str,
+    checked: bool,
+    danger: bool,
+) -> String {
+    format!(
+        r#"<label class="bridge-v7-card check{}">
+            <input id="{}" type="checkbox"{}>
+            <span data-i18n="{}">{}</span>
+          </label>"#,
+        if danger { " danger" } else { "" },
+        element_id(net, name),
+        if checked { " checked" } else { "" },
+        escape_html_text(i18n_key),
+        inprocess_label(i18n_key, fallback),
+    )
+}
+
+#[wasm_bindgen(js_name = bridgeRenderInprocessNodeSettingsUi)]
+pub fn bridge_render_inprocess_node_settings_ui(profile: JsValue) -> String {
+    let net = profile_string(&profile, "key");
+    if net.is_empty() {
+        return String::new();
+    }
+    let testnet = profile_bool(&profile, "testnet");
+    let netsuffix = profile_string(&profile, "netsuffix");
+    let kaspad_port = profile_string(&profile, "kaspadPort");
+    let testnet_args = if testnet {
+        if netsuffix.is_empty() {
+            "--testnet".to_owned()
+        } else {
+            format!("--testnet --netsuffix={}", escape_html_text(&netsuffix))
+        }
+    } else {
+        "mainnet".to_owned()
+    };
+
+    let tabs = [
+        ("basic", "bridge.inprocessNodeSettings.tab.basic", "Basic"),
+        ("rpc", "bridge.inprocessNodeSettings.tab.rpc", "RPC"),
+        (
+            "storage",
+            "bridge.inprocessNodeSettings.tab.storage",
+            "Storage / Index",
+        ),
+        (
+            "p2p",
+            "bridge.inprocessNodeSettings.tab.p2p",
+            "P2P / Network",
+        ),
+        (
+            "perf",
+            "bridge.inprocessNodeSettings.tab.performance",
+            "Performance / Logs",
+        ),
+        (
+            "advanced",
+            "bridge.inprocessNodeSettings.tab.advanced",
+            "Advanced",
+        ),
+        (
+            "danger",
+            "bridge.inprocessNodeSettings.tab.dangerous",
+            "Dangerous",
+        ),
+    ];
+    let tab_buttons = tabs
+        .iter()
+        .enumerate()
+        .map(|(index, (key, i18n_key, fallback))| {
+            format!(
+                r#"<button type="button" class="bridge-v12d-node-tab{}" data-net="{}" data-bridge-inprocess-node-tab="{}">{}</button>"#,
+                if index == 0 { " active" } else { "" },
+                escape_html_text(&net),
+                key,
+                inprocess_label(i18n_key, fallback),
+            )
+        })
+        .collect::<String>();
+
+    let rpc_listen = inprocess_toggle_input(
+        &net,
+        "inprocessRpcListen",
+        "bridge.inprocessNodeSettings.rpcListen",
+        "--rpclisten",
+        "text",
+        "",
+        &format!("127.0.0.1:{}", escape_html_text(&kaspad_port)),
+    );
+    let rpc_borsh = inprocess_toggle_input(
+        &net,
+        "inprocessRpcListenBorsh",
+        "bridge.inprocessNodeSettings.rpcListenBorsh",
+        "--rpclisten-borsh",
+        "text",
+        "",
+        "",
+    );
+    let rpc_json = inprocess_toggle_input(
+        &net,
+        "inprocessRpcListenJson",
+        "bridge.inprocessNodeSettings.rpcListenJson",
+        "--rpclisten-json",
+        "text",
+        "",
+        "",
+    );
+    let listen = inprocess_toggle_input(
+        &net,
+        "inprocessListen",
+        "bridge.inprocessNodeSettings.listen",
+        "--listen",
+        "text",
+        "",
+        "",
+    );
+    let add_peer = inprocess_toggle_input(
+        &net,
+        "inprocessAddPeer",
+        "bridge.inprocessNodeSettings.addPeer",
+        "--addpeer",
+        "text",
+        "",
+        "",
+    );
+    let connect = inprocess_toggle_input(
+        &net,
+        "inprocessConnect",
+        "bridge.inprocessNodeSettings.connect",
+        "--connect",
+        "text",
+        "",
+        "",
+    );
+    let max_inpeers = inprocess_toggle_input(
+        &net,
+        "inprocessMaxInpeers",
+        "bridge.inprocessNodeSettings.maxInpeers",
+        "--maxinpeers",
+        "number",
+        r#"min="0" max="32" step="1""#,
+        "32",
+    );
+    let outpeers = inprocess_toggle_input(
+        &net,
+        "inprocessOutpeers",
+        "bridge.inprocessNodeSettings.outpeers",
+        "--outpeers",
+        "number",
+        r#"min="0" max="8" step="1""#,
+        "8",
+    );
+    let perf_interval = inprocess_toggle_input(
+        &net,
+        "inprocessPerfMetricsIntervalSec",
+        "bridge.inprocessNodeSettings.perfMetricsIntervalSec",
+        "--perf-metrics-interval-sec",
+        "number",
+        r#"min="1" step="1""#,
+        "10",
+    );
+    let log_level = inprocess_toggle_input(
+        &net,
+        "inprocessLogLevel",
+        "bridge.inprocessNodeSettings.logLevel",
+        "--loglevel",
+        "text",
+        "",
+        "info",
+    );
+    let ram_scale = inprocess_toggle_input(
+        &net,
+        "inprocessRamScale",
+        "bridge.inprocessNodeSettings.ramScale",
+        "--ram-scale",
+        "number",
+        r#"min="0.1" step="0.1""#,
+        "1",
+    );
+    let configfile = inprocess_toggle_input(
+        &net,
+        "inprocessConfigfile",
+        "bridge.inprocessNodeSettings.configfile",
+        "--configfile",
+        "text",
+        r#"placeholder="unsupported: managed ownership""#,
+        "",
+    );
+    let override_params = inprocess_toggle_input(
+        &net,
+        "inprocessOverrideParamsFile",
+        "bridge.inprocessNodeSettings.overrideParamsFile",
+        "--override-params-file",
+        "text",
+        "",
+        "",
+    );
+    let async_threads = bridge_card_input(
+        net.clone(),
+        "inprocessAsyncThreads".to_owned(),
+        "--async-threads".to_owned(),
+        "16".to_owned(),
+        String::new(),
+        String::new(),
+        String::new(),
+    );
+
+    format!(
+        r#"
+    <div class="bridge-v12d-inprocess-node-settings bridge-v12d-inprocess-inactive" data-net="{net}" data-bridge-inprocess-node-settings="{net}" data-kgw-owner="KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D">
+      <div class="bridge-v12d-node-tabs">{tab_buttons}</div>
+
+      <section class="bridge-v12d-node-panel active" data-net="{net}" data-bridge-inprocess-node-panel="basic">
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          <div class="bridge-v7-card span2">
+            <span data-i18n="bridge.inprocessNodeSettings.appdir">{appdir_label}</span>
+            <input id="{appdir_id}" type="text" value="" readonly>
+          </div>
+          <div class="bridge-v7-card span2">
+            <span data-i18n="bridge.inprocessNodeSettings.testnet">{testnet_label}</span>
+            <input id="{network_args_id}" type="text" value="{testnet_args}" readonly>
+          </div>
+        </div>
+      </section>
+
+      <section class="bridge-v12d-node-panel" data-net="{net}" data-bridge-inprocess-node-panel="rpc" hidden>
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          {rpc_listen}
+          {rpc_borsh}
+          {rpc_json}
+        </div>
+      </section>
+
+      <section class="bridge-v12d-node-panel" data-net="{net}" data-bridge-inprocess-node-panel="storage" hidden>
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          {utxo}
+          {archival}
+        </div>
+      </section>
+
+      <section class="bridge-v12d-node-panel" data-net="{net}" data-bridge-inprocess-node-panel="p2p" hidden>
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          {listen}
+          {add_peer}
+          {connect}
+          {disable_upnp}
+          {max_inpeers}
+          {outpeers}
+        </div>
+      </section>
+
+      <section class="bridge-v12d-node-panel" data-net="{net}" data-bridge-inprocess-node-panel="perf" hidden>
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          {async_threads}
+          {perf_metrics}
+          {perf_interval}
+          {log_level}
+          {ram_scale}
+        </div>
+      </section>
+
+      <section class="bridge-v12d-node-panel" data-net="{net}" data-bridge-inprocess-node-panel="advanced" hidden>
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          {configfile}
+          {yes}
+        </div>
+      </section>
+
+      <p class="kgw-danger-warning">Unsafe RPC exposes RPC beyond loopback. Unsynced mining bypasses synchronization. Enable only when you understand the risk.</p>
+      <section class="bridge-v12d-node-panel" data-net="{net}" data-bridge-inprocess-node-panel="danger" hidden>
+        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
+          {unsafe_rpc}
+          {override_params}
+          {devnet}
+          {simnet}
+          {unsynced}
+        </div>
+      </section>
+    </div>"#,
+        net = escape_html_text(&net),
+        tab_buttons = tab_buttons,
+        appdir_label = inprocess_label(
+            "bridge.inprocessNodeSettings.appdir",
+            "same --appdir / database path"
+        ),
+        appdir_id = element_id(&net, "inprocessAppdirMirror"),
+        testnet_label = inprocess_label(
+            "bridge.inprocessNodeSettings.testnet",
+            "kaspad network args"
+        ),
+        network_args_id = element_id(&net, "inprocessNetworkArgs"),
+        testnet_args = testnet_args,
+        rpc_listen = rpc_listen,
+        rpc_borsh = rpc_borsh,
+        rpc_json = rpc_json,
+        utxo = inprocess_check(
+            &net,
+            "inprocessUtxoIndex",
+            "bridge.inprocessNodeSettings.utxoIndex",
+            "--utxoindex",
+            true,
+            false
+        ),
+        archival = inprocess_check(
+            &net,
+            "inprocessArchival",
+            "bridge.inprocessNodeSettings.archival",
+            "--archival",
+            false,
+            false
+        ),
+        listen = listen,
+        add_peer = add_peer,
+        connect = connect,
+        disable_upnp = inprocess_check(
+            &net,
+            "inprocessDisableUpnp",
+            "bridge.inprocessNodeSettings.disableUpnp",
+            "--disable-upnp",
+            true,
+            false
+        ),
+        max_inpeers = max_inpeers,
+        outpeers = outpeers,
+        async_threads = async_threads,
+        perf_metrics = inprocess_check(
+            &net,
+            "inprocessPerfMetrics",
+            "bridge.inprocessNodeSettings.perfMetrics",
+            "--perf-metrics",
+            true,
+            false
+        ),
+        perf_interval = perf_interval,
+        log_level = log_level,
+        ram_scale = ram_scale,
+        configfile = configfile,
+        yes = inprocess_check(
+            &net,
+            "inprocessYes",
+            "bridge.inprocessNodeSettings.yes",
+            "--yes",
+            true,
+            false
+        ),
+        unsafe_rpc = inprocess_check(
+            &net,
+            "inprocessUnsafeRpc",
+            "bridge.inprocessNodeSettings.unsafeRpc",
+            "--unsaferpc",
+            false,
+            true
+        ),
+        override_params = override_params,
+        devnet = inprocess_check(
+            &net,
+            "inprocessDevnet",
+            "bridge.inprocessNodeSettings.devnet",
+            "--devnet",
+            false,
+            true
+        ),
+        simnet = inprocess_check(
+            &net,
+            "inprocessSimnet",
+            "bridge.inprocessNodeSettings.simnet",
+            "--simnet",
+            false,
+            true
+        ),
+        unsynced = inprocess_check(
+            &net,
+            "inprocessEnableUnsyncedMining",
+            "bridge.inprocessNodeSettings.enableUnsyncedMining",
+            "--enable-unsynced-mining",
+            false,
+            true
+        ),
+    )
+}
+
 #[wasm_bindgen(js_name = bridgeDifficultyDatalistR16C)]
 pub fn bridge_difficulty_datalist_r16c() -> String {
     difficulty_datalist_html()

@@ -17,6 +17,7 @@ const BRIDGE_COMMAND_OPTIONS_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_command_options.rs";
 const BRIDGE_INSTANCE_UI_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_instance_ui.rs";
+const BRIDGE_RENDER_SOURCE: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_render.rs";
 const WASM_JS: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 const WASM_BIN: &str =
@@ -1878,6 +1879,77 @@ fn verify_instance_refresh_ownership(source: &str, instance_ui: &str) -> Result<
     Ok(())
 }
 
+fn verify_inprocess_node_settings_renderer_ownership(
+    source: &str,
+    bridge_render: &str,
+) -> Result<(), String> {
+    for required in [
+        "bridgeRenderInprocessNodeSettingsUi as wasmBridgeRenderInprocessNodeSettingsUi",
+        "function renderInprocessNodeSettings(net) {",
+        "return wasmBridgeRenderInprocessNodeSettingsUi(net || {});",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge in-process node-settings Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    let wrapper = slice_between(source, "function renderInprocessNodeSettings(net) {", "\n}")?;
+    for forbidden in [
+        "const tabs = [",
+        "document.createElement(",
+        "wasmBridgeI18nTextR41(",
+        "wasmBridgeCommandInlineToggleR7(",
+        "wasmBridgeCardInput(",
+        "wasmBridgeElementId(",
+        "wasmBridgeEscapeHtml(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge in-process node-settings JavaScript renderer remains: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeRenderInprocessNodeSettingsUi",
+        "pub fn bridge_render_inprocess_node_settings_ui(",
+        "bridge.inprocessNodeSettings.tab.basic",
+        "bridge.inprocessNodeSettings.tab.dangerous",
+        "inprocessRpcListen",
+        "inprocessRpcListenBorsh",
+        "inprocessRpcListenJson",
+        "inprocessUtxoIndex",
+        "inprocessArchival",
+        "inprocessListen",
+        "inprocessAddPeer",
+        "inprocessConnect",
+        "inprocessDisableUpnp",
+        "inprocessMaxInpeers",
+        "inprocessOutpeers",
+        "inprocessAsyncThreads",
+        "inprocessPerfMetrics",
+        "inprocessPerfMetricsIntervalSec",
+        "inprocessLogLevel",
+        "inprocessRamScale",
+        "inprocessConfigfile",
+        "inprocessYes",
+        "inprocessUnsafeRpc",
+        "inprocessOverrideParamsFile",
+        "inprocessDevnet",
+        "inprocessSimnet",
+        "inprocessEnableUnsyncedMining",
+        "Unsafe RPC exposes RPC beyond loopback.",
+        "bridge_command_inline_toggle_r7(",
+    ] {
+        if !bridge_render.contains(required) {
+            return Err(format!(
+                "Bridge in-process node-settings Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_settings_sections_ownership(source: &str, helpers: &str) -> Result<(), String> {
     for required in [
         "bridgeRenderSectionsUi as wasmBridgeRenderSectionsUi",
@@ -3310,6 +3382,8 @@ pub fn run(root: &Path) -> Result<String, String> {
         .map_err(|error| format!("failed to read {BRIDGE_COMMAND_OPTIONS_SOURCE}: {error}"))?;
     let instance_ui_source = fs::read_to_string(root.join(BRIDGE_INSTANCE_UI_SOURCE))
         .map_err(|error| format!("failed to read {BRIDGE_INSTANCE_UI_SOURCE}: {error}"))?;
+    let bridge_render_source = fs::read_to_string(root.join(BRIDGE_RENDER_SOURCE))
+        .map_err(|error| format!("failed to read {BRIDGE_RENDER_SOURCE}: {error}"))?;
     verify_r51_storage_ownership(&full_source, &helper_source)?;
     verify_r51_keys_ownership(&full_source, &helper_source)?;
     verify_r51_runtime_presentation_ownership(&full_source, &runtime_core_source)?;
@@ -3323,6 +3397,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_instance_click_owner_ownership(&full_source, &instance_ui_source)?;
     verify_visible_instance_owners_ownership(&full_source, &instance_ui_source)?;
     verify_instance_refresh_ownership(&full_source, &instance_ui_source)?;
+    verify_inprocess_node_settings_renderer_ownership(&full_source, &bridge_render_source)?;
     verify_settings_sections_ownership(&full_source, &helper_source)?;
     verify_instances_renderer_ownership(&full_source, &instance_ui_source)?;
     verify_instance_command_option_ownership(&full_source, &command_options_source)?;
@@ -4685,6 +4760,29 @@ mod tests {
         ] {
             assert!(verify_instance_refresh_ownership(source, &mutation).is_err());
         }
+    }
+
+    #[test]
+    fn inprocess_node_settings_renderer_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let bridge_render =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_render.rs");
+        assert!(verify_inprocess_node_settings_renderer_ownership(source, bridge_render).is_ok());
+
+        let legacy = source.replacen(
+            "function renderInprocessNodeSettings(net) {",
+            "function renderInprocessNodeSettings(net) {\n  const tabs = []; const template = document.createElement(\"template\");",
+            1,
+        );
+        assert!(verify_inprocess_node_settings_renderer_ownership(&legacy, bridge_render).is_err());
+
+        let missing = bridge_render.replace(
+            "js_name = bridgeRenderInprocessNodeSettingsUi",
+            "js_name = missingRenderInprocessNodeSettingsUi",
+        );
+        assert!(verify_inprocess_node_settings_renderer_ownership(source, &missing).is_err());
     }
 
     #[test]

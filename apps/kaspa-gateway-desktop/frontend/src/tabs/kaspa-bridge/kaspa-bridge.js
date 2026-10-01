@@ -4,13 +4,11 @@ import initBridgeRust, {
   bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5 as wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5,
   bridgeById as wasmBridgeById,
   bridgeChecked as wasmBridgeChecked,
-  bridgeCommandInlineToggleR7 as wasmBridgeCommandInlineToggleR7,
   bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7,
   bridgeCommandSetOptionR7 as wasmBridgeCommandSetOptionR7,
   bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
   bridgeBuildCommandLinesUi as wasmBridgeBuildCommandLinesUi,
   bridgeBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi,
-  bridgeCardInput as wasmBridgeCardInput,
   bridgeNormalizeRuntimeError as wasmBridgeNormalizeRuntimeError,
   bridgeV7BlockInprocessIfNodeOwnerRunning as wasmBridgeV7BlockInprocessIfNodeOwnerRunning,
   bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons,
@@ -51,9 +49,7 @@ import initBridgeRust, {
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeElementId as wasmBridgeElementId,
-  bridgeEscapeHtml as wasmBridgeEscapeHtml,
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
-  bridgeI18nTextR41 as wasmBridgeI18nTextR41,
   bridgeInstallLogAutoScrollControls as wasmBridgeInstallLogAutoScrollControls,
   bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
   bridgeNormalizeNetwork as wasmBridgeNormalizeNetwork,
@@ -61,6 +57,7 @@ import initBridgeRust, {
   bridgeSaveLastNetwork as wasmBridgeSaveLastNetwork,
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
+  bridgeRenderInprocessNodeSettingsUi as wasmBridgeRenderInprocessNodeSettingsUi,
   bridgeRenderSectionsUi as wasmBridgeRenderSectionsUi,
   bridgeRenderNetworkPanelUi as wasmBridgeRenderNetworkPanelUi,
   bridgeRenderAllNetworksUi as wasmBridgeRenderAllNetworksUi,
@@ -287,206 +284,7 @@ function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
  */
 // KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D
 function renderInprocessNodeSettings(net) {
-  const tabs = [
-    ["basic", wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.tab.basic", "Basic")],
-    ["rpc", wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.tab.rpc", "RPC")],
-    ["storage", wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.tab.storage", "Storage / Index")],
-    ["p2p", wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.tab.p2p", "P2P / Network")],
-    ["perf", wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.tab.performance", "Performance / Logs")],
-    ["advanced", wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.tab.advanced", "Advanced")],
-    ["danger", wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.tab.dangerous", "Dangerous")]
-  ];
-
-  const tabButtons = tabs.map(([key, label], index) =>
-    `<button type="button" class="bridge-v12d-node-tab${index === 0 ? " active" : ""}" data-net="${net.key}" data-bridge-inprocess-node-tab="${key}">${wasmBridgeEscapeHtml(label)}</button>`
-  ).join("");
-
-  const testnetArgs = net.testnet
-    ? `--testnet${net.netsuffix ? " --netsuffix=" + wasmBridgeEscapeHtml(net.netsuffix) : ""}`
-    : "mainnet";
-
-  const markup = `
-    <div class="bridge-v12d-inprocess-node-settings bridge-v12d-inprocess-inactive" data-net="${net.key}" data-bridge-inprocess-node-settings="${net.key}" data-kgw-owner="KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D">
-      <div class="bridge-v12d-node-tabs">${tabButtons}</div>
-
-      <section class="bridge-v12d-node-panel active" data-net="${net.key}" data-bridge-inprocess-node-panel="basic">
-        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
-          <div class="bridge-v7-card span2">
-            <span data-i18n="bridge.inprocessNodeSettings.appdir">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.appdir", "same --appdir / database path"))}</span>
-            <input id="${wasmBridgeElementId(net.key, "inprocessAppdirMirror")}" type="text" value="" readonly>
-          </div>
-          <div class="bridge-v7-card span2">
-            <span data-i18n="bridge.inprocessNodeSettings.testnet">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.testnet", "kaspad network args"))}</span>
-            <input id="${wasmBridgeElementId(net.key, "inprocessNetworkArgs")}" type="text" value="${wasmBridgeEscapeHtml(testnetArgs)}" readonly>
-          </div>
-        </div>
-      </section>
-
-      <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="rpc" hidden>
-        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessRpcListen")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.rpcListen">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.rpcListen", "--rpclisten"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessRpcListen")}" type="text" value="127.0.0.1:${wasmBridgeEscapeHtml(net.kaspadPort)}">
-          </div>
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessRpcListenBorsh")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.rpcListenBorsh">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.rpcListenBorsh", "--rpclisten-borsh"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessRpcListenBorsh")}" type="text" value="">
-          </div>
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessRpcListenJson")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.rpcListenJson">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.rpcListenJson", "--rpclisten-json"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessRpcListenJson")}" type="text" value="">
-          </div>
-          <label class="bridge-v7-card check danger">
-            <input id="${wasmBridgeElementId(net.key, "inprocessUnsafeRpc")}" type="checkbox">
-            <span data-i18n="bridge.inprocessNodeSettings.unsafeRpc">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.unsafeRpc", "--unsaferpc"))}</span>
-          </label>
-        </div>
-      </section>
-
-      <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="storage" hidden>
-        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
-          <label class="bridge-v7-card check">
-            <input id="${wasmBridgeElementId(net.key, "inprocessUtxoIndex")}" type="checkbox" checked>
-            <span data-i18n="bridge.inprocessNodeSettings.utxoIndex">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.utxoIndex", "--utxoindex"))}</span>
-          </label>
-          <label class="bridge-v7-card check">
-            <input id="${wasmBridgeElementId(net.key, "inprocessArchival")}" type="checkbox">
-            <span data-i18n="bridge.inprocessNodeSettings.archival">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.archival", "--archival"))}</span>
-          </label>
-        </div>
-      </section>
-
-      <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="p2p" hidden>
-        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessListen")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.listen">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.listen", "--listen"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessListen")}" type="text" value="">
-          </div>
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessAddPeer")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.addPeer">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.addPeer", "--addpeer"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessAddPeer")}" type="text" value="">
-          </div>
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessConnect")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.connect">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.connect", "--connect"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessConnect")}" type="text" value="">
-          </div>
-          <label class="bridge-v7-card check">
-            <input id="${wasmBridgeElementId(net.key, "inprocessDisableUpnp")}" type="checkbox" checked>
-            <span data-i18n="bridge.inprocessNodeSettings.disableUpnp">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.disableUpnp", "--disable-upnp"))}</span>
-          </label>
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessMaxInpeers")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.maxInpeers">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.maxInpeers", "--maxinpeers"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessMaxInpeers")}" type="number" min="0" max="32" step="1" value="32">
-          </div>
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessOutpeers")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.outpeers">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.outpeers", "--outpeers"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessOutpeers")}" type="number" min="0" max="8" step="1" value="8">
-          </div>
-        </div>
-      </section>
-
-      <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="perf" hidden>
-        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
-          ${wasmBridgeCardInput(String(net.key || ""), "inprocessAsyncThreads", "--async-threads", "16", "", "", "")}
-          <label class="bridge-v7-card check">
-            <input id="${wasmBridgeElementId(net.key, "inprocessPerfMetrics")}" type="checkbox" checked>
-            <span data-i18n="bridge.inprocessNodeSettings.perfMetrics">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.perfMetrics", "--perf-metrics"))}</span>
-          </label>
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessPerfMetricsIntervalSec")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.perfMetricsIntervalSec">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.perfMetricsIntervalSec", "--perf-metrics-interval-sec"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessPerfMetricsIntervalSec")}" type="number" min="1" step="1" value="10">
-          </div>
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessLogLevel")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.logLevel">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.logLevel", "--loglevel"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessLogLevel")}" type="text" value="info">
-          </div>
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessRamScale")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.ramScale">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.ramScale", "--ram-scale"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessRamScale")}" type="number" min="0.1" step="0.1" value="1">
-          </div>
-        </div>
-      </section>
-
-      <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="advanced" hidden>
-        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessConfigfile")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.configfile">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.configfile", "--configfile"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessConfigfile")}" type="text" value="" placeholder="unsupported: managed ownership">
-          </div>
-          <label class="bridge-v7-card check">
-            <input id="${wasmBridgeElementId(net.key, "inprocessYes")}" type="checkbox" checked>
-            <span data-i18n="bridge.inprocessNodeSettings.yes">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.yes", "--yes"))}</span>
-          </label>
-        </div>
-      </section>
-
-      <section class="bridge-v12d-node-panel" data-net="${net.key}" data-bridge-inprocess-node-panel="danger" hidden>
-        <div class="bridge-v7-grid bridge-v12d-inprocess-grid">
-          <div class="bridge-v7-card">
-      <span class="kgw-command-option-title-row-r8e">
-        ${wasmBridgeCommandInlineToggleR7(String(net.key || ""), "inprocessOverrideParamsFile")}
-        <span class="kgw-command-option-title-text-r8e" data-i18n="bridge.inprocessNodeSettings.overrideParamsFile">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.overrideParamsFile", "--override-params-file"))}</span>
-      </span> <!-- KGW_BRIDGE_INPROCESS_COMMAND_CHECKBOX_R13B -->
-      <input id="${wasmBridgeElementId(net.key, "inprocessOverrideParamsFile")}" type="text" value="">
-          </div>
-          <label class="bridge-v7-card check danger">
-            <input id="${wasmBridgeElementId(net.key, "inprocessDevnet")}" type="checkbox">
-            <span data-i18n="bridge.inprocessNodeSettings.devnet">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.devnet", "--devnet"))}</span>
-          </label>
-          <label class="bridge-v7-card check danger">
-            <input id="${wasmBridgeElementId(net.key, "inprocessSimnet")}" type="checkbox">
-            <span data-i18n="bridge.inprocessNodeSettings.simnet">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.simnet", "--simnet"))}</span>
-          </label>
-          <label class="bridge-v7-card check danger">
-            <input id="${wasmBridgeElementId(net.key, "inprocessEnableUnsyncedMining")}" type="checkbox">
-            <span data-i18n="bridge.inprocessNodeSettings.enableUnsyncedMining">${wasmBridgeEscapeHtml(wasmBridgeI18nTextR41("bridge.inprocessNodeSettings.enableUnsyncedMining", "--enable-unsynced-mining"))}</span>
-          </label>
-        </div>
-      </section>
-    </div>`;
-  const template = document.createElement("template");
-  template.innerHTML = markup;
-  const danger = template.content.querySelector('[data-bridge-inprocess-node-panel="danger"] .bridge-v7-grid');
-  const unsafe = template.content.querySelector('[id$="-inprocessUnsafeRpc"]')?.closest(".bridge-v7-card");
-  if (danger && unsafe) danger.prepend(unsafe);
-  if (danger) danger.insertAdjacentHTML("beforebegin", '<p class="kgw-danger-warning">Unsafe RPC exposes RPC beyond loopback. Unsynced mining bypasses synchronization. Enable only when you understand the risk.</p>');
-  return template.innerHTML;
+  return wasmBridgeRenderInprocessNodeSettingsUi(net || {});
 }
 // KGW_BRIDGE_SETTINGS_SECTIONS_RUST_OWNER_V1
 function renderSections(net) {
