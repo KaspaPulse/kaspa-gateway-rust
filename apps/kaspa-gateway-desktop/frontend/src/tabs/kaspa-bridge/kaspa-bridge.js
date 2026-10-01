@@ -27,6 +27,7 @@ import initBridgeRust, {
   bridgeR51SetRuntimeUnknown as wasmBridgeR51SetRuntimeUnknown,
   bridgeSetRuntimeErrorV1 as wasmBridgeSetRuntimeErrorV1,
   bridgeSetRuntimeActivityV1 as wasmBridgeSetRuntimeActivityV1,
+  bridgeMarkRestartRequiredV1 as wasmBridgeMarkRestartRequiredV1,
   bridgeR51RefreshOne as wasmBridgeR51RefreshOne,
   bridgeR51StartLiveRefresh as wasmBridgeR51StartLiveRefresh,
   bridgeR51CaptureFactoryDefaults as wasmBridgeR51CaptureFactoryDefaults,
@@ -1591,17 +1592,6 @@ async function invokeBridgeIntegratedRuntime(command, net) {
 
 
 // KGW_BRIDGE_INPROCESS_SAME_DB_OWNER_V7
-function kgwBridgeMarkRestartRequiredV1(net) {
-  const authority = wasmBridgeById(wasmBridgeElementId(net, "settingsAuthority"));
-  if (!authority) return;
-  const status = wasmBridgeById(wasmBridgeElementId(net, "runtimeStatus"));
-  const running = /running/i.test(String(status?.textContent || ""));
-  authority.textContent = running
-    ? "Restart required to apply changed effective settings"
-    : "Effective settings apply on next Start";
-  authority.dataset.restartRequired = running ? "true" : "false";
-}
-
 async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {
   if (wasmBridgeNodeMode(String(net || "")) !== "inprocess") return false;
 
@@ -2478,7 +2468,7 @@ function installActions(root) {
     if (target.readOnly || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
 
     const net = netFromEvent(event);
-    kgwBridgeMarkRestartRequiredV1(net);
+    wasmBridgeMarkRestartRequiredV1(net);
     scopedUpdate(net, event.isTrusted ? "trusted-input" : "programmatic-input");
   }, true);
 
@@ -2488,7 +2478,7 @@ function installActions(root) {
     if (target.readOnly || target.id.endsWith("-commandPreview") || target.id.endsWith("-logOutput")) return;
 
     const net = netFromEvent(event);
-    kgwBridgeMarkRestartRequiredV1(net);
+    wasmBridgeMarkRestartRequiredV1(net);
 
     if (target.matches("[data-bridge-network-enabled]")) {
       const profile = wasmBridgeNetworkProfile(net);

@@ -178,6 +178,42 @@ fn set_runtime_activity_inner(net: &str, message: &JsValue, state: &JsValue) -> 
     true
 }
 
+fn mark_restart_required_inner(net: &str) -> bool {
+    let authority = crate::bridge_frontend_helpers::bridge_by_id(
+        crate::bridge_frontend_helpers::bridge_element_id(
+            net.to_owned(),
+            "settingsAuthority".to_owned(),
+        ),
+    );
+    if !present(&authority) {
+        return false;
+    }
+    let status = crate::bridge_frontend_helpers::bridge_by_id(
+        crate::bridge_frontend_helpers::bridge_element_id(
+            net.to_owned(),
+            "runtimeStatus".to_owned(),
+        ),
+    );
+    let running = text(&property(&status, "textContent"))
+        .to_ascii_lowercase()
+        .contains("running");
+    set(
+        &authority,
+        "textContent",
+        &JsValue::from_str(if running {
+            "Restart required to apply changed effective settings"
+        } else {
+            "Effective settings apply on next Start"
+        }),
+    );
+    set(
+        &dataset(&authority),
+        "restartRequired",
+        &JsValue::from_str(if running { "true" } else { "false" }),
+    );
+    true
+}
+
 fn r51_set_runtime_error(net: &str, message: &str, source: &str) {
     let _ = set_runtime_error_inner(net, &JsValue::from_str(message), &JsValue::from_str(source));
 }
@@ -870,6 +906,11 @@ pub fn bridge_r51_set_runtime_buttons(
         };
         set(&stop, "title", &JsValue::from_str(title));
     }
+}
+
+#[wasm_bindgen(js_name = bridgeMarkRestartRequiredV1)]
+pub fn bridge_mark_restart_required_v1(net: String) -> bool {
+    mark_restart_required_inner(&net)
 }
 
 #[wasm_bindgen(js_name = bridgeSetRuntimeErrorV1)]

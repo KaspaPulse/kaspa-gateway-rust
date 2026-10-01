@@ -22,10 +22,6 @@ const SLICES: &[(&str, &str)] = &[
         "const bridgeInstances = {",
     ),
     (
-        "function kgwBridgeMarkRestartRequiredV1(",
-        "async function kgwBridgeV7BlockInprocessIfNodeOwnerRunning",
-    ),
-    (
         "const KGW_BRIDGE_RUNTIME_IN_FLIGHT = new Set();",
         "/* KGW_BRIDGE_START_TRACE_V1 is Rust-owned in bridge_start_trace.rs. */",
     ),
@@ -633,6 +629,7 @@ const sandbox = {
   wasmBridgeR51SetRuntimeUnknown: wasm.bridgeR51SetRuntimeUnknown,
   wasmBridgeSetRuntimeErrorV1: wasm.bridgeSetRuntimeErrorV1,
   wasmBridgeSetRuntimeActivityV1: wasm.bridgeSetRuntimeActivityV1,
+  wasmBridgeMarkRestartRequiredV1: wasm.bridgeMarkRestartRequiredV1,
   wasmBridgeR51RefreshOne: wasm.bridgeR51RefreshOne,
   wasmBridgeR51StartLiveRefresh: wasm.bridgeR51StartLiveRefresh,
   wasmBridgeActiveRawLogInstanceId: wasm.bridgeActiveRawLogInstanceId,
@@ -665,7 +662,7 @@ sandbox.kgwBridgeR51KickRawLogLiveR134E = () => {};
 
 vm.createContext(sandbox);
 vm.runInContext(selected, sandbox, { filename: request.sourceName });
-const api = vm.runInContext("({ runtimeRunning: wasmBridgeV7RuntimeRunningFromText, isRunning: wasmBridgeR51IsRunning, setButtons: (net, running, transition = \"\", runtimeError = \"\", statusText = \"\") => wasmBridgeR51SetRuntimeButtons(String(net || \"\"), Boolean(running), String(transition || \"\"), String(runtimeError || \"\"), String(statusText || \"\")), setUnknown: (net, message, source = \"\") => wasmBridgeR51SetRuntimeUnknown(String(net || \"\"), String(message || \"\"), String(source || \"\")), refreshOne: (net, reason = \"harness\") => wasmBridgeR51RefreshOne(String(net || \"\"), String(reason || \"harness\"), kgwBridgeR51LiveRefreshCallbacksR257()), setError: wasmBridgeSetRuntimeErrorV1, setActivity: wasmBridgeSetRuntimeActivityV1, runAction: runBridgeIntegratedAction })", sandbox);
+const api = vm.runInContext("({ runtimeRunning: wasmBridgeV7RuntimeRunningFromText, isRunning: wasmBridgeR51IsRunning, setButtons: (net, running, transition = \"\", runtimeError = \"\", statusText = \"\") => wasmBridgeR51SetRuntimeButtons(String(net || \"\"), Boolean(running), String(transition || \"\"), String(runtimeError || \"\"), String(statusText || \"\")), setUnknown: (net, message, source = \"\") => wasmBridgeR51SetRuntimeUnknown(String(net || \"\"), String(message || \"\"), String(source || \"\")), refreshOne: (net, reason = \"harness\") => wasmBridgeR51RefreshOne(String(net || \"\"), String(reason || \"harness\"), kgwBridgeR51LiveRefreshCallbacksR257()), setError: wasmBridgeSetRuntimeErrorV1, setActivity: wasmBridgeSetRuntimeActivityV1, markRestart: (net) => wasmBridgeMarkRestartRequiredV1(String(net || \"\")), runAction: runBridgeIntegratedAction })", sandbox);
 
 function snapshot() {
   return {
@@ -690,6 +687,19 @@ invokeRuntime = async (command) => {
 };
 await api.refreshOne("mainnet", "harness-live-refresh");
 const liveRefresh = snapshot();
+
+api.setActivity("mainnet", "Bridge is RUNNING now", "stopped");
+api.markRestart("mainnet");
+const restartRunning = {
+  text: elements.get("bridge-mainnet-settingsAuthority").textContent,
+  restartRequired: elements.get("bridge-mainnet-settingsAuthority").dataset.restartRequired || ""
+};
+api.setActivity("mainnet", "Bridge is stopped.", "running");
+api.markRestart("mainnet");
+const restartStopped = {
+  text: elements.get("bridge-mainnet-settingsAuthority").textContent,
+  restartRequired: elements.get("bridge-mainnet-settingsAuthority").dataset.restartRequired || ""
+};
 
 // The Start/Stop lifecycle smoke controls invokeRuntime with unresolved
 // synthetic promises. Disable only the action-settled refresh callback so
@@ -780,6 +790,8 @@ const output = {
     ready: api.isRunning("role=bridge;network=mainnet;running=true;readiness=READY")
   },
   liveRefresh,
+  restartRunning,
+  restartStopped,
   starting,
   stopping,
   visibleFailure,
@@ -1037,6 +1049,44 @@ fn verify_runtime_notice_ownership(source: &str, runtime_core: &str) -> Result<(
         if runtime_core.contains(retired_callback) {
             return Err(format!(
                 "Retired Bridge runtime-notice callback dispatch remains in Rust: {retired_callback}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_mark_restart_required_ownership(source: &str, runtime_core: &str) -> Result<(), String> {
+    for forbidden in [
+        "function kgwBridgeMarkRestartRequiredV1(",
+        "kgwBridgeMarkRestartRequiredV1(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge mark-restart-required JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+    if !source.contains("bridgeMarkRestartRequiredV1 as wasmBridgeMarkRestartRequiredV1") {
+        return Err("Bridge mark-restart-required Rust/WASM binding missing".to_owned());
+    }
+    if source.matches("wasmBridgeMarkRestartRequiredV1(").count() != 2 {
+        return Err("Bridge mark-restart-required direct-call count drifted".to_owned());
+    }
+    for required in [
+        "fn mark_restart_required_inner(",
+        "js_name = bridgeMarkRestartRequiredV1",
+        "pub fn bridge_mark_restart_required_v1(",
+        "\"settingsAuthority\".to_owned()",
+        "\"runtimeStatus\".to_owned()",
+        ".to_ascii_lowercase()",
+        ".contains(\"running\")",
+        "Restart required to apply changed effective settings",
+        "Effective settings apply on next Start",
+        "\"restartRequired\"",
+    ] {
+        if !runtime_core.contains(required) {
+            return Err(format!(
+                "Bridge mark-restart-required Rust owner contract missing: {required}"
             ));
         }
     }
@@ -1620,6 +1670,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_keys_ownership(&full_source, &helper_source)?;
     verify_r51_runtime_presentation_ownership(&full_source, &runtime_core_source)?;
     verify_runtime_notice_ownership(&full_source, &runtime_core_source)?;
+    verify_mark_restart_required_ownership(&full_source, &runtime_core_source)?;
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_static_contracts(
         &full_source,
@@ -2156,6 +2207,18 @@ pub fn run(root: &Path) -> Result<String, String> {
     expect(&actual, "/liveRefresh/policy", json!("Bridge: Running"))?;
     expect(&actual, "/liveRefresh/startDisabled", json!(true))?;
     expect(&actual, "/liveRefresh/stopDisabled", json!(false))?;
+    expect(
+        &actual,
+        "/restartRunning/text",
+        json!("Restart required to apply changed effective settings"),
+    )?;
+    expect(&actual, "/restartRunning/restartRequired", json!("true"))?;
+    expect(
+        &actual,
+        "/restartStopped/text",
+        json!("Effective settings apply on next Start"),
+    )?;
+    expect(&actual, "/restartStopped/restartRequired", json!("false"))?;
 
     expect(&actual, "/starting/policy", json!("Bridge: Starting"))?;
     expect(&actual, "/starting/startDisabled", json!(true))?;
@@ -2402,6 +2465,47 @@ mod tests {
                     "fn set_runtime_error_inner(",
                     "fn missing_set_runtime_error_inner(",
                 ),
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn mark_restart_required_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let runtime_core =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_runtime_core.rs");
+        assert!(verify_mark_restart_required_ownership(source, runtime_core).is_ok());
+        for mutation in [
+            source.replacen(
+                "wasmBridgeMarkRestartRequiredV1(",
+                "kgwBridgeMarkRestartRequiredV1(",
+                1,
+            ),
+            source.replace(
+                "bridgeMarkRestartRequiredV1 as wasmBridgeMarkRestartRequiredV1",
+                "missingMarkRestartRequiredV1 as wasmBridgeMarkRestartRequiredV1",
+            ),
+            format!("{source}\nfunction kgwBridgeMarkRestartRequiredV1(net) {{ return net; }}\n"),
+        ] {
+            assert!(verify_mark_restart_required_ownership(&mutation, runtime_core).is_err());
+        }
+        assert!(
+            verify_mark_restart_required_ownership(
+                source,
+                &runtime_core.replace(
+                    "js_name = bridgeMarkRestartRequiredV1",
+                    "js_name = missingMarkRestartRequiredV1",
+                ),
+            )
+            .is_err()
+        );
+        assert!(
+            verify_mark_restart_required_ownership(
+                source,
+                &runtime_core.replace(".contains(\"running\")", ".contains(\"ready\")",),
             )
             .is_err()
         );
