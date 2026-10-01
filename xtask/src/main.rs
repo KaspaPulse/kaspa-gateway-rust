@@ -55,6 +55,7 @@ mod true_raw_log;
 mod true_raw_log_frontend;
 mod trufflehog_policy;
 mod windows_runtime_dependencies;
+mod writer_claim;
 mod zero_touch_e2e;
 mod zero_touch_result_writer;
 
@@ -102,6 +103,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- desktop-version-contract-gate
   cargo run -p xtask -- deepmerge-security-smoke
   cargo run -p xtask -- effective-bridge-settings-gate
+  cargo run -p xtask -- writer-claim <acquire|renew|verify|release|status> [--writer-id <id>] [--session-id <id>] [--epoch <n>] [--lease-secs <n>]
   cargo run -p xtask -- effective-node-settings-gate
   cargo run -p xtask -- e2e-clipboard <read|write|preflight> [--value <text>] [--output-path <path>]
   cargo run -p xtask -- e2e-config-codegen <check|write>
@@ -276,6 +278,12 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = desktop_version::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "writer-claim" => {
+            let rest: Vec<String> = args.collect();
+            let message = writer_claim::run(&repo_root()?, &rest).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
