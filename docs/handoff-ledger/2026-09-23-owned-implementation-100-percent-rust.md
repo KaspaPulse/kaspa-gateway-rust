@@ -241,9 +241,12 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP279 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP280 - Bridge visible instance-owner installation Rust/WASM ownership (INTENT)
+## OP280 - Bridge visible instance-owner installation Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP279 closeout `9957171470860ff1955c42b5f7f16fe16c185f8b`; BASE_TREE `1e14df31286d17c09bc0e3fc0b67f724a8696e92`; worktree clean at intent time.
-- BOUNDARY: move `bridgeInstallAllVisibleInstanceContainerOwnersR11` iteration/lookup orchestration into Rust/WASM while preserving the existing per-container JavaScript owner as an explicit callback for its own later boundary. Rust owns canonical Bridge network iteration, instances-container lookup, and callback sequencing.
-- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; stale direct-call counts repaired narrowly if required; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `bridgeInstallAllVisibleInstanceContainerOwnersR11` iteration/lookup orchestration moved into Rust/WASM `bridgeInstallAllVisibleInstanceContainerOwnersR11`; JavaScript preserves only the per-container owner callback for its own later boundary. Rust owns canonical Bridge network iteration, instances-container lookup, and callback sequencing.
+- IMPLEMENTATION_CHECKPOINT: `56d1e7840ee503b3e78bfdff53dec5fdbdfa9198`, tree `b129e4f9402ee627ace524e9fe6fe6de38666927`. Closeout generation 2271.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 299/299 plus auxiliary suites; targeted visible-instance-owner ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP280 qualification unless invalidated.
+- PUSHED: NO.
