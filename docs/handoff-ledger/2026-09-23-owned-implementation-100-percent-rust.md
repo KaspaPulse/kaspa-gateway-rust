@@ -113,3 +113,12 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - QUALIFICATION PASS: fmt --check, clippy -D warnings (xtask), 7 writer_claim tests incl. real-git CAS/fencing test, language-policy check, git diff --check; full xtask suite 285 pass / 2 fail (the two classified pre-existing stale tests). Logs: hardening-qual/.
 - NEXT: repair the two stale xtask tests (raw_log_provenance, true_raw_log), then resume Bridge JS ownership discovery.
 - PUSHED: NO
+## OP268 - Stale raw-log xtask gate repair (CLOSED_LOCAL / VERIFIED_SUCCESS)
+
+- IMPLEMENTATION_CHECKPOINT: 30c1f9beb2e8c4c423437b7a9ba90b76d5da3766, tree 082f164616ec8014b181ac66d4969abf233f4a51 (parent 62b2bad). Closeout generation 2258.
+- ROOT_CAUSE: Bridge raw-log apply/normalize/buffer-key/appendLog ownership had moved from JavaScript into Rust (bridge_raw_log.rs, driven from bridge_runtime_core.rs) in earlier operations, but the gates still demanded retired JS markers. Both tests failed identically at 2d43099.
+- true_raw_log.rs: the typed raw-log report requirement now checks the Rust export `bridgeApplyRuntimeLogReport` in bridge_raw_log.rs; the retired-wrapper prohibitions are unchanged. raw_log_provenance.rs: Bridge checks now inspect the Rust `normalize_entry` / `buffer_key` / `_instance_id` (no content blacklist, process-level key, ignores UI listener selection) and forbid the JS normalizer/appendLog; Node appendLog check asserts retirement. The old "known transport filter debt" expectation became a no-failure assertion because the Bridge JS blacklist no longer exists. No ownership check was weakened.
+- QUALIFICATION PASS: fmt, clippy -D warnings (xtask), full xtask suite 287/287, project-continuity-gate, effective-bridge-settings-gate, language-policy check, diff-check. Logs: stale-gates-qual/.
+- WRITER CLAIM: this session holds refs/kgw/writer-claim (epoch 1); verified before the commit.
+- NEXT: resume Bridge JS ownership discovery (kgwBridgeRequireValidSettings and the remaining orchestration), recompute debt from the repository.
+- PUSHED: NO
