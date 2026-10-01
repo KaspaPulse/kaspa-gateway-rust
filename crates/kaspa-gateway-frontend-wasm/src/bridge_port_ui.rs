@@ -61,6 +61,53 @@ fn query_all(root: &JsValue, selector: &str) -> Vec<JsValue> {
         .map(|value| list_values(&value))
         .unwrap_or_default()
 }
+fn port_event_dataset_text(target: &JsValue, name: &str) -> String {
+    crate::js_string_owned(&property(&property(target, "dataset"), name))
+}
+
+fn port_event_net(target: &JsValue) -> String {
+    let net = port_event_dataset_text(target, "net");
+    if net.is_empty() {
+        port_event_dataset_text(target, "network")
+    } else {
+        net
+    }
+}
+
+fn port_event_relevant(target: &JsValue) -> bool {
+    let hay = [
+        crate::js_string_owned(&property(target, "id")),
+        crate::js_string_owned(&property(target, "name")),
+        port_event_dataset_text(target, "bridgeInstanceField"),
+        port_event_dataset_text(target, "bridgeSetting"),
+    ]
+    .join(" ")
+    .to_ascii_lowercase();
+    [
+        "port",
+        "prom",
+        "listen",
+        "rpc",
+        "dashboard",
+        "kaspad",
+        "instance",
+    ]
+    .iter()
+    .any(|needle| hay.contains(needle))
+}
+
+fn schedule_once(delay_ms: f64, callback: Closure<dyn FnMut()>) {
+    let win = window();
+    if let Some(set_timeout) = function(&win, "setTimeout") {
+        let _ = set_timeout.call2(
+            &win,
+            callback.as_ref().unchecked_ref(),
+            &JsValue::from_f64(delay_ms),
+        );
+        callback.forget();
+    }
+}
+
 fn auto_fix_contract(key: &str) -> (&'static str, &'static str) {
     match key {
         "conflictingButton" => ("bridge.autofixPorts.conflictingButton", "Auto Fix Ports"),
@@ -608,6 +655,167 @@ pub fn bridge_install_port_autofix_button_ui_r37(
         }
     }
     refresh_autofix_buttons(&bridge_instances, &active_instance);
+}
+
+#[wasm_bindgen(js_name = bridgeInstallPortEventOwnersUi)]
+pub fn bridge_install_port_event_owners_ui(
+    root: JsValue,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    callbacks: JsValue,
+) -> bool {
+    if !present(&root) {
+        return false;
+    }
+    let root_dataset = property(&root, "dataset");
+
+    if port_event_dataset_text(&root, "kgwBridgePortConflictValidationOwnerR33").is_empty() {
+        set(
+            &root_dataset,
+            "kgwBridgePortConflictValidationOwnerR33",
+            &JsValue::from_str("1"),
+        );
+
+        for (event_name, reason) in [("input", "input"), ("change", "change")] {
+            let root_for_event = root.clone();
+            let instances_for_event = bridge_instances.clone();
+            let active_for_event = active_instance.clone();
+            let reason = reason.to_owned();
+            let callback = Closure::wrap(Box::new(move |event: JsValue| {
+                let target = property(&event, "target");
+                if !present(&target)
+                    || !call1(&root_for_event, "contains", &target)
+                        .is_some_and(|value| crate::js_boolean(&value))
+                    || !port_event_relevant(&target)
+                {
+                    return;
+                }
+                let net = port_event_net(&target);
+                let _ = bridge_schedule_port_conflict_validation_ui_r33(
+                    net.clone(),
+                    reason.clone(),
+                    instances_for_event.clone(),
+                    active_for_event.clone(),
+                );
+                bridge_schedule_port_autofix_refresh_ui_r37(
+                    net,
+                    reason.clone(),
+                    instances_for_event.clone(),
+                    active_for_event.clone(),
+                );
+            }) as Box<dyn FnMut(JsValue)>);
+            let _ = call2(
+                &root,
+                "addEventListener",
+                &JsValue::from_str(event_name),
+                callback.as_ref().unchecked_ref(),
+            );
+            callback.forget();
+        }
+
+        let instances_install = bridge_instances.clone();
+        let active_install = active_instance.clone();
+        schedule_once(
+            100.0,
+            Closure::wrap(Box::new(move || {
+                let _ = bridge_validate_all_port_conflict_states_ui_r33(
+                    "install".to_owned(),
+                    instances_install.clone(),
+                    active_install.clone(),
+                );
+            }) as Box<dyn FnMut()>),
+        );
+    }
+
+    if port_event_dataset_text(&root, "kgwBridgePortAutofixOwnerR37").is_empty() {
+        set(
+            &root_dataset,
+            "kgwBridgePortAutofixOwnerR37",
+            &JsValue::from_str("1"),
+        );
+        bridge_install_port_autofix_button_ui_r37(
+            root.clone(),
+            bridge_instances.clone(),
+            active_instance.clone(),
+        );
+
+        let root_click = root.clone();
+        let instances_click = bridge_instances.clone();
+        let active_click = active_instance.clone();
+        let callbacks_click = callbacks.clone();
+        let click = Closure::wrap(Box::new(move |event: JsValue| {
+            let target = property(&event, "target");
+            let button = call1(
+                &target,
+                "closest",
+                &JsValue::from_str("[data-bridge-action=\"auto-fix-ports-r37\"]"),
+            )
+            .unwrap_or(JsValue::UNDEFINED);
+            if !present(&button)
+                || !call1(&root_click, "contains", &button)
+                    .is_some_and(|value| crate::js_boolean(&value))
+            {
+                return;
+            }
+            if let Some(prevent) = function(&event, "preventDefault") {
+                let _ = prevent.call0(&event);
+            }
+            if let Some(stop) = function(&event, "stopPropagation") {
+                let _ = stop.call0(&event);
+            }
+            let net = port_event_dataset_text(&button, "net");
+            let result = bridge_apply_port_autofix_ui_r37(
+                net.clone(),
+                instances_click.clone(),
+                active_click.clone(),
+                property(&callbacks_click, "refreshInstances"),
+                property(&callbacks_click, "updateCommand"),
+                property(&callbacks_click, "runtimeActivity"),
+            );
+            let changed = crate::js_number(&property(&result, "changed")).max(0.0) as u32;
+            let feedback = if changed > 0 {
+                format!("Fixed {changed} Port(s)")
+            } else {
+                "No Fix Needed".to_owned()
+            };
+            set(&button, "textContent", &JsValue::from_str(&feedback));
+
+            let instances_feedback = instances_click.clone();
+            let active_feedback = active_click.clone();
+            schedule_once(
+                1200.0,
+                Closure::wrap(Box::new(move || {
+                    bridge_refresh_port_autofix_buttons_ui_r37(
+                        "button-feedback".to_owned(),
+                        instances_feedback.clone(),
+                        active_feedback.clone(),
+                    );
+                }) as Box<dyn FnMut()>),
+            );
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &root,
+            "addEventListener",
+            &JsValue::from_str("click"),
+            click.as_ref().unchecked_ref(),
+        );
+        click.forget();
+
+        let instances_install = bridge_instances;
+        let active_install = active_instance;
+        schedule_once(
+            120.0,
+            Closure::wrap(Box::new(move || {
+                bridge_refresh_port_autofix_buttons_ui_r37(
+                    "install".to_owned(),
+                    instances_install.clone(),
+                    active_install.clone(),
+                );
+            }) as Box<dyn FnMut()>),
+        );
+    }
+
+    true
 }
 
 #[cfg(test)]

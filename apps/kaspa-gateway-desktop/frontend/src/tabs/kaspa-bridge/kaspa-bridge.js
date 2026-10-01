@@ -47,6 +47,7 @@ import initBridgeRust, {
   bridgeInstallNetworkTabsUi as wasmBridgeInstallNetworkTabsUi,
   bridgeInstallDelegatedTabsUi as wasmBridgeInstallDelegatedTabsUi,
   bridgeInstallActionEventOwnersUi as wasmBridgeInstallActionEventOwnersUi,
+  bridgeInstallPortEventOwnersUi as wasmBridgeInstallPortEventOwnersUi,
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeElementId as wasmBridgeElementId,
@@ -73,13 +74,7 @@ import initBridgeRust, {
   bridgeRemoveInstanceUi as wasmBridgeRemoveInstanceUi,
   bridgeActiveRawLogInstanceId as wasmBridgeActiveRawLogInstanceId,
   bridgeAssertNoPortConflictsR5 as wasmBridgeAssertNoPortConflictsR5,
-  bridgeValidateAllPortConflictStatesR33 as wasmBridgeValidateAllPortConflictStatesR33,
-  bridgeSchedulePortConflictValidationR33 as wasmBridgeSchedulePortConflictValidationR33,
   bridgeAutofixButtonInitialLabelUiR111G as wasmBridgeAutofixButtonInitialLabelUiR111G,
-  bridgeRefreshPortAutofixButtonsUiR37 as wasmBridgeRefreshPortAutofixButtonsUiR37,
-  bridgeSchedulePortAutofixRefreshUiR37 as wasmBridgeSchedulePortAutofixRefreshUiR37,
-  bridgeApplyPortAutofixUiR37 as wasmBridgeApplyPortAutofixUiR37,
-  bridgeInstallPortAutofixButtonUiR37 as wasmBridgeInstallPortAutofixButtonUiR37,
   settingsOwnerButtons as wasmSettingsOwnerButtons,
   settingsOwnerInstall as wasmSettingsOwnerInstall,
   settingsOwnerSetDisabled as wasmSettingsOwnerSetDisabled,
@@ -1033,65 +1028,12 @@ function installActions(root) {
   wasmBridgeInstallActionEventOwnersUi(root, bridgeInstances, activeInstance, {
     updateCommand: (net) => updateCommand(String(net || ""))
   });
-  if (!root.dataset.kgwBridgePortConflictValidationOwnerR33) {
-    root.dataset.kgwBridgePortConflictValidationOwnerR33 = "1";
-
-    root.addEventListener("input", (event) => {
-      const target = event && event.target;
-      const net = target && target.dataset ? (target.dataset.net || target.dataset.network || "") : "";
-      const hay = [
-        target && target.id,
-        target && target.name,
-        target && target.dataset && target.dataset.bridgeInstanceField,
-        target && target.dataset && target.dataset.bridgeSetting
-      ].map((value) => String(value || "").toLowerCase()).join(" ");
-
-      if (/port|prom|listen|rpc|dashboard|kaspad|instance/.test(hay)) {
-        wasmBridgeSchedulePortConflictValidationR33(bridgeInstances, activeInstance, String(net || ""), "input");
-        wasmBridgeSchedulePortAutofixRefreshUiR37(String(net || ""), "input", bridgeInstances, activeInstance);
-      }
-    });
-
-    root.addEventListener("change", (event) => {
-      const target = event && event.target;
-      const net = target && target.dataset ? (target.dataset.net || target.dataset.network || "") : "";
-      const hay = [
-        target && target.id,
-        target && target.name,
-        target && target.dataset && target.dataset.bridgeInstanceField,
-        target && target.dataset && target.dataset.bridgeSetting
-      ].map((value) => String(value || "").toLowerCase()).join(" ");
-
-      if (/port|prom|listen|rpc|dashboard|kaspad|instance/.test(hay)) {
-        wasmBridgeSchedulePortConflictValidationR33(bridgeInstances, activeInstance, String(net || ""), "change");
-        wasmBridgeSchedulePortAutofixRefreshUiR37(String(net || ""), "change", bridgeInstances, activeInstance);
-      }
-    });
-
-    window.setTimeout(() => wasmBridgeValidateAllPortConflictStatesR33(bridgeInstances, activeInstance, "install"), 100);
-  }
-
-  if (!root.dataset.kgwBridgePortAutofixOwnerR37) {
-    root.dataset.kgwBridgePortAutofixOwnerR37 = "1";
-
-    wasmBridgeInstallPortAutofixButtonUiR37(root, bridgeInstances, activeInstance);
-
-    root.addEventListener("click", (event) => {
-      const button = event.target && event.target.closest('[data-bridge-action="auto-fix-ports-r37"]');
-      if (!button || !root.contains(button)) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-
-      const net = button.dataset.net || "";
-      const result = wasmBridgeApplyPortAutofixUiR37(String(net || ""), bridgeInstances, activeInstance, (targetNet) => bridgeRefreshInstances(targetNet), (targetNet) => updateCommand(targetNet), (targetNet, message) => wasmBridgeSetRuntimeActivityV1(targetNet, message));
-
-      button.textContent = result.changed ? "Fixed " + String(result.changed) + " Port(s)" : "No Fix Needed";
-      window.setTimeout(() => wasmBridgeRefreshPortAutofixButtonsUiR37("button-feedback", bridgeInstances, activeInstance), 1200);
-    });
-
-    window.setTimeout(() => wasmBridgeRefreshPortAutofixButtonsUiR37("install", bridgeInstances, activeInstance), 120);
-  }
+  wasmBridgeInstallPortEventOwnersUi(root, bridgeInstances, activeInstance, {
+    refreshInstances: (net) => bridgeRefreshInstances(String(net || "")),
+    updateCommand: (net) => updateCommand(String(net || "")),
+    runtimeActivity: (net, message) =>
+      wasmBridgeSetRuntimeActivityV1(String(net || ""), String(message || ""))
+  });
 
 
 

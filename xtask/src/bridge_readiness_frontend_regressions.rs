@@ -18,6 +18,7 @@ const BRIDGE_COMMAND_OPTIONS_SOURCE: &str =
 const BRIDGE_INSTANCE_UI_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_instance_ui.rs";
 const BRIDGE_RENDER_SOURCE: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_render.rs";
+const BRIDGE_PORT_UI_SOURCE: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_port_ui.rs";
 const WASM_JS: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 const WASM_BIN: &str =
@@ -2010,6 +2011,58 @@ fn verify_action_event_owners_ownership(source: &str, helpers: &str) -> Result<(
     Ok(())
 }
 
+fn verify_port_event_owners_ownership(source: &str, port_ui: &str) -> Result<(), String> {
+    for required in [
+        "bridgeInstallPortEventOwnersUi as wasmBridgeInstallPortEventOwnersUi",
+        "wasmBridgeInstallPortEventOwnersUi(root, bridgeInstances, activeInstance, {",
+        "refreshInstances: (net) => bridgeRefreshInstances(String(net || \"\"))",
+        "runtimeActivity: (net, message) =>",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge port-event owners Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    for forbidden in [
+        "root.dataset.kgwBridgePortConflictValidationOwnerR33",
+        "root.dataset.kgwBridgePortAutofixOwnerR37",
+        "wasmBridgeSchedulePortConflictValidationR33(",
+        "wasmBridgeSchedulePortAutofixRefreshUiR37(",
+        "wasmBridgeValidateAllPortConflictStatesR33(",
+        "wasmBridgeInstallPortAutofixButtonUiR37(",
+        "wasmBridgeApplyPortAutofixUiR37(",
+        "wasmBridgeRefreshPortAutofixButtonsUiR37(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge port-event JavaScript ownership remains after OP289: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeInstallPortEventOwnersUi",
+        "pub fn bridge_install_port_event_owners_ui(",
+        "kgwBridgePortConflictValidationOwnerR33",
+        "bridge_schedule_port_conflict_validation_ui_r33(",
+        "bridge_schedule_port_autofix_refresh_ui_r37(",
+        "bridge_validate_all_port_conflict_states_ui_r33(",
+        "kgwBridgePortAutofixOwnerR37",
+        "bridge_install_port_autofix_button_ui_r37(",
+        "[data-bridge-action=\\\"auto-fix-ports-r37\\\"]",
+        "bridge_apply_port_autofix_ui_r37(",
+        "button-feedback",
+        "No Fix Needed",
+    ] {
+        if !port_ui.contains(required) {
+            return Err(format!(
+                "Bridge port-event Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_inprocess_node_settings_renderer_ownership(
     source: &str,
     bridge_render: &str,
@@ -3544,6 +3597,8 @@ pub fn run(root: &Path) -> Result<String, String> {
         .map_err(|error| format!("failed to read {BRIDGE_INSTANCE_UI_SOURCE}: {error}"))?;
     let bridge_render_source = fs::read_to_string(root.join(BRIDGE_RENDER_SOURCE))
         .map_err(|error| format!("failed to read {BRIDGE_RENDER_SOURCE}: {error}"))?;
+    let bridge_port_ui_source = fs::read_to_string(root.join(BRIDGE_PORT_UI_SOURCE))
+        .map_err(|error| format!("failed to read {BRIDGE_PORT_UI_SOURCE}: {error}"))?;
     verify_r51_storage_ownership(&full_source, &helper_source)?;
     verify_r51_keys_ownership(&full_source, &helper_source)?;
     verify_r51_runtime_presentation_ownership(&full_source, &runtime_core_source)?;
@@ -3560,6 +3615,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_network_tabs_ownership(&full_source, &helper_source)?;
     verify_delegated_tabs_ownership(&full_source, &helper_source)?;
     verify_action_event_owners_ownership(&full_source, &helper_source)?;
+    verify_port_event_owners_ownership(&full_source, &bridge_port_ui_source)?;
     verify_inprocess_node_settings_renderer_ownership(&full_source, &bridge_render_source)?;
     verify_settings_sections_ownership(&full_source, &helper_source)?;
     verify_instances_renderer_ownership(&full_source, &instance_ui_source)?;
@@ -4989,6 +5045,25 @@ mod tests {
             "js_name = missingInstallActionEventOwnersUi",
         );
         assert!(verify_action_event_owners_ownership(source, &missing).is_err());
+    }
+
+    #[test]
+    fn port_event_owners_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let port_ui =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_port_ui.rs");
+        assert!(verify_port_event_owners_ownership(source, port_ui).is_ok());
+
+        let legacy = format!("{source}\n// root.dataset.kgwBridgePortAutofixOwnerR37 = \"1\";\n");
+        assert!(verify_port_event_owners_ownership(&legacy, port_ui).is_err());
+
+        let missing = port_ui.replace(
+            "js_name = bridgeInstallPortEventOwnersUi",
+            "js_name = missingInstallPortEventOwnersUi",
+        );
+        assert!(verify_port_event_owners_ownership(source, &missing).is_err());
     }
 
     #[test]
