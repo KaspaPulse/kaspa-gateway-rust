@@ -338,3 +338,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: inline-toggle gate now requires only the one valid R51 write-settings refresh binding/call and fails closed on reintroduced direct JavaScript toggle ownership; stale regression mutation updated to test forbidden reintroduction rather than a removed call site.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP288 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP289 - Bridge port-conflict and auto-fix event owners Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP288 closeout `9979bfd3cea733d1d0e801a43bbc1c7d7dd3adda`; BASE_TREE `538ed099d9514ad120859af999fc442928c807e0`; worktree clean at intent time.
+- BOUNDARY: move `installActions` port-conflict input/change scheduling, initial validation, auto-fix button installation/click handling, and auto-fix feedback refresh timers into Rust/WASM. Existing Rust port validation/autofix primitives remain authoritative; JavaScript retains only callbacks for instance refresh, command update, and runtime activity.
+- ACCEPTANCE: Rust installer + thin JS call; R33/R37/R45 behavior preserved; fail-closed ownership regression; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
