@@ -176,6 +176,50 @@ const nodeModeNonExact = wasmModule.bridgeNodeMode("mainnet");
 nodeModeControl.value = "external";
 const r51FieldIds = Array.from(wasmModule.bridgeR51Fields("mainnet"))
   .map((field) => String(field?.id || ""));
+const r26bBridgeInstances = {
+  mainnet: [{
+    id: "r253-one",
+    instance: "",
+    instancePort: "5666",
+    instanceDiff: "1024",
+    instanceProm: "",
+    instanceLogToFile: "not set",
+    instanceBlockWaitTime: "",
+    instanceExtranonceSize: "",
+    instanceVarDiff: "not set",
+    instanceSharesPerMin: "",
+    instanceVarDiffStats: "not set",
+    instancePow2Clamp: "not set"
+  }],
+  testnet10: [],
+  testnet13: []
+};
+const r26bActiveInstance = { mainnet: "r253-one" };
+const r26bReadCalls = [];
+const r26bStructured = wasmModule.bridgeR51ReadStructuredInstances(
+  "mainnet",
+  r26bBridgeInstances,
+  r26bActiveInstance,
+  {
+    readInstanceState: (net, instanceId) => {
+      r26bReadCalls.push(String(net) + ":" + String(instanceId));
+      return {
+        id: String(instanceId),
+        instance: "",
+        instancePort: "5666",
+        instanceDiff: "8192",
+        instanceProm: "",
+        instanceLogToFile: "not set",
+        instanceBlockWaitTime: "",
+        instanceExtranonceSize: "",
+        instanceVarDiff: "not set",
+        instanceSharesPerMin: "",
+        instanceVarDiffStats: "not set",
+        instancePow2Clamp: "not set"
+      };
+    }
+  }
+);
 elements.set("bridge-mainnet-op249Checkbox", {
   id: "bridge-mainnet-op249Checkbox",
   value: "ignored",
@@ -328,6 +372,11 @@ const output = {
     r51FieldsExcludesLogOutput: !r51FieldIds.includes("bridge-mainnet-logOutput"),
     r51FieldsExcludesOtherNetwork: !r51FieldIds.includes("bridge-testnet10-foreign"),
     r51FieldsExcludesToolbarOwned: !r51FieldIds.includes("bridge-mainnet-toolbarOwned"),
+    r26bStructuredVersion: r26bStructured.version,
+    r26bStructuredActive: String(r26bStructured.activeInstance || ""),
+    r26bStructuredCount: Array.isArray(r26bStructured.instances) ? r26bStructured.instances.length : -1,
+    r26bStructuredDiff: String(r26bStructured.instances?.[0]?.instanceDiff || ""),
+    r26bReadCalls,
     r51ReadActiveInstance: r51ReadSettings.__kgwBridgeActiveInstanceR26B,
     r51ReadStructuredCount: r51ReadSettings.__kgwBridgeStructuredInstancesR26B?.instances?.length ?? -1,
     r51ReadCommandOption: Boolean(r51ReadSettings.__kgwBridgeCommandOptionsR38C?.coinbaseTagSuffix),
@@ -571,6 +620,56 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
         if !rust.contains(needle) {
             return Err(format!(
                 "Bridge R38C command-option Rust reader contract missing: {needle}"
+            ));
+        }
+    }
+
+    for forbidden in [
+        "function kgwBridgeR51CommitInstanceDomStateR26B(",
+        "function kgwBridgeR51ReadStructuredInstancesR26B(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge R26B structured-read JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+    if !source.contains("bridgeR51ReadStructuredInstances as wasmBridgeR51ReadStructuredInstances")
+    {
+        return Err("Bridge R26B structured-read Rust/WASM import is missing".to_owned());
+    }
+    if source
+        .matches("wasmBridgeR51ReadStructuredInstances(")
+        .count()
+        != 1
+    {
+        return Err(
+            "Bridge R26B structured-read must have exactly one thin Rust/WASM wrapper call"
+                .to_owned(),
+        );
+    }
+    if source
+        .matches("kgwBridgeR51ReadStructuredInstancesR253(")
+        .count()
+        != 4
+    {
+        return Err(
+            "Bridge R26B structured-read thin wrapper must own exactly three direct calls plus its definition"
+                .to_owned(),
+        );
+    }
+    for needle in [
+        "js_name = bridgeR51ReadStructuredInstances",
+        "pub fn bridge_r51_read_structured_instances(",
+        "fn bridge_r51_commit_instance_dom_state_r26b(",
+        "\"readInstanceState\"",
+        "bridge_port_orchestration::bridge_ensure_instance_state(",
+        "normalize_instance_record_impl(",
+        "r26b-commit-instance-dom-state-failed",
+    ] {
+        if !instance_settings.contains(needle) {
+            return Err(format!(
+                "Bridge R26B structured-read Rust ownership contract missing: {needle}"
             ));
         }
     }
@@ -825,6 +924,19 @@ pub fn run(root: &Path) -> Result<String, String> {
     ] {
         expect_pointer(&actual, pointer, json!(true))?;
     }
+    expect_pointer(&actual, "/directOwners/r26bStructuredVersion", json!(1))?;
+    expect_pointer(
+        &actual,
+        "/directOwners/r26bStructuredActive",
+        json!("r253-one"),
+    )?;
+    expect_pointer(&actual, "/directOwners/r26bStructuredCount", json!(1))?;
+    expect_pointer(&actual, "/directOwners/r26bStructuredDiff", json!("8192"))?;
+    expect_pointer(
+        &actual,
+        "/directOwners/r26bReadCalls",
+        json!(["mainnet:r253-one"]),
+    )?;
     expect_pointer(&actual, "/directOwners/r51ReadActiveInstance", json!("one"))?;
     expect_pointer(&actual, "/directOwners/r51ReadStructuredCount", json!(2))?;
     expect_pointer(&actual, "/directOwners/r51ReadNodeModeType", json!("value"))?;

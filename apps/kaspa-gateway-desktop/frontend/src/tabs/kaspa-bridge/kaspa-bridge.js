@@ -31,6 +31,7 @@ import initBridgeRust, {
   bridgeR51Load as wasmBridgeR51Load,
   bridgeR51Keys as wasmBridgeR51Keys,
   bridgeR51Panel as wasmBridgeR51Panel,
+  bridgeR51ReadStructuredInstances as wasmBridgeR51ReadStructuredInstances,
   bridgeR51ReadSettings as wasmBridgeR51ReadSettings,
   bridgeR51WriteSettings as wasmBridgeR51WriteSettings,
   bridgeRuntimeErrorFromStatus as wasmBridgeRuntimeErrorFromStatus,
@@ -1515,7 +1516,7 @@ function buildApplyPayload(net, command) {
   if (command === "kgw_kgw_apply_node_settings_v1") {
     wasmBridgeAssertNoPortConflictsR5(
       String(net || ""),
-      typeof kgwBridgeR51ReadStructuredInstancesR26B === "function" ? kgwBridgeR51ReadStructuredInstancesR26B : null,
+      typeof kgwBridgeR51ReadStructuredInstancesR253 === "function" ? kgwBridgeR51ReadStructuredInstancesR253 : null,
       bridgeInstances,
       activeInstance
     );
@@ -1525,8 +1526,8 @@ function buildApplyPayload(net, command) {
 
     // KGW_BRIDGE_ACTIVE_INSTANCE_RUNTIME_CONTRACT_R110F
     // Start must honor the selected Bridge Instance, not only the generic network Stratum port.
-    const structuredInstances = typeof kgwBridgeR51ReadStructuredInstancesR26B === "function"
-      ? kgwBridgeR51ReadStructuredInstancesR26B(net)
+    const structuredInstances = typeof kgwBridgeR51ReadStructuredInstancesR253 === "function"
+      ? kgwBridgeR51ReadStructuredInstancesR253(net)
       : { activeInstance: String(activeInstance?.[net] || ""), instances: Array.isArray(bridgeInstances?.[net]) ? bridgeInstances[net] : [] };
     const bridgeActiveInstanceId = String(structuredInstances?.activeInstance || activeInstance?.[net] || "");
     const bridgeActiveInstanceRecord = Array.isArray(structuredInstances?.instances)
@@ -1693,7 +1694,7 @@ async function runBridgeIntegratedAction(action, net) {
     // Use the registered scoped conflict owner instead of the retired global R33 pre-start blocker.
     const scopedConflictResultR111F = wasmBridgeAssertNoPortConflictsR5(
       String(net || ""),
-      typeof kgwBridgeR51ReadStructuredInstancesR26B === "function" ? kgwBridgeR51ReadStructuredInstancesR26B : null,
+      typeof kgwBridgeR51ReadStructuredInstancesR253 === "function" ? kgwBridgeR51ReadStructuredInstancesR253 : null,
       bridgeInstances,
       activeInstance
     );
@@ -1923,51 +1924,16 @@ let KGW_BRIDGE_R51_TIMER = null;
 const KGW_BRIDGE_R51_STRUCTURED_INSTANCES_KEY_R26B = "__kgwBridgeStructuredInstancesR26B";
 const KGW_BRIDGE_R51_ACTIVE_INSTANCE_KEY_R26B = "__kgwBridgeActiveInstanceR26B";
 
-function kgwBridgeR51CommitInstanceDomStateR26B(net) {
-  try {
-    net = wasmBridgeInstanceNetworkKeyR15(net, net);
-    if (!net) return [];
-
-    wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
-
-    if (!Array.isArray(bridgeInstances[net])) {
-      bridgeInstances[net] = [];
+function kgwBridgeR51ReadStructuredInstancesR253(net) {
+  return wasmBridgeR51ReadStructuredInstances(
+    String(net || ""),
+    bridgeInstances,
+    activeInstance,
+    {
+      readInstanceState: (targetNet, instanceId) =>
+        bridgeReadInstanceState(String(targetNet || ""), instanceId)
     }
-
-    bridgeInstances[net] = bridgeInstances[net].map((instance, index) => {
-      const fallbackId = instance && instance.id ? instance.id : Date.now() + index;
-      const instanceId = instance && instance.id ? instance.id : fallbackId;
-      return bridgeReadInstanceState(net, instanceId);
-    });
-
-    wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
-    return Array.isArray(bridgeInstances[net]) ? bridgeInstances[net] : [];
-  } catch (error) {
-    try {
-      wasmBridgeSmallOwnerTraceR44D(net, "settings-persistence", "r26b-commit-instance-dom-state-failed", {
-        message: error && error.message ? error.message : String(error)
-      });
-    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-    return Array.isArray(bridgeInstances && bridgeInstances[net]) ? bridgeInstances[net] : [];
-  }
-}
-
-function kgwBridgeR51ReadStructuredInstancesR26B(net) {
-  net = wasmBridgeInstanceNetworkKeyR15(net, net);
-  const committed = kgwBridgeR51CommitInstanceDomStateR26B(net);
-
-  const instances = committed.map((instance, index) => {
-    const fallbackId = instance && instance.id ? instance.id : Date.now() + index;
-    return wasmBridgeNormalizeInstanceRecord(instance || {}, fallbackId);
-  }).filter(Boolean);
-
-  const active = activeInstance[net] || (instances[0] && instances[0].id) || "";
-
-  return {
-    version: 1,
-    activeInstance: String(active || ""),
-    instances
-  };
+  );
 }
 
 
@@ -2031,7 +1997,7 @@ function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
 
 function kgwBridgeR51ReadSettingsCallbacksR249() {
   return {
-    readStructuredInstances: (net) => kgwBridgeR51ReadStructuredInstancesR26B(String(net || "")),
+    readStructuredInstances: (net) => kgwBridgeR51ReadStructuredInstancesR253(String(net || "")),
     normalizeNetworkPortValues: (net, values, reason) =>
       kgwBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || ""))
   };
@@ -3252,12 +3218,12 @@ function kgwBridgeRequireValidSettings(net) {
   if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
   wasmBridgeAssertNoPortConflictsR5(
     String(net || ""),
-    typeof kgwBridgeR51ReadStructuredInstancesR26B === "function" ? kgwBridgeR51ReadStructuredInstancesR26B : null,
+    typeof kgwBridgeR51ReadStructuredInstancesR253 === "function" ? kgwBridgeR51ReadStructuredInstancesR253 : null,
     bridgeInstances,
     activeInstance
   );
   kgwBridgeEffectiveInprocessNodeSettings(net);
-  wasmBridgeEffectiveSettingsV1(String(net || ""), kgwBridgeR51ReadStructuredInstancesR26B(net) || {});
+  wasmBridgeEffectiveSettingsV1(String(net || ""), kgwBridgeR51ReadStructuredInstancesR253(net) || {});
 }
 function kgwBridgeSyncDependencies(net) {
   const values = kgwBridgeForm(net), options = wasmBridgeCommandInlineStateR7(String(net || ""));

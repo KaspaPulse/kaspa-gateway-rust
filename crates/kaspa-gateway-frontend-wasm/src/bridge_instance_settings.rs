@@ -1151,6 +1151,150 @@ fn effective_settings_impl(net: &str, structured_instances: &JsValue) -> Result<
     Ok(output.into())
 }
 
+fn bridge_r51_commit_instance_dom_state_r26b(
+    net: &str,
+    bridge_instances: &JsValue,
+    active_instance: &JsValue,
+    callbacks: &JsValue,
+) -> Array {
+    let net = bridge_frontend_helpers::bridge_instance_network_key_r15(
+        JsValue::from_str(net),
+        JsValue::from_str(net),
+    );
+    if net.is_empty() {
+        return Array::new();
+    }
+
+    let committed = (|| -> Result<Array, JsValue> {
+        bridge_port_orchestration::bridge_ensure_instance_state(
+            bridge_instances.clone(),
+            active_instance.clone(),
+            net.clone(),
+        )?;
+
+        let current = property(bridge_instances, &net);
+        let input = if Array::is_array(&current) {
+            Array::from(&current)
+        } else {
+            let created = Array::new();
+            set(bridge_instances, &net, created.as_ref());
+            created
+        };
+
+        let output = Array::new();
+        for (index, instance) in input.iter().enumerate() {
+            let current_id = property(&instance, "id");
+            let fallback_id = if crate::js_boolean(&current_id) {
+                current_id
+            } else {
+                JsValue::from_f64(Date::now() + index as f64)
+            };
+            let next = call2_required(
+                callbacks,
+                "readInstanceState",
+                &JsValue::from_str(&net),
+                &fallback_id,
+            )?;
+            output.push(&next);
+        }
+        set(bridge_instances, &net, output.as_ref());
+
+        bridge_port_orchestration::bridge_ensure_instance_state(
+            bridge_instances.clone(),
+            active_instance.clone(),
+            net.clone(),
+        )?;
+
+        let current = property(bridge_instances, &net);
+        Ok(if Array::is_array(&current) {
+            Array::from(&current)
+        } else {
+            Array::new()
+        })
+    })();
+
+    match committed {
+        Ok(output) => output,
+        Err(error) => {
+            let details = Object::new();
+            let message = {
+                let value = property(&error, "message");
+                let text = crate::js_string_owned(&value);
+                if text.is_empty() {
+                    crate::js_string_owned(&error)
+                } else {
+                    text
+                }
+            };
+            set(details.as_ref(), "message", &JsValue::from_str(&message));
+            bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+                JsValue::from_str(&net),
+                JsValue::from_str("settings-persistence"),
+                JsValue::from_str("r26b-commit-instance-dom-state-failed"),
+                details.into(),
+            );
+            let current = property(bridge_instances, &net);
+            if Array::is_array(&current) {
+                Array::from(&current)
+            } else {
+                Array::new()
+            }
+        }
+    }
+}
+
+#[wasm_bindgen(js_name = bridgeR51ReadStructuredInstances)]
+pub fn bridge_r51_read_structured_instances(
+    net: String,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    callbacks: JsValue,
+) -> JsValue {
+    let net = bridge_frontend_helpers::bridge_instance_network_key_r15(
+        JsValue::from_str(&net),
+        JsValue::from_str(&net),
+    );
+    let committed = bridge_r51_commit_instance_dom_state_r26b(
+        &net,
+        &bridge_instances,
+        &active_instance,
+        &callbacks,
+    );
+
+    let instances = Array::new();
+    for (index, instance) in committed.iter().enumerate() {
+        let current_id = property(&instance, "id");
+        let fallback_id = if crate::js_boolean(&current_id) {
+            current_id
+        } else {
+            JsValue::from_f64(Date::now() + index as f64)
+        };
+        let normalized = normalize_instance_record_impl(instance, fallback_id);
+        if crate::js_boolean(&normalized) {
+            instances.push(&normalized);
+        }
+    }
+
+    let active = property(&active_instance, &net);
+    let active = if crate::js_boolean(&active) {
+        crate::js_string_owned(&active)
+    } else if instances.length() > 0 {
+        crate::js_string_owned(&property(&instances.get(0), "id"))
+    } else {
+        String::new()
+    };
+
+    let output = Object::new();
+    set(output.as_ref(), "version", &JsValue::from_f64(1.0));
+    set(
+        output.as_ref(),
+        "activeInstance",
+        &JsValue::from_str(&active),
+    );
+    set(output.as_ref(), "instances", instances.as_ref());
+    output.into()
+}
+
 #[wasm_bindgen(js_name = bridgeR51Panel)]
 pub fn bridge_r51_panel(net: String) -> JsValue {
     bridge_panel(&net)
