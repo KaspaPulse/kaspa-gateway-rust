@@ -11,7 +11,6 @@ import initBridgeRust, {
   bridgeBuildCommandLinesUi as wasmBridgeBuildCommandLinesUi,
   bridgeBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi,
   bridgeDifficultyDatalistR16C as wasmBridgeDifficultyDatalistR16C,
-  bridgeDifficultyInputAttrsR16C as wasmBridgeDifficultyInputAttrsR16C,
   bridgeCardInput as wasmBridgeCardInput,
   bridgeRenderRuntime as wasmBridgeRenderRuntime,
   bridgeRenderDifficulty as wasmBridgeRenderDifficulty,
@@ -51,11 +50,8 @@ import initBridgeRust, {
   bridgeUpdateCommandUi as wasmBridgeUpdateCommandUi,
   bridgeUpdateAllCommandsUi as wasmBridgeUpdateAllCommandsUi,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
-  bridgeInstanceCommandCheckboxFromInstancesR13B as wasmBridgeInstanceCommandCheckboxFromInstancesR13B,
   bridgeSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B,
-  bridgeInstancePreviewTextR8B as wasmBridgeInstancePreviewTextR8B,
-  bridgeInstancePortPlaceholderR49 as wasmBridgeInstancePortPlaceholderR49,
-  bridgeInstancePromPlaceholderR49 as wasmBridgeInstancePromPlaceholderR49,
+  bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi,
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeElementId as wasmBridgeElementId,
@@ -85,7 +81,6 @@ import initBridgeRust, {
   bridgeValue as wasmBridgeValue,
   bridgeAddInstanceUi as wasmBridgeAddInstanceUi,
   bridgeRemoveInstanceUi as wasmBridgeRemoveInstanceUi,
-  bridgeEnsureInstanceState as wasmBridgeEnsureInstanceState,
   bridgeActiveRawLogInstanceId as wasmBridgeActiveRawLogInstanceId,
   bridgeAssertNoPortConflictsR5 as wasmBridgeAssertNoPortConflictsR5,
   bridgeValidateAllPortConflictStatesR33 as wasmBridgeValidateAllPortConflictStatesR33,
@@ -294,151 +289,9 @@ function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
  * Field-level instance port placeholders now follow the active network profile.
  * Display/help text only. Does not overwrite saved user ports.
  */
+// KGW_BRIDGE_INSTANCES_RENDERER_RUST_OWNER_V1
 function renderInstances(net) {
-  net = wasmBridgeInstanceNetworkKeyR15(net, net);
-  if (net !== "mainnet") return ""; // Testnet mining is embedded CPU-only, including restored settings.
-  wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
-
-  return `
-    <div class="bridge-v7-instance-tabs bridge-v7-instance-tabs-r7b">
-      ${bridgeInstances[net].map((instance, index) => `
-        <span class="kgw-instance-tab">
-          <button type="button"
-            class="bridge-v7-instance-pill-r7b bridge-v7-instance-pill-r11 ${String(activeInstance[net]) === String(instance.id) || (!activeInstance[net] && index === 0) ? "active" : ""}"
-            data-bridge-action="select-instance" data-network="${net}" data-instance-id="${instance.id}">
-            Instance ${index + 1}
-          </button>
-          <button type="button" class="bridge-v7-instance-trash-r11"
-            data-bridge-action="remove-instance" data-network="${net}" data-instance-id="${instance.id}"
-            title="Delete Instance ${index + 1}" aria-label="Delete Instance ${index + 1}"
-            ${bridgeInstances[net].length <= 1 ? "disabled" : ""}>Delete</button>
-        </span>`).join("")}
-      <button
-        type="button"
-        class="bridge-v7-instance-add bridge-v7-instance-add-r7b bridge-v7-instance-add-r11"
-        data-bridge-action="add-instance"
-        data-network="${net}"
-        aria-label="Add Instance"
-        title="Add Instance">+</button>
-    </div>
-
-    <div class="bridge-v7-instance-stack bridge-v7-instance-stack-r7b">
-      ${bridgeInstances[net].map((instance, index) => `
-        <section
-          class="bridge-v7-instance-panel bridge-v7-instance-panel-r7b ${String(activeInstance[net]) === String(instance.id) || (!activeInstance[net] && index === 0) ? "active" : ""}"
-          data-bridge-instance-panel="${instance.id}">
-          <label class="bridge-v7-card bridge-v7-instance-preview-card-r8b">
-            <span class="kgw-command-option-title-row-r8e">
-              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instance")}
-              <span class="kgw-command-option-title-text-r8e">Effective instance</span>
-            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input
-              readonly
-              data-bridge-instance-preview="true"
-              data-network="${net}"
-              data-instance-id="${instance.id}"
-              value="${wasmBridgeEscapeHtml(wasmBridgeInstancePreviewTextR8B(String(net || ""), instance || {}))}"
-              title="${wasmBridgeEscapeHtml(wasmBridgeInstancePreviewTextR8B(String(net || ""), instance || {}))}" />
-          </label>
-
-          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span class="kgw-command-option-title-row-r8e">
-              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instancePort")}
-              <span class="kgw-command-option-title-text-r8e">port</span>
-            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input id="${wasmBridgeElementId(net, `instancePort-${instance.id}`)}" data-bridge-instance-field="instancePort" value="${wasmBridgeEscapeHtml(instance.instancePort || "")}" placeholder="${wasmBridgeEscapeHtml(wasmBridgeInstancePortPlaceholderR49(String(net || "")))}" />
-          </label>
-
-          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span class="kgw-command-option-title-row-r8e">
-              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceDiff")}
-              <span class="kgw-command-option-title-text-r8e">diff</span>
-            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input id="${wasmBridgeElementId(net, `instanceDiff-${instance.id}`)}" data-bridge-instance-field="instanceDiff" value="${wasmBridgeEscapeHtml(instance.instanceDiff || "2048")}" placeholder="2048" ${wasmBridgeDifficultyInputAttrsR16C("instanceDiff")} />
-          </label>
-
-          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span class="kgw-command-option-title-row-r8e">
-              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceProm")}
-              <span class="kgw-command-option-title-text-r8e">prom</span>
-            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input id="${wasmBridgeElementId(net, `instanceProm-${instance.id}`)}" data-bridge-instance-field="instanceProm" value="${wasmBridgeEscapeHtml(instance.instanceProm || "")}" placeholder="${wasmBridgeEscapeHtml(wasmBridgeInstancePromPlaceholderR49(String(net || "")))}" />
-          </label>
-
-          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span class="kgw-command-option-title-row-r8e">
-              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceLogToFile")}
-              <span class="kgw-command-option-title-text-r8e">log</span>
-            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <select id="${wasmBridgeElementId(net, `instanceLogToFile-${instance.id}`)}" data-bridge-instance-field="instanceLogToFile">
-              <option value="not set" ${instance.instanceLogToFile === "not set" ? "selected" : ""}>Inherit global</option>
-              <option value="false" ${instance.instanceLogToFile === "false" ? "selected" : ""}>false</option>
-              <option value="true" ${instance.instanceLogToFile === "true" ? "selected" : ""}>true</option>
-            </select>
-          </label>
-
-          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span class="kgw-command-option-title-row-r8e">
-              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceBlockWaitTime")}
-              <span class="kgw-command-option-title-text-r8e">wait</span>
-            </span>
-            <input id="${wasmBridgeElementId(net, `instanceBlockWaitTime-${instance.id}`)}" data-bridge-instance-field="instanceBlockWaitTime" value="${wasmBridgeEscapeHtml(instance.instanceBlockWaitTime || "")}" placeholder="Enable to override global milliseconds" />
-          </label>
-
-          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span class="kgw-command-option-title-row-r8e">
-              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceExtranonceSize")}
-              <span class="kgw-command-option-title-text-r8e">extranonce</span>
-            </span>
-            <input id="${wasmBridgeElementId(net, `instanceExtranonceSize-${instance.id}`)}" data-bridge-instance-field="instanceExtranonceSize" value="${wasmBridgeEscapeHtml(instance.instanceExtranonceSize || "")}" placeholder="optional" />
-          </label>
-
-          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span class="kgw-command-option-title-row-r8e">
-              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceVarDiff")}
-              <span class="kgw-command-option-title-text-r8e">var_diff</span>
-            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <select id="${wasmBridgeElementId(net, `instanceVarDiff-${instance.id}`)}" data-bridge-instance-field="instanceVarDiff">
-              <option value="not set" ${instance.instanceVarDiff === "not set" ? "selected" : ""}>Inherit global</option>
-              <option value="false" ${instance.instanceVarDiff === "false" ? "selected" : ""}>false</option>
-              <option value="true" ${instance.instanceVarDiff === "true" ? "selected" : ""}>true</option>
-            </select>
-          </label>
-
-          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span class="kgw-command-option-title-row-r8e">
-              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceVarDiffStats")}
-              <span class="kgw-command-option-title-text-r8e">var_stats</span>
-            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <select id="${wasmBridgeElementId(net, `instanceVarDiffStats-${instance.id}`)}" data-bridge-instance-field="instanceVarDiffStats">
-              <option value="not set" ${instance.instanceVarDiffStats === "not set" ? "selected" : ""}>Inherit global</option>
-              <option value="false" ${instance.instanceVarDiffStats === "false" ? "selected" : ""}>false</option>
-              <option value="true" ${instance.instanceVarDiffStats === "true" ? "selected" : ""}>true</option>
-            </select>
-          </label>
-
-          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span class="kgw-command-option-title-row-r8e">
-              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceSharesPerMin")}
-              <span class="kgw-command-option-title-text-r8e">shares/min</span>
-            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <input id="${wasmBridgeElementId(net, `instanceSharesPerMin-${instance.id}`)}" data-bridge-instance-field="instanceSharesPerMin" value="${wasmBridgeEscapeHtml(instance.instanceSharesPerMin || "")}" placeholder="optional" ${wasmBridgeDifficultyInputAttrsR16C("instanceSharesPerMin")} />
-          </label>
-
-          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
-            <span class="kgw-command-option-title-row-r8e">
-              ${wasmBridgeInstanceCommandCheckboxFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instancePow2Clamp")}
-              <span class="kgw-command-option-title-text-r8e">pow2</span>
-            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
-            <select id="${wasmBridgeElementId(net, `instancePow2Clamp-${instance.id}`)}" data-bridge-instance-field="instancePow2Clamp">
-              <option value="not set" ${instance.instancePow2Clamp === "not set" ? "selected" : ""}>Inherit global</option>
-              <option value="false" ${instance.instancePow2Clamp === "false" ? "selected" : ""}>false</option>
-              <option value="true" ${instance.instancePow2Clamp === "true" ? "selected" : ""}>true</option>
-            </select>
-          </label>
-        </section>
-      `).join("")}
-    </div>`;
+  return wasmBridgeRenderInstancesUi(String(net || ""), bridgeInstances, activeInstance);
 }
 
 

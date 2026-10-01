@@ -101,6 +101,288 @@ fn find_instance(bridge_instances: &JsValue, net: &str, instance_id: &str) -> Op
         .find(|item| crate::js_string_owned(&property(item, "id")) == instance_id)
 }
 
+fn escaped_text(value: &str) -> String {
+    bridge_frontend_helpers::bridge_escape_html(JsValue::from_str(value))
+}
+
+fn instance_field(instance: &JsValue, name: &str, fallback: &str) -> String {
+    let value = crate::js_string_owned(&property(instance, name));
+    if value.is_empty() {
+        fallback.to_owned()
+    } else {
+        value
+    }
+}
+
+fn selected(current: &str, expected: &str) -> &'static str {
+    if current == expected { "selected" } else { "" }
+}
+
+fn instance_checkbox(
+    bridge_instances: &JsValue,
+    net: &str,
+    instance_id: &JsValue,
+    name: &str,
+) -> String {
+    bridge_command_options::bridge_instance_command_checkbox_from_instances_r13b(
+        bridge_instances.clone(),
+        net.to_owned(),
+        instance_id.clone(),
+        name.to_owned(),
+    )
+}
+
+#[wasm_bindgen(js_name = bridgeRenderInstancesUi)]
+pub fn bridge_render_instances_ui(
+    net: String,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+) -> Result<String, JsValue> {
+    let net = bridge_frontend_helpers::bridge_instance_network_key_r15(
+        JsValue::from_str(&net),
+        JsValue::from_str(&net),
+    );
+    if net != "mainnet" {
+        return Ok(String::new());
+    }
+
+    bridge_port_orchestration::bridge_ensure_instance_state(
+        bridge_instances.clone(),
+        active_instance.clone(),
+        net.clone(),
+    )?;
+
+    let values = property(&bridge_instances, &net);
+    let instances = if Array::is_array(&values) {
+        Array::from(&values)
+    } else {
+        Array::new()
+    };
+    let active_id = crate::js_string_owned(&property(&active_instance, &net));
+    let count = instances.length();
+
+    let mut tabs = String::new();
+    let mut panels = String::new();
+
+    for (index, instance) in instances.iter().enumerate() {
+        let id_value = property(&instance, "id");
+        let id = crate::js_string_owned(&id_value);
+        let id_escaped = escaped_text(&id);
+        let is_active = active_id == id || (active_id.is_empty() && index == 0);
+        let active_class = if is_active { "active" } else { "" };
+        let disabled = if count <= 1 { "disabled" } else { "" };
+        let number = index + 1;
+
+        tabs.push_str(&format!(
+            r#"
+        <span class="kgw-instance-tab">
+          <button type="button"
+            class="bridge-v7-instance-pill-r7b bridge-v7-instance-pill-r11 {active_class}"
+            data-bridge-action="select-instance" data-network="{net}" data-instance-id="{id_escaped}">
+            Instance {number}
+          </button>
+          <button type="button" class="bridge-v7-instance-trash-r11"
+            data-bridge-action="remove-instance" data-network="{net}" data-instance-id="{id_escaped}"
+            title="Delete Instance {number}" aria-label="Delete Instance {number}"
+            {disabled}>Delete</button>
+        </span>"#
+        ));
+
+        let preview = escaped_text(&preview_text(&net, &instance));
+        let instance_port = escaped_text(&instance_field(&instance, "instancePort", ""));
+        let instance_diff = escaped_text(&instance_field(&instance, "instanceDiff", "2048"));
+        let instance_prom = escaped_text(&instance_field(&instance, "instanceProm", ""));
+        let block_wait = escaped_text(&instance_field(&instance, "instanceBlockWaitTime", ""));
+        let extranonce = escaped_text(&instance_field(&instance, "instanceExtranonceSize", ""));
+        let shares_per_min = escaped_text(&instance_field(&instance, "instanceSharesPerMin", ""));
+        let port_placeholder = escaped_text(&placeholder_value(&net, "stratum"));
+        let prom_placeholder = escaped_text(&placeholder_value(&net, "prom"));
+        let diff_attrs =
+            crate::bridge_render::bridge_difficulty_input_attrs_r16c("instanceDiff".to_owned());
+        let shares_attrs = crate::bridge_render::bridge_difficulty_input_attrs_r16c(
+            "instanceSharesPerMin".to_owned(),
+        );
+        let log_to_file = instance_field(&instance, "instanceLogToFile", "");
+        let var_diff = instance_field(&instance, "instanceVarDiff", "");
+        let var_diff_stats = instance_field(&instance, "instanceVarDiffStats", "");
+        let pow2_clamp = instance_field(&instance, "instancePow2Clamp", "");
+
+        let checkbox = |name: &str| instance_checkbox(&bridge_instances, &net, &id_value, name);
+        let element_id = |name: &str| {
+            bridge_frontend_helpers::bridge_element_id(net.clone(), format!("{name}-{id}"))
+        };
+
+        panels.push_str(&format!(
+            r#"
+        <section
+          class="bridge-v7-instance-panel bridge-v7-instance-panel-r7b {active_class}"
+          data-bridge-instance-panel="{id_escaped}">
+          <label class="bridge-v7-card bridge-v7-instance-preview-card-r8b">
+            <span class="kgw-command-option-title-row-r8e">
+              {instance_checkbox}
+              <span class="kgw-command-option-title-text-r8e">Effective instance</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
+            <input
+              readonly
+              data-bridge-instance-preview="true"
+              data-network="{net}"
+              data-instance-id="{id_escaped}"
+              value="{preview}"
+              title="{preview}" />
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span class="kgw-command-option-title-row-r8e">
+              {port_checkbox}
+              <span class="kgw-command-option-title-text-r8e">port</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
+            <input id="{port_id}" data-bridge-instance-field="instancePort" value="{instance_port}" placeholder="{port_placeholder}" />
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span class="kgw-command-option-title-row-r8e">
+              {diff_checkbox}
+              <span class="kgw-command-option-title-text-r8e">diff</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
+            <input id="{diff_id}" data-bridge-instance-field="instanceDiff" value="{instance_diff}" placeholder="2048" {diff_attrs} />
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span class="kgw-command-option-title-row-r8e">
+              {prom_checkbox}
+              <span class="kgw-command-option-title-text-r8e">prom</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
+            <input id="{prom_id}" data-bridge-instance-field="instanceProm" value="{instance_prom}" placeholder="{prom_placeholder}" />
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span class="kgw-command-option-title-row-r8e">
+              {log_checkbox}
+              <span class="kgw-command-option-title-text-r8e">log</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
+            <select id="{log_id}" data-bridge-instance-field="instanceLogToFile">
+              <option value="not set" {log_not_set}>Inherit global</option>
+              <option value="false" {log_false}>false</option>
+              <option value="true" {log_true}>true</option>
+            </select>
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span class="kgw-command-option-title-row-r8e">
+              {wait_checkbox}
+              <span class="kgw-command-option-title-text-r8e">wait</span>
+            </span>
+            <input id="{wait_id}" data-bridge-instance-field="instanceBlockWaitTime" value="{block_wait}" placeholder="Enable to override global milliseconds" />
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span class="kgw-command-option-title-row-r8e">
+              {extranonce_checkbox}
+              <span class="kgw-command-option-title-text-r8e">extranonce</span>
+            </span>
+            <input id="{extranonce_id}" data-bridge-instance-field="instanceExtranonceSize" value="{extranonce}" placeholder="optional" />
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span class="kgw-command-option-title-row-r8e">
+              {var_diff_checkbox}
+              <span class="kgw-command-option-title-text-r8e">var_diff</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
+            <select id="{var_diff_id}" data-bridge-instance-field="instanceVarDiff">
+              <option value="not set" {var_diff_not_set}>Inherit global</option>
+              <option value="false" {var_diff_false}>false</option>
+              <option value="true" {var_diff_true}>true</option>
+            </select>
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span class="kgw-command-option-title-row-r8e">
+              {var_stats_checkbox}
+              <span class="kgw-command-option-title-text-r8e">var_stats</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
+            <select id="{var_stats_id}" data-bridge-instance-field="instanceVarDiffStats">
+              <option value="not set" {var_stats_not_set}>Inherit global</option>
+              <option value="false" {var_stats_false}>false</option>
+              <option value="true" {var_stats_true}>true</option>
+            </select>
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span class="kgw-command-option-title-row-r8e">
+              {shares_checkbox}
+              <span class="kgw-command-option-title-text-r8e">shares/min</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
+            <input id="{shares_id}" data-bridge-instance-field="instanceSharesPerMin" value="{shares_per_min}" placeholder="optional" {shares_attrs} />
+          </label>
+
+          <label class="bridge-v7-card bridge-v7-instance-card-r7b">
+            <span class="kgw-command-option-title-row-r8e">
+              {pow2_checkbox}
+              <span class="kgw-command-option-title-text-r8e">pow2</span>
+            </span> <!-- KGW_BRIDGE_RENDER_INSTANCES_COMMAND_CHECKBOX_R13B -->
+            <select id="{pow2_id}" data-bridge-instance-field="instancePow2Clamp">
+              <option value="not set" {pow2_not_set}>Inherit global</option>
+              <option value="false" {pow2_false}>false</option>
+              <option value="true" {pow2_true}>true</option>
+            </select>
+          </label>
+        </section>
+"#,
+            instance_checkbox = checkbox("instance"),
+            port_checkbox = checkbox("instancePort"),
+            diff_checkbox = checkbox("instanceDiff"),
+            prom_checkbox = checkbox("instanceProm"),
+            log_checkbox = checkbox("instanceLogToFile"),
+            wait_checkbox = checkbox("instanceBlockWaitTime"),
+            extranonce_checkbox = checkbox("instanceExtranonceSize"),
+            var_diff_checkbox = checkbox("instanceVarDiff"),
+            var_stats_checkbox = checkbox("instanceVarDiffStats"),
+            shares_checkbox = checkbox("instanceSharesPerMin"),
+            pow2_checkbox = checkbox("instancePow2Clamp"),
+            port_id = element_id("instancePort"),
+            diff_id = element_id("instanceDiff"),
+            prom_id = element_id("instanceProm"),
+            log_id = element_id("instanceLogToFile"),
+            wait_id = element_id("instanceBlockWaitTime"),
+            extranonce_id = element_id("instanceExtranonceSize"),
+            var_diff_id = element_id("instanceVarDiff"),
+            var_stats_id = element_id("instanceVarDiffStats"),
+            shares_id = element_id("instanceSharesPerMin"),
+            pow2_id = element_id("instancePow2Clamp"),
+            log_not_set = selected(&log_to_file, "not set"),
+            log_false = selected(&log_to_file, "false"),
+            log_true = selected(&log_to_file, "true"),
+            var_diff_not_set = selected(&var_diff, "not set"),
+            var_diff_false = selected(&var_diff, "false"),
+            var_diff_true = selected(&var_diff, "true"),
+            var_stats_not_set = selected(&var_diff_stats, "not set"),
+            var_stats_false = selected(&var_diff_stats, "false"),
+            var_stats_true = selected(&var_diff_stats, "true"),
+            pow2_not_set = selected(&pow2_clamp, "not set"),
+            pow2_false = selected(&pow2_clamp, "false"),
+            pow2_true = selected(&pow2_clamp, "true"),
+        ));
+    }
+
+    Ok(format!(
+        r#"
+    <div class="bridge-v7-instance-tabs bridge-v7-instance-tabs-r7b">
+      {tabs}
+      <button
+        type="button"
+        class="bridge-v7-instance-add bridge-v7-instance-add-r7b bridge-v7-instance-add-r11"
+        data-bridge-action="add-instance"
+        data-network="{net}"
+        aria-label="Add Instance"
+        title="Add Instance">+</button>
+    </div>
+
+    <div class="bridge-v7-instance-stack bridge-v7-instance-stack-r7b">
+      {panels}
+    </div>"#
+    ))
+}
+
 #[wasm_bindgen(js_name = bridgeInstancePreviewTextR8B)]
 pub fn bridge_instance_preview_text_r8b(net: String, instance: JsValue) -> String {
     preview_text(&net, &instance)

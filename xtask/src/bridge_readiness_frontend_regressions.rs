@@ -15,6 +15,8 @@ const BRIDGE_INSTANCE_SETTINGS_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs";
 const BRIDGE_COMMAND_OPTIONS_SOURCE: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_command_options.rs";
+const BRIDGE_INSTANCE_UI_SOURCE: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_instance_ui.rs";
 const WASM_JS: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm.js";
 const WASM_BIN: &str =
@@ -1603,6 +1605,62 @@ fn verify_start_options_ownership(
     Ok(())
 }
 
+fn verify_instances_renderer_ownership(source: &str, instance_ui: &str) -> Result<(), String> {
+    for required in [
+        "bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi",
+        "// KGW_BRIDGE_INSTANCES_RENDERER_RUST_OWNER_V1",
+        "function renderInstances(net) {",
+        "return wasmBridgeRenderInstancesUi(String(net || \"\"), bridgeInstances, activeInstance);",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge instances-renderer Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    let wrapper = slice_between(source, "function renderInstances(net) {", "\n}")?;
+    for forbidden in [
+        "bridgeInstances[net].map(",
+        "wasmBridgeEnsureInstanceState(",
+        "wasmBridgeInstanceCommandCheckboxFromInstancesR13B(",
+        "wasmBridgeInstancePreviewTextR8B(",
+        "wasmBridgeInstancePortPlaceholderR49(",
+        "wasmBridgeInstancePromPlaceholderR49(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge instances-renderer JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeRenderInstancesUi",
+        "pub fn bridge_render_instances_ui(",
+        "bridge_instance_network_key_r15(",
+        "bridge_ensure_instance_state(",
+        "bridge_instance_command_checkbox_from_instances_r13b(",
+        "preview_text(&net, &instance)",
+        "placeholder_value(&net, \"stratum\")",
+        "placeholder_value(&net, \"prom\")",
+        "bridge_difficulty_input_attrs_r16c(",
+        "data-bridge-action=\"select-instance\"",
+        "data-bridge-action=\"remove-instance\"",
+        "data-bridge-action=\"add-instance\"",
+        "data-bridge-instance-field=\"instancePort\"",
+        "data-bridge-instance-field=\"instancePow2Clamp\"",
+    ] {
+        if !instance_ui.contains(required) {
+            return Err(format!(
+                "Bridge instances-renderer Rust owner contract missing: {required}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn verify_instance_command_option_ownership(
     source: &str,
     command_options: &str,
@@ -2683,9 +2741,9 @@ fn verify_static_contracts(
     if !source.contains("bridgeInstanceNetworkKeyR15 as wasmBridgeInstanceNetworkKeyR15") {
         return Err("Bridge R15 instance network-key Rust/WASM import is missing".to_owned());
     }
-    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 4 {
+    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 3 {
         return Err(
-            "Bridge R15 instance network-key owner must have exactly four remaining direct generated-WASM call sites after OP276 moves add/remove network canonicalization into Rust"
+            "Bridge R15 instance network-key owner must have exactly three remaining direct generated-WASM call sites after OP278 moves instances-renderer network canonicalization into Rust"
                 .to_owned(),
         );
     }
@@ -2898,6 +2956,8 @@ pub fn run(root: &Path) -> Result<String, String> {
     })?;
     let command_options_source = fs::read_to_string(root.join(BRIDGE_COMMAND_OPTIONS_SOURCE))
         .map_err(|error| format!("failed to read {BRIDGE_COMMAND_OPTIONS_SOURCE}: {error}"))?;
+    let instance_ui_source = fs::read_to_string(root.join(BRIDGE_INSTANCE_UI_SOURCE))
+        .map_err(|error| format!("failed to read {BRIDGE_INSTANCE_UI_SOURCE}: {error}"))?;
     verify_r51_storage_ownership(&full_source, &helper_source)?;
     verify_r51_keys_ownership(&full_source, &helper_source)?;
     verify_r51_runtime_presentation_ownership(&full_source, &runtime_core_source)?;
@@ -2906,6 +2966,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_start_options_ownership(&full_source, &helper_source, &instance_settings_source)?;
+    verify_instances_renderer_ownership(&full_source, &instance_ui_source)?;
     verify_instance_command_option_ownership(&full_source, &command_options_source)?;
     verify_instance_mutation_ownership(&full_source, &instance_settings_source)?;
     verify_instance_state_structured_reader_ownership(&full_source, &instance_settings_source)?;
@@ -4132,6 +4193,47 @@ mod tests {
             instance_settings.replace("\"CPU threads\"", "\"Missing CPU threads\""),
         ] {
             assert!(verify_start_options_ownership(source, helpers, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn instances_renderer_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let instance_ui =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_instance_ui.rs");
+        assert!(verify_instances_renderer_ownership(source, instance_ui).is_ok());
+
+        for mutation in [
+            source.replace(
+                "bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi",
+                "missingRenderInstancesUi as wasmBridgeRenderInstancesUi",
+            ),
+            source.replacen(
+                "function renderInstances(net) {",
+                "function renderInstances(net) {\n  return bridgeInstances[net].map(() => \"legacy\").join(\"\");",
+                1,
+            ),
+        ] {
+            assert!(verify_instances_renderer_ownership(&mutation, instance_ui).is_err());
+        }
+
+        for mutation in [
+            instance_ui.replace(
+                "js_name = bridgeRenderInstancesUi",
+                "js_name = missingRenderInstancesUi",
+            ),
+            instance_ui.replace(
+                "data-bridge-action=\"add-instance\"",
+                "data-bridge-action=\"missing-add-instance\"",
+            ),
+            instance_ui.replace(
+                "bridge_instance_command_checkbox_from_instances_r13b(",
+                "missing_instance_command_checkbox_from_instances(",
+            ),
+        ] {
+            assert!(verify_instances_renderer_ownership(source, &mutation).is_err());
         }
     }
 
