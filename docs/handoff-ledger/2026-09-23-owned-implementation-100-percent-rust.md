@@ -250,3 +250,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 299/299 plus auxiliary suites; targeted visible-instance-owner ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP280 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP281 - Bridge instance-container click owner Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP280 closeout `6f66db14f64a15ac00d205863b5083a0b1bcb870`; BASE_TREE `53736454c0796f1d362fa44a5b463c805f106e04`; worktree clean at intent time.
+- BOUNDARY: move `bridgeInstallInstanceContainerOwnerR11` click-owner orchestration into Rust/WASM. Rust owns container owner marker, delegated action extraction/validation, network canonicalization, trace payload construction, event suppression, and action dispatch. JavaScript may remain as explicit callbacks for add/select/remove, refresh/raw-log/update behavior until their own later ownership boundaries.
+- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; stale direct-call counts repaired narrowly if required; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
