@@ -272,3 +272,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: Bridge R27 direct JavaScript log-auto-scroll scheduling expectation narrowed from two to one because OP282 moved the render-all-networks deferred installer into Rust; the new Rust ownership gate explicitly requires both deferred Rust installers.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP282 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP283 - Bridge settings-section grouping Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP282 closeout `3054f9351557a6aea4983eeb91763624a5ec4803`; BASE_TREE `12a02608d375a9d0bdfff08bafa60797fad216fe`; worktree clean at intent time.
+- BOUNDARY: move `renderSections` settings-card grouping/layout orchestration into Rust/WASM while preserving only the in-process node-settings renderer as an explicit callback for its own later boundary. Rust owns canonical Bridge card renderer aggregation, card extraction/filtering, grouping/order, mainnet/testnet policy branching, dangerous-panel extraction, ungrouped-field fail-closed detection, difficulty datalist prefix, and settings-tab rendering.
+- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; grouping/order and mainnet/testnet policy preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
