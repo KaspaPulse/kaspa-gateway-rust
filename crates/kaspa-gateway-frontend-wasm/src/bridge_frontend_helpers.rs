@@ -1422,6 +1422,182 @@ pub fn bridge_install_settings_event_owners_ui(
     true
 }
 
+#[wasm_bindgen(js_name = bridgeInstallRootActionClickOwnerUi)]
+pub fn bridge_install_root_action_click_owner_ui(root: JsValue, callbacks: JsValue) -> bool {
+    if !present(&root) {
+        return false;
+    }
+    let root_click = root.clone();
+    let callbacks_click = callbacks;
+    let click = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+        let button = call1(
+            &target,
+            "closest",
+            &JsValue::from_str("[data-bridge-action]"),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        if !present(&button)
+            || !call1(&root_click, "contains", &button)
+                .is_some_and(|value| crate::js_boolean(&value))
+        {
+            return;
+        }
+
+        let dataset = property(&button, "dataset");
+        let action = crate::js_string_owned(&property(&dataset, "bridgeAction"));
+        let direct_net = {
+            let net = crate::js_string_owned(&property(&dataset, "net"));
+            if net.is_empty() {
+                crate::js_string_owned(&property(&dataset, "network"))
+            } else {
+                net
+            }
+        };
+        let net = {
+            let direct = normalize_bridge_network_text(&direct_net);
+            if direct.is_empty() {
+                bridge_settings_net_from_element(&button)
+            } else {
+                direct
+            }
+        };
+        if net.is_empty() {
+            return;
+        }
+
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "trusted",
+            &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+        );
+        set(
+            details.as_ref(),
+            "disabled",
+            &JsValue::from_bool(crate::js_boolean(&property(&button, "disabled"))),
+        );
+        set(details.as_ref(), "id", &property(&button, "id"));
+        let instance_id = {
+            let value = crate::js_string_owned(&property(&dataset, "instanceId"));
+            if value.is_empty() {
+                crate::js_string_owned(&property(&dataset, "instance"))
+            } else {
+                value
+            }
+        };
+        set(
+            details.as_ref(),
+            "instanceId",
+            &JsValue::from_str(&instance_id),
+        );
+        set(
+            details.as_ref(),
+            "text",
+            &JsValue::from_str(crate::js_string_owned(&property(&button, "textContent")).trim()),
+        );
+        let _ = bridge_small_owner_trace_r44d(
+            JsValue::from_str(&net),
+            JsValue::from_str(if action.is_empty() {
+                "unknown"
+            } else {
+                &action
+            }),
+            JsValue::from_str("r27d-action-click"),
+            details.into(),
+        );
+
+        match action.as_str() {
+            "select-instance" => {
+                let _ = call2(
+                    &callbacks_click,
+                    "selectInstance",
+                    &JsValue::from_str(&net),
+                    &JsValue::from_str(&instance_id),
+                );
+            }
+            "add-instance" => {
+                let _ = call1(&callbacks_click, "addInstance", &JsValue::from_str(&net));
+            }
+            "remove-instance" => {
+                let _ = call2(
+                    &callbacks_click,
+                    "removeInstance",
+                    &JsValue::from_str(&net),
+                    &JsValue::from_str(&instance_id),
+                );
+            }
+            "save-settings" => {
+                let _ = call2(
+                    &callbacks_click,
+                    "saveSettings",
+                    &JsValue::from_str(&net),
+                    &button,
+                );
+            }
+            "set-defaults" => {
+                let _ = call2(
+                    &callbacks_click,
+                    "setDefaults",
+                    &JsValue::from_str(&net),
+                    &button,
+                );
+            }
+            "restore-defaults" => {
+                let _ = call2(
+                    &callbacks_click,
+                    "restoreDefaults",
+                    &JsValue::from_str(&net),
+                    &button,
+                );
+            }
+            "copy-log" | "clear-log" => {
+                let _ = call3(
+                    &callbacks_click,
+                    "logAction",
+                    &JsValue::from_str(&action),
+                    &JsValue::from_str(&net),
+                    &button,
+                );
+            }
+            "monitor-next" => {
+                let _ = call2(
+                    &callbacks_click,
+                    "monitorNext",
+                    &JsValue::from_str(&net),
+                    &button,
+                );
+            }
+            "copy-command" | "copy-path" => {
+                let _ = call2(
+                    &callbacks_click,
+                    "copyValue",
+                    &JsValue::from_str(&action),
+                    &JsValue::from_str(&net),
+                );
+            }
+            "start" | "stop" => {
+                let _ = call2(
+                    &callbacks_click,
+                    "runtimeAction",
+                    &JsValue::from_str(&action),
+                    &JsValue::from_str(&net),
+                );
+            }
+            _ => {}
+        }
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call3(
+        &root,
+        "addEventListener",
+        &JsValue::from_str("click"),
+        click.as_ref().unchecked_ref(),
+        &JsValue::FALSE,
+    );
+    click.forget();
+    true
+}
+
 fn bridge_queue_microtask(callback: Closure<dyn FnMut()>) {
     if let Some(queue) = function(&global(), "queueMicrotask") {
         let _ = queue.call1(&global(), callback.as_ref().unchecked_ref());

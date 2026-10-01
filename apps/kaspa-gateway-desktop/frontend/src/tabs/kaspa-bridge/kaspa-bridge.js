@@ -48,6 +48,7 @@ import initBridgeRust, {
   bridgeInstallActionEventOwnersUi as wasmBridgeInstallActionEventOwnersUi,
   bridgeInstallPortEventOwnersUi as wasmBridgeInstallPortEventOwnersUi,
   bridgeInstallSettingsEventOwnersUi as wasmBridgeInstallSettingsEventOwnersUi,
+  bridgeInstallRootActionClickOwnerUi as wasmBridgeInstallRootActionClickOwnerUi,
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeElementId as wasmBridgeElementId,
@@ -1042,33 +1043,6 @@ function installActions(root) {
     window.KGW_BRIDGE_SETTINGS_OWNER_V19.install(root);
   }
 
-  function normalizeNet(value) {
-    const raw = String(value || "").toLowerCase();
-    if (raw.includes("testnet13") || raw.includes("tn13")) return "testnet13";
-    if (raw.includes("testnet10") || raw.includes("tn10")) return "testnet10";
-    if (raw.includes("mainnet")) return "mainnet";
-    return "";
-  }
-
-  function netFromElement(element) {
-    if (!element) return "";
-    const carrier = element.closest("[data-net], [data-network], [data-bridge-network-panel], [data-bridge-inner-panel], [data-bridge-section-panel], [data-bridge-instance-panel]");
-
-    return normalizeNet(
-      [
-        element.dataset && element.dataset.net,
-        element.dataset && element.dataset.network,
-        carrier && carrier.dataset && carrier.dataset.net,
-        carrier && carrier.dataset && carrier.dataset.network,
-        carrier && carrier.dataset && carrier.dataset.bridgeNetworkPanel,
-        element.id,
-        carrier && carrier.id,
-        carrier && carrier.className
-      ].filter(Boolean).join(" ")
-    );
-  }
-
-
   // KGW_EXPLICIT_TRACE_OWNER_R27D_BRIDGE_BEGIN
   function kgwBridgeExplicitTraceR27D(net, action, phase, details) {
     try {
@@ -1115,46 +1089,22 @@ function installActions(root) {
   }
   bridgeInstallAllVisibleInstanceContainerOwnersR11(root);
 
-  root.addEventListener("click", (event) => {
-    const button = event.target && event.target.closest ? event.target.closest("[data-bridge-action]") : null;
-    if (!button || !root.contains(button)) return;
-
-    const action = button.dataset.bridgeAction;
-    const net = normalizeNet(button.dataset.net || button.dataset.network || netFromElement(button));
-
-    if (!net) return;
-
-
-
-    kgwBridgeExplicitTraceR27D(net, String(action || "unknown"), "r27d-action-click", {
-      trusted: Boolean(event && event.isTrusted),
-      disabled: Boolean(button.disabled),
-      id: String(button.id || ""),
-      instanceId: String(button.dataset.instanceId || button.dataset.instance || ""),
-      text: String(button.textContent || "").trim()
-    });
-
-    if (action === "select-instance") {
-      activeInstance[net] = button.dataset.instanceId;
+  wasmBridgeInstallRootActionClickOwnerUi(root, {
+    selectInstance: (net, instanceId) => {
+      activeInstance[net] = instanceId;
       bridgeRefreshInstances(net);
       wasmBridgeRenderRawLogBuffer(String(net || ""), "bridge", String(activeInstance[net] || ""));
       scopedUpdate(net, "select-instance");
-      return;
-    }
-
-    if (action === "add-instance") {
+    },
+    addInstance: (net) => {
       addInstance(net);
       scopedUpdate(net, "add-instance");
-      return;
-    }
-
-    if (action === "remove-instance") {
-      removeInstance(net, button.dataset.instanceId);
+    },
+    removeInstance: (net, instanceId) => {
+      removeInstance(net, instanceId);
       scopedUpdate(net, "remove-instance");
-      return;
-    }
-
-    if (action === "save-settings") {
+    },
+    saveSettings: (net, button) => {
       try {
         wasmBridgeR51SaveSettings(String(net || ""), kgwBridgeR51PersistenceCallbacksR255());
         button.dataset.kgwSettingsActionResult = "success";
@@ -1163,10 +1113,8 @@ function installActions(root) {
         wasmBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
       }
       scopedUpdate(net, "save-settings");
-      return;
-    }
-
-    if (action === "set-defaults") {
+    },
+    setDefaults: (net, button) => {
       try {
         wasmBridgeR51SetAsDefaults(String(net || ""), kgwBridgeR51PersistenceCallbacksR255());
         button.dataset.kgwSettingsActionResult = "success";
@@ -1175,10 +1123,8 @@ function installActions(root) {
         wasmBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
       }
       scopedUpdate(net, "set-defaults");
-      return;
-    }
-
-    if (action === "restore-defaults") {
+    },
+    restoreDefaults: (net, button) => {
       try {
         wasmBridgeR51RestoreDefaults(String(net || ""), kgwBridgeR51PersistenceCallbacksR255());
         button.dataset.kgwSettingsActionResult = "success";
@@ -1187,21 +1133,16 @@ function installActions(root) {
         wasmBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
       }
       scopedUpdate(net, "restore-defaults");
-      return;
-    }
-
-    if (action === "copy-log" || action === "clear-log") {
+    },
+    logAction: (action, net, button) => {
       kgwBridgeHandleLogActionV29(action, net, button).catch(function () {});
-      return;
-    }
-
-    if (action === "monitor-next") {
+    },
+    monitorNext: (net, button) => {
       const panel = wasmBridgeR51Panel(net);
       if (button.dataset.nextAction === "start") panel?.querySelector('[data-bridge-action="start"]')?.click();
       else panel?.querySelector('[data-bridge-inner-tab="settings"]')?.click();
-      return;
-    }
-    if (action === "copy-command" || action === "copy-path") {
+    },
+    copyValue: (action, net) => {
       void (async () => {
         let text = wasmBridgeValue(net, "appdir");
         if (action === "copy-command") {
@@ -1216,19 +1157,15 @@ function installActions(root) {
         await wasmBridgeDispatchClipboardWrite(String(net || ""), String(text ?? ""), {characterCount: [...text].length, lineCount: text.split(/\r?\n/).length});
         wasmBridgePreviewMessage(String(net || ""), action === "copy-path" ? "Data directory copied." : "Effective settings copied.", false);
       })().catch(error => wasmBridgePreviewMessage(String(net || ""), "Copy failed: " + wasmBridgeNormalizeRuntimeError(error), true));
-      return;
+    },
+    runtimeAction: (action, net) => {
+      runBridgeIntegratedAction(action, net).catch(function (error) {
+        wasmBridgeR51SetRuntimeButtons(String(net || ""), false, "", "", "");
+        wasmBridgeSetRuntimeErrorV1(net, error && error.message ? error.message : String(error));
+        wasmBridgeSetRuntimeActivityV1(net, "Bridge " + action + " failed.");
+      });
     }
-
-    if (action === "start" || action === "stop") {
-      if (typeof runBridgeIntegratedAction === "function") {
-        runBridgeIntegratedAction(action, net).catch(function (error) {
-          wasmBridgeR51SetRuntimeButtons(String(net || ""), false, "", "", "");
-          wasmBridgeSetRuntimeErrorV1(net, error && error.message ? error.message : String(error));
-          wasmBridgeSetRuntimeActivityV1(net, "Bridge " + action + " failed.");
-        });
-      }
-    }
-  }, false);
+  });
 }
 
 export async function initKaspaBridgeTab(root) {

@@ -2059,6 +2059,57 @@ fn verify_settings_event_owners_ownership(source: &str, helpers: &str) -> Result
     Ok(())
 }
 
+fn verify_root_action_click_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeInstallRootActionClickOwnerUi as wasmBridgeInstallRootActionClickOwnerUi",
+        "wasmBridgeInstallRootActionClickOwnerUi(root, {",
+        "selectInstance: (net, instanceId) =>",
+        "saveSettings: (net, button) =>",
+        "runtimeAction: (action, net) =>",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge root action-click Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    let actions = slice_between(source, "function installActions(root) {", "\n}")?;
+    for forbidden in [
+        "root.addEventListener(\"click\"",
+        "const button = event.target",
+        "const action = button.dataset.bridgeAction",
+        "netFromElement(",
+        "normalizeNet(",
+    ] {
+        if actions.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge root action-click JavaScript dispatcher remains after OP291: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeInstallRootActionClickOwnerUi",
+        "pub fn bridge_install_root_action_click_owner_ui(",
+        "[data-bridge-action]",
+        "bridge_settings_net_from_element(",
+        "r27d-action-click",
+        "\"select-instance\"",
+        "\"save-settings\"",
+        "\"set-defaults\"",
+        "\"restore-defaults\"",
+        "\"copy-log\" | \"clear-log\"",
+        "\"copy-command\" | \"copy-path\"",
+        "\"start\" | \"stop\"",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge root action-click Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_port_event_owners_ownership(source: &str, port_ui: &str) -> Result<(), String> {
     for required in [
         "bridgeInstallPortEventOwnersUi as wasmBridgeInstallPortEventOwnersUi",
@@ -3664,6 +3715,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_delegated_tabs_ownership(&full_source, &helper_source)?;
     verify_action_event_owners_ownership(&full_source, &helper_source)?;
     verify_settings_event_owners_ownership(&full_source, &helper_source)?;
+    verify_root_action_click_ownership(&full_source, &helper_source)?;
     verify_port_event_owners_ownership(&full_source, &bridge_port_ui_source)?;
     verify_inprocess_node_settings_renderer_ownership(&full_source, &bridge_render_source)?;
     verify_settings_sections_ownership(&full_source, &helper_source)?;
@@ -5112,6 +5164,29 @@ mod tests {
             "js_name = missingInstallSettingsEventOwnersUi",
         );
         assert!(verify_settings_event_owners_ownership(source, &missing).is_err());
+    }
+
+    #[test]
+    fn root_action_click_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_root_action_click_ownership(source, helpers).is_ok());
+
+        let legacy = source.replacen(
+            "function installActions(root) {",
+            "function installActions(root) {\n  root.addEventListener(\"click\", () => {});",
+            1,
+        );
+        assert!(verify_root_action_click_ownership(&legacy, helpers).is_err());
+
+        let missing = helpers.replace(
+            "js_name = bridgeInstallRootActionClickOwnerUi",
+            "js_name = missingInstallRootActionClickOwnerUi",
+        );
+        assert!(verify_root_action_click_ownership(source, &missing).is_err());
     }
 
     #[test]
