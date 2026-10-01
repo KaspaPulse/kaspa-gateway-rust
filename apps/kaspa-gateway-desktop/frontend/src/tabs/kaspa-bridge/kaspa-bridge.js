@@ -1,10 +1,9 @@
-import { validateBridgeForm, renderFieldErrors, confirmUserAction } from "../../settings-contract.js";
-import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField } from "../../settings-layout.js";
+import { confirmUserAction } from "../../settings-contract.js";
+import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields } from "../../settings-layout.js";
 import initBridgeRust, {
   bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5 as wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5,
   bridgeById as wasmBridgeById,
   bridgeChecked as wasmBridgeChecked,
-  bridgeCommandInlineStateR7 as wasmBridgeCommandInlineStateR7,
   bridgeCommandInlineToggleR7 as wasmBridgeCommandInlineToggleR7,
   bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7,
   bridgeHasConfig as wasmBridgeHasConfig,
@@ -55,7 +54,6 @@ import initBridgeRust, {
   bridgeStartOptions as wasmBridgeStartOptions,
   bridgeInstanceCommandCheckboxFromInstancesR13B as wasmBridgeInstanceCommandCheckboxFromInstancesR13B,
   bridgeInstanceCommandSetOptionR13B as wasmBridgeInstanceCommandSetOptionR13B,
-  bridgeInstanceCommandShouldIncludeFromInstancesR13B as wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B,
   bridgeInstancePreviewTextR8B as wasmBridgeInstancePreviewTextR8B,
   bridgeSyncInstancePreviewRowsR8B as wasmBridgeSyncInstancePreviewRowsR8B,
   bridgeReadInstanceField as wasmBridgeReadInstanceField,
@@ -82,6 +80,7 @@ import initBridgeRust, {
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
   bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
+  bridgeValidateFormUi as wasmBridgeValidateFormUi,
   bridgeSyncDependencies as wasmBridgeSyncDependencies,
   bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E,
   bridgeValue as wasmBridgeValue,
@@ -2708,42 +2707,9 @@ if (typeof window !== "undefined") {
 // KGW_BRIDGE_AUTOFIX_BUTTON_INITIAL_LABEL_R111G
 try { wasmBridgeAutofixButtonInitialLabelUiR111G(document); } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
 
-function kgwBridgeForm(net) {
-  const values = { network: net };
-  wasmBridgeR51Panel(net)?.querySelectorAll(".bridge-v7-card input[id], .bridge-v7-card select[id]").forEach(field => {
-    values[field.id.slice(("bridge-" + net + "-").length)] = field.type === "checkbox" ? field.checked : field.value;
-  });
-  return values;
-}
+// KGW_BRIDGE_FULL_FORM_VALIDATION_RUST_OWNER_V1
 function kgwBridgeValidateForm(net, focus = false) {
-  const errors = validateBridgeForm(kgwBridgeForm(net), wasmBridgeCommandInlineStateR7(String(net || "")), net);
-  const panel = wasmBridgeR51Panel(net);
-  for (const instance of net !== "mainnet" || wasmBridgeHasConfig(String(net || "")) ? [] : bridgeInstances[net] || []) {
-    if (!wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instance")) continue;
-    const waitField = wasmBridgeById(wasmBridgeElementId(net, "instanceBlockWaitTime-" + instance.id));
-    if (waitField && wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, "instanceBlockWaitTime") &&
-        !/^[1-9]\d*(ms|s)?$/.test(waitField.value.trim()))
-      errors["instanceBlockWaitTime-" + instance.id] = "Enter a positive duration, for example 50ms or 1s.";
-    for (const [name, min, max] of [["instanceDiff",1,4294967295],["instanceExtranonceSize",0,8],["instanceSharesPerMin",1,4294967295]]) {
-      if (!wasmBridgeInstanceCommandShouldIncludeFromInstancesR13B(bridgeInstances, String(net || ""), instance.id, name)) continue;
-      const field = wasmBridgeById(wasmBridgeElementId(net, name + "-" + instance.id));
-      if (!field) continue;
-      const raw = String(field.value || "").trim();
-
-      if (!/^\d+$/.test(raw) || !Number.isSafeInteger(Number(raw)) || Number(raw) < min || Number(raw) > max)
-        errors[field.id.slice(("bridge-" + net + "-").length)] = "Enter a whole number from " + min + " to " + max + ".";
-    }
-  }
-  renderFieldErrors(panel, "bridge-" + net + "-", errors);
-  if (focus && Object.keys(errors).length) {
-    const field = wasmBridgeById(wasmBridgeElementId(net, Object.keys(errors)[0]));
-    panel?.querySelector('[data-bridge-inner-tab="settings"]')?.click();
-    const section = field?.closest("[data-bridge-section-panel]");
-    panel?.querySelector('[data-bridge-section-tab="' + section?.dataset.bridgeSectionPanel + '"]')?.click();
-    revealSettingsField(field);
-    field?.focus();
-  }
-  return errors;
+  return wasmBridgeValidateFormUi(String(net || ""), bridgeInstances, Boolean(focus));
 }
 function kgwBridgeRequireValidSettings(net) {
   const errors = kgwBridgeValidateForm(net, true);

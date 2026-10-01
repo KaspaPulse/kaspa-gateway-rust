@@ -14,13 +14,10 @@ const WASM_JS: &str =
 const WASM_BIN: &str =
     "apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm_bg.wasm";
 
-const SLICES: &[(&str, &str)] = &[
-    ("function kgwBridgeForm(", "function kgwBridgeValidateForm("),
-    (
-        "const BRIDGE_NETWORKS = wasmBridgeNetworkProfiles();",
-        "const bridgeInstances = {",
-    ),
-];
+const SLICES: &[(&str, &str)] = &[(
+    "const BRIDGE_NETWORKS = wasmBridgeNetworkProfiles();",
+    "const bridgeInstances = {",
+)];
 
 const NODE_BRIDGE: &str = r##"
 import { readFile, writeFile } from "node:fs/promises";
@@ -532,9 +529,11 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source
         .matches("wasmBridgeNodeMode(String(net || \"\"))")
         .count()
-        != 6
+        != 4
     {
-        return Err("Bridge node-mode must use exactly six direct Rust/WASM call sites".to_owned());
+        return Err(
+            "Bridge node-mode must use exactly four direct Rust/WASM call sites".to_owned(),
+        );
     }
 
     if source.contains("function kgwBridgeR51Panel(") {
@@ -543,10 +542,8 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if !source.contains("bridgeR51Panel as wasmBridgeR51Panel") {
         return Err("Bridge R51 panel Rust/WASM import is missing".to_owned());
     }
-    if source.matches("wasmBridgeR51Panel(").count() != 7 {
-        return Err(
-            "Bridge R51 panel must use exactly seven direct Rust/WASM call sites".to_owned(),
-        );
+    if source.matches("wasmBridgeR51Panel(").count() != 2 {
+        return Err("Bridge R51 panel must use exactly two direct Rust/WASM call sites".to_owned());
     }
     if !instance_settings.contains("js_name = bridgeR51Panel") {
         return Err("Bridge R51 panel Rust export is missing".to_owned());
@@ -579,9 +576,9 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
             "Bridge R51 ReadSettings must have exactly one thin Rust/WASM wrapper call".to_owned(),
         );
     }
-    if source.matches("kgwBridgeR51ReadSettingsR249(").count() != 6 {
+    if source.matches("kgwBridgeR51ReadSettingsR249(").count() != 3 {
         return Err(
-            "Bridge R51 ReadSettings thin wrapper must own exactly five consumers plus its definition"
+            "Bridge R51 ReadSettings thin wrapper must own exactly two consumers plus its definition"
                 .to_owned(),
         );
     }
@@ -688,9 +685,9 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
             "Bridge R51 WriteSettings must have exactly one thin Rust/WASM wrapper call".to_owned(),
         );
     }
-    if source.matches("kgwBridgeR51WriteSettingsR250(").count() != 4 {
+    if source.matches("kgwBridgeR51WriteSettingsR250(").count() != 2 {
         return Err(
-            "Bridge R51 WriteSettings thin wrapper must own exactly three consumers plus its definition"
+            "Bridge R51 WriteSettings thin wrapper must own exactly one consumer plus its definition"
                 .to_owned(),
         );
     }

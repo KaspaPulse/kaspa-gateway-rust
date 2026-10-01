@@ -2,9 +2,14 @@ use super::bridge_command_options::{
     bridge_command_inline_state_r7, bridge_has_config,
     bridge_instance_command_should_include_from_instances_r13b,
 };
-use super::settings_contract::bridge_field_enabled as settings_bridge_field_enabled;
+use super::settings_contract::{
+    bridge_field_enabled as settings_bridge_field_enabled,
+    render_field_errors as settings_render_field_errors,
+    validate_bridge_form as settings_validate_bridge_form,
+};
 use super::settings_layout::{
-    decorate_fields as settings_decorate_fields, set_field_state as settings_set_field_state,
+    decorate_fields as settings_decorate_fields, reveal_field as settings_reveal_field,
+    set_field_state as settings_set_field_state,
 };
 use super::settings_schema::BRIDGE_MANAGED;
 use js_sys::{Array, Function, JSON, Object, Promise, Reflect};
@@ -145,6 +150,10 @@ fn set(target: &JsValue, name: &str, value: &JsValue) {
 
 fn function(target: &JsValue, name: &str) -> Option<Function> {
     property(target, name).dyn_into::<Function>().ok()
+}
+
+fn call0(target: &JsValue, name: &str) -> Option<JsValue> {
+    function(target, name)?.call0(target).ok()
 }
 
 fn call1(target: &JsValue, name: &str, first: &JsValue) -> Option<JsValue> {
@@ -1005,6 +1014,152 @@ fn bridge_form_values_inner(net: &str) -> JsValue {
     values.into()
 }
 
+fn bridge_instance_duration_valid(raw: &str) -> bool {
+    let value = raw.trim();
+    let digits = if let Some(value) = value.strip_suffix("ms") {
+        value
+    } else if let Some(value) = value.strip_suffix('s') {
+        value
+    } else {
+        value
+    };
+    !digits.is_empty()
+        && digits.as_bytes()[0].is_ascii_digit()
+        && digits.as_bytes()[0] != b'0'
+        && digits.bytes().all(|byte| byte.is_ascii_digit())
+}
+
+fn bridge_instance_integer_valid(raw: &str, min: u64, max: u64) -> bool {
+    let value = raw.trim();
+    !value.is_empty()
+        && value.bytes().all(|byte| byte.is_ascii_digit())
+        && value
+            .parse::<u64>()
+            .is_ok_and(|number| number >= min && number <= max)
+}
+
+fn bridge_validation_error(errors: &JsValue, key: &str, message: &str) {
+    set(errors, key, &JsValue::from_str(message));
+}
+
+#[wasm_bindgen(js_name = bridgeValidateFormUi)]
+pub fn bridge_validate_form_ui(net: String, bridge_instances: JsValue, focus: bool) -> JsValue {
+    let values = bridge_form_values_inner(&net);
+    let options = bridge_command_inline_state_r7(net.clone());
+    let errors = settings_validate_bridge_form(values, options, net.clone());
+    let panel = crate::bridge_instance_settings::bridge_r51_panel(net.clone());
+
+    if net == "mainnet" && !bridge_has_config(net.clone()) {
+        let instances = property(&bridge_instances, &net);
+        for index in 0..bridge_collection_len(&instances) {
+            let Some(instance) = bridge_collection_item(&instances, index) else {
+                continue;
+            };
+            let instance_id_value = property(&instance, "id");
+            let instance_id = crate::js_string_owned(&instance_id_value);
+            if instance_id.is_empty()
+                || !bridge_instance_command_should_include_from_instances_r13b(
+                    bridge_instances.clone(),
+                    net.clone(),
+                    instance_id_value.clone(),
+                    "instance".to_owned(),
+                )
+            {
+                continue;
+            }
+
+            let wait_name = format!("instanceBlockWaitTime-{instance_id}");
+            let wait_field = bridge_by_id(bridge_element_id(net.clone(), wait_name.clone()));
+            if present(&wait_field)
+                && bridge_instance_command_should_include_from_instances_r13b(
+                    bridge_instances.clone(),
+                    net.clone(),
+                    instance_id_value.clone(),
+                    "instanceBlockWaitTime".to_owned(),
+                )
+            {
+                let raw = crate::js_string_owned(&property(&wait_field, "value"));
+                if !bridge_instance_duration_valid(&raw) {
+                    bridge_validation_error(
+                        &errors,
+                        &wait_name,
+                        "Enter a positive duration, for example 50ms or 1s.",
+                    );
+                }
+            }
+
+            for (name, min, max) in [
+                ("instanceDiff", 1_u64, 4_294_967_295_u64),
+                ("instanceExtranonceSize", 0_u64, 8_u64),
+                ("instanceSharesPerMin", 1_u64, 4_294_967_295_u64),
+            ] {
+                if !bridge_instance_command_should_include_from_instances_r13b(
+                    bridge_instances.clone(),
+                    net.clone(),
+                    instance_id_value.clone(),
+                    name.to_owned(),
+                ) {
+                    continue;
+                }
+                let field_name = format!("{name}-{instance_id}");
+                let field = bridge_by_id(bridge_element_id(net.clone(), field_name.clone()));
+                if !present(&field) {
+                    continue;
+                }
+                let raw = crate::js_string_owned(&property(&field, "value"));
+                if !bridge_instance_integer_valid(&raw, min, max) {
+                    bridge_validation_error(
+                        &errors,
+                        &field_name,
+                        &format!("Enter a whole number from {min} to {max}."),
+                    );
+                }
+            }
+        }
+    }
+
+    let _ = settings_render_field_errors(panel.clone(), format!("bridge-{net}-"), errors.clone());
+
+    if focus {
+        let keys = Object::keys(&Object::from(errors.clone()));
+        if keys.length() > 0 {
+            let first_key = crate::js_string_owned(&keys.get(0));
+            let field = bridge_by_id(bridge_element_id(net.clone(), first_key));
+            let inner_tab = query_bridge(&panel, "[data-bridge-inner-tab=\"settings\"]");
+            if present(&inner_tab) {
+                let _ = call0(&inner_tab, "click");
+            }
+
+            if present(&field) {
+                if let Some(section) = call1(
+                    &field,
+                    "closest",
+                    &JsValue::from_str("[data-bridge-section-panel]"),
+                ) && present(&section)
+                {
+                    let section_name = crate::js_string_owned(&property(
+                        &property(&section, "dataset"),
+                        "bridgeSectionPanel",
+                    ));
+                    if !section_name.is_empty() {
+                        let tab = query_bridge(
+                            &panel,
+                            &format!("[data-bridge-section-tab=\"{section_name}\"]"),
+                        );
+                        if present(&tab) {
+                            let _ = call0(&tab, "click");
+                        }
+                    }
+                }
+                settings_reveal_field(field.clone());
+                let _ = call0(&field, "focus");
+            }
+        }
+    }
+
+    errors
+}
+
 #[wasm_bindgen(js_name = bridgeSyncDependencies)]
 pub fn bridge_sync_dependencies(net: String, bridge_instances: JsValue) -> bool {
     let values = bridge_form_values_inner(&net);
@@ -1400,6 +1555,44 @@ pub fn bridge_apply_rusty_kaspa_root_only_default_paths_soon_r5(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bridge_instance_duration_validation_matches_legacy_contract() {
+        for valid in ["1", "50", "1s", "50ms", "999999ms", " 1s "] {
+            assert!(bridge_instance_duration_valid(valid), "{valid}");
+        }
+        for invalid in [
+            "", "0", "01", "0s", "0ms", "ms", "s", "1m", "-1", "1.0", "1 ms",
+        ] {
+            assert!(!bridge_instance_duration_valid(invalid), "{invalid}");
+        }
+    }
+
+    #[test]
+    fn bridge_instance_integer_validation_matches_legacy_contract() {
+        assert!(bridge_instance_integer_valid("1", 1, 4_294_967_295));
+        assert!(bridge_instance_integer_valid(
+            "4294967295",
+            1,
+            4_294_967_295
+        ));
+        assert!(bridge_instance_integer_valid("0008", 0, 8));
+        assert!(bridge_instance_integer_valid("0", 0, 8));
+        assert!(!bridge_instance_integer_valid("", 0, 8));
+        assert!(!bridge_instance_integer_valid("-1", 0, 8));
+        assert!(!bridge_instance_integer_valid("1.0", 0, 8));
+        assert!(!bridge_instance_integer_valid("9", 0, 8));
+        assert!(!bridge_instance_integer_valid(
+            "4294967296",
+            1,
+            4_294_967_295
+        ));
+        assert!(!bridge_instance_integer_valid(
+            "9007199254740992",
+            1,
+            4_294_967_295
+        ));
+    }
 
     #[test]
     fn bridge_dependency_policy_matches_legacy_contract() {

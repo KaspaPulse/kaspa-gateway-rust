@@ -1742,6 +1742,62 @@ fn verify_dependency_sync_ownership(source: &str, helpers: &str) -> Result<(), S
     Ok(())
 }
 
+fn verify_full_form_validation_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeValidateFormUi as wasmBridgeValidateFormUi",
+        "// KGW_BRIDGE_FULL_FORM_VALIDATION_RUST_OWNER_V1",
+        "return wasmBridgeValidateFormUi(String(net || \"\"), bridgeInstances, Boolean(focus));",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge full-form validation Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    if source.matches("wasmBridgeValidateFormUi(").count() != 1 {
+        return Err("Bridge full-form validation direct-call count drifted".to_owned());
+    }
+
+    for forbidden in [
+        "function kgwBridgeForm(",
+        "validateBridgeForm(",
+        "renderFieldErrors(",
+        "revealSettingsField(",
+        "!/^[1-9]\\d*(ms|s)?$/.test(",
+        "Number.isSafeInteger(Number(raw))",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge full-form validation JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeValidateFormUi",
+        "pub fn bridge_validate_form_ui(",
+        "bridge_form_values_inner(&net)",
+        "settings_validate_bridge_form(",
+        "bridge_instance_duration_valid(",
+        "bridge_instance_integer_valid(",
+        "settings_render_field_errors(",
+        "[data-bridge-inner-tab=\\\"settings\\\"]",
+        "[data-bridge-section-panel]",
+        "[data-bridge-section-tab=\\\"{section_name}\\\"]",
+        "settings_reveal_field(",
+        "call0(&field, \"focus\")",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge full-form validation Rust owner contract missing: {required}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn verify_static_contracts(
     source: &str,
     helpers: &str,
@@ -2250,6 +2306,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r95b_port_normalization_ownership(&full_source, &helper_source)?;
     verify_inline_command_toggle_ownership(&full_source, &command_options_source)?;
     verify_dependency_sync_ownership(&full_source, &helper_source)?;
+    verify_full_form_validation_ownership(&full_source, &helper_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -3525,6 +3582,53 @@ mod tests {
             ),
         ] {
             assert!(verify_r95b_port_normalization_ownership(source, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn full_form_validation_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_full_form_validation_ownership(source, helpers).is_ok());
+
+        for mutation in [
+            source.replace(
+                "bridgeValidateFormUi as wasmBridgeValidateFormUi",
+                "missingValidateFormUi as wasmBridgeValidateFormUi",
+            ),
+            source.replace(
+                "return wasmBridgeValidateFormUi(String(net || \"\"), bridgeInstances, Boolean(focus));",
+                "return {};",
+            ),
+            format!(
+                "{source}\nfunction kgwBridgeForm(net) {{ return {{ network: net }}; }}\n"
+            ),
+            format!(
+                "{source}\nfunction legacyValidation(raw) {{ return Number.isSafeInteger(Number(raw)); }}\n"
+            ),
+        ] {
+            assert!(verify_full_form_validation_ownership(&mutation, helpers).is_err());
+        }
+
+        for mutation in [
+            helpers.replace(
+                "js_name = bridgeValidateFormUi",
+                "js_name = missingBridgeValidateFormUi",
+            ),
+            helpers.replace(
+                "settings_validate_bridge_form(",
+                "missing_validate_bridge_form(",
+            ),
+            helpers.replace(
+                "settings_render_field_errors(",
+                "missing_render_field_errors(",
+            ),
+            helpers.replace("settings_reveal_field(", "missing_reveal_field("),
+        ] {
+            assert!(verify_full_form_validation_ownership(source, &mutation).is_err());
         }
     }
 
