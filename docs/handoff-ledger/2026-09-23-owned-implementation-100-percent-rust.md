@@ -412,3 +412,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: R51 direct-call/callback-factory counts updated to the verified post-OP295 Rust-owned schedule; no live-refresh behavior was removed.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP295 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP296 - Bridge R51 read-settings Rust-owned state path (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP295 closeout `98109235e59354c8e4963252a1716eee32ffcc4a`; BASE_TREE `dc37ad66c69bd5b00ebcd5ff04c2daa5260abcc8`; worktree clean at intent time.
+- BOUNDARY: remove JavaScript `kgwBridgeR51ReadSettingsCallbacksR249` and move R51 read-settings structured-instance read + R95B normalization wiring into Rust. JavaScript keeps only a thin `kgwBridgeR51ReadSettingsR249` call that passes bridge state.
+- ACCEPTANCE: Rust-owned export + thin JS wrapper + fail-closed ownership regression; existing R51 read semantics and port normalization preserved; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
