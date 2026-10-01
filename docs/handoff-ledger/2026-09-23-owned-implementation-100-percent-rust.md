@@ -230,9 +230,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP278 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP279 - Bridge instance refresh orchestration Rust/WASM ownership (INTENT)
+## OP279 - Bridge instance refresh orchestration Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP278 closeout `b0577d86cd339cf416496a2a3dccfd8184d5b1cc`; BASE_TREE `e7ed8d1168e9536b349eb2006600d0549db13e4b`; worktree clean at intent time.
-- BOUNDARY: move `bridgeRefreshInstances` orchestration into Rust/WASM while preserving explicit JavaScript callbacks only for settings decoration, instance-container owner installation, and command-preview refresh. Rust owns network canonicalization, instances-container lookup/id assignment, Rust renderer invocation, innerHTML replacement, and callback sequencing.
-- ACCEPTANCE: Rust export + thin JS wrapper; fail-closed ownership regression rejects legacy JavaScript refresh orchestration; generated WASM consistent; targeted behavior/static contracts plus fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `bridgeRefreshInstances` orchestration moved into Rust/WASM `bridgeRefreshInstancesUi`; JavaScript retains explicit callbacks only for settings decoration, instance-container owner installation, and command-preview refresh. Rust owns network canonicalization, instances-container lookup/id assignment, Rust renderer invocation, innerHTML replacement, and callback sequencing.
+- IMPLEMENTATION_CHECKPOINT: `2767563156c8a3e59afe178143fea5d0a50d2903`, tree `f08dde647294d163e4cdf71ad6099cb46e174f5b`. Closeout generation 2270.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 298/298 plus auxiliary suites; targeted instance-refresh ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: Bridge R15 instance-network-key direct-call count narrowed from three to two because OP279 moved refresh canonicalization into Rust. No ownership prohibition was weakened.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP279 qualification unless invalidated.
+- PUSHED: NO.
