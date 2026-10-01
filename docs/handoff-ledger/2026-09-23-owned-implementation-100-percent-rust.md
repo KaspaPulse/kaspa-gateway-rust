@@ -207,3 +207,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: R15 instance network-key direct-call count was narrowed from five to four to match the post-OP276 surface after add/remove network canonicalization moved into Rust; no ownership prohibition was weakened.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP276 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP277 - Bridge instance command-option orchestration Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP276 closeout `e14bdcab9fe7ed47d6cc48e0265f57682eff5e3d`; BASE_TREE `b37cf9221f845ca745ae80a59278d841e48d6bad`; worktree clean at intent time.
+- BOUNDARY: move `kgwBridgeSetInstanceCommandOptionR13B` orchestration into Rust/WASM while retaining a thin JavaScript wrapper for the existing event/callback surfaces. Rust owns begin/complete trace lifecycle, option mutation, matching toggle DOM synchronization, command-preview update callback, and instance preview-row synchronization.
+- ACCEPTANCE: Rust export + thin JS wrapper; fail-closed ownership regression rejects legacy JavaScript orchestration; generated WASM consistent; targeted behavior/state contracts plus fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
