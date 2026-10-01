@@ -219,9 +219,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP277 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP278 - Bridge instances renderer Rust/WASM ownership (INTENT)
+## OP278 - Bridge instances renderer Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP277 closeout `2b1066bc58f838d6995105affdc0f0a753efe210`; BASE_TREE `4ec917d5ad7cdfff396afe7f45e2a9e13fb96b65`; worktree clean at intent time.
-- BOUNDARY: move `renderInstances` HTML/state rendering into Rust/WASM while retaining only a thin JavaScript wrapper for existing refresh callers. Rust owns network canonicalization/mainnet-only policy, instance-state assurance, active-instance selection markup, command-option checkboxes, preview text, per-instance field markup/defaults/placeholders, and delete/add controls.
-- ACCEPTANCE: Rust renderer export + thin JS wrapper; fail-closed ownership regression rejects legacy JavaScript renderer body; generated WASM consistent; targeted renderer parity/static contracts plus fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `renderInstances` HTML/state rendering moved into Rust/WASM `bridgeRenderInstancesUi`; JavaScript retains only a thin wrapper for existing refresh callers. Rust owns network canonicalization/mainnet-only policy, instance-state assurance, active-instance selection markup, command-option checkboxes, preview text, per-instance field markup/defaults/placeholders, and delete/add controls.
+- IMPLEMENTATION_CHECKPOINT: `e7acbf29778ba29a50ebd5ea00f85939050da360`, tree `76288948d6324f003313bfde747420d27717bcb8`. Closeout generation 2269.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 297/297 plus auxiliary suites; targeted instances-renderer ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: R15 instance network-key direct-call count was narrowed from four to three after renderer network canonicalization moved into Rust; obsolete renderer-only JavaScript WASM imports were removed. No ownership prohibition was weakened.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP278 qualification unless invalidated.
+- PUSHED: NO.
