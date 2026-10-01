@@ -5,8 +5,6 @@ import initBridgeRust, {
   bridgeById as wasmBridgeById,
   bridgeChecked as wasmBridgeChecked,
   bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7,
-  bridgeCommandSetOptionR7 as wasmBridgeCommandSetOptionR7,
-  bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
   bridgeBuildCommandLinesUi as wasmBridgeBuildCommandLinesUi,
   bridgeBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi,
   bridgeNormalizeRuntimeError as wasmBridgeNormalizeRuntimeError,
@@ -48,6 +46,7 @@ import initBridgeRust, {
   bridgeInstallAllVisibleInstanceContainerOwnersR11 as wasmBridgeInstallAllVisibleInstanceContainerOwnersR11,
   bridgeInstallNetworkTabsUi as wasmBridgeInstallNetworkTabsUi,
   bridgeInstallDelegatedTabsUi as wasmBridgeInstallDelegatedTabsUi,
+  bridgeInstallActionEventOwnersUi as wasmBridgeInstallActionEventOwnersUi,
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeElementId as wasmBridgeElementId,
@@ -1031,6 +1030,9 @@ async function kgwBridgeHandleLogActionV29(action, net, button) {
 /* KGW_LOG_ACTIONS_SCOPED_OWNER_V29_END */
 
 function installActions(root) {
+  wasmBridgeInstallActionEventOwnersUi(root, bridgeInstances, activeInstance, {
+    updateCommand: (net) => updateCommand(String(net || ""))
+  });
   if (!root.dataset.kgwBridgePortConflictValidationOwnerR33) {
     root.dataset.kgwBridgePortConflictValidationOwnerR33 = "1";
 
@@ -1091,163 +1093,6 @@ function installActions(root) {
     window.setTimeout(() => wasmBridgeRefreshPortAutofixButtonsUiR37("install", bridgeInstances, activeInstance), 120);
   }
 
-  if (!root.dataset.kgwBridgeInstancesCommandCheckboxOwnerR13B) {
-    root.dataset.kgwBridgeInstancesCommandCheckboxOwnerR13B = "1"; // KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_ACTION_R13B
-
-    root.addEventListener("change", (event) => {
-      const include = event.target.closest("[data-bridge-instance-command-option-toggle-r13b]");
-      if (include && root.contains(include)) {
-        kgwBridgeSetInstanceCommandOptionR13B(
-          include.dataset.net,
-          include.dataset.instanceId,
-          include.dataset.bridgeInstanceCommandOptionToggleR13b,
-          include.checked
-        );
-      }
-    });
-  }
-  if (!root.dataset.kgwBridgeCommandComposerInlineOwnerR7) {
-    root.dataset.kgwBridgeCommandComposerInlineOwnerR7 = "1";
-
-    /* KGW_BRIDGE_COMMAND_CHECKBOX_FIRST_CLICK_FIX_TRACE_PATCH_R31
-     Native checkbox first-click fix:
-     - pointerdown/click/change traces are scoped to this existing Bridge root owner.
-     - native checkbox clicks are not preventDefault() blocked.
-     - checked state is committed from the change event.
-     - non-checkbox fallback keeps the legacy click toggle path.
-   */
-    root.addEventListener("pointerdown", (event) => {
-      const toggle = event.target.closest("[data-bridge-command-option-toggle-r7]");
-      if (!toggle || !root.contains(toggle)) return;
-
-      wasmBridgeSmallOwnerTraceR44D(toggle.dataset.net, "command-checkbox", "r31-bridge-command-checkbox-pointerdown", {
-        patch: "R31",
-        owner: "bridge-command-composer-r7",
-        option: String(toggle.dataset.bridgeCommandOptionToggleR7 || ""),
-        tag: String(toggle.tagName || ""),
-        type: String(toggle.type || ""),
-        checkedBefore: Boolean(toggle.checked),
-        trusted: Boolean(event && event.isTrusted)
-      });
-    });
-
-    root.addEventListener("change", (event) => {
-      const toggle = event.target.closest("[data-bridge-command-option-toggle-r7]");
-      if (!toggle || !root.contains(toggle)) return;
-
-      const net = toggle.dataset.net;
-      const option = toggle.dataset.bridgeCommandOptionToggleR7;
-      const enabled = Boolean(toggle.checked);
-
-      wasmBridgeSmallOwnerTraceR44D(net, "command-checkbox", "r31-bridge-command-checkbox-change-begin", {
-        patch: "R31",
-        owner: "bridge-command-composer-r7",
-        option: String(option || ""),
-        checked: enabled,
-        trusted: Boolean(event && event.isTrusted)
-      });
-
-      try {
-        wasmBridgeCommandSetOptionR7(String(net || ""), String(option || ""), enabled);
-        updateCommand(net);
-        wasmBridgeRefreshInlineCommandTogglesR7(String(net || ""));
-
-        queueMicrotask(() => {
-          wasmBridgeSmallOwnerTraceR44D(net, "command-checkbox", "r31-bridge-command-checkbox-change-after-microtask", {
-            patch: "R31",
-            owner: "bridge-command-composer-r7",
-            option: String(option || ""),
-            checkedAfter: Boolean(toggle.checked)
-          });
-        });
-      } catch (error) {
-        wasmBridgeSmallOwnerTraceR44D(net, "command-checkbox", "r31-bridge-command-checkbox-change-failed", {
-          patch: "R31",
-          owner: "bridge-command-composer-r7",
-          option: String(option || ""),
-          message: error && error.message ? error.message : String(error)
-        });
-      }
-    });
-
-    root.addEventListener("click", (event) => {
-      const toggle = event.target.closest("[data-bridge-command-option-toggle-r7]");
-      if (toggle && root.contains(toggle)) {
-        const isNativeCheckbox = toggle.matches && toggle.matches("input[type='checkbox']");
-
-        wasmBridgeSmallOwnerTraceR44D(toggle.dataset.net, "command-checkbox", "r31-bridge-command-checkbox-click", {
-          patch: "R31",
-          owner: "bridge-command-composer-r7",
-          option: String(toggle.dataset.bridgeCommandOptionToggleR7 || ""),
-          tag: String(toggle.tagName || ""),
-          type: String(toggle.type || ""),
-          isNativeCheckbox: Boolean(isNativeCheckbox),
-          checkedAtClick: Boolean(toggle.checked),
-          trusted: Boolean(event && event.isTrusted)
-        });
-
-        if (isNativeCheckbox) {
-          event.stopPropagation();
-          queueMicrotask(() => {
-            wasmBridgeSmallOwnerTraceR44D(toggle.dataset.net, "command-checkbox", "r31-bridge-command-checkbox-click-after-microtask", {
-              patch: "R31",
-              owner: "bridge-command-composer-r7",
-              option: String(toggle.dataset.bridgeCommandOptionToggleR7 || ""),
-              checkedAfter: Boolean(toggle.checked)
-            });
-          });
-          return;
-        }
-
-        event.preventDefault();
-        event.stopPropagation();
-        wasmBridgeCommandToggleOptionR7(
-          String(toggle.dataset.net || ""),
-          String(toggle.dataset.bridgeCommandOptionToggleR7 || "")
-        );
-        updateCommand(toggle.dataset.net);
-      }
-    });
-
-    root.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      const toggle = event.target.closest("[data-bridge-command-option-toggle-r7]");
-      if (toggle && root.contains(toggle)) {
-        event.preventDefault();
-        event.stopPropagation();
-        wasmBridgeCommandToggleOptionR7(
-          String(toggle.dataset.net || ""),
-          String(toggle.dataset.bridgeCommandOptionToggleR7 || "")
-        );
-        updateCommand(toggle.dataset.net);
-      }
-    });
-  }
-  // KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D_ACTIONS
-  if (root && !root.dataset.kgwBridgeInprocessNodeTabsV12B) {
-    root.dataset.kgwBridgeInprocessNodeTabsV12B = "true";
-    root.addEventListener("click", (event) => {
-      const tab = event.target?.closest?.("[data-bridge-inprocess-node-tab]");
-      if (!tab) return;
-
-      const net = tab.dataset.net;
-      const key = tab.dataset.bridgeInprocessNodeTab;
-      if (!net || !key) return;
-
-      const section = tab.closest("[data-bridge-inprocess-node-settings]");
-      if (!section) return;
-
-      for (const item of section.querySelectorAll("[data-bridge-inprocess-node-tab]")) {
-        item.classList.toggle("active", item === tab);
-      }
-
-      for (const panel of section.querySelectorAll("[data-bridge-inprocess-node-panel]")) {
-        const active = panel.dataset.bridgeInprocessNodePanel === key;
-        panel.classList.toggle("active", active);
-        panel.hidden = !active;
-      }
-    });
-  }
 
 
   // KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26: Bridge settings actions are scoped to the exact bridge/network that changed.

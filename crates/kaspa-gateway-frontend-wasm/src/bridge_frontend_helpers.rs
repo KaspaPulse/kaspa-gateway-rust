@@ -1193,6 +1193,422 @@ pub fn bridge_install_delegated_tabs_ui(root: JsValue, active_instance: JsValue)
     true
 }
 
+fn bridge_queue_microtask(callback: Closure<dyn FnMut()>) {
+    if let Some(queue) = function(&global(), "queueMicrotask") {
+        let _ = queue.call1(&global(), callback.as_ref().unchecked_ref());
+        callback.forget();
+        return;
+    }
+    if let Some(set_timeout) = function(&window(), "setTimeout") {
+        let _ = set_timeout.call2(
+            &window(),
+            callback.as_ref().unchecked_ref(),
+            &JsValue::from_f64(0.0),
+        );
+        callback.forget();
+    }
+}
+
+fn bridge_update_command_callback(callbacks: &JsValue, net: &str) -> Result<(), JsValue> {
+    let Some(update) = function(callbacks, "updateCommand") else {
+        return Err(JsValue::from_str(
+            "Bridge updateCommand callback is unavailable",
+        ));
+    };
+    update.call1(callbacks, &JsValue::from_str(net)).map(|_| ())
+}
+
+fn bridge_checkbox_trace(
+    net: &str,
+    phase: &str,
+    option: &str,
+    toggle: &JsValue,
+    event: Option<&JsValue>,
+    extra: &[(&str, JsValue)],
+) {
+    let details = Object::new();
+    set(details.as_ref(), "patch", &JsValue::from_str("R31"));
+    set(
+        details.as_ref(),
+        "owner",
+        &JsValue::from_str("bridge-command-composer-r7"),
+    );
+    set(details.as_ref(), "option", &JsValue::from_str(option));
+    if let Some(event) = event {
+        set(
+            details.as_ref(),
+            "trusted",
+            &JsValue::from_bool(crate::js_boolean(&property(event, "isTrusted"))),
+        );
+    }
+    for (key, value) in extra {
+        set(details.as_ref(), key, value);
+    }
+    let _ = bridge_small_owner_trace_r44d(
+        JsValue::from_str(net),
+        JsValue::from_str("command-checkbox"),
+        JsValue::from_str(phase),
+        details.into(),
+    );
+    let _ = toggle;
+}
+
+#[wasm_bindgen(js_name = bridgeInstallActionEventOwnersUi)]
+pub fn bridge_install_action_event_owners_ui(
+    root: JsValue,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    callbacks: JsValue,
+) -> bool {
+    if !present(&root) {
+        return false;
+    }
+    let dataset = property(&root, "dataset");
+
+    if bridge_tab_dataset_text(&root, "kgwBridgeInstancesCommandCheckboxOwnerR13B").is_empty() {
+        set(
+            &dataset,
+            "kgwBridgeInstancesCommandCheckboxOwnerR13B",
+            &JsValue::from_str("1"),
+        );
+        let root_change = root.clone();
+        let instances_change = bridge_instances.clone();
+        let active_change = active_instance.clone();
+        let callbacks_change = callbacks.clone();
+        let change = Closure::wrap(Box::new(move |event: JsValue| {
+            let target = property(&event, "target");
+            let include = call1(
+                &target,
+                "closest",
+                &JsValue::from_str("[data-bridge-instance-command-option-toggle-r13b]"),
+            )
+            .unwrap_or(JsValue::UNDEFINED);
+            if !present(&include)
+                || !call1(&root_change, "contains", &include)
+                    .is_some_and(|value| crate::js_boolean(&value))
+            {
+                return;
+            }
+            let include_dataset = property(&include, "dataset");
+            let net = crate::js_string_owned(&property(&include_dataset, "net"));
+            let instance_id = property(&include_dataset, "instanceId");
+            let name = crate::js_string_owned(&property(
+                &include_dataset,
+                "bridgeInstanceCommandOptionToggleR13b",
+            ));
+            let enabled = crate::js_boolean(&property(&include, "checked"));
+            let _ = crate::bridge_command_options::bridge_set_instance_command_option_ui_r13b(
+                net,
+                instance_id,
+                name,
+                enabled,
+                instances_change.clone(),
+                active_change.clone(),
+                callbacks_change.clone(),
+            );
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &root,
+            "addEventListener",
+            &JsValue::from_str("change"),
+            change.as_ref().unchecked_ref(),
+        );
+        change.forget();
+    }
+
+    if bridge_tab_dataset_text(&root, "kgwBridgeCommandComposerInlineOwnerR7").is_empty() {
+        set(
+            &dataset,
+            "kgwBridgeCommandComposerInlineOwnerR7",
+            &JsValue::from_str("1"),
+        );
+
+        let root_pointer = root.clone();
+        let pointerdown = Closure::wrap(Box::new(move |event: JsValue| {
+            let target = property(&event, "target");
+            let toggle = call1(
+                &target,
+                "closest",
+                &JsValue::from_str("[data-bridge-command-option-toggle-r7]"),
+            )
+            .unwrap_or(JsValue::UNDEFINED);
+            if !present(&toggle)
+                || !call1(&root_pointer, "contains", &toggle)
+                    .is_some_and(|value| crate::js_boolean(&value))
+            {
+                return;
+            }
+            let toggle_dataset = property(&toggle, "dataset");
+            let net = crate::js_string_owned(&property(&toggle_dataset, "net"));
+            let option =
+                crate::js_string_owned(&property(&toggle_dataset, "bridgeCommandOptionToggleR7"));
+            bridge_checkbox_trace(
+                &net,
+                "r31-bridge-command-checkbox-pointerdown",
+                &option,
+                &toggle,
+                Some(&event),
+                &[
+                    ("tag", property(&toggle, "tagName")),
+                    ("type", property(&toggle, "type")),
+                    ("checkedBefore", property(&toggle, "checked")),
+                ],
+            );
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &root,
+            "addEventListener",
+            &JsValue::from_str("pointerdown"),
+            pointerdown.as_ref().unchecked_ref(),
+        );
+        pointerdown.forget();
+
+        let root_change = root.clone();
+        let callbacks_change = callbacks.clone();
+        let change = Closure::wrap(Box::new(move |event: JsValue| {
+            let target = property(&event, "target");
+            let toggle = call1(
+                &target,
+                "closest",
+                &JsValue::from_str("[data-bridge-command-option-toggle-r7]"),
+            )
+            .unwrap_or(JsValue::UNDEFINED);
+            if !present(&toggle)
+                || !call1(&root_change, "contains", &toggle)
+                    .is_some_and(|value| crate::js_boolean(&value))
+            {
+                return;
+            }
+            let toggle_dataset = property(&toggle, "dataset");
+            let net = crate::js_string_owned(&property(&toggle_dataset, "net"));
+            let option =
+                crate::js_string_owned(&property(&toggle_dataset, "bridgeCommandOptionToggleR7"));
+            let enabled = crate::js_boolean(&property(&toggle, "checked"));
+            bridge_checkbox_trace(
+                &net,
+                "r31-bridge-command-checkbox-change-begin",
+                &option,
+                &toggle,
+                Some(&event),
+                &[("checked", JsValue::from_bool(enabled))],
+            );
+
+            crate::bridge_command_options::bridge_command_set_option_r7(
+                net.clone(),
+                option.clone(),
+                enabled,
+            );
+            let update_result = bridge_update_command_callback(&callbacks_change, &net);
+            crate::bridge_command_options::bridge_refresh_inline_command_toggles_r7(net.clone());
+
+            if let Err(error) = update_result {
+                bridge_checkbox_trace(
+                    &net,
+                    "r31-bridge-command-checkbox-change-failed",
+                    &option,
+                    &toggle,
+                    None,
+                    &[(
+                        "message",
+                        JsValue::from_str(&crate::js_string_owned(&error)),
+                    )],
+                );
+                return;
+            }
+
+            let net_after = net.clone();
+            let option_after = option.clone();
+            let toggle_after = toggle.clone();
+            bridge_queue_microtask(Closure::wrap(Box::new(move || {
+                bridge_checkbox_trace(
+                    &net_after,
+                    "r31-bridge-command-checkbox-change-after-microtask",
+                    &option_after,
+                    &toggle_after,
+                    None,
+                    &[("checkedAfter", property(&toggle_after, "checked"))],
+                );
+            }) as Box<dyn FnMut()>));
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &root,
+            "addEventListener",
+            &JsValue::from_str("change"),
+            change.as_ref().unchecked_ref(),
+        );
+        change.forget();
+
+        let root_click = root.clone();
+        let callbacks_click = callbacks.clone();
+        let click = Closure::wrap(Box::new(move |event: JsValue| {
+            let target = property(&event, "target");
+            let toggle = call1(
+                &target,
+                "closest",
+                &JsValue::from_str("[data-bridge-command-option-toggle-r7]"),
+            )
+            .unwrap_or(JsValue::UNDEFINED);
+            if !present(&toggle)
+                || !call1(&root_click, "contains", &toggle)
+                    .is_some_and(|value| crate::js_boolean(&value))
+            {
+                return;
+            }
+            let toggle_dataset = property(&toggle, "dataset");
+            let net = crate::js_string_owned(&property(&toggle_dataset, "net"));
+            let option =
+                crate::js_string_owned(&property(&toggle_dataset, "bridgeCommandOptionToggleR7"));
+            let native_checkbox = call1(
+                &toggle,
+                "matches",
+                &JsValue::from_str("input[type='checkbox']"),
+            )
+            .is_some_and(|value| crate::js_boolean(&value));
+            bridge_checkbox_trace(
+                &net,
+                "r31-bridge-command-checkbox-click",
+                &option,
+                &toggle,
+                Some(&event),
+                &[
+                    ("tag", property(&toggle, "tagName")),
+                    ("type", property(&toggle, "type")),
+                    ("isNativeCheckbox", JsValue::from_bool(native_checkbox)),
+                    ("checkedAtClick", property(&toggle, "checked")),
+                ],
+            );
+
+            if native_checkbox {
+                if let Some(stop) = function(&event, "stopPropagation") {
+                    let _ = stop.call0(&event);
+                }
+                let net_after = net.clone();
+                let option_after = option.clone();
+                let toggle_after = toggle.clone();
+                bridge_queue_microtask(Closure::wrap(Box::new(move || {
+                    bridge_checkbox_trace(
+                        &net_after,
+                        "r31-bridge-command-checkbox-click-after-microtask",
+                        &option_after,
+                        &toggle_after,
+                        None,
+                        &[("checkedAfter", property(&toggle_after, "checked"))],
+                    );
+                }) as Box<dyn FnMut()>));
+                return;
+            }
+            if let Some(prevent) = function(&event, "preventDefault") {
+                let _ = prevent.call0(&event);
+            }
+            if let Some(stop) = function(&event, "stopPropagation") {
+                let _ = stop.call0(&event);
+            }
+            crate::bridge_command_options::bridge_command_toggle_option_r7(net.clone(), option);
+            let _ = bridge_update_command_callback(&callbacks_click, &net);
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &root,
+            "addEventListener",
+            &JsValue::from_str("click"),
+            click.as_ref().unchecked_ref(),
+        );
+        click.forget();
+
+        let root_key = root.clone();
+        let callbacks_key = callbacks.clone();
+        let keydown = Closure::wrap(Box::new(move |event: JsValue| {
+            let key = crate::js_string_owned(&property(&event, "key"));
+            if key != "Enter" && key != " " {
+                return;
+            }
+            let target = property(&event, "target");
+            let toggle = call1(
+                &target,
+                "closest",
+                &JsValue::from_str("[data-bridge-command-option-toggle-r7]"),
+            )
+            .unwrap_or(JsValue::UNDEFINED);
+            if !present(&toggle)
+                || !call1(&root_key, "contains", &toggle)
+                    .is_some_and(|value| crate::js_boolean(&value))
+            {
+                return;
+            }
+            if let Some(prevent) = function(&event, "preventDefault") {
+                let _ = prevent.call0(&event);
+            }
+            if let Some(stop) = function(&event, "stopPropagation") {
+                let _ = stop.call0(&event);
+            }
+            let toggle_dataset = property(&toggle, "dataset");
+            let net = crate::js_string_owned(&property(&toggle_dataset, "net"));
+            let option =
+                crate::js_string_owned(&property(&toggle_dataset, "bridgeCommandOptionToggleR7"));
+            crate::bridge_command_options::bridge_command_toggle_option_r7(net.clone(), option);
+            let _ = bridge_update_command_callback(&callbacks_key, &net);
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &root,
+            "addEventListener",
+            &JsValue::from_str("keydown"),
+            keydown.as_ref().unchecked_ref(),
+        );
+        keydown.forget();
+    }
+
+    if bridge_tab_dataset_text(&root, "kgwBridgeInprocessNodeTabsV12B").is_empty() {
+        set(
+            &dataset,
+            "kgwBridgeInprocessNodeTabsV12B",
+            &JsValue::from_str("true"),
+        );
+        let click = Closure::wrap(Box::new(move |event: JsValue| {
+            let target = property(&event, "target");
+            let tab = call1(
+                &target,
+                "closest",
+                &JsValue::from_str("[data-bridge-inprocess-node-tab]"),
+            )
+            .unwrap_or(JsValue::UNDEFINED);
+            if !present(&tab) {
+                return;
+            }
+            let tab_dataset = property(&tab, "dataset");
+            let net = crate::js_string_owned(&property(&tab_dataset, "net"));
+            let key = crate::js_string_owned(&property(&tab_dataset, "bridgeInprocessNodeTab"));
+            if net.is_empty() || key.is_empty() {
+                return;
+            }
+            let section = call1(
+                &tab,
+                "closest",
+                &JsValue::from_str("[data-bridge-inprocess-node-settings]"),
+            )
+            .unwrap_or(JsValue::UNDEFINED);
+            if !present(&section) {
+                return;
+            }
+            for item in bridge_tab_collection(&section, "[data-bridge-inprocess-node-tab]") {
+                bridge_tab_class_toggle(&item, "active", Object::is(&item, &tab));
+            }
+            for panel in bridge_tab_collection(&section, "[data-bridge-inprocess-node-panel]") {
+                let active = bridge_tab_dataset_text(&panel, "bridgeInprocessNodePanel") == key;
+                bridge_tab_class_toggle(&panel, "active", active);
+                set(&panel, "hidden", &JsValue::from_bool(!active));
+            }
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &root,
+            "addEventListener",
+            &JsValue::from_str("click"),
+            click.as_ref().unchecked_ref(),
+        );
+        click.forget();
+    }
+
+    true
+}
+
 fn profile_object(spec: &BridgeNetworkProfile) -> JsValue {
     let output = Object::new();
     for (key, value) in [

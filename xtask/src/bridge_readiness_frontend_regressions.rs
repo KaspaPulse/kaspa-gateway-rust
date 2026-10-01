@@ -1962,6 +1962,54 @@ fn verify_delegated_tabs_ownership(source: &str, helpers: &str) -> Result<(), St
     Ok(())
 }
 
+fn verify_action_event_owners_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeInstallActionEventOwnersUi as wasmBridgeInstallActionEventOwnersUi",
+        "wasmBridgeInstallActionEventOwnersUi(root, bridgeInstances, activeInstance, {",
+        "updateCommand: (net) => updateCommand(String(net || \"\"))",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge action-event owners Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    for forbidden in [
+        "root.dataset.kgwBridgeInstancesCommandCheckboxOwnerR13B",
+        "root.dataset.kgwBridgeCommandComposerInlineOwnerR7",
+        "KGW_BRIDGE_COMMAND_CHECKBOX_FIRST_CLICK_FIX_TRACE_PATCH_R31",
+        "KGW_BRIDGE_INPROCESS_KASPAD_ARGS_TABS_V12D_ACTIONS",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge action-event JavaScript owner remains after OP288: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeInstallActionEventOwnersUi",
+        "pub fn bridge_install_action_event_owners_ui(",
+        "kgwBridgeInstancesCommandCheckboxOwnerR13B",
+        "bridge_set_instance_command_option_ui_r13b(",
+        "kgwBridgeCommandComposerInlineOwnerR7",
+        "r31-bridge-command-checkbox-pointerdown",
+        "r31-bridge-command-checkbox-change-begin",
+        "r31-bridge-command-checkbox-click",
+        "bridge_command_toggle_option_r7(",
+        "bridge_refresh_inline_command_toggles_r7(",
+        "kgwBridgeInprocessNodeTabsV12B",
+        "[data-bridge-inprocess-node-tab]",
+        "bridgeInprocessNodePanel",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge action-event Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_inprocess_node_settings_renderer_ownership(
     source: &str,
     bridge_render: &str,
@@ -2486,24 +2534,33 @@ fn verify_inline_command_toggle_ownership(
         }
     }
 
-    for required in [
-        "bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7",
+    if !source
+        .contains("bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7")
+    {
+        return Err(
+            "Bridge inline command-toggle remaining write-settings refresh binding is missing"
+                .to_owned(),
+        );
+    }
+    for forbidden in [
         "bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7",
+        "wasmBridgeCommandToggleOptionR7(",
     ] {
-        if !source.contains(required) {
+        if source.contains(forbidden) {
             return Err(format!(
-                "Bridge inline command-toggle Rust/WASM binding missing: {required}"
+                "Bridge inline command-toggle direct JavaScript event binding must remain retired after OP288: {forbidden}"
             ));
         }
     }
-
     if source
         .matches("wasmBridgeRefreshInlineCommandTogglesR7(")
         .count()
-        != 2
-        || source.matches("wasmBridgeCommandToggleOptionR7(").count() != 2
+        != 1
     {
-        return Err("Bridge inline command-toggle direct-call count drifted".to_owned());
+        return Err(
+            "Bridge inline command-toggle remaining write-settings refresh call count drifted"
+                .to_owned(),
+        );
     }
 
     for required in [
@@ -3502,6 +3559,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_instance_refresh_ownership(&full_source, &instance_ui_source)?;
     verify_network_tabs_ownership(&full_source, &helper_source)?;
     verify_delegated_tabs_ownership(&full_source, &helper_source)?;
+    verify_action_event_owners_ownership(&full_source, &helper_source)?;
     verify_inprocess_node_settings_renderer_ownership(&full_source, &bridge_render_source)?;
     verify_settings_sections_ownership(&full_source, &helper_source)?;
     verify_instances_renderer_ownership(&full_source, &instance_ui_source)?;
@@ -4914,6 +4972,26 @@ mod tests {
     }
 
     #[test]
+    fn action_event_owners_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_action_event_owners_ownership(source, helpers).is_ok());
+
+        let legacy =
+            format!("{source}\n// KGW_BRIDGE_COMMAND_CHECKBOX_FIRST_CLICK_FIX_TRACE_PATCH_R31\n");
+        assert!(verify_action_event_owners_ownership(&legacy, helpers).is_err());
+
+        let missing = helpers.replace(
+            "js_name = bridgeInstallActionEventOwnersUi",
+            "js_name = missingInstallActionEventOwnersUi",
+        );
+        assert!(verify_action_event_owners_ownership(source, &missing).is_err());
+    }
+
+    #[test]
     fn inprocess_node_settings_renderer_ownership_rejects_legacy_and_contract_drift() {
         let source = include_str!(
             "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
@@ -5591,10 +5669,8 @@ mod tests {
                 "kgwBridgeRefreshInlineCommandTogglesR7(",
                 1,
             ),
-            source.replacen(
-                "wasmBridgeCommandToggleOptionR7(",
-                "kgwBridgeToggleCommandOptionR7(",
-                1,
+            format!(
+                "{source}\n// bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7\nwasmBridgeCommandToggleOptionR7(\"mainnet\", \"config\");\n"
             ),
             source.replace(
                 "bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7",
