@@ -317,9 +317,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP286 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP287 - Bridge delegated inner/section/instance tabs Rust/WASM ownership (INTENT)
+## OP287 - Bridge delegated inner/section/instance tabs Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP286 closeout `2494b4f0908b6c59e2517ef19cd761914a438823`; BASE_TREE `06982b2483fe6569b63c0c256fb971cf81f6fd57`; worktree clean at intent time.
-- BOUNDARY: move `installDelegatedTabs` click orchestration into Rust/WASM. Rust owns inner-tab persistence/trace, section-tab selection/ARIA, instance-tab active-state/raw-log update, panel discovery, and DOM active/hidden mutation. JavaScript may remain as the explicit `activeInstance` state object passed into Rust.
-- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; inner/section/instance semantics preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `installDelegatedTabs` click orchestration moved into Rust/WASM `bridgeInstallDelegatedTabsUi`; JavaScript is now a thin wrapper passing `activeInstance`. Rust owns inner-tab persistence/trace, section-tab selection/ARIA, instance-tab active-state/raw-log update, panel discovery, and DOM active/hidden mutation.
+- IMPLEMENTATION_CHECKPOINT: `5352997e85578b18eb87338cd0cfb56dd50a2ef8`, tree `dc9c459b61dbd33170b8b5570b14541e0441aa7c`. Closeout generation 2278.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 306/306 plus auxiliary suites; targeted delegated-tabs ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: R101U direct save-inner-tab binding was retired and the gate now requires persistence ownership through the Rust delegated-tab installer. The now-unused duplicate module-visible explicit-trace helper was removed; the active action trace owner remains unchanged.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP287 qualification unless invalidated.
+- PUSHED: NO.
