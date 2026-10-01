@@ -78,3 +78,29 @@ Validate this Windows evidence Rust reconciliation with the Rust project-continu
 
 ## DO NOT REPEAT
 Do not rerun unaffected native/runtime/release qualification while its predicates are unchanged. Frontend/app-boot/E2E predicates touching the changed Explorer module graph must be requalified before final closure. Do not rerun verified KSSS/npm/runtime-binding/project-continuity/static/parallel/i18n/raw-log parity without invalidation, restore retired gates, hide current frontend findings, weaken signed-runtime/npm/binding/continuity/runtime-owner boundaries, touch unrelated worktrees, or mutate the protected checkpoint.
+
+## OP266 - Bridge full-form validation Rust/WASM ownership (ADOPTED ORPHANED WIP)
+
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS (was INTENT_ADOPTED / IMPLEMENTATION_IN_PROGRESS) at 2026-10-01T17:48:27+03:00 (writer session reconciled; previous writer session inactive, its conversation deleted).
+- COORDINATION: OPERATIONAL_SINGLE_WRITER_ONLY (no enforced lease/fencing exists yet; hardening is a separate later boundary).
+- PREVIOUS_CLOSED_OPERATION: OP265 (CLOSED_LOCAL / VERIFIED_SUCCESS, implementation dc8b632062ed435d1c9ebfbe8a4cc28bf4e433f0). Name OP266 inferred from OP262..OP265 sequence and the WIP content; no earlier OP266 artifact exists.
+- BASE_HEAD: 2d43099e5b678602a3a94572308e2fb147daf877
+- BASE_TREE: 355490dcdbad2d524390f4c7b33c777f1b0f9712
+- BOUNDARY: JavaScript `kgwBridgeForm` retired; `kgwBridgeValidateForm` becomes a thin wrapper over Rust/WASM `bridgeValidateFormUi` (field collection, instance duration/integer validation, error rendering, focus/reveal) in bridge_frontend_helpers.rs.
+- WIP_DIRTY_FINGERPRINT (recovery baseline):
+- `apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm.js` sha256=15c7f218fa9b1a1ca9be0d5b924e8b1b982886df20c93c8ff8287eb2b063a6ac
+- `apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm_bg.wasm` sha256=0b4d06ddee9247dfc12d3969601b4366fbde619bae8e2868c04b302afe825764
+- `apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js` sha256=228e93d1bfe610085b0d33f459345903bd3c40948740347911c1187bbe059e72
+- `crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs` sha256=0a0590e10da949f9c6e2911dc47e90de40564bf4813d87cd02f923e5895603ee
+- `xtask/src/bridge_readiness_frontend_regressions.rs` sha256=da32b6057e0c15f9032f6f4a8ab3a94f7d00dc3e92019ddd87452050cdf57d98
+- WIP_DIFF_SHA256: f3f301b5f102429d1b6cd40577b2753f9102a40900aabc0bbcb5b1ad39f999a6
+- REUSABLE_EVIDENCE: targeted xtask bridge_readiness_frontend_regressions 15/15 PASS (log wip-validate-form-qual-20261001.log, 17:24:22) valid only while the WIP hashes above are unchanged.
+- KNOWN_AFFECTED_GATES: effective-bridge-settings-gate (SLICES marker `function kgwBridgeForm(` no longer exists; also a pre-existing stale expectation of six wasmBridgeNodeMode call sites while HEAD, dc8b632 and da9456d all contain four). Both to be repaired with evidence, not by weakening ownership checks.
+- NEXT: reconcile gates, regenerate only if Rust source changes, qualify affected surface, commit implementation, then docs closeout. No push/PR/merge/release/deploy.
+### OP266 closure
+- IMPLEMENTATION_CHECKPOINT: 5d9de96464247801b4907db1586a1b6bf0dcf6f1, tree ef4c1ef7247d302e36e3ffdc6c7bf3eaf16febdf (parent 2d43099). Closeout generation 2256 (previous claimed generation 2255 = OP265 closeout, corroborated by 2d43099 and CURRENT_STATE history).
+- Gate repairs done with evidence (not by weakening ownership checks): effective-bridge-settings-gate dropped the retired kgwBridgeForm slice and updated stale call-site counts to the verified actual values (node-mode 6->4, R51 panel 7->2, ReadSettingsR249 6->3, WriteSettingsR250 4->2; HEAD/dc8b632/da9456d already had 4/4/3/2 except panel 4 before this operation); two now-unused JS imports removed (ESLint zero-warning).
+- QUALIFICATION PASS (final source identity): cargo fmt --check, node --check, ESLint --max-warnings 0, clippy -D warnings (wasm crate + xtask), wasm crate tests, effective-bridge-settings-gate, bridge-readiness-frontend-regressions, settings-contract-regressions, frontend-wasm-codegen check, language-policy check (unapproved 0/0), git diff --check. Local logs: op266-qual/, op266-qual-2/.
+- PRE_EXISTING_STALE_GATE_DEBT (unrelated to OP266, fails identically at 2d43099): xtask tests raw_log_provenance::current_repository_matches_known_transport_filter_debt and true_raw_log::current_repository_static_contract_passes expect JS markers retired by earlier raw-log/live-refresh ownership moves. Separate repair boundary.
+- NEXT: (1) writer-coordination hardening (local CAS claim, fencing); (2) stale xtask gate repair; (3) continue Bridge JS ownership discovery (kgwBridgeRequireValidSettings and remaining orchestration).
+- PUSHED: NO
