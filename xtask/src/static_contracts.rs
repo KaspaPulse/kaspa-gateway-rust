@@ -775,24 +775,19 @@ fn settings_programmatic_restore_contract(root: &Path) -> Result<(), String> {
         root,
         "crates/kaspa-gateway-frontend-wasm/src/node_frontend_helpers.rs",
     )?;
-    validate_programmatic_restore(&node, &bridge, &node_owner)
+    let bridge_owner = read(
+        root,
+        "crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs",
+    )?;
+    validate_programmatic_restore(&node, &bridge, &node_owner, &bridge_owner)
 }
 
-fn function_block<'a>(source: &'a str, start: &str, next: &str) -> Result<&'a str, String> {
-    let begin = source
-        .find(start)
-        .ok_or_else(|| format!("unable to isolate {start}"))?;
-    let end = source[begin + start.len()..]
-        .find(next)
-        .map(|offset| begin + start.len() + offset)
-        .ok_or_else(|| format!("unable to isolate {start}"))?;
-    if end <= begin {
-        return Err(format!("unable to isolate {start}"));
-    }
-    Ok(&source[begin..end])
-}
-
-fn validate_programmatic_restore(node: &str, bridge: &str, node_owner: &str) -> Result<(), String> {
+fn validate_programmatic_restore(
+    node: &str,
+    bridge: &str,
+    node_owner: &str,
+    bridge_owner: &str,
+) -> Result<(), String> {
     for (needle, message) in [
         (
             "fn restore_defaults(net: &str) -> JsValue",
@@ -823,31 +818,108 @@ fn validate_programmatic_restore(node: &str, bridge: &str, node_owner: &str) -> 
         "Rust/WASM Node Restore Defaults owner must apply restored settings",
     )?;
 
-    if bridge.contains("kgwBridgeSettingsWithProgrammaticWriteR9B(") {
-        return Err(
-            "Retired Bridge programmatic-restore JavaScript compatibility seam remains".to_owned(),
-        );
+    for forbidden in [
+        "kgwBridgeSettingsWithProgrammaticWriteR9B(",
+        "function kgwBridgeR51CaptureFactoryDefaults(",
+        "function kgwBridgeR51LoadSavedSettings(",
+        "function kgwBridgeR51SaveSettings(",
+        "function kgwBridgeR51SetAsDefaults(",
+        "function kgwBridgeR51RestoreDefaults(",
+        "bridgeR51Store as wasmBridgeR51Store",
+    ] {
+        if bridge.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge persistence JavaScript ownership remains: {forbidden}"
+            ));
+        }
     }
-    let bridge_restore = function_block(
-        bridge,
-        "function kgwBridgeR51RestoreDefaults",
-        "function kgwBridgeR51SetRuntimeButtons",
-    )?;
     for (needle, message) in [
         (
-            "const defaults = kgwBridgeR51Load(\"default:\" + net) || kgwBridgeR51Load(\"factory:\" + net);",
-            "Bridge Restore Defaults must load defaults directly inside the restore owner",
+            "bridgeR51CaptureFactoryDefaults as wasmBridgeR51CaptureFactoryDefaults",
+            "Bridge factory-default capture Rust/WASM import is missing",
         ),
         (
-            "kgwBridgeR51WriteSettings(net, defaults)",
-            "Bridge Restore Defaults must write restored settings",
+            "bridgeR51LoadSavedSettings as wasmBridgeR51LoadSavedSettings",
+            "Bridge saved-settings load Rust/WASM import is missing",
         ),
         (
-            "wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(String(net || \"\"), updateCommand)",
-            "Bridge Restore Defaults must refresh backend-owned default paths through Rust/WASM",
+            "bridgeR51SaveSettings as wasmBridgeR51SaveSettings",
+            "Bridge save-settings Rust/WASM import is missing",
+        ),
+        (
+            "bridgeR51SetAsDefaults as wasmBridgeR51SetAsDefaults",
+            "Bridge set-defaults Rust/WASM import is missing",
+        ),
+        (
+            "bridgeR51RestoreDefaults as wasmBridgeR51RestoreDefaults",
+            "Bridge restore-defaults Rust/WASM import is missing",
+        ),
+        (
+            "function kgwBridgeR51PersistenceCallbacksR255(",
+            "Bridge persistence lifecycle thin callback factory is missing",
+        ),
+        (
+            "wasmBridgeR51CaptureFactoryDefaults(kgwBridgeR51PersistenceCallbacksR255())",
+            "Bridge initialization must invoke Rust factory-default capture",
+        ),
+        (
+            "wasmBridgeR51LoadSavedSettings(kgwBridgeR51PersistenceCallbacksR255())",
+            "Bridge initialization must invoke Rust saved-settings load",
+        ),
+        (
+            "wasmBridgeR51SaveSettings(String(net || \"\"), kgwBridgeR51PersistenceCallbacksR255())",
+            "Bridge Save Settings action must invoke Rust owner",
+        ),
+        (
+            "wasmBridgeR51SetAsDefaults(String(net || \"\"), kgwBridgeR51PersistenceCallbacksR255())",
+            "Bridge Set as Defaults action must invoke Rust owner",
+        ),
+        (
+            "wasmBridgeR51RestoreDefaults(String(net || \"\"), kgwBridgeR51PersistenceCallbacksR255())",
+            "Bridge Restore Defaults action must invoke Rust owner",
         ),
     ] {
-        require_contains(bridge_restore, needle, message)?;
+        require_contains(bridge, needle, message)?;
+    }
+    for (needle, message) in [
+        (
+            "js_name = bridgeR51CaptureFactoryDefaults",
+            "Bridge factory-default capture Rust export is missing",
+        ),
+        (
+            "js_name = bridgeR51LoadSavedSettings",
+            "Bridge saved-settings load Rust export is missing",
+        ),
+        (
+            "js_name = bridgeR51SaveSettings",
+            "Bridge save-settings Rust export is missing",
+        ),
+        (
+            "js_name = bridgeR51SetAsDefaults",
+            "Bridge set-defaults Rust export is missing",
+        ),
+        (
+            "js_name = bridgeR51RestoreDefaults",
+            "Bridge restore-defaults Rust export is missing",
+        ),
+        (
+            "\"load-saved-settings\"",
+            "Bridge saved-settings Rust owner must preserve saved normalization reason",
+        ),
+        (
+            "\"load-current-settings\"",
+            "Bridge saved-settings Rust owner must preserve current normalization reason",
+        ),
+        (
+            "call2_required(&callbacks, \"writeSettings\", &net_value, &defaults)",
+            "Bridge Restore Defaults Rust owner must write restored settings",
+        ),
+        (
+            "bridge_frontend_helpers::bridge_apply_rusty_kaspa_root_only_default_paths_soon_r5(",
+            "Bridge Restore Defaults Rust owner must refresh backend-owned default paths",
+        ),
+    ] {
+        require_contains(bridge_owner, needle, message)?;
     }
     Ok(())
 }
@@ -1206,6 +1278,11 @@ mod tests {
             "let write_result = r51_write_settings(net, &defaults);",
             "let write_result = r51_write_settings_removed(net, &defaults);",
         );
-        assert!(validate_programmatic_restore(&node, &bridge, &node_owner).is_err());
+        let bridge_owner = read(
+            &root,
+            "crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs",
+        )
+        .unwrap();
+        assert!(validate_programmatic_restore(&node, &bridge, &node_owner, &bridge_owner).is_err());
     }
 }

@@ -27,7 +27,11 @@ import initBridgeRust, {
   bridgeParseRuntimeKeyValueResponse as wasmBridgeParseRuntimeKeyValueResponse,
   bridgeV7RuntimeRunningFromText as wasmBridgeV7RuntimeRunningFromText,
   bridgeR51IsRunning as wasmBridgeR51IsRunning,
-  bridgeR51Store as wasmBridgeR51Store,
+  bridgeR51CaptureFactoryDefaults as wasmBridgeR51CaptureFactoryDefaults,
+  bridgeR51LoadSavedSettings as wasmBridgeR51LoadSavedSettings,
+  bridgeR51SaveSettings as wasmBridgeR51SaveSettings,
+  bridgeR51SetAsDefaults as wasmBridgeR51SetAsDefaults,
+  bridgeR51RestoreDefaults as wasmBridgeR51RestoreDefaults,
   bridgeR51Load as wasmBridgeR51Load,
   bridgeR51Keys as wasmBridgeR51Keys,
   bridgeR51Panel as wasmBridgeR51Panel,
@@ -2092,116 +2096,22 @@ function kgwBridgeR51WriteSettingsR250(net, values) {
   );
 }
 
-function kgwBridgeR51CaptureFactoryDefaults() {
-  for (const net of wasmBridgeR51Keys()) {
-    if (!wasmBridgeR51Load("factory:" + net)) {
-      wasmBridgeR51Store("factory:" + net, kgwBridgeR51ReadSettingsR249(net));
-    }
-  }
-}
-
-function kgwBridgeR51LoadSavedSettings() {
-  for (const net of wasmBridgeR51Keys()) {
-    const saved = wasmBridgeR51Load("saved:" + net);
-    if (saved) {
-      kgwBridgeR51WriteSettingsR250(net, kgwBridgeR95BNormalizeNetworkPortValues(net, saved, "load-saved-settings"));
-    } else {
-      kgwBridgeR51WriteSettingsR250(net, kgwBridgeR95BNormalizeNetworkPortValues(net, kgwBridgeR51ReadSettingsR249(net), "load-current-settings"));
-    }
-  }
-}
-
 /* KGW_BRIDGE_DIRTY_SETTINGS_BUTTONS_FIX_R2
  * Settings buttons must show whether the current panel has unsaved/default differences.
  * No changes: Save Settings / Restore Defaults / Set as Defaults are disabled.
  */
-
-
-function kgwBridgeR51SaveSettings(net) {
-  kgwBridgeRequireValidSettings(net);
-  wasmBridgeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-begin", {
-    patch: "R29B",
-    owner: "bridge-r51-settings-owner"
-  });
-
-  const values = kgwBridgeR51ReadSettingsR249(net);
-  wasmBridgeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-read-settings", {
-    patch: "R29B",
-    owner: "bridge-r51-settings-owner",
-    keyCount: Object.keys(values || {}).length,
-    checkboxCount: Object.keys(values || {}).filter((key) => values[key] && values[key].type === "checkbox").length,
-    valueCount: Object.keys(values || {}).filter((key) => values[key] && values[key].type === "value").length,
-    structuredInstanceCount: (values && values.__kgwBridgeStructuredInstancesR26B && Array.isArray(values.__kgwBridgeStructuredInstancesR26B.instances)) ? values.__kgwBridgeStructuredInstancesR26B.instances.length : 0,
-    hasActiveStructuredInstance: Boolean(values && values.__kgwBridgeActiveInstanceR26B)
-  });
-
-  wasmBridgeR51Store("saved:" + net, values);
-
-  const saved = wasmBridgeR51Load("saved:" + net);
-  wasmBridgeSmallOwnerTraceR44D(net, "save-settings", "r29b-save-complete", {
-    patch: "R29B",
-    owner: "bridge-r51-settings-owner",
-    savedKey: "saved:" + String(net || ""),
-    persisted: Boolean(saved),
-    persistedKeyCount: saved && typeof saved === "object" ? Object.keys(saved).length : 0
-  });
-}
-
-function kgwBridgeR51SetAsDefaults(net) {
-  kgwBridgeRequireValidSettings(net);
-  wasmBridgeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-begin", {
-    patch: "R29B",
-    owner: "bridge-r51-settings-owner"
-  });
-
-  const values = kgwBridgeR51ReadSettingsR249(net);
-  wasmBridgeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-read-settings", {
-    patch: "R29B",
-    owner: "bridge-r51-settings-owner",
-    keyCount: Object.keys(values || {}).length,
-    checkboxCount: Object.keys(values || {}).filter((key) => values[key] && values[key].type === "checkbox").length,
-    valueCount: Object.keys(values || {}).filter((key) => values[key] && values[key].type === "value").length,
-    structuredInstanceCount: (values && values.__kgwBridgeStructuredInstancesR26B && Array.isArray(values.__kgwBridgeStructuredInstancesR26B.instances)) ? values.__kgwBridgeStructuredInstancesR26B.instances.length : 0,
-    hasActiveStructuredInstance: Boolean(values && values.__kgwBridgeActiveInstanceR26B)
-  });
-
-  wasmBridgeR51Store("default:" + net, values);
-
-  const stored = wasmBridgeR51Load("default:" + net);
-  wasmBridgeSmallOwnerTraceR44D(net, "set-defaults", "r29b-set-defaults-complete", {
-    patch: "R29B",
-    owner: "bridge-r51-settings-owner",
-    defaultKey: "default:" + String(net || ""),
-    persisted: Boolean(stored),
-    persistedKeyCount: stored && typeof stored === "object" ? Object.keys(stored).length : 0
-  });
+function kgwBridgeR51PersistenceCallbacksR255() {
+  return {
+    readSettings: (net) => kgwBridgeR51ReadSettingsR249(String(net || "")),
+    writeSettings: (net, values) => kgwBridgeR51WriteSettingsR250(String(net || ""), values),
+    normalizeNetworkPortValues: (net, values, reason) =>
+      kgwBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || "")),
+    requireValidSettings: (net) => kgwBridgeRequireValidSettings(String(net || "")),
+    updateCommand: (net) => updateCommand(String(net || ""))
+  };
 }
 
 /* R9B programmatic restore relies on Event.isTrusted in the current input/change owners; no JavaScript callback wrapper is required. */
-
-function kgwBridgeR51RestoreDefaults(net) {
-  wasmBridgeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-begin", {
-    patch: "R29B",
-    owner: "bridge-r51-settings-owner"
-  });
-
-  {
-    const defaults = wasmBridgeR51Load("default:" + net) || wasmBridgeR51Load("factory:" + net);
-    wasmBridgeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-loaded", {
-      patch: "R29B",
-      owner: "bridge-r51-settings-owner",
-      hasDefaults: Boolean(defaults),
-      defaultKeyCount: defaults && typeof defaults === "object" ? Object.keys(defaults).length : 0
-    });
-    kgwBridgeR51WriteSettingsR250(net, defaults);
-    wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(String(net || ""), updateCommand);
-  }
-
-  wasmBridgeSmallOwnerTraceR44D(net, "restore-defaults", "r29b-restore-defaults-complete", {
-    patch: "R29B",
-    owner: "bridge-r51-settings-owner"
-  });
-}
 
 function kgwBridgeR51SetRuntimeButtons(net, running, transition = "", runtimeError = "", statusText = "") {
   const panel = wasmBridgeR51Panel(net);
@@ -2833,7 +2743,7 @@ function installActions(root) {
 
     if (action === "save-settings") {
       try {
-        kgwBridgeR51SaveSettings(net);
+        wasmBridgeR51SaveSettings(String(net || ""), kgwBridgeR51PersistenceCallbacksR255());
         button.dataset.kgwSettingsActionResult = "success";
       } catch (error) {
         button.dataset.kgwSettingsActionResult = "failed";
@@ -2845,7 +2755,7 @@ function installActions(root) {
 
     if (action === "set-defaults") {
       try {
-        kgwBridgeR51SetAsDefaults(net);
+        wasmBridgeR51SetAsDefaults(String(net || ""), kgwBridgeR51PersistenceCallbacksR255());
         button.dataset.kgwSettingsActionResult = "success";
       } catch (error) {
         button.dataset.kgwSettingsActionResult = "failed";
@@ -2857,7 +2767,7 @@ function installActions(root) {
 
     if (action === "restore-defaults") {
       try {
-        kgwBridgeR51RestoreDefaults(net);
+        wasmBridgeR51RestoreDefaults(String(net || ""), kgwBridgeR51PersistenceCallbacksR255());
         button.dataset.kgwSettingsActionResult = "success";
       } catch (error) {
         button.dataset.kgwSettingsActionResult = "failed";
@@ -2916,8 +2826,8 @@ const bridgeRoot = root || document.getElementById("kaspa-bridge");
   bridgeRoot.dataset.kgwBridgeV7Ready = "true";
 
   renderAllNetworks(bridgeRoot);
-  kgwBridgeR51CaptureFactoryDefaults();
-  kgwBridgeR51LoadSavedSettings();
+  wasmBridgeR51CaptureFactoryDefaults(kgwBridgeR51PersistenceCallbacksR255());
+  wasmBridgeR51LoadSavedSettings(kgwBridgeR51PersistenceCallbacksR255());
   BRIDGE_NETWORKS.forEach((net) => kgwBridgeR51SetRuntimeButtons(net.key, false));
   bridgeSyncAllModeControls();
   installNetworkTabs(bridgeRoot);

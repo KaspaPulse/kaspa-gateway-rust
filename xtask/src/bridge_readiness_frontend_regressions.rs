@@ -95,10 +95,6 @@ r51StorageOwnership.unavailableLoad = wasm.bridgeR51Load("saved:mainnet");
 r51StorageOwnership.unavailableStoreThrows = r51Throws(() => wasm.bridgeR51Store("saved:mainnet", {}));
 globalThis.localStorage = r51Storage;
 
-const r51ProductSource = await readFile(productPath, "utf8");
-const r51Start = r51ProductSource.indexOf("function kgwBridgeR51CaptureFactoryDefaults(");
-const r51End = r51ProductSource.indexOf("function kgwBridgeR51SetRuntimeButtons(", r51Start);
-if (r51Start < 0 || r51End <= r51Start) throw new Error("R51 product slice missing");
 let r51Current = { value: "factory" };
 const r51Writes = [];
 const r51Reads = [];
@@ -106,46 +102,42 @@ globalThis.localStorage = {
   ...r51Storage,
   getItem(key) { r51Reads.push(key); return r51Storage.getItem(key); }
 };
-const r51Sandbox = vm.createContext({
-  wasmBridgeR51Store: wasm.bridgeR51Store,
-  wasmBridgeR51Load: wasm.bridgeR51Load,
-  wasmBridgeR51Keys: wasm.bridgeR51Keys,
-  kgwBridgeR51ReadSettingsR249: () => r51Current,
-  kgwBridgeR51WriteSettingsR250: (net, values) => r51Writes.push({ net: String(net), values }),
-  kgwBridgeR95BNormalizeNetworkPortValues: (_net, values) => values,
-  kgwBridgeRequireValidSettings: () => {},
-  wasmBridgeSmallOwnerTraceR44D: () => {},
-  wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5: () => {},
+const r51Callbacks = {
+  readSettings: () => r51Current,
+  writeSettings: (net, values) => r51Writes.push({ net: String(net), values }),
+  normalizeNetworkPortValues: (_net, values) => values,
+  requireValidSettings: () => {},
   updateCommand: () => {}
-});
-vm.runInContext(r51ProductSource.slice(r51Start, r51End), r51Sandbox);
+};
 innerTabStore.clear();
-vm.runInContext("kgwBridgeR51CaptureFactoryDefaults()", r51Sandbox);
+wasm.bridgeR51CaptureFactoryDefaults(r51Callbacks);
 r51Current = { value: "changed" };
-vm.runInContext("kgwBridgeR51CaptureFactoryDefaults()", r51Sandbox);
+wasm.bridgeR51CaptureFactoryDefaults(r51Callbacks);
 r51StorageOwnership.factoryPreserved = wasm.bridgeR51Load("factory:mainnet");
 
-vm.runInContext("kgwBridgeR51LoadSavedSettings()", r51Sandbox);
+wasm.bridgeR51LoadSavedSettings(r51Callbacks);
 r51StorageOwnership.missingSavedUsesCurrent = r51Writes.filter((entry) => entry.net === "mainnet").at(-1)?.values ?? null;
 r51Current = { value: "saved" };
-vm.runInContext('kgwBridgeR51SaveSettings("mainnet")', r51Sandbox);
+wasm.bridgeR51SaveSettings("mainnet", r51Callbacks);
 r51Current = { value: "unsaved" };
-vm.runInContext("kgwBridgeR51LoadSavedSettings()", r51Sandbox);
+wasm.bridgeR51LoadSavedSettings(r51Callbacks);
 r51StorageOwnership.savedLoaded = r51Writes.filter((entry) => entry.net === "mainnet").at(-1)?.values ?? null;
 r51Current = { value: "default" };
-vm.runInContext('kgwBridgeR51SetAsDefaults("mainnet")', r51Sandbox);
+wasm.bridgeR51SetAsDefaults("mainnet", r51Callbacks);
 r51Reads.length = 0;
-vm.runInContext('kgwBridgeR51RestoreDefaults("mainnet")', r51Sandbox);
+wasm.bridgeR51RestoreDefaults("mainnet", r51Callbacks);
 r51StorageOwnership.defaultRestored = r51Writes.filter((entry) => entry.net === "mainnet").at(-1)?.values ?? null;
 r51StorageOwnership.defaultReadOrder = [...r51Reads];
 wasm.bridgeR51Store("default:mainnet", false);
 r51Reads.length = 0;
-vm.runInContext('kgwBridgeR51RestoreDefaults("mainnet")', r51Sandbox);
+wasm.bridgeR51RestoreDefaults("mainnet", r51Callbacks);
 r51StorageOwnership.factoryRestored = r51Writes.filter((entry) => entry.net === "mainnet").at(-1)?.values ?? null;
 r51StorageOwnership.fallbackReadOrder = [...r51Reads];
 innerTabStore.delete(r51Prefix + "factory:mainnet");
-vm.runInContext('kgwBridgeR51RestoreDefaults("mainnet")', r51Sandbox);
+wasm.bridgeR51RestoreDefaults("mainnet", r51Callbacks);
 r51StorageOwnership.noDefaults = r51Writes.filter((entry) => entry.net === "mainnet").at(-1)?.values ?? null;
+// OP255: drain fire-and-forget Restore Defaults path refreshes before later transport assertions.
+await new Promise((resolve) => setTimeout(resolve, 0));
 globalThis.localStorage = r51Storage;
 innerTabStore.clear();
 
@@ -871,24 +863,26 @@ fn expect(actual: &Value, pointer: &str, expected: Value) -> Result<(), String> 
 }
 
 fn verify_r51_storage_ownership(source: &str, helpers: &str) -> Result<(), String> {
-    for forbidden in ["kgwBridgeR51Load(", "kgwBridgeR51Store("] {
+    for forbidden in [
+        "kgwBridgeR51Load(",
+        "kgwBridgeR51Store(",
+        "bridgeR51Store as wasmBridgeR51Store",
+        "wasmBridgeR51Store(",
+    ] {
         if source.contains(forbidden) {
             return Err(format!(
-                "Legacy R51 storage owner/call remains: {forbidden}"
+                "Retired or direct R51 JavaScript storage ownership remains: {forbidden}"
             ));
         }
     }
-    for required in [
-        "bridgeR51Store as wasmBridgeR51Store",
-        "bridgeR51Load as wasmBridgeR51Load",
-        "wasmBridgeR51Load(\"default:\" + net) || wasmBridgeR51Load(\"factory:\" + net)",
-    ] {
+    for required in ["bridgeR51Load as wasmBridgeR51Load", "wasmBridgeR51Load("] {
         if !source.contains(required) {
-            return Err(format!("R51 generated-WASM ownership missing: {required}"));
+            return Err(format!(
+                "R51 generated-WASM load ownership missing: {required}"
+            ));
         }
     }
-    if source.matches("wasmBridgeR51Store(").count() != 3
-        || source.matches("wasmBridgeR51Load(").count() != 7
+    if source.matches("wasmBridgeR51Load(").count() != 1
         || !helpers.contains("js_name = bridgeR51Store")
         || !helpers.contains("js_name = bridgeR51Load")
         || !helpers.contains("\"kgw.bridge.direct.v51.\"")
@@ -907,7 +901,7 @@ fn verify_r51_keys_ownership(source: &str, helpers: &str) -> Result<(), String> 
             return Err(format!("R51 keys Rust/WASM ownership missing: {required}"));
         }
     }
-    if source.matches("wasmBridgeR51Keys()").count() != 4
+    if source.matches("wasmBridgeR51Keys()").count() != 2
         || !helpers.contains("js_name = bridgeR51Keys")
         || !helpers.contains("fn bridge_r51_key_texts()")
     {
@@ -1184,9 +1178,9 @@ fn verify_static_contracts(
     if !source.contains("bridgeInstanceNetworkKeyR15 as wasmBridgeInstanceNetworkKeyR15") {
         return Err("Bridge R15 instance network-key Rust/WASM import is missing".to_owned());
     }
-    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 9 {
+    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 6 {
         return Err(
-            "Bridge R15 instance network-key owner must have exactly nine direct generated-WASM call sites after OP250 moves WriteSettings normalization into Rust"
+            "Bridge R15 instance network-key owner must have exactly six direct generated-WASM call sites after OP255 moves the R51 persistence lifecycle into Rust"
                 .to_owned(),
         );
     }
@@ -1316,10 +1310,10 @@ fn verify_static_contracts(
     if source
         .matches("wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(")
         .count()
-        != 2
+        != 1
     {
         return Err(
-            "Bridge Rusty-Kaspa default-paths fire-and-forget owner must have exactly two direct Rust/WASM call sites"
+            "Bridge Rusty-Kaspa default-paths fire-and-forget owner must have exactly one direct JavaScript Rust/WASM call site after OP255 moves Restore Defaults into Rust"
                 .to_owned(),
         );
     }
@@ -2050,8 +2044,11 @@ mod tests {
         assert!(verify_r51_storage_ownership(source, helpers).is_ok());
         for mutation in [
             source.replacen("wasmBridgeR51Load(", "kgwBridgeR51Load(", 1),
-            source.replacen("wasmBridgeR51Store(", "kgwBridgeR51Store(", 1),
-            source.replace(" || wasmBridgeR51Load", " && wasmBridgeR51Load"),
+            source.replacen("wasmBridgeR51Load(", "wasmBridgeR51Store(", 1),
+            source.replace(
+                "bridgeR51Load as wasmBridgeR51Load,",
+                "bridgeR51Load as wasmBridgeR51Load,\n  bridgeR51Store as wasmBridgeR51Store,",
+            ),
             source.replace(
                 "bridgeR51Load as wasmBridgeR51Load",
                 "unowned as wasmBridgeR51Load",

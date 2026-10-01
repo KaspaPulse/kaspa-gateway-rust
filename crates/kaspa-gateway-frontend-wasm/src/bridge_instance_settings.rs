@@ -158,6 +158,99 @@ fn object_key_count(value: &JsValue) -> u32 {
     Object::keys(&Object::from(value.clone())).length()
 }
 
+fn object_field_type_count(value: &JsValue, expected_type: &str) -> u32 {
+    if !value.is_object() || value.is_null() {
+        return 0;
+    }
+    let object = Object::from(value.clone());
+    let keys = Object::keys(&object);
+    let mut count = 0u32;
+    for key in keys.iter() {
+        let name = crate::js_string_owned(&key);
+        let entry = property(value, &name);
+        if crate::js_string_owned(&property(&entry, "type")) == expected_type {
+            count += 1;
+        }
+    }
+    count
+}
+
+fn r51_trace_base_details() -> Object {
+    let details = Object::new();
+    set(details.as_ref(), "patch", &JsValue::from_str("R29B"));
+    set(
+        details.as_ref(),
+        "owner",
+        &JsValue::from_str("bridge-r51-settings-owner"),
+    );
+    details
+}
+
+fn r51_settings_trace_details(values: &JsValue) -> Object {
+    let details = r51_trace_base_details();
+    set(
+        details.as_ref(),
+        "keyCount",
+        &JsValue::from_f64(f64::from(object_key_count(values))),
+    );
+    set(
+        details.as_ref(),
+        "checkboxCount",
+        &JsValue::from_f64(f64::from(object_field_type_count(values, "checkbox"))),
+    );
+    set(
+        details.as_ref(),
+        "valueCount",
+        &JsValue::from_f64(f64::from(object_field_type_count(values, "value"))),
+    );
+    let structured = property(values, "__kgwBridgeStructuredInstancesR26B");
+    let instances = property(&structured, "instances");
+    let structured_count = if Array::is_array(&instances) {
+        Array::from(&instances).length()
+    } else {
+        0
+    };
+    set(
+        details.as_ref(),
+        "structuredInstanceCount",
+        &JsValue::from_f64(f64::from(structured_count)),
+    );
+    set(
+        details.as_ref(),
+        "hasActiveStructuredInstance",
+        &JsValue::from_bool(crate::js_boolean(&property(
+            values,
+            "__kgwBridgeActiveInstanceR26B",
+        ))),
+    );
+    details
+}
+
+fn r51_persisted_trace_details(key_name: &str, key: &str, stored: &JsValue) -> Object {
+    let details = r51_trace_base_details();
+    set(details.as_ref(), key_name, &JsValue::from_str(key));
+    set(
+        details.as_ref(),
+        "persisted",
+        &JsValue::from_bool(crate::js_boolean(stored)),
+    );
+    set(
+        details.as_ref(),
+        "persistedKeyCount",
+        &JsValue::from_f64(f64::from(object_key_count(stored))),
+    );
+    details
+}
+
+fn r51_trace(net: &str, action: &str, phase: &str, details: Object) {
+    let _ = bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+        JsValue::from_str(net),
+        JsValue::from_str(action),
+        JsValue::from_str(phase),
+        details.into(),
+    );
+}
+
 fn bridge_form(net: &str) -> JsValue {
     let values = Object::new();
     set(values.as_ref(), "network", &JsValue::from_str(net));
@@ -1307,6 +1400,162 @@ pub fn bridge_r51_fields(net: String) -> Array {
         output.push(&field);
     }
     output
+}
+
+#[wasm_bindgen(js_name = bridgeR51CaptureFactoryDefaults)]
+pub fn bridge_r51_capture_factory_defaults(callbacks: JsValue) -> Result<(), JsValue> {
+    for net_value in bridge_frontend_helpers::bridge_r51_keys().iter() {
+        let net = crate::js_string_owned(&net_value);
+        let key = format!("factory:{net}");
+        let existing = bridge_frontend_helpers::bridge_r51_load(key.clone());
+        if !crate::js_boolean(&existing) {
+            let values = call1_required(&callbacks, "readSettings", &net_value)?;
+            bridge_frontend_helpers::bridge_r51_store(key, values)?;
+        }
+    }
+    Ok(())
+}
+
+#[wasm_bindgen(js_name = bridgeR51LoadSavedSettings)]
+pub fn bridge_r51_load_saved_settings(callbacks: JsValue) -> Result<(), JsValue> {
+    for net_value in bridge_frontend_helpers::bridge_r51_keys().iter() {
+        let net = crate::js_string_owned(&net_value);
+        let saved = bridge_frontend_helpers::bridge_r51_load(format!("saved:{net}"));
+        let (values, reason) = if crate::js_boolean(&saved) {
+            (saved, "load-saved-settings")
+        } else {
+            (
+                call1_required(&callbacks, "readSettings", &net_value)?,
+                "load-current-settings",
+            )
+        };
+        let normalized = call3_required(
+            &callbacks,
+            "normalizeNetworkPortValues",
+            &net_value,
+            &values,
+            &JsValue::from_str(reason),
+        )?;
+        let _ = call2_required(&callbacks, "writeSettings", &net_value, &normalized)?;
+    }
+    Ok(())
+}
+
+#[wasm_bindgen(js_name = bridgeR51SaveSettings)]
+pub fn bridge_r51_save_settings(net: String, callbacks: JsValue) -> Result<(), JsValue> {
+    let net_value = JsValue::from_str(&net);
+    let _ = call1_required(&callbacks, "requireValidSettings", &net_value)?;
+
+    r51_trace(
+        &net,
+        "save-settings",
+        "r29b-save-begin",
+        r51_trace_base_details(),
+    );
+
+    let values = call1_required(&callbacks, "readSettings", &net_value)?;
+    r51_trace(
+        &net,
+        "save-settings",
+        "r29b-save-read-settings",
+        r51_settings_trace_details(&values),
+    );
+
+    let key = format!("saved:{net}");
+    bridge_frontend_helpers::bridge_r51_store(key.clone(), values)?;
+    let saved = bridge_frontend_helpers::bridge_r51_load(key.clone());
+    r51_trace(
+        &net,
+        "save-settings",
+        "r29b-save-complete",
+        r51_persisted_trace_details("savedKey", &key, &saved),
+    );
+    Ok(())
+}
+
+#[wasm_bindgen(js_name = bridgeR51SetAsDefaults)]
+pub fn bridge_r51_set_as_defaults(net: String, callbacks: JsValue) -> Result<(), JsValue> {
+    let net_value = JsValue::from_str(&net);
+    let _ = call1_required(&callbacks, "requireValidSettings", &net_value)?;
+
+    r51_trace(
+        &net,
+        "set-defaults",
+        "r29b-set-defaults-begin",
+        r51_trace_base_details(),
+    );
+
+    let values = call1_required(&callbacks, "readSettings", &net_value)?;
+    r51_trace(
+        &net,
+        "set-defaults",
+        "r29b-set-defaults-read-settings",
+        r51_settings_trace_details(&values),
+    );
+
+    let key = format!("default:{net}");
+    bridge_frontend_helpers::bridge_r51_store(key.clone(), values)?;
+    let stored = bridge_frontend_helpers::bridge_r51_load(key.clone());
+    r51_trace(
+        &net,
+        "set-defaults",
+        "r29b-set-defaults-complete",
+        r51_persisted_trace_details("defaultKey", &key, &stored),
+    );
+    Ok(())
+}
+
+#[wasm_bindgen(js_name = bridgeR51RestoreDefaults)]
+pub fn bridge_r51_restore_defaults(net: String, callbacks: JsValue) -> Result<(), JsValue> {
+    let net_value = JsValue::from_str(&net);
+    r51_trace(
+        &net,
+        "restore-defaults",
+        "r29b-restore-defaults-begin",
+        r51_trace_base_details(),
+    );
+
+    let default_key = format!("default:{net}");
+    let factory_key = format!("factory:{net}");
+    let default_value = bridge_frontend_helpers::bridge_r51_load(default_key);
+    let defaults = if crate::js_boolean(&default_value) {
+        default_value
+    } else {
+        bridge_frontend_helpers::bridge_r51_load(factory_key)
+    };
+
+    let loaded_details = r51_trace_base_details();
+    set(
+        loaded_details.as_ref(),
+        "hasDefaults",
+        &JsValue::from_bool(crate::js_boolean(&defaults)),
+    );
+    set(
+        loaded_details.as_ref(),
+        "defaultKeyCount",
+        &JsValue::from_f64(f64::from(object_key_count(&defaults))),
+    );
+    r51_trace(
+        &net,
+        "restore-defaults",
+        "r29b-restore-defaults-loaded",
+        loaded_details,
+    );
+
+    let _ = call2_required(&callbacks, "writeSettings", &net_value, &defaults)?;
+    let update_command = required_function(&callbacks, "updateCommand")?;
+    bridge_frontend_helpers::bridge_apply_rusty_kaspa_root_only_default_paths_soon_r5(
+        net.clone(),
+        update_command,
+    );
+
+    r51_trace(
+        &net,
+        "restore-defaults",
+        "r29b-restore-defaults-complete",
+        r51_trace_base_details(),
+    );
+    Ok(())
 }
 
 #[wasm_bindgen(js_name = bridgeR51ReadSettings)]
