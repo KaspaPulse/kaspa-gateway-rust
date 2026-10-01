@@ -31,6 +31,56 @@ fn call1(target: &JsValue, name: &str, first: &JsValue) -> Option<JsValue> {
     method.call1(target, first).ok()
 }
 
+fn required_function(target: &JsValue, name: &str) -> Result<js_sys::Function, JsValue> {
+    property(target, name)
+        .dyn_into::<js_sys::Function>()
+        .map_err(|_| JsValue::from_str(&format!("Bridge R38C callback is unavailable: {name}")))
+}
+
+fn call1_required(target: &JsValue, name: &str, first: &JsValue) -> Result<JsValue, JsValue> {
+    required_function(target, name)?.call1(target, first)
+}
+
+fn call4_required(
+    target: &JsValue,
+    name: &str,
+    first: &JsValue,
+    second: &JsValue,
+    third: &JsValue,
+    fourth: &JsValue,
+) -> Result<JsValue, JsValue> {
+    let args = Array::new();
+    args.push(first);
+    args.push(second);
+    args.push(third);
+    args.push(fourth);
+    required_function(target, name)?.apply(target, &args)
+}
+
+fn object_keys(value: &JsValue) -> Vec<String> {
+    if !value.is_object() || value.is_null() {
+        return Vec::new();
+    }
+    Object::keys(&Object::from(value.clone()))
+        .iter()
+        .map(|key| crate::js_string_owned(&key))
+        .filter(|key| !key.is_empty())
+        .collect()
+}
+
+fn object_key_count(value: &JsValue) -> u32 {
+    object_keys(value).len() as u32
+}
+
+fn error_message(error: &JsValue) -> String {
+    let message = crate::js_string_owned(&property(error, "message"));
+    if !message.is_empty() {
+        message
+    } else {
+        crate::js_string_owned(error)
+    }
+}
+
 fn document() -> JsValue {
     property(&window(), "document")
 }
@@ -167,6 +217,124 @@ pub(crate) fn bridge_r51_read_instance_command_options_r38c(net: &str) -> JsValu
         );
     }
     state.into()
+}
+
+pub(crate) fn bridge_r51_apply_command_options_r38c(
+    net: &str,
+    values: &JsValue,
+    bridge_instances: &JsValue,
+    active_instance: &JsValue,
+    callbacks: &JsValue,
+) {
+    const COMMAND_OPTIONS_KEY: &str = "__kgwBridgeCommandOptionsR38C";
+    const INSTANCE_COMMAND_OPTIONS_KEY: &str = "__kgwBridgeInstanceCommandOptionsR38C";
+
+    let net_value = JsValue::from_str(net);
+    let command_options = property(values, COMMAND_OPTIONS_KEY);
+    let instance_options = property(values, INSTANCE_COMMAND_OPTIONS_KEY);
+    let command_option_count = object_key_count(&command_options);
+    let instance_count = object_key_count(&instance_options);
+
+    let result = (|| -> Result<(), JsValue> {
+        if command_options.is_object() && !command_options.is_null() {
+            for name in object_keys(&command_options) {
+                let enabled = crate::js_boolean(&property(&command_options, &name));
+                let field_id =
+                    crate::bridge_frontend_helpers::bridge_element_id(net.to_owned(), name.clone());
+                let item = property(values, &field_id);
+                let optional_has_value = !crate::js_string_owned(&property(&item, "value"))
+                    .trim()
+                    .is_empty();
+                bridge_command_set_option_r7(
+                    net.to_owned(),
+                    name.clone(),
+                    enabled && (!optional(&name) || optional_has_value),
+                );
+            }
+            let _ = call1_required(callbacks, "refreshInlineCommandToggles", &net_value)?;
+        }
+
+        if instance_options.is_object() && !instance_options.is_null() {
+            for instance_id in object_keys(&instance_options) {
+                let options = property(&instance_options, &instance_id);
+                if !options.is_object() || options.is_null() {
+                    continue;
+                }
+                let instance_id_value = JsValue::from_str(&instance_id);
+                let record =
+                    instance_record_from_instances(bridge_instances, net, &instance_id_value);
+                for name in object_keys(&options) {
+                    let enabled = crate::js_boolean(&property(&options, &name));
+                    let optional_has_value = !INSTANCE_OPTIONAL_FIELDS.contains(&name.as_str())
+                        || record_field_has_text(&record, &name);
+                    let _ = call4_required(
+                        callbacks,
+                        "setInstanceCommandOption",
+                        &net_value,
+                        &instance_id_value,
+                        &JsValue::from_str(&name),
+                        &JsValue::from_bool(enabled && optional_has_value),
+                    )?;
+                }
+            }
+            crate::bridge_instance_ui::bridge_sync_instance_preview_rows_r8b(
+                net.to_owned(),
+                bridge_instances.clone(),
+                active_instance.clone(),
+            )?;
+        }
+
+        let _ = call1_required(callbacks, "updateCommand", &net_value)?;
+        Ok(())
+    })();
+
+    match result {
+        Ok(()) => {
+            let details = Object::new();
+            set_property(details.as_ref(), "patch", &JsValue::from_str("R38C"));
+            set_property(
+                details.as_ref(),
+                "owner",
+                &JsValue::from_str("bridge-r51-settings-owner"),
+            );
+            set_property(
+                details.as_ref(),
+                "commandOptionCount",
+                &JsValue::from_f64(f64::from(command_option_count)),
+            );
+            set_property(
+                details.as_ref(),
+                "instanceCount",
+                &JsValue::from_f64(f64::from(instance_count)),
+            );
+            crate::bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+                net_value,
+                JsValue::from_str("settings-persistence"),
+                JsValue::from_str("r38c-command-options-restored"),
+                details.into(),
+            );
+        }
+        Err(error) => {
+            let details = Object::new();
+            set_property(details.as_ref(), "patch", &JsValue::from_str("R38C"));
+            set_property(
+                details.as_ref(),
+                "owner",
+                &JsValue::from_str("bridge-r51-settings-owner"),
+            );
+            set_property(
+                details.as_ref(),
+                "message",
+                &JsValue::from_str(&error_message(&error)),
+            );
+            crate::bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+                net_value,
+                JsValue::from_str("settings-persistence"),
+                JsValue::from_str("r38c-command-options-restore-failed"),
+                details.into(),
+            );
+        }
+    }
 }
 
 fn inline_enabled_from_stored(name: &str, stored: Option<bool>) -> bool {

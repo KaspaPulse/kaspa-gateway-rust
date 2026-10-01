@@ -35,7 +35,13 @@ await wasmModule.default({ module_or_path: await readFile(wasmPath) });
 
 const elements = new Map();
 for (const [id, value] of Object.entries(request.values)) {
-  elements.set(id, { id, value: String(value), checked: false, type: "text" });
+  elements.set(id, {
+    id,
+    value: String(value),
+    checked: false,
+    type: "text",
+    dispatchEvent() { return true; }
+  });
 }
 let r51FieldsSelector = "";
 const r51FilterOnly = [
@@ -159,6 +165,8 @@ const directInstanceCheckbox = wasmModule.bridgeInstanceCommandCheckboxFromInsta
   "one",
   "instanceDiff"
 );
+const inlineEnabledBeforeWrite =
+  wasmModule.bridgeCommandOptionEnabledR7("mainnet", "coinbaseTagSuffix");
 const nodeModeControl = elements.get("bridge-mainnet-nodeMode");
 const nodeModeInitial = wasmModule.bridgeNodeMode("mainnet");
 nodeModeControl.value = "inprocess";
@@ -210,14 +218,33 @@ elements.set(r51WriteCheckboxField.id, r51WriteCheckboxField);
 const r51WriteValues = {
   "bridge-mainnet-op250Value": { type: "value", value: "after" },
   "bridge-mainnet-op250Checkbox": { type: "checkbox", checked: true },
-  "bridge-mainnet-logToFile": { type: "value", value: "managed-must-not-apply" }
+  "bridge-mainnet-logToFile": { type: "value", value: "managed-must-not-apply" },
+  "bridge-mainnet-inprocessRpcListenBorsh": { type: "value", value: "" },
+  "__kgwBridgeCommandOptionsR38C": {
+    op252Inline: true,
+    inprocessRpcListenBorsh: true
+  },
+  "__kgwBridgeInstanceCommandOptionsR38C": {
+    one: {
+      op252Instance: true,
+      instanceBlockWaitTime: true
+    },
+    two: {
+      instanceSharesPerMin: true
+    }
+  }
 };
-const r51WriteBridgeInstances = { mainnet: [], testnet10: [], testnet13: [] };
-const r51WriteActiveInstance = { mainnet: "" };
+const r51WriteBridgeInstances = {
+  mainnet: request.structured.instances.map((item) => ({ ...item })),
+  testnet10: [],
+  testnet13: []
+};
+const r51WriteActiveInstance = { mainnet: "one" };
 let r51WriteNormalizeReason = "";
 let r51WriteNormalizeCount = 0;
 let r51WriteStructuredCount = 0;
-let r51WriteCommandOptionsCount = 0;
+let r51WriteRefreshCount = 0;
+const r51WriteSetInstanceCalls = [];
 let r51WriteUpdateCommandCount = 0;
 wasmModule.bridgeR51WriteSettings(
   "mainnet",
@@ -235,18 +262,54 @@ wasmModule.bridgeR51WriteSettings(
       r51WriteStructuredCount += 1;
       return false;
     },
-    applyCommandOptions: () => {
-      r51WriteCommandOptionsCount += 1;
+    refreshInlineCommandToggles: () => {
+      r51WriteRefreshCount += 1;
+    },
+    setInstanceCommandOption: (net, instanceId, name, enabled) => {
+      r51WriteSetInstanceCalls.push(
+        [String(net), String(instanceId), String(name), String(Boolean(enabled))].join(":")
+      );
+      wasmModule.bridgeInstanceCommandSetOptionR13B(
+        String(net),
+        instanceId,
+        String(name),
+        Boolean(enabled)
+      );
     },
     updateCommand: () => {
       r51WriteUpdateCommandCount += 1;
     }
   }
 );
+const r51WriteInlineEnabled =
+  wasmModule.bridgeCommandOptionEnabledR7("mainnet", "op252Inline");
+const r51WriteOptionalInlineDisabled =
+  !wasmModule.bridgeCommandOptionEnabledR7("mainnet", "inprocessRpcListenBorsh");
+const r51WriteInstanceEnabled =
+  wasmModule.bridgeInstanceCommandOptionEnabledR13B(
+    "mainnet",
+    "one",
+    "op252Instance",
+    r51WriteBridgeInstances.mainnet[0]
+  );
+const r51WriteOptionalInstanceEnabled =
+  wasmModule.bridgeInstanceCommandOptionEnabledR13B(
+    "mainnet",
+    "one",
+    "instanceBlockWaitTime",
+    r51WriteBridgeInstances.mainnet[0]
+  );
+const r51WriteEmptyOptionalInstanceDisabled =
+  !wasmModule.bridgeInstanceCommandOptionEnabledR13B(
+    "mainnet",
+    "two",
+    "instanceSharesPerMin",
+    r51WriteBridgeInstances.mainnet[1]
+  );
 const output = {
   directOwners: {
     hasConfigInitially: wasmModule.bridgeHasConfig("mainnet"),
-    inlineEnabled: wasmModule.bridgeCommandOptionEnabledR7("mainnet", "coinbaseTagSuffix"),
+    inlineEnabled: inlineEnabledBeforeWrite,
     inlineToggleHasMarker: wasmModule.bridgeCommandInlineToggleR7("mainnet", "coinbaseTagSuffix").includes('data-bridge-command-option-toggle-r7="coinbaseTagSuffix"'),
     instanceShouldInclude: wasmModule.bridgeInstanceCommandShouldIncludeFromInstancesR13B(
       sandbox.bridgeInstances,
@@ -287,8 +350,14 @@ const output = {
     r51WriteNormalizeReason,
     r51WriteNormalizeCount,
     r51WriteStructuredCount,
-    r51WriteCommandOptionsCount,
-    r51WriteUpdateCommandCount
+    r51WriteRefreshCount,
+    r51WriteSetInstanceCalls,
+    r51WriteUpdateCommandCount,
+    r51WriteInlineEnabled,
+    r51WriteOptionalInlineDisabled,
+    r51WriteInstanceEnabled,
+    r51WriteOptionalInstanceEnabled,
+    r51WriteEmptyOptionalInstanceDisabled
   }
 };
 for (const step of request.steps) {
@@ -527,7 +596,7 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
         "js_name = bridgeR51WriteSettings",
         "pub fn bridge_r51_write_settings(",
         "applyStructuredInstances",
-        "applyCommandOptions",
+        "bridge_command_options::bridge_r51_apply_command_options_r38c(",
         "updateCommand",
         "bridge_port_orchestration::bridge_reassign_instance_ports_from_external_range_r91",
         "bridge_instance_ui::bridge_sync_instance_preview_rows_r8b",
@@ -535,6 +604,33 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
         if !instance_settings.contains(needle) {
             return Err(format!(
                 "Bridge R51 WriteSettings Rust ownership contract missing: {needle}"
+            ));
+        }
+    }
+    for forbidden in [
+        "function kgwBridgeR51ApplyCommandOptionsR38C(",
+        "applyCommandOptions:",
+        "KGW_BRIDGE_R51_COMMAND_OPTIONS_KEY_R38C",
+        "KGW_BRIDGE_R51_INSTANCE_COMMAND_OPTIONS_KEY_R38C",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge R38C ApplyCommandOptions JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+    for needle in [
+        "pub(crate) fn bridge_r51_apply_command_options_r38c(",
+        "__kgwBridgeCommandOptionsR38C",
+        "__kgwBridgeInstanceCommandOptionsR38C",
+        "refreshInlineCommandToggles",
+        "setInstanceCommandOption",
+        "r38c-command-options-restored",
+        "r38c-command-options-restore-failed",
+    ] {
+        if !rust.contains(needle) {
+            return Err(format!(
+                "Bridge R38C ApplyCommandOptions Rust ownership contract missing: {needle}"
             ));
         }
     }
@@ -763,11 +859,33 @@ pub fn run(root: &Path) -> Result<String, String> {
     for pointer in [
         "/directOwners/r51WriteNormalizeCount",
         "/directOwners/r51WriteStructuredCount",
-        "/directOwners/r51WriteCommandOptionsCount",
-        "/directOwners/r51WriteUpdateCommandCount",
+        "/directOwners/r51WriteRefreshCount",
     ] {
         expect_pointer(&actual, pointer, json!(1))?;
     }
+    expect_pointer(
+        &actual,
+        "/directOwners/r51WriteUpdateCommandCount",
+        json!(2),
+    )?;
+    for pointer in [
+        "/directOwners/r51WriteInlineEnabled",
+        "/directOwners/r51WriteOptionalInlineDisabled",
+        "/directOwners/r51WriteInstanceEnabled",
+        "/directOwners/r51WriteOptionalInstanceEnabled",
+        "/directOwners/r51WriteEmptyOptionalInstanceDisabled",
+    ] {
+        expect_pointer(&actual, pointer, json!(true))?;
+    }
+    expect_pointer(
+        &actual,
+        "/directOwners/r51WriteSetInstanceCalls",
+        json!([
+            "mainnet:one:op252Instance:true",
+            "mainnet:one:instanceBlockWaitTime:true",
+            "mainnet:two:instanceSharesPerMin:false"
+        ]),
+    )?;
     expect_pointer(
         &actual,
         "/directOwners/r51WriteEvents",

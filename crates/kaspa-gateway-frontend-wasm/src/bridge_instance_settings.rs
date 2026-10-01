@@ -1316,7 +1316,13 @@ pub fn bridge_r51_write_settings(
         dispatch_event(&field, "change")?;
     }
 
-    let _ = call2_required(&callbacks, "applyCommandOptions", &net_value, &values)?;
+    bridge_command_options::bridge_r51_apply_command_options_r38c(
+        &net,
+        &values,
+        &bridge_instances,
+        &active_instance,
+        &callbacks,
+    );
 
     let network_key = bridge_frontend_helpers::bridge_instance_network_key_r15(
         net_value.clone(),

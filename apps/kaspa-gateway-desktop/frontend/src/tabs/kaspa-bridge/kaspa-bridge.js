@@ -1,5 +1,5 @@
 import { applyStatusTone, renderStatusSummary } from "../../status.js";
-import { BRIDGE_MANAGED, BRIDGE_OPTIONAL, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
+import { BRIDGE_MANAGED, bridgeFieldEnabled, validateBridgeForm, renderFieldErrors, runtimePresentation, runtimeObservationSummary, confirmUserAction } from "../../settings-contract.js";
 import { renderSettingsTabs, installSettingsLayout, decorateSettingsFields, revealSettingsField, setSettingFieldState } from "../../settings-layout.js";
 import initBridgeRust, {
   bridgeApplyRuntimeLogReport as wasmBridgeApplyRuntimeLogReport,
@@ -1971,58 +1971,6 @@ function kgwBridgeR51ReadStructuredInstancesR26B(net) {
 }
 
 
-/* KGW_BRIDGE_COMMAND_CHECKBOX_PERSISTENCE_PATCH_R38C
- * Persist command include/exclude checkboxes by semantic keys, not empty DOM ids.
- * This patches the existing R51 settings persistence owner only.
- */
-const KGW_BRIDGE_R51_COMMAND_OPTIONS_KEY_R38C = "__kgwBridgeCommandOptionsR38C";
-const KGW_BRIDGE_R51_INSTANCE_COMMAND_OPTIONS_KEY_R38C = "__kgwBridgeInstanceCommandOptionsR38C";
-
-function kgwBridgeR51ApplyCommandOptionsR38C(net, values) {
-  try {
-    const commandOptions = values && values[KGW_BRIDGE_R51_COMMAND_OPTIONS_KEY_R38C];
-    if (commandOptions && typeof commandOptions === "object") {
-      for (const [name, enabled] of Object.entries(commandOptions)) {
-        wasmBridgeCommandSetOptionR7(
-          String(net || ""),
-          String(name || ""),
-          Boolean(enabled) && (!BRIDGE_OPTIONAL.has(name) || Boolean(String(values[wasmBridgeElementId(net, name)]?.value || "").trim()))
-        );
-      }
-      kgwBridgeRefreshInlineCommandTogglesR7(net);
-    }
-
-    const instanceOptions = values && values[KGW_BRIDGE_R51_INSTANCE_COMMAND_OPTIONS_KEY_R38C];
-    if (instanceOptions && typeof instanceOptions === "object") {
-      for (const [instanceId, options] of Object.entries(instanceOptions)) {
-        if (!options || typeof options !== "object") continue;
-        for (const [name, enabled] of Object.entries(options)) {
-          const optional = ["instanceBlockWaitTime", "instanceExtranonceSize", "instanceSharesPerMin"].includes(name);
-          const record = (bridgeInstances[net] || []).find(item => String(item.id) === String(instanceId));
-          kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, Boolean(enabled) && (!optional || Boolean(String(record?.[name] || "").trim())));
-        }
-      }
-      wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
-    }
-
-    updateCommand(net);
-
-    wasmBridgeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-command-options-restored", {
-      patch: "R38C",
-      owner: "bridge-r51-settings-owner",
-      commandOptionCount: commandOptions && typeof commandOptions === "object" ? Object.keys(commandOptions).length : 0,
-      instanceCount: instanceOptions && typeof instanceOptions === "object" ? Object.keys(instanceOptions).length : 0
-    });
-  } catch (error) {
-    wasmBridgeSmallOwnerTraceR44D(net, "settings-persistence", "r38c-command-options-restore-failed", {
-      patch: "R38C",
-      owner: "bridge-r51-settings-owner",
-      message: error && error.message ? error.message : String(error)
-    });
-  }
-}
-
-
 function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
   try {
     net = wasmBridgeInstanceNetworkKeyR15(net, net);
@@ -2205,8 +2153,15 @@ function kgwBridgeR51WriteSettingsCallbacksR250() {
       kgwBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || "")),
     applyStructuredInstances: (net, values) =>
       kgwBridgeR51ApplyStructuredInstancesR26B(String(net || ""), values),
-    applyCommandOptions: (net, values) =>
-      kgwBridgeR51ApplyCommandOptionsR38C(String(net || ""), values),
+    refreshInlineCommandToggles: (net) =>
+      kgwBridgeRefreshInlineCommandTogglesR7(String(net || "")),
+    setInstanceCommandOption: (net, instanceId, name, enabled) =>
+      kgwBridgeSetInstanceCommandOptionR13B(
+        String(net || ""),
+        instanceId,
+        String(name || ""),
+        Boolean(enabled)
+      ),
     updateCommand: (net) => updateCommand(String(net || ""))
   };
 }
