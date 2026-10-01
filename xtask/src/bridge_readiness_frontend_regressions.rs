@@ -1911,6 +1911,57 @@ fn verify_network_tabs_ownership(source: &str, helpers: &str) -> Result<(), Stri
     Ok(())
 }
 
+fn verify_delegated_tabs_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeInstallDelegatedTabsUi as wasmBridgeInstallDelegatedTabsUi",
+        "// KGW_BRIDGE_DELEGATED_TABS_RUST_OWNER_V1",
+        "function installDelegatedTabs(root) {",
+        "return wasmBridgeInstallDelegatedTabsUi(root, activeInstance);",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge delegated-tabs Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    let wrapper = slice_between(source, "function installDelegatedTabs(root) {", "\n}")?;
+    for forbidden in [
+        "root.addEventListener(",
+        "querySelectorAll(",
+        "wasmBridgeSaveInnerTab(",
+        "wasmBridgeRenderRawLogBuffer(",
+        "kgwBridgeExplicitTraceR27D(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge delegated-tabs JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeInstallDelegatedTabsUi",
+        "pub fn bridge_install_delegated_tabs_ui(",
+        "[data-bridge-inner-tab]",
+        "[data-bridge-inner-panel]",
+        "[data-bridge-section-tab]",
+        "[data-bridge-section-panel]",
+        "[data-instance-tab]",
+        "[data-instance-panel]",
+        "r45d-bridge-inner-tab-click",
+        "r45d-bridge-section-tab-click",
+        "r45d-bridge-instance-tab-click",
+        "bridge_render_raw_log_buffer(",
+        "bridge_save_inner_tab(",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge delegated-tabs Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_inprocess_node_settings_renderer_ownership(
     source: &str,
     bridge_render: &str,
@@ -2953,15 +3004,23 @@ fn verify_static_contracts(
         }
     }
 
-    for needle in [
+    for forbidden in [
         "bridgeSaveInnerTab as wasmBridgeSaveInnerTab",
-        "wasmBridgeSaveInnerTab(String(net || \"\"), innerTab.dataset.bridgeInnerTab)",
+        "wasmBridgeSaveInnerTab(",
     ] {
-        if !source.contains(needle) {
+        if source.contains(forbidden) {
             return Err(format!(
-                "Bridge R101U remaining direct Rust/WASM binding missing: {needle}"
+                "Bridge R101U direct JavaScript binding must remain retired after OP287: {forbidden}"
             ));
         }
+    }
+    if !helpers.contains("bridge_save_inner_tab(")
+        || !helpers.contains("pub fn bridge_install_delegated_tabs_ui(")
+    {
+        return Err(
+            "Bridge R101U delegated-tabs Rust owner must persist inner-tab state after OP287"
+                .to_owned(),
+        );
     }
     for forbidden in [
         "bridgeResolveInnerTab as wasmBridgeResolveInnerTab",
@@ -3442,6 +3501,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_visible_instance_owners_ownership(&full_source, &instance_ui_source)?;
     verify_instance_refresh_ownership(&full_source, &instance_ui_source)?;
     verify_network_tabs_ownership(&full_source, &helper_source)?;
+    verify_delegated_tabs_ownership(&full_source, &helper_source)?;
     verify_inprocess_node_settings_renderer_ownership(&full_source, &bridge_render_source)?;
     verify_settings_sections_ownership(&full_source, &helper_source)?;
     verify_instances_renderer_ownership(&full_source, &instance_ui_source)?;
@@ -4828,6 +4888,29 @@ mod tests {
             "js_name = missingInstallNetworkTabsUi",
         );
         assert!(verify_network_tabs_ownership(source, &missing).is_err());
+    }
+
+    #[test]
+    fn delegated_tabs_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_delegated_tabs_ownership(source, helpers).is_ok());
+
+        let legacy = source.replacen(
+            "function installDelegatedTabs(root) {",
+            "function installDelegatedTabs(root) {\n  root.addEventListener(\"click\", () => {});",
+            1,
+        );
+        assert!(verify_delegated_tabs_ownership(&legacy, helpers).is_err());
+
+        let missing = helpers.replace(
+            "js_name = bridgeInstallDelegatedTabsUi",
+            "js_name = missingInstallDelegatedTabsUi",
+        );
+        assert!(verify_delegated_tabs_ownership(source, &missing).is_err());
     }
 
     #[test]

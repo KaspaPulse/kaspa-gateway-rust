@@ -47,6 +47,7 @@ import initBridgeRust, {
   bridgeInstallInstanceContainerOwnerR11 as wasmBridgeInstallInstanceContainerOwnerR11,
   bridgeInstallAllVisibleInstanceContainerOwnersR11 as wasmBridgeInstallAllVisibleInstanceContainerOwnersR11,
   bridgeInstallNetworkTabsUi as wasmBridgeInstallNetworkTabsUi,
+  bridgeInstallDelegatedTabsUi as wasmBridgeInstallDelegatedTabsUi,
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
   bridgeElementId as wasmBridgeElementId,
@@ -59,7 +60,6 @@ import initBridgeRust, {
   bridgeRenderSectionsUi as wasmBridgeRenderSectionsUi,
   bridgeRenderNetworkPanelUi as wasmBridgeRenderNetworkPanelUi,
   bridgeRenderAllNetworksUi as wasmBridgeRenderAllNetworksUi,
-  bridgeSaveInnerTab as wasmBridgeSaveInnerTab,
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
   bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
   bridgeSetNetworkEnabled as wasmBridgeSetNetworkEnabled,
@@ -511,38 +511,6 @@ function updateAllCommands() {
 
 
 
-// KGW_BRIDGE_EXPLICIT_TRACE_HELPER_VISIBILITY_R45E
-function kgwBridgeExplicitTraceR27D(net, action, phase, details) {
-  try {
-    const safeNet = String(net || "unknown");
-    const safeAction = String(action || "internal-navigation");
-    const safePhase = String(phase || "unknown");
-    const safeDetails = details && typeof details === "object" ? details : {};
-    const args = {
-      scope: "bridge",
-      net: safeNet,
-      action: safeAction,
-      phase: safePhase,
-      details: JSON.stringify({
-        patch: "KGW_BRIDGE_EXPLICIT_TRACE_HELPER_VISIBILITY_R45E",
-        owner: "bridge-module-visible-explicit-trace-helper",
-        network: safeNet,
-        action: safeAction,
-        phase: safePhase,
-        details: safeDetails
-      })
-    };
-    const tauri = window.__TAURI__;
-    const invoke = tauri && tauri.core && typeof tauri.core.invoke === "function"
-      ? tauri.core.invoke.bind(tauri.core)
-      : tauri && typeof tauri.invoke === "function"
-        ? tauri.invoke.bind(tauri)
-        : window.__TAURI_INVOKE__;
-    if (typeof invoke === "function") {
-      invoke("kgw_frontend_button_trace_v1", args).catch(function () {});
-    }
-  } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-}
 /* KGW_BRIDGE_LAST_NETWORK_RESTORE_R101W2 */
 /* R101W2 last-network persistence is Rust-owned in bridge_frontend_helpers.rs. */
 
@@ -554,89 +522,9 @@ function installNetworkTabs(root) {
   });
 }
 
+// KGW_BRIDGE_DELEGATED_TABS_RUST_OWNER_V1
 function installDelegatedTabs(root) {
-  root.addEventListener("click", (event) => {
-    const innerTab = event.target.closest("[data-bridge-inner-tab]");
-    if (innerTab) {
-      const net = innerTab.dataset.net;
-      const selected = wasmBridgeSaveInnerTab(String(net || ""), innerTab.dataset.bridgeInnerTab);
-      const panel = root.querySelector(`[data-bridge-network-panel="${net}"]`);
-
-      kgwBridgeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-bridge-inner-tab-click", {
-        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D+KGW_BRIDGE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U",
-        trusted: Boolean(event && event.isTrusted),
-        selected: String(selected || ""),
-        text: String(innerTab.textContent || "").trim(),
-        persisted: true
-      });
-
-      panel.querySelectorAll("[data-bridge-inner-tab]").forEach((item) => {
-        item.classList.toggle("active", item === innerTab);
-      });
-
-      panel.querySelectorAll("[data-bridge-inner-panel]").forEach((item) => {
-        const active = item.dataset.bridgeInnerPanel === selected;
-        item.classList.toggle("active", active);
-        item.hidden = !active;
-      });
-
-      return;
-    }
-
-    const sectionTab = event.target.closest("[data-bridge-section-tab]");
-    if (sectionTab) {
-      const net = sectionTab.dataset.net;
-      const selected = sectionTab.dataset.bridgeSectionTab;
-      const panel = root.querySelector(`[data-bridge-network-panel="${net}"]`);
-
-      kgwBridgeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-bridge-section-tab-click", {
-        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
-        trusted: Boolean(event && event.isTrusted),
-        selected: String(selected || ""),
-        text: String(sectionTab.textContent || "").trim()
-      });
-
-      panel.querySelectorAll("[data-bridge-section-tab]").forEach((item) => {
-        item.classList.toggle("active", item === sectionTab);
-        item.setAttribute("aria-selected", String(item === sectionTab));
-      });
-
-      panel.querySelectorAll("[data-bridge-section-panel]").forEach((item) => {
-        const active = item.dataset.bridgeSectionPanel === selected;
-        item.classList.toggle("active", active);
-        item.hidden = !active;
-      });
-
-      return;
-    }
-
-    const instanceTab = event.target.closest("[data-instance-tab]");
-    if (instanceTab) {
-      const net = instanceTab.dataset.net;
-      const selected = Number(instanceTab.dataset.instanceTab);
-      activeInstance[net] = selected;
-      wasmBridgeRenderRawLogBuffer(String(net || ""), "bridge", String(selected));
-
-      kgwBridgeExplicitTraceR27D(net || "unknown", "internal-navigation", "r45d-bridge-instance-tab-click", {
-        patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
-        trusted: Boolean(event && event.isTrusted),
-        selected: String(selected),
-        text: String(instanceTab.textContent || "").trim()
-      });
-
-      const panel = root.querySelector(`[data-bridge-network-panel="${net}"]`);
-
-      panel.querySelectorAll("[data-instance-tab]").forEach((item) => {
-        item.classList.toggle("active", Number(item.dataset.instanceTab) === selected);
-      });
-
-      panel.querySelectorAll("[data-instance-panel]").forEach((item) => {
-        const active = Number(item.dataset.instancePanel) === selected;
-        item.classList.toggle("active", active);
-        item.hidden = !active;
-      });
-    }
-  });
+  return wasmBridgeInstallDelegatedTabsUi(root, activeInstance);
 }
 
 // KGW_BRIDGE_INTEGRATED_RUNTIME_LINKAGE_V1: readable Bridge runtime response + duplicate-click guard.

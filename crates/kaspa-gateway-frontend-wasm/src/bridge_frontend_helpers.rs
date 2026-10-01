@@ -993,6 +993,206 @@ pub fn bridge_install_network_tabs_ui(root: JsValue, callbacks: JsValue) -> bool
     true
 }
 
+#[wasm_bindgen(js_name = bridgeInstallDelegatedTabsUi)]
+pub fn bridge_install_delegated_tabs_ui(root: JsValue, active_instance: JsValue) -> bool {
+    if !present(&root) {
+        return false;
+    }
+    let root_for_click = root.clone();
+    let active_for_click = active_instance.clone();
+    let callback = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+
+        let inner_tab = call1(
+            &target,
+            "closest",
+            &JsValue::from_str("[data-bridge-inner-tab]"),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        if present(&inner_tab) {
+            let net = bridge_tab_dataset_text(&inner_tab, "net");
+            let selected = bridge_save_inner_tab(
+                net.clone(),
+                property(&property(&inner_tab, "dataset"), "bridgeInnerTab"),
+            );
+            let panel = query_bridge(
+                &root_for_click,
+                &format!("[data-bridge-network-panel=\"{net}\"]"),
+            );
+            let details = Object::new();
+            set(
+                details.as_ref(),
+                "patch",
+                &JsValue::from_str(
+                    "KGW_INTERNAL_NAV_TRACE_OWNER_R45D+KGW_BRIDGE_LIVE_MONITOR_DEFAULT_LAST_TAB_R101U",
+                ),
+            );
+            set(
+                details.as_ref(),
+                "trusted",
+                &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+            );
+            set(details.as_ref(), "selected", &JsValue::from_str(&selected));
+            set(
+                details.as_ref(),
+                "text",
+                &JsValue::from_str(
+                    crate::js_string_owned(&property(&inner_tab, "textContent")).trim(),
+                ),
+            );
+            set(details.as_ref(), "persisted", &JsValue::TRUE);
+            let _ = bridge_small_owner_trace_r44d(
+                JsValue::from_str(if net.is_empty() { "unknown" } else { &net }),
+                JsValue::from_str("internal-navigation"),
+                JsValue::from_str("r45d-bridge-inner-tab-click"),
+                details.into(),
+            );
+
+            for item in bridge_tab_collection(&panel, "[data-bridge-inner-tab]") {
+                bridge_tab_class_toggle(&item, "active", Object::is(&item, &inner_tab));
+            }
+            for item in bridge_tab_collection(&panel, "[data-bridge-inner-panel]") {
+                let active = bridge_tab_dataset_text(&item, "bridgeInnerPanel") == selected;
+                bridge_tab_class_toggle(&item, "active", active);
+                set(&item, "hidden", &JsValue::from_bool(!active));
+            }
+            return;
+        }
+
+        let section_tab = call1(
+            &target,
+            "closest",
+            &JsValue::from_str("[data-bridge-section-tab]"),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        if present(&section_tab) {
+            let net = bridge_tab_dataset_text(&section_tab, "net");
+            let selected = bridge_tab_dataset_text(&section_tab, "bridgeSectionTab");
+            let panel = query_bridge(
+                &root_for_click,
+                &format!("[data-bridge-network-panel=\"{net}\"]"),
+            );
+            let details = Object::new();
+            set(
+                details.as_ref(),
+                "patch",
+                &JsValue::from_str("KGW_INTERNAL_NAV_TRACE_OWNER_R45D"),
+            );
+            set(
+                details.as_ref(),
+                "trusted",
+                &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+            );
+            set(details.as_ref(), "selected", &JsValue::from_str(&selected));
+            set(
+                details.as_ref(),
+                "text",
+                &JsValue::from_str(
+                    crate::js_string_owned(&property(&section_tab, "textContent")).trim(),
+                ),
+            );
+            let _ = bridge_small_owner_trace_r44d(
+                JsValue::from_str(if net.is_empty() { "unknown" } else { &net }),
+                JsValue::from_str("internal-navigation"),
+                JsValue::from_str("r45d-bridge-section-tab-click"),
+                details.into(),
+            );
+
+            for item in bridge_tab_collection(&panel, "[data-bridge-section-tab]") {
+                let active = Object::is(&item, &section_tab);
+                bridge_tab_class_toggle(&item, "active", active);
+                bridge_tab_set_attribute(
+                    &item,
+                    "aria-selected",
+                    if active { "true" } else { "false" },
+                );
+            }
+            for item in bridge_tab_collection(&panel, "[data-bridge-section-panel]") {
+                let active = bridge_tab_dataset_text(&item, "bridgeSectionPanel") == selected;
+                bridge_tab_class_toggle(&item, "active", active);
+                set(&item, "hidden", &JsValue::from_bool(!active));
+            }
+            return;
+        }
+
+        let instance_tab = call1(
+            &target,
+            "closest",
+            &JsValue::from_str("[data-instance-tab]"),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        if !present(&instance_tab) {
+            return;
+        }
+        let net = bridge_tab_dataset_text(&instance_tab, "net");
+        let selected = crate::js_number(&property(
+            &property(&instance_tab, "dataset"),
+            "instanceTab",
+        ));
+        set(&active_for_click, &net, &JsValue::from_f64(selected));
+        let selected_text = crate::js_string_owned(&JsValue::from_f64(selected));
+        let _ = crate::bridge_raw_log::bridge_render_raw_log_buffer(
+            net.clone(),
+            "bridge".to_owned(),
+            selected_text.clone(),
+        );
+
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "patch",
+            &JsValue::from_str("KGW_INTERNAL_NAV_TRACE_OWNER_R45D"),
+        );
+        set(
+            details.as_ref(),
+            "trusted",
+            &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+        );
+        set(
+            details.as_ref(),
+            "selected",
+            &JsValue::from_str(&selected_text),
+        );
+        set(
+            details.as_ref(),
+            "text",
+            &JsValue::from_str(
+                crate::js_string_owned(&property(&instance_tab, "textContent")).trim(),
+            ),
+        );
+        let _ = bridge_small_owner_trace_r44d(
+            JsValue::from_str(if net.is_empty() { "unknown" } else { &net }),
+            JsValue::from_str("internal-navigation"),
+            JsValue::from_str("r45d-bridge-instance-tab-click"),
+            details.into(),
+        );
+
+        let panel = query_bridge(
+            &root_for_click,
+            &format!("[data-bridge-network-panel=\"{net}\"]"),
+        );
+        for item in bridge_tab_collection(&panel, "[data-instance-tab]") {
+            let active =
+                crate::js_number(&property(&property(&item, "dataset"), "instanceTab")) == selected;
+            bridge_tab_class_toggle(&item, "active", active);
+        }
+        for item in bridge_tab_collection(&panel, "[data-instance-panel]") {
+            let active = crate::js_number(&property(&property(&item, "dataset"), "instancePanel"))
+                == selected;
+            bridge_tab_class_toggle(&item, "active", active);
+            set(&item, "hidden", &JsValue::from_bool(!active));
+        }
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call2(
+        &root,
+        "addEventListener",
+        &JsValue::from_str("click"),
+        callback.as_ref().unchecked_ref(),
+    );
+    callback.forget();
+    true
+}
+
 fn profile_object(spec: &BridgeNetworkProfile) -> JsValue {
     let output = Object::new();
     for (key, value) in [
