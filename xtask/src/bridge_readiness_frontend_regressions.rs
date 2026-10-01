@@ -1605,6 +1605,57 @@ fn verify_start_options_ownership(
     Ok(())
 }
 
+fn verify_instance_click_owner_ownership(source: &str, instance_ui: &str) -> Result<(), String> {
+    for required in [
+        "bridgeInstallInstanceContainerOwnerR11 as wasmBridgeInstallInstanceContainerOwnerR11",
+        "// KGW_BRIDGE_INSTANCE_CLICK_OWNER_RUST_OWNER_V1",
+        "function bridgeInstallInstanceContainerOwnerR11(container, net) {",
+        "return wasmBridgeInstallInstanceContainerOwnerR11(",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge instance click-owner Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    let wrapper = slice_between(
+        source,
+        "function bridgeInstallInstanceContainerOwnerR11(container, net) {",
+        "\n}",
+    )?;
+    for forbidden in [
+        "container.onclick =",
+        "event.preventDefault()",
+        "event.stopPropagation()",
+        "control.dataset.bridgeAction",
+        "wasmBridgeInstanceNetworkKeyR15(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge instance click-owner JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeInstallInstanceContainerOwnerR11",
+        "pub fn bridge_install_instance_container_owner_r11(",
+        "KGW_BRIDGE_INSTANCES_REBUILD_CLICK_OWNER_R11",
+        "r45d-bridge-instance-control-click",
+        "\"add-instance\" | \"select-instance\" | \"remove-instance\"",
+        "preventDefault",
+        "stopPropagation",
+        "bridge_render_raw_log_buffer(",
+        "\"removeInstance\"",
+    ] {
+        if !instance_ui.contains(required) {
+            return Err(format!(
+                "Bridge instance click-owner Rust contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_visible_instance_owners_ownership(source: &str, instance_ui: &str) -> Result<(), String> {
     for required in [
         "bridgeInstallAllVisibleInstanceContainerOwnersR11 as wasmBridgeInstallAllVisibleInstanceContainerOwnersR11",
@@ -2843,12 +2894,11 @@ fn verify_static_contracts(
             ));
         }
     }
-    if !source.contains("bridgeInstanceNetworkKeyR15 as wasmBridgeInstanceNetworkKeyR15") {
-        return Err("Bridge R15 instance network-key Rust/WASM import is missing".to_owned());
-    }
-    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 2 {
+    if source.contains("bridgeInstanceNetworkKeyR15 as wasmBridgeInstanceNetworkKeyR15")
+        || source.contains("wasmBridgeInstanceNetworkKeyR15(")
+    {
         return Err(
-            "Bridge R15 instance network-key owner must have exactly two remaining direct generated-WASM call sites after OP279 moves instance-refresh network canonicalization into Rust"
+            "Bridge R15 instance network-key JavaScript binding/calls must be fully retired after OP281 moves the final container-click canonicalization into Rust"
                 .to_owned(),
         );
     }
@@ -3071,6 +3121,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_start_options_ownership(&full_source, &helper_source, &instance_settings_source)?;
+    verify_instance_click_owner_ownership(&full_source, &instance_ui_source)?;
     verify_visible_instance_owners_ownership(&full_source, &instance_ui_source)?;
     verify_instance_refresh_ownership(&full_source, &instance_ui_source)?;
     verify_instances_renderer_ownership(&full_source, &instance_ui_source)?;
@@ -4301,6 +4352,29 @@ mod tests {
         ] {
             assert!(verify_start_options_ownership(source, helpers, &mutation).is_err());
         }
+    }
+
+    #[test]
+    fn instance_click_owner_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let instance_ui =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_instance_ui.rs");
+        assert!(verify_instance_click_owner_ownership(source, instance_ui).is_ok());
+
+        let legacy = source.replacen(
+            "function bridgeInstallInstanceContainerOwnerR11(container, net) {",
+            "function bridgeInstallInstanceContainerOwnerR11(container, net) {\n  container.onclick = function(event) { event.preventDefault(); };",
+            1,
+        );
+        assert!(verify_instance_click_owner_ownership(&legacy, instance_ui).is_err());
+
+        let missing = instance_ui.replace(
+            "js_name = bridgeInstallInstanceContainerOwnerR11",
+            "js_name = missingInstallInstanceContainerOwnerR11",
+        );
+        assert!(verify_instance_click_owner_ownership(source, &missing).is_err());
     }
 
     #[test]

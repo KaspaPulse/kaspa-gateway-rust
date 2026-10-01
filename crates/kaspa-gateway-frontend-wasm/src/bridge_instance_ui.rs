@@ -1,4 +1,4 @@
-use js_sys::{Array, Function, JSON, Reflect};
+use js_sys::{Array, Function, JSON, Object, Reflect};
 use wasm_bindgen::{JsCast, prelude::*};
 
 use crate::{
@@ -456,6 +456,164 @@ pub fn bridge_refresh_instances_ui(
 
     let _ = call1_required(&callbacks, "updateCommand", &JsValue::from_str(&net))?;
     Ok(net)
+}
+
+#[wasm_bindgen(js_name = bridgeInstallInstanceContainerOwnerR11)]
+pub fn bridge_install_instance_container_owner_r11(
+    container: JsValue,
+    net: String,
+    active_instance: JsValue,
+    callbacks: JsValue,
+) -> Result<bool, JsValue> {
+    let net = bridge_frontend_helpers::bridge_instance_network_key_r15(
+        JsValue::from_str(&net),
+        JsValue::from_str(&net),
+    );
+    if !present(&container) || net.is_empty() {
+        return Ok(false);
+    }
+
+    let dataset = property(&container, "dataset");
+    set(
+        &dataset,
+        "kgwBridgeInstancesClickOwner",
+        &JsValue::from_str("KGW_BRIDGE_INSTANCES_REBUILD_CLICK_OWNER_R11"),
+    );
+
+    let container_for_click = container.clone();
+    let net_for_click = net.clone();
+    let active_for_click = active_instance.clone();
+    let callbacks_for_click = callbacks.clone();
+    let callback = Closure::wrap(Box::new(move |event: JsValue| {
+        let target = property(&event, "target");
+        if !present(&target) {
+            return;
+        }
+        let control = call1(
+            &target,
+            "closest",
+            &JsValue::from_str("[data-bridge-action]"),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        if !present(&control) {
+            return;
+        }
+        let inside = call1(&container_for_click, "contains", &control)
+            .is_some_and(|value| crate::js_boolean(&value));
+        if !inside {
+            return;
+        }
+
+        let control_dataset = property(&control, "dataset");
+        let action = crate::js_string_owned(&property(&control_dataset, "bridgeAction"));
+        let target_net = bridge_frontend_helpers::bridge_instance_network_key_r15(
+            property(&control_dataset, "network"),
+            JsValue::from_str(&net_for_click),
+        );
+        let instance_id = crate::js_string_owned(&property(&control_dataset, "instanceId"));
+
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "patch",
+            &JsValue::from_str("KGW_INTERNAL_NAV_TRACE_OWNER_R45D"),
+        );
+        set(
+            details.as_ref(),
+            "trusted",
+            &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+        );
+        set(details.as_ref(), "action", &JsValue::from_str(&action));
+        set(
+            details.as_ref(),
+            "instanceId",
+            &JsValue::from_str(&instance_id),
+        );
+        set(
+            details.as_ref(),
+            "text",
+            &JsValue::from_str(crate::js_string_owned(&property(&control, "textContent")).trim()),
+        );
+        let _ = bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+            JsValue::from_str(if target_net.is_empty() {
+                "unknown"
+            } else {
+                &target_net
+            }),
+            JsValue::from_str("internal-navigation"),
+            JsValue::from_str("r45d-bridge-instance-control-click"),
+            details.into(),
+        );
+
+        if !matches!(
+            action.as_str(),
+            "add-instance" | "select-instance" | "remove-instance"
+        ) {
+            return;
+        }
+
+        if let Some(prevent) = function(&event, "preventDefault") {
+            let _ = prevent.call0(&event);
+        }
+        if let Some(stop) = function(&event, "stopPropagation") {
+            let _ = stop.call0(&event);
+        }
+
+        match action.as_str() {
+            "add-instance" => {
+                let _ = call1_required(
+                    &callbacks_for_click,
+                    "addInstance",
+                    &JsValue::from_str(&target_net),
+                );
+            }
+            "select-instance" => {
+                set(
+                    &active_for_click,
+                    &target_net,
+                    &JsValue::from_str(&instance_id),
+                );
+                let _ = call1_required(
+                    &callbacks_for_click,
+                    "refreshInstances",
+                    &JsValue::from_str(&target_net),
+                );
+                let _ = crate::bridge_raw_log::bridge_render_raw_log_buffer(
+                    target_net.clone(),
+                    "bridge".to_owned(),
+                    instance_id,
+                );
+                let _ = call1_required(
+                    &callbacks_for_click,
+                    "updateCommand",
+                    &JsValue::from_str(&target_net),
+                );
+            }
+            "remove-instance" => {
+                let disabled = crate::js_boolean(&property(&control, "disabled"))
+                    || crate::js_string_owned(&property(&control_dataset, "disabled")) == "true";
+                if disabled {
+                    return;
+                }
+                let _ = call2_required(
+                    &callbacks_for_click,
+                    "removeInstance",
+                    &JsValue::from_str(&target_net),
+                    &JsValue::from_str(&instance_id),
+                );
+                let _ = call1_required(
+                    &callbacks_for_click,
+                    "updateCommand",
+                    &JsValue::from_str(&target_net),
+                );
+            }
+            _ => {}
+        }
+    }) as Box<dyn FnMut(JsValue)>);
+
+    set(&container, "onclick", callback.as_ref());
+    callback.forget();
+    Ok(true)
 }
 
 #[wasm_bindgen(js_name = bridgeInstallAllVisibleInstanceContainerOwnersR11)]

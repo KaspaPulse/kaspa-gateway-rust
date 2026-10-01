@@ -53,6 +53,7 @@ import initBridgeRust, {
   bridgeSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B,
   bridgeRenderInstancesUi as wasmBridgeRenderInstancesUi,
   bridgeRefreshInstancesUi as wasmBridgeRefreshInstancesUi,
+  bridgeInstallInstanceContainerOwnerR11 as wasmBridgeInstallInstanceContainerOwnerR11,
   bridgeInstallAllVisibleInstanceContainerOwnersR11 as wasmBridgeInstallAllVisibleInstanceContainerOwnersR11,
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
@@ -68,7 +69,6 @@ import initBridgeRust, {
   bridgeSaveLastNetwork as wasmBridgeSaveLastNetwork,
   bridgeNetworkProfile as wasmBridgeNetworkProfile,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
-  bridgeInstanceNetworkKeyR15 as wasmBridgeInstanceNetworkKeyR15,
   bridgeResolveInnerTab as wasmBridgeResolveInnerTab,
   bridgeSaveInnerTab as wasmBridgeSaveInnerTab,
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
@@ -655,55 +655,20 @@ function bridgeRefreshInstances(net) {
  * It handles + / select / delete via closest('[data-bridge-action]').
  * No document/window/global listener.
  */
+// KGW_BRIDGE_INSTANCE_CLICK_OWNER_RUST_OWNER_V1
 function bridgeInstallInstanceContainerOwnerR11(container, net) {
-  net = wasmBridgeInstanceNetworkKeyR15(net, net);
-  if (!container || !net) return;
-
-  container.dataset.kgwBridgeInstancesClickOwner = "KGW_BRIDGE_INSTANCES_REBUILD_CLICK_OWNER_R11";
-  container.onclick = function bridgeInstancesContainerClickOwnerR11(event) {
-    const control = event.target && event.target.closest
-      ? event.target.closest("[data-bridge-action]")
-      : null;
-
-    if (!control || !container.contains(control)) return;
-
-    const action = control.dataset.bridgeAction || "";
-    const targetNet = wasmBridgeInstanceNetworkKeyR15(control.dataset.network, net);
-
-    kgwBridgeExplicitTraceR27D(targetNet || "unknown", "internal-navigation", "r45d-bridge-instance-control-click", {
-      patch: "KGW_INTERNAL_NAV_TRACE_OWNER_R45D",
-      trusted: Boolean(event && event.isTrusted),
-      action: String(action || ""),
-      instanceId: String(control.dataset.instanceId || control.dataset.instance || ""),
-      text: String(control.textContent || "").trim()
-    });
-
-    if (!["add-instance", "select-instance", "remove-instance"].includes(action)) {
-      return;
+  return wasmBridgeInstallInstanceContainerOwnerR11(
+    container,
+    String(net || ""),
+    activeInstance,
+    {
+      addInstance: (targetNet) => addInstance(String(targetNet || "")),
+      refreshInstances: (targetNet) => bridgeRefreshInstances(String(targetNet || "")),
+      updateCommand: (targetNet) => updateCommand(String(targetNet || "")),
+      removeInstance: (targetNet, instanceId) =>
+        removeInstance(String(targetNet || ""), String(instanceId || ""))
     }
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (action === "add-instance") {
-      addInstance(targetNet);
-      return;
-    }
-
-    if (action === "select-instance") {
-      activeInstance[targetNet] = control.dataset.instanceId;
-      bridgeRefreshInstances(targetNet);
-      wasmBridgeRenderRawLogBuffer(String(targetNet || ""), "bridge", String(activeInstance[targetNet] || ""));
-      updateCommand(targetNet);
-      return;
-    }
-
-    if (action === "remove-instance") {
-      if (control.dataset.disabled === "true" || control.disabled) return;
-      removeInstance(targetNet, control.dataset.instanceId);
-      updateCommand(targetNet);
-    }
-  };
+  );
 }
 
 // KGW_BRIDGE_VISIBLE_INSTANCE_OWNERS_RUST_OWNER_V1
