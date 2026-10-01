@@ -402,9 +402,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP294 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP295 - Bridge raw-log live kick Rust/WASM ownership (INTENT)
+## OP295 - Bridge raw-log live kick Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP294 closeout `820f81fa1bd1dfbdddacb1acb8e5d46c34ff621f`; BASE_TREE `b8e4f5d1fbd941f791d80635d87d739096b1e1ba`; worktree clean at intent time.
-- BOUNDARY: move `kgwBridgeR51KickRawLogLiveR134E` start-live-refresh plus 0/350/1000/2500ms refresh scheduling into Rust/WASM. JavaScript becomes a thin wrapper passing existing live-refresh callbacks.
-- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; exact refresh schedule/reason suffixes preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `kgwBridgeR51KickRawLogLiveR134E` start-live-refresh plus 0/350/1000/2500ms refresh scheduling moved into Rust/WASM `bridgeKickRawLogLiveR134E`; JavaScript is a thin wrapper passing existing live-refresh callbacks.
+- IMPLEMENTATION_CHECKPOINT: `15b96f5c43f61f32e685ef7d63c5588aff1883a4`, tree `e1d12779e1f6aee68f2cfd87dadbfb4504354460`. Closeout generation 2286.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 313/313 plus auxiliary suites; targeted raw-log live and R51 live-refresh regressions; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: R51 direct-call/callback-factory counts updated to the verified post-OP295 Rust-owned schedule; no live-refresh behavior was removed.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP295 qualification unless invalidated.
+- PUSHED: NO.
