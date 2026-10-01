@@ -423,3 +423,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: R95B direct-call count moved 3→2; effective-settings gate now requires the new owned read-settings export; structured-reader wrapper count moved 2→1 because its R51 read consumer moved into Rust.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP296 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP297 - Bridge Settings Owner V19 callback factory Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP296 closeout `5e1348a64396bd0205d99985745d6fcdafcd6211`; BASE_TREE `553c4aa4c4b5c22b6ea93020b66496dacd75317c`; worktree clean at intent time.
+- BOUNDARY: move `kgwBridgeSettingsOwnerCallbacksV19` callback-object construction into Rust/WASM. Rust owns scope/keys/read/load/validate callback wiring; JavaScript Settings Owner methods only request the Rust callback object and preserve compatibility globals.
+- ACCEPTANCE: Rust export + retired JS callback factory + fail-closed ownership regression; Settings Owner V19 semantics preserved; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
