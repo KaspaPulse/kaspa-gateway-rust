@@ -65,7 +65,6 @@ import initBridgeRust, {
   bridgeValidateFormUi as wasmBridgeValidateFormUi,
   bridgeRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi,
   bridgeEffectiveInprocessNodeSettingsChecked as wasmBridgeEffectiveInprocessNodeSettingsChecked,
-  bridgeSyncModeControlsUi as wasmBridgeSyncModeControlsUi,
   bridgeSyncAllModeControlsUi as wasmBridgeSyncAllModeControlsUi,
   bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E,
   bridgeValue as wasmBridgeValue,
@@ -457,9 +456,6 @@ function renderAllNetworks(root) {
 /* R54D3 Auto Fix text ownership lives in Rust bridge_port_ui.rs. */
 
 // KGW_BRIDGE_MODE_CONTROLS_RUST_OWNER_V1
-function bridgeSyncModeControls(net) {
-  return wasmBridgeSyncModeControlsUi(String(net || ""), bridgeInstances);
-}
 
 // KGW_BRIDGE_COMMAND_ORCHESTRATION_RUST_OWNER_V1
 function bridgeSyncAllModeControls() {
@@ -1043,66 +1039,20 @@ function installActions(root) {
     window.KGW_BRIDGE_SETTINGS_OWNER_V19.install(root);
   }
 
-  // KGW_EXPLICIT_TRACE_OWNER_R27D_BRIDGE_BEGIN
-  function kgwBridgeExplicitTraceR27D(net, action, phase, details) {
-    try {
-      const safeNet = String(net || "unknown");
-      const safeAction = String(action || "unknown");
-      const safePhase = String(phase || "unknown");
-      const payload = {
-        patch: "KGW_EXPLICIT_TRACE_EXACT_ANCHOR_PATCH_R27D",
-        owner: "bridge-existing-owner",
-        network: safeNet,
-        action: safeAction,
-        phase: safePhase,
-        details: details && typeof details === "object" ? details : {}
-      };
-
-      if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === "function") {
-        window.__TAURI__.core.invoke("kgw_frontend_button_trace_v1", {
-          scope: "bridge",
-          net: safeNet,
-          action: safeAction,
-          phase: safePhase,
-          details: JSON.stringify(payload)
-        }).catch(function () {});
-      }
-    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-  }
-  // KGW_EXPLICIT_TRACE_OWNER_R27D_BRIDGE_END
-
-  function scopedUpdate(net, reason) {
-    if (!net) return;
-
-    if (typeof bridgeSyncModeControls === "function") {
-      bridgeSyncModeControls(net);
-    }
-
-    if (typeof updateCommand === "function") {
-      updateCommand(net);
-    }
-
-    kgwBridgeExplicitTraceR27D(net, "settings-scope", "r27d-scoped-update", {
-      previousPatch: "KGW_SETTINGS_SCOPED_NETWORK_BRIDGE_ACTIONS_V26",
-      reason: reason || "unknown"
-    });
-  }
   bridgeInstallAllVisibleInstanceContainerOwnersR11(root);
 
-  wasmBridgeInstallRootActionClickOwnerUi(root, {
+  wasmBridgeInstallRootActionClickOwnerUi(root, bridgeInstances, {
+    updateCommand: (net) => updateCommand(String(net || "")),
     selectInstance: (net, instanceId) => {
       activeInstance[net] = instanceId;
       bridgeRefreshInstances(net);
       wasmBridgeRenderRawLogBuffer(String(net || ""), "bridge", String(activeInstance[net] || ""));
-      scopedUpdate(net, "select-instance");
     },
     addInstance: (net) => {
       addInstance(net);
-      scopedUpdate(net, "add-instance");
     },
     removeInstance: (net, instanceId) => {
       removeInstance(net, instanceId);
-      scopedUpdate(net, "remove-instance");
     },
     saveSettings: (net, button) => {
       try {
@@ -1112,7 +1062,6 @@ function installActions(root) {
         button.dataset.kgwSettingsActionResult = "failed";
         wasmBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
       }
-      scopedUpdate(net, "save-settings");
     },
     setDefaults: (net, button) => {
       try {
@@ -1122,7 +1071,6 @@ function installActions(root) {
         button.dataset.kgwSettingsActionResult = "failed";
         wasmBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
       }
-      scopedUpdate(net, "set-defaults");
     },
     restoreDefaults: (net, button) => {
       try {
@@ -1132,7 +1080,6 @@ function installActions(root) {
         button.dataset.kgwSettingsActionResult = "failed";
         wasmBridgeSetRuntimeErrorV1(net, wasmBridgeNormalizeRuntimeError(error));
       }
-      scopedUpdate(net, "restore-defaults");
     },
     logAction: (action, net, button) => {
       kgwBridgeHandleLogActionV29(action, net, button).catch(function () {});

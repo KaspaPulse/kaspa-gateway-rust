@@ -2110,7 +2110,8 @@ fn verify_settings_event_owners_ownership(source: &str, helpers: &str) -> Result
 fn verify_root_action_click_ownership(source: &str, helpers: &str) -> Result<(), String> {
     for required in [
         "bridgeInstallRootActionClickOwnerUi as wasmBridgeInstallRootActionClickOwnerUi",
-        "wasmBridgeInstallRootActionClickOwnerUi(root, {",
+        "wasmBridgeInstallRootActionClickOwnerUi(root, bridgeInstances, {",
+        "updateCommand: (net) => updateCommand(String(net || \"\"))",
         "selectInstance: (net, instanceId) =>",
         "saveSettings: (net, button) =>",
         "runtimeAction: (action, net) =>",
@@ -2128,6 +2129,9 @@ fn verify_root_action_click_ownership(source: &str, helpers: &str) -> Result<(),
         "const action = button.dataset.bridgeAction",
         "netFromElement(",
         "normalizeNet(",
+        "function scopedUpdate(",
+        "scopedUpdate(",
+        "function kgwBridgeExplicitTraceR27D(",
     ] {
         if actions.contains(forbidden) {
             return Err(format!(
@@ -2148,6 +2152,10 @@ fn verify_root_action_click_ownership(source: &str, helpers: &str) -> Result<(),
         "\"copy-log\" | \"clear-log\"",
         "\"copy-command\" | \"copy-path\"",
         "\"start\" | \"stop\"",
+        "bridge_settings_scoped_update(",
+        "\"select-instance\"",
+        "\"save-settings\"",
+        "\"restore-defaults\"",
     ] {
         if !helpers.contains(required) {
             return Err(format!(
@@ -2828,32 +2836,17 @@ fn verify_dependency_sync_ownership(source: &str, helpers: &str) -> Result<(), S
 }
 
 fn verify_mode_controls_ownership(source: &str, helpers: &str) -> Result<(), String> {
-    for required in [
-        "bridgeSyncModeControlsUi as wasmBridgeSyncModeControlsUi",
-        "// KGW_BRIDGE_MODE_CONTROLS_RUST_OWNER_V1",
-        "function bridgeSyncModeControls(net) {",
-        "return wasmBridgeSyncModeControlsUi(String(net || \"\"), bridgeInstances);",
-    ] {
-        if !source.contains(required) {
-            return Err(format!(
-                "Bridge mode-controls Rust/WASM binding missing: {required}"
-            ));
-        }
+    if !source.contains("// KGW_BRIDGE_MODE_CONTROLS_RUST_OWNER_V1") {
+        return Err("Bridge mode-controls Rust ownership marker missing".to_owned());
     }
-
-    let wrapper = slice_between(source, "function bridgeSyncModeControls(net) {", "\n}")?;
     for forbidden in [
-        "wasmBridgeNetworkProfile(",
-        "wasmBridgeHasConfig(",
-        "wasmBridgeNodeMode(",
-        "wasmBridgeChecked(",
-        "bridgeSetDisabled(",
-        "bridgeSyncInprocessNodeSettingsV12D(",
-        "kgwBridgeSyncDependencies(",
+        "bridgeSyncModeControlsUi as wasmBridgeSyncModeControlsUi",
+        "function bridgeSyncModeControls(net) {",
+        "wasmBridgeSyncModeControlsUi(",
     ] {
-        if wrapper.contains(forbidden) {
+        if source.contains(forbidden) {
             return Err(format!(
-                "Retired Bridge mode-controls JavaScript orchestration remains in wrapper: {forbidden}"
+                "Retired Bridge mode-controls JavaScript ownership remains after OP293: {forbidden}"
             ));
         }
     }
@@ -5683,19 +5676,11 @@ mod tests {
         assert!(verify_mode_controls_ownership(source, helpers).is_ok());
 
         for mutation in [
-            source.replace(
-                "bridgeSyncModeControlsUi as wasmBridgeSyncModeControlsUi",
-                "missingSyncModeControlsUi as wasmBridgeSyncModeControlsUi",
+            format!("{source}\n// bridgeSyncModeControlsUi as wasmBridgeSyncModeControlsUi\n"),
+            format!(
+                "{source}\nfunction bridgeSyncModeControls(net) {{ return wasmBridgeSyncModeControlsUi(String(net || \"\"), bridgeInstances); }}\n"
             ),
-            source.replace(
-                "return wasmBridgeSyncModeControlsUi(String(net || \"\"), bridgeInstances);",
-                "return false;",
-            ),
-            source.replacen(
-                "function bridgeSyncModeControls(net) {",
-                "function bridgeSyncModeControls(net) {\n  const nodeMode = wasmBridgeNodeMode(String(net || \"\"));",
-                1,
-            ),
+            format!("{source}\n// wasmBridgeSyncModeControlsUi(\"mainnet\", bridgeInstances);\n"),
         ] {
             assert!(verify_mode_controls_ownership(&mutation, helpers).is_err());
         }

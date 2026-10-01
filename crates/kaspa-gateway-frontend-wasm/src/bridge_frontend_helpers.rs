@@ -1659,11 +1659,16 @@ pub fn bridge_install_settings_event_owners_ui(
 }
 
 #[wasm_bindgen(js_name = bridgeInstallRootActionClickOwnerUi)]
-pub fn bridge_install_root_action_click_owner_ui(root: JsValue, callbacks: JsValue) -> bool {
+pub fn bridge_install_root_action_click_owner_ui(
+    root: JsValue,
+    bridge_instances: JsValue,
+    callbacks: JsValue,
+) -> bool {
     if !present(&root) {
         return false;
     }
     let root_click = root.clone();
+    let bridge_instances_click = bridge_instances;
     let callbacks_click = callbacks;
     let click = Closure::wrap(Box::new(move |event: JsValue| {
         let target = property(&event, "target");
@@ -1751,9 +1756,21 @@ pub fn bridge_install_root_action_click_owner_ui(root: JsValue, callbacks: JsVal
                     &JsValue::from_str(&net),
                     &JsValue::from_str(&instance_id),
                 );
+                bridge_settings_scoped_update(
+                    &net,
+                    "select-instance",
+                    &bridge_instances_click,
+                    &callbacks_click,
+                );
             }
             "add-instance" => {
                 let _ = call1(&callbacks_click, "addInstance", &JsValue::from_str(&net));
+                bridge_settings_scoped_update(
+                    &net,
+                    "add-instance",
+                    &bridge_instances_click,
+                    &callbacks_click,
+                );
             }
             "remove-instance" => {
                 let _ = call2(
@@ -1761,6 +1778,12 @@ pub fn bridge_install_root_action_click_owner_ui(root: JsValue, callbacks: JsVal
                     "removeInstance",
                     &JsValue::from_str(&net),
                     &JsValue::from_str(&instance_id),
+                );
+                bridge_settings_scoped_update(
+                    &net,
+                    "remove-instance",
+                    &bridge_instances_click,
+                    &callbacks_click,
                 );
             }
             "save-settings" => {
@@ -1770,6 +1793,12 @@ pub fn bridge_install_root_action_click_owner_ui(root: JsValue, callbacks: JsVal
                     &JsValue::from_str(&net),
                     &button,
                 );
+                bridge_settings_scoped_update(
+                    &net,
+                    "save-settings",
+                    &bridge_instances_click,
+                    &callbacks_click,
+                );
             }
             "set-defaults" => {
                 let _ = call2(
@@ -1778,6 +1807,12 @@ pub fn bridge_install_root_action_click_owner_ui(root: JsValue, callbacks: JsVal
                     &JsValue::from_str(&net),
                     &button,
                 );
+                bridge_settings_scoped_update(
+                    &net,
+                    "set-defaults",
+                    &bridge_instances_click,
+                    &callbacks_click,
+                );
             }
             "restore-defaults" => {
                 let _ = call2(
@@ -1785,6 +1820,12 @@ pub fn bridge_install_root_action_click_owner_ui(root: JsValue, callbacks: JsVal
                     "restoreDefaults",
                     &JsValue::from_str(&net),
                     &button,
+                );
+                bridge_settings_scoped_update(
+                    &net,
+                    "restore-defaults",
+                    &bridge_instances_click,
+                    &callbacks_click,
                 );
             }
             "copy-log" | "clear-log" => {
