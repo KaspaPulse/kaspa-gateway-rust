@@ -158,6 +158,65 @@ const portOnlyNormalizationOwnership = {
   different: wasm.bridgeSamePortValueR98("5556", "5655")
 };
 
+const r95bPortNormalizationOwnership = {};
+const r95bTestnet10 = {
+  "bridge-testnet10-stratumPort": { value: "5556" },
+  "bridge-testnet10-promPort": { value: ":2113" }
+};
+const r95bTestnet10Returned = wasm.bridgeR95BNormalizeNetworkPortValues(
+  "testnet10",
+  r95bTestnet10,
+  "harness-stale-testnet10"
+);
+r95bPortNormalizationOwnership.testnet10Identity =
+  r95bTestnet10Returned === r95bTestnet10;
+r95bPortNormalizationOwnership.testnet10Stratum =
+  r95bTestnet10["bridge-testnet10-stratumPort"].value;
+r95bPortNormalizationOwnership.testnet10Prom =
+  r95bTestnet10["bridge-testnet10-promPort"].value;
+
+const r95bTestnet13 = {
+  "bridge-testnet13-stratumPort": { value: ":5557" },
+  "bridge-testnet13-promPort": { value: "2114" }
+};
+wasm.bridgeR95BNormalizeNetworkPortValues(
+  "testnet13",
+  r95bTestnet13,
+  "harness-stale-testnet13"
+);
+r95bPortNormalizationOwnership.testnet13Stratum =
+  r95bTestnet13["bridge-testnet13-stratumPort"].value;
+r95bPortNormalizationOwnership.testnet13Prom =
+  r95bTestnet13["bridge-testnet13-promPort"].value;
+
+const r95bDisplayOnly = {
+  "bridge-mainnet-stratumPort": { value: ":05555" },
+  "bridge-mainnet-promPort": { value: "  :02112  " }
+};
+wasm.bridgeR95BNormalizeNetworkPortValues(
+  "mainnet",
+  r95bDisplayOnly,
+  "harness-display-only"
+);
+r95bPortNormalizationOwnership.displayStratum =
+  r95bDisplayOnly["bridge-mainnet-stratumPort"].value;
+r95bPortNormalizationOwnership.displayProm =
+  r95bDisplayOnly["bridge-mainnet-promPort"].value;
+
+const r95bCustom = {
+  "bridge-testnet10-stratumPort": { value: "5678" },
+  "bridge-testnet10-promPort": { value: "2277" }
+};
+wasm.bridgeR95BNormalizeNetworkPortValues(
+  "testnet10",
+  r95bCustom,
+  "harness-custom"
+);
+r95bPortNormalizationOwnership.customStratum =
+  r95bCustom["bridge-testnet10-stratumPort"].value;
+r95bPortNormalizationOwnership.customProm =
+  r95bCustom["bridge-testnet10-promPort"].value;
+
 const instanceNetworkKeyOwnership = {
   directString: wasm.bridgeInstanceNetworkKeyR15(" testnet10 ", "mainnet"),
   directObject: wasm.bridgeInstanceNetworkKeyR15({ key: " testnet13 " }, "mainnet"),
@@ -903,6 +962,7 @@ const output = {
   r51StorageOwnership,
   defaultPathOwnership,
   portOnlyNormalizationOwnership,
+  r95bPortNormalizationOwnership,
   instanceNetworkKeyOwnership,
   currentNodeModeOwnership,
   bridgeOwnedNodeLockOwnership,
@@ -1362,6 +1422,63 @@ fn verify_inprocess_node_owner_guard_ownership(
     Ok(())
 }
 
+fn verify_r95b_port_normalization_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for forbidden in [
+        "function kgwBridgeR95BStorageFieldId(",
+        "function kgwBridgeR95BPreferredPort(",
+        "function kgwBridgeR95BKnownStaleSequentialPort(",
+        "function kgwBridgeR95BNormalizeNetworkPortValues(",
+        "kgwBridgeR95BStorageFieldId(",
+        "kgwBridgeR95BPreferredPort(",
+        "kgwBridgeR95BKnownStaleSequentialPort(",
+        "kgwBridgeR95BNormalizeNetworkPortValues(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge R95B port-normalization JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+    if !source.contains(
+        "bridgeR95BNormalizeNetworkPortValues as wasmBridgeR95BNormalizeNetworkPortValues",
+    ) {
+        return Err("Bridge R95B port-normalization Rust/WASM binding missing".to_owned());
+    }
+    if source
+        .matches("wasmBridgeR95BNormalizeNetworkPortValues(")
+        .count()
+        != 3
+    {
+        return Err("Bridge R95B port-normalization direct-call count drifted".to_owned());
+    }
+    for required in [
+        "fn r95b_storage_field_id(",
+        "fn r95b_preferred_port(",
+        "fn r95b_known_stale_sequential_port(",
+        "fn r95b_display_port_syntax(",
+        "fn r95b_same_port(",
+        "fn r95b_normalize_network_port_values(",
+        "js_name = bridgeR95BNormalizeNetworkPortValues",
+        "pub fn bridge_r95b_normalize_network_port_values(",
+        "bridge_static_port_profile_r91",
+        r#"("testnet10", "stratumPort") => "5556""#,
+        r#"("testnet10", "promPort") => "2113""#,
+        r#"("testnet13", "stratumPort") => "5557""#,
+        r#"("testnet13", "promPort") => "2114""#,
+        r#""displayOnly""#,
+        r#""bridge-r51-r95b-settings-owner""#,
+        r#""r98-normalize-port-only-display-values""#,
+        "bridge_small_owner_trace_r44d(",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge R95B port-normalization Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_start_options_ownership(source: &str, instance_settings: &str) -> Result<(), String> {
     for forbidden in ["function kgwBridgeStartOptions(", "kgwBridgeStartOptions("] {
         if source.contains(forbidden) {
@@ -1747,26 +1864,17 @@ fn verify_static_contracts(
             ));
         }
     }
-    for needle in [
+    for forbidden in [
         "bridgePlainPortOnlyValueR98 as wasmBridgePlainPortOnlyValueR98",
         "bridgeSamePortValueR98 as wasmBridgeSamePortValueR98",
+        "wasmBridgePlainPortOnlyValueR98(",
+        "wasmBridgeSamePortValueR98(",
     ] {
-        if !source.contains(needle) {
+        if source.contains(forbidden) {
             return Err(format!(
-                "Bridge R98 direct Rust/WASM binding missing: {needle}"
+                "Retired Bridge R98 direct JavaScript binding remains after OP263: {forbidden}"
             ));
         }
-    }
-    if source.matches("wasmBridgePlainPortOnlyValueR98(").count() != 3 {
-        return Err(
-            "Bridge R98 plain-port owner must have exactly three generated-WASM call sites"
-                .to_owned(),
-        );
-    }
-    if source.matches("wasmBridgeSamePortValueR98(").count() != 2 {
-        return Err(
-            "Bridge R98 same-port owner must have exactly two generated-WASM call sites".to_owned(),
-        );
     }
     for retired in [
         "function kgwBridgeR98PlainPortOnlyValue(",
@@ -1954,6 +2062,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_start_options_ownership(&full_source, &instance_settings_source)?;
     verify_preview_message_ownership(&full_source, &helper_source)?;
+    verify_r95b_port_normalization_ownership(&full_source, &helper_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -2258,6 +2367,52 @@ pub fn run(root: &Path) -> Result<String, String> {
         &actual,
         "/portOnlyNormalizationOwnership/different",
         json!(false),
+    )?;
+
+    expect(
+        &actual,
+        "/r95bPortNormalizationOwnership/testnet10Identity",
+        json!(true),
+    )?;
+    expect(
+        &actual,
+        "/r95bPortNormalizationOwnership/testnet10Stratum",
+        json!("5655"),
+    )?;
+    expect(
+        &actual,
+        "/r95bPortNormalizationOwnership/testnet10Prom",
+        json!("2212"),
+    )?;
+    expect(
+        &actual,
+        "/r95bPortNormalizationOwnership/testnet13Stratum",
+        json!("5755"),
+    )?;
+    expect(
+        &actual,
+        "/r95bPortNormalizationOwnership/testnet13Prom",
+        json!("2312"),
+    )?;
+    expect(
+        &actual,
+        "/r95bPortNormalizationOwnership/displayStratum",
+        json!("5555"),
+    )?;
+    expect(
+        &actual,
+        "/r95bPortNormalizationOwnership/displayProm",
+        json!("2112"),
+    )?;
+    expect(
+        &actual,
+        "/r95bPortNormalizationOwnership/customStratum",
+        json!("5678"),
+    )?;
+    expect(
+        &actual,
+        "/r95bPortNormalizationOwnership/customProm",
+        json!("2277"),
     )?;
 
     expect(
@@ -3040,6 +3195,48 @@ mod tests {
             ),
         ] {
             assert!(verify_preview_message_ownership(source, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn r95b_port_normalization_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_r95b_port_normalization_ownership(source, helpers).is_ok());
+        for mutation in [
+            source.replacen(
+                "wasmBridgeR95BNormalizeNetworkPortValues(",
+                "kgwBridgeR95BNormalizeNetworkPortValues(",
+                1,
+            ),
+            source.replace(
+                "bridgeR95BNormalizeNetworkPortValues as wasmBridgeR95BNormalizeNetworkPortValues",
+                "missingR95BNormalizeNetworkPortValues as wasmBridgeR95BNormalizeNetworkPortValues",
+            ),
+            format!(
+                "{source}\nfunction kgwBridgeR95BNormalizeNetworkPortValues(net, values) {{ return values || net; }}\n"
+            ),
+        ] {
+            assert!(verify_r95b_port_normalization_ownership(&mutation, helpers).is_err());
+        }
+        for mutation in [
+            helpers.replace(
+                "js_name = bridgeR95BNormalizeNetworkPortValues",
+                "js_name = missingR95BNormalizeNetworkPortValues",
+            ),
+            helpers.replace(
+                r#"("testnet10", "stratumPort") => "5556""#,
+                r#"("testnet10", "stratumPort") => "5999""#,
+            ),
+            helpers.replace(
+                r#""bridge-r51-r95b-settings-owner""#,
+                r#""missing-r95b-settings-owner""#,
+            ),
+        ] {
+            assert!(verify_r95b_port_normalization_ownership(source, &mutation).is_err());
         }
     }
 

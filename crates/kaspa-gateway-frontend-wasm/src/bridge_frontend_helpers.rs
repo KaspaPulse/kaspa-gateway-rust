@@ -241,6 +241,127 @@ fn bridge_plain_port_only_js_text(value: &JsValue) -> String {
     bridge_plain_port_only_text(&text)
 }
 
+fn r95b_storage_field_id(net: &str, field_name: &str) -> String {
+    format!("bridge-{net}-{field_name}")
+}
+
+fn r95b_preferred_port(net: &str, kind: &str) -> String {
+    let profile = crate::bridge_port_core::bridge_static_port_profile_r91(net.to_owned());
+    let range = property(&profile, kind);
+    bridge_plain_port_only_js_text(&property(&range, "preferred"))
+}
+
+fn r95b_known_stale_sequential_port(net: &str, field_name: &str) -> &'static str {
+    match (net, field_name) {
+        ("testnet10", "stratumPort") => "5556",
+        ("testnet10", "promPort") => "2113",
+        ("testnet13", "stratumPort") => "5557",
+        ("testnet13", "promPort") => "2114",
+        _ => "",
+    }
+}
+
+fn r95b_display_port_syntax(value: &JsValue) -> bool {
+    let raw = if crate::js_boolean(value) {
+        crate::js_string_owned(value)
+    } else {
+        String::new()
+    };
+    let trimmed = raw.trim();
+    let digits = trimmed.strip_prefix(':').unwrap_or(trimmed);
+    !digits.is_empty()
+        && digits.len() <= 5
+        && digits.as_bytes().iter().all(u8::is_ascii_digit)
+        && trimmed.len() == digits.len() + usize::from(trimmed.starts_with(':'))
+}
+
+fn r95b_same_port(left: &str, right: &str) -> bool {
+    bridge_plain_port_only_text(left) == bridge_plain_port_only_text(right)
+}
+
+fn r95b_normalize_network_port_values(net: &str, values: JsValue, reason: &str) -> JsValue {
+    if !values.is_object() || values.is_null() {
+        return values;
+    }
+
+    let changes = Array::new();
+    for (field_name, kind) in [("stratumPort", "stratum"), ("promPort", "prom")] {
+        let storage_id = r95b_storage_field_id(net, field_name);
+        let item = property(&values, &storage_id);
+        if !item.is_object()
+            || item.is_null()
+            || !Reflect::has(&item, &JsValue::from_str("value")).unwrap_or(false)
+        {
+            continue;
+        }
+
+        let raw_value = property(&item, "value");
+        let current = bridge_plain_port_only_js_text(&raw_value);
+        let stale = r95b_known_stale_sequential_port(net, field_name);
+        let preferred = r95b_preferred_port(net, kind);
+
+        if !stale.is_empty()
+            && !preferred.is_empty()
+            && r95b_same_port(&current, stale)
+            && !r95b_same_port(&current, &preferred)
+        {
+            let normalized_preferred = bridge_plain_port_only_text(&preferred);
+            set(&item, "value", &JsValue::from_str(&normalized_preferred));
+            let change = Object::new();
+            set(change.as_ref(), "field", &JsValue::from_str(field_name));
+            set(change.as_ref(), "from", &JsValue::from_str(&current));
+            set(
+                change.as_ref(),
+                "to",
+                &JsValue::from_str(&normalized_preferred),
+            );
+            changes.push(change.as_ref());
+        } else {
+            let strict_string_differs = raw_value.as_string().is_none_or(|value| value != current);
+            if strict_string_differs && r95b_display_port_syntax(&raw_value) {
+                set(&item, "value", &JsValue::from_str(&current));
+                let change = Object::new();
+                set(change.as_ref(), "field", &JsValue::from_str(field_name));
+                // Preserve the legacy R95B ordering: "from" is captured after
+                // the display-only assignment, so it equals the normalized value.
+                set(change.as_ref(), "from", &JsValue::from_str(&current));
+                set(change.as_ref(), "to", &JsValue::from_str(&current));
+                set(change.as_ref(), "displayOnly", &JsValue::TRUE);
+                changes.push(change.as_ref());
+            }
+        }
+    }
+
+    if changes.length() > 0 {
+        let details = Object::new();
+        set(details.as_ref(), "patch", &JsValue::from_str("R98"));
+        set(
+            details.as_ref(),
+            "owner",
+            &JsValue::from_str("bridge-r51-r95b-settings-owner"),
+        );
+        set(details.as_ref(), "reason", &JsValue::from_str(reason));
+        set(details.as_ref(), "changes", changes.as_ref());
+        let _ = bridge_small_owner_trace_r44d(
+            JsValue::from_str(net),
+            JsValue::from_str("settings-persistence"),
+            JsValue::from_str("r98-normalize-port-only-display-values"),
+            details.into(),
+        );
+    }
+
+    values
+}
+
+#[wasm_bindgen(js_name = bridgeR95BNormalizeNetworkPortValues)]
+pub fn bridge_r95b_normalize_network_port_values(
+    net: String,
+    values: JsValue,
+    reason: String,
+) -> JsValue {
+    r95b_normalize_network_port_values(&net, values, &reason)
+}
+
 #[wasm_bindgen(js_name = bridgePlainPortOnlyValueR98)]
 pub fn bridge_plain_port_only_value_r98(value: JsValue) -> String {
     bridge_plain_port_only_js_text(&value)
@@ -1151,6 +1272,37 @@ mod tests {
             bridge_plain_port_only_text("5556"),
             bridge_plain_port_only_text("5655")
         );
+    }
+
+    #[test]
+    fn r95b_port_normalization_helpers_match_legacy_contract() {
+        assert_eq!(
+            r95b_storage_field_id("testnet10", "stratumPort"),
+            "bridge-testnet10-stratumPort"
+        );
+        assert_eq!(r95b_storage_field_id("", "promPort"), "bridge--promPort");
+        assert_eq!(
+            r95b_known_stale_sequential_port("testnet10", "stratumPort"),
+            "5556"
+        );
+        assert_eq!(
+            r95b_known_stale_sequential_port("testnet10", "promPort"),
+            "2113"
+        );
+        assert_eq!(
+            r95b_known_stale_sequential_port("testnet13", "stratumPort"),
+            "5557"
+        );
+        assert_eq!(
+            r95b_known_stale_sequential_port("testnet13", "promPort"),
+            "2114"
+        );
+        assert_eq!(
+            r95b_known_stale_sequential_port("mainnet", "stratumPort"),
+            ""
+        );
+        assert!(r95b_same_port(":05655", "5655"));
+        assert!(!r95b_same_port("5556", "5655"));
     }
 
     #[test]

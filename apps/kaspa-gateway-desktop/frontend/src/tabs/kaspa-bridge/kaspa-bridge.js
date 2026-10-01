@@ -45,8 +45,7 @@ import initBridgeRust, {
   bridgeRuntimeActionOutcome as wasmBridgeRuntimeActionOutcome,
   bridgeStartWasInprocessR65F as wasmBridgeStartWasInprocessR65F,
   bridgeCurrentNodeModeFromUiR65F as wasmBridgeCurrentNodeModeFromUiR65F,
-  bridgePlainPortOnlyValueR98 as wasmBridgePlainPortOnlyValueR98,
-  bridgeSamePortValueR98 as wasmBridgeSamePortValueR98,
+  bridgeR95BNormalizeNetworkPortValues as wasmBridgeR95BNormalizeNetworkPortValues,
   bridgeInvokeRuntimeCommand as wasmBridgeInvokeRuntimeCommand,
   bridgePreparePreview as wasmBridgePreparePreview,
   bridgePreviewMessage as wasmBridgePreviewMessage,
@@ -98,8 +97,6 @@ import initBridgeRust, {
   bridgeSchedulePortAutofixRefreshUiR37 as wasmBridgeSchedulePortAutofixRefreshUiR37,
   bridgeApplyPortAutofixUiR37 as wasmBridgeApplyPortAutofixUiR37,
   bridgeInstallPortAutofixButtonUiR37 as wasmBridgeInstallPortAutofixButtonUiR37,
-  bridgePortProfilesR35B as wasmBridgePortProfilesR35B,
-  bridgeStaticPortProfileR91 as wasmBridgeStaticPortProfileR91,
   settingsOwnerButtons as wasmSettingsOwnerButtons,
   settingsOwnerInstall as wasmSettingsOwnerInstall,
   settingsOwnerSetDisabled as wasmSettingsOwnerSetDisabled,
@@ -996,7 +993,6 @@ function renderAllNetworks(root) {
  * - Real conflicts still block Start through R33.
  * - Out-of-profile ports are warning-only.
  */
-const KGW_BRIDGE_PORT_PROFILES_R35B = wasmBridgePortProfilesR35B();
 
 /* KGW_BRIDGE_INSTANCE_EXTERNAL_PORT_RANGE_OWNER_R91
  * Existing Bridge port-profile owner refinement.
@@ -1900,7 +1896,7 @@ function kgwBridgeR51ReadSettingsCallbacksR249() {
   return {
     readStructuredInstances: (net) => kgwBridgeR51ReadStructuredInstancesR253(String(net || "")),
     normalizeNetworkPortValues: (net, values, reason) =>
-      kgwBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || ""))
+      wasmBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || ""))
   };
 }
 
@@ -1918,7 +1914,7 @@ function kgwBridgeR51ReadSettingsR249(net) {
  * - testnet10 was replayed as :5556 / :2113
  * - testnet13 was replayed as :5557 / :2114
  *
- * Correct bridge-level network ranges already exist in KGW_BRIDGE_PORT_PROFILES_R35B:
+ * Correct bridge-level network ranges are Rust-owned in bridge_port_core.rs:
  * - mainnet   :5555 / :2112
  * - testnet10 :5655 / :2212
  * - testnet13 :5755 / :2312
@@ -1934,90 +1930,12 @@ function kgwBridgeR51ReadSettingsR249(net) {
  */
 // Bridge R98 plain-port normalization and same-port comparison are Rust-owned in bridge_frontend_helpers.rs.
 
-function kgwBridgeR95BStorageFieldId(net, fieldName) {
-  return "bridge-" + String(net || "") + "-" + String(fieldName || "");
-}
-
-function kgwBridgeR95BPreferredPort(net, kind) {
-  const profile = typeof wasmBridgeStaticPortProfileR91 === "function"
-    ? wasmBridgeStaticPortProfileR91(net)
-    : (KGW_BRIDGE_PORT_PROFILES_R35B[String(net || "")] || KGW_BRIDGE_PORT_PROFILES_R35B.mainnet);
-
-  const range = profile && profile[kind];
-  return range && range.preferred ? wasmBridgePlainPortOnlyValueR98(range.preferred) : "";
-}
-
-function kgwBridgeR95BKnownStaleSequentialPort(net, fieldName) {
-  const stale = {
-    testnet10: {
-      stratumPort: "5556",
-      promPort: "2113"
-    },
-    testnet13: {
-      stratumPort: "5557",
-      promPort: "2114"
-    }
-  };
-
-  return stale[String(net || "")] && stale[String(net || "")][fieldName]
-    ? stale[String(net || "")][fieldName]
-    : "";
-}
-
-function kgwBridgeR95BNormalizeNetworkPortValues(net, values, reason) {
-  if (!values || typeof values !== "object") return values;
-
-  const fields = [
-    { fieldName: "stratumPort", kind: "stratum" },
-    { fieldName: "promPort", kind: "prom" }
-  ];
-
-  const changes = [];
-
-  for (const field of fields) {
-    const storageId = kgwBridgeR95BStorageFieldId(net, field.fieldName);
-    const item = values[storageId];
-
-    if (!item || typeof item !== "object" || !("value" in item)) continue;
-
-    const current = wasmBridgePlainPortOnlyValueR98(item.value);
-    const stale = kgwBridgeR95BKnownStaleSequentialPort(net, field.fieldName);
-    const preferred = kgwBridgeR95BPreferredPort(net, field.kind);
-
-    if (stale && preferred && wasmBridgeSamePortValueR98(current, stale) && !wasmBridgeSamePortValueR98(current, preferred)) {
-      item.value = wasmBridgePlainPortOnlyValueR98(preferred);
-      changes.push({
-        field: field.fieldName,
-        from: current,
-        to: item.value
-      });
-    } else if (current !== item.value && /^:?\d{1,5}$/.test(String(item.value || "").trim())) {
-      item.value = current;
-      changes.push({
-        field: field.fieldName,
-        from: String(item.value || ""),
-        to: current,
-        displayOnly: true
-      });
-    }
-  }
-
-  if (changes.length && typeof wasmBridgeSmallOwnerTraceR44D === "function") {
-    wasmBridgeSmallOwnerTraceR44D(net, "settings-persistence", "r98-normalize-port-only-display-values", {
-      patch: "R98",
-      owner: "bridge-r51-r95b-settings-owner",
-      reason: String(reason || ""),
-      changes
-    });
-  }
-
-  return values;
-}
+// Bridge R95B/R98 settings port normalization is Rust-owned in bridge_frontend_helpers.rs.
 
 function kgwBridgeR51WriteSettingsCallbacksR250() {
   return {
     normalizeNetworkPortValues: (net, values, reason) =>
-      kgwBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || "")),
+      wasmBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || "")),
     refreshInstances: (net) =>
       bridgeRefreshInstances(String(net || "")),
     refreshInlineCommandToggles: (net) =>
@@ -2052,7 +1970,7 @@ function kgwBridgeR51PersistenceCallbacksR255() {
     readSettings: (net) => kgwBridgeR51ReadSettingsR249(String(net || "")),
     writeSettings: (net, values) => kgwBridgeR51WriteSettingsR250(String(net || ""), values),
     normalizeNetworkPortValues: (net, values, reason) =>
-      kgwBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || "")),
+      wasmBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || "")),
     requireValidSettings: (net) => kgwBridgeRequireValidSettings(String(net || "")),
     updateCommand: (net) => updateCommand(String(net || ""))
   };
