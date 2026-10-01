@@ -187,9 +187,12 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP274 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP275 - Bridge instance-state / structured-reader Rust/WASM ownership (INTENT)
+## OP275 - Bridge instance-state / structured-reader Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP274 closeout `5e3f3ac4455425dd0044fb41271c214c3cd154c6`; BASE_TREE `60ab96053bdbbb16fcc74a800ab9a01ea802ec5f`; worktree clean at intent time.
-- BOUNDARY: move `bridgeReadInstanceState` record/default/DOM-field orchestration into Rust/WASM and remove the JavaScript read-instance callback from `kgwBridgeR51ReadStructuredInstancesR253`. Rust owns current-record lookup, fallback identity, DOM field reads/defaults, missing-port assignment, and structured-instance commit/read sequencing. JavaScript may retain only the thin structured-reader compatibility wrapper required by existing callers.
-- ACCEPTANCE: Rust instance-state export + callback-free structured-reader path + thin JS wrapper; fail-closed ownership regression rejects legacy JavaScript record assembly/callback ownership; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `bridgeReadInstanceState` record/default/DOM-field orchestration moved into Rust/WASM and the JavaScript read-instance callback was removed from `kgwBridgeR51ReadStructuredInstancesR253`. Rust now owns current-record lookup, fallback identity, DOM field reads/defaults, missing-port assignment, and structured-instance commit/read sequencing. JavaScript retains only the thin structured-reader compatibility wrapper used by existing callers.
+- IMPLEMENTATION_CHECKPOINT: `ec41e34e05d5698802ddc7e09417b156767d5958`, tree `48c3b9afca41b3d093768c66a9d8a9471a9fa56b`. Closeout generation 2266.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 294/294 plus auxiliary suites; targeted instance-state/structured-reader ownership regression; bridge-readiness frontend gate; effective-bridge-settings behavioral gate with real DOM-field hydration assertions; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP275 qualification unless invalidated.
+- PUSHED: NO.
