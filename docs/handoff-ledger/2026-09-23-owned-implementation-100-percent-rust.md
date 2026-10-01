@@ -306,9 +306,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP285 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP286 - Bridge network-tab installer Rust/WASM ownership (INTENT)
+## OP286 - Bridge network-tab installer Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP285 closeout `753018743673d78dd81fca258878087cf1e08b22`; BASE_TREE `55fe030e1c2de6d3657ea3752a9afe6653f5ad8c`; worktree clean at intent time.
-- BOUNDARY: move `installNetworkTabs` orchestration into Rust/WASM. Rust owns network-tab/panel discovery, normalization, active-state/ARIA/display mutation, saved-network restoration, click interception/trace, persist semantics, refresh callback scheduling, and external selector installation.
-- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; existing R63/R101W2 semantics preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `installNetworkTabs` orchestration moved into Rust/WASM `bridgeInstallNetworkTabsUi`; JavaScript is now a thin callback wrapper. Rust owns network-tab/panel discovery, normalization, active-state/ARIA/display mutation, saved-network restoration, click interception/trace, persist semantics, refresh scheduling, and external selector installation.
+- IMPLEMENTATION_CHECKPOINT: `da65c775c738ff84dec2fa7066f9630546217130`, tree `c0deeaa142c5c10bcb739c4ca7d1573143d8c479`. Closeout generation 2277.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 305/305 plus auxiliary suites; targeted network-tabs ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: R51 live-refresh direct-call counts and R101W2 ownership assertions were reconciled to the newly Rust-owned network-tab path while preserving fail-closed checks against JavaScript reintroduction.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP286 qualification unless invalidated.
+- PUSHED: NO.
