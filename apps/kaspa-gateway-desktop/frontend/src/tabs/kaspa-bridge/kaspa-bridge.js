@@ -51,12 +51,10 @@ import initBridgeRust, {
   bridgeUpdateCommandUi as wasmBridgeUpdateCommandUi,
   bridgeUpdateAllCommandsUi as wasmBridgeUpdateAllCommandsUi,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
-  bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord,
   bridgeInstanceCommandCheckboxFromInstancesR13B as wasmBridgeInstanceCommandCheckboxFromInstancesR13B,
   bridgeInstanceCommandSetOptionR13B as wasmBridgeInstanceCommandSetOptionR13B,
   bridgeInstancePreviewTextR8B as wasmBridgeInstancePreviewTextR8B,
   bridgeSyncInstancePreviewRowsR8B as wasmBridgeSyncInstancePreviewRowsR8B,
-  bridgeReadInstanceField as wasmBridgeReadInstanceField,
   bridgeInstancePortPlaceholderR49 as wasmBridgeInstancePortPlaceholderR49,
   bridgeInstancePromPlaceholderR49 as wasmBridgeInstancePromPlaceholderR49,
 
@@ -86,7 +84,6 @@ import initBridgeRust, {
   bridgeSyncAllModeControlsUi as wasmBridgeSyncAllModeControlsUi,
   bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E,
   bridgeValue as wasmBridgeValue,
-  bridgeAssignMissingInstancePortsR9 as wasmBridgeAssignMissingInstancePortsR9,
   bridgeCreateInstanceRecordR9 as wasmBridgeCreateInstanceRecordR9,
   bridgeEnsureInstanceState as wasmBridgeEnsureInstanceState,
   bridgeActiveRawLogInstanceId as wasmBridgeActiveRawLogInstanceId,
@@ -802,26 +799,6 @@ function renderNetworkPanel(net, index) {
 </div>`;
 }
 
-
-function bridgeReadInstanceState(net, instanceId) {
-  const current = bridgeInstances[net].find((instance) => String(instance.id) === String(instanceId)) || {};
-  const next = wasmBridgeNormalizeInstanceRecord(current || {}, Date.now() + Math.floor(Math.random() * 1000));
-
-  return wasmBridgeAssignMissingInstancePortsR9(bridgeInstances, String(net || ""), {
-    id: next.id || instanceId || Date.now() + Math.floor(Math.random() * 1000),
-    instance: "",
-    instancePort: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instancePort") || next.instancePort || "",
-    instanceDiff: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceDiff") || next.instanceDiff || "2048",
-    instanceProm: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceProm") || next.instanceProm || "",
-    instanceLogToFile: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceLogToFile") || next.instanceLogToFile || "not set",
-    instanceBlockWaitTime: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceBlockWaitTime") || next.instanceBlockWaitTime || "",
-    instanceExtranonceSize: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceExtranonceSize") || next.instanceExtranonceSize || "",
-    instanceVarDiff: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceVarDiff") || next.instanceVarDiff || "not set",
-    instanceSharesPerMin: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceSharesPerMin") || next.instanceSharesPerMin || "",
-    instanceVarDiffStats: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instanceVarDiffStats") || next.instanceVarDiffStats || "not set",
-    instancePow2Clamp: wasmBridgeReadInstanceField(String(net || ""), instanceId, "instancePow2Clamp") || next.instancePow2Clamp || "not set"
-  });
-}
 
 function bridgeRefreshInstances(net) {
   net = wasmBridgeInstanceNetworkKeyR15(net, net);
@@ -1609,15 +1586,12 @@ async function runBridgeIntegratedAction(action, net) {
  * This patch keeps the existing R51 settings owner and stores/restores structured bridgeInstances state.
  * No new persistence owner. No document listener. No MutationObserver.
  */
+// KGW_BRIDGE_INSTANCE_STATE_RUST_OWNER_V1
 function kgwBridgeR51ReadStructuredInstancesR253(net) {
   return wasmBridgeR51ReadStructuredInstances(
     String(net || ""),
     bridgeInstances,
-    activeInstance,
-    {
-      readInstanceState: (targetNet, instanceId) =>
-        bridgeReadInstanceState(String(targetNet || ""), instanceId)
-    }
+    activeInstance
   );
 }
 

@@ -1603,6 +1603,69 @@ fn verify_start_options_ownership(
     Ok(())
 }
 
+fn verify_instance_state_structured_reader_ownership(
+    source: &str,
+    instance_settings: &str,
+) -> Result<(), String> {
+    for required in [
+        "// KGW_BRIDGE_INSTANCE_STATE_RUST_OWNER_V1",
+        "function kgwBridgeR51ReadStructuredInstancesR253(net) {",
+        "return wasmBridgeR51ReadStructuredInstances(",
+        "bridgeR51ReadStructuredInstances as wasmBridgeR51ReadStructuredInstances",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge instance-state/structured-reader Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    if source
+        .matches("wasmBridgeR51ReadStructuredInstances(")
+        .count()
+        != 1
+    {
+        return Err("Bridge structured-reader direct-call count drifted".to_owned());
+    }
+
+    for forbidden in [
+        "function bridgeReadInstanceState(",
+        "bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord",
+        "bridgeReadInstanceField as wasmBridgeReadInstanceField",
+        "bridgeAssignMissingInstancePortsR9 as wasmBridgeAssignMissingInstancePortsR9",
+        "readInstanceState: (",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge instance-state JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeReadInstanceStateUi",
+        "pub fn bridge_read_instance_state_ui(",
+        "fn bridge_read_instance_state_impl(",
+        "js_name = bridgeR51ReadStructuredInstances",
+        "pub fn bridge_r51_read_structured_instances(\n    net: String,\n    bridge_instances: JsValue,\n    active_instance: JsValue,\n) -> JsValue {",
+        "bridge_instance_ui::bridge_read_instance_field(",
+        "bridge_port_orchestration::bridge_assign_missing_instance_ports_r9(",
+        "bridge_read_instance_state_impl(&net, bridge_instances, &fallback_id)",
+        "\"instanceDiff\", \"2048\"",
+        "\"instanceLogToFile\", \"not set\"",
+        "\"instanceVarDiff\", \"not set\"",
+        "\"instanceVarDiffStats\", \"not set\"",
+        "\"instancePow2Clamp\", \"not set\"",
+    ] {
+        if !instance_settings.contains(required) {
+            return Err(format!(
+                "Bridge instance-state/structured-reader Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_command_preview_ownership(source: &str, helpers: &str) -> Result<(), String> {
     for required in [
         "bridgeUpdateCommandUi as wasmBridgeUpdateCommandUi",
@@ -2719,6 +2782,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_start_options_ownership(&full_source, &helper_source, &instance_settings_source)?;
+    verify_instance_state_structured_reader_ownership(&full_source, &instance_settings_source)?;
     verify_preview_message_ownership(&full_source, &helper_source)?;
     verify_r95b_port_normalization_ownership(&full_source, &helper_source)?;
     verify_inline_command_toggle_ownership(&full_source, &command_options_source)?;
@@ -3942,6 +4006,62 @@ mod tests {
             instance_settings.replace("\"CPU threads\"", "\"Missing CPU threads\""),
         ] {
             assert!(verify_start_options_ownership(source, helpers, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn instance_state_structured_reader_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let instance_settings = include_str!(
+            "../../crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs"
+        );
+        assert!(
+            verify_instance_state_structured_reader_ownership(source, instance_settings).is_ok()
+        );
+
+        for mutation in [
+            source.replace(
+                "// KGW_BRIDGE_INSTANCE_STATE_RUST_OWNER_V1",
+                "// missing instance-state owner",
+            ),
+            format!(
+                "{source}\nfunction bridgeReadInstanceState(net, instanceId) {{ return [net, instanceId]; }}\n"
+            ),
+            source.replacen(
+                "activeInstance\n  );",
+                "activeInstance,\n    { readInstanceState: () => ({}) }\n  );",
+                1,
+            ),
+        ] {
+            assert!(
+                verify_instance_state_structured_reader_ownership(&mutation, instance_settings)
+                    .is_err()
+            );
+        }
+
+        for (index, mutation) in [
+            instance_settings.replace(
+                "js_name = bridgeReadInstanceStateUi",
+                "js_name = missingReadInstanceStateUi",
+            ),
+            instance_settings.replace(
+                "bridge_instance_ui::bridge_read_instance_field(",
+                "bridge_instance_ui::missing_bridge_read_instance_field(",
+            ),
+            instance_settings.replace(
+                "bridge_read_instance_state_impl(&net, bridge_instances, &fallback_id)",
+                "missing_instance_state_owner(&net, bridge_instances, &fallback_id)",
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            assert!(
+                verify_instance_state_structured_reader_ownership(source, &mutation).is_err(),
+                "Rust instance-state mutation {index} was not rejected"
+            );
         }
     }
 

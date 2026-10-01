@@ -1300,11 +1300,87 @@ fn effective_settings_impl(net: &str, structured_instances: &JsValue) -> Result<
     Ok(output.into())
 }
 
+fn bridge_read_instance_state_impl(
+    net: &str,
+    bridge_instances: &JsValue,
+    instance_id: &JsValue,
+) -> Result<JsValue, JsValue> {
+    let current_values = property(bridge_instances, net);
+    let current = if Array::is_array(&current_values) {
+        Array::from(&current_values)
+            .iter()
+            .find(|item| {
+                crate::js_string_owned(&property(item, "id")) == crate::js_string_owned(instance_id)
+            })
+            .unwrap_or_else(|| Object::new().into())
+    } else {
+        Object::new().into()
+    };
+
+    let next = normalize_instance_record_impl(
+        current,
+        JsValue::from_f64(Date::now() + (Math::random() * 1000.0).floor()),
+    );
+    let output = Object::new();
+    let next_id = property(&next, "id");
+    let id = if crate::js_boolean(&next_id) {
+        next_id
+    } else if crate::js_boolean(instance_id) {
+        instance_id.clone()
+    } else {
+        JsValue::from_f64(Date::now() + (Math::random() * 1000.0).floor())
+    };
+    set(output.as_ref(), "id", &id);
+    set(output.as_ref(), "instance", &JsValue::from_str(""));
+
+    for (field, fallback) in [
+        ("instancePort", ""),
+        ("instanceDiff", "2048"),
+        ("instanceProm", ""),
+        ("instanceLogToFile", "not set"),
+        ("instanceBlockWaitTime", ""),
+        ("instanceExtranonceSize", ""),
+        ("instanceVarDiff", "not set"),
+        ("instanceSharesPerMin", ""),
+        ("instanceVarDiffStats", "not set"),
+        ("instancePow2Clamp", "not set"),
+    ] {
+        let dom_value = bridge_instance_ui::bridge_read_instance_field(
+            net.to_owned(),
+            instance_id.clone(),
+            field.to_owned(),
+        );
+        let normalized = crate::js_string_owned(&property(&next, field));
+        let value = if !dom_value.is_empty() {
+            dom_value
+        } else if !normalized.is_empty() {
+            normalized
+        } else {
+            fallback.to_owned()
+        };
+        set(output.as_ref(), field, &JsValue::from_str(&value));
+    }
+
+    bridge_port_orchestration::bridge_assign_missing_instance_ports_r9(
+        bridge_instances.clone(),
+        net.to_owned(),
+        output.into(),
+    )
+}
+
+#[wasm_bindgen(js_name = bridgeReadInstanceStateUi)]
+pub fn bridge_read_instance_state_ui(
+    net: String,
+    bridge_instances: JsValue,
+    instance_id: JsValue,
+) -> Result<JsValue, JsValue> {
+    bridge_read_instance_state_impl(&net, &bridge_instances, &instance_id)
+}
+
 fn bridge_r51_commit_instance_dom_state_r26b(
     net: &str,
     bridge_instances: &JsValue,
     active_instance: &JsValue,
-    callbacks: &JsValue,
 ) -> Array {
     let net = bridge_frontend_helpers::bridge_instance_network_key_r15(
         JsValue::from_str(net),
@@ -1338,12 +1414,7 @@ fn bridge_r51_commit_instance_dom_state_r26b(
             } else {
                 JsValue::from_f64(Date::now() + index as f64)
             };
-            let next = call2_required(
-                callbacks,
-                "readInstanceState",
-                &JsValue::from_str(&net),
-                &fallback_id,
-            )?;
+            let next = bridge_read_instance_state_impl(&net, bridge_instances, &fallback_id)?;
             output.push(&next);
         }
         set(bridge_instances, &net, output.as_ref());
@@ -1397,18 +1468,13 @@ pub fn bridge_r51_read_structured_instances(
     net: String,
     bridge_instances: JsValue,
     active_instance: JsValue,
-    callbacks: JsValue,
 ) -> JsValue {
     let net = bridge_frontend_helpers::bridge_instance_network_key_r15(
         JsValue::from_str(&net),
         JsValue::from_str(&net),
     );
-    let committed = bridge_r51_commit_instance_dom_state_r26b(
-        &net,
-        &bridge_instances,
-        &active_instance,
-        &callbacks,
-    );
+    let committed =
+        bridge_r51_commit_instance_dom_state_r26b(&net, &bridge_instances, &active_instance);
 
     let instances = Array::new();
     for (index, instance) in committed.iter().enumerate() {

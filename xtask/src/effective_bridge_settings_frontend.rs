@@ -192,30 +192,22 @@ const r26bBridgeInstances = {
   testnet13: []
 };
 const r26bActiveInstance = { mainnet: "r253-one" };
-const r26bReadCalls = [];
+for (const [field, value] of [
+  ["instancePort", "5666"],
+  ["instanceDiff", "8192"]
+]) {
+  const id = wasmModule.bridgeElementId("mainnet", field + "-r253-one");
+  elements.set(id, {
+    id,
+    value,
+    checked: false,
+    type: "text"
+  });
+}
 const r26bStructured = wasmModule.bridgeR51ReadStructuredInstances(
   "mainnet",
   r26bBridgeInstances,
-  r26bActiveInstance,
-  {
-    readInstanceState: (net, instanceId) => {
-      r26bReadCalls.push(String(net) + ":" + String(instanceId));
-      return {
-        id: String(instanceId),
-        instance: "",
-        instancePort: "5666",
-        instanceDiff: "8192",
-        instanceProm: "",
-        instanceLogToFile: "not set",
-        instanceBlockWaitTime: "",
-        instanceExtranonceSize: "",
-        instanceVarDiff: "not set",
-        instanceSharesPerMin: "",
-        instanceVarDiffStats: "not set",
-        instancePow2Clamp: "not set"
-      };
-    }
-  }
+  r26bActiveInstance
 );
 elements.set("bridge-mainnet-op249Checkbox", {
   id: "bridge-mainnet-op249Checkbox",
@@ -401,8 +393,8 @@ const output = {
     r26bStructuredVersion: r26bStructured.version,
     r26bStructuredActive: String(r26bStructured.activeInstance || ""),
     r26bStructuredCount: Array.isArray(r26bStructured.instances) ? r26bStructured.instances.length : -1,
+    r26bStructuredPort: String(r26bStructured.instances?.[0]?.instancePort || ""),
     r26bStructuredDiff: String(r26bStructured.instances?.[0]?.instanceDiff || ""),
-    r26bReadCalls,
     r51ReadActiveInstance: r51ReadSettings.__kgwBridgeActiveInstanceR26B,
     r51ReadStructuredCount: r51ReadSettings.__kgwBridgeStructuredInstancesR26B?.instances?.length ?? -1,
     r51ReadCommandOption: Boolean(r51ReadSettings.__kgwBridgeCommandOptionsR38C?.coinbaseTagSuffix),
@@ -658,6 +650,11 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     for forbidden in [
         "function kgwBridgeR51CommitInstanceDomStateR26B(",
         "function kgwBridgeR51ReadStructuredInstancesR26B(",
+        "function bridgeReadInstanceState(",
+        "bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord",
+        "bridgeReadInstanceField as wasmBridgeReadInstanceField",
+        "bridgeAssignMissingInstancePortsR9 as wasmBridgeAssignMissingInstancePortsR9",
+        "readInstanceState: (",
     ] {
         if source.contains(forbidden) {
             return Err(format!(
@@ -692,8 +689,12 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     for needle in [
         "js_name = bridgeR51ReadStructuredInstances",
         "pub fn bridge_r51_read_structured_instances(",
+        "js_name = bridgeReadInstanceStateUi",
+        "pub fn bridge_read_instance_state_ui(",
+        "fn bridge_read_instance_state_impl(",
         "fn bridge_r51_commit_instance_dom_state_r26b(",
-        "\"readInstanceState\"",
+        "bridge_instance_ui::bridge_read_instance_field(",
+        "bridge_port_orchestration::bridge_assign_missing_instance_ports_r9(",
         "bridge_port_orchestration::bridge_ensure_instance_state(",
         "normalize_instance_record_impl(",
         "r26b-commit-instance-dom-state-failed",
@@ -996,12 +997,8 @@ pub fn run(root: &Path) -> Result<String, String> {
         json!("r253-one"),
     )?;
     expect_pointer(&actual, "/directOwners/r26bStructuredCount", json!(1))?;
+    expect_pointer(&actual, "/directOwners/r26bStructuredPort", json!("5666"))?;
     expect_pointer(&actual, "/directOwners/r26bStructuredDiff", json!("8192"))?;
-    expect_pointer(
-        &actual,
-        "/directOwners/r26bReadCalls",
-        json!(["mainnet:r253-one"]),
-    )?;
     expect_pointer(&actual, "/directOwners/r51ReadActiveInstance", json!("one"))?;
     expect_pointer(&actual, "/directOwners/r51ReadStructuredCount", json!(2))?;
     expect_pointer(&actual, "/directOwners/r51ReadNodeModeType", json!("value"))?;
