@@ -359,3 +359,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: stale direct-call counts were narrowed to actual post-OP290 ownership; obsolete JavaScript profile/set-network/mark-restart bindings were retired and corresponding gates now fail closed on reintroduction.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP290 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP291 - Bridge root action-click dispatcher Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP290 closeout `1b4e43b4b0b6272ac1af5e13608651587f6c3db1`; BASE_TREE `2f3feaf05082b51e92b257026fef572cc85dce55`; worktree clean at intent time.
+- BOUNDARY: move the remaining root `[data-bridge-action]` click routing/trace/network extraction from `installActions` into Rust/WASM. Rust owns action detection, network resolution, click trace, and dispatch selection; existing specialized behavior may remain callback-owned for later boundaries.
+- ACCEPTANCE: one Rust event owner + thin JS callback table; no root Bridge action click router remains in JS; fail-closed regression; fmt/clippy/tests/gates/codegen/node/ESLint/language-policy/project-continuity/diff-check pass; no Push.
