@@ -218,3 +218,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: the R51 panel direct-call expectation was narrowed from two to one because OP277 retired the JavaScript panel query from command-option synchronization; the remaining direct call is preserved and verified.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP277 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP278 - Bridge instances renderer Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP277 closeout `2b1066bc58f838d6995105affdc0f0a753efe210`; BASE_TREE `4ec917d5ad7cdfff396afe7f45e2a9e13fb96b65`; worktree clean at intent time.
+- BOUNDARY: move `renderInstances` HTML/state rendering into Rust/WASM while retaining only a thin JavaScript wrapper for existing refresh callers. Rust owns network canonicalization/mainnet-only policy, instance-state assurance, active-instance selection markup, command-option checkboxes, preview text, per-instance field markup/defaults/placeholders, and delete/add controls.
+- ACCEPTANCE: Rust renderer export + thin JS wrapper; fail-closed ownership regression rejects legacy JavaScript renderer body; generated WASM consistent; targeted renderer parity/static contracts plus fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
