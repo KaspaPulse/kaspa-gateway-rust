@@ -1421,6 +1421,39 @@ pub fn bridge_sync_mode_controls_ui(net: String, bridge_instances: JsValue) -> b
     true
 }
 
+#[wasm_bindgen(js_name = bridgeSyncAllModeControlsUi)]
+pub fn bridge_sync_all_mode_controls_ui(bridge_instances: JsValue) -> bool {
+    let mut synced = false;
+    for net in bridge_r51_key_texts() {
+        synced |= bridge_sync_mode_controls_ui(net.to_owned(), bridge_instances.clone());
+    }
+    synced
+}
+
+#[wasm_bindgen(js_name = bridgeBuildCommandLinesUi)]
+pub fn bridge_build_command_lines_ui(
+    net: String,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+) -> Result<Array, JsValue> {
+    bridge_sync_mode_controls_ui(net.clone(), bridge_instances.clone());
+    crate::bridge_port_orchestration::bridge_ensure_instance_state(
+        bridge_instances.clone(),
+        active_instance,
+        net.clone(),
+    )?;
+
+    let instances_value = property(&bridge_instances, &net);
+    let instances = if Array::is_array(&instances_value) {
+        Array::from(&instances_value)
+    } else {
+        Array::new()
+    };
+    Ok(crate::bridge_command_builder::bridge_build_command_lines(
+        net, instances,
+    ))
+}
+
 #[wasm_bindgen(js_name = bridgeSyncDependencies)]
 pub fn bridge_sync_dependencies(net: String, bridge_instances: JsValue) -> bool {
     let values = bridge_form_values_inner(&net);

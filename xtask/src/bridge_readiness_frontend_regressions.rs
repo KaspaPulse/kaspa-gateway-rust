@@ -1793,6 +1793,76 @@ fn verify_mode_controls_ownership(source: &str, helpers: &str) -> Result<(), Str
     Ok(())
 }
 
+fn verify_command_orchestration_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeBuildCommandLinesUi as wasmBridgeBuildCommandLinesUi",
+        "bridgeSyncAllModeControlsUi as wasmBridgeSyncAllModeControlsUi",
+        "// KGW_BRIDGE_COMMAND_ORCHESTRATION_RUST_OWNER_V1",
+        "return wasmBridgeSyncAllModeControlsUi(bridgeInstances);",
+        "wasmBridgeBuildCommandLinesUi(String(net || \"\"), bridgeInstances, activeInstance)",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge command-orchestration Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    for forbidden in [
+        "bridgeBuildCommandLines as wasmBridgeBuildCommandLines",
+        "wasmBridgeBuildCommandLines(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge command-orchestration JavaScript binding remains: {forbidden}"
+            ));
+        }
+    }
+
+    let all_wrapper = slice_between(source, "function bridgeSyncAllModeControls() {", "\n}")?;
+    for forbidden in ["BRIDGE_NETWORKS.forEach(", "bridgeSyncModeControls("] {
+        if all_wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge all-mode JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+
+    let build_wrapper = slice_between(source, "function buildCommandLines(net) {", "\n}")?;
+    for forbidden in [
+        "bridgeSyncModeControls(",
+        "bridgeInstances[net]",
+        "wasmBridgeEnsureInstanceState(",
+        "wasmBridgeBuildCommandLines(",
+    ] {
+        if build_wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge command-builder JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeSyncAllModeControlsUi",
+        "pub fn bridge_sync_all_mode_controls_ui(",
+        "for net in bridge_r51_key_texts()",
+        "bridge_sync_mode_controls_ui(net.to_owned(), bridge_instances.clone())",
+        "js_name = bridgeBuildCommandLinesUi",
+        "pub fn bridge_build_command_lines_ui(",
+        "crate::bridge_port_orchestration::bridge_ensure_instance_state(",
+        "crate::bridge_command_builder::bridge_build_command_lines(",
+        "Array::is_array(&instances_value)",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge command-orchestration Rust owner contract missing: {required}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn verify_inprocess_mode_controls_ownership(source: &str, helpers: &str) -> Result<(), String> {
     for forbidden in [
         "bridgeSetDisabledUi as wasmBridgeSetDisabledUi",
@@ -2565,6 +2635,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_inline_command_toggle_ownership(&full_source, &command_options_source)?;
     verify_dependency_sync_ownership(&full_source, &helper_source)?;
     verify_mode_controls_ownership(&full_source, &helper_source)?;
+    verify_command_orchestration_ownership(&full_source, &helper_source)?;
     verify_inprocess_mode_controls_ownership(&full_source, &helper_source)?;
     verify_full_form_validation_ownership(&full_source, &helper_source)?;
     verify_require_valid_settings_ownership(&full_source, &helper_source)?;
@@ -3950,6 +4021,51 @@ mod tests {
             ),
         ] {
             assert!(verify_mode_controls_ownership(source, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn command_orchestration_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_command_orchestration_ownership(source, helpers).is_ok());
+
+        for mutation in [
+            source.replace(
+                "bridgeBuildCommandLinesUi as wasmBridgeBuildCommandLinesUi",
+                "missingBuildCommandLinesUi as wasmBridgeBuildCommandLinesUi",
+            ),
+            source.replace(
+                "return wasmBridgeSyncAllModeControlsUi(bridgeInstances);",
+                "BRIDGE_NETWORKS.forEach((item) => bridgeSyncModeControls(item.key));",
+            ),
+            source.replacen(
+                "function buildCommandLines(net) {",
+                "function buildCommandLines(net) {\n  wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || \"\"));",
+                1,
+            ),
+        ] {
+            assert!(verify_command_orchestration_ownership(&mutation, helpers).is_err());
+        }
+
+        for mutation in [
+            helpers.replace(
+                "js_name = bridgeSyncAllModeControlsUi",
+                "js_name = missingSyncAllModeControlsUi",
+            ),
+            helpers.replace(
+                "crate::bridge_port_orchestration::bridge_ensure_instance_state(",
+                "crate::bridge_port_orchestration::missing_ensure_instance_state(",
+            ),
+            helpers.replace(
+                "crate::bridge_command_builder::bridge_build_command_lines(",
+                "crate::bridge_command_builder::missing_build_command_lines(",
+            ),
+        ] {
+            assert!(verify_command_orchestration_ownership(source, &mutation).is_err());
         }
     }
 

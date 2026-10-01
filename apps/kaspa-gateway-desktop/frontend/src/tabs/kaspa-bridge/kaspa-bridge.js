@@ -8,7 +8,7 @@ import initBridgeRust, {
   bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7,
   bridgeCommandSetOptionR7 as wasmBridgeCommandSetOptionR7,
   bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7,
-  bridgeBuildCommandLines as wasmBridgeBuildCommandLines,
+  bridgeBuildCommandLinesUi as wasmBridgeBuildCommandLinesUi,
   bridgeBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi,
   bridgeDifficultyDatalistR16C as wasmBridgeDifficultyDatalistR16C,
   bridgeDifficultyInputAttrsR16C as wasmBridgeDifficultyInputAttrsR16C,
@@ -80,6 +80,7 @@ import initBridgeRust, {
   bridgeRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi,
   bridgeEffectiveInprocessNodeSettingsChecked as wasmBridgeEffectiveInprocessNodeSettingsChecked,
   bridgeSyncModeControlsUi as wasmBridgeSyncModeControlsUi,
+  bridgeSyncAllModeControlsUi as wasmBridgeSyncAllModeControlsUi,
   bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E,
   bridgeValue as wasmBridgeValue,
   bridgeAssignMissingInstancePortsR9 as wasmBridgeAssignMissingInstancePortsR9,
@@ -1029,17 +1030,16 @@ function bridgeSyncModeControls(net) {
   return wasmBridgeSyncModeControlsUi(String(net || ""), bridgeInstances);
 }
 
+// KGW_BRIDGE_COMMAND_ORCHESTRATION_RUST_OWNER_V1
 function bridgeSyncAllModeControls() {
-  BRIDGE_NETWORKS.forEach((item) => bridgeSyncModeControls(item.key));
+  return wasmBridgeSyncAllModeControlsUi(bridgeInstances);
 }
 
 // Bridge R27 log-auto-scroll persistence, scroll behavior, and DOM installer are Rust-owned in bridge_frontend_helpers.rs.
 
 function buildCommandLines(net) {
-  bridgeSyncModeControls(net);
-  wasmBridgeEnsureInstanceState(bridgeInstances, activeInstance, String(net || ""));
   return Array.from(
-    wasmBridgeBuildCommandLines(String(net || ""), bridgeInstances[net] || [])
+    wasmBridgeBuildCommandLinesUi(String(net || ""), bridgeInstances, activeInstance)
   );
 }
 // KGW_BRIDGE_REQUIRE_VALID_SETTINGS_RUST_OWNER_V1

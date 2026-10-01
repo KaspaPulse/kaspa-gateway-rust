@@ -4230,99 +4230,94 @@ export function bridgeInstanceCommandShouldIncludeR13B(net, instance_id, name, r
     return ret !== 0;
 }
 
-/**
- * @param {any} tabs
- */
-export function shellRuntimeInstall(tabs) {
-    wasm.shellRuntimeInstall(tabs);
+export function shellI18nInstall() {
+    wasm.shellI18nInstall();
 }
 
 /**
- * @param {string} tab_id
- * @param {any} options
+ * @param {any} result
+ * @returns {any}
+ */
+export function explorerNormalizeUnifiedResult(result) {
+    const ret = wasm.explorerNormalizeUnifiedResult(result);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {any} result
+ * @returns {any}
+ */
+export function explorerDaySummaryRowsFromResult(result) {
+    const ret = wasm.explorerDaySummaryRowsFromResult(result);
+    return ret;
+}
+
+/**
+ * @param {any} reason
  * @returns {Promise<boolean>}
  */
-export function shellRuntimeOpenTab(tab_id, options) {
-    const ptr0 = passStringToWasm0(tab_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.shellRuntimeOpenTab(ptr0, len0, options);
+export function headerLiveMetricsRefreshSelectedCurrencyPrice(reason) {
+    const ret = wasm.headerLiveMetricsRefreshSelectedCurrencyPrice(reason);
     return ret;
 }
 
-/**
- * @param {string} tab_id
- * @returns {string}
- */
-export function shellRuntimeActivateTab(tab_id) {
-    let deferred3_0;
-    let deferred3_1;
-    try {
-        const ptr0 = passStringToWasm0(tab_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.shellRuntimeActivateTab(ptr0, len0);
-        var ptr2 = ret[0];
-        var len2 = ret[1];
-        if (ret[3]) {
-            ptr2 = 0; len2 = 0;
-            throw takeFromExternrefTable0(ret[2]);
-        }
-        deferred3_0 = ptr2;
-        deferred3_1 = len2;
-        return getStringFromWasm0(ptr2, len2);
-    } finally {
-        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
-    }
+export function headerLiveMetricsInit() {
+    wasm.headerLiveMetricsInit();
+}
+
+export function headerLiveMetricsInstallModule() {
+    wasm.headerLiveMetricsInstallModule();
 }
 
 /**
- * @param {string} theme
- * @returns {string}
- */
-export function shellRuntimeApplyTheme(theme) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ptr0 = passStringToWasm0(theme, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.shellRuntimeApplyTheme(ptr0, len0);
-        deferred2_0 = ret[0];
-        deferred2_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
- * @param {string} reason
- * @returns {boolean}
- */
-export function shellRuntimeScheduleSavedRestore(reason) {
-    const ptr0 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.shellRuntimeScheduleSavedRestore(ptr0, len0);
-    return ret !== 0;
-}
-
-/**
- * @param {string} tab_id
+ * @param {any} value
  * @returns {number}
  */
-export function shellRuntimeRecordExplicitNavigation(tab_id) {
-    const ptr0 = passStringToWasm0(tab_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.shellRuntimeRecordExplicitNavigation(ptr0, len0);
-    return ret >>> 0;
+export function headerLiveMetricsExtractUsdPrice(value) {
+    const ret = wasm.headerLiveMetricsExtractUsdPrice(value);
+    return ret;
 }
 
 /**
+ * @param {string} label
+ * @param {string} value
+ * @param {string} updated_at
+ * @param {string} source
  * @returns {string}
  */
-export function shellRuntimeSavedMainTab() {
+export function headerLiveMetricsBuildEnglishTooltip(label, value, updated_at, source) {
+    let deferred5_0;
+    let deferred5_1;
+    try {
+        const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ptr2 = passStringToWasm0(updated_at, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passStringToWasm0(source, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len3 = WASM_VECTOR_LEN;
+        const ret = wasm.headerLiveMetricsBuildEnglishTooltip(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+        deferred5_0 = ret[0];
+        deferred5_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
+    }
+}
+
+/**
+ * @param {number} epoch_ms
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatLocalDateTime(epoch_ms) {
     let deferred1_0;
     let deferred1_1;
     try {
-        const ret = wasm.shellRuntimeSavedMainTab();
+        const ret = wasm.headerLiveMetricsFormatLocalDateTime(epoch_ms);
         deferred1_0 = ret[0];
         deferred1_1 = ret[1];
         return getStringFromWasm0(ret[0], ret[1]);
@@ -4332,71 +4327,91 @@ export function shellRuntimeSavedMainTab() {
 }
 
 /**
- * @param {string} tab_id
- * @param {string} phase
- * @param {any} details
- */
-export function shellRuntimeTraceTab(tab_id, phase, details) {
-    const ptr0 = passStringToWasm0(tab_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(phase, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    wasm.shellRuntimeTraceTab(ptr0, len0, ptr1, len1, details);
-}
-
-/**
- * @param {any} section
- * @param {string} message
- * @returns {boolean}
- */
-export function explorerForceSetTableMessage(section, message) {
-    const ptr0 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.explorerForceSetTableMessage(section, ptr0, len0);
-    return ret !== 0;
-}
-
-/**
- * @param {any} section
- * @returns {boolean}
- */
-export function explorerForceResetDisplayFiltersToAll(section) {
-    const ret = wasm.explorerForceResetDisplayFiltersToAll(section);
-    return ret !== 0;
-}
-
-/**
- * @param {any} section
- * @param {boolean} busy
- * @param {string} mode
- * @returns {boolean}
- */
-export function explorerForceSetControlsBusy(section, busy, mode) {
-    const ptr0 = passStringToWasm0(mode, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.explorerForceSetControlsBusy(section, busy, ptr0, len0);
-    return ret !== 0;
-}
-
-/**
- * @returns {boolean}
- */
-export function explorerInstallForceBusyBlocker() {
-    const ret = wasm.explorerInstallForceBusyBlocker();
-    return ret !== 0;
-}
-
-/**
- * @param {string} net
+ * @param {number} epoch_ms
  * @returns {string}
  */
-export function bridgeCurrentNodeModeFromUiR65F(net) {
+export function headerLiveMetricsFormatEnglishTime(epoch_ms) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.headerLiveMetricsFormatEnglishTime(epoch_ms);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {number} epoch_ms
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatEnglishDate(epoch_ms) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.headerLiveMetricsFormatEnglishDate(epoch_ms);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {number} epoch_ms
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatEnglishStamp(epoch_ms) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.headerLiveMetricsFormatEnglishStamp(epoch_ms);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {string} kind
+ * @returns {any}
+ */
+export function headerLiveMetricsMetricIds(kind) {
+    const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.headerLiveMetricsMetricIds(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} prices
+ * @param {string} currency
+ * @returns {any}
+ */
+export function headerLiveMetricsNumericPrice(prices, currency) {
+    const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.headerLiveMetricsNumericPrice(prices, ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {string} currency
+ * @param {number} value
+ * @returns {string}
+ */
+export function headerLiveMetricsFormatCurrency(currency, value) {
     let deferred2_0;
     let deferred2_1;
     try {
-        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.bridgeCurrentNodeModeFromUiR65F(ptr0, len0);
+        const ret = wasm.headerLiveMetricsFormatCurrency(ptr0, len0, value);
         deferred2_0 = ret[0];
         deferred2_1 = ret[1];
         return getStringFromWasm0(ret[0], ret[1]);
@@ -4406,645 +4421,25 @@ export function bridgeCurrentNodeModeFromUiR65F(net) {
 }
 
 /**
- * @param {string} net
- * @returns {any}
- */
-export function bridgeNetworkProfile(net) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeNetworkProfile(ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {any} value
- * @param {any} fallback
+ * @param {string} metric_value
+ * @param {string} current_text
  * @returns {string}
  */
-export function bridgeInstanceNetworkKeyR15(value, fallback) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.bridgeInstanceNetworkKeyR15(value, fallback);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {string} net
- * @returns {boolean}
- */
-export function bridgeNetworkEnabled(net) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeNetworkEnabled(ptr0, len0);
-    return ret !== 0;
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function bridgeEscapeHtml(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.bridgeEscapeHtml(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {string} net
- * @param {string} name
- * @returns {string}
- */
-export function bridgeElementId(net, name) {
+export function headerLiveMetricsSelectedCurrencyValue(metric_value, current_text) {
     let deferred3_0;
     let deferred3_1;
     try {
-        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr0 = passStringToWasm0(metric_value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const ptr1 = passStringToWasm0(current_text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
         const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.bridgeElementId(ptr0, len0, ptr1, len1);
+        const ret = wasm.headerLiveMetricsSelectedCurrencyValue(ptr0, len0, ptr1, len1);
         deferred3_0 = ret[0];
         deferred3_1 = ret[1];
         return getStringFromWasm0(ret[0], ret[1]);
     } finally {
         wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
     }
-}
-
-/**
- * @param {string} net
- * @param {any} instance_id
- * @param {string} name
- * @returns {string}
- */
-export function bridgeInstanceElementId(net, instance_id, name) {
-    let deferred3_0;
-    let deferred3_1;
-    try {
-        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.bridgeInstanceElementId(ptr0, len0, instance_id, ptr1, len1);
-        deferred3_0 = ret[0];
-        deferred3_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
-    }
-}
-
-/**
- * @param {string} net
- * @param {string} name
- * @returns {string}
- */
-export function bridgeValue(net, name) {
-    let deferred3_0;
-    let deferred3_1;
-    try {
-        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.bridgeValue(ptr0, len0, ptr1, len1);
-        deferred3_0 = ret[0];
-        deferred3_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
-    }
-}
-
-/**
- * @param {string} net
- * @param {any} bridge_instances
- * @returns {any}
- */
-export function bridgeEffectiveInprocessNodeSettingsChecked(net, bridge_instances) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeEffectiveInprocessNodeSettingsChecked(ptr0, len0, bridge_instances);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * @param {string} net
- * @param {any} bridge_instances
- * @param {any} active_instance
- * @param {any} structured_reader
- */
-export function bridgeRequireValidSettingsUi(net, bridge_instances, active_instance, structured_reader) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeRequireValidSettingsUi(ptr0, len0, bridge_instances, active_instance, structured_reader);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {string} net
- * @param {string} command
- * @param {any} bridge_instances
- * @param {any} active_instance
- * @param {any} structured_reader
- * @param {any} build_command_lines
- * @returns {any}
- */
-export function bridgeBuildApplyPayloadUi(net, command, bridge_instances, active_instance, structured_reader, build_command_lines) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(command, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeBuildApplyPayloadUi(ptr0, len0, ptr1, len1, bridge_instances, active_instance, structured_reader, build_command_lines);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * @param {string} net
- * @returns {string}
- */
-export function bridgeNodeMode(net) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.bridgeNodeMode(ptr0, len0);
-        deferred2_0 = ret[0];
-        deferred2_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
- * @param {string} net
- * @param {string} name
- * @returns {boolean}
- */
-export function bridgeChecked(net, name) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeChecked(ptr0, len0, ptr1, len1);
-    return ret !== 0;
-}
-
-/**
- * @param {string} net
- * @param {boolean} enabled
- */
-export function bridgeSetNetworkEnabled(net, enabled) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.bridgeSetNetworkEnabled(ptr0, len0, enabled);
-}
-
-/**
- * @param {string} net
- * @returns {string}
- */
-export function bridgeNetworkPolicyMessage(net) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.bridgeNetworkPolicyMessage(ptr0, len0);
-        deferred2_0 = ret[0];
-        deferred2_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
- * @param {string} net
- * @param {any} bridge_instances
- * @param {boolean} focus
- * @returns {any}
- */
-export function bridgeValidateFormUi(net, bridge_instances, focus) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeValidateFormUi(ptr0, len0, bridge_instances, focus);
-    return ret;
-}
-
-/**
- * @param {string} net
- * @param {string} name
- * @param {boolean} disabled
- * @param {string} reason
- * @returns {boolean}
- */
-export function bridgeSetDisabledUi(net, name, disabled, reason) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ptr2 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len2 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeSetDisabledUi(ptr0, len0, ptr1, len1, disabled, ptr2, len2);
-    return ret !== 0;
-}
-
-/**
- * @param {string} net
- * @returns {boolean}
- */
-export function bridgeSyncInprocessNodeSettingsV12D(net) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeSyncInprocessNodeSettingsV12D(ptr0, len0);
-    return ret !== 0;
-}
-
-/**
- * @param {string} net
- * @param {any} bridge_instances
- * @returns {boolean}
- */
-export function bridgeSyncModeControlsUi(net, bridge_instances) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeSyncModeControlsUi(ptr0, len0, bridge_instances);
-    return ret !== 0;
-}
-
-/**
- * @param {string} net
- * @param {any} bridge_instances
- * @returns {boolean}
- */
-export function bridgeSyncDependencies(net, bridge_instances) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeSyncDependencies(ptr0, len0, bridge_instances);
-    return ret !== 0;
-}
-
-/**
- * @param {string} net
- * @param {string} message
- * @param {boolean} error
- * @returns {boolean}
- */
-export function bridgePreviewMessage(net, message, error) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgePreviewMessage(ptr0, len0, ptr1, len1, error);
-    return ret !== 0;
-}
-
-/**
- * @param {string} id
- * @returns {any}
- */
-export function bridgeById(id) {
-    const ptr0 = passStringToWasm0(id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeById(ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {any} net
- * @param {any} action
- * @param {any} phase
- * @param {any} details
- * @returns {boolean}
- */
-export function bridgeSmallOwnerTraceR44D(net, action, phase, details) {
-    const ret = wasm.bridgeSmallOwnerTraceR44D(net, action, phase, details);
-    return ret !== 0;
-}
-
-/**
- * @param {string} net
- * @param {Function} update_command
- * @returns {Promise<any>}
- */
-export function bridgeApplyRustyKaspaRootOnlyDefaultPathsR5(net, update_command) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeApplyRustyKaspaRootOnlyDefaultPathsR5(ptr0, len0, update_command);
-    return ret;
-}
-
-/**
- * @param {string} net
- * @param {Function} update_command
- */
-export function bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, update_command) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(ptr0, len0, update_command);
-}
-
-/**
- * @param {string} net
- * @param {any} values
- * @param {string} reason
- * @returns {any}
- */
-export function bridgeR95BNormalizeNetworkPortValues(net, values, reason) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeR95BNormalizeNetworkPortValues(ptr0, len0, values, ptr1, len1);
-    return ret;
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function bridgePlainPortOnlyValueR98(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.bridgePlainPortOnlyValueR98(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} left
- * @param {any} right
- * @returns {boolean}
- */
-export function bridgeSamePortValueR98(left, right) {
-    const ret = wasm.bridgeSamePortValueR98(left, right);
-    return ret !== 0;
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function bridgeNormalizeNetwork(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.bridgeNormalizeNetwork(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @returns {string}
- */
-export function bridgeReadLastNetwork() {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.bridgeReadLastNetwork();
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {any} net
- * @returns {string}
- */
-export function bridgeSaveLastNetwork(net) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.bridgeSaveLastNetwork(net);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {string} key
- * @param {string} fallback
- * @returns {any}
- */
-export function bridgeTranslateRuntimeFeedback(key, fallback) {
-    const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(fallback, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeTranslateRuntimeFeedback(ptr0, len0, ptr1, len1);
-    return ret;
-}
-
-/**
- * @param {string} key
- * @param {string} fallback
- * @returns {any}
- */
-export function bridgeI18nTextR41(key, fallback) {
-    const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ptr1 = passStringToWasm0(fallback, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len1 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeI18nTextR41(ptr0, len0, ptr1, len1);
-    return ret;
-}
-
-/**
- * @param {string} command
- * @param {any} payload
- * @returns {Promise<any>}
- */
-export function bridgeBackendInvokeR5(command, payload) {
-    const ptr0 = passStringToWasm0(command, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeBackendInvokeR5(ptr0, len0, payload);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * @returns {Array<any>}
- */
-export function bridgeNetworkProfiles() {
-    const ret = wasm.bridgeNetworkProfiles();
-    return ret;
-}
-
-/**
- * @returns {Array<any>}
- */
-export function bridgeR51Keys() {
-    const ret = wasm.bridgeR51Keys();
-    return ret;
-}
-
-/**
- * @param {string} net
- * @returns {string}
- */
-export function bridgeNetworkPolicyKey(net) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.bridgeNetworkPolicyKey(ptr0, len0);
-        deferred2_0 = ret[0];
-        deferred2_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
- * @param {string} key
- * @param {any} value
- */
-export function bridgeR51Store(key, value) {
-    const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeR51Store(ptr0, len0, value);
-    if (ret[1]) {
-        throw takeFromExternrefTable0(ret[0]);
-    }
-}
-
-/**
- * @param {string} key
- * @returns {any}
- */
-export function bridgeR51Load(key) {
-    const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeR51Load(ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {string} net
- * @returns {boolean}
- */
-export function bridgeLogAutoScrollEnabled(net) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.bridgeLogAutoScrollEnabled(ptr0, len0);
-    return ret !== 0;
-}
-
-/**
- * @param {string} net
- * @param {boolean} enabled
- */
-export function bridgeSetLogAutoScroll(net, enabled) {
-    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    wasm.bridgeSetLogAutoScroll(ptr0, len0, enabled);
-}
-
-export function bridgeInstallLogAutoScrollControls() {
-    wasm.bridgeInstallLogAutoScrollControls();
-}
-
-/**
- * @param {any} value
- * @returns {string}
- */
-export function bridgeNormalizeInnerTab(value) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.bridgeNormalizeInnerTab(value);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {string} net
- * @returns {string}
- */
-export function bridgeResolveInnerTab(net) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.bridgeResolveInnerTab(ptr0, len0);
-        deferred2_0 = ret[0];
-        deferred2_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
- * @param {string} net
- * @param {any} selected
- * @returns {string}
- */
-export function bridgeSaveInnerTab(net, selected) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.bridgeSaveInnerTab(ptr0, len0, selected);
-        deferred2_0 = ret[0];
-        deferred2_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-    }
-}
-
-export function shellAuxInstall() {
-    wasm.shellAuxInstall();
 }
 
 /**
@@ -6676,218 +6071,6 @@ export function kgwLogInitTab() {
     }
 }
 
-export function shellI18nInstall() {
-    wasm.shellI18nInstall();
-}
-
-/**
- * @param {any} result
- * @returns {any}
- */
-export function explorerNormalizeUnifiedResult(result) {
-    const ret = wasm.explorerNormalizeUnifiedResult(result);
-    if (ret[2]) {
-        throw takeFromExternrefTable0(ret[1]);
-    }
-    return takeFromExternrefTable0(ret[0]);
-}
-
-/**
- * @param {any} result
- * @returns {any}
- */
-export function explorerDaySummaryRowsFromResult(result) {
-    const ret = wasm.explorerDaySummaryRowsFromResult(result);
-    return ret;
-}
-
-/**
- * @param {any} reason
- * @returns {Promise<boolean>}
- */
-export function headerLiveMetricsRefreshSelectedCurrencyPrice(reason) {
-    const ret = wasm.headerLiveMetricsRefreshSelectedCurrencyPrice(reason);
-    return ret;
-}
-
-export function headerLiveMetricsInit() {
-    wasm.headerLiveMetricsInit();
-}
-
-export function headerLiveMetricsInstallModule() {
-    wasm.headerLiveMetricsInstallModule();
-}
-
-/**
- * @param {any} value
- * @returns {number}
- */
-export function headerLiveMetricsExtractUsdPrice(value) {
-    const ret = wasm.headerLiveMetricsExtractUsdPrice(value);
-    return ret;
-}
-
-/**
- * @param {string} label
- * @param {string} value
- * @param {string} updated_at
- * @param {string} source
- * @returns {string}
- */
-export function headerLiveMetricsBuildEnglishTooltip(label, value, updated_at, source) {
-    let deferred5_0;
-    let deferred5_1;
-    try {
-        const ptr0 = passStringToWasm0(label, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ptr2 = passStringToWasm0(updated_at, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len2 = WASM_VECTOR_LEN;
-        const ptr3 = passStringToWasm0(source, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len3 = WASM_VECTOR_LEN;
-        const ret = wasm.headerLiveMetricsBuildEnglishTooltip(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
-        deferred5_0 = ret[0];
-        deferred5_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred5_0, deferred5_1, 1);
-    }
-}
-
-/**
- * @param {number} epoch_ms
- * @returns {string}
- */
-export function headerLiveMetricsFormatLocalDateTime(epoch_ms) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.headerLiveMetricsFormatLocalDateTime(epoch_ms);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {number} epoch_ms
- * @returns {string}
- */
-export function headerLiveMetricsFormatEnglishTime(epoch_ms) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.headerLiveMetricsFormatEnglishTime(epoch_ms);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {number} epoch_ms
- * @returns {string}
- */
-export function headerLiveMetricsFormatEnglishDate(epoch_ms) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.headerLiveMetricsFormatEnglishDate(epoch_ms);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {number} epoch_ms
- * @returns {string}
- */
-export function headerLiveMetricsFormatEnglishStamp(epoch_ms) {
-    let deferred1_0;
-    let deferred1_1;
-    try {
-        const ret = wasm.headerLiveMetricsFormatEnglishStamp(epoch_ms);
-        deferred1_0 = ret[0];
-        deferred1_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
-    }
-}
-
-/**
- * @param {string} kind
- * @returns {any}
- */
-export function headerLiveMetricsMetricIds(kind) {
-    const ptr0 = passStringToWasm0(kind, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.headerLiveMetricsMetricIds(ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {any} prices
- * @param {string} currency
- * @returns {any}
- */
-export function headerLiveMetricsNumericPrice(prices, currency) {
-    const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    const len0 = WASM_VECTOR_LEN;
-    const ret = wasm.headerLiveMetricsNumericPrice(prices, ptr0, len0);
-    return ret;
-}
-
-/**
- * @param {string} currency
- * @param {number} value
- * @returns {string}
- */
-export function headerLiveMetricsFormatCurrency(currency, value) {
-    let deferred2_0;
-    let deferred2_1;
-    try {
-        const ptr0 = passStringToWasm0(currency, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ret = wasm.headerLiveMetricsFormatCurrency(ptr0, len0, value);
-        deferred2_0 = ret[0];
-        deferred2_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
-    }
-}
-
-/**
- * @param {string} metric_value
- * @param {string} current_text
- * @returns {string}
- */
-export function headerLiveMetricsSelectedCurrencyValue(metric_value, current_text) {
-    let deferred3_0;
-    let deferred3_1;
-    try {
-        const ptr0 = passStringToWasm0(metric_value, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len0 = WASM_VECTOR_LEN;
-        const ptr1 = passStringToWasm0(current_text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        const len1 = WASM_VECTOR_LEN;
-        const ret = wasm.headerLiveMetricsSelectedCurrencyValue(ptr0, len0, ptr1, len1);
-        deferred3_0 = ret[0];
-        deferred3_1 = ret[1];
-        return getStringFromWasm0(ret[0], ret[1]);
-    } finally {
-        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
-    }
-}
-
 /**
  * @param {any} value
  * @returns {string}
@@ -7760,35 +6943,877 @@ export function settingsAddressesInstallAll() {
     }
 }
 
+/**
+ * @param {any} tabs
+ */
+export function shellRuntimeInstall(tabs) {
+    wasm.shellRuntimeInstall(tabs);
+}
+
+/**
+ * @param {string} tab_id
+ * @param {any} options
+ * @returns {Promise<boolean>}
+ */
+export function shellRuntimeOpenTab(tab_id, options) {
+    const ptr0 = passStringToWasm0(tab_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.shellRuntimeOpenTab(ptr0, len0, options);
+    return ret;
+}
+
+/**
+ * @param {string} tab_id
+ * @returns {string}
+ */
+export function shellRuntimeActivateTab(tab_id) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(tab_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.shellRuntimeActivateTab(ptr0, len0);
+        var ptr2 = ret[0];
+        var len2 = ret[1];
+        if (ret[3]) {
+            ptr2 = 0; len2 = 0;
+            throw takeFromExternrefTable0(ret[2]);
+        }
+        deferred3_0 = ptr2;
+        deferred3_1 = len2;
+        return getStringFromWasm0(ptr2, len2);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * @param {string} theme
+ * @returns {string}
+ */
+export function shellRuntimeApplyTheme(theme) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(theme, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.shellRuntimeApplyTheme(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {string} reason
+ * @returns {boolean}
+ */
+export function shellRuntimeScheduleSavedRestore(reason) {
+    const ptr0 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.shellRuntimeScheduleSavedRestore(ptr0, len0);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} tab_id
+ * @returns {number}
+ */
+export function shellRuntimeRecordExplicitNavigation(tab_id) {
+    const ptr0 = passStringToWasm0(tab_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.shellRuntimeRecordExplicitNavigation(ptr0, len0);
+    return ret >>> 0;
+}
+
+/**
+ * @returns {string}
+ */
+export function shellRuntimeSavedMainTab() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.shellRuntimeSavedMainTab();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {string} tab_id
+ * @param {string} phase
+ * @param {any} details
+ */
+export function shellRuntimeTraceTab(tab_id, phase, details) {
+    const ptr0 = passStringToWasm0(tab_id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(phase, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    wasm.shellRuntimeTraceTab(ptr0, len0, ptr1, len1, details);
+}
+
+/**
+ * @param {any} section
+ * @param {string} message
+ * @returns {boolean}
+ */
+export function explorerForceSetTableMessage(section, message) {
+    const ptr0 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.explorerForceSetTableMessage(section, ptr0, len0);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} section
+ * @returns {boolean}
+ */
+export function explorerForceResetDisplayFiltersToAll(section) {
+    const ret = wasm.explorerForceResetDisplayFiltersToAll(section);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} section
+ * @param {boolean} busy
+ * @param {string} mode
+ * @returns {boolean}
+ */
+export function explorerForceSetControlsBusy(section, busy, mode) {
+    const ptr0 = passStringToWasm0(mode, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.explorerForceSetControlsBusy(section, busy, ptr0, len0);
+    return ret !== 0;
+}
+
+/**
+ * @returns {boolean}
+ */
+export function explorerInstallForceBusyBlocker() {
+    const ret = wasm.explorerInstallForceBusyBlocker();
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @returns {string}
+ */
+export function bridgeCurrentNodeModeFromUiR65F(net) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeCurrentNodeModeFromUiR65F(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @returns {any}
+ */
+export function bridgeNetworkProfile(net) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeNetworkProfile(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @param {any} fallback
+ * @returns {string}
+ */
+export function bridgeInstanceNetworkKeyR15(value, fallback) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.bridgeInstanceNetworkKeyR15(value, fallback);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @returns {boolean}
+ */
+export function bridgeNetworkEnabled(net) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeNetworkEnabled(ptr0, len0);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @param {string} message
+ * @param {boolean} error
+ * @returns {boolean}
+ */
+export function bridgePreviewMessage(net, message, error) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(message, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgePreviewMessage(ptr0, len0, ptr1, len1, error);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} id
+ * @returns {any}
+ */
+export function bridgeById(id) {
+    const ptr0 = passStringToWasm0(id, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeById(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function bridgeEscapeHtml(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.bridgeEscapeHtml(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @param {string} name
+ * @returns {string}
+ */
+export function bridgeElementId(net, name) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeElementId(ptr0, len0, ptr1, len1);
+        deferred3_0 = ret[0];
+        deferred3_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @param {any} instance_id
+ * @param {string} name
+ * @returns {string}
+ */
+export function bridgeInstanceElementId(net, instance_id, name) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeInstanceElementId(ptr0, len0, instance_id, ptr1, len1);
+        deferred3_0 = ret[0];
+        deferred3_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @param {string} name
+ * @returns {string}
+ */
+export function bridgeValue(net, name) {
+    let deferred3_0;
+    let deferred3_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len1 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeValue(ptr0, len0, ptr1, len1);
+        deferred3_0 = ret[0];
+        deferred3_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred3_0, deferred3_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @param {any} bridge_instances
+ * @returns {any}
+ */
+export function bridgeEffectiveInprocessNodeSettingsChecked(net, bridge_instances) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeEffectiveInprocessNodeSettingsChecked(ptr0, len0, bridge_instances);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {string} net
+ * @param {any} bridge_instances
+ * @param {any} active_instance
+ * @param {any} structured_reader
+ */
+export function bridgeRequireValidSettingsUi(net, bridge_instances, active_instance, structured_reader) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeRequireValidSettingsUi(ptr0, len0, bridge_instances, active_instance, structured_reader);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {string} net
+ * @param {string} command
+ * @param {any} bridge_instances
+ * @param {any} active_instance
+ * @param {any} structured_reader
+ * @param {any} build_command_lines
+ * @returns {any}
+ */
+export function bridgeBuildApplyPayloadUi(net, command, bridge_instances, active_instance, structured_reader, build_command_lines) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(command, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeBuildApplyPayloadUi(ptr0, len0, ptr1, len1, bridge_instances, active_instance, structured_reader, build_command_lines);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {string} net
+ * @param {boolean} enabled
+ */
+export function bridgeSetNetworkEnabled(net, enabled) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.bridgeSetNetworkEnabled(ptr0, len0, enabled);
+}
+
+/**
+ * @param {string} net
+ * @returns {string}
+ */
+export function bridgeNetworkPolicyMessage(net) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeNetworkPolicyMessage(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @param {any} bridge_instances
+ * @param {boolean} focus
+ * @returns {any}
+ */
+export function bridgeValidateFormUi(net, bridge_instances, focus) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeValidateFormUi(ptr0, len0, bridge_instances, focus);
+    return ret;
+}
+
+/**
+ * @param {string} net
+ * @param {string} name
+ * @param {boolean} disabled
+ * @param {string} reason
+ * @returns {boolean}
+ */
+export function bridgeSetDisabledUi(net, name, disabled, reason) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeSetDisabledUi(ptr0, len0, ptr1, len1, disabled, ptr2, len2);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @returns {boolean}
+ */
+export function bridgeSyncInprocessNodeSettingsV12D(net) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeSyncInprocessNodeSettingsV12D(ptr0, len0);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @param {any} bridge_instances
+ * @returns {boolean}
+ */
+export function bridgeSyncModeControlsUi(net, bridge_instances) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeSyncModeControlsUi(ptr0, len0, bridge_instances);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} bridge_instances
+ * @returns {boolean}
+ */
+export function bridgeSyncAllModeControlsUi(bridge_instances) {
+    const ret = wasm.bridgeSyncAllModeControlsUi(bridge_instances);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @param {any} bridge_instances
+ * @param {any} active_instance
+ * @returns {Array<any>}
+ */
+export function bridgeBuildCommandLinesUi(net, bridge_instances, active_instance) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeBuildCommandLinesUi(ptr0, len0, bridge_instances, active_instance);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @param {string} net
+ * @param {any} bridge_instances
+ * @returns {boolean}
+ */
+export function bridgeSyncDependencies(net, bridge_instances) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeSyncDependencies(ptr0, len0, bridge_instances);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @returns {string}
+ */
+export function bridgeNodeMode(net) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeNodeMode(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function bridgeChecked(net, name) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeChecked(ptr0, len0, ptr1, len1);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} net
+ * @param {any} action
+ * @param {any} phase
+ * @param {any} details
+ * @returns {boolean}
+ */
+export function bridgeSmallOwnerTraceR44D(net, action, phase, details) {
+    const ret = wasm.bridgeSmallOwnerTraceR44D(net, action, phase, details);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @param {Function} update_command
+ * @returns {Promise<any>}
+ */
+export function bridgeApplyRustyKaspaRootOnlyDefaultPathsR5(net, update_command) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeApplyRustyKaspaRootOnlyDefaultPathsR5(ptr0, len0, update_command);
+    return ret;
+}
+
+/**
+ * @param {string} net
+ * @param {Function} update_command
+ */
+export function bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(net, update_command) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(ptr0, len0, update_command);
+}
+
+/**
+ * @param {string} net
+ * @param {any} values
+ * @param {string} reason
+ * @returns {any}
+ */
+export function bridgeR95BNormalizeNetworkPortValues(net, values, reason) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(reason, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeR95BNormalizeNetworkPortValues(ptr0, len0, values, ptr1, len1);
+    return ret;
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function bridgePlainPortOnlyValueR98(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.bridgePlainPortOnlyValueR98(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} left
+ * @param {any} right
+ * @returns {boolean}
+ */
+export function bridgeSamePortValueR98(left, right) {
+    const ret = wasm.bridgeSamePortValueR98(left, right);
+    return ret !== 0;
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function bridgeNormalizeNetwork(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.bridgeNormalizeNetwork(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @returns {string}
+ */
+export function bridgeReadLastNetwork() {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.bridgeReadLastNetwork();
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {any} net
+ * @returns {string}
+ */
+export function bridgeSaveLastNetwork(net) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.bridgeSaveLastNetwork(net);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {string} key
+ * @param {string} fallback
+ * @returns {any}
+ */
+export function bridgeTranslateRuntimeFeedback(key, fallback) {
+    const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(fallback, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeTranslateRuntimeFeedback(ptr0, len0, ptr1, len1);
+    return ret;
+}
+
+/**
+ * @param {string} key
+ * @param {string} fallback
+ * @returns {any}
+ */
+export function bridgeI18nTextR41(key, fallback) {
+    const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passStringToWasm0(fallback, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeI18nTextR41(ptr0, len0, ptr1, len1);
+    return ret;
+}
+
+/**
+ * @param {string} command
+ * @param {any} payload
+ * @returns {Promise<any>}
+ */
+export function bridgeBackendInvokeR5(command, payload) {
+    const ptr0 = passStringToWasm0(command, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeBackendInvokeR5(ptr0, len0, payload);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * @returns {Array<any>}
+ */
+export function bridgeNetworkProfiles() {
+    const ret = wasm.bridgeNetworkProfiles();
+    return ret;
+}
+
+/**
+ * @returns {Array<any>}
+ */
+export function bridgeR51Keys() {
+    const ret = wasm.bridgeR51Keys();
+    return ret;
+}
+
+/**
+ * @param {string} net
+ * @returns {string}
+ */
+export function bridgeNetworkPolicyKey(net) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeNetworkPolicyKey(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {string} key
+ * @param {any} value
+ */
+export function bridgeR51Store(key, value) {
+    const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeR51Store(ptr0, len0, value);
+    if (ret[1]) {
+        throw takeFromExternrefTable0(ret[0]);
+    }
+}
+
+/**
+ * @param {string} key
+ * @returns {any}
+ */
+export function bridgeR51Load(key) {
+    const ptr0 = passStringToWasm0(key, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeR51Load(ptr0, len0);
+    return ret;
+}
+
+/**
+ * @param {string} net
+ * @returns {boolean}
+ */
+export function bridgeLogAutoScrollEnabled(net) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.bridgeLogAutoScrollEnabled(ptr0, len0);
+    return ret !== 0;
+}
+
+/**
+ * @param {string} net
+ * @param {boolean} enabled
+ */
+export function bridgeSetLogAutoScroll(net, enabled) {
+    const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
+    wasm.bridgeSetLogAutoScroll(ptr0, len0, enabled);
+}
+
+export function bridgeInstallLogAutoScrollControls() {
+    wasm.bridgeInstallLogAutoScrollControls();
+}
+
+/**
+ * @param {any} value
+ * @returns {string}
+ */
+export function bridgeNormalizeInnerTab(value) {
+    let deferred1_0;
+    let deferred1_1;
+    try {
+        const ret = wasm.bridgeNormalizeInnerTab(value);
+        deferred1_0 = ret[0];
+        deferred1_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred1_0, deferred1_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @returns {string}
+ */
+export function bridgeResolveInnerTab(net) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeResolveInnerTab(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+/**
+ * @param {string} net
+ * @param {any} selected
+ * @returns {string}
+ */
+export function bridgeSaveInnerTab(net, selected) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(net, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.bridgeSaveInnerTab(ptr0, len0, selected);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
+
+export function shellAuxInstall() {
+    wasm.shellAuxInstall();
+}
+
 function __wbg_adapter_40(arg0, arg1) {
     wasm._dyn_core_ed718c3d60ebd546___ops__function__FnMut_____Output______as_wasm_bindgen_1ba7c375a52abd4d___closure__WasmClosure___describe__invoke______(arg0, arg1);
 }
 
 function __wbg_adapter_43(arg0, arg1, arg2, arg3, arg4) {
-    wasm.closure936_externref_shim(arg0, arg1, arg2, arg3, arg4);
+    wasm.closure665_externref_shim(arg0, arg1, arg2, arg3, arg4);
 }
 
 function __wbg_adapter_46(arg0, arg1, arg2, arg3) {
-    const ret = wasm.closure940_externref_shim(arg0, arg1, arg2, arg3);
+    const ret = wasm.closure669_externref_shim(arg0, arg1, arg2, arg3);
     return ret;
 }
 
 function __wbg_adapter_49(arg0, arg1, arg2, arg3) {
-    wasm.closure943_externref_shim(arg0, arg1, arg2, arg3);
+    wasm.closure672_externref_shim(arg0, arg1, arg2, arg3);
 }
 
 function __wbg_adapter_52(arg0, arg1, arg2) {
-    const ret = wasm.closure946_externref_shim(arg0, arg1, arg2);
+    const ret = wasm.closure675_externref_shim(arg0, arg1, arg2);
     return ret;
 }
 
 function __wbg_adapter_57(arg0, arg1, arg2) {
-    const ret = wasm.closure950_externref_shim(arg0, arg1, arg2);
+    const ret = wasm.closure679_externref_shim(arg0, arg1, arg2);
     return ret !== 0;
 }
 
 function __wbg_adapter_60(arg0, arg1) {
-    const ret = wasm.closure953_externref_shim(arg0, arg1);
+    const ret = wasm.closure682_externref_shim(arg0, arg1);
     return ret;
 }
 
@@ -7801,7 +7826,7 @@ function __wbg_adapter_66(arg0, arg1, arg2) {
     wasm.closure1158_externref_shim(arg0, arg1, arg2);
 }
 
-function __wbg_adapter_768(arg0, arg1, arg2, arg3) {
+function __wbg_adapter_770(arg0, arg1, arg2, arg3) {
     wasm.closure1182_externref_shim(arg0, arg1, arg2, arg3);
 }
 
@@ -8054,7 +8079,7 @@ function __wbg_get_imports() {
                 const a = state0.a;
                 state0.a = 0;
                 try {
-                    return __wbg_adapter_768(a, state0.b, arg0, arg1);
+                    return __wbg_adapter_770(a, state0.b, arg0, arg1);
                 } finally {
                     state0.a = a;
                 }
@@ -8237,43 +8262,43 @@ function __wbg_get_imports() {
         const ret = false;
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3606 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 937, __wbg_adapter_40);
+    imports.wbg.__wbindgen_closure_wrapper2506 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 666, __wbg_adapter_40);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3643 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 937, __wbg_adapter_43);
+    imports.wbg.__wbindgen_closure_wrapper2543 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 666, __wbg_adapter_43);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3645 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 937, __wbg_adapter_46);
+    imports.wbg.__wbindgen_closure_wrapper2545 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 666, __wbg_adapter_46);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3647 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 937, __wbg_adapter_49);
+    imports.wbg.__wbindgen_closure_wrapper2547 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 666, __wbg_adapter_49);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3649 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 937, __wbg_adapter_52);
+    imports.wbg.__wbindgen_closure_wrapper2549 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 666, __wbg_adapter_52);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3651 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 937, __wbg_adapter_52);
+    imports.wbg.__wbindgen_closure_wrapper2551 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 666, __wbg_adapter_52);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3653 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 937, __wbg_adapter_57);
+    imports.wbg.__wbindgen_closure_wrapper2553 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 666, __wbg_adapter_57);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3655 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 937, __wbg_adapter_60);
+    imports.wbg.__wbindgen_closure_wrapper2555 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 666, __wbg_adapter_60);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper3657 = function(arg0, arg1, arg2) {
-        const ret = makeMutClosure(arg0, arg1, 937, __wbg_adapter_63);
+    imports.wbg.__wbindgen_closure_wrapper2557 = function(arg0, arg1, arg2) {
+        const ret = makeMutClosure(arg0, arg1, 666, __wbg_adapter_63);
         return ret;
     };
-    imports.wbg.__wbindgen_closure_wrapper4252 = function(arg0, arg1, arg2) {
+    imports.wbg.__wbindgen_closure_wrapper4257 = function(arg0, arg1, arg2) {
         const ret = makeMutClosure(arg0, arg1, 1159, __wbg_adapter_66);
         return ret;
     };
