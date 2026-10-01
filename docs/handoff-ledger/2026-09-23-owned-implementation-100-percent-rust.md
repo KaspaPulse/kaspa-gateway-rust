@@ -339,9 +339,12 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP288 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP289 - Bridge port-conflict and auto-fix event owners Rust/WASM ownership (INTENT)
+## OP289 - Bridge port-conflict and auto-fix event owners Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 2, same canonical writer session.
 - PREVIOUS_CLOSED_OPERATION: OP288 closeout `9979bfd3cea733d1d0e801a43bbc1c7d7dd3adda`; BASE_TREE `538ed099d9514ad120859af999fc442928c807e0`; worktree clean at intent time.
-- BOUNDARY: move `installActions` port-conflict input/change scheduling, initial validation, auto-fix button installation/click handling, and auto-fix feedback refresh timers into Rust/WASM. Existing Rust port validation/autofix primitives remain authoritative; JavaScript retains only callbacks for instance refresh, command update, and runtime activity.
-- ACCEPTANCE: Rust installer + thin JS call; R33/R37/R45 behavior preserved; fail-closed ownership regression; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `installActions` port-conflict input/change scheduling, initial validation, auto-fix button installation/click handling, and feedback refresh timers moved into Rust/WASM `bridgeInstallPortEventOwnersUi`. Existing Rust port validation/autofix primitives remain authoritative; JavaScript is reduced to instance-refresh, command-update, and runtime-activity callbacks.
+- IMPLEMENTATION_CHECKPOINT: `61a7e6f1054e45d26fae9fcc126400c7af85db8e`, tree `fd507b699388343a68af358acbce0ba4ed6014be`. Closeout generation 2280.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 308/308 plus auxiliary suites; targeted port-event ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP289 qualification unless invalidated.
+- PUSHED: NO.
