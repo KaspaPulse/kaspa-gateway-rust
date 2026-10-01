@@ -104,3 +104,12 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - PRE_EXISTING_STALE_GATE_DEBT (unrelated to OP266, fails identically at 2d43099): xtask tests raw_log_provenance::current_repository_matches_known_transport_filter_debt and true_raw_log::current_repository_static_contract_passes expect JS markers retired by earlier raw-log/live-refresh ownership moves. Separate repair boundary.
 - NEXT: (1) writer-coordination hardening (local CAS claim, fencing); (2) stale xtask gate repair; (3) continue Bridge JS ownership discovery (kgwBridgeRequireValidSettings and remaining orchestration).
 - PUSHED: NO
+## OP267 - Local writer-coordination hardening (CLOSED_LOCAL / VERIFIED_SUCCESS)
+
+- IMPLEMENTATION_CHECKPOINT: ace7af25d2794004b58ce308525237683911e6d5, tree b454c9e33824348ceb342279dd97d4d93ada8fc1 (parent b540d88). Closeout generation 2257.
+- DESIGN: `xtask/src/writer_claim.rs`. Claim blob under `refs/kgw/writer-claim` with writer_id, session_id, host_id, state, acquired_at, renewed_at, lease_secs, epoch (monotonic fencing token), base_head, worktree_fingerprint (git hash of status+diff), transition_count. Every transition is `git update-ref <ref> <new> <expected-old>` (all-zero old = create-if-absent), so a concurrent or stale writer cannot win. Takeover is only possible after lease expiry or release and increments the epoch; `verify --session-id --epoch` fails for any stale session.
+- USAGE: `cargo run -p xtask -- writer-claim acquire --writer-id <id> [--session-id <id>] [--lease-secs N]` prints the session id and epoch; keep them locally. Call `verify` before protected mutations (commits, source edits in long runs) and `renew` periodically; `release` at handoff.
+- LIMITS (honest): enforcement is cooperative; no git hook (a hook would add non-Rust execution). host_id comes from COMPUTERNAME/HOSTNAME and is informational. Single local repository only.
+- QUALIFICATION PASS: fmt --check, clippy -D warnings (xtask), 7 writer_claim tests incl. real-git CAS/fencing test, language-policy check, git diff --check; full xtask suite 285 pass / 2 fail (the two classified pre-existing stale tests). Logs: hardening-qual/.
+- NEXT: repair the two stale xtask tests (raw_log_provenance, true_raw_log), then resume Bridge JS ownership discovery.
+- PUSHED: NO
