@@ -348,3 +348,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 308/308 plus auxiliary suites; targeted port-event ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP289 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP290 - Bridge scoped settings input/change event owners Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP289 closeout `856bb5c5aaeee5bc5a571e096cb09c2d0b79fbc4`; BASE_TREE `72dd2cec5f5093bddcdf501b49711c503a1bc8d3`; worktree clean at intent time.
+- BOUNDARY: move `installActions` generic settings input/change ownership into Rust/WASM: network extraction, restart-required marking, scoped mode/command refresh, experimental Testnet13 enable confirmation, policy persistence, runtime-button refresh, and stop-on-disable dispatch. JavaScript keeps only explicit callbacks that are not yet Rust-owned.
+- ACCEPTANCE: Rust export + thin JS call + fail-closed regression; generated WASM consistent; trusted/programmatic reasons preserved; no click-action migration in this boundary; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
