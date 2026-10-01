@@ -401,3 +401,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: preview-dispatch direct JavaScript call count updated from two to one because OP294 moved the integrated-runtime preview path into Rust while preserving the remaining independent preview action.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP294 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP295 - Bridge raw-log live kick Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP294 closeout `820f81fa1bd1dfbdddacb1acb8e5d46c34ff621f`; BASE_TREE `b8e4f5d1fbd941f791d80635d87d739096b1e1ba`; worktree clean at intent time.
+- BOUNDARY: move `kgwBridgeR51KickRawLogLiveR134E` start-live-refresh plus 0/350/1000/2500ms refresh scheduling into Rust/WASM. JavaScript becomes a thin wrapper passing existing live-refresh callbacks.
+- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; exact refresh schedule/reason suffixes preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
