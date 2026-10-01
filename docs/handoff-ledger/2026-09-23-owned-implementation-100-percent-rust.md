@@ -122,3 +122,15 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - WRITER CLAIM: this session holds refs/kgw/writer-claim (epoch 1); verified before the commit.
 - NEXT: resume Bridge JS ownership discovery (kgwBridgeRequireValidSettings and the remaining orchestration), recompute debt from the repository.
 - PUSHED: NO
+## OP269 - Bridge require-valid-settings Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
+
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS at 2026-10-01. Writer claim handoff completed to `chatgpt-gpt56-sol-rdc` epoch 2 before protected mutations.
+- PREVIOUS_CLOSED_OPERATION: OP268 (closeout 7090a80). BASE_HEAD: 7090a80ee2e44a59a7db177caa87a2c1499fda5a. BASE_TREE: ddc58b0a07015fee02bdd5dcda496f7bab63dd9f. Worktree clean at intent time.
+- IMPLEMENTATION_CHECKPOINT: 20f6f4d72a66cb0f8fef952c9eec67c62109e7e4, tree f19dba615fc4f08d19dc1cfc79ce9818ff93c9b9. Closeout generation 2260.
+- QUALIFICATION PASS: cargo fmt --check; strict clippy for frontend-WASM and xtask; frontend-WASM tests; targeted require-valid ownership regression; full xtask suite 288/288; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint --max-warnings 0; project-continuity gate; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); git diff --check.
+- GATE_REPAIR: two fail-closed ownership gates were updated narrowly for the intended OP269 call-count changes; the require-valid regression now scopes retired orchestration checks to the exact migrated wrappers instead of banning equivalent validation idioms elsewhere.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP269 qualification unless invalidated.
+- BOUNDARY: `kgwBridgeRequireValidSettings` (validate form with focus, port-conflict assertion, in-process node effective settings, effective settings V1) and `kgwBridgeEffectiveInprocessNodeSettings` (node-mode check, validate, effective node settings) are still JavaScript orchestration. Move both into Rust/WASM exports (bridgeRequireValidSettingsUi, bridgeEffectiveInprocessNodeSettingsChecked) leaving thin JS wrappers; the JS structured-instance reader stays a callback until its own ownership move.
+- ACCEPTANCE: new Rust exports + unit-level contract, xtask ownership regression rejecting legacy JS orchestration, wasm codegen regenerated and consistent, fmt/clippy/xtask suite/effective-bridge gate/language-policy/ESLint/node check pass, no ownership check weakened.
+- WRITER_TAKEOVER: generation 2259. Previous `claude-chat-rdc` epoch 1 showed no renewal/activity after session deletion, was explicitly released, and is fenced. Canonical writer is now `chatgpt-gpt56-sol-rdc`, session `2b8e048e2c1e8d9d5b07915f83a62931`, epoch 2, 1800-second lease.
+- TAKEOVER_PRESERVATION: existing OP269 dirty worktree preserved; no reset/stash/clean/discard. Continue same OP269 from actual content.
