@@ -7,6 +7,7 @@ import initBridgeRust, {
   bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7,
   bridgeBuildCommandLinesUi as wasmBridgeBuildCommandLinesUi,
   bridgeBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi,
+  bridgeInvokeIntegratedRuntimeUi as wasmBridgeInvokeIntegratedRuntimeUi,
   bridgeNormalizeRuntimeError as wasmBridgeNormalizeRuntimeError,
   bridgeV7BlockInprocessIfNodeOwnerRunning as wasmBridgeV7BlockInprocessIfNodeOwnerRunning,
   bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons,
@@ -32,7 +33,6 @@ import initBridgeRust, {
   bridgeStartWasInprocessR65F as wasmBridgeStartWasInprocessR65F,
   bridgeCurrentNodeModeFromUiR65F as wasmBridgeCurrentNodeModeFromUiR65F,
   bridgeR95BNormalizeNetworkPortValues as wasmBridgeR95BNormalizeNetworkPortValues,
-  bridgeInvokeRuntimeCommand as wasmBridgeInvokeRuntimeCommand,
   bridgePreparePreview as wasmBridgePreparePreview,
   bridgePreviewMessage as wasmBridgePreviewMessage,
   bridgePreviewSequence as wasmBridgePreviewSequence,
@@ -535,14 +535,16 @@ function buildApplyPayload(net, command) {
     buildCommandLines
   );
 }
+// KGW_BRIDGE_INTEGRATED_RUNTIME_INVOKE_RUST_OWNER_V1
 async function invokeBridgeIntegratedRuntime(command, net) {
-  const payload = buildApplyPayload(net, command);
-  if (command === "kgw_kgw_apply_node_settings_v1") {
-    const errors = kgwBridgeValidateForm(net, true);
-    if (Object.keys(errors).length) throw new Error(Object.values(errors)[0]);
-    await wasmBridgePreparePreview(String(net || ""), payload);
-  }
-  return await wasmBridgeInvokeRuntimeCommand(command, payload);
+  return await wasmBridgeInvokeIntegratedRuntimeUi(
+    String(command || ""),
+    String(net || ""),
+    bridgeInstances,
+    activeInstance,
+    kgwBridgeR51ReadStructuredInstancesR253,
+    buildCommandLines
+  );
 }
 
 

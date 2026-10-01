@@ -3059,6 +3059,59 @@ fn verify_apply_payload_ownership(source: &str, helpers: &str) -> Result<(), Str
     Ok(())
 }
 
+fn verify_integrated_runtime_invoke_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeInvokeIntegratedRuntimeUi as wasmBridgeInvokeIntegratedRuntimeUi",
+        "// KGW_BRIDGE_INTEGRATED_RUNTIME_INVOKE_RUST_OWNER_V1",
+        "async function invokeBridgeIntegratedRuntime(command, net) {",
+        "return await wasmBridgeInvokeIntegratedRuntimeUi(",
+        "kgwBridgeR51ReadStructuredInstancesR253,",
+        "buildCommandLines",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge integrated runtime invoke Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    let wrapper = slice_between(
+        source,
+        "async function invokeBridgeIntegratedRuntime(command, net) {",
+        "\n}",
+    )?;
+    for forbidden in [
+        "buildApplyPayload(net, command)",
+        "kgwBridgeValidateForm(",
+        "Object.keys(",
+        "wasmBridgePreparePreview(",
+        "wasmBridgeInvokeRuntimeCommand(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge integrated runtime JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeInvokeIntegratedRuntimeUi",
+        "pub async fn bridge_invoke_integrated_runtime_ui(",
+        "bridge_build_apply_payload_ui(",
+        "bridge_validate_form_ui(",
+        "Reflect::own_keys(&errors)",
+        "bridge_prepare_preview(net, payload.clone()).await?",
+        "bridge_invoke_runtime_command(command, payload).await",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge integrated runtime Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_require_valid_settings_ownership(source: &str, helpers: &str) -> Result<(), String> {
     for required in [
         "bridgeRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi",
@@ -3666,10 +3719,10 @@ fn verify_static_contracts(
     if source
         .matches("wasmBridgePreparePreview(String(net || \"\"),")
         .count()
-        != 2
+        != 1
     {
         return Err(
-            "Bridge preview runtime dispatch must use exactly two remaining direct JavaScript Rust/WASM call sites after OP274 moves update-command preview dispatch into Rust"
+            "Bridge preview runtime dispatch must use exactly one remaining direct JavaScript Rust/WASM call site after OP294 moves integrated runtime invocation into Rust"
                 .to_owned(),
         );
     }
@@ -3776,6 +3829,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_full_form_validation_ownership(&full_source, &helper_source)?;
     verify_require_valid_settings_ownership(&full_source, &helper_source)?;
     verify_apply_payload_ownership(&full_source, &helper_source)?;
+    verify_integrated_runtime_invoke_ownership(&full_source, &helper_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -5831,6 +5885,29 @@ mod tests {
         ] {
             assert!(verify_apply_payload_ownership(source, &mutation).is_err());
         }
+    }
+
+    #[test]
+    fn integrated_runtime_invoke_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_integrated_runtime_invoke_ownership(source, helpers).is_ok());
+
+        let legacy = source.replacen(
+            "async function invokeBridgeIntegratedRuntime(command, net) {",
+            "async function invokeBridgeIntegratedRuntime(command, net) {\n  const payload = buildApplyPayload(net, command);",
+            1,
+        );
+        assert!(verify_integrated_runtime_invoke_ownership(&legacy, helpers).is_err());
+
+        let missing = helpers.replace(
+            "js_name = bridgeInvokeIntegratedRuntimeUi",
+            "js_name = missingInvokeIntegratedRuntimeUi",
+        );
+        assert!(verify_integrated_runtime_invoke_ownership(source, &missing).is_err());
     }
 
     #[test]

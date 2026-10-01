@@ -4247,6 +4247,39 @@ pub fn bridge_build_apply_payload_ui(
     Ok(payload.into())
 }
 
+#[wasm_bindgen(js_name = bridgeInvokeIntegratedRuntimeUi)]
+pub async fn bridge_invoke_integrated_runtime_ui(
+    command: String,
+    net: String,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    structured_reader: JsValue,
+    build_command_lines: JsValue,
+) -> Result<JsValue, JsValue> {
+    let payload = bridge_build_apply_payload_ui(
+        net.clone(),
+        command.clone(),
+        bridge_instances.clone(),
+        active_instance,
+        structured_reader,
+        build_command_lines,
+    )?;
+
+    if command == "kgw_kgw_apply_node_settings_v1" {
+        let errors = bridge_validate_form_ui(net.clone(), bridge_instances, true);
+        let keys = Reflect::own_keys(&errors)?;
+        if keys.length() > 0 {
+            let key = keys.get(0);
+            let key = crate::js_string_owned(&key);
+            let message = crate::js_string_owned(&property(&errors, &key));
+            return Err(JsValue::from(Error::new(&message)));
+        }
+        crate::bridge_start_trace::bridge_prepare_preview(net, payload.clone()).await?;
+    }
+
+    crate::bridge_start_trace::bridge_invoke_runtime_command(command, payload).await
+}
+
 fn bridge_node_mode_text(value: &str) -> &'static str {
     if value == "inprocess" {
         "inprocess"
