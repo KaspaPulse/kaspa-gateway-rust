@@ -1400,15 +1400,16 @@ fn verify_r51_live_refresh_ownership(source: &str, runtime_core: &str) -> Result
             ));
         }
     }
-    if source.matches("wasmBridgeR51RefreshOne(").count() != 5
-        || source.matches("wasmBridgeR51StartLiveRefresh(").count() != 2
+    if source.matches("wasmBridgeR51RefreshOne(").count() != 1
+        || source.matches("wasmBridgeR51StartLiveRefresh(").count() != 1
         || source
             .matches("kgwBridgeR51LiveRefreshCallbacksR257()")
             .count()
-            != 9
+            != 5
     {
         return Err(
-            "Bridge R51 live-refresh direct-call or callback-factory count drifted".to_owned(),
+            "Bridge R51 live-refresh direct-call or callback-factory count drifted after OP295 raw-log live scheduling moved into Rust"
+                .to_owned(),
         );
     }
     for required in [
@@ -1438,6 +1439,54 @@ fn verify_r51_live_refresh_ownership(source: &str, runtime_core: &str) -> Result
         if !runtime_core.contains(required) {
             return Err(format!(
                 "Bridge R51 live-refresh Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_raw_log_live_kick_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeKickRawLogLiveR134E as wasmBridgeKickRawLogLiveR134E",
+        "// KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E",
+        "function kgwBridgeR51KickRawLogLiveR134E(net, reason = \"bridge-start\") {",
+        "return wasmBridgeKickRawLogLiveR134E(",
+        "kgwBridgeR51LiveRefreshCallbacksR257()",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge raw-log live kick Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    let wrapper = slice_between(
+        source,
+        "function kgwBridgeR51KickRawLogLiveR134E(net, reason = \"bridge-start\") {",
+        "\n}",
+    )?;
+    for forbidden in [
+        "window.setTimeout(",
+        "wasmBridgeR51RefreshOne(",
+        "wasmBridgeR51StartLiveRefresh(",
+        "console.warn(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge raw-log live JavaScript scheduling remains: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeKickRawLogLiveR134E",
+        "pub fn bridge_kick_raw_log_live_r134e(",
+        "bridge_r51_start_live_refresh(callbacks.clone())",
+        "[(0, \"0\"), (350, \"350\"), (1000, \"1000\"), (2500, \"2500\")]",
+        "bridge_tab_refresh_later(",
+        "format!(\"{reason}-{suffix}\")",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge raw-log live Rust owner contract missing: {required}"
             ));
         }
     }
@@ -3798,6 +3847,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_runtime_notice_ownership(&full_source, &runtime_core_source)?;
     verify_mark_restart_required_ownership(&full_source, &runtime_core_source)?;
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
+    verify_raw_log_live_kick_ownership(&full_source, &helper_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_start_options_ownership(&full_source, &helper_source, &instance_settings_source)?;
     verify_network_panel_ownership(&full_source, &helper_source)?;
@@ -6089,6 +6139,29 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn raw_log_live_kick_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_raw_log_live_kick_ownership(source, helpers).is_ok());
+
+        let legacy = source.replacen(
+            "function kgwBridgeR51KickRawLogLiveR134E(net, reason = \"bridge-start\") {",
+            "function kgwBridgeR51KickRawLogLiveR134E(net, reason = \"bridge-start\") {\n  window.setTimeout(() => {}, 350);",
+            1,
+        );
+        assert!(verify_raw_log_live_kick_ownership(&legacy, helpers).is_err());
+
+        let missing = helpers.replace(
+            "js_name = bridgeKickRawLogLiveR134E",
+            "js_name = missingKickRawLogLiveR134E",
+        );
+        assert!(verify_raw_log_live_kick_ownership(source, &missing).is_err());
     }
 
     #[test]

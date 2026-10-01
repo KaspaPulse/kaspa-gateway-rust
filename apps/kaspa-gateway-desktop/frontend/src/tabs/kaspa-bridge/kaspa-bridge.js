@@ -44,6 +44,7 @@ import initBridgeRust, {
   bridgeInstallInstanceContainerOwnerR11 as wasmBridgeInstallInstanceContainerOwnerR11,
   bridgeInstallAllVisibleInstanceContainerOwnersR11 as wasmBridgeInstallAllVisibleInstanceContainerOwnersR11,
   bridgeInstallNetworkTabsUi as wasmBridgeInstallNetworkTabsUi,
+  bridgeKickRawLogLiveR134E as wasmBridgeKickRawLogLiveR134E,
   bridgeInstallDelegatedTabsUi as wasmBridgeInstallDelegatedTabsUi,
   bridgeInstallActionEventOwnersUi as wasmBridgeInstallActionEventOwnersUi,
   bridgeInstallPortEventOwnersUi as wasmBridgeInstallPortEventOwnersUi,
@@ -974,23 +975,11 @@ function kgwBridgeR51LiveRefreshCallbacksR257() {
 // KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E
 // Raw bridge log live helper only: no parsing, no ASIC table, no bridge behavior duplication.
 function kgwBridgeR51KickRawLogLiveR134E(net, reason = "bridge-start") {
-  try {
-    wasmBridgeR51StartLiveRefresh(kgwBridgeR51LiveRefreshCallbacksR257());
-    window.setTimeout(function () {
-      void wasmBridgeR51RefreshOne(String(net || ""), reason + "-0", kgwBridgeR51LiveRefreshCallbacksR257());
-    }, 0);
-    window.setTimeout(function () {
-      void wasmBridgeR51RefreshOne(String(net || ""), reason + "-350", kgwBridgeR51LiveRefreshCallbacksR257());
-    }, 350);
-    window.setTimeout(function () {
-      void wasmBridgeR51RefreshOne(String(net || ""), reason + "-1000", kgwBridgeR51LiveRefreshCallbacksR257());
-    }, 1000);
-    window.setTimeout(function () {
-      void wasmBridgeR51RefreshOne(String(net || ""), reason + "-2500", kgwBridgeR51LiveRefreshCallbacksR257());
-    }, 2500);
-  } catch (error) {
-    console.warn("[KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E_FAILED]", error);
-  }
+  return wasmBridgeKickRawLogLiveR134E(
+    String(net || ""),
+    String(reason || "bridge-start"),
+    kgwBridgeR51LiveRefreshCallbacksR257()
+  );
 }
 
 

@@ -1080,6 +1080,20 @@ fn bridge_tab_select(
     normalized
 }
 
+#[wasm_bindgen(js_name = bridgeKickRawLogLiveR134E)]
+pub fn bridge_kick_raw_log_live_r134e(net: String, reason: String, callbacks: JsValue) -> bool {
+    crate::bridge_runtime_core::bridge_r51_start_live_refresh(callbacks.clone());
+    for (delay_ms, suffix) in [(0, "0"), (350, "350"), (1000, "1000"), (2500, "2500")] {
+        bridge_tab_refresh_later(
+            net.clone(),
+            format!("{reason}-{suffix}"),
+            callbacks.clone(),
+            delay_ms,
+        );
+    }
+    true
+}
+
 #[wasm_bindgen(js_name = bridgeInstallNetworkTabsUi)]
 pub fn bridge_install_network_tabs_ui(root: JsValue, callbacks: JsValue) -> bool {
     if !present(&root) {
