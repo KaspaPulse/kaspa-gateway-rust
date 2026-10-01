@@ -58,6 +58,7 @@ const panel = {
   }
 };
 const sandbox = {
+  Event: globalThis.Event,
   document: {
     querySelector() { return panel; },
     getElementById(id) { return elements.get(id) || null; }
@@ -156,6 +157,65 @@ const r51ReadSettings = wasmModule.bridgeR51ReadSettings("mainnet", {
   }
 });
 elements.delete("bridge-mainnet-op249Checkbox");
+const r51WriteEvents = [];
+const r51WriteValueField = {
+  id: "bridge-mainnet-op250Value",
+  value: "before",
+  checked: false,
+  type: "text",
+  dispatchEvent(event) {
+    r51WriteEvents.push(this.id + ":" + String(event?.type || "") + ":" + String(Boolean(event?.bubbles)));
+    return true;
+  }
+};
+const r51WriteCheckboxField = {
+  id: "bridge-mainnet-op250Checkbox",
+  value: "ignored",
+  checked: false,
+  type: "checkbox",
+  dispatchEvent(event) {
+    r51WriteEvents.push(this.id + ":" + String(event?.type || "") + ":" + String(Boolean(event?.bubbles)));
+    return true;
+  }
+};
+elements.set(r51WriteValueField.id, r51WriteValueField);
+elements.set(r51WriteCheckboxField.id, r51WriteCheckboxField);
+const r51WriteValues = {
+  "bridge-mainnet-op250Value": { type: "value", value: "after" },
+  "bridge-mainnet-op250Checkbox": { type: "checkbox", checked: true },
+  "bridge-mainnet-logToFile": { type: "value", value: "managed-must-not-apply" }
+};
+const r51WriteBridgeInstances = { mainnet: [], testnet10: [], testnet13: [] };
+const r51WriteActiveInstance = { mainnet: "" };
+let r51WriteNormalizeReason = "";
+let r51WriteNormalizeCount = 0;
+let r51WriteStructuredCount = 0;
+let r51WriteCommandOptionsCount = 0;
+let r51WriteUpdateCommandCount = 0;
+wasmModule.bridgeR51WriteSettings(
+  "mainnet",
+  r51WriteValues,
+  r51WriteBridgeInstances,
+  r51WriteActiveInstance,
+  {
+    normalizeNetworkPortValues: (_net, values, reason) => {
+      r51WriteNormalizeCount += 1;
+      r51WriteNormalizeReason = String(reason || "");
+      values.__op250Normalized = true;
+      return values;
+    },
+    applyStructuredInstances: () => {
+      r51WriteStructuredCount += 1;
+      return false;
+    },
+    applyCommandOptions: () => {
+      r51WriteCommandOptionsCount += 1;
+    },
+    updateCommand: () => {
+      r51WriteUpdateCommandCount += 1;
+    }
+  }
+);
 const output = {
   directOwners: {
     hasConfigInitially: wasmModule.bridgeHasConfig("mainnet"),
@@ -191,7 +251,17 @@ const output = {
       !("bridge-mainnet-healthCheckPort" in r51ReadSettings) &&
       !("bridge-mainnet-webDashboardPort" in r51ReadSettings),
     r51ReadNormalized: Boolean(r51ReadSettings.__op249Normalized),
-    r51ReadNormalizeReason
+    r51ReadNormalizeReason,
+    r51WriteValue: r51WriteValueField.value,
+    r51WriteCheckboxChecked: Boolean(r51WriteCheckboxField.checked),
+    r51WriteManagedPreserved: elements.get("bridge-mainnet-logToFile")?.value === "false",
+    r51WriteEvents,
+    r51WriteNormalized: Boolean(r51WriteValues.__op250Normalized),
+    r51WriteNormalizeReason,
+    r51WriteNormalizeCount,
+    r51WriteStructuredCount,
+    r51WriteCommandOptionsCount,
+    r51WriteUpdateCommandCount
   }
 };
 for (const step of request.steps) {
@@ -337,12 +407,11 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if source.contains("function kgwBridgeR51Fields(") {
         return Err("Retired Bridge R51 fields JavaScript owner remains".to_owned());
     }
-    if !source.contains("bridgeR51Fields as wasmBridgeR51Fields") {
-        return Err("Bridge R51 fields Rust/WASM import is missing".to_owned());
-    }
-    if source.matches("wasmBridgeR51Fields(").count() != 1 {
+    if source.contains("bridgeR51Fields as wasmBridgeR51Fields")
+        || source.matches("wasmBridgeR51Fields(").count() != 0
+    {
         return Err(
-            "Bridge R51 fields must use exactly one direct JavaScript Rust/WASM call site after OP249 moves ReadSettings enumeration into Rust".to_owned(),
+            "Bridge R51 fields must have no direct JavaScript import/call sites after OP250 moves the remaining WriteSettings enumeration into Rust".to_owned(),
         );
     }
     if !instance_settings.contains("js_name = bridgeR51Fields")
@@ -368,9 +437,6 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
                 .to_owned(),
         );
     }
-    if !source.contains("function kgwBridgeR51WriteSettings(") {
-        return Err("Bridge R51 WriteSettings must remain out of OP249 scope".to_owned());
-    }
     for needle in [
         "js_name = bridgeR51ReadSettings",
         "pub fn bridge_r51_read_settings(",
@@ -382,6 +448,39 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
         if !instance_settings.contains(needle) {
             return Err(format!(
                 "Bridge R51 ReadSettings Rust ownership contract missing: {needle}"
+            ));
+        }
+    }
+
+    if source.contains("function kgwBridgeR51WriteSettings(") {
+        return Err("Retired Bridge R51 WriteSettings JavaScript owner remains".to_owned());
+    }
+    if !source.contains("bridgeR51WriteSettings as wasmBridgeR51WriteSettings") {
+        return Err("Bridge R51 WriteSettings Rust/WASM import is missing".to_owned());
+    }
+    if source.matches("wasmBridgeR51WriteSettings(").count() != 1 {
+        return Err(
+            "Bridge R51 WriteSettings must have exactly one thin Rust/WASM wrapper call".to_owned(),
+        );
+    }
+    if source.matches("kgwBridgeR51WriteSettingsR250(").count() != 4 {
+        return Err(
+            "Bridge R51 WriteSettings thin wrapper must own exactly three consumers plus its definition"
+                .to_owned(),
+        );
+    }
+    for needle in [
+        "js_name = bridgeR51WriteSettings",
+        "pub fn bridge_r51_write_settings(",
+        "applyStructuredInstances",
+        "applyCommandOptions",
+        "updateCommand",
+        "bridge_port_orchestration::bridge_reassign_instance_ports_from_external_range_r91",
+        "bridge_instance_ui::bridge_sync_instance_preview_rows_r8b",
+    ] {
+        if !instance_settings.contains(needle) {
+            return Err(format!(
+                "Bridge R51 WriteSettings Rust ownership contract missing: {needle}"
             ));
         }
     }
@@ -593,6 +692,37 @@ pub fn run(root: &Path) -> Result<String, String> {
         &actual,
         "/directOwners/r51ReadNormalizeReason",
         json!("read-settings"),
+    )?;
+    expect_pointer(&actual, "/directOwners/r51WriteValue", json!("after"))?;
+    for pointer in [
+        "/directOwners/r51WriteCheckboxChecked",
+        "/directOwners/r51WriteManagedPreserved",
+        "/directOwners/r51WriteNormalized",
+    ] {
+        expect_pointer(&actual, pointer, json!(true))?;
+    }
+    expect_pointer(
+        &actual,
+        "/directOwners/r51WriteNormalizeReason",
+        json!("write-settings"),
+    )?;
+    for pointer in [
+        "/directOwners/r51WriteNormalizeCount",
+        "/directOwners/r51WriteStructuredCount",
+        "/directOwners/r51WriteCommandOptionsCount",
+        "/directOwners/r51WriteUpdateCommandCount",
+    ] {
+        expect_pointer(&actual, pointer, json!(1))?;
+    }
+    expect_pointer(
+        &actual,
+        "/directOwners/r51WriteEvents",
+        json!([
+            "bridge-mainnet-op250Value:input:true",
+            "bridge-mainnet-op250Value:change:true",
+            "bridge-mainnet-op250Checkbox:input:true",
+            "bridge-mainnet-op250Checkbox:change:true"
+        ]),
     )?;
 
     expect_pointer(&actual, "/parsed/instanceBlockWaitTime", json!("2500ms"))?;

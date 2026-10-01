@@ -31,8 +31,8 @@ import initBridgeRust, {
   bridgeR51Load as wasmBridgeR51Load,
   bridgeR51Keys as wasmBridgeR51Keys,
   bridgeR51Panel as wasmBridgeR51Panel,
-  bridgeR51Fields as wasmBridgeR51Fields,
   bridgeR51ReadSettings as wasmBridgeR51ReadSettings,
+  bridgeR51WriteSettings as wasmBridgeR51WriteSettings,
   bridgeRuntimeErrorFromStatus as wasmBridgeRuntimeErrorFromStatus,
   bridgePreviewDeclaresInprocessR65F as wasmBridgePreviewDeclaresInprocessR65F,
   bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction,
@@ -2233,41 +2233,26 @@ function kgwBridgeR95BNormalizeNetworkPortValues(net, values, reason) {
   return values;
 }
 
-function kgwBridgeR51WriteSettings(net, values) {
-  if (!values || typeof values !== "object") return;
+function kgwBridgeR51WriteSettingsCallbacksR250() {
+  return {
+    normalizeNetworkPortValues: (net, values, reason) =>
+      kgwBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || "")),
+    applyStructuredInstances: (net, values) =>
+      kgwBridgeR51ApplyStructuredInstancesR26B(String(net || ""), values),
+    applyCommandOptions: (net, values) =>
+      kgwBridgeR51ApplyCommandOptionsR38C(String(net || ""), values),
+    updateCommand: (net) => updateCommand(String(net || ""))
+  };
+}
 
-  values = kgwBridgeR95BNormalizeNetworkPortValues(net, values, "write-settings");
-
-  kgwBridgeR51ApplyStructuredInstancesR26B(net, values);
-
-  for (const field of wasmBridgeR51Fields(net)) {
-    if (!field.id) continue;
-
-    const name = field.id.slice(("bridge-" + net + "-").length);
-    if (BRIDGE_MANAGED[name]) continue;
-    const item = values[field.id];
-    if (!item) continue;
-
-    if (field.type === "checkbox") {
-      field.checked = Boolean(item.checked);
-    } else if ("value" in item) {
-      field.value = String(item.value ?? "");
-    }
-
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-    field.dispatchEvent(new Event("change", { bubbles: true }));
-  }
-
-  kgwBridgeR51ApplyCommandOptionsR38C(net, values);
-
-  wasmBridgeReassignInstancePortsFromExternalRangeR91(
+function kgwBridgeR51WriteSettingsR250(net, values) {
+  return wasmBridgeR51WriteSettings(
+    String(net || ""),
+    values,
     bridgeInstances,
-    String(wasmBridgeInstanceNetworkKeyR15(net, net) || ""),
-    "r95b-r51-write-settings-normalized-network-ports"
+    activeInstance,
+    kgwBridgeR51WriteSettingsCallbacksR250()
   );
-
-  wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
-  updateCommand(net);
 }
 
 function kgwBridgeR51CaptureFactoryDefaults() {
@@ -2282,9 +2267,9 @@ function kgwBridgeR51LoadSavedSettings() {
   for (const net of wasmBridgeR51Keys()) {
     const saved = wasmBridgeR51Load("saved:" + net);
     if (saved) {
-      kgwBridgeR51WriteSettings(net, kgwBridgeR95BNormalizeNetworkPortValues(net, saved, "load-saved-settings"));
+      kgwBridgeR51WriteSettingsR250(net, kgwBridgeR95BNormalizeNetworkPortValues(net, saved, "load-saved-settings"));
     } else {
-      kgwBridgeR51WriteSettings(net, kgwBridgeR95BNormalizeNetworkPortValues(net, kgwBridgeR51ReadSettingsR249(net), "load-current-settings"));
+      kgwBridgeR51WriteSettingsR250(net, kgwBridgeR95BNormalizeNetworkPortValues(net, kgwBridgeR51ReadSettingsR249(net), "load-current-settings"));
     }
   }
 }
@@ -2371,7 +2356,7 @@ function kgwBridgeR51RestoreDefaults(net) {
       hasDefaults: Boolean(defaults),
       defaultKeyCount: defaults && typeof defaults === "object" ? Object.keys(defaults).length : 0
     });
-    kgwBridgeR51WriteSettings(net, defaults);
+    kgwBridgeR51WriteSettingsR250(net, defaults);
     wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5(String(net || ""), updateCommand);
   }
 

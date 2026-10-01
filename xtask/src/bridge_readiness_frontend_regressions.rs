@@ -111,7 +111,7 @@ const r51Sandbox = vm.createContext({
   wasmBridgeR51Load: wasm.bridgeR51Load,
   wasmBridgeR51Keys: wasm.bridgeR51Keys,
   kgwBridgeR51ReadSettingsR249: () => r51Current,
-  kgwBridgeR51WriteSettings: (net, values) => r51Writes.push({ net: String(net), values }),
+  kgwBridgeR51WriteSettingsR250: (net, values) => r51Writes.push({ net: String(net), values }),
   kgwBridgeR95BNormalizeNetworkPortValues: (_net, values) => values,
   kgwBridgeRequireValidSettings: () => {},
   wasmBridgeSmallOwnerTraceR44D: () => {},
@@ -1184,9 +1184,9 @@ fn verify_static_contracts(
     if !source.contains("bridgeInstanceNetworkKeyR15 as wasmBridgeInstanceNetworkKeyR15") {
         return Err("Bridge R15 instance network-key Rust/WASM import is missing".to_owned());
     }
-    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 10 {
+    if source.matches("wasmBridgeInstanceNetworkKeyR15(").count() != 9 {
         return Err(
-            "Bridge R15 instance network-key owner must have exactly ten generated-WASM call sites"
+            "Bridge R15 instance network-key owner must have exactly nine direct generated-WASM call sites after OP250 moves WriteSettings normalization into Rust"
                 .to_owned(),
         );
     }

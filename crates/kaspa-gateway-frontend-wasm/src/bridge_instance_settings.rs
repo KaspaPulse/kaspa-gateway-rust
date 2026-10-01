@@ -1,7 +1,10 @@
 use js_sys::{Array, Date, Math, Object, Reflect};
 use wasm_bindgen::prelude::*;
 
-use crate::{bridge_command_options, bridge_frontend_helpers, settings_contract};
+use crate::{
+    bridge_command_options, bridge_frontend_helpers, bridge_instance_ui, bridge_port_orchestration,
+    settings_contract,
+};
 
 const MAX_SAFE_INTEGER: u64 = 9_007_199_254_740_991;
 
@@ -43,6 +46,15 @@ fn call1_required(target: &JsValue, name: &str, first: &JsValue) -> Result<JsVal
     required_function(target, name)?.call1(target, first)
 }
 
+fn call2_required(
+    target: &JsValue,
+    name: &str,
+    first: &JsValue,
+    second: &JsValue,
+) -> Result<JsValue, JsValue> {
+    required_function(target, name)?.call2(target, first, second)
+}
+
 fn call3_required(
     target: &JsValue,
     name: &str,
@@ -51,6 +63,27 @@ fn call3_required(
     third: &JsValue,
 ) -> Result<JsValue, JsValue> {
     required_function(target, name)?.call3(target, first, second, third)
+}
+
+fn event(name: &str) -> Result<JsValue, JsValue> {
+    let ctor = property(&global(), "Event")
+        .dyn_into::<js_sys::Function>()
+        .map_err(|_| JsValue::from_str("Bridge R51 Event constructor is unavailable"))?;
+    let options = Object::new();
+    set(options.as_ref(), "bubbles", &JsValue::TRUE);
+    let args = Array::new();
+    args.push(&JsValue::from_str(name));
+    args.push(options.as_ref());
+    Reflect::construct(&ctor, &args)
+}
+
+fn dispatch_event(target: &JsValue, name: &str) -> Result<(), JsValue> {
+    let event = event(name)?;
+    property(target, "dispatchEvent")
+        .dyn_into::<js_sys::Function>()
+        .map_err(|_| JsValue::from_str("Bridge R51 field dispatchEvent is unavailable"))?
+        .call1(target, &event)?;
+    Ok(())
 }
 
 fn query_selector(target: &JsValue, selector: &str) -> JsValue {
@@ -1222,6 +1255,86 @@ pub fn bridge_r51_read_settings(net: String, callbacks: JsValue) -> Result<JsVal
         values.as_ref(),
         &JsValue::from_str("read-settings"),
     )
+}
+
+#[wasm_bindgen(js_name = bridgeR51WriteSettings)]
+pub fn bridge_r51_write_settings(
+    net: String,
+    values: JsValue,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    callbacks: JsValue,
+) -> Result<(), JsValue> {
+    if !values.is_object() || values.is_null() {
+        return Ok(());
+    }
+
+    let net_value = JsValue::from_str(&net);
+    let values = call3_required(
+        &callbacks,
+        "normalizeNetworkPortValues",
+        &net_value,
+        &values,
+        &JsValue::from_str("write-settings"),
+    )?;
+
+    let _ = call2_required(&callbacks, "applyStructuredInstances", &net_value, &values)?;
+
+    let prefix = format!("bridge-{net}-");
+    for field in bridge_r51_fields_vec(&net) {
+        let id = crate::js_string_owned(&property(&field, "id"));
+        if id.is_empty() {
+            continue;
+        }
+        let name = id.strip_prefix(&prefix).unwrap_or(&id);
+        if bridge_r51_managed_field(name) {
+            continue;
+        }
+
+        let item = property(&values, &id);
+        if !present(&item) {
+            continue;
+        }
+
+        if crate::js_string_owned(&property(&field, "type")) == "checkbox" {
+            set(
+                &field,
+                "checked",
+                &JsValue::from_bool(crate::js_boolean(&property(&item, "checked"))),
+            );
+        } else if Reflect::has(&item, &JsValue::from_str("value")).unwrap_or(false) {
+            let item_value = property(&item, "value");
+            let text = if present(&item_value) {
+                crate::js_string_owned(&item_value)
+            } else {
+                String::new()
+            };
+            set(&field, "value", &JsValue::from_str(&text));
+        }
+
+        dispatch_event(&field, "input")?;
+        dispatch_event(&field, "change")?;
+    }
+
+    let _ = call2_required(&callbacks, "applyCommandOptions", &net_value, &values)?;
+
+    let network_key = bridge_frontend_helpers::bridge_instance_network_key_r15(
+        net_value.clone(),
+        net_value.clone(),
+    );
+    bridge_port_orchestration::bridge_reassign_instance_ports_from_external_range_r91(
+        bridge_instances.clone(),
+        network_key,
+        "r95b-r51-write-settings-normalized-network-ports".to_owned(),
+    )?;
+    bridge_instance_ui::bridge_sync_instance_preview_rows_r8b(
+        net.clone(),
+        bridge_instances,
+        active_instance,
+    )?;
+
+    let _ = call1_required(&callbacks, "updateCommand", &net_value)?;
+    Ok(())
 }
 
 #[wasm_bindgen(js_name = bridgeInstanceParseStructured)]
