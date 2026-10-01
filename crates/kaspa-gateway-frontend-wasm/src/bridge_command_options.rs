@@ -625,6 +625,101 @@ pub fn bridge_instance_command_set_option_r13b(
     key
 }
 
+#[wasm_bindgen(js_name = bridgeSetInstanceCommandOptionUiR13B)]
+pub fn bridge_set_instance_command_option_ui_r13b(
+    net: String,
+    instance_id: JsValue,
+    name: String,
+    enabled: bool,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    callbacks: JsValue,
+) -> Result<String, JsValue> {
+    let instance_id_text = crate::js_string_owned(&instance_id);
+
+    let begin = Object::new();
+    set_property(begin.as_ref(), "patch", &JsValue::from_str("R29B"));
+    set_property(
+        begin.as_ref(),
+        "owner",
+        &JsValue::from_str("bridge-instance-command-composer-r13b"),
+    );
+    set_property(
+        begin.as_ref(),
+        "instanceId",
+        &JsValue::from_str(&instance_id_text),
+    );
+    set_property(begin.as_ref(), "option", &JsValue::from_str(&name));
+    set_property(begin.as_ref(), "enabled", &JsValue::from_bool(enabled));
+    let _ = crate::bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+        JsValue::from_str(&net),
+        JsValue::from_str("command-checkbox"),
+        JsValue::from_str("r29b-bridge-instance-command-checkbox-begin"),
+        begin.into(),
+    );
+
+    let key = bridge_instance_command_set_option_r13b(
+        net.clone(),
+        instance_id.clone(),
+        name.clone(),
+        enabled,
+    );
+
+    for toggle in query_all(
+        &document(),
+        "[data-bridge-instance-command-option-toggle-r13b]",
+    ) {
+        let dataset = property(&toggle, "dataset");
+        if crate::js_string_owned(&property(&dataset, "net")) != net
+            || crate::js_string_owned(&property(&dataset, "instanceId")) != instance_id_text
+            || crate::js_string_owned(&property(&dataset, "bridgeInstanceCommandOptionToggleR13b"))
+                != name
+        {
+            continue;
+        }
+        set_property(&toggle, "checked", &JsValue::from_bool(enabled));
+        let label = if enabled {
+            "Included in command"
+        } else {
+            "Excluded from command"
+        };
+        set_attribute(&toggle, "title", label);
+        set_attribute(&toggle, "aria-label", label);
+    }
+
+    let net_value = JsValue::from_str(&net);
+    let _ = call1_required(&callbacks, "updateCommand", &net_value)?;
+    crate::bridge_instance_ui::bridge_sync_instance_preview_rows_r8b(
+        net.clone(),
+        bridge_instances,
+        active_instance,
+    )?;
+
+    let complete = Object::new();
+    set_property(complete.as_ref(), "patch", &JsValue::from_str("R29B"));
+    set_property(
+        complete.as_ref(),
+        "owner",
+        &JsValue::from_str("bridge-instance-command-composer-r13b"),
+    );
+    set_property(complete.as_ref(), "key", &JsValue::from_str(&key));
+    set_property(
+        complete.as_ref(),
+        "instanceId",
+        &JsValue::from_str(&instance_id_text),
+    );
+    set_property(complete.as_ref(), "option", &JsValue::from_str(&name));
+    set_property(complete.as_ref(), "enabled", &JsValue::from_bool(enabled));
+    let _ = crate::bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+        net_value,
+        JsValue::from_str("command-checkbox"),
+        JsValue::from_str("r29b-bridge-instance-command-checkbox-complete"),
+        complete.into(),
+    );
+
+    Ok(key)
+}
+
 #[wasm_bindgen(js_name = bridgeInstanceCommandCheckboxR13B)]
 pub fn bridge_instance_command_checkbox_r13b(
     net: String,

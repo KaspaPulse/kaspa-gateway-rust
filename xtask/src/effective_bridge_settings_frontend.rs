@@ -565,8 +565,11 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     if !source.contains("bridgeR51Panel as wasmBridgeR51Panel") {
         return Err("Bridge R51 panel Rust/WASM import is missing".to_owned());
     }
-    if source.matches("wasmBridgeR51Panel(").count() != 2 {
-        return Err("Bridge R51 panel must use exactly two direct Rust/WASM call sites".to_owned());
+    if source.matches("wasmBridgeR51Panel(").count() != 1 {
+        return Err(
+            "Bridge R51 panel must use exactly one remaining direct Rust/WASM call site after OP277 moves instance command-option DOM synchronization into Rust"
+                .to_owned(),
+        );
     }
     if !instance_settings.contains("js_name = bridgeR51Panel") {
         return Err("Bridge R51 panel Rust export is missing".to_owned());

@@ -52,9 +52,8 @@ import initBridgeRust, {
   bridgeUpdateAllCommandsUi as wasmBridgeUpdateAllCommandsUi,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeInstanceCommandCheckboxFromInstancesR13B as wasmBridgeInstanceCommandCheckboxFromInstancesR13B,
-  bridgeInstanceCommandSetOptionR13B as wasmBridgeInstanceCommandSetOptionR13B,
+  bridgeSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B,
   bridgeInstancePreviewTextR8B as wasmBridgeInstancePreviewTextR8B,
-  bridgeSyncInstancePreviewRowsR8B as wasmBridgeSyncInstancePreviewRowsR8B,
   bridgeInstancePortPlaceholderR49 as wasmBridgeInstancePortPlaceholderR49,
   bridgeInstancePromPlaceholderR49 as wasmBridgeInstancePromPlaceholderR49,
 
@@ -200,37 +199,15 @@ let activeInstance = {
 // KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B
 
 function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
-  wasmBridgeSmallOwnerTraceR44D(net, "command-checkbox", "r29b-bridge-instance-command-checkbox-begin", {
-    patch: "R29B",
-    owner: "bridge-instance-command-composer-r13b",
-    instanceId: String(instanceId || ""),
-    option: String(name || ""),
-    enabled: Boolean(enabled)
-  });
-
-  const key = wasmBridgeInstanceCommandSetOptionR13B(
+  return wasmBridgeSetInstanceCommandOptionUiR13B(
     String(net || ""),
     instanceId,
     String(name || ""),
-    Boolean(enabled)
+    Boolean(enabled),
+    bridgeInstances,
+    activeInstance,
+    { updateCommand: (targetNet) => updateCommand(String(targetNet || "")) }
   );
-  wasmBridgeR51Panel(net)?.querySelectorAll("[data-bridge-instance-command-option-toggle-r13b]").forEach(toggle => {
-    if (String(toggle.dataset.instanceId) !== String(instanceId) || toggle.dataset.bridgeInstanceCommandOptionToggleR13b !== name) return;
-    toggle.checked = Boolean(enabled);
-    toggle.title = enabled ? "Included in command" : "Excluded from command";
-    toggle.setAttribute("aria-label", toggle.title);
-  });
-  updateCommand(net);
-  wasmBridgeSyncInstancePreviewRowsR8B(String(net || ""), bridgeInstances, activeInstance);
-
-  wasmBridgeSmallOwnerTraceR44D(net, "command-checkbox", "r29b-bridge-instance-command-checkbox-complete", {
-    patch: "R29B",
-    owner: "bridge-instance-command-composer-r13b",
-    key: String(key || ""),
-    instanceId: String(instanceId || ""),
-    option: String(name || ""),
-    enabled: Boolean(enabled)
-  });
 }
 
 

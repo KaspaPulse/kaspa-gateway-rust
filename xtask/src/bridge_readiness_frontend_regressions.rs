@@ -1603,6 +1603,66 @@ fn verify_start_options_ownership(
     Ok(())
 }
 
+fn verify_instance_command_option_ownership(
+    source: &str,
+    command_options: &str,
+) -> Result<(), String> {
+    for required in [
+        "bridgeSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B",
+        "function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {",
+        "return wasmBridgeSetInstanceCommandOptionUiR13B(",
+        "{ updateCommand: (targetNet) => updateCommand(String(targetNet || \"\")) }",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge instance command-option Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    let wrapper = slice_between(
+        source,
+        "function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {",
+        "\n}",
+    )?;
+    for forbidden in [
+        "wasmBridgeSmallOwnerTraceR44D(",
+        "wasmBridgeInstanceCommandSetOptionR13B(",
+        "querySelectorAll(",
+        "wasmBridgeSyncInstancePreviewRowsR8B(",
+        "toggle.checked",
+        "toggle.setAttribute(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge instance command-option JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeSetInstanceCommandOptionUiR13B",
+        "pub fn bridge_set_instance_command_option_ui_r13b(",
+        "bridge_instance_command_set_option_r13b(",
+        "[data-bridge-instance-command-option-toggle-r13b]",
+        "bridgeInstanceCommandOptionToggleR13b",
+        "call1_required(&callbacks, \"updateCommand\"",
+        "bridge_sync_instance_preview_rows_r8b(",
+        "r29b-bridge-instance-command-checkbox-begin",
+        "r29b-bridge-instance-command-checkbox-complete",
+        "Included in command",
+        "Excluded from command",
+    ] {
+        if !command_options.contains(required) {
+            return Err(format!(
+                "Bridge instance command-option Rust owner contract missing: {required}"
+            ));
+        }
+    }
+
+    Ok(())
+}
+
 fn verify_instance_mutation_ownership(source: &str, instance_settings: &str) -> Result<(), String> {
     for required in [
         "bridgeAddInstanceUi as wasmBridgeAddInstanceUi",
@@ -2846,6 +2906,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_live_refresh_ownership(&full_source, &runtime_core_source)?;
     verify_inprocess_node_owner_guard_ownership(&full_source, &start_trace_source)?;
     verify_start_options_ownership(&full_source, &helper_source, &instance_settings_source)?;
+    verify_instance_command_option_ownership(&full_source, &command_options_source)?;
     verify_instance_mutation_ownership(&full_source, &instance_settings_source)?;
     verify_instance_state_structured_reader_ownership(&full_source, &instance_settings_source)?;
     verify_preview_message_ownership(&full_source, &helper_source)?;
@@ -4071,6 +4132,47 @@ mod tests {
             instance_settings.replace("\"CPU threads\"", "\"Missing CPU threads\""),
         ] {
             assert!(verify_start_options_ownership(source, helpers, &mutation).is_err());
+        }
+    }
+
+    #[test]
+    fn instance_command_option_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let command_options =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_command_options.rs");
+        assert!(verify_instance_command_option_ownership(source, command_options).is_ok());
+
+        for mutation in [
+            source.replace(
+                "bridgeSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B",
+                "missingSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B",
+            ),
+            source.replacen(
+                "function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {",
+                "function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {\n  wasmBridgeSmallOwnerTraceR44D(net, \"command-checkbox\", \"legacy\", {});",
+                1,
+            ),
+        ] {
+            assert!(verify_instance_command_option_ownership(&mutation, command_options).is_err());
+        }
+
+        for mutation in [
+            command_options.replace(
+                "js_name = bridgeSetInstanceCommandOptionUiR13B",
+                "js_name = missingSetInstanceCommandOptionUiR13B",
+            ),
+            command_options.replace(
+                "bridge_sync_instance_preview_rows_r8b(",
+                "missing_sync_instance_preview_rows(",
+            ),
+            command_options.replace(
+                "r29b-bridge-instance-command-checkbox-complete",
+                "missing-command-checkbox-complete",
+            ),
+        ] {
+            assert!(verify_instance_command_option_ownership(source, &mutation).is_err());
         }
     }
 
