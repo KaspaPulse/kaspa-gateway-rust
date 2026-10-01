@@ -240,3 +240,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: Bridge R15 instance-network-key direct-call count narrowed from three to two because OP279 moved refresh canonicalization into Rust. No ownership prohibition was weakened.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP279 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP280 - Bridge visible instance-owner installation Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 2, same canonical writer session.
+- PREVIOUS_CLOSED_OPERATION: OP279 closeout `9957171470860ff1955c42b5f7f16fe16c185f8b`; BASE_TREE `1e14df31286d17c09bc0e3fc0b67f724a8696e92`; worktree clean at intent time.
+- BOUNDARY: move `bridgeInstallAllVisibleInstanceContainerOwnersR11` iteration/lookup orchestration into Rust/WASM while preserving the existing per-container JavaScript owner as an explicit callback for its own later boundary. Rust owns canonical Bridge network iteration, instances-container lookup, and callback sequencing.
+- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; stale direct-call counts repaired narrowly if required; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
