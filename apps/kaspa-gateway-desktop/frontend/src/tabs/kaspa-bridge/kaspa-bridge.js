@@ -54,6 +54,7 @@ import initBridgeRust, {
   bridgeElementId as wasmBridgeElementId,
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
   bridgeInstallLogAutoScrollControls as wasmBridgeInstallLogAutoScrollControls,
+  bridgeInstallLogFontControlsV29 as wasmBridgeInstallLogFontControlsV29,
   bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
   bridgeRenderInprocessNodeSettingsUi as wasmBridgeRenderInprocessNodeSettingsUi,
@@ -61,7 +62,6 @@ import initBridgeRust, {
   bridgeRenderNetworkPanelUi as wasmBridgeRenderNetworkPanelUi,
   bridgeRenderAllNetworksUi as wasmBridgeRenderAllNetworksUi,
   bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer,
-  bridgeSmallOwnerTraceR44D as wasmBridgeSmallOwnerTraceR44D,
   bridgeValidateFormUi as wasmBridgeValidateFormUi,
   bridgeRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi,
   bridgeEffectiveInprocessNodeSettingsChecked as wasmBridgeEffectiveInprocessNodeSettingsChecked,
@@ -1194,187 +1194,11 @@ const bridgeRoot = root || document.getElementById("kaspa-bridge");
 
 
   setTimeout(wasmBridgeInstallLogAutoScrollControls, 0);
+  setTimeout(wasmBridgeInstallLogFontControlsV29, 0);
 }
 
 
-/* KGW_BRIDGE_LOG_SCOPED_CONTROLS_V29_START */
-(function installKgwLogScopedToolbarControlsV29() {
-  "use strict";
 
-  const KIND = "bridge";
-  const ROOT_SELECTOR = "#kaspa-bridge";
-  const TOOLBAR_SELECTOR = ".bridge-v7-log-toolbar";
-  const ACTION_ATTR = "data-bridge-action";
-  const PREFIX = "bridge";
-  const NETWORKS = ["mainnet", "testnet10", "testnet13"];
-  const MIN_SIZE = 10;
-  const MAX_SIZE = 18;
-  const DEFAULT_SIZE = 12;
-
-  function clampSize(value) {
-    const parsed = Number.parseInt(String(value || ""), 10);
-    if (!Number.isFinite(parsed)) return DEFAULT_SIZE;
-    return Math.max(MIN_SIZE, Math.min(MAX_SIZE, parsed));
-  }
-
-  function storageKey(net) {
-    return "kgw." + KIND + ".log.fontSize." + net;
-  }
-
-  function readSize(net) {
-    try {
-      return clampSize(window.localStorage.getItem(storageKey(net)));
-    } catch (_) {
-      return DEFAULT_SIZE;
-    }
-  }
-
-  function writeSize(net, size) {
-    const finalSize = clampSize(size);
-    try {
-      window.localStorage.setItem(storageKey(net), String(finalSize));
-    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-    return finalSize;
-  }
-
-  function root() {
-    return document.querySelector(ROOT_SELECTOR);
-  }
-
-  function logOutput(net) {
-    return document.getElementById(PREFIX + "-" + net + "-logOutput");
-  }
-
-  function toolbar(net) {
-    const r = root();
-    if (!r) return null;
-
-    const copyButton = r.querySelector(TOOLBAR_SELECTOR + " [" + ACTION_ATTR + "='copy-log'][data-net='" + net + "']");
-    if (copyButton) return copyButton.closest(TOOLBAR_SELECTOR);
-
-    const panel = r.querySelector("[data-net='" + net + "']");
-    if (!panel) return null;
-    return panel.querySelector(TOOLBAR_SELECTOR);
-  }
-
-  function makeButton(label, title) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "kgw-log-font-size-button";
-    button.textContent = label;
-    button.title = title;
-    button.setAttribute("aria-label", title);
-    button.dataset.kgwLogFontOwner = "v29";
-    return button;
-  }
-
-  function applyFontSize(net) {
-    const out = logOutput(net);
-    const size = readSize(net);
-
-    if (out) {
-      out.dataset.kgwLogFontSizePane = "v29";
-      out.style.setProperty("--kgw-log-font-size", size + "px");
-      out.style.setProperty("font-size", "var(--kgw-log-font-size)", "important");
-      out.style.setProperty("line-height", "1.45", "important");
-    }
-
-    const tb = toolbar(net);
-    if (tb) {
-      const value = tb.querySelector(".kgw-log-font-size-value[data-net='" + net + "']");
-      if (value) value.textContent = size + "px";
-    }
-  }
-
-  function removeToolbarDuplicates(tb) {
-    if (!tb) return;
-    tb.querySelectorAll(".kgw-log-font-size-controls").forEach((item) => item.remove());
-  }
-
-  function installForNetwork(net) {
-    const tb = toolbar(net);
-    if (!tb) return;
-
-    removeToolbarDuplicates(tb);
-
-    const controls = document.createElement("div");
-    controls.className = "kgw-log-font-size-controls";
-    controls.dataset.kind = KIND;
-    controls.dataset.net = net;
-    controls.dataset.marker = "KGW_BRIDGE_LOG_SCOPED_CONTROLS_V29";
-
-    const decrease = makeButton("A-", "Decrease log font size");
-    const value = document.createElement("span");
-    value.className = "kgw-log-font-size-value";
-    value.dataset.net = net;
-    value.textContent = readSize(net) + "px";
-
-    const increase = makeButton("A+", "Increase log font size");
-    const reset = makeButton("Reset", "Reset log font size");
-
-    decrease.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const previousSize = readSize(net);
-      wasmBridgeSmallOwnerTraceR44D(net, "log-font-size", "r51b3-bridge-log-font-decrease-click", {
-        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
-        trusted: Boolean(event && event.isTrusted),
-        previousSize,
-        nextSize: previousSize - 1
-      });
-      writeSize(net, previousSize - 1);
-      applyFontSize(net);
-    });
-
-    increase.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const previousSize = readSize(net);
-      wasmBridgeSmallOwnerTraceR44D(net, "log-font-size", "r51b3-bridge-log-font-increase-click", {
-        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
-        trusted: Boolean(event && event.isTrusted),
-        previousSize,
-        nextSize: previousSize + 1
-      });
-      writeSize(net, previousSize + 1);
-      applyFontSize(net);
-    });
-
-    reset.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const previousSize = readSize(net);
-      wasmBridgeSmallOwnerTraceR44D(net, "log-font-size", "r51b3-bridge-log-font-reset-click", {
-        patch: "KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3",
-        trusted: Boolean(event && event.isTrusted),
-        previousSize,
-        nextSize: DEFAULT_SIZE
-      });
-      writeSize(net, DEFAULT_SIZE);
-      applyFontSize(net);
-    });
-
-    controls.append(decrease, value, increase, reset);
-    tb.appendChild(controls);
-
-    applyFontSize(net);
-  }
-
-  function installAll() {
-    for (const net of NETWORKS) {
-      installForNetwork(net);
-    }
-  }
-
-  window.kgwInstallBridgeLogScopedControlsV29 = installAll;
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", installAll, { once: true });
-  } else {
-    window.setTimeout(installAll, 0);
-  }
-})();
-/* KGW_BRIDGE_LOG_SCOPED_CONTROLS_V29_END */
 
 export default initKaspaBridgeTab;
 

@@ -1711,12 +1711,60 @@ fn verify_render_all_networks_ownership(source: &str, helpers: &str) -> Result<(
         "\"renderNetworkPanel\"",
         "\"installSettingsLayout\"",
         "bridge_install_log_auto_scroll_controls();",
-        "\"kgwInstallBridgeLogScopedControlsV29\"",
+        "bridge_install_log_font_controls_v29();",
         "\"setTimeout\"",
     ] {
         if !helpers.contains(required) {
             return Err(format!(
                 "Bridge render-all-networks Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn verify_log_font_controls_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for forbidden in [
+        "KGW_BRIDGE_LOG_SCOPED_CONTROLS_V29_START",
+        "installKgwLogScopedToolbarControlsV29",
+        "kgwInstallBridgeLogScopedControlsV29",
+        "function clampSize(",
+        "function storageKey(",
+        "function installForNetwork(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge log-font JavaScript ownership remains after OP292: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "bridgeInstallLogFontControlsV29 as wasmBridgeInstallLogFontControlsV29",
+        "setTimeout(wasmBridgeInstallLogFontControlsV29, 0);",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge log-font Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeInstallLogFontControlsV29",
+        "pub fn bridge_install_log_font_controls_v29()",
+        "kgw.bridge.log.fontSize.{net}",
+        "BRIDGE_LOG_FONT_MIN_SIZE: i32 = 10",
+        "BRIDGE_LOG_FONT_MAX_SIZE: i32 = 18",
+        "BRIDGE_LOG_FONT_DEFAULT_SIZE: i32 = 12",
+        "KGW_BRIDGE_LOG_SCOPED_CONTROLS_V29",
+        "r51b3-bridge-log-font-decrease-click",
+        "r51b3-bridge-log-font-increase-click",
+        "r51b3-bridge-log-font-reset-click",
+        "kgw-log-font-size-controls",
+        "--kgw-log-font-size",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge log-font Rust owner contract missing: {required}"
             ));
         }
     }
@@ -3708,6 +3756,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_start_options_ownership(&full_source, &helper_source, &instance_settings_source)?;
     verify_network_panel_ownership(&full_source, &helper_source)?;
     verify_render_all_networks_ownership(&full_source, &helper_source)?;
+    verify_log_font_controls_ownership(&full_source, &helper_source)?;
     verify_instance_click_owner_ownership(&full_source, &instance_ui_source)?;
     verify_visible_instance_owners_ownership(&full_source, &instance_ui_source)?;
     verify_instance_refresh_ownership(&full_source, &instance_ui_source)?;
@@ -4988,6 +5037,27 @@ mod tests {
             "js_name = missingRenderAllNetworksUi",
         );
         assert!(verify_render_all_networks_ownership(source, &missing).is_err());
+    }
+
+    #[test]
+    fn log_font_controls_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_log_font_controls_ownership(source, helpers).is_ok());
+
+        let legacy = format!(
+            "{source}\n/* KGW_BRIDGE_LOG_SCOPED_CONTROLS_V29_START */\nfunction installKgwLogScopedToolbarControlsV29() {{}}\n"
+        );
+        assert!(verify_log_font_controls_ownership(&legacy, helpers).is_err());
+
+        let missing = helpers.replace(
+            "js_name = bridgeInstallLogFontControlsV29",
+            "js_name = missingInstallLogFontControlsV29",
+        );
+        assert!(verify_log_font_controls_ownership(source, &missing).is_err());
     }
 
     #[test]

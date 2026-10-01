@@ -626,6 +626,242 @@ pub fn bridge_install_log_auto_scroll_controls() {
     }
 }
 
+const BRIDGE_LOG_FONT_MIN_SIZE: i32 = 10;
+const BRIDGE_LOG_FONT_MAX_SIZE: i32 = 18;
+const BRIDGE_LOG_FONT_DEFAULT_SIZE: i32 = 12;
+
+fn bridge_log_font_storage_key(net: &str) -> String {
+    format!("kgw.bridge.log.fontSize.{net}")
+}
+
+fn bridge_clamp_log_font_size(value: &str) -> i32 {
+    value
+        .trim()
+        .parse::<i32>()
+        .unwrap_or(BRIDGE_LOG_FONT_DEFAULT_SIZE)
+        .clamp(BRIDGE_LOG_FONT_MIN_SIZE, BRIDGE_LOG_FONT_MAX_SIZE)
+}
+
+fn bridge_read_log_font_size(net: &str) -> i32 {
+    storage_get(&bridge_log_font_storage_key(net))
+        .map(|value| bridge_clamp_log_font_size(&value))
+        .unwrap_or(BRIDGE_LOG_FONT_DEFAULT_SIZE)
+}
+
+fn bridge_write_log_font_size(net: &str, size: i32) -> i32 {
+    let final_size = size.clamp(BRIDGE_LOG_FONT_MIN_SIZE, BRIDGE_LOG_FONT_MAX_SIZE);
+    storage_set(&bridge_log_font_storage_key(net), &final_size.to_string());
+    final_size
+}
+
+fn bridge_log_toolbar(net: &str) -> JsValue {
+    let root = query_bridge(&document(), "#kaspa-bridge");
+    if !present(&root) {
+        return JsValue::UNDEFINED;
+    }
+    let copy_selector =
+        format!(".bridge-v7-log-toolbar [data-bridge-action='copy-log'][data-net='{net}']");
+    let copy_button = query_bridge(&root, &copy_selector);
+    if present(&copy_button) {
+        let toolbar = call1(
+            &copy_button,
+            "closest",
+            &JsValue::from_str(".bridge-v7-log-toolbar"),
+        )
+        .unwrap_or(JsValue::UNDEFINED);
+        if present(&toolbar) {
+            return toolbar;
+        }
+    }
+    let panel = query_bridge(&root, &format!("[data-net='{net}']"));
+    if present(&panel) {
+        query_bridge(&panel, ".bridge-v7-log-toolbar")
+    } else {
+        JsValue::UNDEFINED
+    }
+}
+
+fn bridge_set_style_property(style: &JsValue, name: &str, value: &str, priority: &str) {
+    if let Some(set_property) = function(style, "setProperty") {
+        let _ = set_property.call3(
+            style,
+            &JsValue::from_str(name),
+            &JsValue::from_str(value),
+            &JsValue::from_str(priority),
+        );
+    }
+}
+
+fn bridge_apply_log_font_size(net: &str) {
+    let output = bridge_by_id(bridge_element_id(net.to_owned(), "logOutput".to_owned()));
+    let size = bridge_read_log_font_size(net);
+    if present(&output) {
+        set(
+            &property(&output, "dataset"),
+            "kgwLogFontSizePane",
+            &JsValue::from_str("v29"),
+        );
+        let style = property(&output, "style");
+        bridge_set_style_property(&style, "--kgw-log-font-size", &format!("{size}px"), "");
+        bridge_set_style_property(&style, "font-size", "var(--kgw-log-font-size)", "important");
+        bridge_set_style_property(&style, "line-height", "1.45", "important");
+    }
+
+    let toolbar = bridge_log_toolbar(net);
+    if present(&toolbar) {
+        let value = query_bridge(
+            &toolbar,
+            &format!(".kgw-log-font-size-value[data-net='{net}']"),
+        );
+        if present(&value) {
+            set(
+                &value,
+                "textContent",
+                &JsValue::from_str(&format!("{size}px")),
+            );
+        }
+    }
+}
+
+fn bridge_log_font_button(label: &str, title: &str) -> JsValue {
+    let button = create_bridge_element("button");
+    set(&button, "type", &JsValue::from_str("button"));
+    set(
+        &button,
+        "className",
+        &JsValue::from_str("kgw-log-font-size-button"),
+    );
+    set(&button, "textContent", &JsValue::from_str(label));
+    set(&button, "title", &JsValue::from_str(title));
+    let _ = call2(
+        &button,
+        "setAttribute",
+        &JsValue::from_str("aria-label"),
+        &JsValue::from_str(title),
+    );
+    set(
+        &property(&button, "dataset"),
+        "kgwLogFontOwner",
+        &JsValue::from_str("v29"),
+    );
+    button
+}
+
+fn bridge_bind_log_font_button(button: &JsValue, net: &str, delta: i32, phase: &'static str) {
+    let net = net.to_owned();
+    let callback = Closure::wrap(Box::new(move |event: JsValue| {
+        if let Some(prevent) = function(&event, "preventDefault") {
+            let _ = prevent.call0(&event);
+        }
+        if let Some(stop) = function(&event, "stopPropagation") {
+            let _ = stop.call0(&event);
+        }
+        let previous_size = bridge_read_log_font_size(&net);
+        let next_size = if delta == 0 {
+            BRIDGE_LOG_FONT_DEFAULT_SIZE
+        } else {
+            previous_size + delta
+        };
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "patch",
+            &JsValue::from_str("KGW_NODE_BRIDGE_LOG_CONTROLS_TRACE_PATCH_R51B3"),
+        );
+        set(
+            details.as_ref(),
+            "trusted",
+            &JsValue::from_bool(crate::js_boolean(&property(&event, "isTrusted"))),
+        );
+        set(
+            details.as_ref(),
+            "previousSize",
+            &JsValue::from_f64(previous_size as f64),
+        );
+        set(
+            details.as_ref(),
+            "nextSize",
+            &JsValue::from_f64(next_size as f64),
+        );
+        let _ = bridge_small_owner_trace_r44d(
+            JsValue::from_str(&net),
+            JsValue::from_str("log-font-size"),
+            JsValue::from_str(phase),
+            details.into(),
+        );
+        bridge_write_log_font_size(&net, next_size);
+        bridge_apply_log_font_size(&net);
+    }) as Box<dyn FnMut(JsValue)>);
+    let _ = call2(
+        button,
+        "addEventListener",
+        &JsValue::from_str("click"),
+        callback.as_ref().unchecked_ref(),
+    );
+    callback.forget();
+}
+
+fn bridge_install_log_font_controls_for_network(net: &str) {
+    let toolbar = bridge_log_toolbar(net);
+    if !present(&toolbar) {
+        return;
+    }
+    for duplicate in bridge_tab_collection(&toolbar, ".kgw-log-font-size-controls") {
+        if let Some(remove) = function(&duplicate, "remove") {
+            let _ = remove.call0(&duplicate);
+        }
+    }
+
+    let controls = create_bridge_element("div");
+    set(
+        &controls,
+        "className",
+        &JsValue::from_str("kgw-log-font-size-controls"),
+    );
+    let controls_dataset = property(&controls, "dataset");
+    set(&controls_dataset, "kind", &JsValue::from_str("bridge"));
+    set(&controls_dataset, "net", &JsValue::from_str(net));
+    set(
+        &controls_dataset,
+        "marker",
+        &JsValue::from_str("KGW_BRIDGE_LOG_SCOPED_CONTROLS_V29"),
+    );
+
+    let decrease = bridge_log_font_button("A-", "Decrease log font size");
+    let value = create_bridge_element("span");
+    set(
+        &value,
+        "className",
+        &JsValue::from_str("kgw-log-font-size-value"),
+    );
+    set(&property(&value, "dataset"), "net", &JsValue::from_str(net));
+    set(
+        &value,
+        "textContent",
+        &JsValue::from_str(&format!("{}px", bridge_read_log_font_size(net))),
+    );
+    let increase = bridge_log_font_button("A+", "Increase log font size");
+    let reset = bridge_log_font_button("Reset", "Reset log font size");
+
+    bridge_bind_log_font_button(&decrease, net, -1, "r51b3-bridge-log-font-decrease-click");
+    bridge_bind_log_font_button(&increase, net, 1, "r51b3-bridge-log-font-increase-click");
+    bridge_bind_log_font_button(&reset, net, 0, "r51b3-bridge-log-font-reset-click");
+
+    append_bridge_child(&controls, &decrease);
+    append_bridge_child(&controls, &value);
+    append_bridge_child(&controls, &increase);
+    append_bridge_child(&controls, &reset);
+    append_bridge_child(&toolbar, &controls);
+    bridge_apply_log_font_size(net);
+}
+
+#[wasm_bindgen(js_name = bridgeInstallLogFontControlsV29)]
+pub fn bridge_install_log_font_controls_v29() {
+    for profile in NETWORKS {
+        bridge_install_log_font_controls_for_network(profile.key);
+    }
+}
+
 fn bridge_inner_tab_storage_key_text(net: &str) -> String {
     format!(
         "kgw.bridge.innerTab.{}",
@@ -2550,10 +2786,7 @@ pub fn bridge_render_all_networks_ui(root: JsValue, callbacks: JsValue) -> Resul
     }
 
     let scoped_controls = Closure::once_into_js(move || {
-        let current_window = window();
-        if let Some(installer) = function(&current_window, "kgwInstallBridgeLogScopedControlsV29") {
-            let _ = installer.call0(&current_window);
-        }
+        bridge_install_log_font_controls_v29();
     });
     if let Some(set_timeout) = function(&window(), "setTimeout") {
         let _ = set_timeout.call2(&window(), &scoped_controls, &JsValue::from_f64(0.0));
