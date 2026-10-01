@@ -276,7 +276,9 @@ const r51WriteValues = {
     two: {
       instanceSharesPerMin: true
     }
-  }
+  },
+  "__kgwBridgeStructuredInstancesR26B": request.structured,
+  "__kgwBridgeActiveInstanceR26B": "one"
 };
 const r51WriteBridgeInstances = {
   mainnet: request.structured.instances.map((item) => ({ ...item })),
@@ -286,7 +288,7 @@ const r51WriteBridgeInstances = {
 const r51WriteActiveInstance = { mainnet: "one" };
 let r51WriteNormalizeReason = "";
 let r51WriteNormalizeCount = 0;
-let r51WriteStructuredCount = 0;
+let r51WriteStructuredRefreshCount = 0;
 let r51WriteRefreshCount = 0;
 const r51WriteSetInstanceCalls = [];
 let r51WriteUpdateCommandCount = 0;
@@ -302,9 +304,8 @@ wasmModule.bridgeR51WriteSettings(
       values.__op250Normalized = true;
       return values;
     },
-    applyStructuredInstances: () => {
-      r51WriteStructuredCount += 1;
-      return false;
+    refreshInstances: () => {
+      r51WriteStructuredRefreshCount += 1;
     },
     refreshInlineCommandToggles: () => {
       r51WriteRefreshCount += 1;
@@ -398,7 +399,9 @@ const output = {
     r51WriteNormalized: Boolean(r51WriteValues.__op250Normalized),
     r51WriteNormalizeReason,
     r51WriteNormalizeCount,
-    r51WriteStructuredCount,
+    r51WriteStructuredRefreshCount,
+    r51WriteStructuredCount: r51WriteBridgeInstances.mainnet.length,
+    r51WriteStructuredActive: String(r51WriteActiveInstance.mainnet || ""),
     r51WriteRefreshCount,
     r51WriteSetInstanceCalls,
     r51WriteUpdateCommandCount,
@@ -694,7 +697,7 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
     for needle in [
         "js_name = bridgeR51WriteSettings",
         "pub fn bridge_r51_write_settings(",
-        "applyStructuredInstances",
+        "bridge_r51_apply_structured_instances_r26b(",
         "bridge_command_options::bridge_r51_apply_command_options_r38c(",
         "updateCommand",
         "bridge_port_orchestration::bridge_reassign_instance_ports_from_external_range_r91",
@@ -703,6 +706,40 @@ fn verify_direct_command_option_ownership(root: &Path) -> Result<(), String> {
         if !instance_settings.contains(needle) {
             return Err(format!(
                 "Bridge R51 WriteSettings Rust ownership contract missing: {needle}"
+            ));
+        }
+    }
+    for forbidden in [
+        "function kgwBridgeR51ApplyStructuredInstancesR26B(",
+        "applyStructuredInstances:",
+        "KGW_BRIDGE_R51_STRUCTURED_INSTANCES_KEY_R26B",
+        "KGW_BRIDGE_R51_ACTIVE_INSTANCE_KEY_R26B",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge R26B ApplyStructuredInstances JavaScript ownership remains: {forbidden}"
+            ));
+        }
+    }
+    if !source.contains("refreshInstances: (net) =>") {
+        return Err(
+            "Bridge R26B ApplyStructuredInstances shared refresh callback is missing".to_owned(),
+        );
+    }
+    for needle in [
+        "fn bridge_r51_apply_structured_instances_r26b(",
+        "__kgwBridgeStructuredInstancesR26B",
+        "__kgwBridgeActiveInstanceR26B",
+        "\"refreshInstances\"",
+        "normalize_instance_record_impl(",
+        "default_instance_record_impl(",
+        "bridge_raw_log::bridge_render_raw_log_buffer(",
+        "r26b-structured-instances-restored",
+        "r26b-apply-structured-instances-failed",
+    ] {
+        if !instance_settings.contains(needle) {
+            return Err(format!(
+                "Bridge R26B ApplyStructuredInstances Rust ownership contract missing: {needle}"
             ));
         }
     }
@@ -970,11 +1007,17 @@ pub fn run(root: &Path) -> Result<String, String> {
     )?;
     for pointer in [
         "/directOwners/r51WriteNormalizeCount",
-        "/directOwners/r51WriteStructuredCount",
+        "/directOwners/r51WriteStructuredRefreshCount",
         "/directOwners/r51WriteRefreshCount",
     ] {
         expect_pointer(&actual, pointer, json!(1))?;
     }
+    expect_pointer(&actual, "/directOwners/r51WriteStructuredCount", json!(2))?;
+    expect_pointer(
+        &actual,
+        "/directOwners/r51WriteStructuredActive",
+        json!("one"),
+    )?;
     expect_pointer(
         &actual,
         "/directOwners/r51WriteUpdateCommandCount",

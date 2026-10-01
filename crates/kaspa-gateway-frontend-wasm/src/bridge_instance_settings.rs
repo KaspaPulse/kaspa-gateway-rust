@@ -3,7 +3,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     bridge_command_options, bridge_frontend_helpers, bridge_instance_ui, bridge_port_orchestration,
-    settings_contract,
+    bridge_raw_log, settings_contract,
 };
 
 const MAX_SAFE_INTEGER: u64 = 9_007_199_254_740_991;
@@ -1401,6 +1401,131 @@ pub fn bridge_r51_read_settings(net: String, callbacks: JsValue) -> Result<JsVal
     )
 }
 
+fn bridge_r51_apply_structured_instances_r26b(
+    net: &str,
+    values: &JsValue,
+    bridge_instances: &JsValue,
+    active_instance: &JsValue,
+    callbacks: &JsValue,
+) -> bool {
+    const STRUCTURED_INSTANCES_KEY: &str = "__kgwBridgeStructuredInstancesR26B";
+    const ACTIVE_INSTANCE_KEY: &str = "__kgwBridgeActiveInstanceR26B";
+
+    if !values.is_object() || values.is_null() {
+        return false;
+    }
+
+    let net = bridge_frontend_helpers::bridge_instance_network_key_r15(
+        JsValue::from_str(net),
+        JsValue::from_str(net),
+    );
+    let payload = property(values, STRUCTURED_INSTANCES_KEY);
+    let payload_instances = property(&payload, "instances");
+    if !payload.is_object() || payload.is_null() || !Array::is_array(&payload_instances) {
+        return false;
+    }
+
+    let result = (|| -> Result<(), JsValue> {
+        let input = Array::from(&payload_instances);
+        let normalized = Array::new();
+        for (index, instance) in input.iter().enumerate() {
+            let instance_id = property(&instance, "id");
+            let fallback_id = if crate::js_boolean(&instance_id) {
+                instance_id
+            } else {
+                JsValue::from_f64(Date::now() + index as f64)
+            };
+            let record = normalize_instance_record_impl(instance, fallback_id);
+            if crate::js_boolean(&record) {
+                normalized.push(&record);
+            }
+        }
+
+        let restored = if normalized.length() > 0 {
+            normalized
+        } else {
+            let defaults = Array::new();
+            defaults.push(&default_instance_record_impl(
+                JsValue::from_f64(Date::now()),
+            ));
+            defaults
+        };
+        set(bridge_instances, &net, restored.as_ref());
+
+        let payload_active = property(&payload, "activeInstance");
+        let stored_active = property(values, ACTIVE_INSTANCE_KEY);
+        let wanted_active = if crate::js_boolean(&payload_active) {
+            crate::js_string_owned(&payload_active)
+        } else if crate::js_boolean(&stored_active) {
+            crate::js_string_owned(&stored_active)
+        } else {
+            String::new()
+        };
+
+        let mut exists = false;
+        for instance in restored.iter() {
+            if crate::js_string_owned(&property(&instance, "id")) == wanted_active {
+                exists = true;
+                break;
+            }
+        }
+        let active = if exists {
+            wanted_active
+        } else if restored.length() > 0 {
+            crate::js_string_owned(&property(&restored.get(0), "id"))
+        } else {
+            String::new()
+        };
+        set(active_instance, &net, &JsValue::from_str(&active));
+
+        let _ = call1_required(callbacks, "refreshInstances", &JsValue::from_str(&net))?;
+        let _ = bridge_raw_log::bridge_render_raw_log_buffer(
+            net.clone(),
+            "bridge".to_owned(),
+            active.clone(),
+        );
+
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "count",
+            &JsValue::from_f64(restored.length() as f64),
+        );
+        set(
+            details.as_ref(),
+            "activeInstance",
+            &JsValue::from_str(&active),
+        );
+        let _ = bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+            JsValue::from_str(&net),
+            JsValue::from_str("settings-persistence"),
+            JsValue::from_str("r26b-structured-instances-restored"),
+            details.into(),
+        );
+        Ok(())
+    })();
+
+    if let Err(error) = result {
+        let details = Object::new();
+        let raw_message = property(&error, "message");
+        let message = if present(&raw_message) && !crate::js_string_owned(&raw_message).is_empty() {
+            crate::js_string_owned(&raw_message)
+        } else {
+            crate::js_string_owned(&error)
+        };
+        set(details.as_ref(), "message", &JsValue::from_str(&message));
+        let _ = bridge_frontend_helpers::bridge_small_owner_trace_r44d(
+            JsValue::from_str(&net),
+            JsValue::from_str("settings-persistence"),
+            JsValue::from_str("r26b-apply-structured-instances-failed"),
+            details.into(),
+        );
+        return false;
+    }
+
+    true
+}
+
 #[wasm_bindgen(js_name = bridgeR51WriteSettings)]
 pub fn bridge_r51_write_settings(
     net: String,
@@ -1422,7 +1547,13 @@ pub fn bridge_r51_write_settings(
         &JsValue::from_str("write-settings"),
     )?;
 
-    let _ = call2_required(&callbacks, "applyStructuredInstances", &net_value, &values)?;
+    let _ = bridge_r51_apply_structured_instances_r26b(
+        &net,
+        &values,
+        &bridge_instances,
+        &active_instance,
+        &callbacks,
+    );
 
     let prefix = format!("bridge-{net}-");
     for field in bridge_r51_fields_vec(&net) {

@@ -45,7 +45,6 @@ import initBridgeRust, {
   bridgeRuntimeInvokeAvailable as wasmBridgeRuntimeInvokeAvailable,
   bridgeInvokeRuntimeCommand as wasmBridgeInvokeRuntimeCommand,
   bridgePreparePreview as wasmBridgePreparePreview,
-  bridgeDefaultInstanceRecord as wasmBridgeDefaultInstanceRecord,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
   bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings,
   bridgeNormalizeInstanceRecord as wasmBridgeNormalizeInstanceRecord,
@@ -1921,9 +1920,6 @@ let KGW_BRIDGE_R51_TIMER = null;
  * This patch keeps the existing R51 settings owner and stores/restores structured bridgeInstances state.
  * No new persistence owner. No document listener. No MutationObserver.
  */
-const KGW_BRIDGE_R51_STRUCTURED_INSTANCES_KEY_R26B = "__kgwBridgeStructuredInstancesR26B";
-const KGW_BRIDGE_R51_ACTIVE_INSTANCE_KEY_R26B = "__kgwBridgeActiveInstanceR26B";
-
 function kgwBridgeR51ReadStructuredInstancesR253(net) {
   return wasmBridgeR51ReadStructuredInstances(
     String(net || ""),
@@ -1934,52 +1930,6 @@ function kgwBridgeR51ReadStructuredInstancesR253(net) {
         bridgeReadInstanceState(String(targetNet || ""), instanceId)
     }
   );
-}
-
-
-function kgwBridgeR51ApplyStructuredInstancesR26B(net, values) {
-  try {
-    net = wasmBridgeInstanceNetworkKeyR15(net, net);
-    if (!values || typeof values !== "object") return false;
-
-    const payload = values[KGW_BRIDGE_R51_STRUCTURED_INSTANCES_KEY_R26B];
-    if (!payload || typeof payload !== "object" || !Array.isArray(payload.instances)) return false;
-
-    const normalized = payload.instances.map((instance, index) => {
-      const fallbackId = instance && instance.id ? instance.id : Date.now() + index;
-      return wasmBridgeNormalizeInstanceRecord(instance || {}, fallbackId);
-    }).filter(Boolean);
-
-    bridgeInstances[net] = normalized.length
-      ? normalized
-      : [wasmBridgeDefaultInstanceRecord(Date.now())];
-
-    const wantedActive = String(payload.activeInstance || values[KGW_BRIDGE_R51_ACTIVE_INSTANCE_KEY_R26B] || "");
-    const exists = bridgeInstances[net].some((instance) => String(instance.id) === wantedActive);
-
-    activeInstance[net] = exists
-      ? wantedActive
-      : String((bridgeInstances[net][0] && bridgeInstances[net][0].id) || "");
-
-    bridgeRefreshInstances(net);
-    wasmBridgeRenderRawLogBuffer(String(net || ""), "bridge", String(activeInstance[net] || ""));
-
-    try {
-      wasmBridgeSmallOwnerTraceR44D(net, "settings-persistence", "r26b-structured-instances-restored", {
-        count: bridgeInstances[net].length,
-        activeInstance: String(activeInstance[net] || "")
-      });
-    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-
-    return true;
-  } catch (error) {
-    try {
-      wasmBridgeSmallOwnerTraceR44D(net, "settings-persistence", "r26b-apply-structured-instances-failed", {
-        message: error && error.message ? error.message : String(error)
-      });
-    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-    return false;
-  }
 }
 
 
@@ -2117,8 +2067,8 @@ function kgwBridgeR51WriteSettingsCallbacksR250() {
   return {
     normalizeNetworkPortValues: (net, values, reason) =>
       kgwBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || "")),
-    applyStructuredInstances: (net, values) =>
-      kgwBridgeR51ApplyStructuredInstancesR26B(String(net || ""), values),
+    refreshInstances: (net) =>
+      bridgeRefreshInstances(String(net || "")),
     refreshInlineCommandToggles: (net) =>
       kgwBridgeRefreshInlineCommandTogglesR7(String(net || "")),
     setInstanceCommandOption: (net, instanceId, name, enabled) =>
