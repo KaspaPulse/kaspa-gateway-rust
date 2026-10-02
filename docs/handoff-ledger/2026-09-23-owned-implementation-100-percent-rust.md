@@ -457,9 +457,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP299 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP300 - Bridge tab top-level state/init/actions Rust/WASM ownership (INTENT)
+## OP300 - Bridge tab top-level state/init/actions Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 4, same canonical writer/session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim was safely re-acquired at epoch 5 after the prior lease expired; same canonical writer/session, no split-brain evidence.
 - PREVIOUS_CLOSED_OPERATION: OP299 closeout `f1ae675c6b8bfb758f6101d7bce59e8ab08fbd7c`; BASE_TREE `d9e93885db95a8662c868dbf1e1c9bac3574f953`; worktree clean at intent time.
-- BOUNDARY: introduce Rust-owned `bridge_tab` orchestration for bridge state, render/update helpers, Settings Owner integration, persistence/live-refresh callback construction, action installation, copy/log/runtime actions, initialization, and compatibility globals. JavaScript becomes deterministic ABI/bootstrap glue only.
-- ACCEPTANCE: generated bridge adapter with no project-owned runtime logic; Rust bridge tab owns current state/init/actions; existing behavior gates remain fail-closed; frontend-WASM codegen generates adapter deterministically; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: Rust-owned `bridge_tab` now owns Bridge state, rendering/update helpers, Settings Owner integration, persistence/live-refresh callback construction, action installation, copy/log/runtime actions, initialization, and compatibility globals. `kaspa-bridge.js` is deterministic generated ABI/bootstrap glue only.
+- IMPLEMENTATION_CHECKPOINT: `e4f4859566739fba8a1a5f8f2b8e941fa3d5abde`, tree `83c7df433ab5755e94ba94c9ea690975fa22383e`. Closeout generation 2291.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 318/318 plus auxiliary suites; generated Bridge adapter fail-closed regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 224, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: legacy Bridge JavaScript migration regressions now yield to the generated-adapter owner test once the adapter marker is present; static programmatic-restore, effective-settings, and true-raw-log contracts now verify the Rust `bridge_tab` owner instead of requiring retired JavaScript bindings.
+- NEXT: recompute the remaining two source-debt paths and eight execution-debt references, then continue the newest genuinely incomplete Rust migration boundary. Do not repeat OP300 qualification unless invalidated.
+- PUSHED: NO.
