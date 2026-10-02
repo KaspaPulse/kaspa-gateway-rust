@@ -446,9 +446,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP298 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP299 - Bridge R51 write-settings callback factory Rust/WASM ownership (INTENT)
+## OP299 - Bridge R51 write-settings callback factory Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 4, same canonical writer/session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 4, same canonical writer/session.
 - PREVIOUS_CLOSED_OPERATION: OP298 closeout `dbca8ea2c4418693d4c363a9f18550e9e03e9606`; BASE_TREE `c774f3f67fef40d2faabe0e5aa03a0d24228a23a`; worktree clean at intent time.
-- BOUNDARY: retire JavaScript construction of `kgwBridgeR51WriteSettingsCallbacksR250`; Rust/WASM owns normalize/refresh/toggle/set-option/update callback wiring while JavaScript supplies only unavoidable bridgeRefreshInstances/updateCommand adapters.
-- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; R51 write-settings semantics preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: JavaScript construction of `kgwBridgeR51WriteSettingsCallbacksR250` retired. Rust/WASM now owns R95B normalization, inline-toggle refresh, instance command-option mutation, and callback wiring; JavaScript retains only bridgeRefreshInstances/updateCommand adapters. The now-dead JavaScript instance-command-option wrapper/import was also retired.
+- IMPLEMENTATION_CHECKPOINT: `ce4387c88027806395c6f84ddf5163062c459c85`, tree `dce2208a9549c14ee75a8e41e3d66f2b51f0389a`. Closeout generation 2290.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 317/317 plus auxiliary suites; targeted R51 write-settings callback and instance-command-option regressions; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: R95B direct JS call count moved 2→1; inline-command-toggle direct JS binding/call moved 1→0; instance command-option JS wrapper/binding is now required absent while Rust ownership remains required.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP299 qualification unless invalidated.
+- PUSHED: NO.
