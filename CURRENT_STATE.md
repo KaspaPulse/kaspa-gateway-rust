@@ -1,5 +1,5 @@
 # CURRENT STATE
-- Current product boundary: OP299 Bridge R51 write-settings callback factory Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD ce4387c88027806395c6f84ddf5163062c459c85, tree dce2208a9549c14ee75a8e41e3d66f2b51f0389a. OP298 and earlier operations remain closed and valid; no push. Next parent boundary is read-only discovery of the next genuinely incomplete Bridge JavaScript ownership seam.
+- Current product boundary: OP300 Bridge tab top-level state/init/actions Rust/WASM ownership is INTENT_ADOPTED / IMPLEMENTATION_PENDING from clean base HEAD f1ae675c6b8bfb758f6101d7bce59e8ab08fbd7c, tree d9e93885db95a8662c868dbf1e1c9bac3574f953. OP299 and earlier operations remain closed and valid; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.

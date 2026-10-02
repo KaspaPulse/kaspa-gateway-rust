@@ -456,3 +456,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: R95B direct JS call count moved 2→1; inline-command-toggle direct JS binding/call moved 1→0; instance command-option JS wrapper/binding is now required absent while Rust ownership remains required.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP299 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP300 - Bridge tab top-level state/init/actions Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 4, same canonical writer/session.
+- PREVIOUS_CLOSED_OPERATION: OP299 closeout `f1ae675c6b8bfb758f6101d7bce59e8ab08fbd7c`; BASE_TREE `d9e93885db95a8662c868dbf1e1c9bac3574f953`; worktree clean at intent time.
+- BOUNDARY: introduce Rust-owned `bridge_tab` orchestration for bridge state, render/update helpers, Settings Owner integration, persistence/live-refresh callback construction, action installation, copy/log/runtime actions, initialization, and compatibility globals. JavaScript becomes deterministic ABI/bootstrap glue only.
+- ACCEPTANCE: generated bridge adapter with no project-owned runtime logic; Rust bridge tab owns current state/init/actions; existing behavior gates remain fail-closed; frontend-WASM codegen generates adapter deterministically; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
