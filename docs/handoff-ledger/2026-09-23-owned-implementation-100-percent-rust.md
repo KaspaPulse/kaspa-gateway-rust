@@ -467,3 +467,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: legacy Bridge JavaScript migration regressions now yield to the generated-adapter owner test once the adapter marker is present; static programmatic-restore, effective-settings, and true-raw-log contracts now verify the Rust `bridge_tab` owner instead of requiring retired JavaScript bindings.
 - NEXT: recompute the remaining two source-debt paths and eight execution-debt references, then continue the newest genuinely incomplete Rust migration boundary. Do not repeat OP300 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP301 - Generated Bridge adapter debt retirement (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 5, same canonical writer/session.
+- PREVIOUS_CLOSED_OPERATION: OP300 closeout `dc24d98037a22c8ab48050da1a4d788d7309139c`; BASE_TREE `997f40eba54eb25041eb274a108dff0c9dc75884`; worktree clean at intent time.
+- BOUNDARY: retire `apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js` from owned source migration debt only because OP300 converted it to deterministic Rust-generated ABI/bootstrap glue. Add an exact GENERATED exception with technical reason; do not weaken language detection or auto-baseline logic.
+- ACCEPTANCE: frontend-wasm-codegen check proves byte-deterministic generation; Bridge adapter remains runtime-logic-free under fail-closed gate; language-policy inventory reports source debt 1 / unapproved source 0; strict still fails only on remaining real debt; project-continuity and diff-check pass; no Push.

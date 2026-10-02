@@ -1,5 +1,5 @@
 # CURRENT STATE
-- Current product boundary: OP300 Bridge tab top-level state/init/actions Rust/WASM ownership is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation HEAD e4f4859566739fba8a1a5f8f2b8e941fa3d5abde, tree 83c7df433ab5755e94ba94c9ea690975fa22383e. OP299 and earlier operations remain closed and valid; no push. Next parent boundary is read-only discovery of the remaining owned non-Rust source/execution debt.
+- Current product boundary: OP301 Generated Bridge adapter debt retirement is INTENT_ADOPTED / IMPLEMENTATION_PENDING from clean base HEAD dc24d98037a22c8ab48050da1a4d788d7309139c, tree 997f40eba54eb25041eb274a108dff0c9dc75884. OP300 and earlier operations remain closed and valid; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
@@ -8,7 +8,7 @@
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
 - Current HEAD: **VERIFY DYNAMICALLY** from Git; OP265 verified implementation checkpoint is `dc8b632062ed435d1c9ebfbe8a4cc28bf4e433f0`, tree `e7399ab6634ed9aeebb1b05e06950468026b0012`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: OP300 implementation is committed; continuity closeout is pending in the current worktree. Verify dynamically before the next operation. Do not reset, clean, stash, discard, or overwrite newer local work.
+- Working tree: OP301 intent/continuity update is pending commit; product source remains unchanged from the clean OP300 closeout base. Verify dynamically before mutation. Do not reset, clean, stash, discard, or overwrite newer local work.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
