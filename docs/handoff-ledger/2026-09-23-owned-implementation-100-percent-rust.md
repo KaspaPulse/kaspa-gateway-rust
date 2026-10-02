@@ -468,9 +468,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: recompute the remaining two source-debt paths and eight execution-debt references, then continue the newest genuinely incomplete Rust migration boundary. Do not repeat OP300 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP301 - Generated Bridge adapter debt retirement (INTENT)
+## OP301 - Generated Bridge adapter debt retirement (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 5, same canonical writer/session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 5, same canonical writer/session.
 - PREVIOUS_CLOSED_OPERATION: OP300 closeout `dc24d98037a22c8ab48050da1a4d788d7309139c`; BASE_TREE `997f40eba54eb25041eb274a108dff0c9dc75884`; worktree clean at intent time.
-- BOUNDARY: retire `apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js` from owned source migration debt only because OP300 converted it to deterministic Rust-generated ABI/bootstrap glue. Add an exact GENERATED exception with technical reason; do not weaken language detection or auto-baseline logic.
-- ACCEPTANCE: frontend-wasm-codegen check proves byte-deterministic generation; Bridge adapter remains runtime-logic-free under fail-closed gate; language-policy inventory reports source debt 1 / unapproved source 0; strict still fails only on remaining real debt; project-continuity and diff-check pass; no Push.
+- BOUNDARY: `apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js` retired from owned source migration debt only after OP300 converted it to deterministic Rust-generated ABI/bootstrap glue. Exact GENERATED exception added with technical reason; language detection and auto-baseline behavior remain unchanged.
+- IMPLEMENTATION_CHECKPOINT: `98836a472fc76498e95aa745371624086d4df784`, tree `c3c050d768caaa0b13b57a68e907fb6edef482f8`. Closeout generation 2292.
+- QUALIFICATION PASS: frontend-wasm-codegen check; Bridge readiness generated-adapter gate; language-policy check/inventory; strict-mode expected failure only for remaining real debt (source 1, execution 8); project-continuity; diff-check.
+- RESULT: Rust source inventory 224; owned non-Rust source debt 1; execution debt 8; unapproved source/execution 0/0; technical exceptions 40.
+- NEXT: migrate the remaining owned PowerShell evidence writer `tools/kgw_zero_touch_evidence.ps1` to Rust ownership, then remove its source-debt entry only after parity and call-site migration.
+- PUSHED: NO.
