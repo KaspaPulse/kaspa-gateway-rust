@@ -905,6 +905,7 @@ const sandbox = {
   wasmBridgeSetRuntimeActivityV1: wasm.bridgeSetRuntimeActivityV1,
   wasmBridgeMarkRestartRequiredV1: wasm.bridgeMarkRestartRequiredV1,
   wasmBridgeR51RefreshOne: wasm.bridgeR51RefreshOne,
+  wasmBridgeRunIntegratedActionUi: wasm.bridgeRunIntegratedActionUi,
   wasmBridgeR51StartLiveRefresh: wasm.bridgeR51StartLiveRefresh,
   wasmBridgeActiveRawLogInstanceId: wasm.bridgeActiveRawLogInstanceId,
   wasmBridgeRuntimeErrorFromStatus: wasm.bridgeRuntimeErrorFromStatus,
@@ -929,6 +930,8 @@ sandbox.kgwBridgeValidateForm = () => ({});
 sandbox.c = () => false;
 sandbox.confirmUserAction = async () => true;
 sandbox.invokeBridgeIntegratedRuntime = (...args) => invokeRuntime(...args);
+sandbox.kgwBridgeR51ReadStructuredInstancesR253 = () => [];
+sandbox.buildCommandLines = () => ({ lines: [], command: "--node-mode=external" });
 sandbox.kgwBridgeRuntimeOwnerTraceR64D = () => {};
 sandbox.kgwBridgePreviewDeclaresInprocessR65F = () => false;
 sandbox.kgwBridgeR51KickRawLogLiveR134E = () => {};
@@ -1076,6 +1079,7 @@ const output = {
   lifecycle: await actionLifecycle()
 };
 await writeFile(resultPath, JSON.stringify(output), "utf8");
+process.exit(0);
 "##;
 
 fn slice_between<'a>(source: &'a str, start: &str, end: &str) -> Result<&'a str, String> {
@@ -1244,20 +1248,21 @@ fn verify_r51_runtime_presentation_ownership(
             ));
         }
     }
-    for required in [
-        "bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons",
-        "bridgeR51SetRuntimeUnknown as wasmBridgeR51SetRuntimeUnknown",
-    ] {
-        if !source.contains(required) {
-            return Err(format!(
-                "Bridge R51 runtime-presentation Rust/WASM binding missing: {required}"
-            ));
-        }
+    if !source.contains("bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons") {
+        return Err("Bridge R51 runtime-presentation Rust/WASM buttons binding missing".to_owned());
     }
-    if source.matches("wasmBridgeR51SetRuntimeButtons(").count() != 8
-        || source.matches("wasmBridgeR51SetRuntimeUnknown(").count() != 1
+    if source.contains("bridgeR51SetRuntimeUnknown as wasmBridgeR51SetRuntimeUnknown")
+        || source.contains("wasmBridgeR51SetRuntimeUnknown(")
     {
-        return Err("Bridge R51 runtime-presentation direct-call count drifted after OP290 moves network-policy refresh into Rust".to_owned());
+        return Err(
+            "Retired Bridge R51 runtime-unknown JavaScript binding remains after OP298".to_owned(),
+        );
+    }
+    if source.matches("wasmBridgeR51SetRuntimeButtons(").count() != 2 {
+        return Err(
+            "Bridge R51 runtime-buttons direct-call count drifted after OP298 moves integrated action presentation into Rust"
+                .to_owned(),
+        );
     }
     for required in [
         "js_name = bridgeR51SetRuntimeButtons",
@@ -1304,10 +1309,13 @@ fn verify_runtime_notice_ownership(source: &str, runtime_core: &str) -> Result<(
             ));
         }
     }
-    if source.matches("wasmBridgeSetRuntimeErrorV1(").count() != 12
-        || source.matches("wasmBridgeSetRuntimeActivityV1(").count() != 9
+    if source.matches("wasmBridgeSetRuntimeErrorV1(").count() != 4
+        || source.matches("wasmBridgeSetRuntimeActivityV1(").count() != 2
     {
-        return Err("Bridge runtime-notice direct-call count drifted after OP290 moves network-policy error handling into Rust".to_owned());
+        return Err(
+            "Bridge runtime-notice direct-call count drifted after OP298 moves integrated action notices into Rust"
+                .to_owned(),
+        );
     }
     for required in [
         "fn set_runtime_error_inner(",
@@ -1393,7 +1401,6 @@ fn verify_r51_live_refresh_ownership(source: &str, runtime_core: &str) -> Result
         }
     }
     for required in [
-        "bridgeR51RefreshOne as wasmBridgeR51RefreshOne",
         "bridgeR51StartLiveRefresh as wasmBridgeR51StartLiveRefresh",
         "function kgwBridgeR51LiveRefreshCallbacksR257(",
     ] {
@@ -1403,15 +1410,22 @@ fn verify_r51_live_refresh_ownership(source: &str, runtime_core: &str) -> Result
             ));
         }
     }
-    if source.matches("wasmBridgeR51RefreshOne(").count() != 1
-        || source.matches("wasmBridgeR51StartLiveRefresh(").count() != 1
+    if source.contains("bridgeR51RefreshOne as wasmBridgeR51RefreshOne")
+        || source.contains("wasmBridgeR51RefreshOne(")
+    {
+        return Err(
+            "Retired direct Bridge R51 refresh-one JavaScript binding remains after OP298"
+                .to_owned(),
+        );
+    }
+    if source.matches("wasmBridgeR51StartLiveRefresh(").count() != 1
         || source
             .matches("kgwBridgeR51LiveRefreshCallbacksR257()")
             .count()
-            != 5
+            != 4
     {
         return Err(
-            "Bridge R51 live-refresh direct-call or callback-factory count drifted after OP295 raw-log live scheduling moved into Rust"
+            "Bridge R51 live-refresh direct-call or callback-factory count drifted after OP298 integrated action migration"
                 .to_owned(),
         );
     }
@@ -1449,33 +1463,19 @@ fn verify_r51_live_refresh_ownership(source: &str, runtime_core: &str) -> Result
 }
 
 fn verify_raw_log_live_kick_ownership(source: &str, helpers: &str) -> Result<(), String> {
-    for required in [
-        "bridgeKickRawLogLiveR134E as wasmBridgeKickRawLogLiveR134E",
-        "// KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E",
-        "function kgwBridgeR51KickRawLogLiveR134E(net, reason = \"bridge-start\") {",
-        "return wasmBridgeKickRawLogLiveR134E(",
-        "kgwBridgeR51LiveRefreshCallbacksR257()",
-    ] {
-        if !source.contains(required) {
-            return Err(format!(
-                "Bridge raw-log live kick Rust/WASM binding missing: {required}"
-            ));
-        }
+    if !source.contains(
+        "// KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E is Rust-owned in bridge_frontend_helpers.rs.",
+    ) {
+        return Err("Bridge raw-log live Rust ownership marker missing".to_owned());
     }
-    let wrapper = slice_between(
-        source,
-        "function kgwBridgeR51KickRawLogLiveR134E(net, reason = \"bridge-start\") {",
-        "\n}",
-    )?;
     for forbidden in [
-        "window.setTimeout(",
-        "wasmBridgeR51RefreshOne(",
-        "wasmBridgeR51StartLiveRefresh(",
-        "console.warn(",
+        "bridgeKickRawLogLiveR134E as wasmBridgeKickRawLogLiveR134E",
+        "function kgwBridgeR51KickRawLogLiveR134E(",
+        "wasmBridgeKickRawLogLiveR134E(",
     ] {
-        if wrapper.contains(forbidden) {
+        if source.contains(forbidden) {
             return Err(format!(
-                "Retired Bridge raw-log live JavaScript scheduling remains: {forbidden}"
+                "Retired Bridge raw-log live JavaScript binding remains after OP298: {forbidden}"
             ));
         }
     }
@@ -1510,17 +1510,14 @@ fn verify_inprocess_node_owner_guard_ownership(
             ));
         }
     }
-    if !source.contains(
+    if source.contains(
         "bridgeV7BlockInprocessIfNodeOwnerRunning as wasmBridgeV7BlockInprocessIfNodeOwnerRunning",
-    ) {
-        return Err("Bridge in-process node-owner guard Rust/WASM binding missing".to_owned());
-    }
-    if source
-        .matches("wasmBridgeV7BlockInprocessIfNodeOwnerRunning(")
-        .count()
-        != 1
+    ) || source.contains("wasmBridgeV7BlockInprocessIfNodeOwnerRunning(")
     {
-        return Err("Bridge in-process node-owner guard call count drifted".to_owned());
+        return Err(
+            "Retired Bridge in-process node-owner guard JavaScript binding remains after OP298"
+                .to_owned(),
+        );
     }
     for required in [
         "INPROCESS_NODE_OWNER_RUNNING_MESSAGE",
@@ -3278,6 +3275,86 @@ fn verify_integrated_runtime_invoke_ownership(source: &str, helpers: &str) -> Re
     Ok(())
 }
 
+fn verify_integrated_runtime_action_ownership(source: &str, helpers: &str) -> Result<(), String> {
+    for required in [
+        "bridgeRunIntegratedActionUi as wasmBridgeRunIntegratedActionUi",
+        "// KGW_BRIDGE_INTEGRATED_ACTION_RUST_OWNER_V1",
+        "async function runBridgeIntegratedAction(action, net) {",
+        "return await wasmBridgeRunIntegratedActionUi(",
+        "confirmUserAction: (message) => confirmUserAction(",
+        "invokeIntegratedRuntime: (command, targetNet) =>",
+        "liveRefreshCallbacks: () => kgwBridgeR51LiveRefreshCallbacksR257()",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge integrated runtime action Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+
+    let wrapper = slice_between(
+        source,
+        "async function runBridgeIntegratedAction(action, net) {",
+        "\n}",
+    )?;
+    for forbidden in [
+        "wasmBridgeRuntimeCommandForAction(",
+        "wasmBridgeAssertNoPortConflictsR5(",
+        "wasmBridgeV7BlockInprocessIfNodeOwnerRunning(",
+        "KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(",
+        "wasmBridgeRuntimeActionOutcome(",
+        "wasmBridgeSetOwnedNodeLockR65E(",
+        "wasmBridgeR51SetRuntimeUnknown(",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge integrated runtime JavaScript orchestration remains: {forbidden}"
+            ));
+        }
+    }
+
+    for forbidden in [
+        "bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction",
+        "bridgeRuntimeActionOutcome as wasmBridgeRuntimeActionOutcome",
+        "bridgeStartWasInprocessR65F as wasmBridgeStartWasInprocessR65F",
+        "bridgeCurrentNodeModeFromUiR65F as wasmBridgeCurrentNodeModeFromUiR65F",
+        "bridgeV7BlockInprocessIfNodeOwnerRunning as wasmBridgeV7BlockInprocessIfNodeOwnerRunning",
+        "bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E",
+        "bridgeAssertNoPortConflictsR5 as wasmBridgeAssertNoPortConflictsR5",
+        "function kgwBridgeR51KickRawLogLiveR134E(",
+    ] {
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge integrated runtime JavaScript binding remains: {forbidden}"
+            ));
+        }
+    }
+
+    for required in [
+        "js_name = bridgeRunIntegratedActionUi",
+        "pub async fn bridge_run_integrated_action_ui(",
+        "BRIDGE_RUNTIME_IN_FLIGHT_R298",
+        "bridge_runtime_confirm_r298(",
+        "bridge_runtime_command_for_action(",
+        "bridge_assert_no_port_conflicts_r5(",
+        "bridge_v7_block_inprocess_if_node_owner_running(",
+        "bridge_runtime_invoke_r298(",
+        "bridge_runtime_action_outcome(",
+        "bridge_start_was_inprocess_r65f(",
+        "bridge_set_owned_node_lock_r65e(",
+        "bridge_kick_raw_log_live_r134e(",
+        "bridge_r51_set_runtime_unknown(",
+        "\"action-settled\"",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge integrated runtime Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_require_valid_settings_ownership(source: &str, helpers: &str) -> Result<(), String> {
     for required in [
         "bridgeRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi",
@@ -3663,13 +3740,25 @@ fn verify_static_contracts(
         }
     }
 
-    for needle in [
+    for forbidden in [
         "bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E",
-        "wasmBridgeSetOwnedNodeLockR65E(String(net || \"\"), true, {",
-        "wasmBridgeSetOwnedNodeLockR65E(String(net || \"\"), false, {",
+        "wasmBridgeSetOwnedNodeLockR65E(",
     ] {
-        if !source.contains(needle) {
-            return Err(format!("Bridge R65E Rust/WASM binding missing: {needle}"));
+        if source.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge R65E direct JavaScript binding remains after OP298: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "crate::node_tab::bridge_set_owned_node_lock_r65e(",
+        "\"bridge-start-confirmed-r65f\"",
+        "\"bridge-stop-confirmed\"",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge R65E Rust-integrated action ownership missing: {required}"
+            ));
         }
     }
     for retired in [
@@ -3698,25 +3787,26 @@ fn verify_static_contracts(
             ));
         }
     }
-    for needle in [
+    for forbidden in [
         "bridgeCurrentNodeModeFromUiR65F as wasmBridgeCurrentNodeModeFromUiR65F",
-        "wasmBridgeCurrentNodeModeFromUiR65F(String(net || \"\"))",
+        "wasmBridgeCurrentNodeModeFromUiR65F(",
     ] {
-        if !source.contains(needle) {
+        if source.contains(forbidden) {
             return Err(format!(
-                "Bridge R65F current-node-mode direct Rust/WASM binding missing: {needle}"
+                "Retired Bridge R65F current-node-mode direct JavaScript binding remains after OP298: {forbidden}"
             ));
         }
     }
-    if source
-        .matches("wasmBridgeCurrentNodeModeFromUiR65F(String(net || \"\"))")
-        .count()
-        != 3
-    {
-        return Err(
-            "Bridge R65F current-node-mode owner must have exactly three generated-WASM call sites"
-                .to_owned(),
-        );
+    for required in [
+        "bridge_current_node_mode_from_ui_r65f(net.clone())",
+        "bridge_start_was_inprocess_r65f(",
+        "bridge_preview_declares_inprocess_r65f(",
+    ] {
+        if !helpers.contains(required) {
+            return Err(format!(
+                "Bridge R65F integrated Rust owner contract missing after OP298: {required}"
+            ));
+        }
     }
     if source.contains("function kgwBridgeCurrentNodeModeFromUiR65F(") {
         return Err("Retired Bridge R65F current-node-mode JavaScript owner remains".to_owned());
@@ -3999,6 +4089,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_require_valid_settings_ownership(&full_source, &helper_source)?;
     verify_apply_payload_ownership(&full_source, &helper_source)?;
     verify_integrated_runtime_invoke_ownership(&full_source, &helper_source)?;
+    verify_integrated_runtime_action_ownership(&full_source, &helper_source)?;
     verify_static_contracts(
         &full_source,
         &helper_source,
@@ -4996,11 +5087,7 @@ mod tests {
                 "kgwBridgeR51SetRuntimeButtons(",
                 1,
             ),
-            source.replacen(
-                "wasmBridgeR51SetRuntimeUnknown(",
-                "kgwBridgeR51SetRuntimeUnknown(",
-                1,
-            ),
+            format!("{source}\n// wasmBridgeR51SetRuntimeUnknown(\"mainnet\")\n"),
             source.replace(
                 "bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons",
                 "missingRuntimeButtons as wasmBridgeR51SetRuntimeButtons",
@@ -5116,22 +5203,15 @@ mod tests {
             include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs");
         assert!(verify_inprocess_node_owner_guard_ownership(source, start_trace).is_ok());
         for mutation in [
-            source.replacen(
-                "wasmBridgeV7BlockInprocessIfNodeOwnerRunning(",
-                "kgwBridgeV7BlockInprocessIfNodeOwnerRunning(",
-                1,
-            ),
-            source.replace(
-                "bridgeV7BlockInprocessIfNodeOwnerRunning as wasmBridgeV7BlockInprocessIfNodeOwnerRunning",
-                "missingBlockInprocessGuard as wasmBridgeV7BlockInprocessIfNodeOwnerRunning",
+            format!("{source}\n// wasmBridgeV7BlockInprocessIfNodeOwnerRunning(\"mainnet\")\n"),
+            format!(
+                "{source}\n// bridgeV7BlockInprocessIfNodeOwnerRunning as wasmBridgeV7BlockInprocessIfNodeOwnerRunning\n"
             ),
             format!(
                 "{source}\nasync function kgwBridgeV7BlockInprocessIfNodeOwnerRunning(net) {{ return Boolean(net); }}\n"
             ),
         ] {
-            assert!(
-                verify_inprocess_node_owner_guard_ownership(&mutation, start_trace).is_err()
-            );
+            assert!(verify_inprocess_node_owner_guard_ownership(&mutation, start_trace).is_err());
         }
         for mutation in [
             start_trace.replace(
@@ -6108,6 +6188,29 @@ mod tests {
     }
 
     #[test]
+    fn integrated_runtime_action_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let helpers =
+            include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
+        assert!(verify_integrated_runtime_action_ownership(source, helpers).is_ok());
+
+        let legacy = source.replacen(
+            "async function runBridgeIntegratedAction(action, net) {",
+            "async function runBridgeIntegratedAction(action, net) {\n  const command = wasmBridgeRuntimeCommandForAction(action);",
+            1,
+        );
+        assert!(verify_integrated_runtime_action_ownership(&legacy, helpers).is_err());
+
+        let missing = helpers.replace(
+            "js_name = bridgeRunIntegratedActionUi",
+            "js_name = missingRunIntegratedActionUi",
+        );
+        assert!(verify_integrated_runtime_action_ownership(source, &missing).is_err());
+    }
+
+    #[test]
     fn require_valid_settings_ownership_rejects_legacy_and_contract_drift() {
         let source = include_str!(
             "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
@@ -6257,7 +6360,7 @@ mod tests {
             include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_runtime_core.rs");
         assert!(verify_r51_live_refresh_ownership(source, runtime_core).is_ok());
         for mutation in [
-            source.replacen("wasmBridgeR51RefreshOne(", "kgwBridgeR51RefreshOne(", 1),
+            format!("{source}\n// wasmBridgeR51RefreshOne(\"mainnet\")\n"),
             source.replace(
                 "bridgeR51StartLiveRefresh as wasmBridgeR51StartLiveRefresh",
                 "missingStartLiveRefresh as wasmBridgeR51StartLiveRefresh",
@@ -6297,10 +6400,8 @@ mod tests {
             include_str!("../../crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs");
         assert!(verify_raw_log_live_kick_ownership(source, helpers).is_ok());
 
-        let legacy = source.replacen(
-            "function kgwBridgeR51KickRawLogLiveR134E(net, reason = \"bridge-start\") {",
-            "function kgwBridgeR51KickRawLogLiveR134E(net, reason = \"bridge-start\") {\n  window.setTimeout(() => {}, 350);",
-            1,
+        let legacy = format!(
+            "{source}\nfunction kgwBridgeR51KickRawLogLiveR134E(net, reason = \"bridge-start\") {{ window.setTimeout(() => {{}}, 350); }}\n"
         );
         assert!(verify_raw_log_live_kick_ownership(&legacy, helpers).is_err());
 

@@ -2,19 +2,15 @@ import { confirmUserAction } from "../../settings-contract.js";
 import { installSettingsLayout, decorateSettingsFields } from "../../settings-layout.js";
 import initBridgeRust, {
   bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5 as wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5,
-  bridgeById as wasmBridgeById,
-  bridgeChecked as wasmBridgeChecked,
   bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7,
   bridgeBuildCommandLinesUi as wasmBridgeBuildCommandLinesUi,
   bridgeBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi,
   bridgeInvokeIntegratedRuntimeUi as wasmBridgeInvokeIntegratedRuntimeUi,
+  bridgeRunIntegratedActionUi as wasmBridgeRunIntegratedActionUi,
   bridgeNormalizeRuntimeError as wasmBridgeNormalizeRuntimeError,
-  bridgeV7BlockInprocessIfNodeOwnerRunning as wasmBridgeV7BlockInprocessIfNodeOwnerRunning,
   bridgeR51SetRuntimeButtons as wasmBridgeR51SetRuntimeButtons,
-  bridgeR51SetRuntimeUnknown as wasmBridgeR51SetRuntimeUnknown,
   bridgeSetRuntimeErrorV1 as wasmBridgeSetRuntimeErrorV1,
   bridgeSetRuntimeActivityV1 as wasmBridgeSetRuntimeActivityV1,
-  bridgeR51RefreshOne as wasmBridgeR51RefreshOne,
   bridgeR51StartLiveRefresh as wasmBridgeR51StartLiveRefresh,
   bridgeR51CaptureFactoryDefaults as wasmBridgeR51CaptureFactoryDefaults,
   bridgeR51LoadSavedSettings as wasmBridgeR51LoadSavedSettings,
@@ -26,11 +22,6 @@ import initBridgeRust, {
   bridgeR51ReadStructuredInstances as wasmBridgeR51ReadStructuredInstances,
   bridgeR51ReadSettingsOwned as wasmBridgeR51ReadSettingsOwned,
   bridgeR51WriteSettings as wasmBridgeR51WriteSettings,
-  bridgePreviewDeclaresInprocessR65F as wasmBridgePreviewDeclaresInprocessR65F,
-  bridgeRuntimeCommandForAction as wasmBridgeRuntimeCommandForAction,
-  bridgeRuntimeActionOutcome as wasmBridgeRuntimeActionOutcome,
-  bridgeStartWasInprocessR65F as wasmBridgeStartWasInprocessR65F,
-  bridgeCurrentNodeModeFromUiR65F as wasmBridgeCurrentNodeModeFromUiR65F,
   bridgeR95BNormalizeNetworkPortValues as wasmBridgeR95BNormalizeNetworkPortValues,
   bridgePreparePreview as wasmBridgePreparePreview,
   bridgePreviewMessage as wasmBridgePreviewMessage,
@@ -43,7 +34,6 @@ import initBridgeRust, {
   bridgeInstallInstanceContainerOwnerR11 as wasmBridgeInstallInstanceContainerOwnerR11,
   bridgeInstallAllVisibleInstanceContainerOwnersR11 as wasmBridgeInstallAllVisibleInstanceContainerOwnersR11,
   bridgeInstallNetworkTabsUi as wasmBridgeInstallNetworkTabsUi,
-  bridgeKickRawLogLiveR134E as wasmBridgeKickRawLogLiveR134E,
   bridgeInstallDelegatedTabsUi as wasmBridgeInstallDelegatedTabsUi,
   bridgeInstallActionEventOwnersUi as wasmBridgeInstallActionEventOwnersUi,
   bridgeInstallPortEventOwnersUi as wasmBridgeInstallPortEventOwnersUi,
@@ -51,11 +41,9 @@ import initBridgeRust, {
   bridgeInstallRootActionClickOwnerUi as wasmBridgeInstallRootActionClickOwnerUi,
 
   bridgeDispatchClipboardWrite as wasmBridgeDispatchClipboardWrite,
-  bridgeElementId as wasmBridgeElementId,
   bridgeHandleLogAction as wasmBridgeHandleLogAction,
   bridgeInstallLogAutoScrollControls as wasmBridgeInstallLogAutoScrollControls,
   bridgeInstallLogFontControlsV29 as wasmBridgeInstallLogFontControlsV29,
-  bridgeNetworkEnabled as wasmBridgeNetworkEnabled,
   bridgeNetworkProfiles as wasmBridgeNetworkProfiles,
   bridgeRenderInprocessNodeSettingsUi as wasmBridgeRenderInprocessNodeSettingsUi,
   bridgeRenderSectionsUi as wasmBridgeRenderSectionsUi,
@@ -66,12 +54,10 @@ import initBridgeRust, {
   bridgeRequireValidSettingsUi as wasmBridgeRequireValidSettingsUi,
   bridgeEffectiveInprocessNodeSettingsChecked as wasmBridgeEffectiveInprocessNodeSettingsChecked,
   bridgeSyncAllModeControlsUi as wasmBridgeSyncAllModeControlsUi,
-  bridgeSetOwnedNodeLockR65E as wasmBridgeSetOwnedNodeLockR65E,
   bridgeValue as wasmBridgeValue,
   bridgeAddInstanceUi as wasmBridgeAddInstanceUi,
   bridgeRemoveInstanceUi as wasmBridgeRemoveInstanceUi,
   bridgeActiveRawLogInstanceId as wasmBridgeActiveRawLogInstanceId,
-  bridgeAssertNoPortConflictsR5 as wasmBridgeAssertNoPortConflictsR5,
   bridgeAutofixButtonInitialLabelUiR111G as wasmBridgeAutofixButtonInitialLabelUiR111G,
   settingsOwnerButtons as wasmSettingsOwnerButtons,
   settingsOwnerInstall as wasmSettingsOwnerInstall,
@@ -544,289 +530,25 @@ async function invokeBridgeIntegratedRuntime(command, net) {
 
 // KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_MAINNET_IMMEDIATE_R65F DOM read is Rust-owned in bridge_frontend_helpers.rs.
 
+// KGW_BRIDGE_INTEGRATED_ACTION_RUST_OWNER_V1
 async function runBridgeIntegratedAction(action, net) {
-  function kgwBridgeRuntimeOwnerTraceR64D(phase, details) {
-    try {
-      const safeNet = String(net || "unknown");
-      const safeAction = String(action || "unknown");
-      const safePhase = String(phase || "unknown");
-      const payload = {
-        patch: "KGW_BRIDGE_RUNTIME_OWNER_TRACE_R64D",
-        owner: "runBridgeIntegratedAction-existing-owner",
-        network: safeNet,
-        action: safeAction,
-        phase: safePhase,
-        details: details && typeof details === "object" ? details : {}
-      };
-
-      if (window.__TAURI__ && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === "function") {
-        window.__TAURI__.core.invoke("kgw_frontend_button_trace_v1", {
-          scope: "bridge",
-          net: safeNet,
-          action: safeAction,
-          phase: safePhase,
-          details: JSON.stringify(payload)
-        }).catch(function () {});
-      }
-    } catch (_) { /* Best-effort secondary operation; primary bridge behavior is preserved. */ }
-  }
-
-  kgwBridgeRuntimeOwnerTraceR64D("r64d-runtime-owner-enter", {
-    action: String(action || ""),
-    net: String(net || "")
-  });
-
-  const command = wasmBridgeRuntimeCommandForAction(String(action || ""));
-
-  if (!command) {
-    kgwBridgeRuntimeOwnerTraceR64D("r64d-invalid-action-return", {
-      action: String(action || "")
-    });
-    return false;
-  }
-
-  if (action === "start" && !wasmBridgeNetworkEnabled(net)) {
-    wasmBridgeSetRuntimeErrorV1(
-      net,
-      "Bridge start blocked: this network is disabled. Enable it in the network policy bar first."
-    );
-    wasmBridgeR51SetRuntimeButtons(String(net || ""), false, "", "", "");
-    return true;
-  }
-
-  if (action === "start") {
-    if (Object.keys(kgwBridgeValidateForm(net, true)).length) return true;
-    if ((wasmBridgeChecked(net, "internalCpuMiner") || wasmBridgeChecked(net, "inprocessUnsafeRpc") || wasmBridgeChecked(net, "inprocessEnableUnsyncedMining")) &&
-        !await confirmUserAction("Start " + net + " with the selected advanced risk settings?\n\nUnsafe RPC exposes RPC beyond loopback. Unsynced mining bypasses synchronization. CPU mining uses additional CPU resources.")) return true;
-    kgwBridgeRuntimeOwnerTraceR64D("r64d-preflight-begin", {
-      command
-    });
-
-    // KGW_BRIDGE_RUNTIME_START_SCOPED_CONFLICT_R111F
-    // Use the registered scoped conflict owner instead of the retired global R33 pre-start blocker.
-    const scopedConflictResultR111F = wasmBridgeAssertNoPortConflictsR5(
-      String(net || ""),
-      typeof kgwBridgeR51ReadStructuredInstancesR253 === "function" ? kgwBridgeR51ReadStructuredInstancesR253 : null,
-      bridgeInstances,
-      activeInstance
-    );
-
-    kgwBridgeRuntimeOwnerTraceR64D("r111f-scoped-conflict-owner-result", {
-      owner: "bridgeRuntimeStartOwner",
-      conflictOwner: "bridgeInstances.bridgeAssertNoPortConflictsR5",
-      ok: scopedConflictResultR111F && typeof scopedConflictResultR111F === "object"
-        ? scopedConflictResultR111F.ok !== false
-        : true,
-      conflictCount: scopedConflictResultR111F && typeof scopedConflictResultR111F === "object"
-        ? Number(scopedConflictResultR111F.conflictCount || 0)
-        : 0
-    });
-
-    if (scopedConflictResultR111F && typeof scopedConflictResultR111F === "object" && scopedConflictResultR111F.ok === false) {
-      wasmBridgeSetRuntimeErrorV1(net, String(scopedConflictResultR111F.message || "Bridge listener port conflict."));
-      kgwBridgeRuntimeOwnerTraceR64D("r111f-scoped-conflict-start-blocked-return", {
-        reason: "scoped-port-conflict",
-        conflictCount: Number(scopedConflictResultR111F.conflictCount || 0),
-        message: String(scopedConflictResultR111F.message || "")
-      });
-      return true;
+  return await wasmBridgeRunIntegratedActionUi(
+    String(action || ""),
+    String(net || ""),
+    bridgeInstances,
+    activeInstance,
+    kgwBridgeR51ReadStructuredInstancesR253,
+    buildCommandLines,
+    {
+      confirmUserAction: (message) => confirmUserAction(String(message || "")),
+      validateForm: (targetNet, focus = false) =>
+        kgwBridgeValidateForm(String(targetNet || ""), Boolean(focus)),
+      updateCommand: (targetNet) => updateCommand(String(targetNet || "")),
+      invokeIntegratedRuntime: (command, targetNet) =>
+        invokeBridgeIntegratedRuntime(String(command || ""), String(targetNet || "")),
+      liveRefreshCallbacks: () => kgwBridgeR51LiveRefreshCallbacksR257()
     }
-
-    const blockedBySameNetworkNode = await wasmBridgeV7BlockInprocessIfNodeOwnerRunning(String(net || ""));
-
-    kgwBridgeRuntimeOwnerTraceR64D("r64d-preflight-result", {
-      blockedBySameNetworkNode: Boolean(blockedBySameNetworkNode)
-    });
-
-    if (blockedBySameNetworkNode) {
-      wasmBridgeSetRuntimeErrorV1(
-        net,
-        "Bridge start blocked: same-network node is already running in in-process mode."
-      );
-
-      kgwBridgeRuntimeOwnerTraceR64D("r64d-preflight-blocked-return", {
-        reason: "same-network-node-running-inprocess"
-      });
-
-      return true;
-    }
-  }
-
-  const inFlightKey = net + ":" + action;
-
-  kgwBridgeRuntimeOwnerTraceR64D("r64d-inflight-check", {
-    inFlightKey,
-    alreadyInFlight: KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(inFlightKey)
-  });
-
-  if (KGW_BRIDGE_RUNTIME_IN_FLIGHT.has(inFlightKey)) {
-    wasmBridgeSetRuntimeActivityV1(net, "Bridge " + action + " already in progress.");
-
-    kgwBridgeRuntimeOwnerTraceR64D("r64d-inflight-duplicate-return", {
-      inFlightKey
-    });
-
-    return true;
-  }
-
-  KGW_BRIDGE_RUNTIME_IN_FLIGHT.add(inFlightKey);
-  wasmBridgeSetRuntimeErrorV1(net, "");
-  wasmBridgeR51SetRuntimeButtons(String(net || ""), action === "stop", action === "start" ? "starting" : "stopping", "", "");
-
-  kgwBridgeRuntimeOwnerTraceR64D("r64d-inflight-added", {
-    inFlightKey
-  });
-
-  try {
-    kgwBridgeRuntimeOwnerTraceR64D("r64d-preview-begin", {
-      command
-    });
-
-    const preview = updateCommand(net) || wasmBridgeById(wasmBridgeElementId(net, "commandPreview"))?.value || "";
-
-    kgwBridgeRuntimeOwnerTraceR64D("r64d-preview-ready", {
-      hasPreview: Boolean(preview),
-      previewLength: String(preview || "").length
-    });
-
-    wasmBridgeSetRuntimeActivityV1(net, "Bridge " + action + " requested.");
-
-    kgwBridgeRuntimeOwnerTraceR64D("r64d-invoke-begin", {
-      command,
-      hasPreview: Boolean(preview)
-    });
-
-    const result = await invokeBridgeIntegratedRuntime(command, net);
-
-    kgwBridgeRuntimeOwnerTraceR64D("r64d-invoke-result", {
-      resultType: typeof result,
-      resultStringLength: String(result ?? "").length
-    });
-
-    const outcome = wasmBridgeRuntimeActionOutcome(String(action || ""), result);
-    const raw = String(outcome?.raw || "");
-    const fields = outcome?.fields || {};
-
-    kgwBridgeRuntimeOwnerTraceR64D("r64d-response-parsed", {
-      rawLength: String(raw || "").length,
-      fieldKeys: Object.keys(fields)
-    });
-
-    if (action === "start") {
-      const confirmedStarted = Boolean(outcome?.confirmedStarted);
-      const blocked = Boolean(outcome?.blocked);
-
-      kgwBridgeRuntimeOwnerTraceR64D("r64d-start-confirmation-evaluated", {
-        confirmedStarted: Boolean(confirmedStarted),
-        blocked: Boolean(blocked)
-      });
-
-      if (confirmedStarted && !blocked) {
-        wasmBridgeSetRuntimeErrorV1(net, "");
-        wasmBridgeR51SetRuntimeButtons(String(net || ""), true, "", "", "");
-        const bridgeNodeMode = String(fields.node_mode || fields.nodeMode || "").toLowerCase();
-        const bridgeStartWasInprocess = wasmBridgeStartWasInprocessR65F(
-          fields,
-          String(wasmBridgeCurrentNodeModeFromUiR65F(String(net || "")) || ""),
-          String(preview || "")
-        );
-        if (bridgeStartWasInprocess) {
-          wasmBridgeSetOwnedNodeLockR65E(String(net || ""), true, {
-            source: "bridge-start-confirmed-r65f",
-            action: "start",
-            nodeMode: bridgeNodeMode,
-            uiNodeMode: wasmBridgeCurrentNodeModeFromUiR65F(String(net || "")),
-            previewDeclaredInprocess: wasmBridgePreviewDeclaresInprocessR65F(preview),
-            pid: String(fields.pid || "")
-          });
-        }
-        kgwBridgeRuntimeOwnerTraceR64D("r65f-bridge-owned-node-lock-evaluated", {
-          patch: "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_MAINNET_IMMEDIATE_R65F",
-          bridgeNodeMode,
-          uiNodeMode: wasmBridgeCurrentNodeModeFromUiR65F(String(net || "")),
-          previewDeclaredInprocess: wasmBridgePreviewDeclaresInprocessR65F(preview),
-          bridgeStartWasInprocess
-        });
-        wasmBridgeSetRuntimeActivityV1(net, "Bridge READY attestation confirmed.", "ready");
-        kgwBridgeR51KickRawLogLiveR134E(net, "bridge-start-confirmed");
-      } else if (blocked) {
-        wasmBridgeR51SetRuntimeButtons(String(net || ""), false, "", "", "");
-        wasmBridgeSetRuntimeErrorV1(net, raw);
-        wasmBridgeSetRuntimeActivityV1(net, "Bridge start failed.", "failed");
-      } else {
-        wasmBridgeR51SetRuntimeButtons(String(net || ""), false, "", "", "");
-        wasmBridgeSetRuntimeErrorV1(net, "Backend Start did not provide READY attestation: " + raw);
-        wasmBridgeSetRuntimeActivityV1(net, "Bridge start was not confirmed by READY attestation.", "warning");
-      }
-    }
-
-    if (action === "stop") {
-      const confirmedStopped = Boolean(outcome?.confirmedStopped);
-
-      kgwBridgeRuntimeOwnerTraceR64D("r64d-stop-confirmation-evaluated", {
-        confirmedStopped: Boolean(confirmedStopped)
-      });
-
-      if (confirmedStopped) {
-        const forced = Boolean(outcome?.forced);
-        const stopFailed = Boolean(outcome?.stopFailed);
-        KGW_BRIDGE_RUNTIME_IN_FLIGHT.delete(inFlightKey);
-        wasmBridgeR51SetRuntimeButtons(String(net || ""), false, "", "", "");
-        wasmBridgeSetRuntimeErrorV1(
-          net,
-          forced
-            ? "Stop required FORCED termination. " + String(fields.reason || raw)
-            : stopFailed
-              ? "Official graceful shutdown failed, but the worker process exited. " + String(fields.reason || raw)
-              : ""
-        );
-        wasmBridgeSetOwnedNodeLockR65E(String(net || ""), false, {
-          source: "bridge-stop-confirmed",
-          action: "stop"
-        });
-        wasmBridgeSetRuntimeActivityV1(
-          net,
-          forced ? "Bridge FORCED termination confirmed." : stopFailed ? "Bridge worker exited after graceful shutdown failure." : fields.graceful === "true" ? "Bridge graceful official shutdown confirmed." : "Bridge already stopped."
-        );
-      } else {
-        throw new Error("Backend Stop did not confirm terminal process exit: " + raw);
-      }
-    }
-
-    kgwBridgeRuntimeOwnerTraceR64D("r64d-runtime-owner-return-success", {
-      action: String(action || "")
-    });
-
-    return true;
-  } catch (error) {
-    const message = error && error.message ? error.message : String(error);
-
-    kgwBridgeRuntimeOwnerTraceR64D("r64d-runtime-owner-catch", {
-      message
-    });
-
-    wasmBridgeR51SetRuntimeUnknown(
-      String(net || ""),
-      String(message || "Runtime status is temporarily unavailable. Reconciling with the backend."),
-      ""
-    );
-    wasmBridgeSetRuntimeActivityV1(net, "Bridge " + action + " failed; reconciling runtime state.");
-
-    return true;
-  } finally {
-    KGW_BRIDGE_RUNTIME_IN_FLIGHT.delete(inFlightKey);
-    window.setTimeout(() => {
-      void wasmBridgeR51RefreshOne(
-        String(net || ""),
-        "action-settled",
-        kgwBridgeR51LiveRefreshCallbacksR257()
-      );
-    }, 0);
-
-    kgwBridgeRuntimeOwnerTraceR64D("r64d-runtime-owner-finally", {
-      inFlightKey
-    });
-  }
+  );
 }
 /* KGW_R51_DIRECT_BRIDGE_LOG_RUNTIME_SETTINGS_OWNER */
 
@@ -955,16 +677,7 @@ function kgwBridgeR51LiveRefreshCallbacksR257() {
   };
 }
 
-// KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E
-// Raw bridge log live helper only: no parsing, no ASIC table, no bridge behavior duplication.
-function kgwBridgeR51KickRawLogLiveR134E(net, reason = "bridge-start") {
-  return wasmBridgeKickRawLogLiveR134E(
-    String(net || ""),
-    String(reason || "bridge-start"),
-    kgwBridgeR51LiveRefreshCallbacksR257()
-  );
-}
-
+// KGW_BRIDGE_RAW_LOG_LIVE_EXACT_R134E is Rust-owned in bridge_frontend_helpers.rs.
 
 
 /* KGW_BRIDGE_ACTION_AND_LOG_FEEDBACK_OWNER_V1 */

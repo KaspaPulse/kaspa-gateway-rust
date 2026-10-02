@@ -14,7 +14,7 @@ use super::settings_layout::{
 use super::settings_schema::BRIDGE_MANAGED;
 use js_sys::{Array, Error, Function, JSON, Object, Promise, Reflect};
 use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use wasm_bindgen::{JsCast, closure::Closure, prelude::*};
 use wasm_bindgen_futures::{JsFuture, spawn_local};
 
@@ -4453,6 +4453,619 @@ pub fn bridge_small_owner_trace_r44d(
     let _ = promise.catch(&catch);
     catch.forget();
     true
+}
+
+thread_local! {
+    static BRIDGE_RUNTIME_IN_FLIGHT_R298: RefCell<BTreeSet<String>> =
+        const { RefCell::new(BTreeSet::new()) };
+}
+
+fn bridge_runtime_owner_trace_r298(net: &str, action: &str, phase: &str, details: JsValue) {
+    let Some(invoke) = trace_invoke_function() else {
+        return;
+    };
+    let safe_net = if net.is_empty() { "unknown" } else { net };
+    let safe_action = if action.is_empty() { "unknown" } else { action };
+    let safe_phase = if phase.is_empty() { "unknown" } else { phase };
+    let nested = Object::new();
+    set(
+        nested.as_ref(),
+        "patch",
+        &JsValue::from_str("KGW_BRIDGE_RUNTIME_OWNER_TRACE_R64D"),
+    );
+    set(
+        nested.as_ref(),
+        "owner",
+        &JsValue::from_str("runBridgeIntegratedAction-existing-owner"),
+    );
+    set(nested.as_ref(), "network", &JsValue::from_str(safe_net));
+    set(nested.as_ref(), "action", &JsValue::from_str(safe_action));
+    set(nested.as_ref(), "phase", &JsValue::from_str(safe_phase));
+    let empty_details = Object::new();
+    let safe_details = if details.is_object() && !details.is_null() {
+        &details
+    } else {
+        empty_details.as_ref()
+    };
+    set(nested.as_ref(), "details", safe_details);
+    let args = Object::new();
+    set(args.as_ref(), "scope", &JsValue::from_str("bridge"));
+    set(args.as_ref(), "net", &JsValue::from_str(safe_net));
+    set(args.as_ref(), "action", &JsValue::from_str(safe_action));
+    set(args.as_ref(), "phase", &JsValue::from_str(safe_phase));
+    let details_text = JSON::stringify(nested.as_ref())
+        .ok()
+        .map(|value| crate::js_string_owned(value.as_ref()))
+        .unwrap_or_else(|| "{}".to_owned());
+    set(args.as_ref(), "details", &JsValue::from_str(&details_text));
+    if let Ok(result) = invoke.call2(
+        &JsValue::UNDEFINED,
+        &JsValue::from_str("kgw_frontend_button_trace_v1"),
+        args.as_ref(),
+    ) {
+        let promise = Promise::resolve(&result);
+        let catch = Closure::wrap(Box::new(move |_error: JsValue| {}) as Box<dyn FnMut(JsValue)>);
+        let _ = promise.catch(&catch);
+        catch.forget();
+    }
+}
+
+async fn bridge_runtime_confirm_r298(callbacks: &JsValue, message: &str) -> Result<bool, JsValue> {
+    let confirm = function(callbacks, "confirmUserAction")
+        .ok_or_else(|| JsValue::from(Error::new("Bridge confirmation callback is unavailable")))?;
+    let value = confirm.call1(callbacks, &JsValue::from_str(message))?;
+    let resolved = JsFuture::from(Promise::resolve(&value)).await?;
+    Ok(crate::js_boolean(&resolved))
+}
+
+fn bridge_runtime_live_callbacks_r298(callbacks: &JsValue) -> JsValue {
+    let value = property(callbacks, "liveRefreshCallbacks");
+    value
+        .clone()
+        .dyn_into::<Function>()
+        .ok()
+        .and_then(|callback| callback.call0(callbacks).ok())
+        .unwrap_or(value)
+}
+
+fn bridge_runtime_fields_text_r298(fields: &JsValue, primary: &str, alternate: &str) -> String {
+    let primary_value = property(fields, primary);
+    if crate::js_boolean(&primary_value) {
+        crate::js_string_owned(&primary_value)
+    } else {
+        crate::js_string_owned(&property(fields, alternate))
+    }
+}
+
+fn bridge_runtime_update_preview_r298(
+    callbacks: &JsValue,
+    net: &str,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    structured_reader: JsValue,
+    build_command_lines: JsValue,
+) -> String {
+    if let Some(update) = function(callbacks, "updateCommand")
+        && let Ok(value) = update.call1(callbacks, &JsValue::from_str(net))
+    {
+        let text = crate::js_string_owned(&value);
+        if !text.is_empty() {
+            return text;
+        }
+    }
+    bridge_update_command_ui(
+        net.to_owned(),
+        bridge_instances,
+        active_instance,
+        structured_reader,
+        build_command_lines,
+    )
+}
+
+async fn bridge_runtime_invoke_r298(
+    callbacks: &JsValue,
+    command: String,
+    net: String,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    structured_reader: JsValue,
+    build_command_lines: JsValue,
+) -> Result<JsValue, JsValue> {
+    if let Some(invoke) = function(callbacks, "invokeIntegratedRuntime") {
+        let value = invoke.call2(
+            callbacks,
+            &JsValue::from_str(&command),
+            &JsValue::from_str(&net),
+        )?;
+        return JsFuture::from(Promise::resolve(&value)).await;
+    }
+    bridge_invoke_integrated_runtime_ui(
+        command,
+        net,
+        bridge_instances,
+        active_instance,
+        structured_reader,
+        build_command_lines,
+    )
+    .await
+}
+
+#[wasm_bindgen(js_name = bridgeRunIntegratedActionUi)]
+pub async fn bridge_run_integrated_action_ui(
+    action: String,
+    net: String,
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    structured_reader: JsValue,
+    build_command_lines: JsValue,
+    callbacks: JsValue,
+) -> Result<bool, JsValue> {
+    let enter = Object::new();
+    set(enter.as_ref(), "action", &JsValue::from_str(&action));
+    set(enter.as_ref(), "net", &JsValue::from_str(&net));
+    bridge_runtime_owner_trace_r298(&net, &action, "r64d-runtime-owner-enter", enter.into());
+
+    let command = crate::bridge_runtime_core::bridge_runtime_command_for_action(action.clone());
+    if command.is_empty() {
+        let details = Object::new();
+        set(details.as_ref(), "action", &JsValue::from_str(&action));
+        bridge_runtime_owner_trace_r298(
+            &net,
+            &action,
+            "r64d-invalid-action-return",
+            details.into(),
+        );
+        return Ok(false);
+    }
+
+    if action == "start" && !bridge_network_enabled(net.clone()) {
+        crate::bridge_runtime_core::bridge_set_runtime_error_v1(
+            net.clone(),
+            JsValue::from_str(
+                "Bridge start blocked: this network is disabled. Enable it in the network policy bar first.",
+            ),
+            JsValue::UNDEFINED,
+        );
+        crate::bridge_runtime_core::bridge_r51_set_runtime_buttons(
+            net.clone(),
+            false,
+            String::new(),
+            String::new(),
+            String::new(),
+        );
+        return Ok(true);
+    }
+
+    if action == "start" {
+        let errors = if let Some(validate) = function(&callbacks, "validateForm") {
+            validate.call2(&callbacks, &JsValue::from_str(&net), &JsValue::TRUE)?
+        } else {
+            bridge_validate_form_ui(net.clone(), bridge_instances.clone(), true)
+        };
+        if Reflect::own_keys(&errors)?.length() > 0 {
+            return Ok(true);
+        }
+        let risky = bridge_checked(net.clone(), "internalCpuMiner".to_owned())
+            || bridge_checked(net.clone(), "inprocessUnsafeRpc".to_owned())
+            || bridge_checked(net.clone(), "inprocessEnableUnsyncedMining".to_owned());
+        if risky {
+            let message = format!(
+                "Start {net} with the selected advanced risk settings?\n\nUnsafe RPC exposes RPC beyond loopback. Unsynced mining bypasses synchronization. CPU mining uses additional CPU resources."
+            );
+            if !bridge_runtime_confirm_r298(&callbacks, &message).await? {
+                return Ok(true);
+            }
+        }
+
+        let preflight = Object::new();
+        set(preflight.as_ref(), "command", &JsValue::from_str(&command));
+        bridge_runtime_owner_trace_r298(&net, &action, "r64d-preflight-begin", preflight.into());
+
+        let conflict = crate::bridge_port_validation::bridge_assert_no_port_conflicts_r5(
+            net.clone(),
+            structured_reader.clone(),
+            bridge_instances.clone(),
+            active_instance.clone(),
+        )?;
+        let conflict_ok = !present(&conflict)
+            || !conflict.is_object()
+            || property(&conflict, "ok").as_bool() != Some(false);
+        let conflict_count = crate::js_number(&property(&conflict, "conflictCount")).max(0.0);
+        let conflict_trace = Object::new();
+        set(
+            conflict_trace.as_ref(),
+            "owner",
+            &JsValue::from_str("bridgeRuntimeStartOwner"),
+        );
+        set(
+            conflict_trace.as_ref(),
+            "conflictOwner",
+            &JsValue::from_str("bridgeInstances.bridgeAssertNoPortConflictsR5"),
+        );
+        set(
+            conflict_trace.as_ref(),
+            "ok",
+            &JsValue::from_bool(conflict_ok),
+        );
+        set(
+            conflict_trace.as_ref(),
+            "conflictCount",
+            &JsValue::from_f64(conflict_count),
+        );
+        bridge_runtime_owner_trace_r298(
+            &net,
+            &action,
+            "r111f-scoped-conflict-owner-result",
+            conflict_trace.into(),
+        );
+        if !conflict_ok {
+            let message = {
+                let value = crate::js_string_owned(&property(&conflict, "message"));
+                if value.is_empty() {
+                    "Bridge listener port conflict.".to_owned()
+                } else {
+                    value
+                }
+            };
+            crate::bridge_runtime_core::bridge_set_runtime_error_v1(
+                net.clone(),
+                JsValue::from_str(&message),
+                JsValue::UNDEFINED,
+            );
+            let blocked = Object::new();
+            set(
+                blocked.as_ref(),
+                "reason",
+                &JsValue::from_str("scoped-port-conflict"),
+            );
+            set(
+                blocked.as_ref(),
+                "conflictCount",
+                &JsValue::from_f64(conflict_count),
+            );
+            set(blocked.as_ref(), "message", &JsValue::from_str(&message));
+            bridge_runtime_owner_trace_r298(
+                &net,
+                &action,
+                "r111f-scoped-conflict-start-blocked-return",
+                blocked.into(),
+            );
+            return Ok(true);
+        }
+
+        let blocked_by_node =
+            crate::bridge_start_trace::bridge_v7_block_inprocess_if_node_owner_running(net.clone())
+                .await?;
+        let result = Object::new();
+        set(
+            result.as_ref(),
+            "blockedBySameNetworkNode",
+            &JsValue::from_bool(blocked_by_node),
+        );
+        bridge_runtime_owner_trace_r298(&net, &action, "r64d-preflight-result", result.into());
+        if blocked_by_node {
+            crate::bridge_runtime_core::bridge_set_runtime_error_v1(
+                net.clone(),
+                JsValue::from_str(
+                    "Bridge start blocked: same-network node is already running in in-process mode.",
+                ),
+                JsValue::UNDEFINED,
+            );
+            let details = Object::new();
+            set(
+                details.as_ref(),
+                "reason",
+                &JsValue::from_str("same-network-node-running-inprocess"),
+            );
+            bridge_runtime_owner_trace_r298(
+                &net,
+                &action,
+                "r64d-preflight-blocked-return",
+                details.into(),
+            );
+            return Ok(true);
+        }
+    }
+
+    let in_flight_key = format!("{net}:{action}");
+    let already_in_flight =
+        BRIDGE_RUNTIME_IN_FLIGHT_R298.with(|items| items.borrow().contains(&in_flight_key));
+    let check = Object::new();
+    set(
+        check.as_ref(),
+        "inFlightKey",
+        &JsValue::from_str(&in_flight_key),
+    );
+    set(
+        check.as_ref(),
+        "alreadyInFlight",
+        &JsValue::from_bool(already_in_flight),
+    );
+    bridge_runtime_owner_trace_r298(&net, &action, "r64d-inflight-check", check.into());
+    if already_in_flight {
+        crate::bridge_runtime_core::bridge_set_runtime_activity_v1(
+            net.clone(),
+            JsValue::from_str(&format!("Bridge {action} already in progress.")),
+            JsValue::UNDEFINED,
+        );
+        let details = Object::new();
+        set(
+            details.as_ref(),
+            "inFlightKey",
+            &JsValue::from_str(&in_flight_key),
+        );
+        bridge_runtime_owner_trace_r298(
+            &net,
+            &action,
+            "r64d-inflight-duplicate-return",
+            details.into(),
+        );
+        return Ok(true);
+    }
+
+    BRIDGE_RUNTIME_IN_FLIGHT_R298.with(|items| {
+        items.borrow_mut().insert(in_flight_key.clone());
+    });
+    crate::bridge_runtime_core::bridge_set_runtime_error_v1(
+        net.clone(),
+        JsValue::from_str(""),
+        JsValue::UNDEFINED,
+    );
+    crate::bridge_runtime_core::bridge_r51_set_runtime_buttons(
+        net.clone(),
+        action == "stop",
+        if action == "start" {
+            "starting".to_owned()
+        } else {
+            "stopping".to_owned()
+        },
+        String::new(),
+        String::new(),
+    );
+
+    let execution: Result<bool, JsValue> = async {
+        let preview = bridge_runtime_update_preview_r298(
+            &callbacks,
+            &net,
+            bridge_instances.clone(),
+            active_instance.clone(),
+            structured_reader.clone(),
+            build_command_lines.clone(),
+        );
+        let preview = if preview.is_empty() {
+            crate::js_string_owned(&property(
+                &bridge_by_id(bridge_element_id(net.clone(), "commandPreview".to_owned())),
+                "value",
+            ))
+        } else {
+            preview
+        };
+        crate::bridge_runtime_core::bridge_set_runtime_activity_v1(
+            net.clone(),
+            JsValue::from_str(&format!("Bridge {action} requested.")),
+            JsValue::UNDEFINED,
+        );
+        let result = bridge_runtime_invoke_r298(
+            &callbacks,
+            command.clone(),
+            net.clone(),
+            bridge_instances.clone(),
+            active_instance.clone(),
+            structured_reader.clone(),
+            build_command_lines.clone(),
+        )
+        .await?;
+        let outcome =
+            crate::bridge_runtime_core::bridge_runtime_action_outcome(action.clone(), result);
+        let raw = crate::js_string_owned(&property(&outcome, "raw"));
+        let fields = property(&outcome, "fields");
+
+        if action == "start" {
+            let confirmed = crate::js_boolean(&property(&outcome, "confirmedStarted"));
+            let blocked = crate::js_boolean(&property(&outcome, "blocked"));
+            if confirmed && !blocked {
+                crate::bridge_runtime_core::bridge_set_runtime_error_v1(
+                    net.clone(),
+                    JsValue::from_str(""),
+                    JsValue::UNDEFINED,
+                );
+                crate::bridge_runtime_core::bridge_r51_set_runtime_buttons(
+                    net.clone(),
+                    true,
+                    String::new(),
+                    String::new(),
+                    String::new(),
+                );
+                let bridge_node_mode =
+                    bridge_runtime_fields_text_r298(&fields, "node_mode", "nodeMode")
+                        .to_ascii_lowercase();
+                let ui_node_mode = bridge_current_node_mode_from_ui_r65f(net.clone());
+                let was_inprocess = crate::bridge_runtime_core::bridge_start_was_inprocess_r65f(
+                    fields.clone(),
+                    ui_node_mode.clone(),
+                    preview.clone(),
+                );
+                if was_inprocess {
+                    let details = Object::new();
+                    set(
+                        details.as_ref(),
+                        "source",
+                        &JsValue::from_str("bridge-start-confirmed-r65f"),
+                    );
+                    set(details.as_ref(), "action", &JsValue::from_str("start"));
+                    set(
+                        details.as_ref(),
+                        "nodeMode",
+                        &JsValue::from_str(&bridge_node_mode),
+                    );
+                    set(
+                        details.as_ref(),
+                        "uiNodeMode",
+                        &JsValue::from_str(&ui_node_mode),
+                    );
+                    set(
+                        details.as_ref(),
+                        "previewDeclaredInprocess",
+                        &JsValue::from_bool(
+                            crate::bridge_runtime_core::bridge_preview_declares_inprocess_r65f(
+                                preview.clone(),
+                            ),
+                        ),
+                    );
+                    set(details.as_ref(), "pid", &property(&fields, "pid"));
+                    crate::node_tab::bridge_set_owned_node_lock_r65e(
+                        net.clone(),
+                        true,
+                        details.into(),
+                    );
+                }
+                crate::bridge_runtime_core::bridge_set_runtime_activity_v1(
+                    net.clone(),
+                    JsValue::from_str("Bridge READY attestation confirmed."),
+                    JsValue::from_str("ready"),
+                );
+                bridge_kick_raw_log_live_r134e(
+                    net.clone(),
+                    "bridge-start-confirmed".to_owned(),
+                    bridge_runtime_live_callbacks_r298(&callbacks),
+                );
+            } else if blocked {
+                crate::bridge_runtime_core::bridge_r51_set_runtime_buttons(
+                    net.clone(),
+                    false,
+                    String::new(),
+                    String::new(),
+                    String::new(),
+                );
+                crate::bridge_runtime_core::bridge_set_runtime_error_v1(
+                    net.clone(),
+                    JsValue::from_str(&raw),
+                    JsValue::UNDEFINED,
+                );
+                crate::bridge_runtime_core::bridge_set_runtime_activity_v1(
+                    net.clone(),
+                    JsValue::from_str("Bridge start failed."),
+                    JsValue::from_str("failed"),
+                );
+            } else {
+                crate::bridge_runtime_core::bridge_r51_set_runtime_buttons(
+                    net.clone(),
+                    false,
+                    String::new(),
+                    String::new(),
+                    String::new(),
+                );
+                crate::bridge_runtime_core::bridge_set_runtime_error_v1(
+                    net.clone(),
+                    JsValue::from_str(&format!(
+                        "Backend Start did not provide READY attestation: {raw}"
+                    )),
+                    JsValue::UNDEFINED,
+                );
+                crate::bridge_runtime_core::bridge_set_runtime_activity_v1(
+                    net.clone(),
+                    JsValue::from_str("Bridge start was not confirmed by READY attestation."),
+                    JsValue::from_str("warning"),
+                );
+            }
+        }
+
+        if action == "stop" {
+            let confirmed = crate::js_boolean(&property(&outcome, "confirmedStopped"));
+            if !confirmed {
+                return Err(JsValue::from(Error::new(&format!(
+                    "Backend Stop did not confirm terminal process exit: {raw}"
+                ))));
+            }
+            let forced = crate::js_boolean(&property(&outcome, "forced"));
+            let stop_failed = crate::js_boolean(&property(&outcome, "stopFailed"));
+            let reason = crate::js_string_owned(&property(&fields, "reason"));
+            crate::bridge_runtime_core::bridge_r51_set_runtime_buttons(
+                net.clone(),
+                false,
+                String::new(),
+                String::new(),
+                String::new(),
+            );
+            let error = if forced {
+                format!("Stop required FORCED termination. {reason}")
+            } else if stop_failed {
+                format!(
+                    "Official graceful shutdown failed, but the worker process exited. {reason}"
+                )
+            } else {
+                String::new()
+            };
+            crate::bridge_runtime_core::bridge_set_runtime_error_v1(
+                net.clone(),
+                JsValue::from_str(&error),
+                JsValue::UNDEFINED,
+            );
+            let details = Object::new();
+            set(
+                details.as_ref(),
+                "source",
+                &JsValue::from_str("bridge-stop-confirmed"),
+            );
+            set(details.as_ref(), "action", &JsValue::from_str("stop"));
+            crate::node_tab::bridge_set_owned_node_lock_r65e(net.clone(), false, details.into());
+            let activity = if forced {
+                "Bridge FORCED termination confirmed."
+            } else if stop_failed {
+                "Bridge worker exited after graceful shutdown failure."
+            } else if crate::js_string_owned(&property(&fields, "graceful")) == "true" {
+                "Bridge graceful official shutdown confirmed."
+            } else {
+                "Bridge already stopped."
+            };
+            crate::bridge_runtime_core::bridge_set_runtime_activity_v1(
+                net.clone(),
+                JsValue::from_str(activity),
+                JsValue::UNDEFINED,
+            );
+        }
+        Ok(true)
+    }
+    .await;
+
+    if let Err(error) = execution {
+        let message = crate::bridge_runtime_core::bridge_normalize_runtime_error(error);
+        crate::bridge_runtime_core::bridge_r51_set_runtime_unknown(
+            net.clone(),
+            if message.is_empty() {
+                "Runtime status is temporarily unavailable. Reconciling with the backend."
+                    .to_owned()
+            } else {
+                message
+            },
+            String::new(),
+        );
+        crate::bridge_runtime_core::bridge_set_runtime_activity_v1(
+            net.clone(),
+            JsValue::from_str(&format!(
+                "Bridge {action} failed; reconciling runtime state."
+            )),
+            JsValue::UNDEFINED,
+        );
+    }
+
+    BRIDGE_RUNTIME_IN_FLIGHT_R298.with(|items| {
+        items.borrow_mut().remove(&in_flight_key);
+    });
+    bridge_tab_refresh_later(
+        net.clone(),
+        "action-settled".to_owned(),
+        bridge_runtime_live_callbacks_r298(&callbacks),
+        0,
+    );
+    let finally = Object::new();
+    set(
+        finally.as_ref(),
+        "inFlightKey",
+        &JsValue::from_str(&in_flight_key),
+    );
+    bridge_runtime_owner_trace_r298(&net, &action, "r64d-runtime-owner-finally", finally.into());
+    Ok(true)
 }
 
 #[wasm_bindgen(js_name = bridgeApplyRustyKaspaRootOnlyDefaultPathsR5)]
