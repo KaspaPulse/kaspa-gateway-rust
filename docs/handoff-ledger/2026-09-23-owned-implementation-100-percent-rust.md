@@ -445,3 +445,10 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - GATE_REPAIR: stale post-migration assumptions for R51 presentation/live-refresh, raw-log kick, in-process owner guard, R65E lock, R65F node-mode ownership, and associated regression mutations were updated to fail closed on JS reintroduction while requiring Rust ownership. Test harness exits explicitly after durable result write so Rust-owned recurring timers cannot keep the synthetic Node process alive.
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP298 qualification unless invalidated.
 - PUSHED: NO.
+
+## OP299 - Bridge R51 write-settings callback factory Rust/WASM ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 4, same canonical writer/session.
+- PREVIOUS_CLOSED_OPERATION: OP298 closeout `dbca8ea2c4418693d4c363a9f18550e9e03e9606`; BASE_TREE `c774f3f67fef40d2faabe0e5aa03a0d24228a23a`; worktree clean at intent time.
+- BOUNDARY: retire JavaScript construction of `kgwBridgeR51WriteSettingsCallbacksR250`; Rust/WASM owns normalize/refresh/toggle/set-option/update callback wiring while JavaScript supplies only unavoidable bridgeRefreshInstances/updateCommand adapters.
+- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; generated WASM consistent; R51 write-settings semantics preserved; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
