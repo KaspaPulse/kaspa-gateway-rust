@@ -4460,6 +4460,13 @@ thread_local! {
         const { RefCell::new(BTreeSet::new()) };
 }
 
+pub fn bridge_runtime_transition_active_r300(net: String) -> bool {
+    BRIDGE_RUNTIME_IN_FLIGHT_R298.with(|set| {
+        let set = set.borrow();
+        set.contains(&format!("{net}:start")) || set.contains(&format!("{net}:stop"))
+    })
+}
+
 fn bridge_runtime_owner_trace_r298(net: &str, action: &str, phase: &str, details: JsValue) {
     let Some(invoke) = trace_invoke_function() else {
         return;

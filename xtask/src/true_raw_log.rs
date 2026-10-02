@@ -9,6 +9,7 @@ const LIVE_MATRIX: &str = "xtask/src/live_raw_log_matrix.rs";
 const NODE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
 const NODE_RAW_LOG_RS: &str = "crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs";
 const BRIDGE_JS: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
+const BRIDGE_TAB_RS: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_tab.rs";
 const BRIDGE_RAW_LOG_RS: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_raw_log.rs";
 const BRIDGE_START_TRACE_RS: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs";
 const RUNTIME_RS: &str = "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs";
@@ -22,6 +23,7 @@ struct Sources {
     node: String,
     node_raw_log: String,
     bridge: String,
+    bridge_tab: String,
     bridge_raw_log: String,
     bridge_start_trace: String,
     runtime: String,
@@ -162,6 +164,7 @@ fn load_sources(root: &Path) -> Result<Sources, String> {
         node: read(root, NODE_JS)?,
         node_raw_log: read(root, NODE_RAW_LOG_RS)?,
         bridge: read(root, BRIDGE_JS)?,
+        bridge_tab: read(root, BRIDGE_TAB_RS)?,
         bridge_raw_log: read(root, BRIDGE_RAW_LOG_RS)?,
         bridge_start_trace: read(root, BRIDGE_START_TRACE_RS)?,
         runtime: read(root, RUNTIME_RS)?,
@@ -235,9 +238,9 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
             "Bridge typed raw-log report application must remain Rust/WASM-owned.",
         ),
         (
-            &s.bridge,
-            "bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer",
-            "Bridge UI must bind raw-log rendering directly to Rust/WASM.",
+            &s.bridge_tab,
+            "bridge_render_raw_log_buffer(",
+            "Bridge tab Rust owner must render raw-log buffers directly.",
         ),
         (
             &s.bridge_raw_log,
@@ -725,7 +728,8 @@ mod tests {
                 r#"metadata_text(metadata, "runtimeRole", "node")"#,
             ]
             .join("\n"),
-            bridge: ["bridgeRenderRawLogBuffer as wasmBridgeRenderRawLogBuffer"].join("\n"),
+            bridge: String::new(),
+            bridge_tab: ["bridge_render_raw_log_buffer("].join("\n"),
             bridge_raw_log: [
                 "#[wasm_bindgen(js_name = bridgeApplyRuntimeLogReport)]",
                 "#[wasm_bindgen(js_name = bridgeClearRawLogBuffer)]",

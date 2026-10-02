@@ -14,6 +14,7 @@ mod bridge_raw_log;
 mod bridge_render;
 mod bridge_runtime_core;
 mod bridge_start_trace;
+mod bridge_tab;
 mod explorer_addresses;
 mod explorer_calendar;
 mod explorer_controls;
