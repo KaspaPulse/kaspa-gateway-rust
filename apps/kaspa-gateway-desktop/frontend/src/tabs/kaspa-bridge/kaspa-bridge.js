@@ -2,7 +2,6 @@ import { confirmUserAction } from "../../settings-contract.js";
 import { installSettingsLayout, decorateSettingsFields } from "../../settings-layout.js";
 import initBridgeRust, {
   bridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5 as wasmBridgeApplyRustyKaspaRootOnlyDefaultPathsSoonR5,
-  bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7,
   bridgeBuildCommandLinesUi as wasmBridgeBuildCommandLinesUi,
   bridgeBuildApplyPayloadUi as wasmBridgeBuildApplyPayloadUi,
   bridgeInvokeIntegratedRuntimeUi as wasmBridgeInvokeIntegratedRuntimeUi,
@@ -21,6 +20,7 @@ import initBridgeRust, {
   bridgeR51Panel as wasmBridgeR51Panel,
   bridgeR51ReadStructuredInstances as wasmBridgeR51ReadStructuredInstances,
   bridgeR51ReadSettingsOwned as wasmBridgeR51ReadSettingsOwned,
+  bridgeR51WriteSettingsCallbacksR250 as wasmBridgeR51WriteSettingsCallbacksR250,
   bridgeR51WriteSettings as wasmBridgeR51WriteSettings,
   bridgeR95BNormalizeNetworkPortValues as wasmBridgeR95BNormalizeNetworkPortValues,
   bridgePreparePreview as wasmBridgePreparePreview,
@@ -29,7 +29,6 @@ import initBridgeRust, {
   bridgeUpdateCommandUi as wasmBridgeUpdateCommandUi,
   bridgeUpdateAllCommandsUi as wasmBridgeUpdateAllCommandsUi,
   bridgeEffectiveSettingsV1 as wasmBridgeEffectiveSettingsV1,
-  bridgeSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B,
   bridgeRefreshInstancesUi as wasmBridgeRefreshInstancesUi,
   bridgeInstallInstanceContainerOwnerR11 as wasmBridgeInstallInstanceContainerOwnerR11,
   bridgeInstallAllVisibleInstanceContainerOwnersR11 as wasmBridgeInstallAllVisibleInstanceContainerOwnersR11,
@@ -151,19 +150,7 @@ let activeInstance = {
 
 
 // KGW_BRIDGE_INSTANCES_COMMAND_CHECKBOX_R13B
-
-function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {
-  return wasmBridgeSetInstanceCommandOptionUiR13B(
-    String(net || ""),
-    instanceId,
-    String(name || ""),
-    Boolean(enabled),
-    bridgeInstances,
-    activeInstance,
-    { updateCommand: (targetNet) => updateCommand(String(targetNet || "")) }
-  );
-}
-
+// Instance command-option mutation is Rust-owned in bridge_command_options.rs.
 
 // KGW_BRIDGE_COMMAND_COMPOSER_INLINE_TOGGLE_R7 is Rust-owned in bridge_command_options.rs.
 
@@ -616,22 +603,14 @@ function kgwBridgeR51ReadSettingsR249(net) {
 // Bridge R95B/R98 settings port normalization is Rust-owned in bridge_frontend_helpers.rs.
 
 function kgwBridgeR51WriteSettingsCallbacksR250() {
-  return {
-    normalizeNetworkPortValues: (net, values, reason) =>
-      wasmBridgeR95BNormalizeNetworkPortValues(String(net || ""), values, String(reason || "")),
-    refreshInstances: (net) =>
-      bridgeRefreshInstances(String(net || "")),
-    refreshInlineCommandToggles: (net) =>
-      wasmBridgeRefreshInlineCommandTogglesR7(String(net || "")),
-    setInstanceCommandOption: (net, instanceId, name, enabled) =>
-      kgwBridgeSetInstanceCommandOptionR13B(
-        String(net || ""),
-        instanceId,
-        String(name || ""),
-        Boolean(enabled)
-      ),
-    updateCommand: (net) => updateCommand(String(net || ""))
-  };
+  return wasmBridgeR51WriteSettingsCallbacksR250(
+    bridgeInstances,
+    activeInstance,
+    {
+      refreshInstances: (net) => bridgeRefreshInstances(String(net || "")),
+      updateCommand: (net) => updateCommand(String(net || ""))
+    }
+  );
 }
 
 function kgwBridgeR51WriteSettingsR250(net, values) {

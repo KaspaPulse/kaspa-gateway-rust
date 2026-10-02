@@ -1568,10 +1568,10 @@ fn verify_r95b_port_normalization_ownership(source: &str, helpers: &str) -> Resu
     if source
         .matches("wasmBridgeR95BNormalizeNetworkPortValues(")
         .count()
-        != 2
+        != 1
     {
         return Err(
-            "Bridge R95B port-normalization direct-call count drifted after OP296 moves R51 read-settings normalization wiring into Rust"
+            "Bridge R95B port-normalization direct-call count drifted after OP299 moves R51 write-settings normalization wiring into Rust"
                 .to_owned(),
         );
     }
@@ -2467,35 +2467,14 @@ fn verify_instance_command_option_ownership(
     source: &str,
     command_options: &str,
 ) -> Result<(), String> {
-    for required in [
+    for forbidden in [
         "bridgeSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B",
         "function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {",
-        "return wasmBridgeSetInstanceCommandOptionUiR13B(",
-        "{ updateCommand: (targetNet) => updateCommand(String(targetNet || \"\")) }",
+        "wasmBridgeSetInstanceCommandOptionUiR13B(",
     ] {
-        if !source.contains(required) {
+        if source.contains(forbidden) {
             return Err(format!(
-                "Bridge instance command-option Rust/WASM binding missing: {required}"
-            ));
-        }
-    }
-
-    let wrapper = slice_between(
-        source,
-        "function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {",
-        "\n}",
-    )?;
-    for forbidden in [
-        "wasmBridgeSmallOwnerTraceR44D(",
-        "wasmBridgeInstanceCommandSetOptionR13B(",
-        "querySelectorAll(",
-        "wasmBridgeSyncInstancePreviewRowsR8B(",
-        "toggle.checked",
-        "toggle.setAttribute(",
-    ] {
-        if wrapper.contains(forbidden) {
-            return Err(format!(
-                "Retired Bridge instance command-option JavaScript orchestration remains: {forbidden}"
+                "Retired Bridge instance command-option JavaScript binding remains after OP299: {forbidden}"
             ));
         }
     }
@@ -2888,6 +2867,55 @@ fn verify_preview_message_ownership(source: &str, helpers: &str) -> Result<(), S
     Ok(())
 }
 
+fn verify_r51_write_settings_callbacks_ownership(
+    source: &str,
+    instance_settings: &str,
+) -> Result<(), String> {
+    for required in [
+        "bridgeR51WriteSettingsCallbacksR250 as wasmBridgeR51WriteSettingsCallbacksR250",
+        "function kgwBridgeR51WriteSettingsCallbacksR250() {",
+        "return wasmBridgeR51WriteSettingsCallbacksR250(",
+    ] {
+        if !source.contains(required) {
+            return Err(format!(
+                "Bridge R51 write-settings callbacks Rust/WASM binding missing: {required}"
+            ));
+        }
+    }
+    let wrapper = slice_between(
+        source,
+        "function kgwBridgeR51WriteSettingsCallbacksR250() {",
+        "\n}",
+    )?;
+    for forbidden in [
+        "normalizeNetworkPortValues:",
+        "refreshInlineCommandToggles:",
+        "setInstanceCommandOption:",
+    ] {
+        if wrapper.contains(forbidden) {
+            return Err(format!(
+                "Retired Bridge R51 write-settings callback ownership remains in JavaScript: {forbidden}"
+            ));
+        }
+    }
+    for required in [
+        "js_name = bridgeR51WriteSettingsCallbacksR250",
+        "pub fn bridge_r51_write_settings_callbacks_r250(",
+        "\"normalizeNetworkPortValues\"",
+        "\"refreshInlineCommandToggles\"",
+        "\"setInstanceCommandOption\"",
+        "bridge_refresh_inline_command_toggles_r7(",
+        "bridge_set_instance_command_option_ui_r13b(",
+    ] {
+        if !instance_settings.contains(required) {
+            return Err(format!(
+                "Bridge R51 write-settings callbacks Rust owner contract missing: {required}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 fn verify_inline_command_toggle_ownership(
     source: &str,
     command_options: &str,
@@ -2905,33 +2933,17 @@ fn verify_inline_command_toggle_ownership(
         }
     }
 
-    if !source
-        .contains("bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7")
-    {
-        return Err(
-            "Bridge inline command-toggle remaining write-settings refresh binding is missing"
-                .to_owned(),
-        );
-    }
     for forbidden in [
+        "bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7",
+        "wasmBridgeRefreshInlineCommandTogglesR7(",
         "bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7",
         "wasmBridgeCommandToggleOptionR7(",
     ] {
         if source.contains(forbidden) {
             return Err(format!(
-                "Bridge inline command-toggle direct JavaScript event binding must remain retired after OP288: {forbidden}"
+                "Bridge inline command-toggle direct JavaScript binding must remain retired after OP299: {forbidden}"
             ));
         }
-    }
-    if source
-        .matches("wasmBridgeRefreshInlineCommandTogglesR7(")
-        .count()
-        != 1
-    {
-        return Err(
-            "Bridge inline command-toggle remaining write-settings refresh call count drifted"
-                .to_owned(),
-        );
     }
 
     for required in [
@@ -4079,6 +4091,7 @@ pub fn run(root: &Path) -> Result<String, String> {
     verify_r51_read_settings_owned_ownership(&full_source, &instance_settings_source)?;
     verify_preview_message_ownership(&full_source, &helper_source)?;
     verify_r95b_port_normalization_ownership(&full_source, &helper_source)?;
+    verify_r51_write_settings_callbacks_ownership(&full_source, &instance_settings_source)?;
     verify_inline_command_toggle_ownership(&full_source, &command_options_source)?;
     verify_dependency_sync_ownership(&full_source, &helper_source)?;
     verify_mode_controls_ownership(&full_source, &helper_source)?;
@@ -5656,14 +5669,11 @@ mod tests {
         assert!(verify_instance_command_option_ownership(source, command_options).is_ok());
 
         for mutation in [
-            source.replace(
-                "bridgeSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B",
-                "missingSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B",
+            format!(
+                "{source}\n// bridgeSetInstanceCommandOptionUiR13B as wasmBridgeSetInstanceCommandOptionUiR13B\n"
             ),
-            source.replacen(
-                "function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {",
-                "function kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {\n  wasmBridgeSmallOwnerTraceR44D(net, \"command-checkbox\", \"legacy\", {});",
-                1,
+            format!(
+                "{source}\nfunction kgwBridgeSetInstanceCommandOptionR13B(net, instanceId, name, enabled) {{ return wasmBridgeSetInstanceCommandOptionUiR13B(net, instanceId, name, enabled); }}\n"
             ),
         ] {
             assert!(verify_instance_command_option_ownership(&mutation, command_options).is_err());
@@ -6304,6 +6314,30 @@ mod tests {
     }
 
     #[test]
+    fn r51_write_settings_callbacks_ownership_rejects_legacy_and_contract_drift() {
+        let source = include_str!(
+            "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
+        );
+        let instance_settings = include_str!(
+            "../../crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs"
+        );
+        assert!(verify_r51_write_settings_callbacks_ownership(source, instance_settings).is_ok());
+
+        let legacy = source.replacen(
+            "function kgwBridgeR51WriteSettingsCallbacksR250() {",
+            "function kgwBridgeR51WriteSettingsCallbacksR250() {\n  const legacy = { normalizeNetworkPortValues: () => null };",
+            1,
+        );
+        assert!(verify_r51_write_settings_callbacks_ownership(&legacy, instance_settings).is_err());
+
+        let missing = instance_settings.replace(
+            "js_name = bridgeR51WriteSettingsCallbacksR250",
+            "js_name = missingR51WriteSettingsCallbacksR250",
+        );
+        assert!(verify_r51_write_settings_callbacks_ownership(source, &missing).is_err());
+    }
+
+    #[test]
     fn inline_command_toggle_ownership_rejects_legacy_and_contract_drift() {
         let source = include_str!(
             "../../apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"
@@ -6313,17 +6347,11 @@ mod tests {
         assert!(verify_inline_command_toggle_ownership(source, command_options).is_ok());
 
         for mutation in [
-            source.replacen(
-                "wasmBridgeRefreshInlineCommandTogglesR7(",
-                "kgwBridgeRefreshInlineCommandTogglesR7(",
-                1,
+            format!(
+                "{source}\n// bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7\nwasmBridgeRefreshInlineCommandTogglesR7(\"mainnet\");\n"
             ),
             format!(
                 "{source}\n// bridgeCommandToggleOptionR7 as wasmBridgeCommandToggleOptionR7\nwasmBridgeCommandToggleOptionR7(\"mainnet\", \"config\");\n"
-            ),
-            source.replace(
-                "bridgeRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7",
-                "missingRefreshInlineCommandTogglesR7 as wasmBridgeRefreshInlineCommandTogglesR7",
             ),
             format!(
                 "{source}\nfunction kgwBridgeRefreshInlineCommandTogglesR7(net) {{ return net; }}\n"

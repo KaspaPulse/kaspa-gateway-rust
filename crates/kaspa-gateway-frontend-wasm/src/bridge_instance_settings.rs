@@ -2090,6 +2090,91 @@ fn bridge_r51_apply_structured_instances_r26b(
     true
 }
 
+#[wasm_bindgen(js_name = bridgeR51WriteSettingsCallbacksR250)]
+pub fn bridge_r51_write_settings_callbacks_r250(
+    bridge_instances: JsValue,
+    active_instance: JsValue,
+    callbacks: JsValue,
+) -> JsValue {
+    let output = Object::new();
+
+    let normalize = Closure::wrap(Box::new(
+        move |net: JsValue, values: JsValue, reason: JsValue| -> JsValue {
+            bridge_frontend_helpers::bridge_r95b_normalize_network_port_values(
+                crate::js_string_owned(&net),
+                values,
+                crate::js_string_owned(&reason),
+            )
+        },
+    )
+        as Box<dyn FnMut(JsValue, JsValue, JsValue) -> JsValue>);
+    set(
+        output.as_ref(),
+        "normalizeNetworkPortValues",
+        normalize.as_ref(),
+    );
+
+    let refresh_source = callbacks.clone();
+    let refresh = Closure::wrap(Box::new(move |net: JsValue| -> Result<JsValue, JsValue> {
+        call1_required(&refresh_source, "refreshInstances", &net)
+    })
+        as Box<dyn FnMut(JsValue) -> Result<JsValue, JsValue>>);
+    set(output.as_ref(), "refreshInstances", refresh.as_ref());
+
+    let refresh_inline = Closure::wrap(Box::new(move |net: JsValue| {
+        bridge_command_options::bridge_refresh_inline_command_toggles_r7(crate::js_string_owned(
+            &net,
+        ));
+    }) as Box<dyn FnMut(JsValue)>);
+    set(
+        output.as_ref(),
+        "refreshInlineCommandToggles",
+        refresh_inline.as_ref(),
+    );
+
+    let option_instances = bridge_instances.clone();
+    let option_active = active_instance.clone();
+    let option_callbacks = callbacks.clone();
+    let set_option = Closure::wrap(Box::new(
+        move |net: JsValue,
+              instance_id: JsValue,
+              name: JsValue,
+              enabled: JsValue|
+              -> Result<JsValue, JsValue> {
+            bridge_command_options::bridge_set_instance_command_option_ui_r13b(
+                crate::js_string_owned(&net),
+                instance_id,
+                crate::js_string_owned(&name),
+                crate::js_boolean(&enabled),
+                option_instances.clone(),
+                option_active.clone(),
+                option_callbacks.clone(),
+            )
+            .map(JsValue::from)
+        },
+    )
+        as Box<dyn FnMut(JsValue, JsValue, JsValue, JsValue) -> Result<JsValue, JsValue>>);
+    set(
+        output.as_ref(),
+        "setInstanceCommandOption",
+        set_option.as_ref(),
+    );
+
+    let update_source = callbacks;
+    let update = Closure::wrap(Box::new(move |net: JsValue| -> Result<JsValue, JsValue> {
+        call1_required(&update_source, "updateCommand", &net)
+    })
+        as Box<dyn FnMut(JsValue) -> Result<JsValue, JsValue>>);
+    set(output.as_ref(), "updateCommand", update.as_ref());
+
+    normalize.forget();
+    refresh.forget();
+    refresh_inline.forget();
+    set_option.forget();
+    update.forget();
+    output.into()
+}
+
 #[wasm_bindgen(js_name = bridgeR51WriteSettings)]
 pub fn bridge_r51_write_settings(
     net: String,
