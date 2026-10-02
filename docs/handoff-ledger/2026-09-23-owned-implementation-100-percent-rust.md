@@ -478,3 +478,11 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - RESULT: Rust source inventory 224; owned non-Rust source debt 1; execution debt 8; unapproved source/execution 0/0; technical exceptions 40.
 - NEXT: migrate the remaining owned PowerShell evidence writer `tools/kgw_zero_touch_evidence.ps1` to Rust ownership, then remove its source-debt entry only after parity and call-site migration.
 - PUSHED: NO.
+
+## OP302 - Zero-touch evidence PowerShell retirement / native Rust ownership (INTENT)
+
+- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 5, same canonical writer/session.
+- PREVIOUS_CLOSED_OPERATION: OP301 closeout `aab15863930ec70ef5be2482585937cac048dcc5`; BASE_TREE `53c76272e5fde51f6ed64a089a1ab70d0a7be63e`; worktree clean at intent time.
+- DISCOVERY: current runtime evidence summary already delegates to native Rust `kgw-zero-touch-evidence`; native `zero_touch_evidence`, `zero_touch_result_io`, and `kgw-zero-touch-result` own stage ports, evidence validation, strict/atomic JSON output, emergency failure receipt construction, and metadata finalization. Remaining live references to `tools/kgw_zero_touch_evidence.ps1` are Rust gates/tests, not product/runtime callers.
+- BOUNDARY: migrate those remaining Rust gates/tests to the native Rust owners, remove the obsolete PowerShell helper only after equivalent fail-closed qualification, then retire its source-debt entry. Do not apply the historical OP070 temporary proposal and do not bypass file safety.
+- ACCEPTANCE: native result/evidence tests cover atomic writes, rejected invalid JSON values, failure receipts, stage ports/env validation, and evidence contracts; full-local/true-raw-log gates no longer require PowerShell helper/parser; helper has no active non-historical reference and is deleted; language-policy source debt becomes 0 with unapproved source 0; affected gates/tests and diff-check pass; no Push.
