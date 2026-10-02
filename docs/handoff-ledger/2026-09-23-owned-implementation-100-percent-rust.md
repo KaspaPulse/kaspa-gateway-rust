@@ -435,9 +435,13 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP297 qualification unless invalidated.
 - PUSHED: NO.
 
-## OP298 - Bridge integrated runtime action Rust/WASM ownership (INTENT)
+## OP298 - Bridge integrated runtime action Rust/WASM ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
 
-- STATUS: INTENT_ADOPTED / IMPLEMENTATION_PENDING. Writer claim epoch 3, same canonical writer/session.
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Writer claim epoch 3, same canonical writer/session.
 - PREVIOUS_CLOSED_OPERATION: OP297 closeout `db4bcd32d6a95acf71e617d481d23d0daf276866`; BASE_TREE `f3911c7bf10d95824fe1f8a06bf6c26775cd4065`; worktree clean at intent time.
-- BOUNDARY: move `runBridgeIntegratedAction` orchestration into Rust/WASM. Rust owns action validation, network-policy/start validation, risky-start confirmation dispatch, scoped port-conflict preflight, same-network node guard, in-flight fencing, runtime trace lifecycle, preview/invoke/outcome interpretation, runtime button/error/activity state, owned-node lock transitions, raw-log kick scheduling, error reconciliation, and finally refresh. JavaScript becomes a thin async wrapper providing only explicit callbacks for confirmation/update/invoke/live-refresh where needed.
-- ACCEPTANCE: Rust export + thin JS wrapper + fail-closed ownership regression; current runtime behavior and trace markers preserved; generated WASM consistent; fmt/clippy/tests/bridge gates/node syntax/ESLint/language-policy/project-continuity/diff-check pass; no Push.
+- BOUNDARY: `runBridgeIntegratedAction` orchestration moved into Rust/WASM `bridgeRunIntegratedActionUi`. Rust now owns action validation, network-policy/start validation, risk confirmation dispatch, scoped port-conflict preflight, same-network node guard, in-flight fencing, runtime trace lifecycle, preview/invoke/outcome interpretation, runtime button/error/activity state, owned-node lock transitions, raw-log kick scheduling, error reconciliation, and settled refresh. JavaScript is a thin async callback adapter.
+- IMPLEMENTATION_CHECKPOINT: `b06bf0c3b01dc7b92daccaf334d5367d9ea8cf38`, tree `4517cea8ad38fbe6a0e93d2f640bc8338a0738c6`. Closeout generation 2289.
+- QUALIFICATION PASS: fmt; strict clippy for frontend-WASM and xtask; frontend-WASM tests 214/214; full xtask suite 316/316 plus auxiliary suites; targeted integrated-action ownership regression; bridge-readiness frontend gate; effective-bridge-settings gate; frontend-WASM codegen check; Node syntax; Desktop ESLint zero-warning; language-policy check (Rust 223, source debt 2, execution debt 8, unapproved 0/0); project-continuity; diff-check.
+- GATE_REPAIR: stale post-migration assumptions for R51 presentation/live-refresh, raw-log kick, in-process owner guard, R65E lock, R65F node-mode ownership, and associated regression mutations were updated to fail closed on JS reintroduction while requiring Rust ownership. Test harness exits explicitly after durable result write so Rust-owned recurring timers cannot keep the synthetic Node process alive.
+- NEXT: read-only discovery of the next genuinely incomplete Bridge JavaScript ownership boundary; do not repeat OP298 qualification unless invalidated.
+- PUSHED: NO.
