@@ -1,4 +1,5 @@
 use sha2::{Digest, Sha256};
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -1803,6 +1804,29 @@ fn canonical_byte_host() -> bool {
     cfg!(target_os = "linux")
 }
 
+fn cargo_home() -> Option<PathBuf> {
+    env::var_os("CARGO_HOME").map(PathBuf::from).or_else(|| {
+        env::var_os("HOME")
+            .or_else(|| env::var_os("USERPROFILE"))
+            .map(PathBuf::from)
+            .map(|home| home.join(".cargo"))
+    })
+}
+
+fn deterministic_rustflags(root: &Path, cargo_home: Option<&Path>) -> String {
+    let mut flags = vec![format!(
+        "--remap-path-prefix={}=/kgw-src",
+        root.to_string_lossy()
+    )];
+    if let Some(cargo_home) = cargo_home {
+        flags.push(format!(
+            "--remap-path-prefix={}=/kgw-cargo",
+            cargo_home.to_string_lossy()
+        ));
+    }
+    flags.join("\u{1f}")
+}
+
 fn build_temp(root: &Path) -> Result<PathBuf, String> {
     verify_wasm_pack()?;
     let output_dir = temp_output(root);
@@ -1811,9 +1835,12 @@ fn build_temp(root: &Path) -> Result<PathBuf, String> {
             .map_err(|error| format!("failed to clear {}: {error}", output_dir.display()))?;
     }
 
+    let rustflags = deterministic_rustflags(root, cargo_home().as_deref());
     let output = Command::new("wasm-pack")
         .current_dir(root)
         .env("RUSTUP_TOOLCHAIN", "1.98.1")
+        .env_remove("RUSTFLAGS")
+        .env("CARGO_ENCODED_RUSTFLAGS", rustflags)
         .args([
             "build",
             CRATE_RELATIVE,
@@ -1984,6 +2011,38 @@ mod tests {
                 "path/to/input.rs",
             ]
         );
+    }
+
+    #[test]
+    fn deterministic_rustflags_remap_source_and_cargo_home() {
+        let flags = deterministic_rustflags(
+            Path::new("/home/runner/work/kgw/repo"),
+            Some(Path::new("/home/runner/.cargo")),
+        );
+        assert_eq!(
+            flags.split('\u{1f}').collect::<Vec<_>>(),
+            vec![
+                "--remap-path-prefix=/home/runner/work/kgw/repo=/kgw-src",
+                "--remap-path-prefix=/home/runner/.cargo=/kgw-cargo",
+            ]
+        );
+        assert!(!flags.contains("/home/abuha"));
+    }
+
+    #[test]
+    fn deterministic_rustflags_are_path_independent_in_aliases() {
+        let first =
+            deterministic_rustflags(Path::new("/tmp/clone-a"), Some(Path::new("/tmp/cargo-a")));
+        let second = deterministic_rustflags(
+            Path::new("/different/clone-b"),
+            Some(Path::new("/different/cargo-b")),
+        );
+        assert!(first.contains("=/kgw-src"));
+        assert!(first.contains("=/kgw-cargo"));
+        assert!(second.contains("=/kgw-src"));
+        assert!(second.contains("=/kgw-cargo"));
+        assert!(!first.contains("clone-b"));
+        assert!(!second.contains("clone-a"));
     }
 
     #[test]
