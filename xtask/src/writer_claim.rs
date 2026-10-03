@@ -566,7 +566,7 @@ mod tests {
             &["acquire", "--writer-id", "w1", "--session-id", "s1"],
         )
         .unwrap();
-        assert!(first.contains("epoch=1"), "{first}");
+        assert!(first.contains("epoch=1"));
         assert!(
             cli(
                 root,
@@ -588,7 +588,7 @@ mod tests {
             &["acquire", "--writer-id", "w2", "--session-id", "s2"],
         )
         .unwrap();
-        assert!(second.contains("epoch=2"), "{second}");
+        assert!(second.contains("epoch=2"));
         assert!(cli(root, &["verify", "--session-id", "s1", "--epoch", "1"]).is_err());
     }
 }
