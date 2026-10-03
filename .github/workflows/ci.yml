@@ -342,11 +342,8 @@ jobs:
       - name: Verify project continuity gate regression tests
         run: cargo test --locked -p xtask project_continuity::tests
 
-      - name: Lint and syntax-check E2E JavaScript
-        working-directory: e2e
-        run: |
-          npm run lint
-          npm run check
+      - name: Verify Rust-owned E2E workspace contract
+        run: cargo run --locked -p xtask -- e2e-workspace-checks
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -483,9 +480,19 @@ jobs:
         working-directory: e2e
         run: npm ci --ignore-scripts
 
-      - name: Validate JavaScript workspaces
+      - name: Validate desktop JavaScript workspace
+        working-directory: apps/kaspa-gateway-desktop
+        run: node node_modules/eslint/bin/eslint.js frontend/**/*.js
+
+      - name: Validate E2E JavaScript workspace without package scripts
+        working-directory: e2e
         shell: bash
         run: |
-          npm --prefix apps/kaspa-gateway-desktop run lint
-          npm --prefix e2e run lint
-          npm --prefix e2e run check
+          node node_modules/eslint/bin/eslint.js .
+          node --check wdio.conf.mjs
+          node --check specs/zero-touch-live-matrix.e2e.js
+          node --check helpers/assertions.mjs
+          node --check helpers/paths.mjs
+          node --check helpers/tauri-app.mjs
+          node --check helpers/windows.mjs
+          node --check helpers/runtime-ports.mjs

@@ -22,6 +22,7 @@ mod e2e_wasm_codegen_tauri_app;
 mod e2e_wasm_codegen_windows;
 mod e2e_wasm_codegen_zero_touch_matrix;
 mod e2e_windows_evidence;
+mod e2e_workspace_checks;
 mod effective_bridge_settings_frontend;
 mod effective_node_settings;
 mod frontend_template_codegen;
@@ -115,6 +116,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- e2e-static-smokes
   cargo run -p xtask -- e2e-wasm-codegen <check|write>
   cargo run -p xtask -- e2e-windows-evidence --repository <path> --output-directory <path> [--ports <csv>] [--desktop-pid <pid>]
+  cargo run -p xtask -- e2e-workspace-checks
   cargo run -p xtask -- frontend-template-codegen <check|write>
   cargo run -p xtask -- frontend-wasm-codegen <check|write>
   cargo run -p xtask -- full-local-gate [--repository <path>] [--reuse-successful-e2e-artifact <path>] [--commit-on-success]
@@ -381,6 +383,17 @@ fn run() -> Result<(), CliError> {
         }
         "e2e-windows-evidence" => {
             let message = e2e_windows_evidence::run_cli(&mut args).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "e2e-workspace-checks" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "e2e-workspace-checks takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = e2e_workspace_checks::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

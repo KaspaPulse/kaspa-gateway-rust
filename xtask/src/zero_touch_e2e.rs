@@ -2,9 +2,8 @@ use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::ffi::OsString;
 use std::fs;
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Command;
 use sysinfo::System;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
@@ -410,15 +409,20 @@ pub(crate) fn run(root: &Path) -> Result<String, String> {
                 app_binary.display()
             ));
         }
+        let wdio_cli = crate::e2e_workspace_checks::wdio_cli(&root)?;
+        let wdio_cli = wdio_cli.to_string_lossy().into_owned();
         stages.run_wdio_fail_closed(
             "WebdriverIO zero-touch live matrix",
-            if cfg!(windows) { "npm.cmd" } else { "npm" },
-            &["run", "e2e"],
+            "node",
+            &[&wdio_cli, "run", "./wdio.conf.mjs"],
             &e2e_dir,
-            ("wdio-run.log", "npm run e2e"),
+            (
+                "wdio-run.log",
+                "node @wdio/cli/bin/wdio.js run ./wdio.conf.mjs",
+            ),
             &nested_cargo_env,
         )?;
-        evidence_summary(&root, &artifact_root, &envs)
+        evidence_summary(&root, &artifact_root)
     })();
 
     let evidence = match result {
@@ -457,7 +461,7 @@ pub(crate) fn run(root: &Path) -> Result<String, String> {
 
     let final_evidence = match evidence {
         Some(value) => value,
-        None => match evidence_summary(&root, &artifact_root, &envs) {
+        None => match evidence_summary(&root, &artifact_root) {
             Ok(value) => value,
             Err(error) => json!({"passed": false, "validation_errors": [error]}),
         },
@@ -480,7 +484,7 @@ pub(crate) fn run(root: &Path) -> Result<String, String> {
         executable: &app_binary,
         evidence: &final_evidence,
     };
-    let result_receipt = write_native_result(&root, &artifact_root, &result_input, &envs)?;
+    let result_receipt = write_native_result(&root, &artifact_root, &result_input)?;
 
     summary["commands"] = Value::Array(stages.receipts.iter().map(receipt_json).collect());
     summary["evidence_validation"] = final_evidence;
@@ -555,57 +559,15 @@ fn run_logged(
     Ok(output.status.code().unwrap_or(1))
 }
 
-fn evidence_summary(
-    root: &Path,
-    artifact: &Path,
-    envs: &[(OsString, OsString)],
-) -> Result<Value, String> {
-    let manifest = root.join("Cargo.toml").to_string_lossy().into_owned();
-    let artifact = artifact.to_string_lossy().into_owned();
-    let output = Command::new("cargo")
-        .args([
-            "run",
-            "--manifest-path",
-            &manifest,
-            "--locked",
-            "-p",
-            "xtask",
-            "--bin",
-            "kgw-zero-touch-evidence",
-            "--",
-            "summary",
-            "--artifact-directory",
-            &artifact,
-        ])
-        .current_dir(root)
-        .envs(envs.iter().cloned())
-        .output()
-        .map_err(|e| format!("Native evidence summary could not start: {e}"))?;
-    let code = output.status.code().unwrap_or(2);
-    if !matches!(code, 0 | 1) {
-        return Err(format!(
-            "Native evidence summary could not complete; exit code {code}."
-        ));
-    }
-    let value: Value = serde_json::from_slice(&output.stdout)
-        .map_err(|e| format!("Native evidence summary JSON: {e}"))?;
-    let passed = value
-        .get("passed")
-        .and_then(Value::as_bool)
-        .ok_or_else(|| "Native evidence summary missing boolean passed".to_owned())?;
-    if (code == 0) != passed {
-        return Err(
-            "Native evidence summary returned an inconsistent pass/exit result.".to_owned(),
-        );
-    }
-    Ok(value)
+fn evidence_summary(root: &Path, artifact: &Path) -> Result<Value, String> {
+    xtask::zero_touch_evidence::dispatch("summary", root, artifact, None)
+        .map_err(|error| format!("Native evidence summary failed: {error}"))
 }
 
 fn write_native_result(
     root: &Path,
     artifact: &Path,
     input: &NativeResultInput<'_>,
-    envs: &[(OsString, OsString)],
 ) -> Result<Value, String> {
     let request = json!({
         "repository": root,
@@ -616,50 +578,17 @@ fn write_native_result(
         "executable_path": input.executable,
         "evidence_summary": input.evidence,
     });
-    let manifest = root.join("Cargo.toml").to_string_lossy().into_owned();
-    let mut child = Command::new("cargo")
-        .args([
-            "run",
-            "--manifest-path",
-            &manifest,
-            "--locked",
-            "-p",
-            "xtask",
-            "--bin",
-            "kgw-zero-touch-result",
-            "--",
-            "build-write",
-            "--request",
-            "-",
-        ])
-        .current_dir(root)
-        .envs(envs.iter().cloned())
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Native Rust result construction/writing could not start: {e}"))?;
-    child
-        .stdin
-        .as_mut()
-        .ok_or_else(|| "result writer stdin unavailable".to_owned())?
-        .write_all(
-            serde_json::to_string(&request)
-                .map_err(|e| e.to_string())?
-                .as_bytes(),
-        )
-        .map_err(|e| format!("result writer stdin: {e}"))?;
-    let output = child
-        .wait_with_output()
-        .map_err(|e| format!("result writer wait: {e}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Native Rust result construction/writing failed: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
-    }
-    let value: Value = serde_json::from_slice(&output.stdout)
-        .map_err(|e| format!("Native Rust result receipt JSON: {e}"))?;
+    let value = xtask::zero_touch_evidence::result::build(&request)
+        .map_err(|error| format!("Native Rust result construction failed: {error}"))?;
+    let directory = value["artifact_directory"]
+        .as_str()
+        .ok_or_else(|| "Native Rust result omitted artifact_directory".to_owned())?;
+    let target = xtask::zero_touch_result_io::artifact_target(
+        Path::new(directory),
+        "zero-touch-result.json",
+    )?;
+    xtask::zero_touch_result_io::atomic_write(&target, &value)
+        .map_err(|error| format!("Native Rust result persistence failed: {error}"))?;
     if value.get("completed").and_then(Value::as_bool) != Some(true) {
         return Err(
             "Native Rust result writer did not return a completed result receipt.".to_owned(),
@@ -1102,7 +1031,8 @@ mod tests {
         let runtime = source.split("#[cfg(test)]").next().expect("runtime source");
         for command in [
             "npm ci",
-            "npm run e2e",
+            "@wdio/cli/bin/wdio.js",
+            "./wdio.conf.mjs",
             "e2e-test",
             "std::env::current_exe()",
             "KGW_XTASK_EXE",
@@ -1117,9 +1047,16 @@ mod tests {
                 "missing JS syntax check for {relative}"
             );
         }
-        assert!(
-            !runtime.contains("npm run check"),
-            "zero-touch runner must not re-enter Cargo through npm run check"
-        );
+        for forbidden in [
+            "npm run check",
+            "npm run lint",
+            "npm run e2e",
+            "Command::new(\"cargo\")",
+        ] {
+            assert!(
+                !runtime.contains(forbidden),
+                "zero-touch runner must not delegate execution ownership to {forbidden}"
+            );
+        }
     }
 }

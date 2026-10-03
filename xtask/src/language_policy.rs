@@ -1,3 +1,4 @@
+use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -8,6 +9,8 @@ const EXECUTION_DEBT_MANIFEST: &str = "config/non-rust-execution-migration-debt.
 const EXCEPTION_MANIFEST: &str = "config/owned-language-exceptions.txt";
 const FRONTEND_INDEX_HTML: &str = "apps/kaspa-gateway-desktop/frontend/index.html";
 const FRONTEND_MAIN_ADAPTER: &str = "apps/kaspa-gateway-desktop/frontend/main.js";
+const E2E_PACKAGE_JSON: &str = "e2e/package.json";
+const E2E_PACKAGE_LOCK: &str = "e2e/package-lock.json";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Mode {
@@ -485,7 +488,38 @@ fn contains_script_file_reference(content: &str) -> bool {
         })
 }
 
+fn json_has_nonempty_scripts(value: &Value) -> bool {
+    value
+        .get("scripts")
+        .and_then(Value::as_object)
+        .is_some_and(|scripts| !scripts.is_empty())
+}
+
+fn e2e_dependency_metadata_only(lower_path: &str, content: &str) -> bool {
+    let Ok(value) = serde_json::from_str::<Value>(content) else {
+        return false;
+    };
+    if lower_path == E2E_PACKAGE_JSON {
+        return !json_has_nonempty_scripts(&value);
+    }
+    if lower_path == E2E_PACKAGE_LOCK {
+        let Some(root_package) = value
+            .get("packages")
+            .and_then(Value::as_object)
+            .and_then(|packages| packages.get(""))
+        else {
+            return false;
+        };
+        return !json_has_nonempty_scripts(root_package);
+    }
+    false
+}
+
 fn non_rust_execution_content(lower_path: &str, content: &str) -> Option<String> {
+    if lower_path == E2E_PACKAGE_JSON || lower_path == E2E_PACKAGE_LOCK {
+        return (!e2e_dependency_metadata_only(lower_path, content))
+            .then(|| "Node package manifest or lockfile".to_owned());
+    }
     if lower_path.ends_with("/package.json") || lower_path.ends_with("/package-lock.json") {
         return Some("Node package manifest or lockfile".to_owned());
     }
@@ -617,6 +651,41 @@ mod tests {
     #[test]
     fn strict_and_migration_modes_are_distinct() {
         assert_ne!(Mode::Migration, Mode::Strict);
+    }
+
+    #[test]
+    fn e2e_package_metadata_without_scripts_is_not_execution_debt() {
+        let package = r#"{"name":"e2e","devDependencies":{"webdriverio":"9.31.7"}}"#;
+        let lock = r#"{"lockfileVersion":3,"packages":{"":{"name":"e2e","devDependencies":{"webdriverio":"9.31.7"}}}}"#;
+        assert_eq!(non_rust_execution_content(E2E_PACKAGE_JSON, package), None);
+        assert_eq!(non_rust_execution_content(E2E_PACKAGE_LOCK, lock), None);
+    }
+
+    #[test]
+    fn e2e_package_scripts_remain_execution_debt() {
+        let package = r#"{"name":"e2e","scripts":{"check":"node --check test.js"}}"#;
+        let lock =
+            r#"{"lockfileVersion":3,"packages":{"":{"scripts":{"check":"node --check test.js"}}}}"#;
+        assert_eq!(
+            non_rust_execution_content(E2E_PACKAGE_JSON, package).as_deref(),
+            Some("Node package manifest or lockfile")
+        );
+        assert_eq!(
+            non_rust_execution_content(E2E_PACKAGE_LOCK, lock).as_deref(),
+            Some("Node package manifest or lockfile")
+        );
+    }
+
+    #[test]
+    fn malformed_e2e_package_metadata_fails_closed_as_execution_debt() {
+        assert_eq!(
+            non_rust_execution_content(E2E_PACKAGE_JSON, "{not-json").as_deref(),
+            Some("Node package manifest or lockfile")
+        );
+        assert_eq!(
+            non_rust_execution_content(E2E_PACKAGE_LOCK, "{}").as_deref(),
+            Some("Node package manifest or lockfile")
+        );
     }
 
     #[test]

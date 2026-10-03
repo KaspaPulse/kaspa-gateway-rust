@@ -6,12 +6,6 @@
   "engines": {
     "node": ">=24 <27"
   },
-  "scripts": {
-    "check": "node --check wdio.conf.mjs && node --check specs/zero-touch-live-matrix.e2e.js && node --check helpers/assertions.mjs && node --check helpers/paths.mjs && node --check helpers/tauri-app.mjs && node --check helpers/windows.mjs && node --check helpers/runtime-ports.mjs && cargo run --manifest-path ../Cargo.toml --locked -p xtask -- deepmerge-security-smoke && cargo run --manifest-path ../Cargo.toml --locked -p xtask -- e2e-static-smokes",
-    "lint": "eslint .",
-    "e2e": "wdio run ./wdio.conf.mjs",
-    "close-relaunch": "cargo run --manifest-path ../Cargo.toml --locked -p xtask -- e2e-app-close-relaunch --app-binary ../target/kgw-zero-touch-e2e/debug/kaspa-gateway-desktop.exe --output-directory ../artifacts/close-relaunch-e2e/manual"
-  },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@wdio/cli": "9.31.7",
