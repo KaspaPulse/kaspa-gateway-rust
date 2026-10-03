@@ -1665,21 +1665,24 @@ fn git_output(root: &Path, args: &[String]) -> Result<String, String> {
         .map_err(|error| format!("git {} output was not UTF-8: {error}", args.join(" ")))
 }
 
+fn canonical_git_oid_args(relative: &str) -> Vec<String> {
+    vec![
+        "-c".to_owned(),
+        "core.autocrlf=input".to_owned(),
+        "hash-object".to_owned(),
+        format!("--path={relative}"),
+        relative.to_owned(),
+    ]
+}
+
 fn canonical_git_oid(root: &Path, relative: &str) -> Result<String, String> {
     let path = root.join(relative);
     if !path.is_file() {
         return Err(format!("fingerprint input is not a file: {relative}"));
     }
-    let oid = git_output(
-        root,
-        &[
-            "hash-object".to_owned(),
-            format!("--path={relative}"),
-            relative.to_owned(),
-        ],
-    )?
-    .trim()
-    .to_owned();
+    let oid = git_output(root, &canonical_git_oid_args(relative))?
+        .trim()
+        .to_owned();
     if oid.len() != 40
         || !oid
             .bytes()
@@ -1968,6 +1971,20 @@ fn write(root: &Path) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn canonical_git_oid_forces_cross_host_eol_normalization() {
+        assert_eq!(
+            canonical_git_oid_args("path/to/input.rs"),
+            vec![
+                "-c",
+                "core.autocrlf=input",
+                "hash-object",
+                "--path=path/to/input.rs",
+                "path/to/input.rs",
+            ]
+        );
+    }
 
     #[test]
     fn adapter_is_generated_and_uses_rust_exports_only() {
