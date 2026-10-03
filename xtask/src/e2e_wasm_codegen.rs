@@ -1,6 +1,7 @@
 use crate::e2e_wasm_codegen_tauri_app::tauri_app_adapter_source;
 use crate::e2e_wasm_codegen_windows::windows_adapter_source;
 use crate::e2e_wasm_codegen_zero_touch_matrix::zero_touch_live_matrix_source;
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -178,6 +179,29 @@ fn normalize_text_artifact(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn cargo_home() -> Option<PathBuf> {
+    env::var_os("CARGO_HOME").map(PathBuf::from).or_else(|| {
+        env::var_os("HOME")
+            .or_else(|| env::var_os("USERPROFILE"))
+            .map(PathBuf::from)
+            .map(|home| home.join(".cargo"))
+    })
+}
+
+fn deterministic_rustflags(root: &Path, cargo_home: Option<&Path>) -> String {
+    let mut flags = vec![format!(
+        "--remap-path-prefix={}=/kgw-src",
+        root.to_string_lossy()
+    )];
+    if let Some(cargo_home) = cargo_home {
+        flags.push(format!(
+            "--remap-path-prefix={}=/kgw-cargo",
+            cargo_home.to_string_lossy()
+        ));
+    }
+    flags.join("\u{1f}")
+}
+
 fn build_temp(root: &Path) -> Result<PathBuf, String> {
     verify_wasm_pack()?;
     let output_dir = temp_output(root);
@@ -186,9 +210,12 @@ fn build_temp(root: &Path) -> Result<PathBuf, String> {
             .map_err(|error| format!("failed to clear {}: {error}", output_dir.display()))?;
     }
 
+    let rustflags = deterministic_rustflags(root, cargo_home().as_deref());
     let output = Command::new("wasm-pack")
         .current_dir(root)
         .env("RUSTUP_TOOLCHAIN", "1.98.1")
+        .env_remove("RUSTFLAGS")
+        .env("CARGO_ENCODED_RUSTFLAGS", rustflags)
         .args([
             "build",
             CRATE_RELATIVE,
@@ -368,6 +395,31 @@ fn write(root: &Path) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn deterministic_rustflags_remap_source_and_cargo_home() {
+        let flags = deterministic_rustflags(
+            Path::new("/home/runner/work/kgw/repo"),
+            Some(Path::new("/home/runner/.cargo")),
+        );
+        assert_eq!(
+            flags.split('\u{1f}').collect::<Vec<_>>(),
+            vec![
+                "--remap-path-prefix=/home/runner/work/kgw/repo=/kgw-src",
+                "--remap-path-prefix=/home/runner/.cargo=/kgw-cargo",
+            ]
+        );
+    }
+
+    #[test]
+    fn deterministic_rustflags_keep_stable_aliases_across_paths() {
+        let first = deterministic_rustflags(Path::new("/tmp/a"), Some(Path::new("/tmp/ca")));
+        let second = deterministic_rustflags(Path::new("/other/b"), Some(Path::new("/other/cb")));
+        for flags in [first, second] {
+            assert!(flags.contains("=/kgw-src"));
+            assert!(flags.contains("=/kgw-cargo"));
+        }
+    }
 
     #[test]
     fn adapters_are_generated_and_delegate_only_to_rust() {
