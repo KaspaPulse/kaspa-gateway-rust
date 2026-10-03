@@ -9,6 +9,7 @@ const EXECUTION_DEBT_MANIFEST: &str = "config/non-rust-execution-migration-debt.
 const EXCEPTION_MANIFEST: &str = "config/owned-language-exceptions.txt";
 const FRONTEND_INDEX_HTML: &str = "apps/kaspa-gateway-desktop/frontend/index.html";
 const FRONTEND_MAIN_ADAPTER: &str = "apps/kaspa-gateway-desktop/frontend/main.js";
+const CI_WORKFLOW_ADAPTER: &str = ".github/workflows/ci.yml";
 const E2E_PACKAGE_JSON: &str = "e2e/package.json";
 const E2E_PACKAGE_LOCK: &str = "e2e/package-lock.json";
 const DESKTOP_PACKAGE_JSON: &str = "apps/kaspa-gateway-desktop/package.json";
@@ -283,6 +284,17 @@ fn validate_platform_adapter_contracts(
     exceptions: &BTreeMap<String, ExceptionEntry>,
     problems: &mut Vec<String>,
 ) {
+    if exceptions
+        .get(CI_WORKFLOW_ADAPTER)
+        .map(|entry| entry.category.as_str())
+        == Some("PLATFORM_REQUIRED_ADAPTER")
+        && let Err(error) = crate::ci_workflow::run_gate(root)
+    {
+        problems.push(format!(
+            "{CI_WORKFLOW_ADAPTER} platform adapter contract: {error}"
+        ));
+    }
+
     let Some(index_entry) = exceptions.get(FRONTEND_INDEX_HTML) else {
         return;
     };

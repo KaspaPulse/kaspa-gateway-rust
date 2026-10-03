@@ -50,27 +50,10 @@ jobs:
         with:
           cosign-release: "v3.0.6"
 
-      - name: Verify KSSS release and runtime signatures
-        run: >-
-          cargo run --locked -p xtask --features ksss -- ksss trust-verify
-          --require-cryptographic --cosign cosign
-          --output "${{ runner.temp }}/kgw-ksss-trust.json"
-
-      - name: Verify offline KSSS adoption
-        run: >-
-          cargo run --locked -p xtask --features ksss -- ksss check
-          --output "${{ runner.temp }}/kgw-ksss-check.json"
-
-      - name: Verify KSSS rejection contracts
-        run: cargo test --locked -p xtask --features ksss ksss::tests
-
-      - name: Capture evaluated changes and freshness
+      - name: Run Rust-owned KSSS adoption stage
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: >-
-          cargo run --locked -p xtask --features ksss -- ksss evaluate
-          --base "$BASE_SHA"
-          --output "${{ runner.temp }}/kgw-ksss-evaluation.json"
+        run: cargo run --locked -p xtask --features ksss -- ci-workflow-stage ksss-adoption
 
       - name: Retain KSSS evaluation evidence
         if: always()
@@ -86,27 +69,11 @@ jobs:
     name: msrv (Rust 1.97.1)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Install Tauri Linux prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends \
-            libwebkit2gtk-4.1-dev \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libxdo-dev \
-            libssl-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            protobuf-compiler
 
       - name: Install Rust 1.97.1
         uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
@@ -119,52 +86,21 @@ jobs:
         with:
           shared-key: msrv-1.97.1
 
-      - name: Configure isolated application data root
-        shell: bash
-        run: |
-          data_root="${RUNNER_TEMP}/kaspa-gateway-msrv-data"
-          rm -rf -- "$data_root"
-          install -d -m 700 -- "$data_root"
-          printf 'KASPA_GATEWAY_DATA_DIR=%s\n' "$data_root" >> "$GITHUB_ENV"
-
-      - name: Cargo check on MSRV
-        run: cargo check --locked --workspace --all-targets
-
-      - name: Check frontend WASM on MSRV
-        run: cargo check --locked -p kaspa-gateway-frontend-wasm --target wasm32-unknown-unknown
-
-      - name: Check E2E WASM on MSRV
-        run: cargo check --locked -p kaspa-gateway-e2e-wasm --target wasm32-unknown-unknown
-
-      - name: Cargo test on MSRV
-        run: cargo test --locked --workspace --all-targets
+      - name: Run Rust-owned MSRV stage
+        env:
+          KASPA_GATEWAY_DATA_DIR: ${{ runner.temp }}/kaspa-gateway-msrv-data
+        run: cargo run --locked -p xtask -- ci-workflow-stage msrv
 
   quality:
     needs: ksss-adoption
     name: quality (rust + npm)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Install Tauri Linux prerequisites
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends \
-            libwebkit2gtk-4.1-dev \
-            build-essential \
-            curl \
-            wget \
-            file \
-            libxdo-dev \
-            libssl-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            protobuf-compiler
 
       - name: Install Rust 1.98.1
         uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
@@ -182,27 +118,6 @@ jobs:
           tool: wasm-pack@0.15.0
           fallback: none
 
-      - name: Check frontend WASM target
-        run: cargo check --locked -p kaspa-gateway-frontend-wasm --target wasm32-unknown-unknown
-
-      - name: Check E2E WASM target
-        run: cargo check --locked -p kaspa-gateway-e2e-wasm --target wasm32-unknown-unknown
-
-      - name: Verify generated frontend template wrappers
-        run: cargo run --locked -p xtask -- frontend-template-codegen check
-
-      - name: Verify generated frontend WASM artifacts
-        run: cargo run --locked -p xtask -- frontend-wasm-codegen check
-
-      - name: Verify generated E2E WASM artifacts
-        run: cargo run --locked -p xtask -- e2e-wasm-codegen check
-
-      - name: Verify generated E2E tool configuration
-        run: cargo run --locked -p xtask -- e2e-config-codegen check
-
-      - name: Enforce Rust-only owned implementation migration guard
-        run: cargo run --locked -p xtask -- language-policy check
-
       - name: Setup Node.js 24
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -213,236 +128,28 @@ jobs:
             e2e/package-lock.json
           package-manager-cache: true
 
-      - name: Verify frontend settings Rust-owned regression suite
-        run: cargo run --locked -p xtask -- settings-contract-regressions
+      - name: Run Rust-owned quality stage
+        id: quality-stage
+        env:
+          KASPA_GATEWAY_DATA_DIR: ${{ runner.temp }}/kaspa-gateway-data
+        run: cargo run --locked -p xtask -- ci-workflow-stage quality
 
-      - name: Verify bundled npm
-        run: |
-          npm --version
-          test "$(npm --version)" = "11.17.0"
-
-      - name: Configure isolated application data root
-        shell: bash
-        run: |
-          data_root="${RUNNER_TEMP}/kaspa-gateway-data"
-          rm -rf -- "$data_root"
-          install -d -m 700 -- "$data_root"
-          printf 'KASPA_GATEWAY_DATA_DIR=%s\n' "$data_root" >> "$GITHUB_ENV"
-
-      - name: Install desktop npm dependencies
-        id: desktop-npm-install
-        working-directory: apps/kaspa-gateway-desktop
-        shell: bash
-        run: |
-          set +e
-          npm ci --ignore-scripts 2>&1 | tee npm-ci.log
-          status=${PIPESTATUS[0]}
-          exit "$status"
-
-      - name: Upload desktop npm install diagnostics
-        if: failure() && steps.desktop-npm-install.outcome == 'failure'
+      - name: Upload quality diagnostics
+        if: failure() && steps.quality-stage.outcome == 'failure'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: desktop-npm-install-diagnostics
-          path: apps/kaspa-gateway-desktop/npm-ci.log
-          retention-days: 3
-
-      - name: Install E2E npm dependencies
-        id: e2e-npm-install
-        working-directory: e2e
-        shell: bash
-        run: |
-          set +e
-          npm ci --ignore-scripts 2>&1 | tee npm-ci.log
-          status=${PIPESTATUS[0]}
-          exit "$status"
-
-      - name: Upload E2E npm install diagnostics
-        if: failure() && steps.e2e-npm-install.outcome == 'failure'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: e2e-npm-install-diagnostics
-          path: e2e/npm-ci.log
-          retention-days: 3
-
-      - name: Verify desktop npm dependency policy
-        id: desktop-npm-policy
-        run: >-
-          cargo run --locked -p xtask -- npm-dependency-policy-gate
-          --workspace desktop
-          --ci-log apps/kaspa-gateway-desktop/npm-ci.log
-
-      - name: Upload desktop npm policy diagnostics
-        if: failure() && steps.desktop-npm-policy.outcome == 'failure'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: desktop-npm-policy-diagnostics
+          name: quality-diagnostics
           path: |
             apps/kaspa-gateway-desktop/npm-ci.log
             apps/kaspa-gateway-desktop/npm-audit.json
-          retention-days: 3
-
-      - name: Verify E2E npm dependency policy
-        id: e2e-npm-policy
-        run: >-
-          cargo run --locked -p xtask -- npm-dependency-policy-gate
-          --workspace e2e
-          --ci-log e2e/npm-ci.log
-
-      - name: Upload E2E npm policy diagnostics
-        if: failure() && steps.e2e-npm-policy.outcome == 'failure'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: e2e-npm-policy-diagnostics
-          path: |
             e2e/npm-ci.log
             e2e/npm-audit.json
-          retention-days: 3
-
-      - name: Verify npm dependency policy gate regression tests
-        run: cargo test --locked -p xtask npm_dependency_policy::tests
-
-      - name: Lint desktop JavaScript
-        working-directory: apps/kaspa-gateway-desktop
-        run: node node_modules/eslint/bin/eslint.js frontend/**/*.js
-
-      - name: Verify effective Node settings contract
-        run: cargo run --locked -p xtask -- effective-node-settings-gate
-
-      - name: Verify effective Bridge settings contract
-        run: cargo run --locked -p xtask -- effective-bridge-settings-gate
-
-      - name: Verify active network generation contract
-        run: cargo run --locked -p xtask -- network-generation-gate
-
-      - name: Verify active network generation gate regression tests
-        run: cargo test --locked -p xtask network_generation::tests
-
-      - name: Verify runtime repository binding contract
-        run: cargo run --locked -p xtask -- runtime-repository-binding-gate --offline --strict
-
-      - name: Verify runtime repository binding gate regression tests
-        run: cargo test --locked -p xtask runtime_repository_binding::tests
-
-      - name: Verify runtime automation claims
-        run: cargo run --locked -p xtask -- runtime-automation-claims-gate
-
-      - name: Verify desktop version contract
-        run: cargo run --locked -p xtask -- desktop-version-contract-gate
-
-      - name: Verify desktop artifact workflow contract
-        run: cargo run --locked -p xtask -- desktop-artifacts-workflow-gate
-
-      - name: Verify desktop release draft workflow contract
-        run: cargo run --locked -p xtask -- desktop-release-draft-workflow-gate
-
-      - name: Verify project continuity contract
-        run: cargo run --locked -p xtask -- project-continuity-gate
-
-      - name: Verify project continuity gate regression tests
-        run: cargo test --locked -p xtask project_continuity::tests
-
-      - name: Verify Rust-owned E2E workspace contract
-        run: cargo run --locked -p xtask -- e2e-workspace-checks
-
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-
-      - name: Cargo check
-        id: cargo-check
-        shell: bash
-        run: |
-          set +e
-          cargo check --locked --workspace --all-targets 2>&1 | tee cargo-check.log
-          status=${PIPESTATUS[0]}
-          exit "$status"
-
-      - name: Upload cargo-check diagnostics
-        if: failure() && steps.cargo-check.outcome == 'failure'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: cargo-check-diagnostics
-          path: cargo-check.log
-          retention-days: 3
-
-      - name: Clippy strict
-        id: clippy
-        shell: bash
-        run: |
-          set +e
-          status=0
-
-          # Keep the original full-workspace production feature graph intact. Cap lints
-          # at warning only so Clippy completes the graph; the exact policy below restores
-          # fail-closed -D warnings semantics except for reviewed exact fingerprints.
-          cargo clippy --locked --workspace --lib --bins --examples --benches --message-format=json -- -D warnings --cap-lints warn > clippy-production.jsonl 2> clippy-production.stderr.log
-          command_status=$?
-          if (( command_status != 0 )); then status=$command_status; fi
-
-          cargo run --locked -p xtask -- check-clippy-results clippy-production.jsonl | tee clippy-production-policy.log
-          policy_status=${PIPESTATUS[0]}
-          if (( policy_status != 0 )); then status=$policy_status; fi
-          cat clippy-production.stderr.log
-
-          cargo clippy --locked --workspace --tests --exclude kaspa-gateway-desktop --message-format=json -- -D warnings --cap-lints warn > clippy-workspace-tests.jsonl 2> clippy-workspace-tests.stderr.log
-          command_status=$?
-          if (( command_status != 0 )); then status=$command_status; fi
-
-          cargo run --locked -p xtask -- check-clippy-results clippy-workspace-tests.jsonl | tee clippy-workspace-tests-policy.log
-          policy_status=${PIPESTATUS[0]}
-          if (( policy_status != 0 )); then status=$policy_status; fi
-          cat clippy-workspace-tests.stderr.log
-
-          # The desktop integration harness path-includes the runtime module and
-          # intentionally exercises a selected subset of its private entry points.
-          # Preserve the existing test-only dead-code exemption, but complete the
-          # test graph and fail closed on every other diagnostic except reviewed
-          # exact fingerprints.
-          cargo clippy --locked -p kaspa-gateway-desktop --tests --message-format=json -- -D warnings -A dead-code --cap-lints warn > clippy-desktop-tests.jsonl 2> clippy-desktop-tests.stderr.log
-          command_status=$?
-          if (( command_status != 0 )); then status=$command_status; fi
-
-          cargo run --locked -p xtask -- check-clippy-results clippy-desktop-tests.jsonl | tee clippy-desktop-tests-policy.log
-          policy_status=${PIPESTATUS[0]}
-          if (( policy_status != 0 )); then status=$policy_status; fi
-          cat clippy-desktop-tests.stderr.log
-
-          cat clippy-production.stderr.log clippy-production-policy.log clippy-workspace-tests.stderr.log clippy-workspace-tests-policy.log clippy-desktop-tests.stderr.log clippy-desktop-tests-policy.log > clippy.log
-          exit "$status"
-
-      - name: Upload clippy diagnostics
-        if: failure() && steps.clippy.outcome == 'failure'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: clippy-diagnostics
-          path: |
-            clippy.log
-            clippy-production.jsonl
-            clippy-production.stderr.log
-            clippy-production-policy.log
-            clippy-workspace-tests.jsonl
-            clippy-workspace-tests.stderr.log
-            clippy-workspace-tests-policy.log
-            clippy-desktop-tests.jsonl
-            clippy-desktop-tests.stderr.log
-            clippy-desktop-tests-policy.log
-          retention-days: 3
-
-      - name: Run Rust tests
-        id: rust-tests
-        shell: bash
-        run: |
-          set +e
-          cargo test --locked --workspace --all-targets 2>&1 | tee rust-tests.log
-          status=${PIPESTATUS[0]}
-          exit "$status"
-
-      - name: Upload Rust test diagnostics
-        if: failure() && steps.rust-tests.outcome == 'failure'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: rust-test-diagnostics
-          path: rust-tests.log
+            cargo-check.log
+            clippy-*.jsonl
+            clippy-*.stderr.log
+            clippy-*-policy.log
+            rust-tests.log
+          if-no-files-found: ignore
           retention-days: 3
 
   node-current-compatibility:
@@ -450,12 +157,16 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     continue-on-error: true
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Install Rust 1.98.1
+        uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: 1.98.1
 
       - name: Setup Node.js 26
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -467,32 +178,5 @@ jobs:
             e2e/package-lock.json
           package-manager-cache: true
 
-      - name: Verify bundled npm
-        run: |
-          npm --version
-          test "$(npm --version)" = "11.19.0"
-
-      - name: Install desktop npm dependencies
-        working-directory: apps/kaspa-gateway-desktop
-        run: npm ci --ignore-scripts
-
-      - name: Install E2E npm dependencies
-        working-directory: e2e
-        run: npm ci --ignore-scripts
-
-      - name: Validate desktop JavaScript workspace
-        working-directory: apps/kaspa-gateway-desktop
-        run: node node_modules/eslint/bin/eslint.js frontend/**/*.js
-
-      - name: Validate E2E JavaScript workspace without package scripts
-        working-directory: e2e
-        shell: bash
-        run: |
-          node node_modules/eslint/bin/eslint.js .
-          node --check wdio.conf.mjs
-          node --check specs/zero-touch-live-matrix.e2e.js
-          node --check helpers/assertions.mjs
-          node --check helpers/paths.mjs
-          node --check helpers/tauri-app.mjs
-          node --check helpers/windows.mjs
-          node --check helpers/runtime-ports.mjs
+      - name: Run Rust-owned Node-current compatibility stage
+        run: cargo run --locked -p xtask -- ci-workflow-stage node-current

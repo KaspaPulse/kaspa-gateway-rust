@@ -2,6 +2,7 @@ mod ai_workflow;
 mod aud013_navigation_regressions;
 mod bridge_node_mode_routing;
 mod bridge_readiness_frontend_regressions;
+mod ci_workflow;
 mod clippy_policy;
 mod copy_log;
 mod deepmerge_security_smoke;
@@ -96,6 +97,8 @@ fn usage() -> &'static str {
   cargo run -p xtask -- language-policy <check|strict|inventory>
   cargo run -p xtask -- live-raw-log-matrix [--repository <path>] [--timeout-seconds <n>]
   cargo run -p xtask -- check-clippy-results <cargo-clippy-jsonl>
+  cargo run -p xtask -- ci-workflow-gate
+  cargo run -p xtask -- ci-workflow-stage <ksss-adoption|msrv|quality|node-current>
   cargo run -p xtask -- check-security-advisories [--max-age-days N]
   cargo run -p xtask -- check-trufflehog-results <jsonl>
   cargo run -p xtask -- copy-log-gate
@@ -224,6 +227,24 @@ fn run() -> Result<(), CliError> {
         "check-clippy-results" => {
             let path = exactly_one(&mut args, "cargo-clippy-jsonl path")?;
             let message = clippy_policy::check_file(Path::new(&path)).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "ci-workflow-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "ci-workflow-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = ci_workflow::run_gate(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "ci-workflow-stage" => {
+            let stage = exactly_one(&mut args, "CI workflow stage")?;
+            let message =
+                ci_workflow::run_stage(&repo_root()?, &stage).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
