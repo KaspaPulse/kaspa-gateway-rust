@@ -486,3 +486,43 @@ Do not rerun unaffected native/runtime/release qualification while its predicate
 - DISCOVERY: current runtime evidence summary already delegates to native Rust `kgw-zero-touch-evidence`; native `zero_touch_evidence`, `zero_touch_result_io`, and `kgw-zero-touch-result` own stage ports, evidence validation, strict/atomic JSON output, emergency failure receipt construction, and metadata finalization. Remaining live references to `tools/kgw_zero_touch_evidence.ps1` are Rust gates/tests, not product/runtime callers.
 - BOUNDARY: migrate those remaining Rust gates/tests to the native Rust owners, remove the obsolete PowerShell helper only after equivalent fail-closed qualification, then retire its source-debt entry. Do not apply the historical OP070 temporary proposal and do not bypass file safety.
 - ACCEPTANCE: native result/evidence tests cover atomic writes, rejected invalid JSON values, failure receipts, stage ports/env validation, and evidence contracts; full-local/true-raw-log gates no longer require PowerShell helper/parser; helper has no active non-historical reference and is deleted; language-policy source debt becomes 0 with unapproved source 0; affected gates/tests and diff-check pass; no Push.
+
+## OP302 - Tool safety handoff after writer re-acquire (PARTIAL / SAFETY_BOUNDARY_REACHED)
+
+- WRITER_RECOVERY: expired epoch 5 was re-acquired by the same canonical writer/session as epoch 6 after actual-state verification; no split-brain evidence observed.
+- ACTUAL_WORK: OP302 source/debt/gate edits and staged deletion of `tools/kgw_zero_touch_evidence.ps1` remain preserved in the worktree; no reset/clean/stash/discard performed.
+- QUALIFICATION_DISPATCH: `cargo fmt --all` was refused before dispatch; read-only `git diff --check` then passed; one safer bounded `cargo fmt --all -- --check` dispatch was also refused before execution.
+- CLASSIFICATION: formatting qualification is NEVER_STARTED due tool-safety refusal, not FAILED. Existing OP302 remains the same operation and is not duplicated.
+- NEXT_SAFE_ACTION: next session FAST_RESUME the same OP302 from actual worktree, verify epoch/writer and preserved diff, then continue qualification from formatting/check boundary without rewriting source. No Push.
+
+
+## OP302 - Full-local nested Cargo self-rebuild repair (WRITE-AHEAD INTENT)
+
+- STATUS: PLANNED / SAME OP302. Official writer claim VERIFIED at epoch 18 for session `2b8e048e2c1e8d9d5b07915f83a62931` before mutation.
+- VERIFIED_INPUT: A28 exact candidate PASS for 17 tracked paths; source/candidate raw diff SHA-256 `48b9035f4a4cba8d422f0db81430f9d121ef8d07580872d28d4f5ac24fb34d97`; isolated clipboard preflight PASS; zero-touch E2E/WDIO/native validation PASS; host artifact integrity PASS; host clipboard untouched.
+- FAILURE: authoritative `full-local-gate --reuse-successful-e2e-artifact` progressed through formatting, Desktop E2E feature check, typed/raw-log tests, frontend syntax and true-raw-log frontend owner, then failed in `E2E workspace checks` because `npm run check` recursively invoked `cargo run -p xtask` while the parent `xtask.exe full-local-gate` was still executing. Windows refused replacing the running `target\debug\xtask.exe` with `Access is denied (os error 5)`.
+- ROOT_CAUSE: TEST_HARNESS_ORCHESTRATION_SELF_REBUILD_LOCK; no product/runtime defect proven and A28 remains valid evidence for the pre-repair source.
+- INTENT: modify only `xtask/src/full_local_gate.rs` so E2E workspace validation performs the same Node syntax checks directly and invokes `deepmerge-security-smoke` plus `e2e-static-smokes` through the already-running xtask executable via `run_self_checked`, eliminating nested Cargo self-rebuild without weakening checks.
+- VERIFICATION: fmt; targeted full_local_gate tests; direct E2E workspace semantic checks; strict xtask Clippy `-D warnings`; MSRV 1.97.1; git diff --check; then regenerate exact source-bound isolated evidence as A29 before re-running full-local artifact reuse.
+- AUTHORIZATION: local source/test/checkpoint only; PUSH/PR/MERGE/RELEASE/DEPLOY/PRODUCTION_MUTATION remain NO.
+- RECOVERY: preserve all existing OP302 dirty work and A28 evidence; if interrupted, resume this same intent from actual Git state and do not repeat A28 unless the source is reverted exactly.
+
+
+## OP302 - Full-local nested Cargo self-rebuild repair (QUALIFIED / A29 PENDING)
+
+- RESULT: repair qualified. `full_local_gate.rs` now performs the same seven E2E Node syntax checks directly and invokes `deepmerge-security-smoke` plus `e2e-static-smokes` through the current xtask executable, removing `npm run check` from the parent full-local orchestration and therefore eliminating the nested Cargo attempt to replace the running `xtask.exe`.
+- QUALIFICATION: `cargo fmt --all -- --check` PASS; `full_local_gate::tests` 3/3 PASS; seven direct Node syntax checks PASS; deepmerge security smoke PASS; E2E static smokes PASS; strict xtask Clippy `-D warnings` PASS; MSRV Rust 1.97.1 `cargo check --all-targets` PASS; `git diff --check` PASS.
+- A28: exact candidate PASS; isolated clipboard preflight PASS; WDIO/zero-touch E2E PASS; validation errors empty; host artifact integrity PASS. A28 remains historical evidence for the pre-repair source and must not be reused for the current source after this qualified harness mutation.
+- NEXT_SAFE_ACTION: generate A29 from the exact current 17-path source using the established read-only Windows Sandbox mapping; require exact candidate equality, clipboard preflight PASS, zero-touch/WDIO PASS, native validation PASS, host artifact integrity PASS, then rerun full-local with A29 artifact reuse. No push.
+
+## OP302 - Zero-touch evidence PowerShell retirement / native Rust ownership (CLOSED_LOCAL / VERIFIED_SUCCESS)
+
+- STATUS: CLOSED_LOCAL / VERIFIED_SUCCESS. Official OP267 writer fencing verified at epoch 18 for canonical writer/session; no competing writer observed.
+- IMPLEMENTATION_CHECKPOINT: `6c21710927fa9c291dd9d70da3c1ddea0ae26cac`, tree `d2f826f528cb462071a9c6d604f7179bb4c4a932`; no push.
+- BOUNDARY: obsolete owned PowerShell evidence writer `tools/kgw_zero_touch_evidence.ps1` is retired; native Rust owns zero-touch result/evidence creation, validation, integrity, full-local reuse, and supporting true-raw-log/clipboard evidence paths.
+- FINAL_ISOLATED_EVIDENCE: A29 exact candidate PASS; source/candidate diff SHA-256 `890f26e29bbe23dca6af4b3d488139445a611759380025c2516d6504b858a2db`; Sandbox clipboard preflight PASS; WDIO 5/5 PASS; zero-touch E2E PASS; validation errors empty; host artifact integrity PASS; host clipboard mutation NONE.
+- FULL_LOCAL: PASS using A29 artifact reuse. Formatting, Desktop E2E feature check, typed/raw-log tests, frontend syntax, Rust-owned E2E workspace checks, true-raw-log gate, artifact integrity/reuse, Graphify 0.9.74 code-only extraction/query, and `git diff --check` passed.
+- HARNESS_REPAIRS: fixed-port test ownership, nested Cargo self-rebuild, WDIO direct-xtask execution, portable evidence identity, teardown race handling, and related isolation defects were repaired narrowly; no production runtime defect was inferred from those harness failures.
+- LANGUAGE_POLICY: Rust source inventory 224; owned non-Rust programming source debt 0; unapproved non-Rust source 0; non-Rust execution-reference debt 8; unapproved execution 0; technical exceptions 40. Migration-mode guard PASS; strict mode fails only because the eight execution-debt references remain.
+- NEXT: same parent task remains ACTIVE. Recompute/classify the eight execution-debt references from actual current state and migrate the newest genuinely incomplete ownership boundary. Do not repeat OP302 qualification unless its predicates are invalidated.
+- PUBLICATION: PUSH=NO, PR=NO, MERGE=NO, RELEASE=NO, DEPLOY=NO, PRODUCTION_MUTATION=NO.

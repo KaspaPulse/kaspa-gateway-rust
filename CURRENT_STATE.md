@@ -1,14 +1,14 @@
 # CURRENT STATE
-- Current product boundary: OP302 Zero-touch evidence PowerShell retirement / native Rust ownership is INTENT_ADOPTED / IMPLEMENTATION_PENDING from clean base HEAD aab15863930ec70ef5be2482585937cac048dcc5, tree 53c76272e5fde51f6ed64a089a1ab70d0a7be63e. OP301 and earlier operations remain closed and valid; no push.
+- Current product boundary: OP302 Zero-touch evidence PowerShell retirement / native Rust ownership is CLOSED_LOCAL / VERIFIED_SUCCESS. Implementation checkpoint `6c21710927fa9c291dd9d70da3c1ddea0ae26cac`, tree `d2f826f528cb462071a9c6d604f7179bb4c4a932`. Exact source-bound A29 Windows Sandbox zero-touch E2E, host artifact integrity, authoritative full-local artifact reuse, Graphify refresh/query, and `git diff --check` all PASS. Owned non-Rust programming source debt is now 0; eight non-Rust execution-debt references remain for the active parent migration. Writer fencing is epoch 18 for session `2b8e048e2c1e8d9d5b07915f83a62931`; no push.
 
 - Repository: `KaspaPulse/kaspa-gateway-rust`.
 - Task: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923`.
-- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`; OP301 closeout generation `2292`. Writer handoff was recorded at generation 2259; canonical writer is `chatgpt-gpt56-sol-rdc`, session `2b8e048e2c1e8d9d5b07915f83a62931`, epoch 5, using `refs/kgw/writer-claim` CAS fencing. Parent task remains active.
+- Continuity protocol: `UNIVERSAL_DURABLE_AGENT_RESUME_RECOVERY_AND_CONTINUATION_PROTOCOL_V4` / `4.0.0`; OP302 implementation checkpoint generation `2330`. Canonical writer is `chatgpt-gpt56-sol-rdc`, session `2b8e048e2c1e8d9d5b07915f83a62931`, verified epoch 18, using `refs/kgw/writer-claim` CAS fencing. Parent task remains active because execution debt remains.
 - Host/worktree: `Server` / `C:\Users\abuha\KaspaGateway-Rust100-20260923\repo`.
 - Branch: `feat/owned-implementation-100-percent-rust-20260923`.
-- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP265 verified implementation checkpoint is `dc8b632062ed435d1c9ebfbe8a4cc28bf4e433f0`, tree `e7399ab6634ed9aeebb1b05e06950468026b0012`.
+- Current HEAD: **VERIFY DYNAMICALLY** from Git; OP302 verified implementation checkpoint is `6c21710927fa9c291dd9d70da3c1ddea0ae26cac`, tree `d2f826f528cb462071a9c6d604f7179bb4c4a932`.
 - Current remote main: **VERIFY DYNAMICALLY** immediately before any publication/integration; no remote-main claim is reused from chat history.
-- Working tree: OP302 intent/continuity update is pending commit; product source remains unchanged from the clean OP301 closeout base. Verify dynamically before mutation. Do not reset, clean, stash, discard, or overwrite newer local work.
+- Working tree: implementation is committed at OP302 checkpoint; only current-state/handoff documentation closeout is intentionally dirty. A29 exact candidate, clipboard preflight, WDIO 5/5, zero-touch E2E, native validation, host integrity, authoritative full-local reuse, Graphify refresh/query, language-policy inventory, and diff-check are verified. NEXT_SAFE_ACTION: commit docs-only OP302 closeout, then continue the same parent task from the eight remaining non-Rust execution-debt references.
 - Remote publication: NOT STARTED for the current migration candidate; exact-head remote security/workflow validation is **NOT VERIFIED** locally; PUSH_RARELY / PUBLISH_ONLY_AFTER_SUCCESS remains enforced.
 
 ## MIGRATION STATE
@@ -17,13 +17,13 @@
 - OP101 Header live metrics Rust/WASM ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `a1f71cb804b8155fb93d4892193a679eab59870c`.
 - OP102 Top Addresses Rust/WASM ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `dbdd0681cb57b017768d988175f7736d6481e571`.
 - OP103 Desktop diagnostic launcher Rust ownership is VERIFIED_LOCAL_IMPLEMENTATION and committed as `ec23f1fc9b162724b2a90e648e917227d74dfbf0`.
-- Owned non-Rust programming source debt: 2.
+- Owned non-Rust programming source debt: 0.
 - Non-Rust execution-wiring debt: 8.
-- Technical exceptions: 39.
-- Rust source inventory: 222 (verified during OP218 post-codegen language-policy check/inventory).
+- Technical exceptions: 40.
+- Rust source inventory: 224 (verified during OP302 language-policy check/inventory).
 - Unapproved non-Rust source/execution: 0 / 0.
-- Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all source/execution debt closes.
-- Zero-touch continuity: the historical `tools/kgw_zero_touch_evidence.ps1` access/lock issue is no longer an active blocker because the file is currently readable. Real clipboard/evidence readiness remains a separate predicate and must be independently verified before live zero-touch execution.
+- Language policy `check` and `inventory`: PASS. Repository-wide `strict` remains intentionally incomplete until all execution debt closes.
+- Zero-touch continuity: the obsolete PowerShell helper is retired in OP302 and native Rust owns zero-touch result/evidence production and integrity. A29 proves exact source-bound isolated behavior with host clipboard untouched; authoritative full-local artifact reuse passed. Historical A11-A28 failures/interruption evidence remains preserved append-only and does not invalidate the final A29/full-local result.
 
 ## OP223 VERIFIED EVIDENCE
 - Three local Bridge JavaScript passthrough adapters were retired while preserving existing Rust/WASM owners and product behavior. Implementation checkpoint 0c052f7e5c39272bf67f743f0132efb45d265b10, tree d1bd16b502f9242061f68fa8bf90b3a6fed84f71; no push.
@@ -296,3 +296,12 @@
 ## NEXT ACTION
 
 OP265 is CLOSED_LOCAL / VERIFIED_SUCCESS at implementation checkpoint `dc8b632062ed435d1c9ebfbe8a4cc28bf4e433f0`, tree `e7399ab6634ed9aeebb1b05e06950468026b0012`; no push. Complete this docs-only continuity closeout, verify clean state, then identify the next genuinely incomplete boundary of the same parent task from actual durable state and persist a V4 write-ahead intent before material mutation.
+
+
+## OP302 current boundary - A29 pending
+
+- Same active task/operation: `KASPA_GATEWAY_100_PERCENT_RUST_MIGRATION_20260923` / `OP302 - Zero-touch evidence PowerShell retirement / native Rust ownership`.
+- A28 exact isolated zero-touch qualification is VERIFIED_SUCCESS with clipboard isolation and host artifact integrity PASS, but is source-stale after the full-local nested-Cargo self-rebuild harness repair.
+- Full-local root cause: its E2E workspace step invoked `npm run check`, which recursively invoked Cargo for xtask while the parent `xtask.exe` was running; Windows correctly refused replacing the live executable. No product/runtime defect was proven.
+- Repair: `full_local_gate.rs` now runs the seven Node syntax checks directly and uses the current xtask executable for deepmerge/static smokes. Qualification PASS: fmt, targeted 3/3, semantic Node/smoke checks, strict Clippy `-D warnings`, MSRV 1.97.1, diff-check.
+- NEXT ACTION: A29 exact source-bound Windows Sandbox zero-touch run, then host integrity and full-local artifact reuse. Preserve all OP302 work. Host clipboard must remain untouched. No push/PR/merge/release/deploy/production mutation.
