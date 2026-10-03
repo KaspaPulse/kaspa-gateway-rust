@@ -134,8 +134,7 @@ fn decide_acquire(
         Some(current) => {
             if !current.is_expired(now) && current.session_id != request.session_id {
                 return Err(format!(
-                    "writer claim is held by session {} (writer {}, epoch {}) until {}",
-                    current.session_id,
+                    "writer claim is held by another session (writer {}, epoch {}) until {}",
                     current.writer_id,
                     current.epoch,
                     current.lease_until()
@@ -306,6 +305,15 @@ fn worktree_fingerprint(root: &Path) -> Result<String, String> {
     .map(|oid| oid.trim().to_owned())
 }
 
+fn session_fingerprint(session_id: &str) -> String {
+    let digest = Sha256::digest(session_id.as_bytes());
+    digest
+        .iter()
+        .take(8)
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
 fn generated_session_id(writer_id: &str) -> String {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -363,11 +371,11 @@ fn parse_flags(args: &[String]) -> Result<Flags, String> {
 
 fn describe(claim: &Claim, now: u64) -> String {
     format!(
-        "state={} epoch={} writer={} session={} host={} lease_remaining_secs={} transitions={} base_head={}",
+        "state={} epoch={} writer={} session_fingerprint={} host={} lease_remaining_secs={} transitions={} base_head={}",
         claim.state,
         claim.epoch,
         claim.writer_id,
-        claim.session_id,
+        session_fingerprint(&claim.session_id),
         claim.host_id,
         claim.lease_until().saturating_sub(now),
         claim.transition_count,
@@ -423,8 +431,10 @@ pub fn run(root: &Path, args: &[String]) -> Result<String, String> {
             let next = decide_acquire(current.as_ref().map(|(_, claim)| claim), &request, now)?;
             cas_write(root, &next, current.as_ref().map(|(oid, _)| oid.as_str()))?;
             Ok(format!(
-                "WRITER_CLAIM ACQUIRED epoch={} session={} lease_secs={}",
-                next.epoch, next.session_id, next.lease_secs
+                "WRITER_CLAIM ACQUIRED epoch={} session_fingerprint={} lease_secs={}",
+                next.epoch,
+                session_fingerprint(&next.session_id),
+                next.lease_secs
             ))
         }
         "renew" => {

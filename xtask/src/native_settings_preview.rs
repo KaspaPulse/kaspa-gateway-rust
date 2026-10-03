@@ -439,7 +439,18 @@ fn negative_payload(kind: &str, role: Value) -> Value {
 
 pub fn run() -> GateResult<()> {
     let port = port_value(std::env::var("KGW_NATIVE_CDP_PORT").ok().as_deref())?;
-    println!("{}", run_at_port(port)?);
+    let result = run_at_port(port)?;
+    let case_count = result
+        .get("cases")
+        .and_then(Value::as_array)
+        .map_or(0, Vec::len);
+    let positive_cases = result
+        .get("positiveCases")
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
+    println!(
+        "NATIVE_SETTINGS_PREVIEW state=VERIFIED_SUCCESS cases={case_count} positive_cases={positive_cases}"
+    );
     Ok(())
 }
 
