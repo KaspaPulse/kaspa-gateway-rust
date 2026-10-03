@@ -1808,11 +1808,13 @@ fn timeout_hierarchy_is_strict_and_race_free() {
     }
     let node_rust =
         include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs");
-    let bridge_js = include_str!("../../frontend/src/tabs/kaspa-bridge/kaspa-bridge.js");
+    let bridge_rust =
+        include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs");
     assert!(node_rust.contains("const NODE_STOP_INVOKE_TIMEOUT_MS: u32 = 0;"));
-    assert!(bridge_js.contains("const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS = 0"));
+    assert!(bridge_rust.contains("const BRIDGE_STOP_INVOKE_TIMEOUT_MS: u32 = 0;"));
     assert!(node_rust.contains("if timeout_ms == 0 {"));
-    assert!(bridge_js.contains("if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)"));
+    assert!(bridge_rust.contains("crate::node_start_trace::await_command_with_timeout("));
+    assert!(bridge_rust.contains("runtime_invoke_timeout_ms(command),"));
 }
 
 #[test]
@@ -3351,20 +3353,6 @@ fn delayed_failed_after_old_liveness_window_leaves_no_false_owner() {
     );
 }
 
-fn javascript_timeout_constant(source: &str, name: &str) -> u64 {
-    let marker = format!("const {name} = ");
-    source
-        .split_once(&marker)
-        .unwrap_or_else(|| panic!("missing JavaScript timeout constant {name}"))
-        .1
-        .split_once(';')
-        .unwrap_or_else(|| panic!("unterminated JavaScript timeout constant {name}"))
-        .0
-        .trim()
-        .parse()
-        .unwrap_or_else(|error| panic!("invalid JavaScript timeout constant {name}: {error}"))
-}
-
 fn rust_u32_timeout_constant(source: &str, name: &str) -> u64 {
     let marker = format!("{name}: u32 = ");
     source
@@ -3385,9 +3373,9 @@ fn startup_timeout_hierarchy_is_strict_for_node_and_bridge() {
     let bridge_child = kaspa_gateway_rk_bridge::KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS;
     let bridge_parent =
         integrated_runtime_commands::KGW_BRIDGE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1;
-    let bridge_ui = javascript_timeout_constant(
-        include_str!("../../frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"),
-        "KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS",
+    let bridge_ui = rust_u32_timeout_constant(
+        include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs"),
+        "BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS",
     );
     assert!(bridge_parent > bridge_child);
     assert!(bridge_ui > bridge_parent);
