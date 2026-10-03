@@ -3,13 +3,15 @@ use std::path::Path;
 
 const WORKFLOW_PATH: &str = ".github/workflows/desktop-release-draft.yml";
 const CI_PATH: &str = ".github/workflows/ci.yml";
+const CI_WORKFLOW_STAGE_PATH: &str = "xtask/src/ci_workflow.rs";
 const CHECKOUT_SHA: &str = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
 const RUST_TOOLCHAIN_SHA: &str = "dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c";
 
 pub fn run(root: &Path) -> Result<String, String> {
     let workflow = read(root, WORKFLOW_PATH)?;
     let ci = read(root, CI_PATH)?;
-    validate(&workflow, &ci)?;
+    let ci_workflow_stage = read(root, CI_WORKFLOW_STAGE_PATH)?;
+    validate(&workflow, &ci, &ci_workflow_stage)?;
     Ok("DESKTOP RELEASE DRAFT WORKFLOW CONTRACT PASSED".to_owned())
 }
 
@@ -35,7 +37,7 @@ fn forbid(text: &str, needle: &str, message: &str) -> Result<(), String> {
     }
 }
 
-fn validate(workflow: &str, ci: &str) -> Result<(), String> {
+fn validate(workflow: &str, ci: &str, ci_workflow_stage: &str) -> Result<(), String> {
     for (needle, message) in [
         (
             "workflow_dispatch:",
@@ -97,7 +99,7 @@ fn validate(workflow: &str, ci: &str) -> Result<(), String> {
             "confirmation input must flow to Rust owner",
         ),
         (
-            "SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/desktop-artifacts.yml",
+            "SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/desktop-artifacts-builder.yml",
             "signer workflow identity must be explicit",
         ),
         (
@@ -124,13 +126,13 @@ fn validate(workflow: &str, ci: &str) -> Result<(), String> {
     }
     require(
         ci,
-        "Verify desktop release draft workflow contract",
-        "blocking CI must run the desktop release draft workflow contract",
+        "cargo run --locked -p xtask -- ci-workflow-stage quality",
+        "blocking CI must delegate quality policy to the Rust-owned CI workflow stage",
     )?;
     require(
-        ci,
-        "cargo run --locked -p xtask -- desktop-release-draft-workflow-gate",
-        "blocking CI must execute the Rust draft workflow contract gate",
+        ci_workflow_stage,
+        "&[\"desktop-release-draft-workflow-gate\"][..]",
+        "Rust-owned CI quality stage must execute the desktop release draft workflow contract gate",
     )?;
     Ok(())
 }
@@ -158,19 +160,30 @@ mod tests {
             "REQUESTED_COMMIT_SHA: ${{ inputs.commit_sha }}",
             "ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}",
             "RELEASE_CONFIRMATION: ${{ inputs.confirmation }}",
-            "SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/desktop-artifacts.yml",
+            "SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/desktop-artifacts-builder.yml",
             "cargo run --locked -p xtask -- desktop-release-draft-stage",
         ]
         .join("\n")
     }
 
     fn ci_fixture() -> String {
-        "Verify desktop release draft workflow contract\ncargo run --locked -p xtask -- desktop-release-draft-workflow-gate".to_owned()
+        "cargo run --locked -p xtask -- ci-workflow-stage quality".to_owned()
+    }
+
+    fn ci_workflow_stage_fixture() -> String {
+        "&[\"desktop-release-draft-workflow-gate\"][..]".to_owned()
     }
 
     #[test]
     fn minimal_adapter_contract_passes() {
-        assert!(validate(&workflow_fixture(), &ci_fixture()).is_ok());
+        assert!(
+            validate(
+                &workflow_fixture(),
+                &ci_fixture(),
+                &ci_workflow_stage_fixture()
+            )
+            .is_ok()
+        );
     }
 
     #[test]
@@ -184,7 +197,10 @@ mod tests {
             "sha256sum",
         ] {
             let workflow = format!("{}\n{forbidden}", workflow_fixture());
-            assert!(validate(&workflow, &ci_fixture()).is_err(), "{forbidden}");
+            assert!(
+                validate(&workflow, &ci_fixture(), &ci_workflow_stage_fixture()).is_err(),
+                "{forbidden}"
+            );
         }
     }
 
@@ -196,7 +212,16 @@ mod tests {
             "cargo run --locked -p xtask -- desktop-release-draft-stage",
         ] {
             let workflow = workflow_fixture().replace(marker, "");
-            assert!(validate(&workflow, &ci_fixture()).is_err(), "{marker}");
+            assert!(
+                validate(&workflow, &ci_fixture(), &ci_workflow_stage_fixture()).is_err(),
+                "{marker}"
+            );
         }
+    }
+
+    #[test]
+    fn rust_owned_ci_delegation_is_fail_closed() {
+        assert!(validate(&workflow_fixture(), "", &ci_workflow_stage_fixture()).is_err());
+        assert!(validate(&workflow_fixture(), &ci_fixture(), "").is_err());
     }
 }

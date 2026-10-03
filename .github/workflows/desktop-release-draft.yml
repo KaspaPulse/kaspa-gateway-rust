@@ -41,7 +41,7 @@ jobs:
       REQUESTED_COMMIT_SHA: ${{ inputs.commit_sha }}
       ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
       RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
-      SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/desktop-artifacts.yml
+      SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/desktop-artifacts-builder.yml
 
     steps:
       - name: Checkout exact release commit

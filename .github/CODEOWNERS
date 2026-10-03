@@ -10,4 +10,7 @@ tools/** @KaspaPulse
 SECURITY.md @KaspaPulse
 docs/security/** @KaspaPulse
 .github/dependabot.yml @KaspaPulse
+.github/workflows/** @KaspaPulse
+xtask/src/** @KaspaPulse
+deny.toml @KaspaPulse
 .github/CODEOWNERS @KaspaPulse

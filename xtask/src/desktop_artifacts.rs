@@ -3,6 +3,7 @@ use std::fs;
 use std::path::Path;
 
 const WORKFLOW_PATH: &str = ".github/workflows/desktop-artifacts.yml";
+const BUILDER_WORKFLOW_PATH: &str = ".github/workflows/desktop-artifacts-builder.yml";
 const STAGE_PATH: &str = "xtask/src/desktop_artifacts_stage.rs";
 const DESKTOP_MANIFEST_PATH: &str = "apps/kaspa-gateway-desktop/src-tauri/Cargo.toml";
 const WINDOWS_CONFIG_PATH: &str = "apps/kaspa-gateway-desktop/src-tauri/tauri.windows.conf.json";
@@ -20,6 +21,7 @@ const ATTEST: &str = "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6";
 const UPLOAD: &str = "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 struct Inputs {
     workflow: String,
+    builder_workflow: String,
     stage_source: String,
     desktop_manifest: String,
     windows_config: Value,
@@ -31,6 +33,7 @@ struct Inputs {
 pub fn run(root: &Path) -> Result<String, String> {
     let inputs = Inputs {
         workflow: normalize_newlines(&read(root, WORKFLOW_PATH)?),
+        builder_workflow: normalize_newlines(&read(root, BUILDER_WORKFLOW_PATH)?),
         stage_source: normalize_newlines(&read(root, STAGE_PATH)?),
         desktop_manifest: read(root, DESKTOP_MANIFEST_PATH)?,
         windows_config: parse_json(&read(root, WINDOWS_CONFIG_PATH)?, WINDOWS_CONFIG_PATH)?,
@@ -153,7 +156,7 @@ fn validate_platform_configuration(inputs: &Inputs) -> Result<(), String> {
     )?;
     let canonical = quoted_assignment(&inputs.rust_toolchain, "channel")
         .ok_or_else(|| "rust-toolchain.toml must declare channel".to_owned())?;
-    let toolchains = workflow_toolchains(&inputs.workflow);
+    let toolchains = workflow_toolchains(&inputs.builder_workflow);
     if toolchains.len() != 2 || toolchains.iter().any(|value| value != &canonical) {
         return Err(
             "desktop artifact workflow toolchains must exactly match canonical Rust".to_owned(),
@@ -207,12 +210,48 @@ fn validate_platform_configuration(inputs: &Inputs) -> Result<(), String> {
     Ok(())
 }
 
-fn validate_workflow_adapter(workflow: &str) -> Result<(), String> {
+fn validate_caller_workflow(workflow: &str) -> Result<(), String> {
     for marker in [
         "workflow_dispatch:",
         "commit_sha:",
+        "contents: read",
+        "id-token: write",
+        "attestations: write",
+        "artifact-metadata: write",
+        "cancel-in-progress: false",
+        "uses: ./.github/workflows/desktop-artifacts-builder.yml",
+        "commit_sha: ${{ inputs.commit_sha }}",
+    ] {
+        require(workflow, marker)?;
+    }
+    for marker in [
+        "run:",
+        "shell:",
+        "actions/",
+        "dtolnay/",
+        "Swatinem/",
+        "taiki-e/",
+        "sigstore/",
+    ] {
+        forbid(workflow, marker)?;
+    }
+    if workflow.contains(SECRETS_MARKER) {
+        return Err("desktop artifact caller must not consume signing secrets".to_owned());
+    }
+    Ok(())
+}
+
+fn validate_builder_workflow(workflow: &str) -> Result<(), String> {
+    for marker in [
+        "workflow_call:",
+        "commit_sha:",
+        "contents: read",
+        "id-token: write",
+        "attestations: write",
+        "artifact-metadata: write",
         "runs-on: windows-2022",
         "runs-on: macos-15-intel",
+        "ref: ${{ inputs.commit_sha }}",
         "targets: x86_64-pc-windows-msvc",
         "targets: aarch64-apple-darwin,x86_64-apple-darwin",
         "tool: syft@1.52.0",
@@ -259,20 +298,20 @@ fn validate_workflow_adapter(workflow: &str) -> Result<(), String> {
     }
     if workflow.contains(SECRETS_MARKER) {
         return Err(
-            "unsigned internal artifact workflow must not consume signing secrets".to_owned(),
+            "trusted reusable artifact builder must not consume signing secrets".to_owned(),
         );
     }
     let uses = action_uses(workflow);
     if uses.len() != 16 {
         return Err(format!(
-            "desktop artifact workflow must use exactly 16 pinned actions; found {}",
+            "desktop artifact builder must use exactly 16 pinned actions; found {}",
             uses.len()
         ));
     }
     for action in uses {
         if !immutable_action_ref(&action) || !allowed_action(&action) {
             return Err(format!(
-                "desktop artifact workflow action is not allowed and immutable: {action}"
+                "desktop artifact builder action is not allowed and immutable: {action}"
             ));
         }
     }
@@ -313,7 +352,8 @@ fn validate_rust_owner(stage: &str) -> Result<(), String> {
 
 fn validate(inputs: &Inputs) -> Result<(), String> {
     validate_platform_configuration(inputs)?;
-    validate_workflow_adapter(&inputs.workflow)?;
+    validate_caller_workflow(&inputs.workflow)?;
+    validate_builder_workflow(&inputs.builder_workflow)?;
     validate_rust_owner(&inputs.stage_source)
 }
 
@@ -326,13 +366,25 @@ mod tests {
             CHECKOUT, RUST, CACHE, NODE, INSTALL, ATTEST, ATTEST, UPLOAD, CHECKOUT, RUST, CACHE,
             NODE, INSTALL, ATTEST, ATTEST, UPLOAD,
         ];
-        let mut workflow = String::from(
-            "workflow_dispatch:\ncommit_sha:\nruns-on: windows-2022\nruns-on: macos-15-intel\n",
+        let workflow = [
+            "workflow_dispatch:",
+            "commit_sha:",
+            "contents: read",
+            "id-token: write",
+            "attestations: write",
+            "artifact-metadata: write",
+            "cancel-in-progress: false",
+            "uses: ./.github/workflows/desktop-artifacts-builder.yml",
+            "commit_sha: ${{ inputs.commit_sha }}",
+        ]
+        .join("\n");
+        let mut builder_workflow = String::from(
+            "workflow_call:\ncommit_sha:\ncontents: read\nid-token: write\nattestations: write\nartifact-metadata: write\nruns-on: windows-2022\nruns-on: macos-15-intel\nref: ${{ inputs.commit_sha }}\n",
         );
-        workflow.push_str(
+        builder_workflow.push_str(
             "toolchain: 1.98.1\ntoolchain: 1.98.1\ntargets: x86_64-pc-windows-msvc\ntargets: aarch64-apple-darwin,x86_64-apple-darwin\n",
         );
-        workflow.push_str(
+        builder_workflow.push_str(
             "tool: syft@1.52.0\ncargo run --locked -p xtask -- desktop-artifacts-stage windows\ncargo run --locked -p xtask -- desktop-artifacts-stage macos\n",
         );
         for stage in [
@@ -341,15 +393,15 @@ mod tests {
             "preserve-macos-sbom",
             "preserve-macos-provenance",
         ] {
-            workflow.push_str(&format!(
+            builder_workflow.push_str(&format!(
                 "cargo run --locked -p xtask -- desktop-artifacts-stage {stage}\n"
             ));
         }
-        workflow.push_str(
+        builder_workflow.push_str(
             "WINDOWS_SBOM.spdx.json\nMACOS_SBOM.spdx.json\nKaspaGateway-windows-x64-nsis.exe\nkaspa-gateway-desktop-windows-x64.exe\nKaspaGateway-macos-universal.dmg\nKaspaGateway-macos-universal-app.zip\nsbom-path:\n",
         );
         for action in actions {
-            workflow.push_str(&format!("uses: {action}\n"));
+            builder_workflow.push_str(&format!("uses: {action}\n"));
         }
         let stage_source = [
             "protoc-{PROTOC_VERSION}-win64.zip",
@@ -381,6 +433,7 @@ mod tests {
         .join("\n");
         Inputs {
             workflow,
+            builder_workflow,
             stage_source,
             desktop_manifest: "[[bin]]\nname = \"kgw-provenance-smoke\"\npath = \"src/bin/kgw-provenance-smoke.rs\"\nrequired-features = [\"runtime-provenance-smoke\"]\n[features]\nruntime-provenance-smoke = []\n".to_owned(),
             windows_config: serde_json::json!({"bundle":{"targets":["nsis"],"icon":["icons/icon.ico"]}}),
@@ -402,7 +455,14 @@ mod tests {
         assert!(validate(&input).is_err());
 
         let mut input = fixture();
-        input.workflow = input.workflow.replacen(CHECKOUT, "actions/checkout@v7", 1);
+        input.builder_workflow =
+            input
+                .builder_workflow
+                .replacen(CHECKOUT, "actions/checkout@v7", 1);
+        assert!(validate(&input).is_err());
+
+        let mut input = fixture();
+        input.builder_workflow = input.builder_workflow.replace("workflow_call:", "");
         assert!(validate(&input).is_err());
     }
     #[test]
@@ -432,6 +492,12 @@ mod tests {
         let mut input = fixture();
         input
             .workflow
+            .push_str(&format!("{}TOKEN }}", SECRETS_MARKER));
+        assert!(validate(&input).is_err());
+
+        let mut input = fixture();
+        input
+            .builder_workflow
             .push_str(&format!("{}TOKEN }}", SECRETS_MARKER));
         assert!(validate(&input).is_err());
     }

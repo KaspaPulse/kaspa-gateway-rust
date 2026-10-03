@@ -13,9 +13,13 @@ This file records intentionally accepted or currently unavoidable RustSec and np
 - npm exceptions must be exact, machine-readable, time-bounded, and fail closed on advisory identity, dependency-path, severity, lockfile, or deprecation drift.
 - Do not use unsupported major-version npm overrides solely to silence a warning when the owning upstream package does not support that dependency line.
 
-Last automated review: **2026-08-15**
+Last automated review: **2026-10-03**
 
 Last npm dependency-policy review: **2026-09-10**; next mandatory review: **2026-10-10**.
+
+### 2026-10-03 Rust dependency review evidence
+
+Fresh local review on the exact Stage B worktree ran `cargo audit` and `cargo deny check`; both exited 0. `cargo audit` reported no unignored vulnerability failure and kept 16 allowed informational warnings visible. The observed warning IDs were RUSTSEC-2025-0052, RUSTSEC-2024-0375, RUSTSEC-2025-0141, RUSTSEC-2024-0388, RUSTSEC-2024-0384, RUSTSEC-2020-0168, RUSTSEC-2024-0436, RUSTSEC-2024-0370, RUSTSEC-2025-0081, RUSTSEC-2025-0075, RUSTSEC-2025-0080, RUSTSEC-2025-0100, RUSTSEC-2025-0098, RUSTSEC-2021-0145, RUSTSEC-2026-0306, and RUSTSEC-2024-0429. These remain visible rather than being silently suppressed. `cargo deny check` also exited 0; its warnings remain reviewable policy output rather than hidden failures.
 
 ## Current managed findings
 
@@ -46,6 +50,14 @@ Status: Linux-only Tauri/GTK3 transitive informational soundness finding.
 The current Linux desktop graph reaches `glib` 0.18.5 through the Tauri/WebKitGTK/GTK3 stack. RustSec fixes this soundness issue in `glib` 0.20.0 and later. The 2026-08-15 target reconciliation did not place this affected 0.18.5 path in the Windows or macOS target graphs.
 
 Action: track the supported Tauri/Linux platform migration path and remove the affected GTK3/glib line when that can be done without bypassing Tauri runtime ownership or platform compatibility.
+
+### RUSTSEC-2026-0306 — `faster-hex` 0.9.0
+
+Status: transitive informational soundness finding observed in the 2026-10-03 review.
+
+RustSec reports that the `hex_decode_unchecked` AVX2 path can read past the source buffer. The finding remains visible in `cargo audit` and is not added to the ignored vulnerability set. The current repository review does not claim that every downstream call exercises the affected unchecked AVX2 path.
+
+Action: track the owning upstream dependency path and upgrade/remove `faster-hex` as soon as the supported dependency graph permits it. Do not silence the finding merely to obtain a clean warning count.
 
 
 ## npm accepted temporary findings
