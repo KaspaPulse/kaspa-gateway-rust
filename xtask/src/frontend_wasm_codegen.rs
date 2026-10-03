@@ -1648,79 +1648,90 @@ fn sha256_hex(bytes: &[u8]) -> String {
     format!("{:x}", digest.finalize())
 }
 
-fn normalize_text_bytes(bytes: &[u8]) -> Vec<u8> {
-    String::from_utf8_lossy(bytes)
-        .replace("\r\n", "\n")
-        .replace('\r', "\n")
-        .into_bytes()
+fn git_output(root: &Path, args: &[String]) -> Result<String, String> {
+    let output = Command::new("git")
+        .current_dir(root)
+        .args(args)
+        .output()
+        .map_err(|error| format!("failed to start git {}: {error}", args.join(" ")))?;
+    if !output.status.success() {
+        return Err(format!(
+            "git {} failed: {}",
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    String::from_utf8(output.stdout)
+        .map_err(|error| format!("git {} output was not UTF-8: {error}", args.join(" ")))
 }
 
-fn collect_fingerprint_files(
-    root: &Path,
-    directory: &Path,
-    files: &mut Vec<(String, Vec<u8>)>,
-) -> Result<(), String> {
-    let mut entries = fs::read_dir(directory)
-        .map_err(|error| {
-            format!(
-                "failed to list fingerprint input {}: {error}",
-                directory.display()
-            )
-        })?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|error| format!("failed to enumerate fingerprint inputs: {error}"))?;
-    entries.sort_by_key(|entry| entry.file_name());
-    for entry in entries {
-        let path = entry.path();
-        let file_type = entry.file_type().map_err(|error| {
-            format!(
-                "failed to inspect fingerprint input {}: {error}",
-                path.display()
-            )
-        })?;
-        if file_type.is_dir() {
-            collect_fingerprint_files(root, &path, files)?;
-        } else if file_type.is_file() {
-            let relative = path
-                .strip_prefix(root)
-                .map_err(|error| {
-                    format!(
-                        "failed to relativize fingerprint input {}: {error}",
-                        path.display()
-                    )
-                })?
-                .to_string_lossy()
-                .replace('\\', "/");
-            let bytes = fs::read(&path).map_err(|error| {
-                format!(
-                    "failed to read fingerprint input {}: {error}",
-                    path.display()
-                )
-            })?;
-            files.push((relative, normalize_text_bytes(&bytes)));
-        }
+fn canonical_git_oid(root: &Path, relative: &str) -> Result<String, String> {
+    let path = root.join(relative);
+    if !path.is_file() {
+        return Err(format!("fingerprint input is not a file: {relative}"));
     }
-    Ok(())
+    let oid = git_output(
+        root,
+        &[
+            "hash-object".to_owned(),
+            format!("--path={relative}"),
+            relative.to_owned(),
+        ],
+    )?
+    .trim()
+    .to_owned();
+    if oid.len() != 40
+        || !oid
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+    {
+        return Err(format!(
+            "git hash-object returned invalid fingerprint identity for {relative}: {oid}"
+        ));
+    }
+    Ok(oid)
+}
+
+fn fingerprint_paths(root: &Path) -> Result<Vec<String>, String> {
+    let src = format!("{CRATE_RELATIVE}/src");
+    let output = git_output(
+        root,
+        &[
+            "ls-files".to_owned(),
+            "--cached".to_owned(),
+            "--others".to_owned(),
+            "--exclude-standard".to_owned(),
+            "--".to_owned(),
+            src,
+        ],
+    )?;
+    let mut paths = FIXED_FINGERPRINT_INPUTS
+        .iter()
+        .map(|value| (*value).to_owned())
+        .collect::<Vec<_>>();
+    paths.extend(
+        output
+            .lines()
+            .map(str::trim)
+            .filter(|relative| !relative.is_empty())
+            .filter(|relative| root.join(relative).is_file())
+            .map(ToOwned::to_owned),
+    );
+    paths.sort();
+    paths.dedup();
+    Ok(paths)
 }
 
 fn input_fingerprint(root: &Path) -> Result<String, String> {
-    let mut files = Vec::new();
-    for relative in FIXED_FINGERPRINT_INPUTS {
-        let path = root.join(relative);
-        let bytes = fs::read(&path)
-            .map_err(|error| format!("failed to read fingerprint input {relative}: {error}"))?;
-        files.push(((*relative).to_owned(), normalize_text_bytes(&bytes)));
-    }
-    collect_fingerprint_files(root, &root.join(CRATE_RELATIVE).join("src"), &mut files)?;
-    files.sort_by(|left, right| left.0.cmp(&right.0));
     let mut digest = Sha256::new();
-    digest.update(b"kgw-frontend-wasm-codegen-input-v1\0");
+    digest.update(b"kgw-frontend-wasm-codegen-input-v2\0");
     digest.update(WASM_PACK_VERSION.as_bytes());
     digest.update(b"\0rustup-toolchain=1.98.1\0");
-    for (relative, bytes) in files {
+    for relative in fingerprint_paths(root)? {
+        let oid = canonical_git_oid(root, &relative)?;
         digest.update(relative.as_bytes());
         digest.update([0]);
-        digest.update(&bytes);
+        digest.update(oid.as_bytes());
         digest.update([0]);
     }
     Ok(format!("{:x}", digest.finalize()))
