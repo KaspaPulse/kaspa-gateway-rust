@@ -1,9 +1,15 @@
 use std::fs;
 use std::path::Path;
 
-const NODE_PATH: &str = "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
-const BRIDGE_PATH: &str =
+const NODE_ADAPTER_PATH: &str =
+    "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-node/kaspa-node.js";
+const BRIDGE_ADAPTER_PATH: &str =
     "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
+const NODE_OWNER_PATH: &str = "crates/kaspa-gateway-frontend-wasm/src/node_frontend_helpers.rs";
+const BRIDGE_UI_OWNER_PATH: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_frontend_helpers.rs";
+const BRIDGE_RUNTIME_OWNER_PATH: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_runtime_core.rs";
 const COMMANDS_PATH: &str = "apps/kaspa-gateway-desktop/src-tauri/src/commands.rs";
 
 const FORBIDDEN_CLAIMS: &[&str] = &[
@@ -17,24 +23,35 @@ const FORBIDDEN_CLAIMS: &[&str] = &[
     "auto_restart",
 ];
 
-const REQUIRED_COMMON: &[&str] = &[
-    "Effective settings apply on next Start",
-    "restartRequired = running ? \"true\" : \"false\"",
-    "Restart required to apply changed effective settings",
-];
+const NEXT_START: &str = "Effective settings apply on next Start";
+const RESTART_REQUIRED: &str = "Restart required to apply changed effective settings";
+const RESTART_STATE: &str = "restartRequired";
 
 const NODE_ACTIONS: &[&str] = &["data-node-action=\"start\"", "data-node-action=\"stop\""];
-
 const BRIDGE_ACTIONS: &[&str] = &[
     "data-bridge-action=\"start\"",
     "data-bridge-action=\"stop\"",
 ];
 
+struct Sources {
+    node_adapter: String,
+    bridge_adapter: String,
+    node_owner: String,
+    bridge_ui_owner: String,
+    bridge_runtime_owner: String,
+    commands: String,
+}
+
 pub fn run(root: &Path) -> Result<String, String> {
-    let node = read(root, NODE_PATH)?;
-    let bridge = read(root, BRIDGE_PATH)?;
-    let commands = read(root, COMMANDS_PATH)?;
-    validate(&node, &bridge, &commands)?;
+    let sources = Sources {
+        node_adapter: read(root, NODE_ADAPTER_PATH)?,
+        bridge_adapter: read(root, BRIDGE_ADAPTER_PATH)?,
+        node_owner: read(root, NODE_OWNER_PATH)?,
+        bridge_ui_owner: read(root, BRIDGE_UI_OWNER_PATH)?,
+        bridge_runtime_owner: read(root, BRIDGE_RUNTIME_OWNER_PATH)?,
+        commands: read(root, COMMANDS_PATH)?,
+    };
+    validate(&sources)?;
     Ok("KGW runtime automation claims gate PASSED".to_owned())
 }
 
@@ -44,8 +61,36 @@ fn read(root: &Path, relative: &str) -> Result<String, String> {
     })
 }
 
-fn validate(node: &str, bridge: &str, commands: &str) -> Result<(), String> {
-    let active_product_source = [node, bridge, commands].join("\n");
+fn require(source: &str, needle: &str, label: &str) -> Result<(), String> {
+    if source.contains(needle) {
+        Ok(())
+    } else {
+        Err(format!(
+            "{label} is missing required runtime contract: {needle}"
+        ))
+    }
+}
+
+fn forbid(source: &str, needle: &str, label: &str) -> Result<(), String> {
+    if source.contains(needle) {
+        Err(format!(
+            "{label} contains retired runtime automation ownership: {needle}"
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn validate(s: &Sources) -> Result<(), String> {
+    let active_product_source = [
+        s.node_adapter.as_str(),
+        s.bridge_adapter.as_str(),
+        s.node_owner.as_str(),
+        s.bridge_ui_owner.as_str(),
+        s.bridge_runtime_owner.as_str(),
+        s.commands.as_str(),
+    ]
+    .join("\n");
 
     for claim in FORBIDDEN_CLAIMS {
         if active_product_source.contains(claim) {
@@ -55,25 +100,46 @@ fn validate(node: &str, bridge: &str, commands: &str) -> Result<(), String> {
         }
     }
 
-    for (label, source) in [("node", node), ("bridge", bridge)] {
-        for required in REQUIRED_COMMON {
-            if !source.contains(required) {
-                return Err(format!(
-                    "{label} runtime settings contract is missing required claim: {required}"
-                ));
-            }
-        }
+    for required in [NEXT_START, RESTART_REQUIRED, RESTART_STATE] {
+        require(&s.node_owner, required, "Node Rust runtime owner")?;
+    }
+    for required in NODE_ACTIONS {
+        require(&s.node_owner, required, "Node Rust runtime controls owner")?;
     }
 
-    for required in NODE_ACTIONS {
-        if !node.contains(required) {
-            return Err(format!("node runtime controls are missing: {required}"));
+    require(
+        &s.bridge_ui_owner,
+        NEXT_START,
+        "Bridge Rust UI/runtime controls owner",
+    )?;
+    for required in BRIDGE_ACTIONS {
+        require(
+            &s.bridge_ui_owner,
+            required,
+            "Bridge Rust UI/runtime controls owner",
+        )?;
+    }
+    for required in [NEXT_START, RESTART_REQUIRED, RESTART_STATE] {
+        require(
+            &s.bridge_runtime_owner,
+            required,
+            "Bridge Rust runtime state owner",
+        )?;
+    }
+
+    for (label, adapter) in [
+        ("Node generated adapter", s.node_adapter.as_str()),
+        ("Bridge generated adapter", s.bridge_adapter.as_str()),
+    ] {
+        for retired in [NEXT_START, RESTART_REQUIRED, RESTART_STATE] {
+            forbid(adapter, retired, label)?;
         }
     }
-    for required in BRIDGE_ACTIONS {
-        if !bridge.contains(required) {
-            return Err(format!("bridge runtime controls are missing: {required}"));
-        }
+    for retired in NODE_ACTIONS {
+        forbid(&s.node_adapter, retired, "Node generated adapter")?;
+    }
+    for retired in BRIDGE_ACTIONS {
+        forbid(&s.bridge_adapter, retired, "Bridge generated adapter")?;
     }
 
     Ok(())
@@ -83,74 +149,97 @@ fn validate(node: &str, bridge: &str, commands: &str) -> Result<(), String> {
 mod tests {
     use super::*;
 
-    fn valid_node() -> String {
-        format!(
-            "{}\n{}\n{}\n{}\n{}",
-            REQUIRED_COMMON[0],
-            REQUIRED_COMMON[1],
-            REQUIRED_COMMON[2],
-            NODE_ACTIONS[0],
-            NODE_ACTIONS[1]
-        )
-    }
-
-    fn valid_bridge() -> String {
-        format!(
-            "{}\n{}\n{}\n{}\n{}",
-            REQUIRED_COMMON[0],
-            REQUIRED_COMMON[1],
-            REQUIRED_COMMON[2],
-            BRIDGE_ACTIONS[0],
-            BRIDGE_ACTIONS[1]
-        )
+    fn fixture() -> Sources {
+        Sources {
+            node_adapter:
+                "// @generated by cargo run --locked -p xtask -- frontend-wasm-codegen write\nnodeInitKaspaNodeTab"
+                    .to_owned(),
+            bridge_adapter:
+                "// @generated by cargo run --locked -p xtask -- frontend-wasm-codegen write\nbridgeInitKaspaBridgeTab"
+                    .to_owned(),
+            node_owner: format!(
+                "{NEXT_START}\n{RESTART_REQUIRED}\n{RESTART_STATE}\n{}\n{}",
+                NODE_ACTIONS[0], NODE_ACTIONS[1]
+            ),
+            bridge_ui_owner: format!(
+                "{NEXT_START}\n{}\n{}",
+                BRIDGE_ACTIONS[0], BRIDGE_ACTIONS[1]
+            ),
+            bridge_runtime_owner:
+                format!("{NEXT_START}\n{RESTART_REQUIRED}\n{RESTART_STATE}"),
+            commands: "commands".to_owned(),
+        }
     }
 
     #[test]
-    fn valid_contract_passes() {
-        assert!(validate(&valid_node(), &valid_bridge(), "commands").is_ok());
+    fn rust_owned_runtime_contract_passes() {
+        assert!(validate(&fixture()).is_ok());
     }
 
     #[test]
     fn every_unsupported_automation_claim_fails_closed() {
         for claim in FORBIDDEN_CLAIMS {
-            let commands = format!("commands\n{claim}");
-            let error = validate(&valid_node(), &valid_bridge(), &commands).unwrap_err();
+            let mut sources = fixture();
+            sources.commands.push_str(&format!("\n{claim}"));
+            let error = validate(&sources).unwrap_err();
             assert!(error.contains(claim), "{claim}");
         }
     }
 
     #[test]
-    fn missing_common_claim_fails_for_node_and_bridge() {
-        for required in REQUIRED_COMMON {
-            let node = valid_node().replace(required, "");
-            assert!(
-                validate(&node, &valid_bridge(), "commands").is_err(),
-                "{required}"
-            );
-
-            let bridge = valid_bridge().replace(required, "");
-            assert!(
-                validate(&valid_node(), &bridge, "commands").is_err(),
-                "{required}"
-            );
+    fn missing_node_runtime_claim_or_action_fails_closed() {
+        for required in [NEXT_START, RESTART_REQUIRED, RESTART_STATE] {
+            let mut sources = fixture();
+            sources.node_owner = sources.node_owner.replace(required, "");
+            assert!(validate(&sources).is_err(), "{required}");
+        }
+        for required in NODE_ACTIONS {
+            let mut sources = fixture();
+            sources.node_owner = sources.node_owner.replace(required, "");
+            assert!(validate(&sources).is_err(), "{required}");
         }
     }
 
     #[test]
-    fn missing_start_or_stop_controls_fail_closed() {
-        for required in NODE_ACTIONS {
-            let node = valid_node().replace(required, "");
-            assert!(
-                validate(&node, &valid_bridge(), "commands").is_err(),
-                "{required}"
-            );
-        }
+    fn missing_bridge_runtime_claim_or_action_fails_closed() {
+        let mut sources = fixture();
+        sources.bridge_ui_owner = sources.bridge_ui_owner.replace(NEXT_START, "");
+        assert!(validate(&sources).is_err(), "{NEXT_START}");
+
         for required in BRIDGE_ACTIONS {
-            let bridge = valid_bridge().replace(required, "");
-            assert!(
-                validate(&valid_node(), &bridge, "commands").is_err(),
-                "{required}"
-            );
+            let mut sources = fixture();
+            sources.bridge_ui_owner = sources.bridge_ui_owner.replace(required, "");
+            assert!(validate(&sources).is_err(), "{required}");
+        }
+
+        for required in [NEXT_START, RESTART_REQUIRED, RESTART_STATE] {
+            let mut sources = fixture();
+            sources.bridge_runtime_owner = sources.bridge_runtime_owner.replace(required, "");
+            assert!(validate(&sources).is_err(), "{required}");
+        }
+    }
+
+    #[test]
+    fn generated_adapters_cannot_reclaim_runtime_ownership() {
+        for retired in [NEXT_START, RESTART_REQUIRED, RESTART_STATE] {
+            let mut sources = fixture();
+            sources.node_adapter.push_str(&format!("\n{retired}"));
+            assert!(validate(&sources).is_err(), "node:{retired}");
+
+            let mut sources = fixture();
+            sources.bridge_adapter.push_str(&format!("\n{retired}"));
+            assert!(validate(&sources).is_err(), "bridge:{retired}");
+        }
+
+        for retired in NODE_ACTIONS {
+            let mut sources = fixture();
+            sources.node_adapter.push_str(&format!("\n{retired}"));
+            assert!(validate(&sources).is_err(), "node:{retired}");
+        }
+        for retired in BRIDGE_ACTIONS {
+            let mut sources = fixture();
+            sources.bridge_adapter.push_str(&format!("\n{retired}"));
+            assert!(validate(&sources).is_err(), "bridge:{retired}");
         }
     }
 }
