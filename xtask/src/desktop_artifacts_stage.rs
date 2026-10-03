@@ -1,3 +1,8 @@
+#![cfg_attr(
+    target_os = "linux",
+    allow(dead_code, unused_imports, unused_variables)
+)]
+
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::env;

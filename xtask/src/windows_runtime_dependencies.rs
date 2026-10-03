@@ -1,3 +1,5 @@
+#![cfg_attr(not(windows), allow(dead_code, unused_imports, unused_variables))]
+
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
@@ -62,7 +64,7 @@ fn run(options: &Options) -> Result<String, String> {
     #[cfg(not(windows))]
     {
         let _ = options;
-        return Err("verify-windows-runtime-dependencies requires Windows".to_owned());
+        Err("verify-windows-runtime-dependencies requires Windows".to_owned())
     }
 
     #[cfg(windows)]

@@ -212,6 +212,12 @@ fn run_ksss(root: &Path) -> Result<(), String> {
 }
 
 fn run_msrv(root: &Path) -> Result<(), String> {
+    let rustc = output(root, "rustc", &["--version"])?;
+    if !rustc.starts_with("rustc 1.97.1 ") {
+        return Err(format!(
+            "ci workflow: MSRV stage requires rustc 1.97.1, observed {rustc}"
+        ));
+    }
     install_tauri_linux_prerequisites(root)?;
     let _data_root = configure_data_root()?;
     status(
@@ -528,6 +534,7 @@ pub fn run_gate(root: &Path) -> Result<String, String> {
         CHECKOUT_SHA,
         RUST_SHA,
         NODE_SHA,
+        "RUSTUP_TOOLCHAIN: 1.97.1",
         "cargo run --locked -p xtask --features ksss -- ci-workflow-stage ksss-adoption",
         "cargo run --locked -p xtask -- ci-workflow-stage msrv",
         "cargo run --locked -p xtask -- ci-workflow-stage quality",

@@ -1,3 +1,5 @@
+#![cfg_attr(not(windows), allow(dead_code, unused_imports, unused_variables))]
+
 use serde_json::{Map, Value, json};
 use std::fs;
 use std::path::{Path, PathBuf};
