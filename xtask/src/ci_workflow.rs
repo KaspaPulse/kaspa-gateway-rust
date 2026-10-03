@@ -361,6 +361,7 @@ fn run_quality(root: &Path) -> Result<(), String> {
         &["desktop-version-contract-gate"][..],
         &["desktop-artifacts-workflow-gate"][..],
         &["desktop-release-draft-workflow-gate"][..],
+        &["production-trust-readiness-gate"][..],
         &["project-continuity-gate"][..],
         &["e2e-workspace-checks"][..],
     ] {

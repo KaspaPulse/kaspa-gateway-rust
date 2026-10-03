@@ -41,6 +41,7 @@ mod live_raw_log_matrix;
 mod network_generation;
 mod npm_dependency_policy;
 mod parallel_self_worker;
+mod production_trust;
 mod program_unified;
 mod project_continuity;
 mod raw_log_clipboard_capture;
@@ -109,6 +110,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- desktop-release-draft-workflow-gate
   cargo run -p xtask -- desktop-release-draft-stage
   cargo run -p xtask -- desktop-version-contract-gate
+  cargo run -p xtask -- production-trust-readiness-gate
   cargo run -p xtask -- deepmerge-security-smoke
   cargo run -p xtask -- effective-bridge-settings-gate
   cargo run -p xtask -- writer-claim <acquire|renew|verify|release|status> [--writer-id <id>] [--session-id <id>] [--epoch <n>] [--lease-secs <n>]
@@ -324,6 +326,17 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = desktop_version::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "production-trust-readiness-gate" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "production-trust-readiness-gate takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message = production_trust::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
