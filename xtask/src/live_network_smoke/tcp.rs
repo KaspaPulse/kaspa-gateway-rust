@@ -6,7 +6,7 @@ use windows_sys::Win32::NetworkManagement::IpHelper::{
     MIB_TCPTABLE_OWNER_PID, TCP_TABLE_OWNER_PID_LISTENER,
 };
 
-#[cfg(windows)]
+#[cfg(any(windows, test))]
 fn row_extent(count: usize, offset: usize, row_size: usize, available: usize) -> Result<usize> {
     let size = count
         .checked_mul(row_size)
