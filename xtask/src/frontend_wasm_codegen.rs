@@ -1,3 +1,4 @@
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -42,6 +43,16 @@ const EXPLORER_TAB_ADAPTER_RELATIVE: &str =
     "apps/kaspa-gateway-desktop/frontend/src/tabs/explorer/explorer.js";
 const JS_NAME: &str = "kgw_frontend_wasm.js";
 const WASM_NAME: &str = "kgw_frontend_wasm_bg.wasm";
+const CANONICAL_HOST: &str = "linux";
+const INPUT_SHA_PREFIX: &str = "// KGW_CANONICAL_INPUT_SHA256=";
+const WASM_SHA_PREFIX: &str = "// KGW_CANONICAL_WASM_SHA256=";
+const FIXED_FINGERPRINT_INPUTS: &[&str] = &[
+    "Cargo.toml",
+    "Cargo.lock",
+    "rust-toolchain.toml",
+    ".cargo/config.toml",
+    "crates/kaspa-gateway-frontend-wasm/Cargo.toml",
+];
 type AdapterGenerator = (&'static str, fn() -> String);
 
 pub fn run_cli(args: &mut impl Iterator<Item = String>, root: &Path) -> Result<String, String> {
@@ -1631,6 +1642,153 @@ fn verify_wasm_pack() -> Result<(), String> {
     Ok(())
 }
 
+fn sha256_hex(bytes: &[u8]) -> String {
+    let mut digest = Sha256::new();
+    digest.update(bytes);
+    format!("{:x}", digest.finalize())
+}
+
+fn normalize_text_bytes(bytes: &[u8]) -> Vec<u8> {
+    String::from_utf8_lossy(bytes)
+        .replace("\r\n", "\n")
+        .replace('\r', "\n")
+        .into_bytes()
+}
+
+fn collect_fingerprint_files(
+    root: &Path,
+    directory: &Path,
+    files: &mut Vec<(String, Vec<u8>)>,
+) -> Result<(), String> {
+    let mut entries = fs::read_dir(directory)
+        .map_err(|error| {
+            format!(
+                "failed to list fingerprint input {}: {error}",
+                directory.display()
+            )
+        })?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| format!("failed to enumerate fingerprint inputs: {error}"))?;
+    entries.sort_by_key(|entry| entry.file_name());
+    for entry in entries {
+        let path = entry.path();
+        let file_type = entry.file_type().map_err(|error| {
+            format!(
+                "failed to inspect fingerprint input {}: {error}",
+                path.display()
+            )
+        })?;
+        if file_type.is_dir() {
+            collect_fingerprint_files(root, &path, files)?;
+        } else if file_type.is_file() {
+            let relative = path
+                .strip_prefix(root)
+                .map_err(|error| {
+                    format!(
+                        "failed to relativize fingerprint input {}: {error}",
+                        path.display()
+                    )
+                })?
+                .to_string_lossy()
+                .replace('\\', "/");
+            let bytes = fs::read(&path).map_err(|error| {
+                format!(
+                    "failed to read fingerprint input {}: {error}",
+                    path.display()
+                )
+            })?;
+            files.push((relative, normalize_text_bytes(&bytes)));
+        }
+    }
+    Ok(())
+}
+
+fn input_fingerprint(root: &Path) -> Result<String, String> {
+    let mut files = Vec::new();
+    for relative in FIXED_FINGERPRINT_INPUTS {
+        let path = root.join(relative);
+        let bytes = fs::read(&path)
+            .map_err(|error| format!("failed to read fingerprint input {relative}: {error}"))?;
+        files.push(((*relative).to_owned(), normalize_text_bytes(&bytes)));
+    }
+    collect_fingerprint_files(root, &root.join(CRATE_RELATIVE).join("src"), &mut files)?;
+    files.sort_by(|left, right| left.0.cmp(&right.0));
+    let mut digest = Sha256::new();
+    digest.update(b"kgw-frontend-wasm-codegen-input-v1\0");
+    digest.update(WASM_PACK_VERSION.as_bytes());
+    digest.update(b"\0rustup-toolchain=1.98.1\0");
+    for (relative, bytes) in files {
+        digest.update(relative.as_bytes());
+        digest.update([0]);
+        digest.update(&bytes);
+        digest.update([0]);
+    }
+    Ok(format!("{:x}", digest.finalize()))
+}
+
+fn canonicalize_generated_js(root: &Path, output_dir: &Path) -> Result<(), String> {
+    let input_sha = input_fingerprint(root)?;
+    let wasm_path = output_dir.join(WASM_NAME);
+    let wasm_bytes = fs::read(&wasm_path).map_err(|error| {
+        format!(
+            "failed to read generated WASM {}: {error}",
+            wasm_path.display()
+        )
+    })?;
+    let wasm_sha = sha256_hex(&wasm_bytes);
+    let js_path = output_dir.join(JS_NAME);
+    let raw = fs::read_to_string(&js_path)
+        .map_err(|error| format!("failed to read generated JS {}: {error}", js_path.display()))?;
+    let raw = raw
+        .strip_prefix(INPUT_SHA_PREFIX)
+        .and_then(|value| value.split_once('\n').map(|(_, rest)| rest))
+        .unwrap_or(&raw);
+    let raw = raw
+        .strip_prefix(WASM_SHA_PREFIX)
+        .and_then(|value| value.split_once('\n').map(|(_, rest)| rest))
+        .unwrap_or(raw);
+    let canonical = format!("{INPUT_SHA_PREFIX}{input_sha}\n{WASM_SHA_PREFIX}{wasm_sha}\n{raw}");
+    fs::write(&js_path, canonical.as_bytes()).map_err(|error| {
+        format!(
+            "failed to canonicalize generated JS {}: {error}",
+            js_path.display()
+        )
+    })
+}
+
+fn verify_tracked_integrity(root: &Path, tracked: &Path) -> Result<(), String> {
+    let expected_input = input_fingerprint(root)?;
+    let wasm_path = tracked.join(WASM_NAME);
+    let wasm = fs::read(&wasm_path).map_err(|error| {
+        format!(
+            "failed to read tracked WASM {}: {error}",
+            wasm_path.display()
+        )
+    })?;
+    let expected_wasm = sha256_hex(&wasm);
+    let js_path = tracked.join(JS_NAME);
+    let js = fs::read_to_string(&js_path)
+        .map_err(|error| format!("failed to read tracked JS {}: {error}", js_path.display()))?;
+    let mut lines = js.lines();
+    let input_line = lines.next().unwrap_or_default();
+    let wasm_line = lines.next().unwrap_or_default();
+    if input_line != format!("{INPUT_SHA_PREFIX}{expected_input}") {
+        return Err(format!(
+            "frontend WASM canonical input fingerprint drift: expected {expected_input}"
+        ));
+    }
+    if wasm_line != format!("{WASM_SHA_PREFIX}{expected_wasm}") {
+        return Err(format!(
+            "frontend WASM canonical artifact fingerprint drift: expected {expected_wasm}"
+        ));
+    }
+    Ok(())
+}
+
+fn canonical_byte_host() -> bool {
+    cfg!(target_os = "linux")
+}
+
 fn build_temp(root: &Path) -> Result<PathBuf, String> {
     verify_wasm_pack()?;
     let output_dir = temp_output(root);
@@ -1677,6 +1835,7 @@ fn build_temp(root: &Path) -> Result<PathBuf, String> {
             ));
         }
     }
+    canonicalize_generated_js(root, &output_dir)?;
     Ok(output_dir)
 }
 
@@ -1692,10 +1851,15 @@ fn check(root: &Path) -> Result<String, String> {
     let built = build_temp(root)?;
     let tracked = root.join(GENERATED_RELATIVE);
     let mut drift = Vec::new();
-    for name in [JS_NAME, WASM_NAME] {
-        let tracked_file = tracked.join(name);
-        if !tracked_file.is_file() || !same_bytes(&built.join(name), &tracked_file)? {
-            drift.push(tracked_file.to_string_lossy().into_owned());
+    if let Err(error) = verify_tracked_integrity(root, &tracked) {
+        drift.push(error);
+    }
+    if canonical_byte_host() {
+        for name in [JS_NAME, WASM_NAME] {
+            let tracked_file = tracked.join(name);
+            if !tracked_file.is_file() || !same_bytes(&built.join(name), &tracked_file)? {
+                drift.push(tracked_file.to_string_lossy().into_owned());
+            }
         }
     }
 
@@ -1729,8 +1893,13 @@ fn check(root: &Path) -> Result<String, String> {
 
     if drift.is_empty() {
         Ok(format!(
-            "FRONTEND_WASM_CODEGEN=PASS\nWASM_PACK_VERSION={}\nARTIFACT_COUNT=19",
-            WASM_PACK_VERSION.trim_start_matches("wasm-pack ")
+            "FRONTEND_WASM_CODEGEN=PASS\nWASM_PACK_VERSION={}\nCANONICAL_HOST={CANONICAL_HOST}\nBYTE_IDENTITY={}\nARTIFACT_COUNT=19",
+            WASM_PACK_VERSION.trim_start_matches("wasm-pack "),
+            if canonical_byte_host() {
+                "PASS"
+            } else {
+                "DEFERRED_TO_CANONICAL_HOST_INPUT_AND_ARTIFACT_FINGERPRINT_PASS"
+            }
         ))
     } else {
         Err(format!(
@@ -1741,6 +1910,11 @@ fn check(root: &Path) -> Result<String, String> {
 }
 
 fn write(root: &Path) -> Result<String, String> {
+    if !canonical_byte_host() {
+        return Err(format!(
+            "frontend-wasm-codegen write is restricted to canonical host {CANONICAL_HOST}; this host may check input/artifact fingerprints but must not publish host-dependent WASM bytes"
+        ));
+    }
     let built = build_temp(root)?;
     let tracked = root.join(GENERATED_RELATIVE);
     fs::create_dir_all(&tracked)

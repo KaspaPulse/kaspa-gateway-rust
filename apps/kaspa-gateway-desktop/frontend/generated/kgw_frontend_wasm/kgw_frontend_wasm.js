@@ -1,3 +1,5 @@
+// KGW_CANONICAL_INPUT_SHA256=ca6f0c70210301dc6d31db88ee7cbd505804df343baa104dfdcedbaf36631ae2
+// KGW_CANONICAL_WASM_SHA256=5853a0006271e4ba67384dc9a91a4f3cc857e928d163852b532f34ee406376f5
 let wasm;
 
 function addToExternrefTable0(obj) {
@@ -8272,7 +8274,7 @@ export function bridgeEnsureInstanceState(bridge_instances, active_instance, net
 }
 
 function __wbg_adapter_40(arg0, arg1) {
-    wasm._dyn_core_ed718c3d60ebd546___ops__function__FnMut_____Output______as_wasm_bindgen_1ba7c375a52abd4d___closure__WasmClosure___describe__invoke______(arg0, arg1);
+    wasm._dyn_core_ed718c3d60ebd546___ops__function__FnMut_____Output______as_wasm_bindgen_d41970eb414a9cb5___closure__WasmClosure___describe__invoke______(arg0, arg1);
 }
 
 function __wbg_adapter_43(arg0, arg1, arg2, arg3, arg4, arg5) {
@@ -8402,7 +8404,7 @@ function __wbg_adapter_94(arg0, arg1) {
 }
 
 function __wbg_adapter_97(arg0, arg1) {
-    const ret = wasm._dyn_core_ed718c3d60ebd546___ops__function__FnMut_____Output______as_wasm_bindgen_1ba7c375a52abd4d___closure__WasmClosure___describe__invoke___bool_(arg0, arg1);
+    const ret = wasm._dyn_core_ed718c3d60ebd546___ops__function__FnMut_____Output______as_wasm_bindgen_d41970eb414a9cb5___closure__WasmClosure___describe__invoke___bool_(arg0, arg1);
     return ret !== 0;
 }
 
