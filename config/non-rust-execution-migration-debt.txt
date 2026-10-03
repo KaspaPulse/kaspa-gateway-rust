@@ -2,4 +2,3 @@
 # One repository-relative path per line. This list may only shrink during the migration.
 .github/workflows/ci.yml
 .github/workflows/desktop-artifacts.yml
-.github/workflows/desktop-release-draft.yml

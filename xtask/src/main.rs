@@ -8,6 +8,7 @@ mod deepmerge_security_smoke;
 mod desktop_artifacts;
 mod desktop_diagnostic;
 mod desktop_release_draft;
+mod desktop_release_draft_stage;
 mod desktop_version;
 mod e2e_app_close_relaunch;
 mod e2e_bridge_inprocess;
@@ -101,6 +102,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- desktop-artifacts-workflow-gate
   cargo run -p xtask -- desktop-diagnostic [--repository <path>]
   cargo run -p xtask -- desktop-release-draft-workflow-gate
+  cargo run -p xtask -- desktop-release-draft-stage
   cargo run -p xtask -- desktop-version-contract-gate
   cargo run -p xtask -- deepmerge-security-smoke
   cargo run -p xtask -- effective-bridge-settings-gate
@@ -269,6 +271,18 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = desktop_release_draft::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "desktop-release-draft-stage" => {
+            if args.next().is_some() {
+                return Err(CliError::usage(format!(
+                    "desktop-release-draft-stage takes no arguments\n{}",
+                    usage()
+                )));
+            }
+            let message =
+                desktop_release_draft_stage::run(&repo_root()?).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

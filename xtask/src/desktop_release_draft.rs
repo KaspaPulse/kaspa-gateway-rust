@@ -3,6 +3,8 @@ use std::path::Path;
 
 const WORKFLOW_PATH: &str = ".github/workflows/desktop-release-draft.yml";
 const CI_PATH: &str = ".github/workflows/ci.yml";
+const CHECKOUT_SHA: &str = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
+const RUST_TOOLCHAIN_SHA: &str = "dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c";
 
 pub fn run(root: &Path) -> Result<String, String> {
     let workflow = read(root, WORKFLOW_PATH)?;
@@ -33,130 +35,93 @@ fn forbid(text: &str, needle: &str, message: &str) -> Result<(), String> {
     }
 }
 
-fn collapse_whitespace(text: &str) -> String {
-    let mut output = String::new();
-    let mut pending_space = false;
-    for ch in text.chars() {
-        if ch.is_whitespace() {
-            pending_space = !output.is_empty();
-        } else {
-            if pending_space {
-                output.push(' ');
-            }
-            output.push(ch);
-            pending_space = false;
-        }
-    }
-    output
-}
-
-fn count_occurrences(text: &str, needle: &str) -> usize {
-    text.match_indices(needle).count()
-}
-
-fn require_order(text: &str, needles: &[&str], message: &str) -> Result<(), String> {
-    let mut cursor = 0;
-    for needle in needles {
-        let Some(offset) = text[cursor..].find(needle) else {
-            return Err(message.to_owned());
-        };
-        cursor += offset + needle.len();
-    }
-    Ok(())
-}
 fn validate(workflow: &str, ci: &str) -> Result<(), String> {
     for (needle, message) in [
         (
-            "gh api --paginate --slurp",
-            "draft workflow must use a draft-inclusive paginated release listing",
+            "workflow_dispatch:",
+            "workflow_dispatch must remain the release entry point",
+        ),
+        ("version:", "version input must remain explicit"),
+        ("commit_sha:", "commit_sha input must remain explicit"),
+        (
+            "artifact_run_id:",
+            "artifact_run_id input must remain explicit",
+        ),
+        ("confirmation:", "confirmation input must remain explicit"),
+        (
+            "actions: read",
+            "workflow requires read access to artifact runs",
         ),
         (
-            r#"repos/$GITHUB_REPOSITORY/releases?per_page=100"#,
-            "draft workflow must query List releases when detecting or resolving drafts",
+            "attestations: read",
+            "workflow requires attestation verification permission",
         ),
         (
-            "id: create-draft",
-            "draft creation step must expose the created release ID",
+            "contents: write",
+            "workflow requires draft-release creation permission",
         ),
         (
-            "GITHUB_OUTPUT",
-            "draft creation must publish release_id through GITHUB_OUTPUT",
+            CHECKOUT_SHA,
+            "checkout must remain pinned to the approved SHA",
         ),
         (
-            "DRAFT_RELEASE_ID: ${{ steps.create-draft.outputs.release_id }}",
-            "draft verification must consume the created release ID",
+            RUST_TOOLCHAIN_SHA,
+            "Rust action must remain pinned to the approved SHA",
         ),
         (
-            r#"gh api "repos/$GITHUB_REPOSITORY/releases/$DRAFT_RELEASE_ID""#,
-            "draft verification must read the release object by release ID",
+            "toolchain: 1.98.1",
+            "workflow must use the canonical Rust toolchain",
         ),
         (
-            r#".target_commitish "$draft_json""#,
-            "draft verification must bind target_commitish to the requested commit",
+            "ref: ${{ inputs.commit_sha }}",
+            "checkout must bind to the requested exact commit",
         ),
         (
-            "KASPA_GATEWAY_WINDOWS_X64_RAW_*.exe",
-            "draft release checksum manifest must cover the raw Windows executable",
+            "persist-credentials: false",
+            "checkout credentials must not persist",
+        ),
+        (
+            "REQUESTED_VERSION: ${{ inputs.version }}",
+            "version input must flow to Rust owner",
+        ),
+        (
+            "REQUESTED_COMMIT_SHA: ${{ inputs.commit_sha }}",
+            "commit input must flow to Rust owner",
+        ),
+        (
+            "ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}",
+            "artifact run input must flow to Rust owner",
+        ),
+        (
+            "RELEASE_CONFIRMATION: ${{ inputs.confirmation }}",
+            "confirmation input must flow to Rust owner",
+        ),
+        (
+            "SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/desktop-artifacts.yml",
+            "signer workflow identity must be explicit",
+        ),
+        (
+            "cargo run --locked -p xtask -- desktop-release-draft-stage",
+            "workflow must delegate release orchestration to Rust",
         ),
     ] {
         require(workflow, needle, message)?;
     }
-
     for (needle, message) in [
         (
-            r#"gh release view "$tag""#,
-            "draft preflight must not rely on tag-only release lookup",
+            "shell: bash",
+            "workflow adapter must not own shell orchestration",
         ),
-        (
-            r#"repos/$GITHUB_REPOSITORY/releases/tags/$tag"#,
-            "draft verification must not use the published-release-by-tag endpoint",
-        ),
+        ("gh api ", "GitHub API orchestration must be Rust-owned"),
+        ("gh release ", "release mutation must be Rust-owned"),
+        ("jq ", "JSON policy logic must be Rust-owned"),
+        ("python3", "version parsing must be Rust-owned"),
+        ("sha256sum", "checksum logic must be Rust-owned"),
+        ("grep -F", "smoke validation must be Rust-owned"),
+        ("sleep 2", "draft retry policy must be Rust-owned"),
     ] {
         forbid(workflow, needle, message)?;
     }
-
-    let normalized = collapse_whitespace(workflow);
-    require(
-        &normalized,
-        r#"cp "$root/windows/kaspa-gateway-desktop-windows-x64.exe" "$stage/KASPA_GATEWAY_WINDOWS_X64_RAW_${REQUESTED_VERSION}_${short}.exe""#,
-        "draft assembly must publish the qualified raw Windows executable",
-    )?;
-
-    for fragment in [
-        "WINDOWS_SBOM.spdx.json",
-        "MACOS_SBOM.spdx.json",
-        "WINDOWS_SBOM_ATTESTATION.sigstore.json",
-        "MACOS_SBOM_ATTESTATION.sigstore.json",
-        "https://spdx.dev/Document/v2.3",
-        "verify_sbom",
-        "KASPA_GATEWAY_WINDOWS_SBOM_",
-        "KASPA_GATEWAY_MACOS_SBOM_",
-    ] {
-        require(
-            workflow,
-            fragment,
-            &format!("draft release workflow must preserve and verify SBOM evidence: {fragment}"),
-        )?;
-    }
-
-    if count_occurrences(workflow, "git/ref/tags/$tag") != 1 {
-        return Err(
-            "git tag-ref lookup is allowed only in preflight, never in post-create draft verification"
-                .to_owned(),
-        );
-    }
-
-    require_order(
-        workflow,
-        &[
-            "id: create-draft",
-            "release_id=%s",
-            "DRAFT_RELEASE_ID: ${{ steps.create-draft.outputs.release_id }}",
-            "releases/$DRAFT_RELEASE_ID",
-        ],
-        "draft release ID must flow from creation to ID-based verification",
-    )?;
-
     require(
         ci,
         "Verify desktop release draft workflow contract",
@@ -167,68 +132,56 @@ fn validate(workflow: &str, ci: &str) -> Result<(), String> {
         "cargo run --locked -p xtask -- desktop-release-draft-workflow-gate",
         "blocking CI must execute the Rust draft workflow contract gate",
     )?;
-
     Ok(())
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     fn workflow_fixture() -> String {
         [
-            "gh api --paginate --slurp",
-            r#"repos/$GITHUB_REPOSITORY/releases?per_page=100"#,
-            "git/ref/tags/$tag",
-            "id: create-draft",
-            "echo release_id=%s >> $GITHUB_OUTPUT",
-            "DRAFT_RELEASE_ID: ${{ steps.create-draft.outputs.release_id }}",
-            r#"gh api "repos/$GITHUB_REPOSITORY/releases/$DRAFT_RELEASE_ID""#,
-            r#".target_commitish "$draft_json""#,
-            r#"cp "$root/windows/kaspa-gateway-desktop-windows-x64.exe" "$stage/KASPA_GATEWAY_WINDOWS_X64_RAW_${REQUESTED_VERSION}_${short}.exe""#,
-            "KASPA_GATEWAY_WINDOWS_X64_RAW_*.exe",
-            "WINDOWS_SBOM.spdx.json",
-            "MACOS_SBOM.spdx.json",
-            "WINDOWS_SBOM_ATTESTATION.sigstore.json",
-            "MACOS_SBOM_ATTESTATION.sigstore.json",
-            "https://spdx.dev/Document/v2.3",
-            "verify_sbom",
-            "KASPA_GATEWAY_WINDOWS_SBOM_",
-            "KASPA_GATEWAY_MACOS_SBOM_",
+            "workflow_dispatch:",
+            "version:",
+            "commit_sha:",
+            "artifact_run_id:",
+            "confirmation:",
+            "actions: read",
+            "attestations: read",
+            "contents: write",
+            CHECKOUT_SHA,
+            RUST_TOOLCHAIN_SHA,
+            "toolchain: 1.98.1",
+            "ref: ${{ inputs.commit_sha }}",
+            "persist-credentials: false",
+            "REQUESTED_VERSION: ${{ inputs.version }}",
+            "REQUESTED_COMMIT_SHA: ${{ inputs.commit_sha }}",
+            "ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}",
+            "RELEASE_CONFIRMATION: ${{ inputs.confirmation }}",
+            "SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/desktop-artifacts.yml",
+            "cargo run --locked -p xtask -- desktop-release-draft-stage",
         ]
         .join("\n")
     }
 
     fn ci_fixture() -> String {
-        "Verify desktop release draft workflow contract\n\
-cargo run --locked -p xtask -- desktop-release-draft-workflow-gate"
-            .to_owned()
+        "Verify desktop release draft workflow contract\ncargo run --locked -p xtask -- desktop-release-draft-workflow-gate".to_owned()
     }
 
     #[test]
-    fn complete_contract_passes() {
+    fn minimal_adapter_contract_passes() {
         assert!(validate(&workflow_fixture(), &ci_fixture()).is_ok());
     }
 
     #[test]
-    fn draft_listing_and_id_flow_are_required() {
-        for marker in [
-            "gh api --paginate --slurp",
-            r#"repos/$GITHUB_REPOSITORY/releases?per_page=100"#,
-            "id: create-draft",
-            "release_id=%s",
-            "DRAFT_RELEASE_ID: ${{ steps.create-draft.outputs.release_id }}",
-            "releases/$DRAFT_RELEASE_ID",
-        ] {
-            let workflow = workflow_fixture().replace(marker, "");
-            assert!(validate(&workflow, &ci_fixture()).is_err(), "{marker}");
-        }
-    }
-
-    #[test]
-    fn tag_only_release_lookup_is_forbidden() {
+    fn shell_owned_release_logic_is_rejected() {
         for forbidden in [
-            r#"gh release view "$tag""#,
-            r#"repos/$GITHUB_REPOSITORY/releases/tags/$tag"#,
+            "shell: bash",
+            "gh api ",
+            "gh release ",
+            "jq ",
+            "python3",
+            "sha256sum",
         ] {
             let workflow = format!("{}\n{forbidden}", workflow_fixture());
             assert!(validate(&workflow, &ci_fixture()).is_err(), "{forbidden}");
@@ -236,62 +189,14 @@ cargo run --locked -p xtask -- desktop-release-draft-workflow-gate"
     }
 
     #[test]
-    fn tag_ref_lookup_must_occur_exactly_once() {
-        let none = workflow_fixture().replace("git/ref/tags/$tag", "");
-        assert!(validate(&none, &ci_fixture()).is_err());
-
-        let twice = format!("{}\ngit/ref/tags/$tag", workflow_fixture());
-        assert!(validate(&twice, &ci_fixture()).is_err());
-    }
-    #[test]
-    fn raw_windows_and_sbom_evidence_are_required() {
+    fn required_binding_is_fail_closed() {
         for marker in [
-            "KASPA_GATEWAY_WINDOWS_X64_RAW_*.exe",
-            "WINDOWS_SBOM.spdx.json",
-            "MACOS_SBOM.spdx.json",
-            "WINDOWS_SBOM_ATTESTATION.sigstore.json",
-            "MACOS_SBOM_ATTESTATION.sigstore.json",
-            "https://spdx.dev/Document/v2.3",
-            "verify_sbom",
+            "ref: ${{ inputs.commit_sha }}",
+            "REQUESTED_COMMIT_SHA: ${{ inputs.commit_sha }}",
+            "cargo run --locked -p xtask -- desktop-release-draft-stage",
         ] {
             let workflow = workflow_fixture().replace(marker, "");
             assert!(validate(&workflow, &ci_fixture()).is_err(), "{marker}");
         }
-    }
-
-    #[test]
-    fn raw_windows_copy_allows_whitespace_only_drift() {
-        let workflow = workflow_fixture().replace(
-            r#"cp "$root/windows/kaspa-gateway-desktop-windows-x64.exe" "$stage/KASPA_GATEWAY_WINDOWS_X64_RAW_${REQUESTED_VERSION}_${short}.exe""#,
-            "cp   \"$root/windows/kaspa-gateway-desktop-windows-x64.exe\"\n    \"$stage/KASPA_GATEWAY_WINDOWS_X64_RAW_${REQUESTED_VERSION}_${short}.exe\"",
-        );
-        assert!(validate(&workflow, &ci_fixture()).is_ok());
-    }
-
-    #[test]
-    fn blocking_ci_must_use_rust_gate() {
-        assert!(
-            validate(
-                &workflow_fixture(),
-                "Verify desktop release draft workflow contract"
-            )
-            .is_err()
-        );
-        assert!(
-            validate(
-                &workflow_fixture(),
-                "Verify desktop release draft workflow contract\nnode old-gate.cjs"
-            )
-            .is_err()
-        );
-    }
-
-    #[test]
-    fn release_id_order_is_fail_closed() {
-        let workflow = workflow_fixture().replace(
-            "id: create-draft\necho release_id=%s >> $GITHUB_OUTPUT",
-            "echo release_id=%s >> $GITHUB_OUTPUT\nid: create-draft",
-        );
-        assert!(validate(&workflow, &ci_fixture()).is_err());
     }
 }

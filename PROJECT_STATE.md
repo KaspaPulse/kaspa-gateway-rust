@@ -144,9 +144,9 @@ Historical project state remains below for context. When it conflicts with this 
 
 ### Draft Release Automation
 
-- `.github/workflows/desktop-release-draft.yml` remains repaired from PR #59.
-- Preflight uses draft-inclusive authenticated release listing, creation resolves a unique draft by exact tag/target, and post-create verification uses the numeric release ID.
-- `tools/kgw_desktop_release_draft_workflow_gate.cjs` continues to guard those semantics in blocking CI.
+- `.github/workflows/desktop-release-draft.yml` is now a minimal declarative GitHub Actions adapter; release-request validation, exact-source/version checks, artifact qualification, provenance/SBOM verification, asset staging, draft creation, and draft verification are owned by Rust `xtask`.
+- Preflight still uses draft-inclusive authenticated release listing, creation resolves a unique draft by exact tag/target, and post-create verification uses the numeric release ID.
+- `cargo run --locked -p xtask -- desktop-release-draft-workflow-gate` guards the adapter contract in blocking CI, while `desktop-release-draft-stage` owns the executable release-draft semantics.
 
 ### Staging
 
