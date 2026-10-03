@@ -1,43 +1,53 @@
 # EXECUTION PLAN
 
 ## Status
-**ACTIVE — GITHUB PUBLICATION / DESKTOP 0.1.3 RELEASE**
+ACTIVE — OWNED PROGRAMMING IMPLEMENTATION 100% RUST MIGRATION
 
 ## Objective
-Publish the protected, qualified v2.1.0 candidate through current-main integration, exact-head protected CI, squash-only merge, exact-main qualification, trusted Windows/macOS artifacts, verified provenance plus SPDX SBOM attestations, and the final Desktop 0.1.3 GitHub Release.
+Replace all project-owned programming implementation outside Rust with Rust while preserving necessary declarative/platform artifacts, KSSS governance, and Windows/macOS/Linux functionality.
 
 ## Success Criteria
-- Preserve protected checkpoint `7d670bb00682a7ceec6d40046798cdbe645121d8` / tree `1668bd42e7dc4e0e2fb778638450bdebf3143945`.
-- Reuse BUILD-014/native 4-of-4/E2E evidence while their bound predicates stay unchanged.
-- Keep `rust-version = "1.97.1"` as MSRV, test MSRV explicitly, and run supported stable quality/security on Rust 1.98.1.
-- Keep all external Actions pinned to full commit SHAs.
-- Produce trusted Windows/macOS artifacts from final merged main with provenance and SPDX 2.3 SBOM attestations, verify both, then publish Desktop 0.1.3 only after all release gates pass.
-- Preserve `FAIL-0004` as a non-qualification blocker; never force-kill PID 4404.
+- Owned non-Rust programming implementation source count reaches zero.
+- Non-Rust execution wiring is removed except proven platform-required thin adapters with no project logic.
+- `cargo run --locked -p xtask -- language-policy strict` passes.
+- Rust build/check/test/Clippy/FMT/MSRV/security and required CI pass.
+- Desktop support remains valid on Windows, macOS, and Linux.
+- No Production, DNS, Cloudflare, live runtime, credential, or protected-checkpoint mutation occurs.
 
 ## Milestones
-1. Local v2.1.0 qualification — **VERIFIED_SUCCESS / CLOSED**.
-2. Protected write-once receive checkpoint — **VERIFIED_SUCCESS / CLOSED**.
-3. Fresh GitHub reconciliation — **VERIFIED_SUCCESS**; observed main `bb183816...`, one workflow-only drift commit, PR #95 open/behind, candidate absent remotely.
-4. Candidate integration/rebase — **VERIFIED_SUCCESS**; clean rebase, no conflicts, protected checkpoint unchanged.
-5. Validity-predicate evaluation — **VERIFIED_SUCCESS / REUSE**; Cargo.lock blob and all product/runtime/native/E2E predicates unchanged.
-6. Rust CI + release supply-chain hardening — **IN PROGRESS**; MSRV/Stable split and SPDX SBOM workflow changes implemented locally, affected contract checks PASS.
-7. Continuity + Graphify affected verification — **IN PROGRESS**.
-8. Publication branch push + PR — **PENDING**.
-9. Exact-final-PR-head required CI/reviews/rulesets — **PENDING**.
-10. Squash merge + exact-main CI — **PENDING**.
-11. Trusted Desktop Artifacts Windows/macOS — **PENDING**.
-12. Provenance + SBOM attestation verification — **PENDING**.
-13. Desktop 0.1.3 draft/release immutability gate/publication — **PENDING**.
-14. Final continuity receipt — **PENDING**.
+1. Recovery/reconciliation and comprehensive baseline inventory — **VERIFIED_SUCCESS**.
+2. Isolated Server branch + durable continuity — **VERIFIED_SUCCESS**.
+3. Rust `xtask` + fail-closed language policy/inventory + CI enforcement — **VERIFIED_LOCAL / COMMITTED** at `33461f6511c69b457c5f3dd069b54322d9a236a0`.
+4. Generic Python/Shell security and CI helper migration — **VERIFIED_LOCAL / COMMITTED** at `d5f274dcc6d9a423dd9783d21605591efdd05e65`; five generic Python scripts removed after Rust parity and ClusterFuzz build logic moved to Rust.
+5. KSSS Python consumer/gate migration to Rust — **VERIFIED_LOCAL / COMMITTED** at `55727c4eb53d34a2cd91c8e857850d543ec177e4`; five owned Python files retired after 24-contract and command/crypto parity, with signed central runtime bytes unchanged.
+6. Node/CJS repository/tooling migration to Rust — **IN PROGRESS / BEHAVIORAL LANE ADVANCED**; all direct-CI static gate families, six standalone static regressions, parallel-self-worker, i18n static gates `9c53fa7`, raw-log provenance `9c084dc`, program-unified orchestration `a353ed5`, and runtime-trace-owner audit `c22503d` are COMMITTED. Effective-bridge regression ownership is Rust-owned in OP090 and true raw-log frontend behavioral ownership is Rust-owned in OP098, with generated temporary Node/VM bridges used only to execute the real frontend JavaScript under Rust-owned vectors/verdicts. Current i18n findings and remaining frontend behavior stay migration debt.
+7. Windows/PowerShell helper migration to Rust with Windows behavior preserved — **IN PROGRESS**; Windows runtime-dependency verifier `9d1885d`, AI workflow gate `7b1d869`, Start-button orchestration `2e4a3e1`, Copy Log orchestration `729c99a`, runtime-repository-binding apply `59e8748`, E2E exact-owned-process helpers `ec46991`, zero-touch Windows evidence capture `f4ec63b`, and Desktop diagnostic launcher OP103 `ec23f1f` are committed after focused parity/behavior/fail-closed preservation.
+8. WebdriverIO/Node E2E replacement with Rust-native desktop/WebDriver harness — **IN PROGRESS / THREE NATIVE BEHAVIORAL BOUNDARIES VERIFIED**; runtime-port and assertion helper implementation live in `kaspa-gateway-e2e-wasm`, WDIO configuration is Rust-authored generated glue, OP094 provides the direct W3C embedded-Tauri Rust client/process/session foundation, OP095 migrates lifecycle recovery, OP096 migrates Bridge in-process E2E, and OP097 migrates app close/relaunch with exact-process cleanup/reconciliation. Remaining behavioral specs/helpers stay migration debt until equivalent Rust ownership and native proof are established.
+9. JavaScript frontend replacement with Rust/WASM while preserving Tauri IPC/UI contracts — **IN PROGRESS / ACTIVE RUST-WASM OWNERSHIP EXPANDING**; seven template modules are Rust-generated wrappers over exact-byte declarative HTML, twelve dead JS scaffolds are retired, Explorer utils/date/formatting/status/header-price, Settings layout (OP100), header live metrics (OP101), and Top Addresses (OP102) now have Rust/WASM ownership with deterministic generated ABI/glue. OP102 exact 13-group parity, unit 4/4, FMT, strict Clippy, MSRV wasm32, codegen, functional UI ownership contract, Desktop lint, language policy, focused Graphify and diff-check PASS. Current owned source debt is 17 and execution debt is 10.
+10. Remove Node/Python/PowerShell/Shell implementation dependencies and update workflows/configuration — **PENDING**.
+11. Zero-debt strict guard + cross-platform/security/MSRV qualification — **PENDING**.
+12. GitHub PR exact-head CI, squash merge, exact-main qualification, durable closeout — **PENDING**.
 
 ## Progress
-Local qualification, checkpoint protection, fresh GitHub reconciliation, clean rebase, and validity-predicate reuse are complete. Publication hardening is implemented locally and its workflow contracts/full-SHA audit/diff-check are green. Continuity reconciliation is being validated now; publication branch push/PR and every remote release gate remain pending until their exact evidence exists.
+OP073 repaired five static Analysis translation bindings with existing keys; current full i18n findings are4 HTML and6 dynamic. OP071 emergency and OP072 preview work are explicitly partial/unadopted after tool blocks. Detailed state: docs/handoff-ledger/2026-09-25-emergency-preview-i18n-progress.md.
+
+OP070 routed both active evidence-summary calls to the native Rust CLI. Ten extracted caller cases and parser/diff checks PASS. A reviewed16-function/937-line legacy retirement was blocked by WinError5; the original1356-line helper and its proposed replacement remain preserved. The deletion was NOT applied and source debt stays41. Detailed checkpoint: docs/handoff-ledger/2026-09-25-native-evidence-callers.md.
+OP069 adds native result/failure construction and atomic JSON artifact writing. The actual primary E2E result path now delegates to Rust:34 builder cases,20 writer cases,four extracted caller cases,35 stable/MSRV tests,strict Clippy/MSRV feature checks and Unicode roundtrip PASS. Legacy emergency handling and the remaining PowerShell helper remain; no full E2E/native application run occurred. Detailed checkpoint: docs/handoff-ledger/2026-09-25-rust-native-result-writer.md.
+
+OP068 implemented the native Rust saved-evidence validator and adopted it in the full-local artifact-reuse function. Native/PowerShell comparison73 cases PASS (67 exact JSON and6 invalid-input rejection),25 stable/MSRV regressions PASS, strict Clippy/package feature compilation and six extracted caller cases PASS. Graphify preparation and KSSS-result inspection are TOOL_BLOCKED; no full component/final application qualification is inferred. The legacy result-writing library remains active, so owned source debt stays41.
+
+OP066 added an uncommitted Rust E2E artifact-path capability: actual Node/WASM and isolated filesystem parity 557/557 with zero differences; stable/MSRV, strict Clippy, existing codegen, E2E check/lint and focused Graphify PASS. The original paths.mjs remains active because its generator-source atomic update failed. Commit attempt OP066I was TOOL_BLOCKED before execution. No source-debt retirement or full migration success is claimed.
+
+The OP069 guard reported Rust source inventory 130; OP072 added one unwired partial, owned non-Rust source debt 41, execution-wiring debt 13, unapproved debt 0/0, and twenty-one technical exceptions. Explorer `utils/date/formatting`, the original `statusTone`/`applyStatusTone`/`renderStatusSummary` behavior, and Explorer header USD price parsing retain their historical exact-browser-parity receipts. Their current shared module graph still requires final requalification. The new settings runtime presentation/observation exports have 582-case Node/WASM parity and 49 unchanged settings tests PASS, but browser verification is NOT VERIFIED / TOOL_BLOCKED. E2E `runtime-ports.mjs` and `assertions.mjs` are deterministic generated Node ABI adapters over `kaspa-gateway-e2e-wasm`; assertions preserve an exact legacy/external/tracked matrix SHA-256 `40287354a84163529e9d32c21d68b5aa232eb824f190323f6ddac71c50facc27` across 17 cases, and the former `runtime-ports-smoke.mjs` contracts now live in Rust `e2e_static_smokes` with 6/6 regressions PASS. True raw-log orchestration, zero-touch result-writer tests, zero-touch Windows process/TCP evidence capture, bridge-locator/recovery-harness static E2E smokes, and Bridge node-mode routing audit/reporting live in Rust. A Windows-native Rust clipboard helper candidate exists with exact read-only metadata parity, but caller adoption/debt retirement is blocked until write parity can run in a safe isolated clipboard context; the existing PowerShell helper remains authoritative. Full-local wrapper retirement is also deferred until a current reusable E2E artifact exists. i18n locale remains PASS; full i18n current truth is 4 unbound HTML + 6 dynamic literals after OP073. Frontend/app-boot/E2E predicates touching the changed module graph require final requalification. Workflow lint and cargo audit/deny/machete remain exact-head CI qualification work.
 
 ## Completion Criteria
-Completion requires: publication branch pushed; PR created; exact-final-head required CI including MSRV PASS; review threads resolved; squash merge under current rulesets; exact-main CI PASS; trusted Windows/macOS artifact workflow PASS on final main; provenance and SPDX SBOM attestations generated and independently verified; Desktop 0.1.3 draft uniquely bound to final main and qualified artifact run; immutable-release administration gate PASS; release published and post-publication tag/assets/digests/immutability verified; protected checkpoint preserved; final continuity receipt verified.
+The plan closes only when strict language policy proves zero owned non-Rust implementation debt, all affected/final checks pass on supported platforms, KSSS/supply-chain controls remain intact, protected checkpoint is unchanged, final PR is squash-merged under repository rules, exact-main CI passes, and durable closeout records final SHA/tree/inventories/results.
 
 ## Constraints
-No protected-checkpoint mutation; no force-kill PID 4404; no Testnet13 live start; no broad product retest without predicate invalidation; no blind force push; no main protection weakening; no bypass of required CI; no historical receipt rewrite; no unverified release artifact.
+Keep Tauri/Rust backend boundaries unless evidence requires change. Prefer Tauri-supported Rust/WASM frontend with generated output clearly classified. Keep dependencies minimal/workspace-inherited. Workflow YAML stays declarative and should invoke Rust binaries instead of embedding owned scripting logic. Never auto-baseline new debt.
+
+## Continuity Recovery
+- Canonical state recovery: **PARTIAL / ATOMIC_REPLACE_BLOCKED**. OP063 recovered and compared all five proposals and backups. Only CURRENT_STATE.md and PLANS.md are selected for this update; PROJECT_STATE.md, ACTIVE_TASK.md and the task handoff remain older than source5403092. The saved PROJECT_STATE.md.op062.tmp is preserved. A guarded same-API replacement failed again with WinError5. Restart Manager identifies a Desktop Commander reader, but DELETE-only access probes pass, so the historical root cause is not established. No process, permission, ownership or security setting was changed.
 
 ## NEXT ACTION
-Finish continuity and Graphify verification for current workflow/tooling changes, then commit reviewed scope. Immediately re-observe `main`; if unchanged, push candidate normally, open PR, update required-check governance safely to include the new MSRV context while removing duplicate baseline status-check ownership without reducing protection, then drive exact-head CI to PASS.
+Recover actual Git and the latest handoff checkpoint. OP103 Desktop diagnostic launcher is committed as `ec23f1fc9b162724b2a90e648e917227d74dfbf0`, tree `01586b1e51793bd4753edaa325dcf053b553b3a0`, with Rust 169 / owned non-Rust debt 16 / execution debt 10 / technical exceptions 30 and no unapproved debt. Preserve valid OP090-OP103 evidence and do not rerun it without predicate invalidation. Complete the post-OP103 continuity checkpoint, then inspect the actual remaining inventory and select the smallest independent unblocked boundary. Full migration remains PARTIAL and remote publication is NOT_QUALIFIED until zero-debt/classified-artifact closure and final qualification.

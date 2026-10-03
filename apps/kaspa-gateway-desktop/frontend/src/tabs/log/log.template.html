@@ -1,0 +1,41 @@
+<section id="log" class="page log-python-root" data-tab-panel="log">
+  <div class="log-python-shell">
+    <div class="log-toolbar">
+      <label class="log-field severity-field">
+        <span data-i18n="ui.log.severity">Severity:</span>
+        <select id="logSeverity">
+          <option value="ALL" data-i18n="common.all">ALL</option>
+          <option value="TRACE" data-i18n="ui.log.trace">TRACE</option>
+          <option value="DEBUG" data-i18n="ui.log.debug">DEBUG</option>
+          <option value="INFO" data-i18n="ui.log.info">INFO</option>
+          <option value="WARN" data-i18n="ui.log.warn">WARN</option>
+          <option value="ERROR" data-i18n="errors.error">ERROR</option>
+        </select>
+      </label>
+
+      <input id="logSearch" class="log-search" type="text" placeholder="Search log text..." / data-i18n-placeholder="ui.log.search.log.text">
+<label class="log-font-size-group" for="logFontSize">
+        <span data-i18n="ui.log.font.size">Font Size:</span>
+        <select id="logFontSize" class="log-font-size-select" aria-label="Log font size" data-i18n-aria-label="ui.log.log.font.size">
+          <option value="9" selected>9</option>
+          <option value="10">10</option>
+          <option value="11">11</option>
+          <option value="12">12</option>
+          <option value="13">13</option>
+          <option value="14">14</option>
+          <option value="16">16</option>
+        </select>
+      </label>
+
+      <button type="button" id="logClear" class="log-btn" data-i18n="actions.clear.log">Clear Log</button>
+      <button type="button" id="logCopy" class="log-btn" data-i18n="ui.log.copy.log">Copy Log</button><span id="logCopyStatus" class="log-copy-status" role="status" aria-live="polite" hidden></span>
+
+      <label class="auto-scroll-label">
+        <input id="logAutoScroll" type="checkbox" checked />
+        <span data-i18n="logs.auto.scroll">Auto-Scroll</span>
+      </label>
+    </div>
+
+    <pre id="logOutput" class="log-output" aria-label="Application log output" data-i18n-aria-label="ui.log.application.log.output"></pre>
+  </div>
+</section>

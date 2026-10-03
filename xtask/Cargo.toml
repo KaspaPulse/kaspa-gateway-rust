@@ -1,0 +1,44 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+default-run = "xtask"
+
+[features]
+secret-scan = ["dep:flate2", "dep:tar"]
+workflow-lint = ["dep:flate2", "dep:tar"]
+default = []
+ksss = ["dep:flate2", "dep:pyo3", "dep:tar", "time/parsing"]
+
+[dependencies]
+xml-rs = "=0.8.29"
+kaspa-gateway-e2e-wasm = { path = "../crates/kaspa-gateway-e2e-wasm" }
+regex.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+time.workspace = true
+flate2 = { workspace = true, optional = true }
+pyo3 = { workspace = true, optional = true }
+sha2.workspace = true
+unicode-segmentation.workspace = true
+sysinfo = "0.39.6"
+tar = { workspace = true, optional = true }
+tempfile.workspace = true
+tokio.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_NetworkManagement_IpHelper"] }
+
+[[bin]]
+name = "kgw-workflow-lint"
+path = "src/bin/kgw-workflow-lint.rs"
+required-features = ["workflow-lint"]
+
+[[bin]]
+name = "kgw-secret-scan"
+path = "src/bin/kgw-secret-scan.rs"
+required-features = ["secret-scan"]

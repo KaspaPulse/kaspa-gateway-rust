@@ -7,15 +7,6 @@
   "engines": {
     "node": ">=24 <27"
   },
-  "scripts": {
-    "dev": "tauri dev",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "check": "cargo check --manifest-path src-tauri/Cargo.toml",
-    "lint": "eslint frontend/**/*.js",
-    "test:rust": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "tauri": "tauri"
-  },
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@tauri-apps/cli": "2.11.4",

@@ -77,7 +77,7 @@ Requirements: Rust `1.98.1`, Node.js `24`, npm `11.17.0`, Git, and the native pr
 git clone https://github.com/KaspaPulse/kaspa-gateway-rust.git
 cd kaspa-gateway-rust/apps/kaspa-gateway-desktop
 npm ci
-npm run tauri -- dev --features "official-kaspa-runtime-all rkstratum_cpu_miner"
+node node_modules/@tauri-apps/cli/tauri.js dev --features "official-kaspa-runtime-all rkstratum_cpu_miner"
 ```
 
 From the repository root:

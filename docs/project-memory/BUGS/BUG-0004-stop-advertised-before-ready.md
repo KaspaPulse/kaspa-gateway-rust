@@ -18,7 +18,7 @@ UI button semantics were ahead of backend lifecycle semantics: `stopEnabled` inc
 Stop remains disabled while STARTING or STOPPING. It becomes available only after backend READY/running truth is confirmed. Startup failure or missing IPC remains `Reconciling` until status proves a terminal state.
 
 ## Verification
-- `tools/kgw_start_button_frontend_tests.cjs`: PASS.
+- Rust-owned `xtask/src/start_button_frontend.rs` generated-interoperability regression bridge: PASS.
 - `tools/kgw_bridge_readiness_frontend_tests.cjs`: PASS.
 - `tools/kgw_true_raw_log_frontend_tests.cjs`: PASS.
 

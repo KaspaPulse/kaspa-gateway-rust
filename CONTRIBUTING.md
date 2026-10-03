@@ -56,7 +56,7 @@ For the desktop frontend:
 ```bash
 cd apps/kaspa-gateway-desktop
 npm ci
-npm run lint
+node node_modules/eslint/bin/eslint.js frontend/**/*.js
 ```
 
 The pull request must pass the repository's required CI, security, dependency, secret-scanning, workflow-lint, and analysis checks before integration.
