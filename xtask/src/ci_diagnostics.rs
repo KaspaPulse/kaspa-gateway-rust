@@ -122,21 +122,23 @@ fn preserve_review(directory: &Path, mut read: impl FnMut(&str) -> Result<Vec<u8
 }
 
 fn native_command(mode: Mode) -> Result<(Command, &'static str)> {
-    let mut command = Command::new("cargo");
-    let log = match mode {
+    match mode {
         Mode::CargoDeny => {
+            let mut command = Command::new("cargo");
             command.args(["deny", "check"]);
-            "cargo-deny.log"
+            Ok((command, "cargo-deny.log"))
         }
         Mode::CargoMachete => {
-            command.args(["machete", "--with-metadata"]);
-            "cargo-machete.log"
+            // When spawned from Rust, cargo machete forwards the subcommand name as a
+            // positional argument. Invoke the allowlisted binary directly instead.
+            let mut command = Command::new("cargo-machete");
+            command.arg("--with-metadata");
+            Ok((command, "cargo-machete.log"))
         }
         Mode::DependencyReview => {
-            return Err("Dependency-review diagnostics do not execute a scanner".to_owned());
+            Err("Dependency-review diagnostics do not execute a scanner".to_owned())
         }
-    };
-    Ok((command, log))
+    }
 }
 
 fn process_code(status: ExitStatus) -> i32 {
@@ -282,19 +284,28 @@ mod tests {
     }
     #[test]
     fn scanner_command_surface_is_exact_and_not_freeform() {
-        for (mode, expected, name) in [
-            (Mode::CargoDeny, ["deny", "check"], "cargo-deny.log"),
+        for (mode, program, expected, name) in [
+            (
+                Mode::CargoDeny,
+                "cargo",
+                vec!["deny", "check"],
+                "cargo-deny.log",
+            ),
             (
                 Mode::CargoMachete,
-                ["machete", "--with-metadata"],
+                "cargo-machete",
+                vec!["--with-metadata"],
                 "cargo-machete.log",
             ),
         ] {
             let (command, log) = native_command(mode).unwrap();
-            assert_eq!(command.get_program(), "cargo");
+            assert_eq!(command.get_program(), program);
             assert_eq!(
                 command.get_args().collect::<Vec<_>>(),
-                expected.map(std::ffi::OsStr::new)
+                expected
+                    .into_iter()
+                    .map(std::ffi::OsStr::new)
+                    .collect::<Vec<_>>()
             );
             assert_eq!(log, name);
         }
