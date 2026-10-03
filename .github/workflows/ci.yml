@@ -304,7 +304,7 @@ jobs:
 
       - name: Lint desktop JavaScript
         working-directory: apps/kaspa-gateway-desktop
-        run: npm run lint
+        run: node node_modules/eslint/bin/eslint.js frontend/**/*.js
 
       - name: Verify effective Node settings contract
         run: cargo run --locked -p xtask -- effective-node-settings-gate

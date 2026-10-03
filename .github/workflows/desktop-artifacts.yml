@@ -126,7 +126,7 @@ jobs:
 
       - name: Build Windows x64 NSIS package
         working-directory: apps/kaspa-gateway-desktop
-        run: npm run tauri:build -- --ci --target x86_64-pc-windows-msvc
+        run: node node_modules/@tauri-apps/cli/tauri.js build --ci --target x86_64-pc-windows-msvc
 
       - name: Qualify Windows installer and installed application
         shell: pwsh
@@ -404,7 +404,7 @@ jobs:
 
       - name: Build macOS Universal DMG
         working-directory: apps/kaspa-gateway-desktop
-        run: npm run tauri:build -- --ci --target universal-apple-darwin
+        run: node node_modules/@tauri-apps/cli/tauri.js build --ci --target universal-apple-darwin
 
       - name: Qualify macOS Universal DMG and application
         shell: bash

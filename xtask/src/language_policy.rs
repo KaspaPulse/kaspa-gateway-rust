@@ -11,6 +11,8 @@ const FRONTEND_INDEX_HTML: &str = "apps/kaspa-gateway-desktop/frontend/index.htm
 const FRONTEND_MAIN_ADAPTER: &str = "apps/kaspa-gateway-desktop/frontend/main.js";
 const E2E_PACKAGE_JSON: &str = "e2e/package.json";
 const E2E_PACKAGE_LOCK: &str = "e2e/package-lock.json";
+const DESKTOP_PACKAGE_JSON: &str = "apps/kaspa-gateway-desktop/package.json";
+const DESKTOP_PACKAGE_LOCK: &str = "apps/kaspa-gateway-desktop/package-lock.json";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Mode {
@@ -495,14 +497,14 @@ fn json_has_nonempty_scripts(value: &Value) -> bool {
         .is_some_and(|scripts| !scripts.is_empty())
 }
 
-fn e2e_dependency_metadata_only(lower_path: &str, content: &str) -> bool {
+fn node_dependency_metadata_only(lower_path: &str, content: &str) -> bool {
     let Ok(value) = serde_json::from_str::<Value>(content) else {
         return false;
     };
-    if lower_path == E2E_PACKAGE_JSON {
+    if matches!(lower_path, E2E_PACKAGE_JSON | DESKTOP_PACKAGE_JSON) {
         return !json_has_nonempty_scripts(&value);
     }
-    if lower_path == E2E_PACKAGE_LOCK {
+    if matches!(lower_path, E2E_PACKAGE_LOCK | DESKTOP_PACKAGE_LOCK) {
         let Some(root_package) = value
             .get("packages")
             .and_then(Value::as_object)
@@ -516,8 +518,11 @@ fn e2e_dependency_metadata_only(lower_path: &str, content: &str) -> bool {
 }
 
 fn non_rust_execution_content(lower_path: &str, content: &str) -> Option<String> {
-    if lower_path == E2E_PACKAGE_JSON || lower_path == E2E_PACKAGE_LOCK {
-        return (!e2e_dependency_metadata_only(lower_path, content))
+    if matches!(
+        lower_path,
+        E2E_PACKAGE_JSON | E2E_PACKAGE_LOCK | DESKTOP_PACKAGE_JSON | DESKTOP_PACKAGE_LOCK
+    ) {
+        return (!node_dependency_metadata_only(lower_path, content))
             .then(|| "Node package manifest or lockfile".to_owned());
     }
     if lower_path.ends_with("/package.json") || lower_path.ends_with("/package-lock.json") {
@@ -684,6 +689,30 @@ mod tests {
         );
         assert_eq!(
             non_rust_execution_content(E2E_PACKAGE_LOCK, "{}").as_deref(),
+            Some("Node package manifest or lockfile")
+        );
+    }
+
+    #[test]
+    fn desktop_package_metadata_without_scripts_is_not_execution_debt() {
+        let package = r#"{"name":"desktop","devDependencies":{"@tauri-apps/cli":"2.11.4"}}"#;
+        let lock = r#"{"lockfileVersion":3,"packages":{"":{"name":"desktop","devDependencies":{"@tauri-apps/cli":"2.11.4"}}}}"#;
+        assert_eq!(
+            non_rust_execution_content(DESKTOP_PACKAGE_JSON, package),
+            None
+        );
+        assert_eq!(non_rust_execution_content(DESKTOP_PACKAGE_LOCK, lock), None);
+    }
+
+    #[test]
+    fn desktop_package_scripts_remain_execution_debt() {
+        let package = r#"{"name":"desktop","scripts":{"build":"tauri build"}}"#;
+        assert_eq!(
+            non_rust_execution_content(DESKTOP_PACKAGE_JSON, package).as_deref(),
+            Some("Node package manifest or lockfile")
+        );
+        assert_eq!(
+            non_rust_execution_content(DESKTOP_PACKAGE_LOCK, "{}").as_deref(),
             Some("Node package manifest or lockfile")
         );
     }
