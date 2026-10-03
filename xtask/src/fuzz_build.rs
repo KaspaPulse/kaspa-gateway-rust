@@ -5,15 +5,29 @@ use std::process::Command;
 
 const TARGET: &str = "gateway_config_json";
 
+fn cargo_fuzz_command(root: &Path) -> Command {
+    let mut command = Command::new("cargo");
+    command
+        .args([
+            "fuzz",
+            "build",
+            "--sanitizer",
+            "address",
+            "-O",
+            "--debug-assertions",
+            TARGET,
+        ])
+        .env("RUSTUP_TOOLCHAIN", "nightly")
+        .current_dir(root);
+    command
+}
+
 pub fn run(root: &Path) -> Result<String, String> {
     let out = env::var_os("OUT")
         .map(PathBuf::from)
         .ok_or_else(|| "fuzz-build: OUT environment variable is required".to_owned())?;
 
-    let status = Command::new("cargo")
-        .args(["fuzz", "build", "-O", "--debug-assertions", TARGET])
-        .env("RUSTUP_TOOLCHAIN", "nightly")
-        .current_dir(root)
+    let status = cargo_fuzz_command(root)
         .status()
         .map_err(|error| format!("fuzz-build: failed to start cargo fuzz: {error}"))?;
     if !status.success() {
@@ -100,6 +114,29 @@ fn is_executable(path: &Path) -> Result<bool, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cargo_fuzz_build_owns_address_sanitizer_configuration() {
+        let command = cargo_fuzz_command(Path::new("fixture-root"));
+        assert_eq!(command.get_program(), "cargo");
+        assert_eq!(
+            command.get_args().collect::<Vec<_>>(),
+            [
+                "fuzz",
+                "build",
+                "--sanitizer",
+                "address",
+                "-O",
+                "--debug-assertions",
+                TARGET,
+            ]
+            .map(std::ffi::OsStr::new)
+            .to_vec()
+        );
+        assert!(command.get_envs().any(|(key, value)| {
+            key == "RUSTUP_TOOLCHAIN" && value == Some(std::ffi::OsStr::new("nightly"))
+        }));
+    }
 
     #[test]
     fn recognizes_only_release_target_name() {
