@@ -54,6 +54,6 @@ Temporary upstream-only exceptions are machine-controlled in `docs/security/npm-
 - Deprecated `glob` 10.5.0 in supported WebdriverIO/config paths.
 - Deprecated `whatwg-encoding` 3.1.1 through current Cheerio/encoding-sniffer.
 
-`tools/kgw_npm_dependency_policy_gate.cjs` fails blocking CI on any new finding, severity/advisory/path/lock drift, deprecation-set drift, stale exception, or review-window expiry. Broad ignores and unsupported major overrides are prohibited. Durable evidence and the removal condition are tracked as `SEC-0002`.
+The Rust `xtask` command `npm-dependency-policy-gate` fails blocking CI on any new finding, severity/advisory/path/lock drift, deprecation-set drift, stale exception, or review-window expiry. Broad ignores and unsupported major overrides are prohibited. Durable evidence and the removal condition are tracked as `SEC-0002`.
 
 Fresh 2026-09-11 registry verification found no supported compatible removal path. Latest WebdriverIO remains 9.31.7 and `@wdio/mocha-framework` still constrains Mocha to `^11.8.0`; the non-vulnerable current Mocha/diff lines are Mocha 12.0.0 / diff 9.0.0 outside that supported contract. Latest `@wdio/config` remains on the glob 10 line, and Cheerio 1.2.0 still retains the encoding-sniffer path that resolves `whatwg-encoding` 3.1.1. The **2026-10-10** review deadline is unchanged; no exception was widened or extended.

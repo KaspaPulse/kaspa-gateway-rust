@@ -3,7 +3,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import globals from "globals";
 
 export default defineConfig([
-  globalIgnores(["node_modules/", "src-tauri/target/", "frontend/vendor/"]),
+  globalIgnores(["node_modules/", "src-tauri/target/", "frontend/vendor/", "frontend/generated/"]),
   {
     name: "kaspa-gateway/frontend",
     files: ["frontend/**/*.js"],

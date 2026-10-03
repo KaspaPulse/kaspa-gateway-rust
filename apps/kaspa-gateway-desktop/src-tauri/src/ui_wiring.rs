@@ -125,7 +125,7 @@ pub fn feature_wiring_report() -> FeatureWiringReport {
         item(
             "Release Build",
             "partial",
-            "tools/build-release.ps1/npm run tauri -- build",
+            "tools/build-release.ps1/node node_modules/@tauri-apps/cli/tauri.js build",
             "Unsigned unless certificate is configured.",
         ),
     ];

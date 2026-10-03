@@ -1838,13 +1838,17 @@ where
     )
 }
 
+struct KgwSupervisedStopContextV1<'a> {
+    stop_request_path: &'a std::path::Path,
+    stop_outcome_path: &'a std::path::Path,
+    role: &'a str,
+    network: &'a str,
+    node_mode: &'a str,
+    parent_identity: &'a crate::integrated_runtime_commands::KgwProcessIdentityV1,
+}
+
 fn kgw_execute_supervised_stop_request_v1<F, S>(
-    stop_request_path: &std::path::Path,
-    stop_outcome_path: &std::path::Path,
-    role: &str,
-    network: &str,
-    node_mode: &str,
-    parent_identity: &crate::integrated_runtime_commands::KgwProcessIdentityV1,
+    context: KgwSupervisedStopContextV1<'_>,
     runtime_failure: F,
     shutdown: S,
 ) -> KgwPostReadyStopOutcomeV1
@@ -1852,6 +1856,14 @@ where
     F: FnMut() -> Result<Option<String>, String>,
     S: FnOnce() -> Result<String, KgwOfficialShutdownFailureV1> + Send + 'static,
 {
+    let KgwSupervisedStopContextV1 {
+        stop_request_path,
+        stop_outcome_path,
+        role,
+        network,
+        node_mode,
+        parent_identity,
+    } = context;
     let event = match kgw_wait_for_post_ready_event_v1(
         stop_request_path,
         role,
@@ -2375,12 +2387,14 @@ fn kgw_run_node_self_worker(
     let monitor_runtime = runtime.clone();
     let monitor_network = settings.network;
     Ok(kgw_execute_supervised_stop_request_v1(
-        stop_request_path,
-        stop_outcome_path,
-        "node",
-        settings.network.as_str(),
-        "integrated-inproc",
-        parent_identity,
+        KgwSupervisedStopContextV1 {
+            stop_request_path,
+            stop_outcome_path,
+            role: "node",
+            network: settings.network.as_str(),
+            node_mode: "integrated-inproc",
+            parent_identity,
+        },
         move || {
             monitor_runtime
                 .terminal_failure(monitor_network)
@@ -2554,12 +2568,14 @@ fn kgw_run_bridge_self_worker(
     let shutdown_handles = std::sync::Arc::clone(&shared_handles);
     let stop_node_mode = bridge_node_mode.clone();
     Ok(kgw_execute_supervised_stop_request_v1(
-        stop_request_path,
-        stop_outcome_path,
-        "bridge",
-        network,
-        stop_node_mode.as_str(),
-        parent_identity,
+        KgwSupervisedStopContextV1 {
+            stop_request_path,
+            stop_outcome_path,
+            role: "bridge",
+            network,
+            node_mode: stop_node_mode.as_str(),
+            parent_identity,
+        },
         move || {
             if let Some(runtime) = monitor_node_runtime.as_ref() {
                 let parsed = kaspa_gateway_rk_node::KgwNetwork::parse(&monitor_network)
@@ -2795,12 +2811,14 @@ mod kgw_graceful_stop_failure_path_tests {
             .unwrap();
 
         let outcome = kgw_execute_supervised_stop_request_v1(
-            &request_path,
-            &outcome_path,
-            "node",
-            "mainnet",
-            "integrated-inproc",
-            &parent_identity,
+            KgwSupervisedStopContextV1 {
+                stop_request_path: &request_path,
+                stop_outcome_path: &outcome_path,
+                role: "node",
+                network: "mainnet",
+                node_mode: "integrated-inproc",
+                parent_identity: &parent_identity,
+            },
             || Ok(Some("official core fixture exited".to_string())),
             || Ok("remaining owned components joined".to_string()),
         );
@@ -2833,12 +2851,14 @@ mod kgw_graceful_stop_failure_path_tests {
             .unwrap();
 
         let outcome = kgw_execute_supervised_stop_request_v1(
-            &request_path,
-            &outcome_path,
-            "node",
-            "mainnet",
-            "integrated-inproc",
-            &parent_identity,
+            KgwSupervisedStopContextV1 {
+                stop_request_path: &request_path,
+                stop_outcome_path: &outcome_path,
+                role: "node",
+                network: "mainnet",
+                node_mode: "integrated-inproc",
+                parent_identity: &parent_identity,
+            },
             || Ok(None),
             || Ok("official node shutdown joined".to_string()),
         );

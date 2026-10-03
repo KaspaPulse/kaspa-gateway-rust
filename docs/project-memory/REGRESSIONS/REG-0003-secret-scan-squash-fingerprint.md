@@ -22,7 +22,7 @@ Keep full-history scanning, `verified,unknown` coverage, and fail-on-scan-errors
 - Graphify code-only extraction/diagnostics: PASS with the checker and regression-test nodes resolved.
 
 ## Regression Protection
-`test-check-trufflehog-results.py` now proves both exact historical fingerprints are accepted together, duplicate occurrences are rejected per fingerprint, and any fingerprint drift, verified result, or malformed output still fails closed.
+The Rust `xtask` `trufflehog_policy` regression tests preserve the exact historical fingerprint contract: allowed historical tuples are accepted together, duplicate occurrences are rejected per fingerprint, and any commit/path/line/detector/decoder/verification/raw drift or malformed output fails closed. The former Python regression script was retired during the 2026-09-23 Rust-only owned-implementation migration after parity validation.
 
 ## Remaining Risk
 Protected PR and exact-main CI still own integration proof. The exception must not expand to detector-, path-, or verification-wide suppression.

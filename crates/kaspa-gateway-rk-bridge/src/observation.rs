@@ -27,6 +27,7 @@ pub struct RuntimeObservation {
 }
 type CpuReader = Arc<dyn Fn() -> (u64, u64, u64) + Send + Sync>;
 static CPU_READERS: OnceLock<Mutex<HashMap<&'static str, CpuReader>>> = OnceLock::new();
+#[cfg(feature = "rkstratum_cpu_miner")]
 pub(crate) fn set_cpu_reader(network: BridgeRuntimeNetwork, reader: CpuReader) {
     if let Ok(mut readers) = CPU_READERS.get_or_init(Default::default).lock() {
         readers.insert(network.as_str(), reader);

@@ -10,11 +10,11 @@ npm install
 
 Run desktop dev shell:
 
-npm run tauri:dev
+node node_modules/@tauri-apps/cli/tauri.js dev
 
 Build desktop app:
 
-npm run tauri:build
+node node_modules/@tauri-apps/cli/tauri.js build
 
 Rust-only validation from repository root:
 

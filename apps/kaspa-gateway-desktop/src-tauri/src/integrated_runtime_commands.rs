@@ -631,15 +631,9 @@ fn kgw_runtime_owner_reconcile_stale_lease_v1(
             executable: lease.parent_executable.clone(),
         },
     );
-    let current_executable = std::env::current_exe()
-        .and_then(|path| path.canonicalize())
-        .map_err(|error| format!("resolve current executable for lease failed: {error}"))?
-        .to_string_lossy()
-        .to_string();
     if lease.version != KGW_RUNTIME_OWNER_LEASE_VERSION_V1
         || lease.runtime_role != role
         || lease.network != network
-        || lease.parent_executable != current_executable
     {
         return Err(format!(
             "start_blocked=true;start_allowed=false;block_reason=runtime-owner-lease-identity-mismatch;runtime_role={role};network={network};message=Stale ownership metadata does not match the requested exact owner. No process was signaled."
@@ -649,7 +643,6 @@ fn kgw_runtime_owner_reconcile_stale_lease_v1(
     let parent_alive = kgw_process_identity_for_worker_v1(lease.parent_pid).is_ok_and(|identity| {
         identity.start_time == lease.parent_start_time
             && identity.executable == lease.parent_executable
-            && identity.executable == current_executable
     });
     if parent_alive {
         return Err(format!(
@@ -714,7 +707,7 @@ fn kgw_runtime_owner_reconcile_stale_lease_v1(
                 || worker.parent_start_time != observed.parent_start_time
                 || worker.parent_executable != observed.parent_executable
                 || worker.worker_pid == 0
-                || worker.worker_executable != current_executable
+                || worker.worker_executable != observed.parent_executable
             {
                 return Err(format!(
                     "start_blocked=true;start_allowed=false;block_reason=runtime-owner-worker-identity-mismatch;runtime_role={role};network={network};message=Worker ownership metadata does not match the immutable reservation. No process was signaled."
@@ -724,7 +717,6 @@ fn kgw_runtime_owner_reconcile_stale_lease_v1(
                 .is_ok_and(|identity| {
                     identity.start_time == worker.worker_start_time
                         && identity.executable == worker.worker_executable
-                        && identity.executable == current_executable
                 });
             if !exact_worker_alive {
                 kgw_runtime_owner_remove_files_v1(&path, &worker_path);
@@ -2677,48 +2669,11 @@ fn kgw_worker_start(
         }
     };
     let pid = child.id();
-    let worker_identity = match kgw_process_identity_for_worker_v1(pid) {
-        Ok(identity) => identity,
-        Err(error) => {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Err(format!(
-                "spawn_failed=true;runtime_role={role};network={network};source=self-worker;error=exact child identity unavailable after spawn: {error}"
-            ));
-        }
-    };
-    if worker_identity.executable != parent_identity.executable {
-        let _ = child.kill();
-        let _ = child.wait();
-        return Err(format!(
-            "spawn_failed=true;runtime_role={role};network={network};source=self-worker;error=same-executable identity mismatch;parent_executable={};worker_executable={}",
-            parent_identity.executable, worker_identity.executable
-        ));
-    }
-    kgw_start_trace_emit_v1(
-        "native",
-        "native.spawn_succeeded",
-        &network,
-        "start",
-        "ok",
-        Some(&format!(
-            "{{\"runtimeRole\":\"{}\",\"nodeMode\":\"{}\",\"pid\":{}}}",
-            role, trace_node_mode, pid
-        )),
-    );
 
-    kgw_start_trace_emit_v1(
-        "native",
-        "native.child_pid_recorded",
-        &network,
-        "start",
-        "ok",
-        Some(&format!(
-            "{{\"runtimeRole\":\"{}\",\"nodeMode\":\"{}\",\"pid\":{}}}",
-            role, trace_node_mode, pid
-        )),
-    );
-
+    // Attach output readers immediately after spawn. An intentionally short-lived
+    // self-worker can terminate before Windows exposes stable executable metadata;
+    // retaining the pipes first preserves complete official stdout/stderr for the
+    // terminal early-exit classification without weakening live-owner identity.
     let mut reader_handles = Vec::with_capacity(2);
     if let Some(stdout) = child.stdout.take() {
         reader_handles.push(kgw_worker_spawn_reader(
@@ -2777,6 +2732,86 @@ fn kgw_worker_start(
             Some(&format!("{{\"runtimeRole\":\"{}\",\"pid\":{}}}", role, pid)),
         );
     }
+
+    let identity_deadline = std::time::Instant::now() + std::time::Duration::from_millis(250);
+    let worker_identity = loop {
+        match kgw_process_identity_for_worker_v1(pid) {
+            Ok(identity) => break identity,
+            Err(identity_error) => match child.try_wait() {
+                Ok(Some(exit_status)) => {
+                    kgw_worker_join_readers_v1(reader_handles);
+                    kgw_worker_remove_startup_control_v1(&startup_control_path);
+                    let captured = logs
+                        .lock()
+                        .map(|guard| {
+                            guard
+                                .iter()
+                                .map(|entry| kgw_worker_safe_child_line_v1(&entry.raw_text))
+                                .collect::<Vec<_>>()
+                                .join(" | ")
+                        })
+                        .unwrap_or_else(|_| "worker log lock failed".to_string());
+                    let exit_code = exit_status
+                        .code()
+                        .map_or_else(|| "unknown".to_string(), |code| code.to_string());
+                    return Err(format!(
+                        "self-worker exited before role readiness;role={role};network={network};status={exit_status};exit_code={exit_code};logs={captured}"
+                    ));
+                }
+                Ok(None) if std::time::Instant::now() < identity_deadline => {
+                    std::thread::sleep(std::time::Duration::from_millis(5));
+                }
+                Ok(None) => {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    kgw_worker_join_readers_v1(reader_handles);
+                    return Err(format!(
+                        "spawn_failed=true;runtime_role={role};network={network};source=self-worker;error=exact child identity unavailable after bounded retry: {identity_error}"
+                    ));
+                }
+                Err(wait_error) => {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    kgw_worker_join_readers_v1(reader_handles);
+                    return Err(format!(
+                        "spawn_failed=true;runtime_role={role};network={network};source=self-worker;error=exact child identity unavailable after spawn: {identity_error};wait_error={wait_error}"
+                    ));
+                }
+            },
+        }
+    };
+    if worker_identity.executable != parent_identity.executable {
+        let _ = child.kill();
+        let _ = child.wait();
+        kgw_worker_join_readers_v1(reader_handles);
+        return Err(format!(
+            "spawn_failed=true;runtime_role={role};network={network};source=self-worker;error=same-executable identity mismatch;parent_executable={};worker_executable={}",
+            parent_identity.executable, worker_identity.executable
+        ));
+    }
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.spawn_succeeded",
+        &network,
+        "start",
+        "ok",
+        Some(&format!(
+            "{{\"runtimeRole\":\"{}\",\"nodeMode\":\"{}\",\"pid\":{}}}",
+            role, trace_node_mode, pid
+        )),
+    );
+
+    kgw_start_trace_emit_v1(
+        "native",
+        "native.child_pid_recorded",
+        &network,
+        "start",
+        "ok",
+        Some(&format!(
+            "{{\"runtimeRole\":\"{}\",\"nodeMode\":\"{}\",\"pid\":{}}}",
+            role, trace_node_mode, pid
+        )),
+    );
 
     // Publish exact durable ownership only after both native output readers are
     // attached, but before waiting for READY. This covers the complete startup
@@ -3844,21 +3879,6 @@ fn kgw_command_preview_normalize_listen(value: String) -> String {
     }
 }
 
-#[cfg(test)]
-fn kgw_bridge_config_path_from_preview_r122(command_preview: Option<&str>) -> Option<String> {
-    let preview = command_preview?.trim();
-
-    if preview.is_empty() {
-        return None;
-    }
-
-    kgw_command_preview_find_cli_value(preview, "--config")
-        .or_else(|| kgw_command_preview_find_cli_value(preview, "--bridge-config"))
-        .or_else(|| kgw_command_preview_find_cli_value(preview, "--config-path"))
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
-}
-
 fn kgw_effective_bridge_settings_from_config_v1(
     network: kaspa_gateway_rk_node::KgwNetwork,
     config_path: &str,
@@ -4076,13 +4096,12 @@ fn kgw_resolve_effective_runtime_settings_v1(
     let _ = (node_command_preview, bridge_command_preview);
     let options = bridge_options.unwrap_or_default();
     let bridge_config_path_for_worker = options.config_file;
-    if let Some(path) = bridge_config_path_for_worker.as_deref() {
-        if path.trim().is_empty()
+    if let Some(path) = bridge_config_path_for_worker.as_deref()
+        && (path.trim().is_empty()
             || !std::path::Path::new(path).is_absolute()
-            || path.contains(['\0', '\r', '\n'])
-        {
-            return Err("Bridge configFile must be a nonempty absolute path".to_string());
-        }
+            || path.contains(['\0', '\r', '\n']))
+    {
+        return Err("Bridge configFile must be a nonempty absolute path".to_string());
     }
     let role = kgw_worker_role_from_request(runtime_role, settings)?;
     let owns_node = role == "node"

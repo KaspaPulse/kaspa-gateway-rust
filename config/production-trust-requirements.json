@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "artifact_builder": {
+    "workflow": ".github/workflows/desktop-artifacts-builder.yml",
+    "production_native_signing_separate_boundary": true,
+    "signing_secrets_in_builder": false
+  },
+  "windows": {
+    "signing_provider": "EXTERNAL_REQUIRED",
+    "file_digest": "SHA256",
+    "timestamp_protocol": "RFC3161",
+    "timestamp_digest": "SHA256",
+    "code_signing_eku_oid": "1.3.6.1.5.5.7.3.3",
+    "verification_requirements": [
+      "AUTHENTICODE_STATUS_VALID",
+      "SIGNTOOL_VERIFY_PA_ALL",
+      "RFC3161_TIMESTAMP_PRESENT"
+    ]
+  },
+  "macos": {
+    "signing_identity_class": "Developer ID Application",
+    "hardened_runtime": true,
+    "secure_timestamp": true,
+    "notarization_tool": "notarytool",
+    "staple_required": true,
+    "gatekeeper_assessment_required": true,
+    "production_config": "apps/kaspa-gateway-desktop/src-tauri/tauri.macos.production.conf.json",
+    "accepted_credential_sets": [
+      [
+        "APPLE_API_ISSUER",
+        "APPLE_API_KEY",
+        "APPLE_API_KEY_PATH"
+      ],
+      [
+        "APPLE_ID",
+        "APPLE_PASSWORD",
+        "APPLE_TEAM_ID"
+      ]
+    ],
+    "required_signing_environment": "APPLE_SIGNING_IDENTITY"
+  }
+}

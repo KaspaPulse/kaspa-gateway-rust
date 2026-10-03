@@ -91,7 +91,7 @@ They must not own shell commands, external process launch, or Rusty Kaspa proces
 The permanent guard is:
 
 ```text
-tools/kgw_parallel_self_worker_runtime_gate.cjs
+cargo run --locked -p xtask -- parallel-self-worker-runtime-gate
 ```
 
 It must pass before runtime topology changes are accepted.

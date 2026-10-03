@@ -82,7 +82,7 @@ Rejected because CI cannot authoritatively observe every local runtime/worktree/
 
 ## Validation / Evidence
 
-- `tools/kgw_project_continuity_gate.cjs` validates the permanent continuity surface in blocking CI.
+- `cargo run --locked -p xtask -- project-continuity-gate` validates the permanent continuity surface in blocking CI; its Rust implementation lives in `xtask/src/project_continuity.rs`.
 - The existing required `quality (rust + npm)` workflow runs the continuity gate; no separate required status-check context is introduced for continuity documentation.
 - The gate requires dynamic current-HEAD/current-main semantics, explicit working-tree classification, Desired/Actual/Drift separation, `Last Verified Validation`, and either an active execution plan contract or the inactive `NO ACTIVE MULTI-STAGE PLAN` contract.
 - The expanded gate also requires the active/current state surfaces, repository-native handoff ledger, permanent problem-memory categories, stable identifier/status rules, root-cause/regression-protection lifecycle, and security-evidence policy.
@@ -101,7 +101,7 @@ Rejected because CI cannot authoritatively observe every local runtime/worktree/
 - `docs/architecture/README.md`
 - `docs/adr/README.md`
 - `docs/runbooks/desktop-release.md`
-- `tools/kgw_project_continuity_gate.cjs`
+- `xtask/src/project_continuity.rs`
 - `.github/workflows/ci.yml`
 
 ## Related Issues / PRs / Commits

@@ -20,9 +20,9 @@ Latest corrected local security gate result:
 
 Run from the current clean repository clone:
 
-- node .\tools\kgw_i18n_contract_gate.cjs
-- node .\tools\kgw_i18n_locale_coverage_gate.cjs
-- node .\tools\kgw_parallel_self_worker_runtime_gate.cjs
+- cargo run --locked -p xtask -- i18n-contract-gate
+- cargo run --locked -p xtask -- i18n-locale-coverage-gate
+- cargo run --locked -p xtask -- parallel-self-worker-runtime-gate
 - cargo fmt --all -- --check
 - cargo check -p kaspa-gateway-desktop --no-default-features --features "official-kaspa-runtime-all rkstratum_cpu_miner"
 - cd .\apps\kaspa-gateway-desktop

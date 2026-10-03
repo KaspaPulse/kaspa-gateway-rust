@@ -13,6 +13,35 @@ use integrated_runtime_commands::{
 };
 use std::sync::{Mutex, OnceLock};
 
+fn isolated_node_listener() -> String {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0")
+        .expect("test-only node P2P listener port must be reservable");
+    let address = listener
+        .local_addr()
+        .expect("test-only node P2P listener address must be readable")
+        .to_string();
+    drop(listener);
+    address
+}
+
+fn isolated_bridge_listener_pair() -> (String, String) {
+    let stratum = std::net::TcpListener::bind("127.0.0.1:0")
+        .expect("test-only Stratum listener port must be reservable");
+    let prometheus = std::net::TcpListener::bind("127.0.0.1:0")
+        .expect("test-only Prometheus listener port must be reservable");
+    let stratum_addr = stratum
+        .local_addr()
+        .expect("test-only Stratum listener address must be readable")
+        .to_string();
+    let prometheus_addr = prometheus
+        .local_addr()
+        .expect("test-only Prometheus listener address must be readable")
+        .to_string();
+    drop(prometheus);
+    drop(stratum);
+    (stratum_addr, prometheus_addr)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn kgw_kgw_apply_node_settings_v1(
     network: String,
@@ -37,13 +66,18 @@ fn kgw_kgw_apply_node_settings_v1(
         outbound_target: 0,
         inbound_limit: 0,
         disable_dns_seeding: true,
-        p2p_listen: Some("127.0.0.1:26111".to_string()),
+        p2p_listen: Some(isolated_node_listener()),
         ..Default::default()
     };
     let effective_bridge_settings = (runtime_role.as_deref() == Some("bridge")).then(|| {
         let network = kaspa_gateway_rk_bridge::BridgeRuntimeNetwork::parse(&network).unwrap();
         let mut effective = kaspa_gateway_rk_bridge::EffectiveBridgeSettings::for_network(network);
         effective.global.kaspa_rpc_endpoint = network.default_rpc().to_string();
+        for instance in &mut effective.instances {
+            let (stratum, prometheus) = isolated_bridge_listener_pair();
+            instance.stratum_listen = stratum;
+            instance.prometheus_listen = Some(prometheus);
+        }
         effective
     });
     integrated_runtime_commands::kgw_kgw_apply_node_settings_v1(
@@ -286,6 +320,120 @@ fn runtime_owner_lease_requires_exact_process_identity() {
 }
 
 #[test]
+fn stale_owner_from_retired_executable_is_reconciled_after_exact_terminality() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    let network = "upgrade-fixture";
+    let appdir = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("nodes")
+        .join(network)
+        .to_string_lossy()
+        .to_string();
+    let retired_executable = std::env::current_exe()
+        .expect("current executable path")
+        .with_extension("retired.exe")
+        .to_string_lossy()
+        .to_string();
+    let parent = integrated_runtime_commands::KgwProcessIdentityV1 {
+        pid: u32::MAX - 10,
+        start_time: 1,
+        executable: retired_executable.clone(),
+    };
+    let worker = integrated_runtime_commands::KgwProcessIdentityV1 {
+        pid: u32::MAX - 11,
+        start_time: 2,
+        executable: retired_executable,
+    };
+    let (lease, _) = integrated_runtime_commands::kgw_runtime_owner_lease_fixture_v1(
+        "node",
+        network,
+        &appdir,
+        "same-exe-self-worker",
+        &parent,
+        &worker,
+    );
+    let lease_path = runtime_owner_lease_path("node", network);
+    integrated_runtime_commands::kgw_runtime_owner_reserve_for_test_v1(&lease_path, &lease)
+        .expect("retired-executable owner reservation must be creatable");
+    let worker_path = integrated_runtime_commands::kgw_runtime_owner_publish_worker_for_test_v1(
+        &lease_path,
+        &parent,
+        &worker,
+    )
+    .expect("retired-executable worker identity must be publishable");
+
+    let reconciliation = integrated_runtime_commands::kgw_runtime_owner_reconcile_for_test_v1(
+        "node", network, &appdir,
+    )
+    .expect("terminal retired-executable ownership must reconcile");
+    assert!(
+        reconciliation
+            .as_deref()
+            .is_some_and(|evidence| evidence.contains("removed-terminal-lease")),
+        "retired executable reconciliation evidence missing: {reconciliation:?}"
+    );
+    assert!(
+        !lease_path.exists() && !worker_path.exists(),
+        "terminal retired-executable ownership metadata must be removed"
+    );
+}
+
+#[test]
+fn stale_owner_with_worker_executable_mismatch_remains_fail_closed() {
+    let _guard = runtime_test_lock()
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let _runtime_guard = RuntimeWorkerTestGuard::new();
+    let network = "upgrade-fixture-worker-mismatch";
+    let appdir = std::env::temp_dir()
+        .join("KaspaGateway")
+        .join("nodes")
+        .join(network)
+        .to_string_lossy()
+        .to_string();
+    let parent = integrated_runtime_commands::KgwProcessIdentityV1 {
+        pid: u32::MAX - 20,
+        start_time: 3,
+        executable: "C:\\retired\\gateway.exe".to_owned(),
+    };
+    let worker = integrated_runtime_commands::KgwProcessIdentityV1 {
+        pid: u32::MAX - 21,
+        start_time: 4,
+        executable: "C:\\foreign\\gateway.exe".to_owned(),
+    };
+    let (lease, _) = integrated_runtime_commands::kgw_runtime_owner_lease_fixture_v1(
+        "node",
+        network,
+        &appdir,
+        "same-exe-self-worker",
+        &parent,
+        &worker,
+    );
+    let lease_path = runtime_owner_lease_path("node", network);
+    integrated_runtime_commands::kgw_runtime_owner_reserve_for_test_v1(&lease_path, &lease)
+        .expect("mismatch owner reservation must be creatable");
+    let worker_path = integrated_runtime_commands::kgw_runtime_owner_publish_worker_for_test_v1(
+        &lease_path,
+        &parent,
+        &worker,
+    )
+    .expect("mismatch worker identity must be publishable");
+
+    let error = integrated_runtime_commands::kgw_runtime_owner_reconcile_for_test_v1(
+        "node", network, &appdir,
+    )
+    .expect_err("worker executable mismatch must remain fail-closed");
+    assert!(error.contains("runtime-owner-worker-identity-mismatch"));
+    assert!(
+        lease_path.exists() && worker_path.exists(),
+        "fail-closed mismatch must preserve ownership evidence"
+    );
+}
+
+#[test]
 fn status_poll_does_not_block_behind_other_network_startup() {
     let _guard = runtime_test_lock()
         .lock()
@@ -518,7 +666,7 @@ fn ready_worker_publishes_and_normal_stop_removes_exact_owner_lease() {
         "network=mainnet",
         "appdir=",
         "rpc=127.0.0.1:16110",
-        "p2p=127.0.0.1:26111",
+        "p2p=127.0.0.1:",
         "stratum=0.0.0.0:5555",
     ] {
         assert!(
@@ -1658,12 +1806,15 @@ fn timeout_hierarchy_is_strict_and_race_free() {
                 > integrated_runtime_commands::KGW_CHILD_OFFICIAL_SHUTDOWN_BUDGET_MS_V1
         );
     }
-    let node_js = include_str!("../../frontend/src/tabs/kaspa-node/kaspa-node.js");
-    let bridge_js = include_str!("../../frontend/src/tabs/kaspa-bridge/kaspa-bridge.js");
-    assert!(node_js.contains("const KGW_NODE_STOP_INVOKE_TIMEOUT_MS = 0"));
-    assert!(bridge_js.contains("const KGW_BRIDGE_STOP_INVOKE_TIMEOUT_MS = 0"));
-    assert!(node_js.contains("if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)"));
-    assert!(bridge_js.contains("if (!Number.isFinite(timeoutMs) || timeoutMs <= 0)"));
+    let node_rust =
+        include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs");
+    let bridge_rust =
+        include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs");
+    assert!(node_rust.contains("const NODE_STOP_INVOKE_TIMEOUT_MS: u32 = 0;"));
+    assert!(bridge_rust.contains("const BRIDGE_STOP_INVOKE_TIMEOUT_MS: u32 = 0;"));
+    assert!(node_rust.contains("if timeout_ms == 0 {"));
+    assert!(bridge_rust.contains("crate::node_start_trace::await_command_with_timeout("));
+    assert!(bridge_rust.contains("runtime_invoke_timeout_ms(command),"));
 }
 
 #[test]
@@ -1755,6 +1906,10 @@ fn unsupported_network_is_rejected() {
 fn start_command_is_registered_and_payload_matches_frontend() {
     let lib_rs = include_str!("../src/lib.rs");
     let node_js = include_str!("../../frontend/src/tabs/kaspa-node/kaspa-node.js");
+    let node_frontend_helpers =
+        include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/node_frontend_helpers.rs");
+    let node_start_trace =
+        include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs");
 
     assert!(
         lib_rs.contains("integrated_runtime_commands::kgw_kgw_apply_node_settings_v1"),
@@ -1768,6 +1923,21 @@ fn start_command_is_registered_and_payload_matches_frontend() {
         lib_rs.contains("kgw_start_trace_frontend_v1"),
         "start trace frontend command must be registered in tauri generate_handler"
     );
+    assert!(
+        !node_js.contains("nodeRuntimeArgs as nodeRuntimeArgs")
+            && !node_js.contains("function nodeRuntimeArgs(")
+            && node_start_trace.contains("crate::node_frontend_helpers::node_runtime_args("),
+        "frontend must delegate runtime IPC argument construction directly to the Rust/WASM owner"
+    );
+
+    let runtime_args_start = node_frontend_helpers
+        .find("#[wasm_bindgen(js_name = nodeRuntimeArgs)]")
+        .expect("Rust nodeRuntimeArgs export must exist");
+    let runtime_args_end = node_frontend_helpers[runtime_args_start..]
+        .find("fn dispatch_bubbling_event")
+        .expect("Rust nodeRuntimeArgs source boundary must exist");
+    let runtime_args_source =
+        &node_frontend_helpers[runtime_args_start..runtime_args_start + runtime_args_end];
 
     for field in [
         "network",
@@ -1780,8 +1950,8 @@ fn start_command_is_registered_and_payload_matches_frontend() {
         "experimentalNetworkOptIn",
     ] {
         assert!(
-            node_js.contains(field),
-            "frontend start payload must contain `{field}`"
+            runtime_args_source.contains(&format!("\"{field}\"")),
+            "Rust-owned frontend start payload must contain `{field}`"
         );
     }
 }
@@ -3183,18 +3353,19 @@ fn delayed_failed_after_old_liveness_window_leaves_no_false_owner() {
     );
 }
 
-fn javascript_timeout_constant(source: &str, name: &str) -> u64 {
-    let marker = format!("const {name} = ");
+fn rust_u32_timeout_constant(source: &str, name: &str) -> u64 {
+    let marker = format!("{name}: u32 = ");
     source
         .split_once(&marker)
-        .unwrap_or_else(|| panic!("missing JavaScript timeout constant {name}"))
+        .unwrap_or_else(|| panic!("missing Rust u32 timeout constant {name}"))
         .1
         .split_once(';')
-        .unwrap_or_else(|| panic!("unterminated JavaScript timeout constant {name}"))
+        .unwrap_or_else(|| panic!("unterminated Rust u32 timeout constant {name}"))
         .0
         .trim()
+        .replace('_', "")
         .parse()
-        .unwrap_or_else(|error| panic!("invalid JavaScript timeout constant {name}: {error}"))
+        .unwrap_or_else(|error| panic!("invalid Rust u32 timeout constant {name}: {error}"))
 }
 
 #[test]
@@ -3202,9 +3373,9 @@ fn startup_timeout_hierarchy_is_strict_for_node_and_bridge() {
     let bridge_child = kaspa_gateway_rk_bridge::KGW_BRIDGE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS;
     let bridge_parent =
         integrated_runtime_commands::KGW_BRIDGE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1;
-    let bridge_ui = javascript_timeout_constant(
-        include_str!("../../frontend/src/tabs/kaspa-bridge/kaspa-bridge.js"),
-        "KGW_BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS",
+    let bridge_ui = rust_u32_timeout_constant(
+        include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs"),
+        "BRIDGE_RUNTIME_INVOKE_TIMEOUT_MS",
     );
     assert!(bridge_parent > bridge_child);
     assert!(bridge_ui > bridge_parent);
@@ -3212,9 +3383,9 @@ fn startup_timeout_hierarchy_is_strict_for_node_and_bridge() {
     let node_child = integrated_runtime_commands::KGW_NODE_CHILD_STARTUP_CONTRACT_TIMEOUT_MS_V1;
     let node_parent =
         integrated_runtime_commands::KGW_NODE_PARENT_STARTUP_ATTESTATION_TIMEOUT_MS_V1;
-    let node_ui = javascript_timeout_constant(
-        include_str!("../../frontend/src/tabs/kaspa-node/kaspa-node.js"),
-        "KGW_NODE_RUNTIME_INVOKE_TIMEOUT_MS",
+    let node_ui = rust_u32_timeout_constant(
+        include_str!("../../../../crates/kaspa-gateway-frontend-wasm/src/node_start_trace.rs"),
+        "NODE_RUNTIME_INVOKE_TIMEOUT_MS",
     );
     assert!(node_parent > node_child);
     assert!(node_ui > node_parent);

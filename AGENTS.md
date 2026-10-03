@@ -152,8 +152,11 @@ Validate NEXT ACTION and reuse only source-bound evidence. Continue actual autho
 ## KGW KSSS Consumer Contract
 
 Use .security/ksss/README.md and ADR-0012 for the approved v1.2.0 adoption.
-Run python -B tools/kgw_ksss_gate.py for local consumer validation.
-Use the signed runtime APIs; do not fork the resolver, classifier or knowledge engine.
+Run cargo run --locked -p xtask --features ksss -- ksss check for local consumer validation,
+and cargo test --locked -p xtask --features ksss ksss::tests for rejection contracts.
+The KGW-owned adapter is Rust. Python is permitted only inside the pinned, verified signed
+central KSSS runtime artifact. Use its signed runtime APIs; do not fork, copy, or reimplement
+the resolver, classifier, schema registry, or knowledge engine as KGW-owned policy logic.
 A profile cannot weaken risk/applicability requirements. AI suspicion alone is not
 blocking. Normal consumer evaluation is offline and needs no central checkout.
 Before diagnosis, look up existing knowledge with the actual context and change
@@ -163,7 +166,8 @@ Keep SERVICE_STATUS and LEARNING_STATUS separate. A repaired service is not
 closed learning without durable regression protection.
 Adoption PASS is not application/runtime PASS. Require reviewed, identity-bound
 packaged application evidence for node/bridge lifecycle and release qualification.
-For the current owner-authorized remediation task, use Server only and preserve
-older dirty lanes. Actual native application checks with isolated task data are
-authorized; Sandbox/VM/simulation is prohibited. Commit/checkpoint only to the
-local mirror. No real GitHub push, PR, release or deployment is authorized.
+Use Server for the active migration lane and preserve older dirty lanes.
+This KSSS contract does not itself grant external-action authority; ACTIVE_TASK.md
+and CURRENT_STATE.md own the current authorization boundary. For the active Rust-only
+migration they permit governed GitHub branch/PR/CI/squash integration, while Production,
+DNS, Cloudflare, live-runtime credentials, and unrelated deployment mutation remain excluded.
