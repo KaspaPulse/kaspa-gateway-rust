@@ -63,11 +63,15 @@ const html = {encoded};\n\nexport default html;\n"
     ))
 }
 
+fn normalize_newlines(value: &str) -> String {
+    value.replace("\r\n", "\n").replace('\r', "\n")
+}
+
 fn expected(root: &Path, html_relative: &str) -> Result<String, String> {
     let html_path = root.join(html_relative);
     let html = fs::read_to_string(&html_path)
         .map_err(|error| format!("failed to read {}: {error}", html_path.display()))?;
-    render_module(html_relative, &html)
+    render_module(html_relative, &normalize_newlines(&html))
 }
 
 fn registry_field<'a>(
@@ -221,6 +225,11 @@ fn write(root: &Path) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn newline_normalization_is_platform_independent() {
+        assert_eq!(normalize_newlines("a\r\nb\rc\n"), "a\nb\nc\n");
+    }
 
     #[test]
     fn renderer_escapes_html_for_es_module_safely() {
