@@ -6,6 +6,8 @@ use std::process::Command;
 const SOURCE_DEBT_MANIFEST: &str = "config/owned-language-migration-debt.txt";
 const EXECUTION_DEBT_MANIFEST: &str = "config/non-rust-execution-migration-debt.txt";
 const EXCEPTION_MANIFEST: &str = "config/owned-language-exceptions.txt";
+const FRONTEND_INDEX_HTML: &str = "apps/kaspa-gateway-desktop/frontend/index.html";
+const FRONTEND_MAIN_ADAPTER: &str = "apps/kaspa-gateway-desktop/frontend/main.js";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Mode {
@@ -26,6 +28,7 @@ pub fn run_language_policy(mode: Mode, print_inventory: bool) -> Result<(), Stri
     let execution_debt = load_path_manifest(&root.join(EXECUTION_DEBT_MANIFEST))?;
     let exceptions = load_exceptions(&root.join(EXCEPTION_MANIFEST))?;
     let mut problems = Vec::new();
+    validate_platform_adapter_contracts(&root, &exceptions, &mut problems);
     for path in source_debt.intersection(&execution_debt) {
         problems.push(format!("path appears in both debt manifests: {path}"));
     }
@@ -268,6 +271,81 @@ fn load_exceptions(path: &Path) -> Result<BTreeMap<String, ExceptionEntry>, Stri
         }
     }
     Ok(entries)
+}
+
+fn validate_platform_adapter_contracts(
+    root: &Path,
+    exceptions: &BTreeMap<String, ExceptionEntry>,
+    problems: &mut Vec<String>,
+) {
+    let Some(index_entry) = exceptions.get(FRONTEND_INDEX_HTML) else {
+        return;
+    };
+    if index_entry.category != "PLATFORM_REQUIRED_ADAPTER" {
+        return;
+    }
+
+    if exceptions
+        .get(FRONTEND_MAIN_ADAPTER)
+        .map(|entry| entry.category.as_str())
+        != Some("GENERATED")
+    {
+        problems.push(format!(
+            "{FRONTEND_INDEX_HTML} platform adapter requires {FRONTEND_MAIN_ADAPTER} to remain a GENERATED exception"
+        ));
+    }
+
+    match fs::read_to_string(root.join(FRONTEND_INDEX_HTML)) {
+        Ok(content) => {
+            if let Err(error) = validate_frontend_index_html_bootstrap(&content) {
+                problems.push(format!(
+                    "{FRONTEND_INDEX_HTML} platform adapter contract: {error}"
+                ));
+            }
+        }
+        Err(error) => problems.push(format!(
+            "failed to read {FRONTEND_INDEX_HTML} platform adapter: {error}"
+        )),
+    }
+}
+
+fn validate_frontend_index_html_bootstrap(content: &str) -> Result<(), String> {
+    let lower = content.to_ascii_lowercase();
+    let starts = lower
+        .match_indices("<script")
+        .map(|(index, _)| index)
+        .collect::<Vec<_>>();
+    if starts.len() != 1 {
+        return Err(format!(
+            "requires exactly one script element, found {}",
+            starts.len()
+        ));
+    }
+
+    let script = &lower[starts[0]..];
+    let open_end = script
+        .find('>')
+        .ok_or_else(|| "script opening tag is unterminated".to_owned())?;
+    let close_start = script
+        .find("</script>")
+        .ok_or_else(|| "script closing tag is missing".to_owned())?;
+    if close_start < open_end {
+        return Err("script element is malformed".to_owned());
+    }
+    let opening = &script[..=open_end];
+    if !opening.contains("type=\"module\"") {
+        return Err("sole script must be type=module".to_owned());
+    }
+    if !opening.contains("src=\"./main.js\"") {
+        return Err("sole script must reference ./main.js".to_owned());
+    }
+    if !script[open_end + 1..close_start].trim().is_empty() {
+        return Err("inline script content is forbidden".to_owned());
+    }
+    if script[close_start + "</script>".len()..].contains("<script") {
+        return Err("additional script elements are forbidden".to_owned());
+    }
+    Ok(())
 }
 
 fn exception_category_allows_path(category: &str, source_path: &str) -> bool {
@@ -645,6 +723,34 @@ mod tests {
                 "<section><span>Node status</span><div>node ready</div></section>"
             )
             .is_none()
+        );
+    }
+
+    #[test]
+    fn frontend_index_platform_adapter_accepts_only_generated_main_module_bootstrap() {
+        assert!(
+            validate_frontend_index_html_bootstrap(
+                "<html><body><script type=\"module\" src=\"./main.js\"></script></body></html>"
+            )
+            .is_ok()
+        );
+        assert!(
+            validate_frontend_index_html_bootstrap(
+                "<script type=\"module\" src=\"./other.js\"></script>"
+            )
+            .is_err()
+        );
+        assert!(
+            validate_frontend_index_html_bootstrap(
+                "<script type=\"module\" src=\"./main.js\">alert(1)</script>"
+            )
+            .is_err()
+        );
+        assert!(
+            validate_frontend_index_html_bootstrap(
+                "<script type=\"module\" src=\"./main.js\"></script><script src=\"x.js\"></script>"
+            )
+            .is_err()
         );
     }
 
