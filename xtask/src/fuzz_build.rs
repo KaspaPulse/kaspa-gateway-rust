@@ -19,6 +19,14 @@ fn cargo_fuzz_command(root: &Path) -> Command {
         ])
         .env("RUSTUP_TOOLCHAIN", "nightly")
         .current_dir(root);
+    for (source, target) in [
+        ("KGW_CFL_CFLAGS", "CFLAGS"),
+        ("KGW_CFL_CXXFLAGS", "CXXFLAGS"),
+    ] {
+        if let Some(value) = env::var_os(source).filter(|value| !value.is_empty()) {
+            command.env(target, value);
+        }
+    }
     command
 }
 
