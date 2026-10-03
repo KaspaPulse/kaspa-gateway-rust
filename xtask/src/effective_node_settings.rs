@@ -7,6 +7,10 @@ const BRIDGE_PATH: &str =
     "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js";
 const BRIDGE_OWNER_PATH: &str =
     "crates/kaspa-gateway-frontend-wasm/src/bridge_instance_settings.rs";
+const BRIDGE_TAB_OWNER_PATH: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_tab.rs";
+const BRIDGE_RUNTIME_CORE_PATH: &str =
+    "crates/kaspa-gateway-frontend-wasm/src/bridge_runtime_core.rs";
+const BRIDGE_RENDER_PATH: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_render.rs";
 const IPC_PATH: &str = "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs";
 const WORKER_PATH: &str = "apps/kaspa-gateway-desktop/src-tauri/src/lib.rs";
 const OWNER_PATH: &str = "crates/kaspa-gateway-rk-node/src/kgw_real_owner_runtime.rs";
@@ -73,6 +77,9 @@ struct Sources {
     node_owner: String,
     bridge: String,
     bridge_owner: String,
+    bridge_tab_owner: String,
+    bridge_runtime_core: String,
+    bridge_render: String,
     ipc: String,
     worker: String,
     owner: String,
@@ -85,6 +92,9 @@ pub fn run(root: &Path) -> Result<String, String> {
         node_owner: read(root, NODE_OWNER_PATH)?,
         bridge: read(root, BRIDGE_PATH)?,
         bridge_owner: read(root, BRIDGE_OWNER_PATH)?,
+        bridge_tab_owner: read(root, BRIDGE_TAB_OWNER_PATH)?,
+        bridge_runtime_core: read(root, BRIDGE_RUNTIME_CORE_PATH)?,
+        bridge_render: read(root, BRIDGE_RENDER_PATH)?,
         ipc: read(root, IPC_PATH)?,
         worker: read(root, WORKER_PATH)?,
         owner: read(root, OWNER_PATH)?,
@@ -163,9 +173,8 @@ fn validate(s: &Sources) -> Result<(), String> {
     }
 
     for needle in [
-        "bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings",
-        "function kgwBridgeEffectiveInprocessNodeSettings(net)",
-        "return wasmBridgeEffectiveInprocessNodeSettings(String(net || \"\"));",
+        "bridgeEffectiveInprocessNodeSettingsOwned,",
+        "export { bridgeEffectiveInprocessNodeSettingsOwned as kgwBridgeEffectiveInprocessNodeSettings };",
     ] {
         require(&s.bridge, needle, "Bridge Rust/WASM adapter")?;
     }
@@ -176,7 +185,15 @@ fn validate(s: &Sources) -> Result<(), String> {
         "Devnet and simnet cannot override the selected desktop network tab.",
         "In-process --override-params-file is unsupported because the desktop owns the selected network identity.",
     ] {
-        require(&s.bridge_owner, needle, "Bridge Rust owner")?;
+        require(&s.bridge_owner, needle, "Bridge settings Rust owner")?;
+    }
+    for needle in [
+        "#[wasm_bindgen(js_name = bridgeEffectiveInprocessNodeSettingsOwned)]",
+        "pub fn bridge_effective_inprocess_node_settings_owned",
+        "bridge_effective_inprocess_node_settings_checked(",
+        "bridge_instances(),",
+    ] {
+        require(&s.bridge_tab_owner, needle, "Bridge tab Rust owner")?;
     }
     for field in SCHEMA_FIELDS {
         require(&s.node_owner, field, "Node Rust typed payload")?;
@@ -192,24 +209,17 @@ fn validate(s: &Sources) -> Result<(), String> {
         forbid(&s.bridge, needle, "Bridge Rust/WASM adapter")?;
     }
 
-    for (source, needle, label) in [
-        (
-            &s.bridge,
-            "effectiveNodeSettings: kgwBridgeEffectiveInprocessNodeSettings(net)",
-            "Bridge",
-        ),
-        (
-            &s.bridge,
-            "Restart required to apply changed effective settings",
-            "Bridge",
-        ),
-        (
-            &s.bridge,
-            r#"id(net.key, "inprocessDisableUpnp")}" type="checkbox" checked"#,
-            "Bridge",
-        ),
+    require(
+        &s.bridge_runtime_core,
+        "Restart required to apply changed effective settings",
+        "Bridge runtime Rust owner",
+    )?;
+    for needle in [
+        "inprocess_check(",
+        "\"inprocessDisableUpnp\"",
+        "\"--disable-upnp\"",
     ] {
-        require(source, needle, label)?;
+        require(&s.bridge_render, needle, "Bridge render Rust owner")?;
     }
 
     for (rust_field, frontend_field, legacy_field) in [
@@ -271,15 +281,9 @@ render_check_card(net, \"disableUpnp\", \"--disable-upnp\", true, false)\n\
 render_check_card(net, \"rpcBorshEnabled\", \"--rpclisten-borsh\", false, false)\n\
 render_check_card(net, \"rpcJsonEnabled\", \"--rpclisten-json\", false, false)"
         );
-        let bridge =
-            "bridgeEffectiveInprocessNodeSettings as wasmBridgeEffectiveInprocessNodeSettings\n\
-function kgwBridgeEffectiveInprocessNodeSettings(net)\n\
-return wasmBridgeEffectiveInprocessNodeSettings(String(net || \"\"));\n\
-effectiveNodeSettings: kgwBridgeEffectiveInprocessNodeSettings(net)\n\
-Restart required to apply changed effective settings\n\
---configfile is unsupported\nIn-process --override-params-file is unsupported\n\
-id(net.key, \"inprocessDisableUpnp\")}\" type=\"checkbox\" checked"
-                .to_owned();
+        let bridge = "bridgeEffectiveInprocessNodeSettingsOwned,\n\
+export { bridgeEffectiveInprocessNodeSettingsOwned as kgwBridgeEffectiveInprocessNodeSettings };"
+            .to_owned();
         let bridge_owner = format!(
             "#[wasm_bindgen(js_name = bridgeEffectiveInprocessNodeSettings)]\n\
 fn effective_inprocess_node_settings_impl {common}\n\
@@ -287,6 +291,15 @@ In-process --configfile is unsupported because the desktop owns network and data
 Devnet and simnet cannot override the selected desktop network tab.\n\
 In-process --override-params-file is unsupported because the desktop owns the selected network identity."
         );
+        let bridge_tab_owner =
+            "#[wasm_bindgen(js_name = bridgeEffectiveInprocessNodeSettingsOwned)]\n\
+pub fn bridge_effective_inprocess_node_settings_owned\n\
+bridge_effective_inprocess_node_settings_checked(\n\
+bridge_instances(),"
+                .to_owned();
+        let bridge_runtime_core = "Restart required to apply changed effective settings".to_owned();
+        let bridge_render =
+            "inprocess_check( \"inprocessDisableUpnp\" \"--disable-upnp\"".to_owned();
         let schema = [
             ("rocksdb_preset", "rocksDbPreset", "rocksdbPreset"),
             ("rocksdb_cache_size", "rocksDbCacheSize", "rocksdbCacheSize"),
@@ -303,6 +316,9 @@ In-process --override-params-file is unsupported because the desktop owns the se
             node_owner,
             bridge,
             bridge_owner,
+            bridge_tab_owner,
+            bridge_runtime_core,
+            bridge_render,
             ipc: "Option<kaspa_gateway_rk_node::EffectiveNodeSettings> --effective-node-settings-path kgw_worker_atomic_write_json_v1(&effective_node_settings_path".to_owned(),
             worker: "serde_json::from_slice::<kaspa_gateway_rk_node::EffectiveNodeSettings> apply_effective_node_settings(effective_node_settings)".to_owned(),
             owner: format!("fn build_mainline_args fn build_tn13_args {}", OWNER_FIELDS.join(" ")),
@@ -353,7 +369,7 @@ In-process --override-params-file is unsupported because the desktop owns the se
             ),
             (
                 "bridge",
-                "effectiveNodeSettings: kgwBridgeEffectiveInprocessNodeSettings(net)",
+                "export { bridgeEffectiveInprocessNodeSettingsOwned as kgwBridgeEffectiveInprocessNodeSettings };",
             ),
             (
                 "bridge_owner",
