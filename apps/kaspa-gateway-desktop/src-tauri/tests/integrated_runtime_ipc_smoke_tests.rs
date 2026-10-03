@@ -13,6 +13,17 @@ use integrated_runtime_commands::{
 };
 use std::sync::{Mutex, OnceLock};
 
+fn isolated_node_listener() -> String {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0")
+        .expect("test-only node P2P listener port must be reservable");
+    let address = listener
+        .local_addr()
+        .expect("test-only node P2P listener address must be readable")
+        .to_string();
+    drop(listener);
+    address
+}
+
 fn isolated_bridge_listener_pair() -> (String, String) {
     let stratum = std::net::TcpListener::bind("127.0.0.1:0")
         .expect("test-only Stratum listener port must be reservable");
@@ -55,7 +66,7 @@ fn kgw_kgw_apply_node_settings_v1(
         outbound_target: 0,
         inbound_limit: 0,
         disable_dns_seeding: true,
-        p2p_listen: Some("127.0.0.1:26111".to_string()),
+        p2p_listen: Some(isolated_node_listener()),
         ..Default::default()
     };
     let effective_bridge_settings = (runtime_role.as_deref() == Some("bridge")).then(|| {
@@ -655,7 +666,7 @@ fn ready_worker_publishes_and_normal_stop_removes_exact_owner_lease() {
         "network=mainnet",
         "appdir=",
         "rpc=127.0.0.1:16110",
-        "p2p=127.0.0.1:26111",
+        "p2p=127.0.0.1:",
         "stratum=0.0.0.0:5555",
     ] {
         assert!(

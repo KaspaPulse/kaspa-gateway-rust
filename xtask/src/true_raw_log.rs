@@ -14,7 +14,6 @@ const BRIDGE_RAW_LOG_RS: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_r
 const BRIDGE_START_TRACE_RS: &str = "crates/kaspa-gateway-frontend-wasm/src/bridge_start_trace.rs";
 const RUNTIME_RS: &str = "apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs";
 const ZERO_TOUCH_E2E: &str = "xtask/src/zero_touch_e2e.rs";
-const ZERO_TOUCH_EVIDENCE: &str = "tools/kgw_zero_touch_evidence.ps1";
 const FULL_LOCAL_GATE: &str = "xtask/src/full_local_gate.rs";
 const E2E_WINDOWS_HELPER: &str = "e2e/helpers/windows.mjs";
 
@@ -30,7 +29,6 @@ struct Sources {
     clipboard_capture: String,
     live_matrix: String,
     zero_touch: String,
-    zero_touch_evidence: String,
     full_local_gate: String,
     e2e_windows_helper: String,
 }
@@ -53,7 +51,6 @@ pub fn run(root: &Path) -> Result<String, String> {
     evaluate_static(&sources, &mut ctx.failures);
 
     run_clipboard_self_test(root, &mut ctx.failures);
-    run_powershell_parser_checks(root, &mut ctx.failures);
 
     run_checked(
         root,
@@ -171,7 +168,6 @@ fn load_sources(root: &Path) -> Result<Sources, String> {
         clipboard_capture: read(root, CLIPBOARD_CAPTURE)?,
         live_matrix: read(root, LIVE_MATRIX)?,
         zero_touch: read(root, ZERO_TOUCH_E2E)?,
-        zero_touch_evidence: read(root, ZERO_TOUCH_EVIDENCE)?,
         full_local_gate: read(root, FULL_LOCAL_GATE)?,
         e2e_windows_helper: read(root, E2E_WINDOWS_HELPER)?,
     })
@@ -490,30 +486,17 @@ fn evaluate_static(s: &Sources, failures: &mut Vec<String>) {
         require(failures, &s.zero_touch, needle, message);
     }
 
-    for (needle, message) in [
-        (
-            "Write-KgwZeroTouchJsonFile",
-            "Zero-touch evidence helper must provide the shared strict JSON writer.",
-        ),
-        (
-            "Write-KgwZeroTouchEmergencyJsonFile",
-            "Zero-touch evidence helper must provide the emergency fallback writer.",
-        ),
-    ] {
-        require(failures, &s.zero_touch_evidence, needle, message);
-    }
-
     require(
         failures,
         &s.full_local_gate,
         "zero_touch_e2e::run",
         "Full-local integration must invoke the Rust zero-touch runner.",
     );
-    require(
+    forbid(
         failures,
         &s.full_local_gate,
-        "powershell_parser_checks",
-        "Full local gate must validate remaining PowerShell helpers through Rust-owned orchestration.",
+        "kgw_zero_touch_evidence.ps1",
+        "Full local gate must not depend on the retired PowerShell evidence helper.",
     );
     require(
         failures,
@@ -680,38 +663,12 @@ fn run_cargo_checked(root: &Path, label: &str, args: &[&str], ctx: &mut GateCont
         .push(format!("{label} failed with exit code {}", first.code));
 }
 
-fn pwsh_command(root: &Path, script: &str) -> Result<ProcessResult, String> {
-    process_output(
-        root,
-        "pwsh",
-        &["-NoLogo", "-NoProfile", "-Command", script],
-        None,
-    )
-}
-
 fn run_clipboard_self_test(_root: &Path, failures: &mut Vec<String>) {
     match crate::raw_log_clipboard_capture::self_test() {
         Ok(message) => println!("{message}"),
         Err(error) => failures.push(format!(
             "Event-time clipboard capture deterministic self-test failed: {error}"
         )),
-    }
-}
-
-fn run_powershell_parser_checks(root: &Path, failures: &mut Vec<String>) {
-    let (relative, label) = (ZERO_TOUCH_EVIDENCE, "Zero-touch evidence helper");
-    let escaped = relative.replace('\'', "''");
-    let script = format!(
-        r#"$errors=$null; [void][System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path -LiteralPath '{escaped}').Path,[ref]$null,[ref]$errors); if($errors -and $errors.Count -gt 0){{foreach($e in $errors){{Write-Error ('{label} syntax error: ' + $e.Message)}}; exit 1}}"#
-    );
-    match pwsh_command(root, &script) {
-        Ok(result) if result.code == 0 => {}
-        Ok(result) => failures.push(format!(
-            "{label} syntax check failed with exit code {}: {}",
-            result.code,
-            result.text.trim()
-        )),
-        Err(error) => failures.push(format!("{label} syntax check failed to launch: {error}")),
     }
 }
 
@@ -767,14 +724,8 @@ mod tests {
             ]
             .join("\n"),
             zero_touch: ["required_pwsh", "KGW_REQUIRED_PWSH_PATH"].join("\n"),
-            zero_touch_evidence: [
-                "Write-KgwZeroTouchJsonFile",
-                "Write-KgwZeroTouchEmergencyJsonFile",
-            ]
-            .join("\n"),
             full_local_gate: [
                 "zero_touch_e2e::run",
-                "powershell_parser_checks",
                 "true-raw-log-gate",
                 "zero-touch-result-writer-tests",
             ]

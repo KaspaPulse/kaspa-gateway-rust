@@ -43,6 +43,27 @@ fn recovery_file_strings(value: &Value) -> Vec<String> {
         sequence(value).into_iter().map(text).collect()
     }
 }
+fn resolve_executable(repository: &Path, artifact: &Path, recorded: &str) -> PathBuf {
+    let recorded = if recorded.trim().is_empty() {
+        repository
+            .join("target")
+            .join("kgw-zero-touch-e2e")
+            .join("debug")
+            .join("kaspa-gateway-desktop.exe")
+    } else {
+        PathBuf::from(recorded)
+    };
+    if recorded.is_file() {
+        return recorded;
+    }
+    let exported = artifact.join("export").join("kaspa-gateway-desktop.exe");
+    if exported.is_file() {
+        exported
+    } else {
+        recorded
+    }
+}
+
 pub fn check(repository: &Path, artifact: &Path) -> EvidenceResult<Value> {
     let result = read_json(&artifact.join("zero-touch-result.json"))?;
     let mut errors = Vec::<String>::new();
@@ -89,15 +110,7 @@ pub fn check(repository: &Path, artifact: &Path) -> EvidenceResult<Value> {
             &["app_binary"],
         );
     }
-    let binary = if executable.trim().is_empty() {
-        repository
-            .join("target")
-            .join("kgw-zero-touch-e2e")
-            .join("debug")
-            .join("kaspa-gateway-desktop.exe")
-    } else {
-        PathBuf::from(executable)
-    };
+    let binary = resolve_executable(repository, artifact, &executable);
     if !binary.is_file() {
         errors.push(format!(
             "E2E desktop executable is missing: {}",
@@ -234,6 +247,28 @@ mod tests {
         assert_eq!(records[0]["pid"].as_i64(), Some(9007199254740993));
         assert_eq!(records[0]["runtime_role"], "node");
     }
+    #[test]
+    fn portable_export_is_used_only_when_recorded_binary_is_missing() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let artifact = temp.path().join("artifact");
+        let export = artifact.join("export");
+        fs::create_dir_all(&export).expect("export dir");
+        let exported = export.join("kaspa-gateway-desktop.exe");
+        fs::write(&exported, b"exported").expect("exported binary");
+        let missing = temp.path().join("missing.exe");
+        assert_eq!(
+            resolve_executable(temp.path(), &artifact, &missing.to_string_lossy()),
+            exported
+        );
+
+        let recorded = temp.path().join("recorded.exe");
+        fs::write(&recorded, b"recorded").expect("recorded binary");
+        assert_eq!(
+            resolve_executable(temp.path(), &artifact, &recorded.to_string_lossy()),
+            recorded
+        );
+    }
+
     #[test]
     fn hash_matching_requires_every_identity_field() {
         let expected = json!({"stage":"Mainnet Node","expected_sha256":"ab","runtime_role":"node"});

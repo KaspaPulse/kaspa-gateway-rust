@@ -26,6 +26,11 @@ use windows_sys::Win32::System::Memory::{
 const CF_TEXT: u32 = 1;
 const CF_OEMTEXT: u32 = 7;
 const CF_UNICODETEXT: u32 = 13;
+const CF_LOCALE: u32 = 16;
+
+fn is_text_compatible_clipboard_format(format: u32) -> bool {
+    matches!(format, CF_TEXT | CF_OEMTEXT | CF_UNICODETEXT | CF_LOCALE)
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct Options {
@@ -213,7 +218,7 @@ pub(crate) fn clipboard_text_write_preflight() -> Result<Value, String> {
     let non_text: Vec<u32> = formats
         .iter()
         .copied()
-        .filter(|format| !matches!(*format, CF_TEXT | CF_OEMTEXT | CF_UNICODETEXT))
+        .filter(|format| !is_text_compatible_clipboard_format(*format))
         .collect();
     let safe = non_text.is_empty();
     Ok(json!({
@@ -343,6 +348,16 @@ fn write_clipboard_text(text: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn text_compatible_formats_include_windows_locale_metadata() {
+        for format in [CF_TEXT, CF_OEMTEXT, CF_UNICODETEXT, CF_LOCALE] {
+            assert!(is_text_compatible_clipboard_format(format));
+        }
+        assert!(!is_text_compatible_clipboard_format(2));
+        assert!(!is_text_compatible_clipboard_format(15));
+        assert!(!is_text_compatible_clipboard_format(49_301));
+    }
 
     #[test]
     fn metadata_matches_powershell_utf16_and_line_contract() {

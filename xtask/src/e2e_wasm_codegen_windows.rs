@@ -10,12 +10,15 @@ import { promisify } from "node:util";
 import { repository, writeJson } from "./paths.mjs";
 
 const execFileAsync = promisify(execFile);
+const directXtask = String(process.env.KGW_XTASK_EXE || "").trim();
 
 async function runRustXtask(args = [], options = {}) {
   try {
-    const result = await execFileAsync("cargo", [
-      "run", "--quiet", "--locked", "-p", "xtask", "--", ...args,
-    ], {
+    const command = directXtask || "cargo";
+    const commandArgs = directXtask
+      ? args
+      : ["run", "--quiet", "--locked", "-p", "xtask", "--", ...args];
+    const result = await execFileAsync(command, commandArgs, {
       windowsHide: true,
       maxBuffer: options.maxBuffer || 16 * 1024 * 1024,
       timeout: options.timeout || 60000,
@@ -205,6 +208,8 @@ mod tests {
         assert!(source.contains(r#""e2e-owned-process", "kill""#));
         assert!(source.contains(r#""e2e-owned-process", "wait""#));
         assert!(source.contains(r#""e2e-windows-evidence""#));
+        assert!(source.contains("KGW_XTASK_EXE"));
+        assert!(source.contains(r#"const command = directXtask || "cargo";"#));
         assert!(!source.contains(".ps1"));
         assert!(!source.contains("Set-Clipboard"));
     }

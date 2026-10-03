@@ -81,6 +81,13 @@ fn run_checked(root: &Path, label: &str, program: &str, args: &[&str]) -> Result
     }
 }
 
+fn run_self_checked(root: &Path, label: &str, args: &[&str]) -> Result<(), String> {
+    let current_exe = std::env::current_exe()
+        .map_err(|error| format!("{label}: failed to resolve current xtask executable: {error}"))?;
+    let program = current_exe.to_string_lossy().into_owned();
+    run_checked(root, label, &program, args)
+}
+
 fn emit_output(output: &Output) {
     if !output.stdout.is_empty() {
         print!("{}", String::from_utf8_lossy(&output.stdout));
@@ -107,30 +114,6 @@ fn path_dirty(root: &Path, relative: &str) -> Result<bool, String> {
     Ok(!String::from_utf8_lossy(&output.stdout).trim().is_empty())
 }
 
-fn powershell_parser_checks(root: &Path) -> Result<(), String> {
-    let script = r#"$e=$null; [void][System.Management.Automation.Language.Parser]::ParseFile($args[0],[ref]$null,[ref]$e); if($e -and $e.Count){$e | ForEach-Object { [Console]::Error.WriteLine($_.Message) }; exit 1}"#;
-    let relative = "tools/kgw_zero_touch_evidence.ps1";
-    let absolute = root.join(relative);
-    if !absolute.is_file() {
-        return Err(format!(
-            "Missing PowerShell script for parser check: {relative}"
-        ));
-    }
-    let args = vec![
-        "-NoLogo".to_owned(),
-        "-NoProfile".to_owned(),
-        "-Command".to_owned(),
-        script.to_owned(),
-        absolute.to_string_lossy().into_owned(),
-    ];
-    let output = command_output(root, "pwsh", &args)?;
-    emit_output(&output);
-    if !output.status.success() {
-        return Err(format!("PowerShell parser check failed for {relative}"));
-    }
-    println!("PowerShell parser PASS: {relative}");
-    Ok(())
-}
 fn validate_reused_e2e_artifact(root: &Path, artifact: &Path) -> Result<(), String> {
     let artifact = artifact
         .canonicalize()
@@ -243,8 +226,37 @@ fn run_live_zero_touch(root: &Path) -> Result<(), String> {
         println!("{message}");
     })
 }
+
+const E2E_NODE_CHECK_PATHS: &[&str] = &[
+    "wdio.conf.mjs",
+    "specs/zero-touch-live-matrix.e2e.js",
+    "helpers/assertions.mjs",
+    "helpers/paths.mjs",
+    "helpers/tauri-app.mjs",
+    "helpers/windows.mjs",
+    "helpers/runtime-ports.mjs",
+];
+
+fn run_e2e_workspace_checks(root: &Path) -> Result<(), String> {
+    let e2e_root = root.join("e2e");
+    for relative in E2E_NODE_CHECK_PATHS {
+        run_checked(
+            &e2e_root,
+            &format!("E2E Node syntax {relative}"),
+            "node",
+            &["--check", relative],
+        )?;
+    }
+    run_self_checked(
+        root,
+        "E2E deepmerge security smoke",
+        &["deepmerge-security-smoke"],
+    )?;
+    run_self_checked(root, "E2E static smokes", &["e2e-static-smokes"])?;
+    Ok(())
+}
+
 fn run(root: &Path, reuse: Option<&Path>, commit_on_success: bool) -> Result<String, String> {
-    powershell_parser_checks(root)?;
     let schemas_dirty = path_dirty(root, "apps/kaspa-gateway-desktop/src-tauri/gen/schemas")?;
 
     run_checked(
@@ -315,44 +327,18 @@ fn run(root: &Path, reuse: Option<&Path>, commit_on_success: bool) -> Result<Str
             "apps/kaspa-gateway-desktop/frontend/src/tabs/kaspa-bridge/kaspa-bridge.js",
         ],
     )?;
-    run_checked(
+    run_self_checked(
         root,
         "True raw log frontend Rust owner",
-        "cargo",
-        &[
-            "run",
-            "--locked",
-            "-p",
-            "xtask",
-            "--",
-            "true-raw-log-frontend-regressions",
-        ],
+        &["true-raw-log-frontend-regressions"],
     )?;
-    run_checked(
-        &root.join("e2e"),
-        "E2E workspace checks",
-        "npm",
-        &["run", "check"],
-    )?;
-    run_checked(
+    run_e2e_workspace_checks(root)?;
+    run_self_checked(
         root,
         "Zero-touch result writer tests",
-        "cargo",
-        &[
-            "run",
-            "--locked",
-            "-p",
-            "xtask",
-            "--",
-            "zero-touch-result-writer-tests",
-        ],
+        &["zero-touch-result-writer-tests"],
     )?;
-    run_checked(
-        root,
-        "True raw log gate",
-        "cargo",
-        &["run", "--locked", "-p", "xtask", "--", "true-raw-log-gate"],
-    )?;
+    run_self_checked(root, "True raw log gate", &["true-raw-log-gate"])?;
 
     if let Some(artifact) = reuse {
         validate_reused_e2e_artifact(root, artifact)?;
@@ -395,7 +381,6 @@ fn commit_scoped_changes(root: &Path) -> Result<(), String> {
         "xtask/src/true_raw_log.rs",
         "xtask/src/true_raw_log_frontend.rs",
         "xtask/src/main.rs",
-        "tools/kgw_zero_touch_evidence.ps1",
         "e2e/package.json",
         "e2e/package-lock.json",
         "e2e/wdio.conf.mjs",

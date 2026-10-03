@@ -12,6 +12,19 @@ use time::format_description::well_known::Rfc3339;
 const E2E_CONFIG: &str = "apps/kaspa-gateway-desktop/src-tauri/tauri.e2e.conf.json";
 const E2E_LOCK: &str = "e2e/package-lock.json";
 const E2E_DIR: &str = "e2e";
+const GENERATED_SCHEMAS: &str = "apps/kaspa-gateway-desktop/src-tauri/gen/schemas";
+const E2E_JS_SYNTAX_CHECKS: [(&str, &str); 7] = [
+    ("wdio.conf.mjs", "node-check-wdio-conf.log"),
+    (
+        "specs/zero-touch-live-matrix.e2e.js",
+        "node-check-zero-touch-matrix.log",
+    ),
+    ("helpers/assertions.mjs", "node-check-assertions.log"),
+    ("helpers/paths.mjs", "node-check-paths.log"),
+    ("helpers/tauri-app.mjs", "node-check-tauri-app.log"),
+    ("helpers/windows.mjs", "node-check-windows.log"),
+    ("helpers/runtime-ports.mjs", "node-check-runtime-ports.log"),
+];
 
 #[derive(Debug, Clone)]
 struct OwnedProcess {
@@ -64,8 +77,23 @@ impl<'a> StageContext<'a> {
         log_name: &str,
         receipt_label: &str,
     ) -> Result<(), String> {
+        self.run_with_extra_env(stage, program, args, cwd, (log_name, receipt_label), &[])
+    }
+
+    fn run_with_extra_env(
+        &mut self,
+        stage: &str,
+        program: &str,
+        args: &[&str],
+        cwd: &Path,
+        receipt: (&str, &str),
+        extra_envs: &[(OsString, OsString)],
+    ) -> Result<(), String> {
+        let (log_name, receipt_label) = receipt;
         let log = self.artifact_root.join(log_name);
-        let code = run_logged(program, args, cwd, &log, self.envs)?;
+        let mut envs = self.envs.to_vec();
+        envs.extend(extra_envs.iter().cloned());
+        let code = run_logged(program, args, cwd, &log, &envs)?;
         self.receipts.push(CommandReceipt {
             label: receipt_label.to_owned(),
             status: if code == 0 { "passed" } else { "failed" }.to_owned(),
@@ -78,6 +106,92 @@ impl<'a> StageContext<'a> {
             Err(format!("{stage} failed with exit code {code}"))
         }
     }
+
+    fn run_wdio_fail_closed(
+        &mut self,
+        stage: &str,
+        program: &str,
+        args: &[&str],
+        cwd: &Path,
+        receipt: (&str, &str),
+        extra_envs: &[(OsString, OsString)],
+    ) -> Result<(), String> {
+        let (log_name, receipt_label) = receipt;
+        let log = self.artifact_root.join(log_name);
+        let mut envs = self.envs.to_vec();
+        envs.extend(extra_envs.iter().cloned());
+        let code = run_logged(program, args, cwd, &log, &envs)?;
+        let accepted_teardown_race =
+            code == 1 && wdio_post_success_teardown_race(self.artifact_root, &log)?;
+        self.receipts.push(CommandReceipt {
+            label: receipt_label.to_owned(),
+            status: if code == 0 {
+                "passed".to_owned()
+            } else if accepted_teardown_race {
+                "passed-post-success-teardown-race".to_owned()
+            } else {
+                "failed".to_owned()
+            },
+            exit_code: code,
+            log: log_name.to_owned(),
+        });
+        if code == 0 || accepted_teardown_race {
+            Ok(())
+        } else {
+            Err(format!("{stage} failed with exit code {code}"))
+        }
+    }
+}
+
+fn wdio_post_success_teardown_race(artifact_root: &Path, log_path: &Path) -> Result<bool, String> {
+    let log =
+        fs::read_to_string(log_path).map_err(|e| format!("read {}: {e}", log_path.display()))?;
+    let exact_signature = log.contains("Error [ERR_STREAM_WRITE_AFTER_END]: write after end")
+        && log.contains("@wdio/native-core/dist/esm/index.js")
+        && log.contains("LogWriter.write")
+        && log.contains("@wdio/tauri-service/dist/esm/index.js")
+        && log.contains("forwardLog");
+    if !exact_signature {
+        return Ok(false);
+    }
+
+    let report_path = artifact_root.join("json").join("wdio-0-0.json");
+    let report_text = fs::read_to_string(&report_path)
+        .map_err(|e| format!("read {}: {e}", report_path.display()))?;
+    let report: Value = serde_json::from_str(&report_text)
+        .map_err(|e| format!("parse {}: {e}", report_path.display()))?;
+    Ok(wdio_report_is_exact_full_pass(&report))
+}
+
+fn wdio_report_is_exact_full_pass(report: &Value) -> bool {
+    let state = match report.get("state") {
+        Some(value) => value,
+        None => return false,
+    };
+    if state.get("passed").and_then(Value::as_u64) != Some(5)
+        || state.get("failed").and_then(Value::as_u64) != Some(0)
+        || state.get("skipped").and_then(Value::as_u64) != Some(0)
+    {
+        return false;
+    }
+
+    let suites = match report.get("suites").and_then(Value::as_array) {
+        Some(value) if value.len() == 1 => value,
+        _ => return false,
+    };
+    let tests = match suites[0].get("tests").and_then(Value::as_array) {
+        Some(value) if value.len() == 5 => value,
+        _ => return false,
+    };
+    let hooks = match suites[0].get("hooks").and_then(Value::as_array) {
+        Some(value) => value,
+        None => return false,
+    };
+
+    tests
+        .iter()
+        .chain(hooks.iter())
+        .all(|entry| entry.get("state").and_then(Value::as_str) == Some("passed"))
 }
 
 struct NativeResultInput<'a> {
@@ -95,6 +209,44 @@ pub fn run_cli(args: &mut impl Iterator<Item = String>, root: &Path) -> Result<S
         );
     }
     run(root)
+}
+
+fn path_dirty(root: &Path, relative: &str) -> Result<bool, String> {
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["status", "--porcelain", "--", relative])
+        .output()
+        .map_err(|e| format!("git status {relative}: {e}"))?;
+    if !output.status.success() {
+        return Err(format!("git status failed for {relative}"));
+    }
+    Ok(!output.stdout.is_empty())
+}
+
+fn restore_generated_schemas_if_newly_dirty(
+    root: &Path,
+    initially_dirty: bool,
+) -> Result<(), String> {
+    if initially_dirty || !path_dirty(root, GENERATED_SCHEMAS)? {
+        return Ok(());
+    }
+    let output = Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(["restore", "--worktree", "--", GENERATED_SCHEMAS])
+        .output()
+        .map_err(|e| format!("restore generated Tauri schemas: {e}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "restore generated Tauri schemas failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    if path_dirty(root, GENERATED_SCHEMAS)? {
+        return Err("generated Tauri schemas remained dirty after restore".to_owned());
+    }
+    Ok(())
 }
 
 pub(crate) fn run(root: &Path) -> Result<String, String> {
@@ -116,6 +268,7 @@ pub(crate) fn run(root: &Path) -> Result<String, String> {
         ));
     }
 
+    let schemas_dirty = path_dirty(&root, GENERATED_SCHEMAS)?;
     let pwsh = required_pwsh()?;
     let started_at = now()?;
     let run_id = std::env::var("KGW_ZERO_TOUCH_RUN_ID").unwrap_or_else(|_| {
@@ -173,6 +326,21 @@ pub(crate) fn run(root: &Path) -> Result<String, String> {
     save_snapshot(&root, &artifact_root, "pre-run")?;
     stop_owned_tree(&root, &artifact_root, "pre-run-cleanup")?;
 
+    let nested_cargo_target = target_dir.join("nested-xtask");
+    let current_xtask_program = std::env::current_exe()
+        .map_err(|error| format!("resolve current xtask executable: {error}"))?
+        .to_string_lossy()
+        .into_owned();
+    let nested_cargo_env = [
+        (
+            OsString::from("CARGO_TARGET_DIR"),
+            nested_cargo_target.as_os_str().to_os_string(),
+        ),
+        (
+            OsString::from("KGW_XTASK_EXE"),
+            OsString::from(&current_xtask_program),
+        ),
+    ];
     let mut stages = StageContext::new(&artifact_root, &envs);
     let mut exit_code = 0_i32;
     let mut failed_stage: Option<String> = None;
@@ -185,20 +353,39 @@ pub(crate) fn run(root: &Path) -> Result<String, String> {
         } else {
             stages.run(
                 "Install locked E2E dependencies",
-                "npm",
+                if cfg!(windows) { "npm.cmd" } else { "npm" },
                 &["ci"],
                 &e2e_dir,
                 "npm-ci.log",
                 "npm ci",
             )?;
         }
+        for (relative, log_name) in E2E_JS_SYNTAX_CHECKS {
+            let receipt_label = format!("node --check {relative}");
+            stages.run(
+                "E2E JavaScript syntax checks",
+                "node",
+                &["--check", relative],
+                &e2e_dir,
+                log_name,
+                &receipt_label,
+            )?;
+        }
         stages.run(
-            "E2E JavaScript syntax checks",
-            "npm",
-            &["run", "check"],
-            &e2e_dir,
-            "npm-run-check.log",
-            "npm run check",
+            "Deepmerge security smoke",
+            &current_xtask_program,
+            &["deepmerge-security-smoke"],
+            &root,
+            "deepmerge-security-smoke.log",
+            "xtask deepmerge-security-smoke",
+        )?;
+        stages.run(
+            "E2E static smokes",
+            &current_xtask_program,
+            &["e2e-static-smokes"],
+            &root,
+            "e2e-static-smokes.log",
+            "xtask e2e-static-smokes",
         )?;
         stages.run(
             "Build desktop E2E binary once",
@@ -223,13 +410,13 @@ pub(crate) fn run(root: &Path) -> Result<String, String> {
                 app_binary.display()
             ));
         }
-        stages.run(
+        stages.run_wdio_fail_closed(
             "WebdriverIO zero-touch live matrix",
-            "npm",
+            if cfg!(windows) { "npm.cmd" } else { "npm" },
             &["run", "e2e"],
             &e2e_dir,
-            "wdio-run.log",
-            "npm run e2e",
+            ("wdio-run.log", "npm run e2e"),
+            &nested_cargo_env,
         )?;
         evidence_summary(&root, &artifact_root, &envs)
     })();
@@ -283,6 +470,8 @@ pub(crate) fn run(root: &Path) -> Result<String, String> {
             .map(str::to_owned)
             .or_else(|| Some("Zero-touch evidence validation".to_owned()));
     }
+
+    restore_generated_schemas_if_newly_dirty(&root, schemas_dirty)?;
 
     let result_input = NativeResultInput {
         started_at: &started_at,
@@ -764,6 +953,85 @@ mod tests {
     }
 
     #[test]
+    fn wdio_full_pass_predicate_is_fail_closed() {
+        let passing = json!({
+            "state": {"passed": 5, "failed": 0, "skipped": 0},
+            "suites": [{
+                "tests": [
+                    {"state": "passed"},
+                    {"state": "passed"},
+                    {"state": "passed"},
+                    {"state": "passed"},
+                    {"state": "passed"}
+                ],
+                "hooks": [
+                    {"state": "passed"},
+                    {"state": "passed"}
+                ]
+            }]
+        });
+        assert!(wdio_report_is_exact_full_pass(&passing));
+
+        let mut failed = passing.clone();
+        failed["state"]["failed"] = json!(1);
+        assert!(!wdio_report_is_exact_full_pass(&failed));
+
+        let mut skipped = passing.clone();
+        skipped["state"]["skipped"] = json!(1);
+        assert!(!wdio_report_is_exact_full_pass(&skipped));
+
+        let mut bad_hook = passing.clone();
+        bad_hook["suites"][0]["hooks"][1]["state"] = json!("failed");
+        assert!(!wdio_report_is_exact_full_pass(&bad_hook));
+
+        let mut short = passing;
+        short["suites"][0]["tests"]
+            .as_array_mut()
+            .expect("tests array")
+            .pop();
+        assert!(!wdio_report_is_exact_full_pass(&short));
+    }
+
+    #[test]
+    fn wdio_teardown_signature_requires_full_report_and_exact_stack() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let json_dir = temp.path().join("json");
+        fs::create_dir_all(&json_dir).expect("json dir");
+        let report = json!({
+            "state": {"passed": 5, "failed": 0, "skipped": 0},
+            "suites": [{
+                "tests": [
+                    {"state": "passed"},
+                    {"state": "passed"},
+                    {"state": "passed"},
+                    {"state": "passed"},
+                    {"state": "passed"}
+                ],
+                "hooks": [{"state": "passed"}, {"state": "passed"}]
+            }]
+        });
+        fs::write(
+            json_dir.join("wdio-0-0.json"),
+            serde_json::to_vec(&report).expect("report json"),
+        )
+        .expect("write report");
+        let log_path = temp.path().join("wdio-run.log");
+        fs::write(
+            &log_path,
+            "Error [ERR_STREAM_WRITE_AFTER_END]: write after end\n             at LogWriter.write (.../@wdio/native-core/dist/esm/index.js:1095:24)\n             at forwardLog (.../@wdio/tauri-service/dist/esm/index.js:647:16)\n",
+        )
+        .expect("write log");
+        assert!(wdio_post_success_teardown_race(temp.path(), &log_path).expect("classify"));
+
+        fs::write(
+            &log_path,
+            "Error [ERR_STREAM_WRITE_AFTER_END]: write after end\n",
+        )
+        .expect("write incomplete log");
+        assert!(!wdio_post_success_teardown_race(temp.path(), &log_path).expect("reject"));
+    }
+
+    #[test]
     fn runtime_contract_keeps_required_environment_names() {
         let source = include_str!("zero_touch_e2e.rs");
         for key in [
@@ -785,10 +1053,73 @@ mod tests {
     }
 
     #[test]
-    fn live_command_plan_matches_legacy_stages() {
-        let source = include_str!("zero_touch_e2e.rs");
-        for command in ["npm ci", "npm run check", "npm run e2e", "e2e-test"] {
-            assert!(source.contains(command), "missing {command}");
+    fn generated_schemas_restore_only_when_run_made_them_dirty() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let schema_dir = temp.path().join(GENERATED_SCHEMAS);
+        fs::create_dir_all(&schema_dir).expect("schema dir");
+        let schema = schema_dir.join("schema.json");
+        fs::write(&schema, b"original\n").expect("schema");
+        for args in [
+            vec!["init", "--quiet"],
+            vec!["add", "--", GENERATED_SCHEMAS],
+            vec![
+                "-c",
+                "user.name=KGW Test",
+                "-c",
+                "user.email=kgw-test@example.invalid",
+                "commit",
+                "--quiet",
+                "-m",
+                "fixture",
+            ],
+        ] {
+            let status = Command::new("git")
+                .args(args)
+                .current_dir(temp.path())
+                .status()
+                .expect("git");
+            assert!(status.success());
         }
+
+        fs::write(&schema, b"generated\n").expect("generated schema");
+        assert!(path_dirty(temp.path(), GENERATED_SCHEMAS).expect("dirty"));
+        restore_generated_schemas_if_newly_dirty(temp.path(), false).expect("restore");
+        assert_eq!(
+            fs::read_to_string(&schema).expect("read").trim_end(),
+            "original"
+        );
+        assert!(!path_dirty(temp.path(), GENERATED_SCHEMAS).expect("clean"));
+
+        fs::write(&schema, b"preexisting\n").expect("preexisting schema");
+        restore_generated_schemas_if_newly_dirty(temp.path(), true).expect("preserve");
+        assert_eq!(fs::read(&schema).expect("read"), b"preexisting\n");
+        assert!(path_dirty(temp.path(), GENERATED_SCHEMAS).expect("still dirty"));
+    }
+
+    #[test]
+    fn live_command_plan_preserves_checks_without_nested_cargo_self_rebuild() {
+        let source = include_str!("zero_touch_e2e.rs");
+        let runtime = source.split("#[cfg(test)]").next().expect("runtime source");
+        for command in [
+            "npm ci",
+            "npm run e2e",
+            "e2e-test",
+            "std::env::current_exe()",
+            "KGW_XTASK_EXE",
+            "deepmerge-security-smoke",
+            "e2e-static-smokes",
+        ] {
+            assert!(runtime.contains(command), "missing {command}");
+        }
+        for (relative, _) in E2E_JS_SYNTAX_CHECKS {
+            assert!(
+                runtime.contains(relative),
+                "missing JS syntax check for {relative}"
+            );
+        }
+        assert!(
+            !runtime.contains("npm run check"),
+            "zero-touch runner must not re-enter Cargo through npm run check"
+        );
     }
 }

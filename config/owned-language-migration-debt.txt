@@ -1,4 +1,3 @@
 # Exact owned non-Rust programming source debt captured from baseline aaf2c635672c0fd35a5705579610be8de188b031.
 # One repository-relative path per line. This list may only shrink during the migration.
 # New non-Rust source is never auto-baselined and fails the Rust language policy guard.
-tools/kgw_zero_touch_evidence.ps1

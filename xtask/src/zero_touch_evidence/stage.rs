@@ -155,6 +155,10 @@ pub fn stage_evidence(artifact: &Path, stage: &Stage) -> EvidenceResult<Value> {
     }
     let mut required_ports = stage.ports.clone();
     if stage.role == "bridge" {
+        let external_listeners = property(
+            &selection,
+            &["externalBridgeListeners", "external_bridge_listeners"],
+        );
         let selected = decimal_i32(property(
             &selection,
             &[
@@ -166,7 +170,9 @@ pub fn stage_evidence(artifact: &Path, stage: &Stage) -> EvidenceResult<Value> {
                 "bridge_port",
             ],
         ))?;
-        if let Some(port) = selected.filter(|port| *port > 0) {
+        if !external_listeners.is_null() && !truthy(external_listeners) {
+            required_ports.clear();
+        } else if let Some(port) = selected.filter(|port| *port > 0) {
             required_ports = vec![port];
         }
     }
@@ -219,6 +225,15 @@ pub fn stage_evidence(artifact: &Path, stage: &Stage) -> EvidenceResult<Value> {
         let network = field(event, &["network"]);
         let role = field(event, &["runtimeRole", "runtime_role"]);
         instance = field(event, &["bridgeInstanceId", "bridge_instance_id"]);
+        if instance.trim().is_empty() {
+            instance = field(
+                property(
+                    property(event, &["traceDetails", "trace_details"]),
+                    &["extra"],
+                ),
+                &["bridgeInstanceId", "bridge_instance_id"],
+            );
+        }
         let expected = field(event, &["expectedSha256", "expected_sha256"]);
         let result = field(event, &["resultSha256", "result_sha256"]);
         let source = field(event, &["resultSource", "result_source", "status"]);
