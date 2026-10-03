@@ -1,3 +1,2 @@
 # Exact declarative files that invoke, wire, or depend on non-Rust implementation at baseline aaf2c635672c0fd35a5705579610be8de188b031.
 # One repository-relative path per line. This list may only shrink during the migration.
-.github/workflows/desktop-artifacts.yml

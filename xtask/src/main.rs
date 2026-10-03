@@ -7,6 +7,7 @@ mod clippy_policy;
 mod copy_log;
 mod deepmerge_security_smoke;
 mod desktop_artifacts;
+mod desktop_artifacts_stage;
 mod desktop_diagnostic;
 mod desktop_release_draft;
 mod desktop_release_draft_stage;
@@ -103,6 +104,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- check-trufflehog-results <jsonl>
   cargo run -p xtask -- copy-log-gate
   cargo run -p xtask -- desktop-artifacts-workflow-gate
+  cargo run -p xtask -- desktop-artifacts-stage <windows|macos|preserve-windows-sbom|preserve-windows-provenance|preserve-macos-sbom|preserve-macos-provenance>
   cargo run -p xtask -- desktop-diagnostic [--repository <path>]
   cargo run -p xtask -- desktop-release-draft-workflow-gate
   cargo run -p xtask -- desktop-release-draft-stage
@@ -275,6 +277,13 @@ fn run() -> Result<(), CliError> {
                 )));
             }
             let message = desktop_artifacts::run(&repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "desktop-artifacts-stage" => {
+            let stage = exactly_one(&mut args, "desktop artifact stage")?;
+            let message = desktop_artifacts_stage::run_stage(&repo_root()?, &stage)
+                .map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

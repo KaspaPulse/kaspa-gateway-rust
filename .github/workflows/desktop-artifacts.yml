@@ -18,7 +18,6 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-
 jobs:
   windows-x64-nsis:
     name: Windows x64 NSIS package and smoke
@@ -33,27 +32,11 @@ jobs:
       REQUESTED_COMMIT_SHA: ${{ inputs.commit_sha }}
 
     steps:
-      - name: Validate exact commit input
-        shell: pwsh
-        run: |
-          if ($env:REQUESTED_COMMIT_SHA -notmatch '^[0-9a-f]{40}$') {
-            throw "commit_sha must be exactly 40 lowercase hexadecimal characters."
-          }
-
       - name: Checkout exact commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.commit_sha }}
           persist-credentials: false
-
-      - name: Assert checked-out commit
-        shell: pwsh
-        run: |
-          $actual = (git rev-parse HEAD).Trim()
-          if ($LASTEXITCODE -ne 0 -or $actual -cne $env:REQUESTED_COMMIT_SHA) {
-            throw "Checked-out commit $actual does not match requested commit $env:REQUESTED_COMMIT_SHA."
-          }
-
       - name: Install Rust 1.98.1
         uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
         with:
@@ -72,189 +55,14 @@ jobs:
           cache: npm
           cache-dependency-path: apps/kaspa-gateway-desktop/package-lock.json
           package-manager-cache: true
-
       - name: Install pinned Syft 1.52.0
         uses: taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3 # v2.87.16
         with:
           tool: syft@1.52.0
           fallback: none
 
-      - name: Install verified protoc 35.1
-        shell: pwsh
-        run: |
-          $archive = Join-Path $env:RUNNER_TEMP "protoc-35.1-win64.zip"
-          $installDir = Join-Path $env:RUNNER_TEMP "protoc-35.1-win64"
-          curl.exe --proto "=https" --tlsv1.2 --fail --location --silent --show-error `
-            --output $archive `
-            "https://github.com/protocolbuffers/protobuf/releases/download/v35.1/protoc-35.1-win64.zip"
-          if ($LASTEXITCODE -ne 0) {
-            throw "Official protoc download failed."
-          }
-          $actualHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
-          $expectedHash = "5d3ff218d7d91eea95f7569bcb5a98f3030f8996d44151279d9772edcff76082"
-          if ($actualHash -cne $expectedHash) {
-            throw "Official protoc archive checksum mismatch: $actualHash."
-          }
-          Expand-Archive -LiteralPath $archive -DestinationPath $installDir
-          (Join-Path $installDir "bin") | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Verify native toolchain
-        shell: pwsh
-        run: |
-          if ((npm --version).Trim() -cne "11.17.0") {
-            throw "Expected npm 11.17.0."
-          }
-          $llvmBin = Join-Path $env:ProgramFiles "LLVM\bin"
-          if (-not (Test-Path (Join-Path $llvmBin "libclang.dll"))) {
-            throw "Hosted runner LLVM/libclang installation was not found."
-          }
-          $llvmAr = Join-Path $llvmBin "llvm-ar.exe"
-          $ar = Join-Path $llvmBin "ar.exe"
-          if ((Test-Path $llvmAr) -and -not (Test-Path $ar)) {
-            Copy-Item -LiteralPath $llvmAr -Destination $ar
-          }
-          "LIBCLANG_PATH=$llvmBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          rustc --version
-          node --version
-          npm --version
-          protoc --version
-          makensis /VERSION
-
-      - name: Install desktop npm dependencies
-        working-directory: apps/kaspa-gateway-desktop
-        run: npm ci --ignore-scripts
-
-      - name: Build Windows x64 NSIS package
-        working-directory: apps/kaspa-gateway-desktop
-        run: node node_modules/@tauri-apps/cli/tauri.js build --ci --target x86_64-pc-windows-msvc
-
-      - name: Qualify Windows installer and installed application
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $artifactDir = Join-Path $env:RUNNER_TEMP "kaspa-gateway-windows-artifact"
-          $installDir = Join-Path $env:RUNNER_TEMP "kaspa-gateway-installed"
-          $dataDir = Join-Path $env:RUNNER_TEMP "kaspa-gateway-data"
-          foreach ($ownedPath in @($artifactDir, $installDir, $dataDir)) {
-            if (Test-Path $ownedPath) {
-              Remove-Item -LiteralPath $ownedPath -Recurse -Force
-            }
-            New-Item -ItemType Directory -Path $ownedPath | Out-Null
-          }
-
-          $bundleRoot = Join-Path $env:GITHUB_WORKSPACE "target\x86_64-pc-windows-msvc\release\bundle\nsis"
-          $installers = @(Get-ChildItem -LiteralPath $bundleRoot -Filter "*.exe" -File)
-          if ($installers.Count -ne 1 -or $installers[0].Length -le 0) {
-            throw "Expected exactly one non-empty NSIS installer; found $($installers.Count)."
-          }
-          $rawExe = Join-Path $env:GITHUB_WORKSPACE "target\x86_64-pc-windows-msvc\release\kaspa-gateway-desktop.exe"
-          if (-not (Test-Path -LiteralPath $rawExe -PathType Leaf)) {
-            throw "Raw desktop executable was not produced at $rawExe."
-          }
-
-          cargo run --locked -p xtask -- verify-windows-runtime-dependencies --executable $rawExe --report-path (Join-Path $artifactDir "raw-runtime-dependencies.json")
-          if ($LASTEXITCODE -ne 0) { throw "Raw PE runtime dependency verification failed with exit code $LASTEXITCODE." }
-
-          $installer = Join-Path $artifactDir "KaspaGateway-windows-x64-nsis.exe"
-          $rawArtifact = Join-Path $artifactDir "kaspa-gateway-desktop-windows-x64.exe"
-          Copy-Item -LiteralPath $installers[0].FullName -Destination $installer
-          Copy-Item -LiteralPath $rawExe -Destination $rawArtifact
-
-          $signature = Get-AuthenticodeSignature -LiteralPath $installer
-          if ($signature.Status -ne [System.Management.Automation.SignatureStatus]::NotSigned) {
-            throw "Expected an unsigned internal installer, but Authenticode status is $($signature.Status)."
-          }
-
-          $install = Start-Process -FilePath $installer -ArgumentList @("/S", "/D=$installDir") -Wait -PassThru
-          if ($install.ExitCode -ne 0) {
-            throw "Silent NSIS install failed with exit code $($install.ExitCode)."
-          }
-
-          $installedExecutables = @(
-            Get-ChildItem -LiteralPath $installDir -Filter "*.exe" -File -Recurse |
-              Where-Object { $_.Name -eq "kaspa-gateway-desktop.exe" }
-          )
-          if ($installedExecutables.Count -ne 1) {
-            throw "Expected exactly one installed application executable; found $($installedExecutables.Count)."
-          }
-
-          $env:KASPA_GATEWAY_DATA_DIR = $dataDir
-          $application = $null
-          try {
-            cargo run --locked -p xtask -- verify-windows-runtime-dependencies --executable $installedExecutables[0].FullName --report-path (Join-Path $artifactDir "installed-runtime-dependencies.json")
-            if ($LASTEXITCODE -ne 0) { throw "Installed PE runtime dependency verification failed with exit code $LASTEXITCODE." }
-            $application = Start-Process -FilePath $installedExecutables[0].FullName -PassThru
-            Start-Sleep -Seconds 15
-            if ($application.HasExited) {
-              throw "Installed application exited during the immediate-crash observation window with code $($application.ExitCode)."
-            }
-            Stop-Process -Id $application.Id
-            $application.WaitForExit()
-            $application = $null
-          }
-          finally {
-            if ($null -ne $application -and -not $application.HasExited) {
-              Stop-Process -Id $application.Id -Force
-              $application.WaitForExit()
-            }
-
-            $uninstallers = @(
-              Get-ChildItem -LiteralPath $installDir -Filter "*.exe" -File -Recurse |
-                Where-Object { $_.Name -match '^(?:uninstall|unins.*)\.exe$' }
-            )
-            if ($uninstallers.Count -ne 1) {
-              throw "Expected exactly one NSIS uninstaller; found $($uninstallers.Count)."
-            }
-            $uninstall = Start-Process -FilePath $uninstallers[0].FullName -ArgumentList @("/S") -Wait -PassThru
-            if ($uninstall.ExitCode -ne 0) {
-              throw "Silent NSIS uninstall failed with exit code $($uninstall.ExitCode)."
-            }
-            Start-Sleep -Seconds 3
-            if (Test-Path -LiteralPath $installedExecutables[0].FullName -PathType Leaf) {
-              throw "Installed application executable remains after silent uninstall."
-            }
-          }
-
-          $installerHash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
-          $rawHash = (Get-FileHash -LiteralPath $rawArtifact -Algorithm SHA256).Hash.ToLowerInvariant()
-          @(
-            "$installerHash  $([IO.Path]::GetFileName($installer))"
-            "$rawHash  $([IO.Path]::GetFileName($rawArtifact))"
-          ) | Set-Content -LiteralPath (Join-Path $artifactDir "SHA256SUMS") -Encoding utf8NoBOM
-          @(
-            "REQUESTED_COMMIT_SHA=$env:REQUESTED_COMMIT_SHA"
-            "WINDOWS_PRIMARY_FORMAT=NSIS_EXE"
-            "WINDOWS_ARCHITECTURE=X86_64"
-            "WINDOWS_CODE_SIGNING=UNSIGNED_NOT_CONFIGURED"
-            "WINDOWS_AUTHENTICODE_STATUS=$($signature.Status)"
-            "WINDOWS_INSTALLER_SMOKE=PASS"
-            "WINDOWS_LAUNCH_OBSERVATION_SECONDS=15"
-            "WINDOWS_UNINSTALL_SMOKE=PASS"
-            "TESTNET13_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL"
-          ) | Set-Content -LiteralPath (Join-Path $artifactDir "WINDOWS_INSTALLER_SMOKE.txt") -Encoding utf8NoBOM
-
-      - name: Generate Windows SPDX SBOM
-        shell: pwsh
-        run: |
-          $artifactDir = Join-Path $env:RUNNER_TEMP "kaspa-gateway-windows-artifact"
-          $sbom = Join-Path $artifactDir "WINDOWS_SBOM.spdx.json"
-          Push-Location $env:GITHUB_WORKSPACE
-          try {
-            & syft scan "dir:." --exclude "./target/**" --exclude "./apps/kaspa-gateway-desktop/node_modules/**" -o "spdx-json=$sbom"
-            if ($LASTEXITCODE -ne 0) {
-              throw "Syft Windows SBOM generation failed."
-            }
-          }
-          finally {
-            Pop-Location
-          }
-          if (-not (Test-Path -LiteralPath $sbom -PathType Leaf) -or (Get-Item -LiteralPath $sbom).Length -le 0) {
-            throw "Windows SPDX SBOM was not produced."
-          }
-          $document = Get-Content -LiteralPath $sbom -Raw | ConvertFrom-Json
-          if ($document.spdxVersion -cne "SPDX-2.3") {
-            throw "Windows SBOM must be SPDX-2.3."
-          }
+      - name: Build and qualify Windows artifacts with Rust owner
+        run: cargo run --locked -p xtask -- desktop-artifacts-stage windows
 
       - name: Attest Windows SPDX SBOM
         id: attest-windows-sbom
@@ -264,20 +72,10 @@ jobs:
             ${{ runner.temp }}/kaspa-gateway-windows-artifact/KaspaGateway-windows-x64-nsis.exe
             ${{ runner.temp }}/kaspa-gateway-windows-artifact/kaspa-gateway-desktop-windows-x64.exe
           sbom-path: ${{ runner.temp }}/kaspa-gateway-windows-artifact/WINDOWS_SBOM.spdx.json
-
-      - name: Preserve Windows SBOM attestation bundle
-        shell: pwsh
+      - name: Preserve Windows SBOM attestation with Rust owner
         env:
           ATTESTATION_BUNDLE: ${{ steps.attest-windows-sbom.outputs.bundle-path }}
-        run: |
-          if (-not (Test-Path -LiteralPath $env:ATTESTATION_BUNDLE -PathType Leaf)) {
-            throw "Windows SBOM attestation bundle was not produced."
-          }
-          $destination = Join-Path $env:RUNNER_TEMP "kaspa-gateway-windows-artifact\WINDOWS_SBOM_ATTESTATION.sigstore.json"
-          Copy-Item -LiteralPath $env:ATTESTATION_BUNDLE -Destination $destination
-          if ((Get-Item -LiteralPath $destination).Length -le 0) {
-            throw "Windows SBOM attestation bundle is empty."
-          }
+        run: cargo run --locked -p xtask -- desktop-artifacts-stage preserve-windows-sbom
 
       - name: Attest qualified Windows executable artifacts
         id: attest-qualified-windows
@@ -287,20 +85,10 @@ jobs:
             ${{ runner.temp }}/kaspa-gateway-windows-artifact/KaspaGateway-windows-x64-nsis.exe
             ${{ runner.temp }}/kaspa-gateway-windows-artifact/kaspa-gateway-desktop-windows-x64.exe
 
-      - name: Preserve Windows build provenance bundle
-        shell: pwsh
+      - name: Preserve Windows build provenance with Rust owner
         env:
           ATTESTATION_BUNDLE: ${{ steps.attest-qualified-windows.outputs.bundle-path }}
-        run: |
-          if (-not (Test-Path -LiteralPath $env:ATTESTATION_BUNDLE -PathType Leaf)) {
-            throw "Windows attestation bundle was not produced."
-          }
-          $destination = Join-Path $env:RUNNER_TEMP "kaspa-gateway-windows-artifact\WINDOWS_BUILD_PROVENANCE.sigstore.json"
-          Copy-Item -LiteralPath $env:ATTESTATION_BUNDLE -Destination $destination
-          if ((Get-Item -LiteralPath $destination).Length -le 0) {
-            throw "Windows provenance bundle is empty."
-          }
-
+        run: cargo run --locked -p xtask -- desktop-artifacts-stage preserve-windows-provenance
       - name: Upload qualified Windows artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -320,32 +108,12 @@ jobs:
       artifact-metadata: write
     env:
       REQUESTED_COMMIT_SHA: ${{ inputs.commit_sha }}
-
     steps:
-      - name: Validate exact commit input
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ ! "$REQUESTED_COMMIT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "commit_sha must be exactly 40 lowercase hexadecimal characters." >&2
-            exit 1
-          fi
-
       - name: Checkout exact commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.commit_sha }}
           persist-credentials: false
-
-      - name: Assert checked-out commit
-        shell: bash
-        run: |
-          set -euo pipefail
-          actual="$(git rev-parse HEAD)"
-          if [[ "$actual" != "$REQUESTED_COMMIT_SHA" ]]; then
-            echo "Checked-out commit $actual does not match requested commit $REQUESTED_COMMIT_SHA." >&2
-            exit 1
-          fi
 
       - name: Install Rust 1.98.1 and Apple targets
         uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
@@ -357,7 +125,6 @@ jobs:
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           shared-key: desktop-macos-universal
-
       - name: Setup Node.js 24
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -372,166 +139,8 @@ jobs:
           tool: syft@1.52.0
           fallback: none
 
-      - name: Install verified protoc 35.1
-        shell: bash
-        run: |
-          set -euo pipefail
-          archive="$RUNNER_TEMP/protoc-35.1-osx-universal_binary.zip"
-          install_dir="$RUNNER_TEMP/protoc-35.1-osx-universal_binary"
-          curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
-            --output "$archive" \
-            "https://github.com/protocolbuffers/protobuf/releases/download/v35.1/protoc-35.1-osx-universal_binary.zip"
-          echo "9c27aebb44c537f5627cc13c9c1c6bc0e34ecfefc6e4d79b19764afb8302d95b  $archive" | shasum -a 256 --check
-          mkdir -m 700 "$install_dir"
-          ditto -x -k "$archive" "$install_dir"
-          echo "$install_dir/bin" >>"$GITHUB_PATH"
-
-      - name: Verify native toolchain
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(npm --version)" = "11.17.0"
-          rustc --version
-          node --version
-          npm --version
-          protoc --version
-          xcodebuild -version
-          command -v lipo
-
-      - name: Install desktop npm dependencies
-        working-directory: apps/kaspa-gateway-desktop
-        run: npm ci --ignore-scripts
-
-      - name: Build macOS Universal DMG
-        working-directory: apps/kaspa-gateway-desktop
-        run: node node_modules/@tauri-apps/cli/tauri.js build --ci --target universal-apple-darwin
-
-      - name: Qualify macOS Universal DMG and application
-        shell: bash
-        run: |
-          set -euo pipefail
-          artifact_dir="$RUNNER_TEMP/kaspa-gateway-macos-artifact"
-          mount_dir="$RUNNER_TEMP/kaspa-gateway-dmg-mount"
-          data_dir="$RUNNER_TEMP/kaspa-gateway-data"
-          stdout_log="$artifact_dir/macos-launch.stdout.log"
-          stderr_log="$artifact_dir/macos-launch.stderr.log"
-          rm -rf "$artifact_dir" "$mount_dir" "$data_dir"
-          mkdir -m 700 "$artifact_dir" "$mount_dir" "$data_dir"
-
-          shopt -s nullglob
-          dmgs=("$GITHUB_WORKSPACE/target/universal-apple-darwin/release/bundle/dmg/"*.dmg)
-          if [[ ${#dmgs[@]} -ne 1 || ! -s "${dmgs[0]}" ]]; then
-            echo "Expected exactly one non-empty Universal DMG; found ${#dmgs[@]}." >&2
-            exit 1
-          fi
-
-          dmg="$artifact_dir/KaspaGateway-macos-universal.dmg"
-          app_zip="$artifact_dir/KaspaGateway-macos-universal-app.zip"
-          exported_app="$artifact_dir/KaspaGateway-macos-universal.app"
-          cp "${dmgs[0]}" "$dmg"
-
-          mounted=0
-          application_pid=""
-          cleanup() {
-            if [[ -n "$application_pid" ]] && kill -0 "$application_pid" 2>/dev/null; then
-              kill -TERM "$application_pid" 2>/dev/null || true
-              wait "$application_pid" 2>/dev/null || true
-            fi
-            if [[ "$mounted" -eq 1 ]]; then
-              hdiutil detach "$mount_dir" -quiet || hdiutil detach "$mount_dir" -force -quiet || true
-            fi
-          }
-          trap cleanup EXIT
-
-          hdiutil attach "$dmg" -readonly -nobrowse -mountpoint "$mount_dir"
-          mounted=1
-          mounted_apps=("$mount_dir/"*.app)
-          if [[ ${#mounted_apps[@]} -ne 1 ]]; then
-            echo "Expected exactly one app bundle in mounted DMG; found ${#mounted_apps[@]}." >&2
-            exit 1
-          fi
-          mounted_app="${mounted_apps[0]}"
-          executable_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$mounted_app/Contents/Info.plist")"
-          executable="$mounted_app/Contents/MacOS/$executable_name"
-          if [[ ! -x "$executable" ]]; then
-            echo "Mounted app executable is absent or not executable: $executable" >&2
-            exit 1
-          fi
-
-          rm -rf "$exported_app"
-          cp -R "$mounted_app" "$exported_app"
-          ditto -c -k --sequesterRsrc --keepParent "$exported_app" "$app_zip"
-
-          architectures="$(lipo -archs "$executable")"
-          if [[ " $architectures " != *" arm64 "* || " $architectures " != *" x86_64 "* ]]; then
-            echo "Universal architecture proof failed: $architectures" >&2
-            exit 1
-          fi
-          codesign --verify --deep --strict --verbose=2 "$mounted_app"
-          codesign_details="$(codesign -dv --verbose=4 "$mounted_app" 2>&1)"
-          macos_code_signing="UNKNOWN"
-          if grep -Eq 'Signature=adhoc|flags=.*adhoc' <<<"$codesign_details"; then
-            macos_code_signing="AD_HOC"
-          elif grep -q '^    Authority=' <<<"$codesign_details"; then
-            macos_code_signing="DEVELOPER_ID"
-          else
-            echo "Codesign verification passed but signing details are not supported for release policy." >&2
-            printf '%s\n' "$codesign_details" >&2
-            exit 1
-          fi
-
-          KASPA_GATEWAY_DATA_DIR="$data_dir" "$executable" >"$stdout_log" 2>"$stderr_log" &
-          application_pid=$!
-          sleep 15
-          if ! kill -0 "$application_pid" 2>/dev/null; then
-            wait "$application_pid" || exit_code=$?
-            echo "Mounted application exited during the immediate-crash observation window with code ${exit_code:-0}." >&2
-            exit 1
-          fi
-          kill -TERM "$application_pid"
-          wait "$application_pid" || true
-          application_pid=""
-
-          hdiutil detach "$mount_dir" -quiet
-          mounted=0
-          trap - EXIT
-
-          dmg_hash="$(shasum -a 256 "$dmg" | awk '{print $1}')"
-          app_hash="$(shasum -a 256 "$app_zip" | awk '{print $1}')"
-          printf '%s  %s\n%s  %s\n' \
-            "$dmg_hash" "$(basename "$dmg")" \
-            "$app_hash" "$(basename "$app_zip")" \
-            >"$artifact_dir/SHA256SUMS"
-          printf '%s\n' "$codesign_details" >"$artifact_dir/MACOS_CODESIGN_DETAILS.txt"
-          cat >"$artifact_dir/MACOS_DMG_SMOKE.txt" <<EOF
-          REQUESTED_COMMIT_SHA=$REQUESTED_COMMIT_SHA
-          MACOS_PRIMARY_FORMAT=DMG
-          MACOS_ARCHITECTURE_MODE=UNIVERSAL
-          MACOS_CODE_SIGNING=$macos_code_signing
-          MACOS_NOTARIZATION=NOT_CONFIGURED
-          MACOS_ARCHITECTURE_PROOF=UNIVERSAL_ARM64_X86_64
-          MACOS_EXECUTABLE_ARCHITECTURES=$architectures
-          MACOS_CODESIGN_VERIFY=PASS
-          MACOS_DMG_SMOKE=PASS
-          MACOS_LAUNCH_OBSERVATION_SECONDS=15
-          MACOS_INTERACTIVE_UI_VALIDATION=NOT_PERFORMED_HOSTED_RUNNER
-          TESTNET13_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL
-          EOF
-
-      - name: Generate macOS SPDX SBOM
-        shell: bash
-        run: |
-          set -euo pipefail
-          artifact_dir="$RUNNER_TEMP/kaspa-gateway-macos-artifact"
-          sbom="$artifact_dir/MACOS_SBOM.spdx.json"
-          cd "$GITHUB_WORKSPACE"
-          syft scan dir:. \
-            --exclude './target/**' \
-            --exclude './apps/kaspa-gateway-desktop/node_modules/**' \
-            -o "spdx-json=$sbom"
-          test -s "$sbom"
-          python3 -c 'import json,sys; d=json.load(open(sys.argv[1], encoding="utf-8")); assert d.get("spdxVersion") == "SPDX-2.3"' "$sbom"
-
+      - name: Build and qualify macOS artifacts with Rust owner
+        run: cargo run --locked -p xtask -- desktop-artifacts-stage macos
       - name: Attest macOS SPDX SBOM
         id: attest-macos-sbom
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
@@ -541,16 +150,10 @@ jobs:
             ${{ runner.temp }}/kaspa-gateway-macos-artifact/KaspaGateway-macos-universal-app.zip
           sbom-path: ${{ runner.temp }}/kaspa-gateway-macos-artifact/MACOS_SBOM.spdx.json
 
-      - name: Preserve macOS SBOM attestation bundle
-        shell: bash
+      - name: Preserve macOS SBOM attestation with Rust owner
         env:
           ATTESTATION_BUNDLE: ${{ steps.attest-macos-sbom.outputs.bundle-path }}
-        run: |
-          set -euo pipefail
-          test -s "$ATTESTATION_BUNDLE"
-          destination="$RUNNER_TEMP/kaspa-gateway-macos-artifact/MACOS_SBOM_ATTESTATION.sigstore.json"
-          cp "$ATTESTATION_BUNDLE" "$destination"
-          test -s "$destination"
+        run: cargo run --locked -p xtask -- desktop-artifacts-stage preserve-macos-sbom
 
       - name: Attest qualified macOS release artifacts
         id: attest-qualified-macos
@@ -560,16 +163,10 @@ jobs:
             ${{ runner.temp }}/kaspa-gateway-macos-artifact/KaspaGateway-macos-universal.dmg
             ${{ runner.temp }}/kaspa-gateway-macos-artifact/KaspaGateway-macos-universal-app.zip
 
-      - name: Preserve macOS build provenance bundle
-        shell: bash
+      - name: Preserve macOS build provenance with Rust owner
         env:
           ATTESTATION_BUNDLE: ${{ steps.attest-qualified-macos.outputs.bundle-path }}
-        run: |
-          set -euo pipefail
-          test -s "$ATTESTATION_BUNDLE"
-          destination="$RUNNER_TEMP/kaspa-gateway-macos-artifact/MACOS_BUILD_PROVENANCE.sigstore.json"
-          cp "$ATTESTATION_BUNDLE" "$destination"
-          test -s "$destination"
+        run: cargo run --locked -p xtask -- desktop-artifacts-stage preserve-macos-provenance
 
       - name: Upload qualified macOS artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

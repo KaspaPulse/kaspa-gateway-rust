@@ -10,6 +10,7 @@ const EXCEPTION_MANIFEST: &str = "config/owned-language-exceptions.txt";
 const FRONTEND_INDEX_HTML: &str = "apps/kaspa-gateway-desktop/frontend/index.html";
 const FRONTEND_MAIN_ADAPTER: &str = "apps/kaspa-gateway-desktop/frontend/main.js";
 const CI_WORKFLOW_ADAPTER: &str = ".github/workflows/ci.yml";
+const DESKTOP_ARTIFACTS_WORKFLOW_ADAPTER: &str = ".github/workflows/desktop-artifacts.yml";
 const E2E_PACKAGE_JSON: &str = "e2e/package.json";
 const E2E_PACKAGE_LOCK: &str = "e2e/package-lock.json";
 const DESKTOP_PACKAGE_JSON: &str = "apps/kaspa-gateway-desktop/package.json";
@@ -292,6 +293,16 @@ fn validate_platform_adapter_contracts(
     {
         problems.push(format!(
             "{CI_WORKFLOW_ADAPTER} platform adapter contract: {error}"
+        ));
+    }
+    if exceptions
+        .get(DESKTOP_ARTIFACTS_WORKFLOW_ADAPTER)
+        .map(|entry| entry.category.as_str())
+        == Some("PLATFORM_REQUIRED_ADAPTER")
+        && let Err(error) = crate::desktop_artifacts::run(root)
+    {
+        problems.push(format!(
+            "{DESKTOP_ARTIFACTS_WORKFLOW_ADAPTER} platform adapter contract: {error}"
         ));
     }
 
