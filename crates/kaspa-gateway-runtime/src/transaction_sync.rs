@@ -41,24 +41,33 @@ use kaspa_gateway_core::KaspaAddress;
 use kaspa_gateway_db::{TransactionFilter, TransactionRecord, TransactionsRepository};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::panic::{AssertUnwindSafe, catch_unwind};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
+use tokio_util::sync::CancellationToken;
 
 const PAGE_LIMIT: usize = 500;
 const MAX_PAGES: usize = 10_000;
 const TX_VERBOSE_ITEM_LOGS: bool = false;
-static TRANSACTION_SYNC_ACTIVE: AtomicBool = AtomicBool::new(false);
 
-/* KGW_TRANSACTION_SYNC_BACKEND_CANCEL_R57D4
-Backend-owned cancellation registry for Explorer transaction sync.
-This stays inside the authoritative transaction_sync owner. */
-static TRANSACTION_SYNC_CANCEL_REQUESTS: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+// Progress emission is currently a single process-wide callback, so concurrency
+// remains deliberately bounded to one active Explorer sync. Ownership is still
+// request/address aware, making cancellation exact and preventing a global
+// AtomicBool from becoming the task model.
+const MAX_CONCURRENT_TRANSACTION_SYNCS: usize = 1;
 
-fn transaction_sync_cancel_requests() -> &'static Mutex<HashSet<String>> {
-    TRANSACTION_SYNC_CANCEL_REQUESTS.get_or_init(|| Mutex::new(HashSet::new()))
+#[derive(Clone)]
+struct TransactionSyncTaskEntry {
+    address: String,
+    token: CancellationToken,
+}
+
+static TRANSACTION_SYNC_TASKS: OnceLock<Mutex<HashMap<String, TransactionSyncTaskEntry>>> =
+    OnceLock::new();
+
+fn transaction_sync_tasks() -> &'static Mutex<HashMap<String, TransactionSyncTaskEntry>> {
+    TRANSACTION_SYNC_TASKS.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
 pub fn request_transaction_sync_cancel(request_id: &str) -> bool {
@@ -68,128 +77,160 @@ pub fn request_transaction_sync_cancel(request_id: &str) -> bool {
         return false;
     }
 
-    let mut guard = transaction_sync_cancel_requests()
+    let token = transaction_sync_tasks()
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(trimmed)
+        .map(|entry| entry.token.clone());
 
-    guard.insert(trimmed.to_string())
-}
-
-fn transaction_sync_cancel_requested(request_id: Option<&str>) -> bool {
-    let Some(request_id) = request_id else {
-        return false;
-    };
-
-    let trimmed = request_id.trim();
-
-    if trimmed.is_empty() {
-        return false;
+    if let Some(token) = token {
+        token.cancel();
+        true
+    } else {
+        false
     }
-
-    let guard = transaction_sync_cancel_requests()
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-
-    guard.contains(trimmed)
-}
-
-fn transaction_sync_clear_cancel_request(request_id: Option<&str>) {
-    let Some(request_id) = request_id else {
-        return;
-    };
-
-    let trimmed = request_id.trim();
-
-    if trimmed.is_empty() {
-        return;
-    }
-
-    let mut guard = transaction_sync_cancel_requests()
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-
-    guard.remove(trimmed);
 }
 
 fn transaction_sync_cancel_error(
-    request_id: Option<&str>,
+    token: &CancellationToken,
+    request_id: &str,
     address: &str,
     stage: &str,
 ) -> Option<String> {
-    if !transaction_sync_cancel_requested(request_id) {
+    if !token.is_cancelled() {
         return None;
     }
 
     eprintln!(
-        "[KGW][transactions][FetchWorker][CANCELLED] address={} request_id={:?} stage={}",
+        "[KGW][transactions][FetchWorker][CANCELLED] address={} request_id={} stage={}",
         address, request_id, stage
     );
 
     Some(format!(
-        "transaction sync cancelled address={} request_id={:?} stage={}",
+        "transaction sync cancelled address={} request_id={} stage={}",
         address, request_id, stage
     ))
 }
 
-struct TransactionSyncCancelGuard {
-    request_id: Option<String>,
-}
-
-impl TransactionSyncCancelGuard {
-    fn new(request_id: Option<String>) -> Self {
-        Self { request_id }
-    }
-}
-
-impl Drop for TransactionSyncCancelGuard {
-    fn drop(&mut self) {
-        transaction_sync_clear_cancel_request(self.request_id.as_deref());
-    }
-}
-
 struct TransactionSyncGuard {
+    request_id: String,
     address: String,
     mode: &'static str,
+    token: CancellationToken,
 }
 
 impl TransactionSyncGuard {
-    fn enter(address: &str, force: bool) -> Result<Self, String> {
+    fn enter(address: &str, request_id: Option<&str>, force: bool) -> Result<Self, String> {
         let mode = if force { "force" } else { "normal" };
+        let request_id = request_id
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(ToOwned::to_owned)
+            .unwrap_or_else(|| format!("legacy:{address}"));
+        let token = CancellationToken::new();
 
-        if TRANSACTION_SYNC_ACTIVE
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .is_err()
+        let mut tasks = transaction_sync_tasks()
+            .lock()
+            .map_err(|_| "transaction sync task registry lock poisoned".to_string())?;
+
+        if tasks.contains_key(&request_id) {
+            return Err(format!(
+                "transaction sync request is already running request_id={request_id}"
+            ));
+        }
+
+        if tasks
+            .values()
+            .any(|entry| entry.address.eq_ignore_ascii_case(address))
         {
-            eprintln!(
-                "[KGW][transactions][FetchWorker][WARN] Fetch rejected because another fetch is already running address={} mode={}",
-                address, mode
-            );
+            return Err(format!(
+                "transaction sync is already running for address={address}"
+            ));
+        }
 
+        if tasks.len() >= MAX_CONCURRENT_TRANSACTION_SYNCS {
             return Err(
                 "Another transaction fetch is already running. Wait until it finishes.".to_string(),
             );
         }
 
+        tasks.insert(
+            request_id.clone(),
+            TransactionSyncTaskEntry {
+                address: address.to_string(),
+                token: token.clone(),
+            },
+        );
+        drop(tasks);
+
         eprintln!(
-            "[KGW][transactions][FetchWorker] Fetch lock acquired address={} mode={}",
-            address, mode
+            "[KGW][transactions][FetchWorker] Task registered address={} request_id={} mode={}",
+            address, request_id, mode
         );
 
         Ok(Self {
+            request_id,
             address: address.to_string(),
             mode,
+            token,
         })
+    }
+
+    fn cancellation_token(&self) -> CancellationToken {
+        self.token.clone()
+    }
+
+    fn request_id(&self) -> &str {
+        &self.request_id
     }
 }
 
 impl Drop for TransactionSyncGuard {
     fn drop(&mut self) {
-        TRANSACTION_SYNC_ACTIVE.store(false, Ordering::SeqCst);
+        if let Ok(mut tasks) = transaction_sync_tasks().lock() {
+            tasks.remove(&self.request_id);
+        }
 
         eprintln!(
-            "[KGW][transactions][FetchWorker] Fetch lock released address={} mode={}",
-            self.address, self.mode
+            "[KGW][transactions][FetchWorker] Task released address={} request_id={} mode={}",
+            self.address, self.request_id, self.mode
         );
+    }
+}
+
+struct ForceRefreshStageGuard<'a> {
+    repo: &'a TransactionsRepository,
+    address: String,
+    active: bool,
+}
+
+impl<'a> ForceRefreshStageGuard<'a> {
+    fn begin(repo: &'a TransactionsRepository, address: &str) -> Result<Self, String> {
+        repo.begin_force_refresh_stage(address)
+            .map_err(|error| error.to_string())?;
+
+        Ok(Self {
+            repo,
+            address: address.to_string(),
+            active: true,
+        })
+    }
+
+    fn promote(&mut self) -> Result<usize, String> {
+        let promoted = self
+            .repo
+            .promote_force_refresh(&self.address)
+            .map_err(|error| error.to_string())?;
+        self.active = false;
+        Ok(promoted)
+    }
+}
+
+impl Drop for ForceRefreshStageGuard<'_> {
+    fn drop(&mut self) {
+        if self.active {
+            let _ = self.repo.discard_force_refresh_stage(&self.address);
+        }
     }
 }
 
@@ -386,29 +427,36 @@ pub async fn sync_transactions(
     let address = parsed.as_str().to_ascii_lowercase();
     let requested_force = request.force;
 
-    let request_id_for_cancel = request
-        .request_id
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(ToOwned::to_owned);
+    let sync_guard =
+        TransactionSyncGuard::enter(&address, request.request_id.as_deref(), requested_force)?;
+    let cancellation_token = sync_guard.cancellation_token();
+    let request_id_for_cancel = sync_guard.request_id().to_owned();
 
-    let _cancel_guard_r57d4 = TransactionSyncCancelGuard::new(request_id_for_cancel.clone());
-
-    let _sync_guard = TransactionSyncGuard::enter(&address, request.force)?;
-
-    if let (Some(start), Some(end)) = (request.start_ts, request.end_ts)
+    if !requested_force
+        && let (Some(start), Some(end)) = (request.start_ts, request.end_ts)
         && start > end
     {
         return Err("start date cannot be after end date".to_string());
+    }
+
+    // Force Refresh is a complete address refresh. Display filters remain a
+    // frontend/local-query concern and must never replace complete known-good
+    // history with a filtered subset.
+    if requested_force {
+        request.start_ts = None;
+        request.end_ts = None;
+        request.tx_type = None;
+        request.direction = None;
+        request.search_query = None;
     }
 
     let page_limit = request.page_limit.unwrap_or(PAGE_LIMIT).clamp(1, 500);
     let max_pages = request.max_pages.unwrap_or(MAX_PAGES).clamp(1, MAX_PAGES);
 
     eprintln!(
-        "[KGW][transactions][FetchWorker] Fetch diagnostics start address={} mode={} start_ts={:?} end_ts={:?} page_limit={} max_pages={} tx_type={:?} direction={:?} search={:?}",
+        "[KGW][transactions][FetchWorker] Fetch diagnostics start address={} request_id={} mode={} start_ts={:?} end_ts={:?} page_limit={} max_pages={} tx_type={:?} direction={:?} search={:?}",
         address,
+        request_id_for_cancel,
         if request.force { "force" } else { "normal" },
         request.start_ts,
         request.end_ts,
@@ -420,15 +468,21 @@ pub async fn sync_transactions(
     );
 
     if let Some(error) = transaction_sync_cancel_error(
-        request_id_for_cancel.as_deref(),
+        &cancellation_token,
+        &request_id_for_cancel,
         &address,
         "before-local-preload",
     ) {
         return Err(error);
     }
 
-    let local_loaded = if request.force {
-        0
+    let local_loaded = if requested_force {
+        usize::try_from(
+            repo.count_for_address(&address)
+                .map_err(|error| error.to_string())?
+                .max(0),
+        )
+        .unwrap_or(usize::MAX)
     } else {
         let started = Instant::now();
 
@@ -455,44 +509,27 @@ pub async fn sync_transactions(
     };
 
     if let Some(error) = transaction_sync_cancel_error(
-        request_id_for_cancel.as_deref(),
+        &cancellation_token,
+        &request_id_for_cancel,
         &address,
-        "before-force-delete-or-fetch",
+        "before-force-stage-or-fetch",
     ) {
         return Err(error);
     }
 
-    let deleted_before_fetch = if request.force {
-        let started = Instant::now();
-
+    let mut force_refresh_stage = if requested_force {
         eprintln!(
-            "[KGW][transactions][FetchWorker] Force delete start address={}",
-            address
+            "[KGW][transactions][FetchWorker] Force refresh staging started address={} known_good_rows={}",
+            address, local_loaded
         );
-
-        let deleted = repo
-            .delete_for_address(&address)
-            .map_err(|error| error.to_string())?;
-
-        eprintln!(
-            "[KGW][transactions][FetchWorker] Force delete done address={} deleted={} elapsed_ms={}",
-            address,
-            deleted,
-            started.elapsed().as_millis()
-        );
-
-        deleted
+        Some(ForceRefreshStageGuard::begin(repo, &address)?)
     } else {
-        0
+        None
     };
-    if requested_force {
-        request.force = false;
 
-        eprintln!(
-            "[KGW][transactions][FetchWorker] Force delete completed; continuing with normal fetch loop address={}",
-            address
-        );
-    }
+    // Kept for backward-compatible response shape. Force Refresh no longer
+    // deletes anything before fetch; replacement occurs only on atomic promote.
+    let deleted_before_fetch = 0_i64;
     let mut existing_txids: HashSet<String> = HashSet::new();
 
     if request.force {
@@ -508,7 +545,8 @@ pub async fn sync_transactions(
     }
 
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(45))
+        .connect_timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(20))
         .build()
         .map_err(|error| format!("failed to build transaction HTTP client: {error}"))?;
 
@@ -527,6 +565,8 @@ pub async fn sync_transactions(
     let mut stop_reason = "max_pages_reached".to_string();
     let mut before: i64 = 0;
     let mut after: i64 = 0;
+    let mut seen_before_cursors = HashSet::<i64>::new();
+    seen_before_cursors.insert(before);
 
     // KGW_TX_SPEED_2_PREFETCH_STATE:
     // Holds one already-started request for the next accepted-only cursor page.
@@ -541,7 +581,8 @@ pub async fn sync_transactions(
     );
 
     if let Some(error) = transaction_sync_cancel_error(
-        request_id_for_cancel.as_deref(),
+        &cancellation_token,
+        &request_id_for_cancel,
         &address,
         "before-page-loop",
     ) {
@@ -553,7 +594,8 @@ pub async fn sync_transactions(
         let page_started = Instant::now();
 
         if let Some(error) = transaction_sync_cancel_error(
-            request_id_for_cancel.as_deref(),
+            &cancellation_token,
+            &request_id_for_cancel,
             &address,
             "before-page-fetch",
         ) {
@@ -574,7 +616,7 @@ pub async fn sync_transactions(
             page_limit
         );
 
-        let page = if let Some(handle) = prefetched_page.take() {
+        let page = if let Some(mut handle) = prefetched_page.take() {
             eprintln!(
                 "[KGW][transactions][FetchWorker] Await prefetched accepted page address={} mode={} page={} before={} after={}",
                 address,
@@ -584,7 +626,18 @@ pub async fn sync_transactions(
                 after
             );
 
-            match handle.await {
+            let result = tokio::select! {
+                _ = cancellation_token.cancelled() => {
+                    handle.abort();
+                    return Err(format!(
+                        "transaction sync cancelled address={} request_id={} stage=await-prefetched-page",
+                        address, request_id_for_cancel
+                    ));
+                }
+                result = &mut handle => result,
+            };
+
+            match result {
                 Ok(Ok(page)) => page,
                 Ok(Err(error)) => {
                     eprintln!(
@@ -620,10 +673,17 @@ pub async fn sync_transactions(
                 }
             }
         } else {
-            fetch_transactions_page_accepted(
-                &client, &config, &address, page_limit, before, after, page_num,
-            )
-            .await?
+            tokio::select! {
+                _ = cancellation_token.cancelled() => {
+                    return Err(format!(
+                        "transaction sync cancelled address={} request_id={} stage=await-page-fetch",
+                        address, request_id_for_cancel
+                    ));
+                }
+                result = fetch_transactions_page_accepted(
+                    &client, &config, &address, page_limit, before, after, page_num,
+                ) => result?,
+            }
         };
 
         pages += 1;
@@ -631,7 +691,8 @@ pub async fn sync_transactions(
         let raw_count = page.transactions.len();
 
         if let Some(error) = transaction_sync_cancel_error(
-            request_id_for_cancel.as_deref(),
+            &cancellation_token,
+            &request_id_for_cancel,
             &address,
             "after-page-fetch",
         ) {
@@ -675,6 +736,8 @@ pub async fn sync_transactions(
             let client_for_prefetch = client.clone();
             let config_for_prefetch = config.clone();
             let address_for_prefetch = address.clone();
+            let cancellation_for_prefetch = cancellation_token.clone();
+            let request_id_for_prefetch = request_id_for_cancel.clone();
             let next_page_num = page_num + 1;
             let next_page_number = next_page_num + 1;
             let next_after_for_prefetch = 0_i64;
@@ -690,16 +753,21 @@ pub async fn sync_transactions(
             );
 
             next_prefetch = Some(tokio::spawn(async move {
-                fetch_transactions_page_accepted(
-                    &client_for_prefetch,
-                    &config_for_prefetch,
-                    &address_for_prefetch,
-                    page_limit,
-                    next_before_for_prefetch,
-                    next_after_for_prefetch,
-                    next_page_num,
-                )
-                .await
+                tokio::select! {
+                    _ = cancellation_for_prefetch.cancelled() => Err(format!(
+                        "transaction sync cancelled address={} request_id={} stage=prefetch",
+                        address_for_prefetch, request_id_for_prefetch
+                    )),
+                    result = fetch_transactions_page_accepted(
+                        &client_for_prefetch,
+                        &config_for_prefetch,
+                        &address_for_prefetch,
+                        page_limit,
+                        next_before_for_prefetch,
+                        next_after_for_prefetch,
+                        next_page_num,
+                    ) => result,
+                }
             }));
         }
 
@@ -743,7 +811,8 @@ pub async fn sync_transactions(
 
         for (idx, raw) in page.transactions.iter().enumerate() {
             if let Some(error) = transaction_sync_cancel_error(
-                request_id_for_cancel.as_deref(),
+                &cancellation_token,
+                &request_id_for_cancel,
                 &address,
                 "inside-page-transform-loop",
             ) {
@@ -866,7 +935,8 @@ pub async fn sync_transactions(
         }
 
         if let Some(error) = transaction_sync_cancel_error(
-            request_id_for_cancel.as_deref(),
+            &cancellation_token,
+            &request_id_for_cancel,
             &address,
             "before-page-upsert",
         ) {
@@ -888,8 +958,13 @@ pub async fn sync_transactions(
                 page_records.len()
             );
 
-            let inserted = match catch_unwind(AssertUnwindSafe(|| repo.upsert_many(&page_records)))
-            {
+            let inserted = match catch_unwind(AssertUnwindSafe(|| {
+                if requested_force {
+                    repo.stage_force_refresh_many(&page_records)
+                } else {
+                    repo.upsert_many(&page_records)
+                }
+            })) {
                 Ok(Ok(inserted)) => inserted,
                 Ok(Err(error)) => {
                     eprintln!(
@@ -978,7 +1053,8 @@ pub async fn sync_transactions(
         }
 
         if let Some(error) = transaction_sync_cancel_error(
-            request_id_for_cancel.as_deref(),
+            &cancellation_token,
+            &request_id_for_cancel,
             &address,
             "after-page-upsert",
         ) {
@@ -1049,7 +1125,8 @@ pub async fn sync_transactions(
             break 'sync_page_loop;
         }
         if let Some(error) = transaction_sync_cancel_error(
-            request_id_for_cancel.as_deref(),
+            &cancellation_token,
+            &request_id_for_cancel,
             &address,
             "before-next-page",
         ) {
@@ -1062,19 +1139,23 @@ pub async fn sync_transactions(
 
         if let Some(next_before) = page.next_before {
             if next_before <= 0 {
-                stop_reason = format!("invalid_next_before:{page_number}:{next_before}");
                 if let Some(handle) = next_prefetch.take() {
                     handle.abort();
                 }
-                break 'sync_page_loop;
+                return Err(format!(
+                    "invalid transaction pagination cursor address={} page={} next_before={}",
+                    address, page_number, next_before
+                ));
             }
 
-            if next_before == before {
-                stop_reason = format!("duplicate_next_before:{page_number}:{next_before}");
+            if !seen_before_cursors.insert(next_before) {
                 if let Some(handle) = next_prefetch.take() {
                     handle.abort();
                 }
-                break 'sync_page_loop;
+                return Err(format!(
+                    "transaction pagination cursor cycle detected address={} page={} next_before={}",
+                    address, page_number, next_before
+                ));
             }
 
             // Backward pagination to older transactions uses X-Next-Page-Before only.
@@ -1091,6 +1172,50 @@ pub async fn sync_transactions(
             break 'sync_page_loop;
         }
     }
+
+    if requested_force {
+        if stop_reason == "max_pages_reached" {
+            return Err(format!(
+                "force refresh did not prove completeness before max_pages address={} pages={}",
+                address, pages
+            ));
+        }
+
+        let staged_count = repo
+            .force_refresh_staged_count(&address)
+            .map_err(|error| error.to_string())?;
+
+        if local_loaded > 0 && staged_count == 0 {
+            return Err(format!(
+                "force refresh refused to replace {} known-good rows with empty staged history address={}",
+                local_loaded, address
+            ));
+        }
+
+        let stage = force_refresh_stage
+            .as_mut()
+            .ok_or_else(|| "force refresh stage was not initialized".to_string())?;
+        stored = stage.promote()?;
+
+        emit_transaction_sync_progress(TransactionSyncProgress {
+            address: address.clone(),
+            mode: "force".to_string(),
+            phase: "force_promoted".to_string(),
+            page: pages,
+            page_stored: 0,
+            stored_total: stored,
+            fetched_total: fetched_from_api,
+            accepted_total: accepted_for_range,
+            days: Vec::new(),
+            records: Vec::new(),
+        });
+
+        eprintln!(
+            "[KGW][transactions][FetchWorker] Force refresh promoted address={} known_good_before={} promoted_rows={} stop_reason={}",
+            address, local_loaded, stored, stop_reason
+        );
+    }
+
     eprintln!(
         "[KGW][transactions][FetchWorker] Fetch diagnostics done address={} mode={} fetched={} stored={} accepted_in_range={} pages={} local_loaded={} deleted={} stop_reason={}",
         address,
@@ -1380,4 +1505,38 @@ fn civil_from_days(days: i64) -> (i64, i64, i64) {
     let m = mp + if mp < 10 { 3 } else { -9 };
     let year = y + if m <= 2 { 1 } else { 0 };
     (year, m, d)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transaction_sync_registry_cancels_exact_request_and_releases_capacity() {
+        transaction_sync_tasks().lock().expect("registry").clear();
+
+        let guard = TransactionSyncGuard::enter("kaspa:qptestaddress", Some("request-a"), false)
+            .expect("first task");
+
+        assert!(!request_transaction_sync_cancel("request-b"));
+        assert!(request_transaction_sync_cancel("request-a"));
+        assert!(guard.cancellation_token().is_cancelled());
+
+        assert!(
+            TransactionSyncGuard::enter("kaspa:qpotheraddress", Some("request-b"), false,).is_err(),
+            "bounded capacity must reject a second concurrent task while the global progress callback is single-owner"
+        );
+
+        drop(guard);
+
+        let second = TransactionSyncGuard::enter("kaspa:qpotheraddress", Some("request-b"), false)
+            .expect("capacity released after drop");
+        assert!(!second.cancellation_token().is_cancelled());
+        drop(second);
+
+        transaction_sync_tasks()
+            .lock()
+            .expect("registry cleanup")
+            .clear();
+    }
 }

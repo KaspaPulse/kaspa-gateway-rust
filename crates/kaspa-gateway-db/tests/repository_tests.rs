@@ -354,6 +354,108 @@ fn sqlite_v1_transaction_rows_are_backfilled_into_address_relations() {
 }
 
 #[test]
+fn force_refresh_staging_preserves_known_good_until_atomic_promote() {
+    let manager = test_manager("transactions_force_refresh_atomic");
+    let repository = manager
+        .transactions_repository()
+        .expect("transactions repository must open");
+    let address = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g";
+
+    let mut old = TransactionRecord::new("force-old", address, "transfer", "incoming", 10)
+        .expect("old valid");
+    old.timestamp_ms = 1_000;
+    old.raw_json = Some(r#"{"txid":"force-old"}"#.to_string());
+    repository.upsert(&old).expect("old upsert");
+
+    repository
+        .begin_force_refresh_stage(address)
+        .expect("stage begins");
+
+    let mut replacement = TransactionRecord::new("force-new", address, "transfer", "incoming", 20)
+        .expect("replacement valid");
+    replacement.timestamp_ms = 2_000;
+    replacement.raw_json = Some(r#"{"txid":"force-new"}"#.to_string());
+
+    assert_eq!(
+        repository
+            .stage_force_refresh_many(&[replacement])
+            .expect("stage page"),
+        1
+    );
+    assert_eq!(
+        repository
+            .force_refresh_staged_count(address)
+            .expect("staged count"),
+        1
+    );
+
+    let before = repository
+        .list_for_address(address, 10)
+        .expect("known-good remains readable before promote");
+    assert_eq!(before.len(), 1);
+    assert_eq!(before[0].txid, "force-old");
+
+    assert_eq!(
+        repository
+            .promote_force_refresh(address)
+            .expect("atomic promote"),
+        1
+    );
+
+    let after = repository
+        .list_for_address(address, 10)
+        .expect("replacement visible");
+    assert_eq!(after.len(), 1);
+    assert_eq!(after[0].txid, "force-new");
+    assert_eq!(
+        repository
+            .force_refresh_staged_count(address)
+            .expect("stage cleared"),
+        0
+    );
+    assert_eq!(repository.total_count().expect("old orphan removed"), 1);
+}
+
+#[test]
+fn force_refresh_discard_keeps_known_good_data() {
+    let manager = test_manager("transactions_force_refresh_discard");
+    let repository = manager
+        .transactions_repository()
+        .expect("transactions repository must open");
+    let address = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g";
+
+    let mut old = TransactionRecord::new("discard-old", address, "transfer", "incoming", 10)
+        .expect("old valid");
+    old.raw_json = Some(r#"{"txid":"discard-old"}"#.to_string());
+    repository.upsert(&old).expect("old upsert");
+
+    repository
+        .begin_force_refresh_stage(address)
+        .expect("stage begins");
+
+    let mut candidate = TransactionRecord::new("discard-new", address, "transfer", "incoming", 20)
+        .expect("candidate valid");
+    candidate.raw_json = Some(r#"{"txid":"discard-new"}"#.to_string());
+
+    repository
+        .stage_force_refresh_many(&[candidate])
+        .expect("stage candidate");
+    repository
+        .discard_force_refresh_stage(address)
+        .expect("discard stage");
+
+    let rows = repository
+        .list_for_address(address, 10)
+        .expect("known-good remains");
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].txid, "discard-old");
+    assert_eq!(
+        repository.total_count().expect("no staged canonical leak"),
+        1
+    );
+}
+
+#[test]
 fn invalid_records_are_rejected() {
     let valid = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g";
     let bad_checksum = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44q";

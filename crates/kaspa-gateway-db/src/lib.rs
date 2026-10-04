@@ -873,6 +873,208 @@ impl TransactionsRepository {
         Ok(records.len())
     }
 
+    fn ensure_force_refresh_stage(&self) -> Result<()> {
+        self.connection.execute_batch(
+            r#"
+            CREATE TEMP TABLE IF NOT EXISTS kgw_force_refresh_stage(
+                address TEXT NOT NULL,
+                txid TEXT NOT NULL,
+                tx_type TEXT NOT NULL,
+                direction TEXT NOT NULL,
+                amount_sompi INTEGER NOT NULL,
+                from_address TEXT,
+                to_address TEXT,
+                counterparty TEXT,
+                block_height INTEGER,
+                timestamp_ms INTEGER NOT NULL,
+                raw_json TEXT,
+                created_at_ms INTEGER NOT NULL,
+                updated_at_ms INTEGER NOT NULL,
+                PRIMARY KEY(address, txid)
+            );
+            "#,
+        )?;
+        Ok(())
+    }
+
+    pub fn begin_force_refresh_stage(&self, address: &str) -> Result<()> {
+        validate_non_empty("address", address)?;
+        self.ensure_force_refresh_stage()?;
+        self.connection.execute(
+            "DELETE FROM temp.kgw_force_refresh_stage WHERE address = ?1",
+            rusqlite::params![address],
+        )?;
+        Ok(())
+    }
+
+    pub fn stage_force_refresh_many(&self, records: &[TransactionRecord]) -> Result<usize> {
+        if records.is_empty() {
+            return Ok(0);
+        }
+
+        for record in records {
+            validate_non_empty("txid", &record.txid)?;
+            validate_non_empty("address", &record.address)?;
+
+            if record.amount_sompi < 0 {
+                return Err(DbError::InvalidRecord(
+                    "amount_sompi must be non-negative".to_string(),
+                ));
+            }
+        }
+
+        self.ensure_force_refresh_stage()?;
+        let transaction = self.connection.unchecked_transaction()?;
+
+        {
+            let mut statement = transaction.prepare(
+                r#"
+                INSERT INTO temp.kgw_force_refresh_stage(
+                    address, txid, tx_type, direction, amount_sompi,
+                    from_address, to_address, counterparty, block_height,
+                    timestamp_ms, raw_json, created_at_ms, updated_at_ms
+                )
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                ON CONFLICT(address, txid) DO UPDATE SET
+                    tx_type = excluded.tx_type,
+                    direction = excluded.direction,
+                    amount_sompi = excluded.amount_sompi,
+                    from_address = excluded.from_address,
+                    to_address = excluded.to_address,
+                    counterparty = excluded.counterparty,
+                    block_height = excluded.block_height,
+                    timestamp_ms = excluded.timestamp_ms,
+                    raw_json = excluded.raw_json,
+                    updated_at_ms = excluded.updated_at_ms
+                "#,
+            )?;
+
+            for record in records {
+                statement.execute(rusqlite::params![
+                    &record.address,
+                    &record.txid,
+                    &record.tx_type,
+                    &record.direction,
+                    record.amount_sompi,
+                    &record.from_address,
+                    &record.to_address,
+                    &record.counterparty,
+                    &record.block_height,
+                    record.timestamp_ms,
+                    &record.raw_json,
+                    record.created_at_ms,
+                    record.updated_at_ms,
+                ])?;
+            }
+        }
+
+        transaction.commit()?;
+        Ok(records.len())
+    }
+
+    pub fn force_refresh_staged_count(&self, address: &str) -> Result<usize> {
+        validate_non_empty("address", address)?;
+        self.ensure_force_refresh_stage()?;
+        let count: i64 = self.connection.query_row(
+            "SELECT COUNT(*) FROM temp.kgw_force_refresh_stage WHERE address = ?1",
+            rusqlite::params![address],
+            |row| row.get(0),
+        )?;
+        Ok(usize::try_from(count.max(0)).unwrap_or(usize::MAX))
+    }
+
+    pub fn discard_force_refresh_stage(&self, address: &str) -> Result<()> {
+        validate_non_empty("address", address)?;
+        self.ensure_force_refresh_stage()?;
+        self.connection.execute(
+            "DELETE FROM temp.kgw_force_refresh_stage WHERE address = ?1",
+            rusqlite::params![address],
+        )?;
+        Ok(())
+    }
+
+    pub fn promote_force_refresh(&self, address: &str) -> Result<usize> {
+        validate_non_empty("address", address)?;
+        self.ensure_force_refresh_stage()?;
+
+        let transaction = self.connection.unchecked_transaction()?;
+        let staged: i64 = transaction.query_row(
+            "SELECT COUNT(*) FROM temp.kgw_force_refresh_stage WHERE address = ?1",
+            rusqlite::params![address],
+            |row| row.get(0),
+        )?;
+
+        transaction.execute(
+            r#"
+            INSERT INTO transactions(
+                txid, address, tx_type, direction, amount_sompi,
+                from_address, to_address, counterparty, block_height,
+                timestamp_ms, raw_json, created_at_ms, updated_at_ms
+            )
+            SELECT
+                txid, address, tx_type, direction, amount_sompi,
+                from_address, to_address, counterparty, block_height,
+                timestamp_ms, raw_json, created_at_ms, updated_at_ms
+            FROM temp.kgw_force_refresh_stage
+            WHERE address = ?1
+            ON CONFLICT(txid) DO UPDATE SET
+                block_height = excluded.block_height,
+                timestamp_ms = excluded.timestamp_ms,
+                raw_json = excluded.raw_json,
+                updated_at_ms = excluded.updated_at_ms
+            "#,
+            rusqlite::params![address],
+        )?;
+
+        transaction.execute(
+            "DELETE FROM address_transactions WHERE address = ?1",
+            rusqlite::params![address],
+        )?;
+
+        transaction.execute(
+            r#"
+            INSERT INTO address_transactions(
+                address, txid, tx_type, direction, amount_sompi,
+                from_address, to_address, counterparty, created_at_ms, updated_at_ms
+            )
+            SELECT
+                address, txid, tx_type, direction, amount_sompi,
+                from_address, to_address, counterparty, created_at_ms, updated_at_ms
+            FROM temp.kgw_force_refresh_stage
+            WHERE address = ?1
+            ON CONFLICT(address, txid) DO UPDATE SET
+                tx_type = excluded.tx_type,
+                direction = excluded.direction,
+                amount_sompi = excluded.amount_sompi,
+                from_address = excluded.from_address,
+                to_address = excluded.to_address,
+                counterparty = excluded.counterparty,
+                updated_at_ms = excluded.updated_at_ms
+            "#,
+            rusqlite::params![address],
+        )?;
+
+        transaction.execute(
+            r#"
+            DELETE FROM transactions
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM address_transactions r
+                WHERE r.txid = transactions.txid
+            )
+            "#,
+            [],
+        )?;
+
+        transaction.execute(
+            "DELETE FROM temp.kgw_force_refresh_stage WHERE address = ?1",
+            rusqlite::params![address],
+        )?;
+
+        transaction.commit()?;
+        Ok(usize::try_from(staged.max(0)).unwrap_or(usize::MAX))
+    }
+
     pub fn existing_txids_for_address(&self, address: &str) -> Result<Vec<String>> {
         validate_non_empty("address", address)?;
 
