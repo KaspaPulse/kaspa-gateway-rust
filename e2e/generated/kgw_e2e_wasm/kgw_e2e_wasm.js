@@ -347,7 +347,7 @@ module.exports.artifactWriteText = function(file, value) {
 };
 
 function __wbg_adapter_26(arg0, arg1, arg2) {
-    const ret = wasm.closure7_externref_shim_multivalue_shim(arg0, arg1, arg2);
+    const ret = wasm.closure5_externref_shim_multivalue_shim(arg0, arg1, arg2);
     if (ret[2]) {
         throw takeFromExternrefTable0(ret[1]);
     }
@@ -510,8 +510,8 @@ module.exports.__wbindgen_boolean_get = function(arg0) {
     return ret;
 };
 
-module.exports.__wbindgen_closure_wrapper97 = function(arg0, arg1, arg2) {
-    const ret = makeMutClosure(arg0, arg1, 8, __wbg_adapter_26);
+module.exports.__wbindgen_closure_wrapper83 = function(arg0, arg1, arg2) {
+    const ret = makeMutClosure(arg0, arg1, 6, __wbg_adapter_26);
     return ret;
 };
 

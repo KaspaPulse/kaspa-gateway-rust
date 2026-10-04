@@ -34,7 +34,7 @@ The project currently claims a repository and release security baseline, not for
 
 Required repository quality and security checks include:
 
-- Rust 1.98.1 formatting with `cargo fmt --all -- --check`
+- Rust 1.99.0 formatting with `cargo fmt --all -- --check`
 - Locked workspace compilation with `cargo check --locked --workspace --all-targets`
 - Clippy across the workspace with warnings denied
 - Rust workspace tests

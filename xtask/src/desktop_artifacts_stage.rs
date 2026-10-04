@@ -164,8 +164,32 @@ fn append_env_file(name: &str, value: &str) -> Result<(), String> {
     writeln!(file, "{value}")
         .map_err(|error| format!("desktop artifacts: append {}: {error}", path.display()))
 }
+fn npm_command(root: &Path, args: &[&str]) -> Command {
+    let mut command;
+    #[cfg(windows)]
+    {
+        command = Command::new("cmd");
+        command.arg("/C").arg("npm.cmd");
+    }
+    #[cfg(not(windows))]
+    {
+        command = Command::new("npm");
+    }
+    command.args(args).current_dir(root);
+    command
+}
+
 fn verify_npm(root: &Path) -> Result<(), String> {
-    let actual = output_text(root, "npm", &["--version"])?;
+    let output = npm_command(root, &["--version"])
+        .output()
+        .map_err(|error| format!("desktop artifacts: launch npm: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "desktop artifacts: npm failed: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    let actual = String::from_utf8_lossy(&output.stdout).trim().to_owned();
     if actual == EXPECTED_NPM {
         Ok(())
     } else {
@@ -176,7 +200,10 @@ fn verify_npm(root: &Path) -> Result<(), String> {
 }
 
 fn npm_ci(desktop: &Path) -> Result<(), String> {
-    run_status(desktop, "npm", &["ci", "--ignore-scripts"])
+    let status = npm_command(desktop, &["ci", "--ignore-scripts"])
+        .status()
+        .map_err(|error| format!("desktop artifacts: launch npm: {error}"))?;
+    require_success("npm ci", status)
 }
 
 fn materialize_frontend_wasm(root: &Path) -> Result<(), String> {
@@ -572,7 +599,7 @@ fn run_macos(root: &Path) -> Result<(), String> {
     materialize_frontend_wasm(root)?;
     let protoc = install_protoc_macos(root)?;
     run_status(root, "xcodebuild", &["-version"])?;
-    run_status(root, "lipo", &["-version"])?;
+    run_status(root, "xcrun", &["--find", "lipo"])?;
 
     let desktop = root.join("apps/kaspa-gateway-desktop");
     npm_ci(&desktop)?;
@@ -796,5 +823,26 @@ mod tests {
         assert_eq!(Stage::parse("macos"), Ok(Stage::Macos));
         assert!(Stage::parse("powershell").is_err());
         assert!(Stage::parse("bash").is_err());
+    }
+
+    #[test]
+    fn npm_command_is_platform_correct() {
+        let command = npm_command(Path::new("."), &["--version"]);
+        let program = command.get_program().to_string_lossy().into_owned();
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+
+        #[cfg(windows)]
+        {
+            assert_eq!(program, "cmd");
+            assert_eq!(args, vec!["/C", "npm.cmd", "--version"]);
+        }
+        #[cfg(not(windows))]
+        {
+            assert_eq!(program, "npm");
+            assert_eq!(args, vec!["--version"]);
+        }
     }
 }

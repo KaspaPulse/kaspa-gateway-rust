@@ -1730,7 +1730,7 @@ fn input_fingerprint(root: &Path) -> Result<String, String> {
     let mut digest = Sha256::new();
     digest.update(b"kgw-frontend-wasm-codegen-input-v2\0");
     digest.update(WASM_PACK_VERSION.as_bytes());
-    digest.update(b"\0rustup-toolchain=1.98.1\0");
+    digest.update(b"\0rustup-toolchain=1.99.0\0");
     for relative in fingerprint_paths(root)? {
         let oid = canonical_git_oid(root, &relative)?;
         digest.update(relative.as_bytes());
@@ -1866,7 +1866,7 @@ fn build_temp(root: &Path) -> Result<PathBuf, String> {
     let rustflags = deterministic_rustflags(root, cargo_home().as_deref());
     let output = Command::new("wasm-pack")
         .current_dir(root)
-        .env("RUSTUP_TOOLCHAIN", "1.98.1")
+        .env("RUSTUP_TOOLCHAIN", "1.99.0")
         .env_remove("RUSTFLAGS")
         .env("CARGO_ENCODED_RUSTFLAGS", rustflags)
         .args([
