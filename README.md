@@ -40,7 +40,7 @@ See [docs/USER_GUIDE.md](docs/USER_GUIDE.md) for the current runtime, port, conf
 
 ## Architecture
 
-The workspace uses Rust 2024 edition with MSRV Rust 1.97.1.
+The workspace uses Rust 2024 edition with canonical build/release toolchain Rust 1.99.0 and MSRV Rust 1.97.1.
 
 Major ownership surfaces include:
 

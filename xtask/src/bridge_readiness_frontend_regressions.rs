@@ -3519,14 +3519,12 @@ fn verify_static_contracts(
     runtime_core: &str,
     start_trace: &str,
 ) -> Result<(), String> {
-    for needle in
-        ["Tauri invoke resolution and timeout policy are Rust-owned in bridge_start_trace.rs."]
-    {
-        if !source.contains(needle) {
-            return Err(format!(
-                "Bridge readiness JavaScript contract missing: {needle}"
-            ));
-        }
+    let needle =
+        "Tauri invoke resolution and timeout policy are Rust-owned in bridge_start_trace.rs.";
+    if !source.contains(needle) {
+        return Err(format!(
+            "Bridge readiness JavaScript contract missing: {needle}"
+        ));
     }
     for needle in [
         "let runtime_error = runtime_error_text(&status);",

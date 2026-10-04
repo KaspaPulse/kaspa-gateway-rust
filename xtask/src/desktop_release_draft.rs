@@ -71,7 +71,7 @@ fn validate(workflow: &str, ci: &str, ci_workflow_stage: &str) -> Result<(), Str
             "Rust action must remain pinned to the approved SHA",
         ),
         (
-            "toolchain: 1.98.1",
+            "toolchain: 1.99.0",
             "workflow must use the canonical Rust toolchain",
         ),
         (
@@ -153,7 +153,7 @@ mod tests {
             "contents: write",
             CHECKOUT_SHA,
             RUST_TOOLCHAIN_SHA,
-            "toolchain: 1.98.1",
+            "toolchain: 1.99.0",
             "ref: ${{ inputs.commit_sha }}",
             "persist-credentials: false",
             "REQUESTED_VERSION: ${{ inputs.version }}",

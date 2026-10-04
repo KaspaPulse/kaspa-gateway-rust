@@ -213,7 +213,7 @@ fn build_temp(root: &Path) -> Result<PathBuf, String> {
     let rustflags = deterministic_rustflags(root, cargo_home().as_deref());
     let output = Command::new("wasm-pack")
         .current_dir(root)
-        .env("RUSTUP_TOOLCHAIN", "1.98.1")
+        .env("RUSTUP_TOOLCHAIN", "1.99.0")
         .env_remove("RUSTFLAGS")
         .env("CARGO_ENCODED_RUSTFLAGS", rustflags)
         .args([

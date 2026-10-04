@@ -382,7 +382,7 @@ mod tests {
             "workflow_call:\ncommit_sha:\ncontents: read\nid-token: write\nattestations: write\nartifact-metadata: write\nruns-on: windows-2022\nruns-on: macos-15-intel\nref: ${{ inputs.commit_sha }}\n",
         );
         builder_workflow.push_str(
-            "toolchain: 1.98.1\ntoolchain: 1.98.1\ntargets: x86_64-pc-windows-msvc,wasm32-unknown-unknown\ntargets: aarch64-apple-darwin,x86_64-apple-darwin,wasm32-unknown-unknown\n",
+            "toolchain: 1.99.0\ntoolchain: 1.99.0\ntargets: x86_64-pc-windows-msvc,wasm32-unknown-unknown\ntargets: aarch64-apple-darwin,x86_64-apple-darwin,wasm32-unknown-unknown\n",
         );
         builder_workflow.push_str(
             "tool: syft@1.52.0,wasm-pack@0.15.0\ncargo run --locked -p xtask -- desktop-artifacts-stage windows\ncargo run --locked -p xtask -- desktop-artifacts-stage macos\n",
@@ -438,7 +438,7 @@ mod tests {
             desktop_manifest: "[[bin]]\nname = \"kgw-provenance-smoke\"\npath = \"src/bin/kgw-provenance-smoke.rs\"\nrequired-features = [\"runtime-provenance-smoke\"]\n[features]\nruntime-provenance-smoke = []\n".to_owned(),
             windows_config: serde_json::json!({"bundle":{"targets":["nsis"],"icon":["icons/icon.ico"]}}),
             macos_config: serde_json::json!({"bundle":{"targets":["dmg"],"icon":["icons/icon.png"],"macOS":{"signingIdentity":"-","hardenedRuntime":false}}}),
-            rust_toolchain: "channel = \"1.98.1\"\n".to_owned(),
+            rust_toolchain: "channel = \"1.99.0\"\n".to_owned(),
             cargo_config: "[target.x86_64-pc-windows-msvc]\nrustflags = [\"-C\", \"target-feature=+crt-static\"]\n".to_owned(),
         }
     }
