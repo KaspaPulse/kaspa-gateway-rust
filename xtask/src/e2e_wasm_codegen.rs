@@ -263,16 +263,33 @@ fn same_bytes(left: &Path, right: &Path) -> Result<bool, String> {
     Ok(left_bytes == right_bytes)
 }
 
+fn materialize_derived_wasm(built: &Path, generated: &Path) -> Result<bool, String> {
+    fs::create_dir_all(generated)
+        .map_err(|error| format!("failed to create {}: {error}", generated.display()))?;
+    let source = built.join(WASM_NAME);
+    let destination = generated.join(WASM_NAME);
+    let differs = !destination.is_file() || !same_bytes(&source, &destination)?;
+    if differs {
+        fs::copy(&source, &destination).map_err(|error| {
+            format!(
+                "failed to materialize derived WASM {} to {}: {error}",
+                source.display(),
+                destination.display()
+            )
+        })?;
+    }
+    Ok(differs)
+}
+
 fn check(root: &Path) -> Result<String, String> {
     let built = build_temp(root)?;
     let tracked = root.join(GENERATED_RELATIVE);
+    let _materialized_wasm = materialize_derived_wasm(&built, &tracked)?;
     let mut drift = Vec::new();
 
-    for name in [JS_NAME, WASM_NAME] {
-        let tracked_file = tracked.join(name);
-        if !tracked_file.is_file() || !same_bytes(&built.join(name), &tracked_file)? {
-            drift.push(tracked_file.to_string_lossy().into_owned());
-        }
+    let tracked_js = tracked.join(JS_NAME);
+    if !tracked_js.is_file() || !same_bytes(&built.join(JS_NAME), &tracked_js)? {
+        drift.push(tracked_js.to_string_lossy().into_owned());
     }
 
     let mut tracked_names = if tracked.is_dir() {

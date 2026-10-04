@@ -4,13 +4,13 @@
 
 This runbook covers qualification, recovery verification, publication, and post-publication verification for Kaspa Gateway Desktop GitHub Releases. It does not start/stop Kaspa node or bridge runtimes and does not authorize `testnet13` live smoke.
 
-The active release-candidate-specific state belongs in `PROJECT_STATE.md`/`PLANS.md`; this runbook is the durable procedure. Published immutable release history remains historical evidence, not a reusable version identity.
+This runbook is the durable public release procedure. Live source, CI, artifact, draft, and publication identities must be verified from Git/GitHub immediately before mutation; published immutable release history is historical evidence, not a reusable version identity.
 
 ## Preconditions
 
 Before any release mutation:
 
-1. Read `AGENTS.md`, `PROJECT_STATE.md`, and `PLANS.md`.
+1. Verify the live repository state and this runbook before mutation.
 2. Verify `main`, open PRs, the main ruleset, exact release source SHA, qualified Desktop Artifacts run, current latest public release, and any existing draft release.
 3. Verify the exact artifact build run is successful on the intended source SHA.
 4. Confirm Windows/macOS qualification evidence and provenance exist.
@@ -110,7 +110,7 @@ Immediately after publication verify:
 - downloaded release asset binding (`gh release verify-asset`) passes when supported;
 - build provenance verification (`gh attestation verify`) still passes.
 
-Reconcile `PROJECT_STATE.md` immediately after this state transition.
+Record the verified release ID, source SHA, asset digests, publication state, and attestation result in GitHub release/CI evidence and the operator's external continuity record.
 
 ## Rollback / Recovery Model
 
@@ -142,5 +142,3 @@ Do not delete/rewrite history merely to make the previous release appear clean.
 ## Related Procedures
 
 - Live-network smoke: `docs/operations/live-network-smoke.md`.
-- Current release state and exact IDs: `PROJECT_STATE.md`.
-- Active release milestones: `PLANS.md`.

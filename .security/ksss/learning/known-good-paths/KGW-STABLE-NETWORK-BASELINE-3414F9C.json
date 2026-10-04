@@ -41,7 +41,7 @@
     "mode": "isolated-baseline"
   },
   "evidence_refs": [
-    "repo:docs/handoff-ledger/2026-09-11-runtime-lifecycle-raw-logging-p0.md",
+    "repo:docs/operations/live-network-smoke.md",
     "Server:C:/KGW-Local-Validation/artifacts/zero-touch-3414f9c/zero-touch-result.json"
   ]
 }

@@ -1,4 +1,3 @@
-mod ai_workflow;
 mod aud013_navigation_regressions;
 mod bridge_node_mode_routing;
 mod bridge_readiness_frontend_regressions;
@@ -43,7 +42,6 @@ mod npm_dependency_policy;
 mod parallel_self_worker;
 mod production_trust;
 mod program_unified;
-mod project_continuity;
 mod raw_log_clipboard_capture;
 mod raw_log_provenance;
 mod restore_latest_frontend_regressions;
@@ -92,7 +90,6 @@ impl CliError {
 
 fn usage() -> &'static str {
     "usage:
-  cargo run -p xtask -- ai-workflow-gate
   cargo run -p xtask -- aud013-navigation-regressions
   cargo run -p xtask -- bridge-node-mode-routing-audit <repo-root> <report-dir>
   cargo run -p xtask -- bridge-readiness-frontend-regressions
@@ -136,7 +133,6 @@ fn usage() -> &'static str {
   cargo run -p xtask -- npm-dependency-policy-gate --workspace <desktop|e2e> --ci-log <path>
   cargo run -p xtask -- parallel-self-worker-runtime-gate
   cargo run -p xtask -- program-unified-gate [options]
-  cargo run -p xtask -- project-continuity-gate
   cargo run -p xtask -- restore-latest-frontend-regressions
   cargo run -p xtask -- raw-log-provenance-gate
   cargo run -p xtask -- runtime-automation-claims-gate
@@ -180,17 +176,6 @@ fn run() -> Result<(), CliError> {
         .ok_or_else(|| CliError::usage(usage().to_owned()))?;
 
     match command.as_str() {
-        "ai-workflow-gate" => {
-            if args.next().is_some() {
-                return Err(CliError::usage(format!(
-                    "ai-workflow-gate takes no arguments\n{}",
-                    usage()
-                )));
-            }
-            let message = ai_workflow::run(&repo_root()?).map_err(CliError::failure)?;
-            println!("{message}");
-            Ok(())
-        }
         "aud013-navigation-regressions" => {
             if args.next().is_some() {
                 return Err(CliError::usage(format!(
@@ -556,17 +541,6 @@ fn run() -> Result<(), CliError> {
             }
             Err(error) => Err(CliError::usage(format!("{error}\n{}", usage()))),
         },
-        "project-continuity-gate" => {
-            if args.next().is_some() {
-                return Err(CliError::usage(format!(
-                    "project-continuity-gate takes no arguments\n{}",
-                    usage()
-                )));
-            }
-            let message = project_continuity::run(&repo_root()?).map_err(CliError::failure)?;
-            println!("{message}");
-            Ok(())
-        }
         "raw-log-provenance-gate" => {
             if args.next().is_some() {
                 return Err(CliError::usage(format!(

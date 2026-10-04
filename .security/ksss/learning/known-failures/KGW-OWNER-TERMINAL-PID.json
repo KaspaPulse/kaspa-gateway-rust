@@ -31,6 +31,6 @@
     "Do not remove terminal PID evidence or increase timeout to conceal a classifier defect."
   ],
   "evidence_refs": [
-    "repo:docs/project-memory/BUGS/BUG-0011-terminal-pid-status-misclassified.md"
+    "repo:apps/kaspa-gateway-desktop/src-tauri/src/integrated_runtime_commands.rs"
   ]
 }

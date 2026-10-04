@@ -48,8 +48,9 @@ cargo run --locked -p xtask --features ksss -- ksss trust-verify --explicit-time
 
 CI runs cryptographic acceptance, the Rust rejection-contract suite, offline
 adoption, and change/freshness evaluation before the existing quality job.
-The historical 2026-09-20 adoption task did not run remote CI; current integration
-status and authorization are owned by ACTIVE_TASK.md/CURRENT_STATE.md.
+Current integration status is established by repository CI, signed KSSS evidence,
+and GitHub commit/release metadata. This KSSS contract does not itself authorize
+external repository or production mutations.
 
 ## Evidence and learning
 

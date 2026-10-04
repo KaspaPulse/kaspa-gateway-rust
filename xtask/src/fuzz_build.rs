@@ -89,7 +89,7 @@ fn should_descend(path: &Path) -> bool {
         .file_name()
         .and_then(|value| value.to_str())
         .unwrap_or_default();
-    !matches!(name, ".git" | "node_modules" | "graphify-out")
+    !matches!(name, ".git" | "node_modules")
 }
 
 fn is_release_target(path: &Path) -> bool {
@@ -158,9 +158,9 @@ mod tests {
     }
 
     #[test]
-    fn skips_generated_or_repository_metadata_directories() {
+    fn skips_repository_metadata_directories() {
         assert!(!should_descend(Path::new(".git")));
-        assert!(!should_descend(Path::new("graphify-out")));
+        assert!(!should_descend(Path::new("node_modules")));
         assert!(should_descend(Path::new("fuzz")));
     }
 }

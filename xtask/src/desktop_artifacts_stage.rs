@@ -179,6 +179,11 @@ fn npm_ci(desktop: &Path) -> Result<(), String> {
     run_status(desktop, "npm", &["ci", "--ignore-scripts"])
 }
 
+fn materialize_frontend_wasm(root: &Path) -> Result<(), String> {
+    let mut args = ["check".to_owned()].into_iter();
+    crate::frontend_wasm_codegen::run_cli(&mut args, root).map(|_| ())
+}
+
 #[cfg(target_os = "macos")]
 fn build_tauri(desktop: &Path, target: &str, protoc: &Path) -> Result<(), String> {
     let status = Command::new("node")
@@ -343,6 +348,7 @@ fn verify_windows_runtime(executable: &Path, report: &Path) -> Result<(), String
 fn run_windows(root: &Path) -> Result<(), String> {
     let requested = validate_requested_commit(root)?;
     verify_npm(root)?;
+    materialize_frontend_wasm(root)?;
     let protoc = install_protoc_windows(root)?;
     let llvm_bin = PathBuf::from(env::var_os("ProgramFiles").unwrap_or_default()).join("LLVM/bin");
     if !llvm_bin.join("libclang.dll").is_file() {
@@ -563,6 +569,7 @@ fn mounted_apps(mount: &Path) -> Result<Vec<PathBuf>, String> {
 fn run_macos(root: &Path) -> Result<(), String> {
     let requested = validate_requested_commit(root)?;
     verify_npm(root)?;
+    materialize_frontend_wasm(root)?;
     let protoc = install_protoc_macos(root)?;
     run_status(root, "xcodebuild", &["-version"])?;
     run_status(root, "lipo", &["-version"])?;

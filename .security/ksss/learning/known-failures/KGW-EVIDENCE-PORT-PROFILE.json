@@ -31,6 +31,6 @@
     "Do not demand default ports when the executed case used an isolated profile."
   ],
   "evidence_refs": [
-    "repo:docs/project-memory/BUGS/BUG-0010-zero-touch-evidence-port-profile-drift.md"
+    "repo:xtask/src/e2e_windows_evidence.rs"
   ]
 }

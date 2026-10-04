@@ -8,6 +8,13 @@ const CI_PATH: &str = ".github/workflows/ci.yml";
 const CHECKOUT_SHA: &str = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
 const RUST_SHA: &str = "dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c";
 const NODE_SHA: &str = "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020";
+const MSRV_TEST_ARGS: &[&str] = &[
+    "test",
+    "--locked",
+    "--workspace",
+    "--all-targets",
+    "--no-run",
+];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Stage {
@@ -51,6 +58,40 @@ fn xtask(root: &Path, args: &[&str]) -> Result<(), String> {
     let exe = current_xtask()?;
     let program = exe.to_string_lossy().into_owned();
     status(root, &program, args)
+}
+
+fn forbid_retired_release_admin_secret(path: &Path, text: &str) -> Result<(), String> {
+    if text.contains("RELEASE_ADMIN_TOKEN") {
+        Err(format!(
+            "retired GitHub Actions secret RELEASE_ADMIN_TOKEN must not be referenced by workflow: {}",
+            path.display()
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn verify_retired_workflow_secrets(root: &Path) -> Result<(), String> {
+    let workflows = root.join(".github/workflows");
+    for entry in fs::read_dir(&workflows)
+        .map_err(|error| format!("ci workflow: read {}: {error}", workflows.display()))?
+    {
+        let path = entry
+            .map_err(|error| format!("ci workflow: read workflow entry: {error}"))?
+            .path();
+        if !path.is_file()
+            || !matches!(
+                path.extension().and_then(|value| value.to_str()),
+                Some("yml" | "yaml")
+            )
+        {
+            continue;
+        }
+        let text = fs::read_to_string(&path)
+            .map_err(|error| format!("ci workflow: read {}: {error}", path.display()))?;
+        forbid_retired_release_admin_secret(&path, &text)?;
+    }
+    Ok(())
 }
 
 fn output(root: &Path, program: &str, args: &[&str]) -> Result<String, String> {
@@ -249,11 +290,7 @@ fn run_msrv(root: &Path) -> Result<(), String> {
             "wasm32-unknown-unknown",
         ],
     )?;
-    status(
-        root,
-        "cargo",
-        &["test", "--locked", "--workspace", "--all-targets"],
-    )
+    status(root, "cargo", MSRV_TEST_ARGS)
 }
 
 fn run_clippy_phase(
@@ -283,6 +320,7 @@ fn run_clippy_phase(
 }
 
 fn run_quality(root: &Path) -> Result<(), String> {
+    verify_retired_workflow_secrets(root)?;
     install_tauri_linux_prerequisites(root)?;
     status(
         root,
@@ -368,7 +406,6 @@ fn run_quality(root: &Path) -> Result<(), String> {
         &["desktop-artifacts-workflow-gate"][..],
         &["desktop-release-draft-workflow-gate"][..],
         &["production-trust-readiness-gate"][..],
-        &["project-continuity-gate"][..],
         &["e2e-workspace-checks"][..],
     ] {
         xtask(root, args)?;
@@ -376,7 +413,6 @@ fn run_quality(root: &Path) -> Result<(), String> {
     for filter in [
         "network_generation::tests",
         "runtime_repository_binding::tests",
-        "project_continuity::tests",
     ] {
         status(root, "cargo", &["test", "--locked", "-p", "xtask", filter])?;
     }
@@ -601,5 +637,26 @@ mod tests {
         ] {
             assert!(require(marker, marker).is_ok());
         }
+    }
+
+    #[test]
+    fn msrv_compiles_workspace_test_targets_without_execution() {
+        assert_eq!(
+            MSRV_TEST_ARGS,
+            &[
+                "test",
+                "--locked",
+                "--workspace",
+                "--all-targets",
+                "--no-run",
+            ]
+        );
+    }
+
+    #[test]
+    fn retired_release_admin_secret_reference_fails_closed() {
+        let path = Path::new(".github/workflows/example.yml");
+        assert!(forbid_retired_release_admin_secret(path, "name: safe").is_ok());
+        assert!(forbid_retired_release_admin_secret(path, "# RELEASE_ADMIN_TOKEN").is_err());
     }
 }

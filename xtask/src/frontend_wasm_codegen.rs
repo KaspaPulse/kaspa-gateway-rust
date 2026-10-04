@@ -1771,16 +1771,8 @@ fn canonicalize_generated_js(root: &Path, output_dir: &Path) -> Result<(), Strin
     })
 }
 
-fn verify_tracked_integrity(root: &Path, tracked: &Path) -> Result<(), String> {
+fn verify_tracked_integrity(root: &Path, tracked: &Path, built: &Path) -> Result<(), String> {
     let expected_input = input_fingerprint(root)?;
-    let wasm_path = tracked.join(WASM_NAME);
-    let wasm = fs::read(&wasm_path).map_err(|error| {
-        format!(
-            "failed to read tracked WASM {}: {error}",
-            wasm_path.display()
-        )
-    })?;
-    let expected_wasm = sha256_hex(&wasm);
     let js_path = tracked.join(JS_NAME);
     let js = fs::read_to_string(&js_path)
         .map_err(|error| format!("failed to read tracked JS {}: {error}", js_path.display()))?;
@@ -1792,12 +1784,48 @@ fn verify_tracked_integrity(root: &Path, tracked: &Path) -> Result<(), String> {
             "frontend WASM canonical input fingerprint drift: expected {expected_input}"
         ));
     }
-    if wasm_line != format!("{WASM_SHA_PREFIX}{expected_wasm}") {
-        return Err(format!(
-            "frontend WASM canonical artifact fingerprint drift: expected {expected_wasm}"
-        ));
+
+    if canonical_byte_host() {
+        let wasm_path = built.join(WASM_NAME);
+        let wasm = fs::read(&wasm_path).map_err(|error| {
+            format!(
+                "failed to read rebuilt WASM {}: {error}",
+                wasm_path.display()
+            )
+        })?;
+        let expected_wasm = sha256_hex(&wasm);
+        if wasm_line != format!("{WASM_SHA_PREFIX}{expected_wasm}") {
+            return Err(format!(
+                "frontend WASM canonical artifact fingerprint drift: expected {expected_wasm}"
+            ));
+        }
+    } else {
+        let digest = wasm_line.strip_prefix(WASM_SHA_PREFIX).unwrap_or_default();
+        if digest.len() != 64 || !digest.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return Err(
+                "frontend WASM canonical artifact fingerprint is missing or malformed".to_owned(),
+            );
+        }
     }
     Ok(())
+}
+
+fn materialize_derived_wasm(built: &Path, generated: &Path) -> Result<bool, String> {
+    fs::create_dir_all(generated)
+        .map_err(|error| format!("failed to create {}: {error}", generated.display()))?;
+    let source = built.join(WASM_NAME);
+    let destination = generated.join(WASM_NAME);
+    let differs = !destination.is_file() || !same_bytes(&source, &destination)?;
+    if differs {
+        fs::copy(&source, &destination).map_err(|error| {
+            format!(
+                "failed to materialize derived WASM {} to {}: {error}",
+                source.display(),
+                destination.display()
+            )
+        })?;
+    }
+    Ok(differs)
 }
 
 fn canonical_byte_host() -> bool {
@@ -1891,16 +1919,15 @@ fn same_bytes(left: &Path, right: &Path) -> Result<bool, String> {
 fn check(root: &Path) -> Result<String, String> {
     let built = build_temp(root)?;
     let tracked = root.join(GENERATED_RELATIVE);
+    let _materialized_wasm = materialize_derived_wasm(&built, &tracked)?;
     let mut drift = Vec::new();
-    if let Err(error) = verify_tracked_integrity(root, &tracked) {
+    if let Err(error) = verify_tracked_integrity(root, &tracked, &built) {
         drift.push(error);
     }
     if canonical_byte_host() {
-        for name in [JS_NAME, WASM_NAME] {
-            let tracked_file = tracked.join(name);
-            if !tracked_file.is_file() || !same_bytes(&built.join(name), &tracked_file)? {
-                drift.push(tracked_file.to_string_lossy().into_owned());
-            }
+        let tracked_file = tracked.join(JS_NAME);
+        if !tracked_file.is_file() || !same_bytes(&built.join(JS_NAME), &tracked_file)? {
+            drift.push(tracked_file.to_string_lossy().into_owned());
         }
     }
 

@@ -128,7 +128,6 @@ pub fn source_diff(repository: &Path) -> EvidenceResult<String> {
             "--",
             ".",
             ":(exclude)artifacts",
-            ":(exclude)graphify-out",
             ":(exclude)e2e/node_modules",
         ],
     )?;
@@ -142,7 +141,6 @@ pub fn source_diff(repository: &Path) -> EvidenceResult<String> {
             "--",
             ".",
             ":(exclude)artifacts",
-            ":(exclude)graphify-out",
             ":(exclude)e2e/node_modules",
         ],
     )?;

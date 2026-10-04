@@ -1,4 +1,2 @@
-graphify-out/graph.json merge=graphify
-
 # Template HTML is byte-preserved source for Rust-generated ES-module wrappers.
 apps/kaspa-gateway-desktop/frontend/src/tabs/*/*.template.html -whitespace

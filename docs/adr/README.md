@@ -10,7 +10,7 @@ Create an ADR for decisions such as runtime/process topology, security boundarie
 
 - Use four-digit monotonically increasing identifiers: `NNNN-short-title.md`.
 - The repository already contains historical `ADR-0010` at `docs/architecture/adr-0010-same-exe-parallel-self-worker-runtime.md`; it is retained in place to avoid breaking references.
-- New canonical ADR numbering therefore continues from `0011`.
+- ADR numbering is monotonic. `0012` is the latest retained repository ADR, so the next new ADR is `0013`.
 
 ## Lifecycle
 
@@ -41,6 +41,4 @@ Each ADR should include:
 ## Index
 
 - `docs/architecture/adr-0010-same-exe-parallel-self-worker-runtime.md` — **Accepted** — historical location retained for compatibility.
-- `0011-repository-native-project-continuity.md` — **Accepted** — canonical project-state/continuity, durable handoff/project-memory, and source-of-truth model.
-
 - `0012-ksss-signed-consumer-adoption.md` — **Accepted** — signed KSSS v1.2.0 consumer, evidence freshness and separate application qualification.
