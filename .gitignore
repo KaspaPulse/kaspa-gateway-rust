@@ -5,6 +5,7 @@
 # Rust build outputs
 target/
 **/target/
+**/target-*/
 
 # Node / frontend build outputs
 node_modules/
@@ -126,12 +127,12 @@ apps/kaspa-gateway-desktop/src-tauri/target/
 apps/kaspa-gateway-desktop/node_modules/
 apps/kaspa-gateway-desktop/dist/
 apps/kaspa-gateway-desktop/.vite/
+apps/kaspa-gateway-desktop/frontend/generated/kgw_frontend_wasm/kgw_frontend_wasm_bg.wasm
+e2e/generated/kgw_e2e_wasm/kgw_e2e_wasm_bg.wasm
+/target-writer-resume/
 kaspa-gateway-rust.xml
 kaspa-gateway-rust.zip
 apps-crates-candidates.txt
-.codex/hooks.json
-graphify-out/
-
 # Local test artifacts
 artifacts/
 artifacts/desktop-diagnostics/

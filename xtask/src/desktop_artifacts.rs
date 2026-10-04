@@ -16,7 +16,7 @@ const CHECKOUT: &str = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b
 const RUST: &str = "dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c";
 const CACHE: &str = "Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6";
 const NODE: &str = "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020";
-const INSTALL: &str = "taiki-e/install-action@9114bf4d891761788c546334fd37538eae1bf8b3";
+const INSTALL: &str = "taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0";
 const ATTEST: &str = "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6";
 const UPLOAD: &str = "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
 struct Inputs {
@@ -252,9 +252,9 @@ fn validate_builder_workflow(workflow: &str) -> Result<(), String> {
         "runs-on: windows-2022",
         "runs-on: macos-15-intel",
         "ref: ${{ inputs.commit_sha }}",
-        "targets: x86_64-pc-windows-msvc",
-        "targets: aarch64-apple-darwin,x86_64-apple-darwin",
-        "tool: syft@1.52.0",
+        "targets: x86_64-pc-windows-msvc,wasm32-unknown-unknown",
+        "targets: aarch64-apple-darwin,x86_64-apple-darwin,wasm32-unknown-unknown",
+        "tool: syft@1.52.0,wasm-pack@0.15.0",
         "cargo run --locked -p xtask -- desktop-artifacts-stage windows",
         "cargo run --locked -p xtask -- desktop-artifacts-stage macos",
         "cargo run --locked -p xtask -- desktop-artifacts-stage preserve-windows-sbom",
@@ -382,10 +382,10 @@ mod tests {
             "workflow_call:\ncommit_sha:\ncontents: read\nid-token: write\nattestations: write\nartifact-metadata: write\nruns-on: windows-2022\nruns-on: macos-15-intel\nref: ${{ inputs.commit_sha }}\n",
         );
         builder_workflow.push_str(
-            "toolchain: 1.98.1\ntoolchain: 1.98.1\ntargets: x86_64-pc-windows-msvc\ntargets: aarch64-apple-darwin,x86_64-apple-darwin\n",
+            "toolchain: 1.98.1\ntoolchain: 1.98.1\ntargets: x86_64-pc-windows-msvc,wasm32-unknown-unknown\ntargets: aarch64-apple-darwin,x86_64-apple-darwin,wasm32-unknown-unknown\n",
         );
         builder_workflow.push_str(
-            "tool: syft@1.52.0\ncargo run --locked -p xtask -- desktop-artifacts-stage windows\ncargo run --locked -p xtask -- desktop-artifacts-stage macos\n",
+            "tool: syft@1.52.0,wasm-pack@0.15.0\ncargo run --locked -p xtask -- desktop-artifacts-stage windows\ncargo run --locked -p xtask -- desktop-artifacts-stage macos\n",
         );
         for stage in [
             "preserve-windows-sbom",

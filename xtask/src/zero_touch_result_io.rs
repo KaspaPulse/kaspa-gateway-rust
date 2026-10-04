@@ -184,12 +184,7 @@ mod tests {
         fs::create_dir(&path).unwrap();
         assert!(atomic_write(&path, &json!({})).is_err());
         assert!(path.is_dir());
-        for name in [
-            "../CURRENT_STATE.md",
-            "Cargo.toml",
-            "C:\\file.json",
-            "other.json",
-        ] {
+        for name in ["../source.txt", "Cargo.toml", "C:\\file.json", "other.json"] {
             assert!(artifact_target(directory.path(), name).is_err());
         }
         assert!(artifact_target(directory.path(), "zero-touch-result.json").is_ok());

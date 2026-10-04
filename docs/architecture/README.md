@@ -20,7 +20,7 @@ Kaspa Gateway is a local-first Rust/Tauri desktop control plane for official Kas
 - `apps/kaspa-gateway-desktop/src-tauri/` — desktop IPC and process/runtime boundary.
 - `apps/kaspa-gateway-desktop/frontend/` — UI adapters, views, and controls.
 - `apps/kaspa-gateway-cli/` — CLI probes and utilities.
-- `tools/` — repository-native gates, audits, and smoke tooling.
+- `xtask/` — Rust-owned repository gates, release orchestration, code generation, audits, and smoke tooling.
 
 ## Architecture Records and Contracts
 
@@ -33,5 +33,3 @@ Other current architecture/contract documents in this directory:
 - `bridge-readme-runtime-instance-contract.md`
 - `embedded-bridge-runtime-command-contract.md`
 - `runtime-network-repository-bindings.md`
-
-Do not duplicate these documents inside `PROJECT_STATE.md`. The state document should summarize only what a new session needs to resume safely and link here for architectural detail.

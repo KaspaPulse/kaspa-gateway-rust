@@ -175,36 +175,6 @@ fn validate_reused_e2e_artifact(root: &Path, artifact: &Path) -> Result<(), Stri
     );
     Ok(())
 }
-fn graphify_refresh(root: &Path) -> Result<(), String> {
-    let graph = root.join("graphify-out").join("graph.json");
-    if graph.is_file() {
-        run_checked(
-            root,
-            "Graphify code-only incremental refresh",
-            "graphify",
-            &["update", "."],
-        )?;
-    } else {
-        run_checked(
-            root,
-            "Graphify code-only extraction",
-            "graphify",
-            &["extract", ".", "--code-only"],
-        )?;
-    }
-    run_checked(
-        root,
-        "Graphify post-change query",
-        "graphify",
-        &[
-            "query",
-            "How does the zero-touch WebdriverIO E2E suite verify raw node and bridge logs and clipboard hashes?",
-            "--budget",
-            "4000",
-        ],
-    )
-}
-
 fn restore_generated_schemas_if_newly_dirty(
     root: &Path,
     initially_dirty: bool,
@@ -346,7 +316,6 @@ fn run(root: &Path, reuse: Option<&Path>, commit_on_success: bool) -> Result<Str
         run_live_zero_touch(root)?;
     }
 
-    graphify_refresh(root)?;
     restore_generated_schemas_if_newly_dirty(root, schemas_dirty)?;
     run_checked(
         root,

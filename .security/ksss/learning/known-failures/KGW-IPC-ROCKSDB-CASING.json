@@ -31,6 +31,7 @@
     "Do not disable deny_unknown_fields or rewrite command preview parsing."
   ],
   "evidence_refs": [
-    "repo:docs/project-memory/BUGS/BUG-0007-effective-node-settings-rocksdb-ipc-casing.md"
+    "repo:apps/kaspa-gateway-desktop/src-tauri/tests/integrated_runtime_ipc_smoke_tests.rs",
+    "repo:crates/kaspa-gateway-frontend-wasm/src/node_frontend_helpers.rs"
   ]
 }

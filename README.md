@@ -1,127 +1,110 @@
 # Kaspa Gateway
 
-Local-first Rust/Tauri desktop control plane for official Kaspa node and Stratum bridge runtimes.
+Kaspa Gateway is a local-first Rust/Tauri desktop control plane for the official Kaspa node and Stratum bridge runtimes. It owns configuration, process lifecycle, status, observability, local data workflows, and desktop orchestration; it does **not** replace Kaspa consensus, `kaspad`, or the bridge runtime.
 
-Kaspa Gateway manages **runtime configuration, process ownership, status, and observability** for `mainnet`, `testnet10`, and experimental opt-in `testnet13`. It does **not** reimplement Kaspa consensus, `kaspad`, or Stratum bridge behavior.
+## Rust ownership
 
-## Download
-
-**Current published verified desktop build: `0.1.1`**
-Source: [`b911eb44619f8eab706bc2fe786d1c84ac958f1d`](https://github.com/KaspaPulse/kaspa-gateway-rust/commit/b911eb44619f8eab706bc2fe786d1c84ac958f1d)
-
-[**Download the verified desktop release**](https://github.com/KaspaPulse/kaspa-gateway-rust/releases/latest)
-
-| Platform | Package | Qualification |
-|---|---|---|
-| Windows x64 | NSIS `.exe` | Build + installer smoke: **PASS** |
-| macOS Intel + Apple Silicon | Universal `.dmg` | Build + DMG/app smoke: **PASS** |
-| macOS Intel + Apple Silicon | Universal `.app.zip` | `arm64` + `x86_64` verified |
-
-> Windows is currently unsigned. macOS uses ad-hoc signing and is not notarized. OS trust warnings are therefore expected for this developer release.
-
-<details>
-<summary><strong>SHA-256 checksums</strong></summary>
+The repository enforces a strict language policy for project-owned programming logic:
 
 ```text
-eff90f265fe782fb186f5d79950a2b0c42ff463ad36fcdf2675526a4d4133082  KASPA_GATEWAY_WINDOWS_X64_NSIS_0.1.1_b911eb4.exe
-ba5150b92860ca316e85e5fa90d27c60f2e15b0a7f0c6beed8ac970eb18b6387  KASPA_GATEWAY_MACOS_UNIVERSAL_DMG_0.1.1_b911eb4.dmg
-82195836a67e143bf5b4d085bf42b7491d5332b05ac19cb79980df39aa5a8e9f  KASPA_GATEWAY_MACOS_UNIVERSAL_APP_0.1.1_b911eb4.zip
+NON_RUST_OWNED_PROGRAMMING_SOURCE_COUNT=0
+NON_RUST_EXECUTION_REFERENCE_COUNT=0
+RUST_POLICY_GUARD=PASS
+OWNED_PROGRAMMING_IMPLEMENTATION=100_PERCENT_RUST
 ```
 
-</details>
+The desktop WebView still requires HTML/CSS and deterministic JavaScript/WASM adapters. Those adapters are generated from Rust owners or are tool/platform-required configuration; CI rejects manual drift. Derived WASM binaries are built from source and are not stored as source artifacts.
 
-## What it does
+## Downloads
 
-- Starts and stops the official Kaspa node runtime per network.
-- Starts and stops the official Stratum bridge runtime per network.
-- Keeps Node and Bridge runtime ownership explicit and isolated.
-- Applies effective runtime settings through typed Rust/Tauri paths.
-- Shows runtime state, command previews, diagnostics, Explorer, and Analysis views.
-- Displays **official runtime stdout/stderr only** in raw Node/Bridge log panes.
+Use the latest verified public desktop release:
+
+https://github.com/KaspaPulse/kaspa-gateway-rust/releases/latest
+
+Desktop release targets:
+
+| Platform | Package |
+|---|---|
+| Windows x64 | NSIS `.exe` |
+| macOS Intel + Apple Silicon | Universal `.dmg` and `.app.zip` |
+
+Release sets include checksums and preserved Sigstore/SLSA provenance evidence. Windows Authenticode and Apple Developer ID/notarization are separate trust layers and are reported exactly as configured for each release.
 
 ## Networks
 
-| Network | Policy | Runtime family |
-|---|---|---|
-| `mainnet` | Stable / production behavior | Official mainline Rusty Kaspa |
-| `testnet10` | Stable supported testnet | Official mainline Rusty Kaspa |
-| `testnet13` | **Experimental, explicit opt-in** | Dedicated TN13 binding |
+- **mainnet** — stable
+- **testnet10** — stable supported testnet
+- **testnet13** — experimental, explicit opt-in
 
-Runtime repository bindings and pinned revisions are defined in [`config/runtime-repository-bindings.json`](config/runtime-repository-bindings.json).
+See [docs/USER_GUIDE.md](docs/USER_GUIDE.md) for the current runtime, port, configuration, and user workflow details.
 
-## Runtime safety model
+## Architecture
 
-```text
-Official Kaspa runtime stdout/stderr
-        ↓
-Kaspa Gateway runtime owner
-        ↓
-Raw runtime buffer/event path
-        ↓
-Node / Bridge raw log pane
-```
+The workspace uses Rust 2024 edition with MSRV Rust 1.97.1.
 
-Raw runtime panes must not contain invented log lines, placeholders, or UI-only management messages. Status belongs in status surfaces; official stdout/stderr belongs in raw logs.
+Major ownership surfaces include:
 
-## Feedback and contributing
+- Rust/Tauri desktop backend
+- Rust runtime/process ownership and lifecycle
+- Rust node and bridge integration
+- Rust/WASM frontend implementation
+- Rust/WASM E2E implementation
+- Rust-owned CI/release orchestration through `xtask`
+- deterministic generated WebView and test adapters
+- pinned, declarative GitHub Actions adapters
 
-- Report reproducible bugs and enhancement requests through [GitHub Issues](https://github.com/KaspaPulse/kaspa-gateway-rust/issues).
-- Report suspected vulnerabilities privately using [`SECURITY.md`](SECURITY.md).
-- Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before proposing code, dependency, test, workflow, or documentation changes.
+Architecture and runtime contracts are documented in [docs/architecture/README.md](docs/architecture/README.md).
 
-## Quick start for developers
+## Build and verify from source
 
-Requirements: Rust `1.98.1`, Node.js `24`, npm `11.17.0`, Git, and the native prerequisites required by Tauri for your platform.
+Prerequisites vary by platform. The repository CI is the authoritative build/qualification contract.
+
+Basic Rust verification:
 
 ```bash
-git clone https://github.com/KaspaPulse/kaspa-gateway-rust.git
-cd kaspa-gateway-rust/apps/kaspa-gateway-desktop
-npm ci
-node node_modules/@tauri-apps/cli/tauri.js dev --features "official-kaspa-runtime-all rkstratum_cpu_miner"
-```
-
-From the repository root:
-
-```bash
-cargo fmt --all -- --check
 cargo check --locked --workspace --all-targets
-cargo test --locked --workspace --all-targets
+cargo test --locked --workspace
+cargo run --locked -p xtask -- language-policy strict
 ```
 
-## Repository layout
+Frontend/E2E generated-contract verification requires the pinned WASM toolchain used by CI, including `wasm-pack 0.15.0` and the `wasm32-unknown-unknown` Rust target.
 
-```text
-apps/kaspa-gateway-desktop/   Tauri desktop application
-apps/kaspa-gateway-cli/       CLI application
-crates/                       Runtime, config, API, DB, security and domain crates
-config/                       Runtime repository bindings
-docs/                         Architecture, ADRs, runbooks, operations and security docs
-tools/                        Repository-native contract and quality gates
-.github/workflows/            CI, security and desktop artifact workflows
-```
+Desktop npm dependencies are lockfile-managed under `apps/kaspa-gateway-desktop/`; E2E dependencies are lockfile-managed under `e2e/`.
 
-## Documentation and continuity
+## Security and supply chain
 
-- [`AGENTS.md`](AGENTS.md) — durable repository engineering, safety, and agent rules.
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — public contribution process, coding standards, and testing expectations.
-- [docs/USER_GUIDE.md](docs/USER_GUIDE.md) — installation, first-run, runtime operation, configuration, shutdown, and troubleshooting.
-- [docs/EXTERNAL_INTERFACES.md](docs/EXTERNAL_INTERFACES.md) — GUI, CLI, files, managed runtime listeners, defaults, failures, and security boundaries.
-- [`PROJECT_STATE.md`](PROJECT_STATE.md) — current verified resume boundary; always reconcile it against live Git/CI/release/runtime state.
-- [`PLANS.md`](PLANS.md) — living plan for active multi-stage work.
-- [`docs/architecture/`](docs/architecture/) — runtime architecture and contracts.
-- [`docs/adr/`](docs/adr/) — canonical index/location for durable decisions; legacy ADR-0010 remains under `docs/architecture/` and is indexed there.
-- [`docs/runbooks/`](docs/runbooks/) — repeatable release/operational procedures.
-- [`docs/operations/`](docs/operations/) — focused operational documentation, including live-network smoke.
-- [`docs/security/`](docs/security/) — security documentation.
-- [`docs/AI_DEVELOPMENT_WORKFLOW.md`](docs/AI_DEVELOPMENT_WORKFLOW.md) — AI-assisted development and continuity workflow.
-- [`SECURITY.md`](SECURITY.md) — security policy.
+The repository uses, among other controls:
 
-## Desktop artifacts
+- Rust formatting, locked compilation, tests, and Clippy with warnings denied
+- RustSec auditing, `cargo deny`, and unused-dependency analysis
+- npm audit and project-specific dependency policy gates
+- GitHub dependency review
+- CodeQL for Rust
+- TruffleHog secret scanning
+- ClusterFuzzLite
+- pinned GitHub Actions SHAs
+- workflow contract validation
+- deterministic generated-code checks
+- release checksums, SBOMs, and provenance attestations
 
-Native Windows and macOS packages are built by [`.github/workflows/desktop-artifacts.yml`](.github/workflows/desktop-artifacts.yml) against an explicit commit SHA. The workflow qualifies the installer/application before release staging or publication.
+See [SECURITY.md](SECURITY.md) and [docs/security/SECURITY_BASELINE.md](docs/security/SECURITY_BASELINE.md).
 
-The current published immutable desktop release is [`desktop-v0.1.1`](https://github.com/KaspaPulse/kaspa-gateway-rust/releases/tag/desktop-v0.1.1), source `b911eb44619f8eab706bc2fe786d1c84ac958f1d`, qualified by Desktop Artifacts run [`31910163486`](https://github.com/KaspaPulse/kaspa-gateway-rust/actions/runs/31910163486). Release assets carry SHA-256 checksums and preserved Sigstore/SLSA build-provenance bundles. Candidate metadata or a successful artifact build does not become a public release until GitHub Releases reports it as published.
+## Documentation
+
+- [User Guide](docs/USER_GUIDE.md)
+- [External Interfaces](docs/EXTERNAL_INTERFACES.md)
+- [Architecture](docs/architecture/README.md)
+- [Security Baseline](docs/security/SECURITY_BASELINE.md)
+- [Desktop Release Runbook](docs/runbooks/desktop-release.md)
+- [Contributing](CONTRIBUTING.md)
+
+## Repository hygiene
+
+Generated build directories, local validation artifacts, and derived WASM binaries are intentionally excluded from source control. Product/release artifacts are produced by CI from exact source commits rather than committed as binary source artifacts.
 
 ## License
 
-`MIT OR Apache-2.0` — see [`LICENSE-MIT`](LICENSE-MIT) and [`LICENSE-APACHE`](LICENSE-APACHE).
+Licensed under either of:
+
+- Apache License 2.0 — see [LICENSE-APACHE](LICENSE-APACHE)
+- MIT License — see [LICENSE-MIT](LICENSE-MIT)

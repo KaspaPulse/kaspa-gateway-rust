@@ -37,7 +37,7 @@ Governance PASS does not certify application health or authorize publication.
 
 ## Validation and related records
 See .security/ksss/README.md, its contract tests, trust/evidence/v1.2.0/,
-and docs/handoff-ledger/2026-09-20-kgw-ksss-v1.2-adoption.md.
+with adoption history preserved by Git history, signed KSSS evidence, and repository CI.
 The Rust adapter preserves local cryptographic acceptance and the 24 focused
 rejection contracts, with command-level semantic parity verified against the
 superseded Python adapter before retirement. No live runtime claim follows from

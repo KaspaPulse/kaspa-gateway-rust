@@ -5,7 +5,7 @@
 This project is maintained at:
 
 - Repository: KaspaPulse/kaspa-gateway-rust
-- Public release tag: desktop-v0.1.1
+- Public releases: https://github.com/KaspaPulse/kaspa-gateway-rust/releases
 - Desktop targets: Windows x64 and macOS Universal (Intel + Apple Silicon)
 - Runtime model: KGW same-exe parallel self-worker runtime
 
@@ -30,7 +30,7 @@ Do not open public issues for active vulnerabilities until a fix or mitigation i
 
 ## Current Security Baseline
 
-The project currently claims a repository and release security baseline, not formal hardening certification.
+The project currently claims a repository and release security baseline, not formal hardening certification. Project-owned programming implementation is enforced as 100% Rust by the strict language-policy gate; platform-required and deterministic generated adapters remain explicitly classified.
 
 Required repository quality and security checks include:
 
@@ -56,6 +56,12 @@ Required repository quality and security checks include:
 - Release executable metadata review and Windows GUI subsystem verification for portable release artifacts
 
 These automated checks reduce preventable regressions and dependency risk. They do not replace focused security review, threat modeling, penetration testing, or release-specific validation.
+
+## OpenSSF Scorecard Signals
+
+The OpenSSF Scorecard `CII-Best-Practices` check reports a low-severity informational finding when a repository has not enrolled in the external OpenSSF Best Practices badge program. Absence of that external badge is not treated as a source vulnerability or silently suppressed; enrollment is a separate external assurance activity and must be represented as such.
+
+Scorecard `Binary-Artifacts` findings are treated differently: generated WASM binaries must not be tracked as source artifacts. KGW materializes those binaries deterministically from Rust-owned sources during build/codegen and verifies their recorded fingerprints before use.
 
 ## Runtime Security Rules
 

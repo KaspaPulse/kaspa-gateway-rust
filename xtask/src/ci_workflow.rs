@@ -53,6 +53,40 @@ fn xtask(root: &Path, args: &[&str]) -> Result<(), String> {
     status(root, &program, args)
 }
 
+fn forbid_retired_release_admin_secret(path: &Path, text: &str) -> Result<(), String> {
+    if text.contains("RELEASE_ADMIN_TOKEN") {
+        Err(format!(
+            "retired GitHub Actions secret RELEASE_ADMIN_TOKEN must not be referenced by workflow: {}",
+            path.display()
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn verify_retired_workflow_secrets(root: &Path) -> Result<(), String> {
+    let workflows = root.join(".github/workflows");
+    for entry in fs::read_dir(&workflows)
+        .map_err(|error| format!("ci workflow: read {}: {error}", workflows.display()))?
+    {
+        let path = entry
+            .map_err(|error| format!("ci workflow: read workflow entry: {error}"))?
+            .path();
+        if !path.is_file()
+            || !matches!(
+                path.extension().and_then(|value| value.to_str()),
+                Some("yml" | "yaml")
+            )
+        {
+            continue;
+        }
+        let text = fs::read_to_string(&path)
+            .map_err(|error| format!("ci workflow: read {}: {error}", path.display()))?;
+        forbid_retired_release_admin_secret(&path, &text)?;
+    }
+    Ok(())
+}
+
 fn output(root: &Path, program: &str, args: &[&str]) -> Result<String, String> {
     let output = Command::new(program)
         .args(args)
@@ -283,6 +317,7 @@ fn run_clippy_phase(
 }
 
 fn run_quality(root: &Path) -> Result<(), String> {
+    verify_retired_workflow_secrets(root)?;
     install_tauri_linux_prerequisites(root)?;
     status(
         root,
@@ -368,7 +403,6 @@ fn run_quality(root: &Path) -> Result<(), String> {
         &["desktop-artifacts-workflow-gate"][..],
         &["desktop-release-draft-workflow-gate"][..],
         &["production-trust-readiness-gate"][..],
-        &["project-continuity-gate"][..],
         &["e2e-workspace-checks"][..],
     ] {
         xtask(root, args)?;
@@ -376,7 +410,6 @@ fn run_quality(root: &Path) -> Result<(), String> {
     for filter in [
         "network_generation::tests",
         "runtime_repository_binding::tests",
-        "project_continuity::tests",
     ] {
         status(root, "cargo", &["test", "--locked", "-p", "xtask", filter])?;
     }
@@ -601,5 +634,12 @@ mod tests {
         ] {
             assert!(require(marker, marker).is_ok());
         }
+    }
+
+    #[test]
+    fn retired_release_admin_secret_reference_fails_closed() {
+        let path = Path::new(".github/workflows/example.yml");
+        assert!(forbid_retired_release_admin_secret(path, "name: safe").is_ok());
+        assert!(forbid_retired_release_admin_secret(path, "# RELEASE_ADMIN_TOKEN").is_err());
     }
 }
