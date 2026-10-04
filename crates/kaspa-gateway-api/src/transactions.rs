@@ -317,6 +317,62 @@ pub async fn fetch_transactions_page_accepted(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::thread;
+
+    fn scripted_http_server(
+        responses: Vec<String>,
+    ) -> (String, Arc<AtomicUsize>, thread::JoinHandle<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind local test server");
+        let address = listener.local_addr().expect("server address");
+        let count = Arc::new(AtomicUsize::new(0));
+        let count_for_thread = Arc::clone(&count);
+
+        let handle = thread::spawn(move || {
+            for response in responses {
+                let (mut stream, _) = listener.accept().expect("accept test request");
+                let _ = stream.set_read_timeout(Some(Duration::from_secs(2)));
+                let mut request = [0_u8; 8192];
+                let _ = stream.read(&mut request);
+                count_for_thread.fetch_add(1, Ordering::SeqCst);
+                stream
+                    .write_all(response.as_bytes())
+                    .expect("write scripted response");
+                let _ = stream.flush();
+            }
+        });
+
+        (format!("http://{address}"), count, handle)
+    }
+
+    fn response(status: &str, headers: &[(&str, &str)], body: &str) -> String {
+        let mut value = format!(
+            "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n",
+            body.len()
+        );
+        for (name, header_value) in headers {
+            value.push_str(name);
+            value.push_str(": ");
+            value.push_str(header_value);
+            value.push_str("\r\n");
+        }
+        value.push_str("\r\n");
+        value.push_str(body);
+        value
+    }
+
+    fn local_config(base_url: String) -> TransactionFetchConfig {
+        TransactionFetchConfig {
+            base_url,
+            max_retries: 2,
+            retry_base_delay_ms: 1,
+            retry_max_delay_ms: 5,
+            ..TransactionFetchConfig::default()
+        }
+    }
 
     #[test]
     fn retry_policy_only_retries_transient_statuses() {
@@ -352,5 +408,99 @@ mod tests {
             let delay = retry_backoff_ms(&config, attempt, "kaspa:test", 42, 0);
             assert!((1..=100).contains(&delay));
         }
+    }
+
+    #[tokio::test]
+    async fn accepted_page_retries_429_then_parses_cursor() {
+        let responses = vec![
+            response(
+                "429 Too Many Requests",
+                &[("Retry-After", "0")],
+                "rate limited",
+            ),
+            response(
+                "200 OK",
+                &[("X-Next-Page-Before", "123"), ("X-Next-Page-After", "456")],
+                "[]",
+            ),
+        ];
+        let (base_url, count, server) = scripted_http_server(responses);
+        let config = local_config(base_url);
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(2))
+            .build()
+            .expect("client");
+
+        let page = fetch_transactions_page_accepted(&client, &config, "kaspa:qptest", 25, 0, 0, 0)
+            .await
+            .expect("retry should recover");
+
+        server.join().expect("server thread");
+        assert_eq!(count.load(Ordering::SeqCst), 2);
+        assert_eq!(page.next_before, Some(123));
+        assert_eq!(page.next_after, Some(456));
+        assert!(page.transactions.is_empty());
+    }
+
+    #[tokio::test]
+    async fn accepted_page_fails_fast_on_non_retryable_status() {
+        let (base_url, count, server) =
+            scripted_http_server(vec![response("404 Not Found", &[], "missing")]);
+        let config = local_config(base_url);
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(2))
+            .build()
+            .expect("client");
+
+        let error = fetch_transactions_page_accepted(&client, &config, "kaspa:qptest", 25, 0, 0, 0)
+            .await
+            .expect_err("404 must fail without retry");
+
+        server.join().expect("server thread");
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+        assert!(error.contains("404"));
+        assert!(error.contains("retryable=false"));
+    }
+
+    #[tokio::test]
+    async fn accepted_page_rejects_malformed_json() {
+        let (base_url, count, server) =
+            scripted_http_server(vec![response("200 OK", &[], "{not-json")]);
+        let config = local_config(base_url);
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(2))
+            .build()
+            .expect("client");
+
+        let error = fetch_transactions_page_accepted(&client, &config, "kaspa:qptest", 25, 0, 0, 0)
+            .await
+            .expect_err("malformed JSON must fail");
+
+        server.join().expect("server thread");
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+        assert!(error.contains("invalid accepted transaction page API JSON"));
+    }
+
+    #[tokio::test]
+    async fn retry_after_over_budget_fails_closed_without_sleeping_seconds() {
+        let (base_url, count, server) = scripted_http_server(vec![response(
+            "429 Too Many Requests",
+            &[("Retry-After", "1")],
+            "slow down",
+        )]);
+        let mut config = local_config(base_url);
+        config.retry_max_delay_ms = 5;
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(2))
+            .build()
+            .expect("client");
+
+        let error = fetch_transactions_page_accepted(&client, &config, "kaspa:qptest", 25, 0, 0, 0)
+            .await
+            .expect_err("Retry-After above budget must fail closed");
+
+        server.join().expect("server thread");
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+        assert!(error.contains("exceeds retry budget"));
     }
 }

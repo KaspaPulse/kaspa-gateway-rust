@@ -421,7 +421,15 @@ pub struct TransactionDayGroup {
 
 pub async fn sync_transactions(
     repo: &TransactionsRepository,
+    request: TransactionSyncRequest,
+) -> Result<TransactionSyncSummary, String> {
+    sync_transactions_with_config(repo, request, TransactionFetchConfig::default()).await
+}
+
+async fn sync_transactions_with_config(
+    repo: &TransactionsRepository,
     mut request: TransactionSyncRequest,
+    mut fetch_config: TransactionFetchConfig,
 ) -> Result<TransactionSyncSummary, String> {
     let parsed = KaspaAddress::parse(&request.address).map_err(|error| error.to_string())?;
     let address = parsed.as_str().to_ascii_lowercase();
@@ -550,11 +558,9 @@ pub async fn sync_transactions(
         .build()
         .map_err(|error| format!("failed to build transaction HTTP client: {error}"))?;
 
-    let config = TransactionFetchConfig {
-        page_limit,
-        max_pages,
-        ..TransactionFetchConfig::default()
-    };
+    fetch_config.page_limit = page_limit;
+    fetch_config.max_pages = max_pages;
+    let config = fetch_config;
 
     let mut fetched_from_api = 0usize;
     let mut accepted_for_range = 0usize;
@@ -1288,51 +1294,65 @@ fn raw_to_record_python_parity(
         return Ok(None);
     };
 
-    let inputs = raw.get("inputs").and_then(Value::as_array);
-    let outputs = raw.get("outputs").and_then(Value::as_array);
+    let inputs = raw
+        .get("inputs")
+        .and_then(Value::as_array)
+        .ok_or_else(|| format!("accepted transaction {txid} is missing inputs array"))?;
+    let outputs = raw
+        .get("outputs")
+        .and_then(Value::as_array)
+        .ok_or_else(|| format!("accepted transaction {txid} is missing outputs array"))?;
 
-    let is_coinbase = inputs.map(|values| values.is_empty()).unwrap_or(true);
+    let is_coinbase = inputs.is_empty();
 
     let mut from_addresses = Vec::<String>::new();
     let mut to_addresses = Vec::<String>::new();
     let mut total_in = 0i64;
     let mut total_out = 0i64;
 
-    if let Some(items) = inputs {
-        for input in items {
-            let from = input
-                .get("previous_outpoint_address")
-                .or_else(|| input.get("address"))
-                .and_then(Value::as_str)
-                .unwrap_or("N/A")
-                .to_string();
+    for input in inputs {
+        let from = input
+            .get("previous_outpoint_address")
+            .or_else(|| input.get("address"))
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .unwrap_or("UNKNOWN")
+            .to_string();
 
-            push_unique_case_insensitive(&mut from_addresses, from.clone());
+        push_unique_case_insensitive(&mut from_addresses, from.clone());
 
-            if from.eq_ignore_ascii_case(address) {
-                total_out = total_out.saturating_add(value_to_i64(
-                    input
-                        .get("previous_outpoint_amount")
-                        .or_else(|| input.get("amount")),
-                ));
-            }
+        if from.eq_ignore_ascii_case(address) {
+            let amount = required_nonnegative_i64(
+                input
+                    .get("previous_outpoint_amount")
+                    .or_else(|| input.get("amount")),
+                "previous_outpoint_amount",
+                &txid,
+            )?;
+            total_out = total_out.checked_add(amount).ok_or_else(|| {
+                format!("transaction {txid} input amount overflow for address={address}")
+            })?;
         }
     }
 
-    if let Some(items) = outputs {
-        for output in items {
-            let to = output
-                .get("script_public_key_address")
-                .or_else(|| output.get("address"))
-                .and_then(Value::as_str)
-                .unwrap_or("N/A")
-                .to_string();
+    for output in outputs {
+        let to = output
+            .get("script_public_key_address")
+            .or_else(|| output.get("address"))
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .unwrap_or("UNKNOWN")
+            .to_string();
 
-            push_unique_case_insensitive(&mut to_addresses, to.clone());
+        push_unique_case_insensitive(&mut to_addresses, to.clone());
 
-            if to.eq_ignore_ascii_case(address) {
-                total_in = total_in.saturating_add(value_to_i64(output.get("amount")));
-            }
+        if to.eq_ignore_ascii_case(address) {
+            let amount = required_nonnegative_i64(output.get("amount"), "output.amount", &txid)?;
+            total_in = total_in.checked_add(amount).ok_or_else(|| {
+                format!("transaction {txid} output amount overflow for address={address}")
+            })?;
         }
     }
 
@@ -1344,14 +1364,32 @@ fn raw_to_record_python_parity(
         .iter()
         .any(|candidate| candidate.eq_ignore_ascii_case(address));
 
-    let direction = if is_coinbase || (is_recipient && !is_sender) {
+    if is_coinbase && !is_recipient {
+        return Err(format!(
+            "coinbase transaction {txid} does not contain target address={address}"
+        ));
+    }
+
+    if !is_coinbase && !is_sender && !is_recipient {
+        return Err(format!(
+            "accepted transaction {txid} cannot prove relation to address={address}"
+        ));
+    }
+
+    let net_sompi = total_in
+        .checked_sub(total_out)
+        .ok_or_else(|| format!("transaction {txid} net amount overflow for address={address}"))?;
+
+    let direction = if is_coinbase || net_sompi > 0 {
         "incoming"
     } else {
         "outgoing"
     };
 
     let tx_type = if is_coinbase { "coinbase" } else { "transfer" };
-    let amount_sompi = total_in.saturating_sub(total_out).abs();
+    let amount_sompi = net_sompi.checked_abs().ok_or_else(|| {
+        format!("transaction {txid} absolute amount overflow for address={address}")
+    })?;
 
     let from_text = if from_addresses.is_empty() {
         "N/A (Coinbase)".to_string()
@@ -1360,15 +1398,33 @@ fn raw_to_record_python_parity(
     };
 
     let to_text = if to_addresses.is_empty() {
-        "N/A".to_string()
+        "UNKNOWN".to_string()
     } else {
         to_addresses.join(", ")
     };
 
-    let counterparty = if direction == "incoming" {
-        from_text.clone()
+    let counterparties = if direction == "incoming" {
+        &from_addresses
     } else {
-        to_text.clone()
+        &to_addresses
+    };
+    let known_counterparties = counterparties
+        .iter()
+        .filter(|candidate| !candidate.eq_ignore_ascii_case(address))
+        .filter(|candidate| !candidate.eq_ignore_ascii_case("UNKNOWN"))
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let counterparty = if is_coinbase {
+        "N/A (Coinbase)".to_string()
+    } else if known_counterparties.is_empty() {
+        if is_sender && is_recipient {
+            "SELF".to_string()
+        } else {
+            "UNKNOWN".to_string()
+        }
+    } else {
+        known_counterparties.join(", ")
     };
 
     let timestamp_ms = seconds_to_ms(block_time_seconds(raw));
@@ -1475,6 +1531,35 @@ fn push_unique_case_insensitive(values: &mut Vec<String>, value: String) {
     }
 }
 
+fn required_nonnegative_i64(value: Option<&Value>, field: &str, txid: &str) -> Result<i64, String> {
+    let parsed = match value {
+        Some(Value::Number(number)) => number
+            .as_i64()
+            .ok_or_else(|| format!("transaction {txid} field {field} is outside i64 range"))?,
+        Some(Value::String(text)) => text.trim().parse::<i64>().map_err(|error| {
+            format!("transaction {txid} field {field} is not a valid i64: {error}")
+        })?,
+        Some(other) => {
+            return Err(format!(
+                "transaction {txid} field {field} has unsupported JSON type: {other}"
+            ));
+        }
+        None => {
+            return Err(format!(
+                "transaction {txid} is missing required field {field}"
+            ));
+        }
+    };
+
+    if parsed < 0 {
+        return Err(format!(
+            "transaction {txid} field {field} must be non-negative, got {parsed}"
+        ));
+    }
+
+    Ok(parsed)
+}
+
 fn value_to_i64(value: Option<&Value>) -> i64 {
     match value {
         Some(Value::Number(number)) => number.as_i64().unwrap_or_default(),
@@ -1511,8 +1596,456 @@ fn civil_from_days(days: i64) -> (i64, i64, i64) {
 mod tests {
     use super::*;
 
+    const TARGET: &str = "kaspa:qptarget";
+    const OTHER: &str = "kaspa:qpother";
+    const SYNC_TARGET: &str = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g";
+
+    fn test_repository(label: &str) -> (std::path::PathBuf, TransactionsRepository) {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "kgw-runtime-{label}-{}-{nonce}",
+            std::process::id()
+        ));
+        let paths = kaspa_gateway_db::DatabasePaths::new(&root).expect("database paths");
+        let manager = kaspa_gateway_db::DatabaseManager::new(paths);
+        let repo = manager
+            .transactions_repository()
+            .expect("transactions repository");
+        (root, repo)
+    }
+
+    fn sync_request(request_id: &str, force: bool) -> TransactionSyncRequest {
+        TransactionSyncRequest {
+            address: SYNC_TARGET.to_string(),
+            start_ts: None,
+            end_ts: None,
+            force,
+            page_limit: Some(25),
+            max_pages: Some(10),
+            request_id: Some(request_id.to_string()),
+            tx_type: None,
+            direction: None,
+            search_query: None,
+        }
+    }
+
+    fn raw_coinbase(txid: &str, amount: i64, block_time: i64) -> Value {
+        serde_json::json!({
+            "is_accepted": true,
+            "transaction_id": txid,
+            "inputs": [],
+            "outputs": [
+                {"script_public_key_address": SYNC_TARGET, "amount": amount}
+            ],
+            "block_time": block_time
+        })
+    }
+
+    fn http_response(headers: &[(&str, &str)], body: &str) -> String {
+        let mut value = format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n",
+            body.len()
+        );
+        for (name, header_value) in headers {
+            value.push_str(name);
+            value.push_str(": ");
+            value.push_str(header_value);
+            value.push_str("\r\n");
+        }
+        value.push_str("\r\n");
+        value.push_str(body);
+        value
+    }
+
+    fn scripted_sync_server(
+        responses: Vec<(std::time::Duration, String)>,
+    ) -> (String, std::thread::JoinHandle<()>) {
+        use std::io::{Read, Write};
+        use std::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").expect("bind local sync server");
+        let address = listener.local_addr().expect("sync server address");
+        let handle = std::thread::spawn(move || {
+            for (delay, response) in responses {
+                let (mut stream, _) = listener.accept().expect("accept sync request");
+                let _ = stream.set_read_timeout(Some(std::time::Duration::from_secs(2)));
+                let mut request = [0_u8; 8192];
+                let _ = stream.read(&mut request);
+                if !delay.is_zero() {
+                    std::thread::sleep(delay);
+                }
+                let _ = stream.write_all(response.as_bytes());
+                let _ = stream.flush();
+            }
+        });
+
+        (format!("http://{address}"), handle)
+    }
+
+    fn local_sync_config(base_url: String) -> TransactionFetchConfig {
+        TransactionFetchConfig {
+            base_url,
+            max_retries: 0,
+            retry_base_delay_ms: 1,
+            retry_max_delay_ms: 5,
+            ..TransactionFetchConfig::default()
+        }
+    }
+
+    fn seed_known_good(repo: &TransactionsRepository, txid: &str) {
+        let mut record = TransactionRecord::new(txid, SYNC_TARGET, "transfer", "incoming", 7)
+            .expect("seed record");
+        record.timestamp_ms = 1_600_000_000_000;
+        record.raw_json = Some(format!("{{\"transaction_id\":\"{txid}\"}}"));
+        repo.upsert(&record).expect("seed known-good");
+    }
+
+    static SYNC_TEST_SERIAL: std::sync::atomic::AtomicBool =
+        std::sync::atomic::AtomicBool::new(false);
+
+    struct SyncTestSerialGuard;
+
+    impl SyncTestSerialGuard {
+        fn acquire() -> Self {
+            while SYNC_TEST_SERIAL
+                .compare_exchange(
+                    false,
+                    true,
+                    std::sync::atomic::Ordering::SeqCst,
+                    std::sync::atomic::Ordering::SeqCst,
+                )
+                .is_err()
+            {
+                std::thread::yield_now();
+            }
+            Self
+        }
+    }
+
+    impl Drop for SyncTestSerialGuard {
+        fn drop(&mut self) {
+            SYNC_TEST_SERIAL.store(false, std::sync::atomic::Ordering::SeqCst);
+        }
+    }
+
+    #[test]
+    fn raw_to_record_rejects_missing_mandatory_transaction_shape() {
+        let missing_inputs = serde_json::json!({
+            "is_accepted": true,
+            "transaction_id": "missing-inputs",
+            "outputs": []
+        });
+        let error = raw_to_record_python_parity(TARGET, &missing_inputs)
+            .expect_err("missing inputs must fail closed");
+        assert!(error.contains("missing inputs array"));
+
+        let missing_outputs = serde_json::json!({
+            "is_accepted": true,
+            "transaction_id": "missing-outputs",
+            "inputs": []
+        });
+        let error = raw_to_record_python_parity(TARGET, &missing_outputs)
+            .expect_err("missing outputs must fail closed");
+        assert!(error.contains("missing outputs array"));
+    }
+
+    #[test]
+    fn raw_to_record_coinbase_is_incoming_with_exact_target_amount() {
+        let raw = serde_json::json!({
+            "is_accepted": true,
+            "transaction_id": "coinbase-1",
+            "inputs": [],
+            "outputs": [
+                {"script_public_key_address": TARGET, "amount": "500"},
+                {"script_public_key_address": OTHER, "amount": 25}
+            ],
+            "block_time": 1_700_000_000
+        });
+
+        let record = raw_to_record_python_parity(TARGET, &raw)
+            .expect("coinbase transform")
+            .expect("accepted record");
+        assert_eq!(record.tx_type, "coinbase");
+        assert_eq!(record.direction, "incoming");
+        assert_eq!(record.amount_sompi, 500);
+        assert_eq!(record.counterparty.as_deref(), Some("N/A (Coinbase)"));
+    }
+
+    #[test]
+    fn raw_to_record_incoming_transfer_counts_only_target_outputs() {
+        let raw = serde_json::json!({
+            "is_accepted": true,
+            "transaction_id": "incoming-1",
+            "inputs": [
+                {"previous_outpoint_address": OTHER, "previous_outpoint_amount": 100}
+            ],
+            "outputs": [
+                {"script_public_key_address": TARGET, "amount": 60},
+                {"script_public_key_address": "kaspa:qpchange", "amount": 40}
+            ],
+            "block_time": 1_700_000_001
+        });
+
+        let record = raw_to_record_python_parity(TARGET, &raw)
+            .expect("incoming transform")
+            .expect("accepted record");
+        assert_eq!(record.tx_type, "transfer");
+        assert_eq!(record.direction, "incoming");
+        assert_eq!(record.amount_sompi, 60);
+        assert_eq!(record.counterparty.as_deref(), Some(OTHER));
+    }
+
+    #[test]
+    fn raw_to_record_outgoing_with_change_uses_net_delta_and_excludes_self() {
+        let raw = serde_json::json!({
+            "is_accepted": true,
+            "transaction_id": "outgoing-change-1",
+            "inputs": [
+                {"previous_outpoint_address": TARGET, "previous_outpoint_amount": 100}
+            ],
+            "outputs": [
+                {"script_public_key_address": OTHER, "amount": 70},
+                {"script_public_key_address": TARGET, "amount": 29}
+            ],
+            "block_time": 1_700_000_002
+        });
+
+        let record = raw_to_record_python_parity(TARGET, &raw)
+            .expect("outgoing transform")
+            .expect("accepted record");
+        assert_eq!(record.direction, "outgoing");
+        assert_eq!(record.amount_sompi, 71);
+        assert_eq!(record.counterparty.as_deref(), Some(OTHER));
+    }
+
+    #[test]
+    fn raw_to_record_self_transfer_reports_only_net_cost() {
+        let raw = serde_json::json!({
+            "is_accepted": true,
+            "transaction_id": "self-1",
+            "inputs": [
+                {"previous_outpoint_address": TARGET, "previous_outpoint_amount": 100}
+            ],
+            "outputs": [
+                {"script_public_key_address": TARGET, "amount": 99}
+            ],
+            "block_time": 1_700_000_003
+        });
+
+        let record = raw_to_record_python_parity(TARGET, &raw)
+            .expect("self transfer transform")
+            .expect("accepted record");
+        assert_eq!(record.direction, "outgoing");
+        assert_eq!(record.amount_sompi, 1);
+        assert_eq!(record.counterparty.as_deref(), Some("SELF"));
+    }
+
+    #[test]
+    fn raw_to_record_mixed_input_output_uses_signed_net_direction() {
+        let raw = serde_json::json!({
+            "is_accepted": true,
+            "transaction_id": "mixed-net-incoming",
+            "inputs": [
+                {"previous_outpoint_address": TARGET, "previous_outpoint_amount": 10},
+                {"previous_outpoint_address": OTHER, "previous_outpoint_amount": 100}
+            ],
+            "outputs": [
+                {"script_public_key_address": TARGET, "amount": 50},
+                {"script_public_key_address": "kaspa:qpthird", "amount": 59}
+            ],
+            "block_time": 1_700_000_004
+        });
+
+        let record = raw_to_record_python_parity(TARGET, &raw)
+            .expect("mixed transform")
+            .expect("accepted record");
+        assert_eq!(record.direction, "incoming");
+        assert_eq!(record.amount_sompi, 40);
+        assert_eq!(record.counterparty.as_deref(), Some(OTHER));
+    }
+
+    #[test]
+    fn raw_to_record_rejects_missing_or_invalid_target_amount() {
+        let missing = serde_json::json!({
+            "is_accepted": true,
+            "transaction_id": "missing-target-amount",
+            "inputs": [
+                {"previous_outpoint_address": OTHER, "previous_outpoint_amount": 100}
+            ],
+            "outputs": [
+                {"script_public_key_address": TARGET}
+            ]
+        });
+        let error = raw_to_record_python_parity(TARGET, &missing)
+            .expect_err("missing target output amount must fail");
+        assert!(error.contains("missing required field output.amount"));
+
+        let negative = serde_json::json!({
+            "is_accepted": true,
+            "transaction_id": "negative-target-amount",
+            "inputs": [
+                {"previous_outpoint_address": TARGET, "previous_outpoint_amount": -1}
+            ],
+            "outputs": [
+                {"script_public_key_address": OTHER, "amount": 1}
+            ]
+        });
+        let error = raw_to_record_python_parity(TARGET, &negative)
+            .expect_err("negative target input amount must fail");
+        assert!(error.contains("must be non-negative"));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn sync_hermetic_fault_matrix_proves_atomic_force_cycle_and_cancel() {
+        let _serial = SyncTestSerialGuard::acquire();
+        transaction_sync_tasks().lock().expect("registry").clear();
+
+        {
+            let (root, repo) = test_repository("force-success");
+            seed_known_good(&repo, "old-success");
+            let body = serde_json::to_string(&vec![raw_coinbase("new-success", 11, 1_700_000_100)])
+                .expect("response body");
+            let (base_url, server) =
+                scripted_sync_server(vec![(std::time::Duration::ZERO, http_response(&[], &body))]);
+            let summary = sync_transactions_with_config(
+                &repo,
+                sync_request("force-success", true),
+                local_sync_config(base_url),
+            )
+            .await
+            .expect("complete force refresh must promote");
+            server.join().expect("force success server");
+
+            assert_eq!(summary.stored, 1);
+            assert!(summary.stop_reason.starts_with("no_next_page_header:"));
+            let rows = repo
+                .list_for_address(SYNC_TARGET, 10)
+                .expect("post-promote rows");
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].txid, "new-success");
+            drop(repo);
+            let _ = std::fs::remove_dir_all(root);
+        }
+
+        {
+            let (root, repo) = test_repository("cursor-cycle");
+            seed_known_good(&repo, "old-cycle");
+            let body_one = serde_json::to_string(&vec![raw_coinbase("cycle-1", 12, 1_700_000_101)])
+                .expect("page one");
+            let body_two = serde_json::to_string(&vec![raw_coinbase("cycle-2", 13, 1_700_000_102)])
+                .expect("page two");
+            let (base_url, server) = scripted_sync_server(vec![
+                (
+                    std::time::Duration::ZERO,
+                    http_response(&[("X-Next-Page-Before", "10")], &body_one),
+                ),
+                (
+                    std::time::Duration::ZERO,
+                    http_response(&[("X-Next-Page-Before", "10")], &body_two),
+                ),
+            ]);
+
+            let error = sync_transactions_with_config(
+                &repo,
+                sync_request("cursor-cycle", true),
+                local_sync_config(base_url),
+            )
+            .await
+            .expect_err("repeated cursor must fail closed");
+            server.join().expect("cycle server");
+            assert!(error.contains("cursor cycle detected"));
+
+            let rows = repo
+                .list_for_address(SYNC_TARGET, 10)
+                .expect("known-good after cursor cycle");
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].txid, "old-cycle");
+            drop(repo);
+            let _ = std::fs::remove_dir_all(root);
+        }
+
+        {
+            let (root, repo) = test_repository("max-pages");
+            seed_known_good(&repo, "old-max-pages");
+            let body = serde_json::to_string(&vec![raw_coinbase("max-page-1", 14, 1_700_000_103)])
+                .expect("max page body");
+            let (base_url, server) = scripted_sync_server(vec![(
+                std::time::Duration::ZERO,
+                http_response(&[("X-Next-Page-Before", "10")], &body),
+            )]);
+            let mut request = sync_request("max-pages", true);
+            request.max_pages = Some(1);
+
+            let error = sync_transactions_with_config(&repo, request, local_sync_config(base_url))
+                .await
+                .expect_err("incomplete force refresh must not promote at max-pages");
+            server.join().expect("max-pages server");
+            assert!(error.contains("did not prove completeness before max_pages"));
+
+            let rows = repo
+                .list_for_address(SYNC_TARGET, 10)
+                .expect("known-good after max-pages");
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].txid, "old-max-pages");
+            drop(repo);
+            let _ = std::fs::remove_dir_all(root);
+        }
+
+        {
+            let (root, repo) = test_repository("cancel-http");
+            seed_known_good(&repo, "old-cancel");
+            let (base_url, server) = scripted_sync_server(vec![(
+                std::time::Duration::from_secs(2),
+                http_response(&[], "[]"),
+            )]);
+            let request_id = "cancel-slow-http";
+            let started = Instant::now();
+            let sync = sync_transactions_with_config(
+                &repo,
+                sync_request(request_id, true),
+                local_sync_config(base_url),
+            );
+            let cancel = async {
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                assert!(
+                    request_transaction_sync_cancel(request_id),
+                    "active request must be cancellable by exact request id"
+                );
+            };
+
+            let (result, ()) = tokio::join!(sync, cancel);
+            let cancel_elapsed = started.elapsed();
+            let error = result.expect_err("slow HTTP request must cancel");
+            assert!(error.contains("cancelled"));
+            assert!(
+                cancel_elapsed < std::time::Duration::from_secs(1),
+                "worker cancellation exceeded hermetic 1s SLO: {cancel_elapsed:?}"
+            );
+
+            let rows = repo
+                .list_for_address(SYNC_TARGET, 10)
+                .expect("known-good after cancellation");
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].txid, "old-cancel");
+            server.join().expect("cancel server");
+            drop(repo);
+            let _ = std::fs::remove_dir_all(root);
+        }
+
+        assert!(
+            transaction_sync_tasks()
+                .lock()
+                .expect("registry")
+                .is_empty()
+        );
+    }
+
     #[test]
     fn transaction_sync_registry_cancels_exact_request_and_releases_capacity() {
+        let _serial = SyncTestSerialGuard::acquire();
         transaction_sync_tasks().lock().expect("registry").clear();
 
         let guard = TransactionSyncGuard::enter("kaspa:qptestaddress", Some("request-a"), false)
