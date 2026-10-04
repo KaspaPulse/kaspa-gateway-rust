@@ -758,41 +758,43 @@ pub fn bridge_r51_set_runtime_buttons(
     let process = text(&property(&presentation, "process"));
     let process_label = text(&property(&presentation, "processLabel"));
     let profile = text(&property(&presentation, "profile"));
+    let parsed = bridge_parse_runtime_key_value_response(JsValue::from_str(&status_text));
+    let fields = property(&parsed, "fields");
+    let readiness = crate::settings_runtime::runtime_semantic_readiness(
+        &fields,
+        running,
+        &transition,
+        !runtime_error.is_empty(),
+        "bridge",
+    )
+    .unwrap_or("Awaiting telemetry");
 
     if present(&policy_status) {
         set(
             &policy_status,
             "textContent",
-            &JsValue::from_str(&process_label),
+            &JsValue::from_str(&format!("{process_label} | Readiness: {readiness}")),
         );
         set(
             &dataset(&policy_status),
             "state",
             &JsValue::from_str(&process.to_lowercase()),
         );
-        let _ = crate::apply_status_tone(policy_status.clone(), JsValue::from_str(&process));
+        let _ = crate::apply_status_tone(policy_status.clone(), JsValue::from_str(readiness));
     }
 
     let summary = crate::bridge_frontend_helpers::bridge_by_id(
         crate::bridge_frontend_helpers::bridge_element_id(net.clone(), "monitorState".to_owned()),
     );
-    let parsed = bridge_parse_runtime_key_value_response(JsValue::from_str(&status_text));
-    let fields = property(&parsed, "fields");
     let observation = crate::settings_runtime::runtime_observation_summary(
-        fields,
+        fields.clone(),
         JsValue::from_bool(running),
         JsValue::from_bool(net != "mainnet"),
     )
     .unwrap_or_default();
     let summary_text = format!(
         "{process_label} | Profile: {profile} | Startup readiness: {} | {observation}",
-        if running {
-            "Verified"
-        } else if !transition.is_empty() {
-            "Pending"
-        } else {
-            "Not ready"
-        }
+        readiness
     );
     let _ = crate::render_status_summary(summary, JsValue::from_str(&summary_text));
 

@@ -44,7 +44,7 @@ import {
   setControlValueByTestId,
   shutdownAllRuntimeWorkers,
   stopRuntime,
-  waitForOwnerStatus,
+  waitForSemanticReadiness,
   waitForRawLogOutput,
   waitForRuntimeLogs,
   waitForStopped,
@@ -207,7 +207,7 @@ async function startNodeFromSettings(network, settings) {
     await setControlValueByTestId(`kgw-node-field-${network}-listenPort`, String(settings.p2pPort));
   }
   await clickTestId(`kgw-node-start-${network}`);
-  const status = await waitForOwnerStatus({ network, runtimeRole: "node", timeoutMs: 180000 });
+  const status = await waitForSemanticReadiness({ network, runtimeRole: "node", timeoutMs: 180000 });
   recordPid(network, "node", status.pid);
   await writeJson(path.join(settings.outputDirectory, "node-owner-status.json"), status);
   await waitForPort("127.0.0.1", settings.rpcPort, 180000);
@@ -247,7 +247,7 @@ async function startBridgeFromSettings(network, settings) {
     profileBridgePort: settings.bridgePort || null,
   });
   await clickTestId(`kgw-bridge-start-${network}`);
-  const status = await waitForOwnerStatus({ network, runtimeRole: "bridge", timeoutMs: 180000 });
+  const status = await waitForSemanticReadiness({ network, runtimeRole: "bridge", timeoutMs: 180000 });
   recordPid(network, "bridge", status.pid);
   await writeJson(path.join(settings.outputDirectory, "bridge-owner-status.json"), status);
   if (externalBridgeListeners) {

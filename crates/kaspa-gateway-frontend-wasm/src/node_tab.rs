@@ -496,28 +496,36 @@ fn set_runtime_buttons(
     let presentation =
         crate::settings_runtime::runtime_presentation(state.into()).unwrap_or(JsValue::UNDEFINED);
     let runtime_state = text(&property(&presentation, "process"));
+    let fields =
+        crate::node_frontend_helpers::node_parse_runtime_fields(JsValue::from_str(status_text));
+    let readiness = crate::settings_runtime::runtime_semantic_readiness(
+        &fields,
+        running,
+        &transition,
+        !runtime_error.is_empty(),
+        "node",
+    )
+    .unwrap_or("Awaiting telemetry");
 
     if present(&policy_status) {
         set(
             &policy_status,
             "textContent",
-            &JsValue::from_str(&format!("Node: {runtime_state}")),
+            &JsValue::from_str(&format!("Node: {runtime_state} | Readiness: {readiness}")),
         );
         set(
             &dataset(&policy_status),
             "state",
             &JsValue::from_str(&runtime_state.to_lowercase()),
         );
-        let _ = crate::apply_status_tone(policy_status.clone(), JsValue::from_str(&runtime_state));
+        let _ = crate::apply_status_tone(policy_status.clone(), JsValue::from_str(readiness));
     }
 
     let summary = crate::node_frontend_helpers::node_by_id(
         crate::node_frontend_helpers::node_element_id(net.to_owned(), "monitorState".to_owned()),
     );
-    let fields =
-        crate::node_frontend_helpers::node_parse_runtime_fields(JsValue::from_str(status_text));
     let observation = crate::settings_runtime::runtime_observation_summary(
-        fields,
+        fields.clone(),
         JsValue::from_bool(running),
         JsValue::FALSE,
     )
@@ -526,13 +534,7 @@ fn set_runtime_buttons(
         "{} | Profile: {} | Startup readiness: {} | {}",
         text(&property(&presentation, "processLabel")),
         text(&property(&presentation, "profile")),
-        if running {
-            "Verified"
-        } else if !transition.is_empty() {
-            "Pending"
-        } else {
-            "Not ready"
-        },
+        readiness,
         observation
     );
     let _ = crate::render_status_summary(summary, JsValue::from_str(&summary_text));

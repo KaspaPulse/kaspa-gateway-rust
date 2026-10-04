@@ -87,6 +87,71 @@ fn network_state(running: bool, synced: Option<bool>) -> &'static str {
     }
 }
 
+fn semantic_readiness_state(
+    role: &str,
+    running: bool,
+    transition: &str,
+    failed: bool,
+    observation_fresh: bool,
+    rpc_ready: Option<bool>,
+    synced: Option<bool>,
+) -> &'static str {
+    match transition {
+        "starting" => return "Starting",
+        "stopping" => return "Stopping",
+        _ => {}
+    }
+    if failed {
+        return "Failed";
+    }
+    if !running {
+        return "Not ready";
+    }
+    if !observation_fresh {
+        return "Awaiting telemetry";
+    }
+    if rpc_ready != Some(true) {
+        return "Degraded";
+    }
+    match synced {
+        Some(true) => "Verified",
+        Some(false) if role.eq_ignore_ascii_case("bridge") => "Waiting for node sync",
+        Some(false) => "Synchronizing",
+        None => "Awaiting sync",
+    }
+}
+
+pub(crate) fn runtime_semantic_readiness(
+    fields: &JsValue,
+    running: bool,
+    transition: &str,
+    failed: bool,
+    role: &str,
+) -> Result<&'static str, JsValue> {
+    let fresh = running && equals_text(&property(fields, "observation_state")?, "fresh");
+    let rpc_ready = if !fresh {
+        None
+    } else if equals_text(&property(fields, "rpc_ready")?, "true") {
+        Some(true)
+    } else if equals_text(&property(fields, "rpc_ready")?, "false") {
+        Some(false)
+    } else {
+        None
+    };
+    let synced = if !fresh {
+        None
+    } else if equals_text(&property(fields, "synced")?, "true") {
+        Some(true)
+    } else if equals_text(&property(fields, "synced")?, "false") {
+        Some(false)
+    } else {
+        None
+    };
+    Ok(semantic_readiness_state(
+        role, running, transition, failed, fresh, rpc_ready, synced,
+    ))
+}
+
 #[wasm_bindgen(js_name = runtimePresentation)]
 pub fn runtime_presentation(state: JsValue) -> Result<JsValue, JsValue> {
     // Preserve destructuring order and undefined-only defaults from the public ABI.
@@ -259,6 +324,54 @@ mod tests {
         assert_eq!(network_state(true, None), "Synchronization not reported");
         assert_eq!(network_state(true, Some(false)), "Not synchronized");
         assert_eq!(network_state(true, Some(true)), "Synchronized");
+    }
+
+    #[test]
+    fn running_process_is_not_semantically_ready_without_fresh_rpc_and_sync() {
+        assert_eq!(
+            semantic_readiness_state("node", true, "", false, false, None, None),
+            "Awaiting telemetry"
+        );
+        assert_eq!(
+            semantic_readiness_state("node", true, "", false, true, Some(false), None),
+            "Degraded"
+        );
+        assert_eq!(
+            semantic_readiness_state("node", true, "", false, true, Some(true), Some(false)),
+            "Synchronizing"
+        );
+        assert_eq!(
+            semantic_readiness_state("bridge", true, "", false, true, Some(true), Some(false)),
+            "Waiting for node sync"
+        );
+        assert_eq!(
+            semantic_readiness_state("node", true, "", false, true, Some(true), Some(true)),
+            "Verified"
+        );
+    }
+
+    #[test]
+    fn transitions_and_failures_override_semantic_observation() {
+        assert_eq!(
+            semantic_readiness_state(
+                "node",
+                true,
+                "starting",
+                false,
+                true,
+                Some(true),
+                Some(true)
+            ),
+            "Starting"
+        );
+        assert_eq!(
+            semantic_readiness_state("bridge", true, "", true, true, Some(true), Some(true)),
+            "Failed"
+        );
+        assert_eq!(
+            semantic_readiness_state("node", false, "", false, true, Some(true), Some(true)),
+            "Not ready"
+        );
     }
 
     #[test]

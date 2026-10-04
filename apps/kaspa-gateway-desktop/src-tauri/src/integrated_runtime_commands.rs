@@ -95,6 +95,49 @@ fn kgw_capture_observation_v1(role: &str, network: &str, child_pid: u32, stream:
         );
     }
 }
+fn kgw_semantic_readiness_from_observation_v1(
+    running: bool,
+    observation: Option<&kaspa_gateway_rk_bridge::observation::RuntimeObservation>,
+) -> &'static str {
+    if !running {
+        return "FAILED";
+    }
+
+    let Some(value) = observation else {
+        return "AWAITING_OBSERVATION";
+    };
+
+    if !value.rpc_ready {
+        return "RPC_UNAVAILABLE";
+    }
+
+    match value.synced {
+        Some(true) => "READY",
+        Some(false) => "SYNCING",
+        None => "SYNC_UNKNOWN",
+    }
+}
+
+fn kgw_semantic_readiness_v1(worker: &KgwParallelSelfWorker, running: bool) -> &'static str {
+    let value = KGW_OBSERVATIONS_V1
+        .get()
+        .and_then(|cache| {
+            cache
+                .lock()
+                .ok()?
+                .get(&kgw_worker_key(&worker.role, &worker.network))
+                .cloned()
+        })
+        .filter(|(pid, at, _)| {
+            *pid == worker.spawned_pid && at.elapsed() < std::time::Duration::from_secs(10)
+        });
+
+    kgw_semantic_readiness_from_observation_v1(
+        running,
+        value.as_ref().map(|(_, _, observation)| observation),
+    )
+}
+
 fn kgw_observation_fields_v1(worker: &KgwParallelSelfWorker, running: bool) -> String {
     if !running {
         return "observation_state=stopped;rpc_ready=unknown;synced=unknown".into();
@@ -3472,7 +3515,7 @@ fn kgw_worker_status(
         }
 
         lines.push(format!(
-            "parallel-owned-self-worker status;role={};network={};pid={};worker_pid={};worker_start_time={};worker_executable={};parent_pid={};parent_start_time={};parent_executable={};running={};readiness={};readiness_evidence={};runtime_error={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};p2p={};stratum={};started_ms={};node_mode={};node_kind={};bridge_kind={};{}",
+            "parallel-owned-self-worker status;role={};network={};pid={};worker_pid={};worker_start_time={};worker_executable={};parent_pid={};parent_start_time={};parent_executable={};running={};readiness={};readiness_scope=startup_process_only;semantic_readiness={};readiness_evidence={};runtime_error={};same_exe=true;external_kaspad_exe=false;uses_kaspa_libraries=true;appdir={};rpc={};p2p={};stratum={};started_ms={};node_mode={};node_kind={};bridge_kind={};{}",
             worker.role,
             worker.network,
             worker.child.id(),
@@ -3488,6 +3531,7 @@ fn kgw_worker_status(
             } else {
                 "FAILED"
             },
+            kgw_semantic_readiness_v1(worker, running),
             if running {
                 worker.readiness_evidence.as_str()
             } else {
@@ -4629,6 +4673,65 @@ pub fn kgw_kgw_smoke_stop_network_v1(network: String) -> Result<String, String> 
         "smoke_stop_network accepted\n{}\nstatus={}\nlogs=\n{}",
         accepted, status, logs
     ))
+}
+
+#[cfg(test)]
+fn kgw_test_runtime_observation_v1(
+    rpc_ready: bool,
+    synced: Option<bool>,
+) -> kaspa_gateway_rk_bridge::observation::RuntimeObservation {
+    kaspa_gateway_rk_bridge::observation::RuntimeObservation {
+        version: 1,
+        role: "node".to_string(),
+        network: "mainnet".to_string(),
+        worker_pid: 1,
+        rpc_ready,
+        synced,
+        virtual_daa_score: Some(1),
+        cpu_enabled: false,
+        cpu_hashes_tried: None,
+        cpu_blocks_submitted: None,
+        cpu_blocks_confirmed_blue: None,
+        cpu_hashrate_hs: None,
+        error: None,
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn kgw_semantic_readiness_requires_rpc_and_sync_not_process_liveness() {
+    assert_eq!(
+        kgw_semantic_readiness_from_observation_v1(false, None),
+        "FAILED"
+    );
+    assert_eq!(
+        kgw_semantic_readiness_from_observation_v1(true, None),
+        "AWAITING_OBSERVATION"
+    );
+
+    let rpc_down = kgw_test_runtime_observation_v1(false, None);
+    assert_eq!(
+        kgw_semantic_readiness_from_observation_v1(true, Some(&rpc_down)),
+        "RPC_UNAVAILABLE"
+    );
+
+    let syncing = kgw_test_runtime_observation_v1(true, Some(false));
+    assert_eq!(
+        kgw_semantic_readiness_from_observation_v1(true, Some(&syncing)),
+        "SYNCING"
+    );
+
+    let sync_unknown = kgw_test_runtime_observation_v1(true, None);
+    assert_eq!(
+        kgw_semantic_readiness_from_observation_v1(true, Some(&sync_unknown)),
+        "SYNC_UNKNOWN"
+    );
+
+    let ready = kgw_test_runtime_observation_v1(true, Some(true));
+    assert_eq!(
+        kgw_semantic_readiness_from_observation_v1(true, Some(&ready)),
+        "READY"
+    );
 }
 
 #[cfg(test)]
