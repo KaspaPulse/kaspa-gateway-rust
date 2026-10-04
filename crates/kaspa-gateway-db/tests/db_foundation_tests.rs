@@ -25,8 +25,8 @@ fn database_paths_are_created_from_root() {
 }
 
 #[test]
-fn schema_version_is_stage5_initial_version() {
-    assert_eq!(schema_version(), 1);
+fn schema_version_is_v2_address_relations() {
+    assert_eq!(schema_version(), 2);
 }
 
 #[test]

@@ -81,8 +81,8 @@ fn values(root: &Path) -> Vec<String> {
     result.push(
         sqlite
             .query_row(
-                "SELECT CAST(amount_sompi AS TEXT) FROM transactions",
-                [],
+                "SELECT CAST(amount_sompi AS TEXT) FROM address_transactions WHERE address = ?1",
+                rusqlite::params![ADDRESS],
                 |row| row.get(0),
             )
             .unwrap(),
