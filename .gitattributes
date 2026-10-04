@@ -1,2 +1,7 @@
 # Template HTML is byte-preserved source for Rust-generated ES-module wrappers.
 apps/kaspa-gateway-desktop/frontend/src/tabs/*/*.template.html -whitespace
+
+# Rust-generated JavaScript is canonical LF on every checkout, including Windows.
+apps/kaspa-gateway-desktop/frontend/*.js text eol=lf
+apps/kaspa-gateway-desktop/frontend/**/*.js text eol=lf
+e2e/generated/**/*.js text eol=lf
