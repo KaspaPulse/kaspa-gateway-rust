@@ -341,22 +341,57 @@ fn install_protoc_windows(root: &Path) -> Result<PathBuf, String> {
 }
 
 #[cfg(windows)]
-fn windows_signature_status(root: &Path, installer: &Path) -> Result<String, String> {
-    let script =
-        "(Get-AuthenticodeSignature -LiteralPath $env:KGW_SIGNATURE_TARGET).Status.ToString()";
-    let output = Command::new("powershell.exe")
-        .args(["-NoLogo", "-NoProfile", "-Command", script])
-        .env("KGW_SIGNATURE_TARGET", installer)
-        .current_dir(root)
-        .output()
-        .map_err(|error| format!("desktop artifacts: Authenticode inspection: {error}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "desktop artifacts: Authenticode inspection failed: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
-        ));
+fn windows_signature_status(_root: &Path, installer: &Path) -> Result<String, String> {
+    let bytes = fs::read(installer).map_err(|error| {
+        format!("desktop artifacts: read PE for Authenticode inspection: {error}")
+    })?;
+    let u16_at = |offset: usize| -> Result<u16, String> {
+        let slice = bytes
+            .get(offset..offset + 2)
+            .ok_or_else(|| "desktop artifacts: truncated PE while reading u16".to_owned())?;
+        Ok(u16::from_le_bytes([slice[0], slice[1]]))
+    };
+    let u32_at = |offset: usize| -> Result<u32, String> {
+        let slice = bytes
+            .get(offset..offset + 4)
+            .ok_or_else(|| "desktop artifacts: truncated PE while reading u32".to_owned())?;
+        Ok(u32::from_le_bytes([slice[0], slice[1], slice[2], slice[3]]))
+    };
+
+    if bytes.get(..2) != Some(b"MZ") {
+        return Err("desktop artifacts: installer is not a DOS/PE executable".to_owned());
     }
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
+    let pe_offset = usize::try_from(u32_at(0x3c)?)
+        .map_err(|_| "desktop artifacts: PE header offset overflow".to_owned())?;
+    if bytes.get(pe_offset..pe_offset + 4) != Some(b"PE\0\0") {
+        return Err("desktop artifacts: invalid PE signature".to_owned());
+    }
+
+    let optional = pe_offset
+        .checked_add(24)
+        .ok_or_else(|| "desktop artifacts: PE optional-header offset overflow".to_owned())?;
+    let data_directories = match u16_at(optional)? {
+        0x10b => optional + 96,
+        0x20b => optional + 112,
+        magic => {
+            return Err(format!(
+                "desktop artifacts: unsupported PE optional-header magic 0x{magic:04x}"
+            ));
+        }
+    };
+    let security = data_directories
+        .checked_add(4 * 8)
+        .ok_or_else(|| "desktop artifacts: PE security-directory offset overflow".to_owned())?;
+    let certificate_table_offset = u32_at(security)?;
+    let certificate_table_size = u32_at(security + 4)?;
+
+    if certificate_table_offset == 0 && certificate_table_size == 0 {
+        Ok("NotSigned".to_owned())
+    } else if certificate_table_offset != 0 && certificate_table_size != 0 {
+        Ok("SignedPresent".to_owned())
+    } else {
+        Err("desktop artifacts: malformed PE certificate table entry".to_owned())
+    }
 }
 
 #[cfg(windows)]
@@ -823,6 +858,34 @@ mod tests {
         assert_eq!(Stage::parse("macos"), Ok(Stage::Macos));
         assert!(Stage::parse("powershell").is_err());
         assert!(Stage::parse("bash").is_err());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_signature_status_reads_pe_certificate_directory_without_powershell() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let path = temp.path().join("fixture.exe");
+        let mut pe = vec![0u8; 512];
+        pe[0..2].copy_from_slice(b"MZ");
+        pe[0x3c..0x40].copy_from_slice(&(0x80u32).to_le_bytes());
+        pe[0x80..0x84].copy_from_slice(b"PE\0\0");
+        let optional = 0x80 + 24;
+        pe[optional..optional + 2].copy_from_slice(&(0x20bu16).to_le_bytes());
+        let security = optional + 112 + (4 * 8);
+
+        fs::write(&path, &pe).expect("write unsigned fixture");
+        assert_eq!(
+            windows_signature_status(temp.path(), &path).as_deref(),
+            Ok("NotSigned")
+        );
+
+        pe[security..security + 4].copy_from_slice(&(400u32).to_le_bytes());
+        pe[security + 4..security + 8].copy_from_slice(&(64u32).to_le_bytes());
+        fs::write(&path, &pe).expect("write signed fixture");
+        assert_eq!(
+            windows_signature_status(temp.path(), &path).as_deref(),
+            Ok("SignedPresent")
+        );
     }
 
     #[test]
