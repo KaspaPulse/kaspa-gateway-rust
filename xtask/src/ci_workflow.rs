@@ -8,6 +8,13 @@ const CI_PATH: &str = ".github/workflows/ci.yml";
 const CHECKOUT_SHA: &str = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
 const RUST_SHA: &str = "dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c";
 const NODE_SHA: &str = "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020";
+const MSRV_TEST_ARGS: &[&str] = &[
+    "test",
+    "--locked",
+    "--workspace",
+    "--all-targets",
+    "--no-run",
+];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Stage {
@@ -283,11 +290,7 @@ fn run_msrv(root: &Path) -> Result<(), String> {
             "wasm32-unknown-unknown",
         ],
     )?;
-    status(
-        root,
-        "cargo",
-        &["test", "--locked", "--workspace", "--all-targets"],
-    )
+    status(root, "cargo", MSRV_TEST_ARGS)
 }
 
 fn run_clippy_phase(
@@ -634,6 +637,20 @@ mod tests {
         ] {
             assert!(require(marker, marker).is_ok());
         }
+    }
+
+    #[test]
+    fn msrv_compiles_workspace_test_targets_without_execution() {
+        assert_eq!(
+            MSRV_TEST_ARGS,
+            &[
+                "test",
+                "--locked",
+                "--workspace",
+                "--all-targets",
+                "--no-run",
+            ]
+        );
     }
 
     #[test]
