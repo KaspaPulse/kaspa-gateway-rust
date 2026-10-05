@@ -1645,6 +1645,15 @@ impl TransactionsRepository {
             query.push_str(" LIMIT ?");
             let limit = i64::try_from(limit.clamp(1, 1_000_000)).unwrap_or(1_000_000);
             params.push(Box::new(limit));
+            if let Some(offset) = filter.offset {
+                query.push_str(" OFFSET ?");
+                let offset = i64::try_from(offset).unwrap_or(i64::MAX);
+                params.push(Box::new(offset));
+            }
+        } else if let Some(offset) = filter.offset {
+            query.push_str(" LIMIT -1 OFFSET ?");
+            let offset = i64::try_from(offset).unwrap_or(i64::MAX);
+            params.push(Box::new(offset));
         }
 
         let borrowed = params
@@ -1693,6 +1702,7 @@ pub struct TransactionFilter<'a> {
     pub direction: Option<&'a str>,
     pub search: Option<&'a str>,
     pub limit: Option<usize>,
+    pub offset: Option<usize>,
 }
 #[derive(Debug)]
 pub struct AppSettingsRepository {

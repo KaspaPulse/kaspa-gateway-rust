@@ -174,6 +174,7 @@ fn run_scale(rows: usize) {
             direction: None,
             search: Some(&exact_txid),
             limit: Some(100),
+            offset: None,
         })
         .expect("exact txid search");
     let exact_elapsed = exact_started.elapsed();
@@ -191,6 +192,7 @@ fn run_scale(rows: usize) {
             direction: None,
             search: Some(prefix),
             limit: Some(100),
+            offset: None,
         })
         .expect("txid prefix search");
     let prefix_elapsed = prefix_started.elapsed();
@@ -207,6 +209,7 @@ fn run_scale(rows: usize) {
             direction: None,
             search: Some(COUNTERPARTY),
             limit: Some(100),
+            offset: None,
         })
         .expect("exact address search");
     let address_elapsed = address_started.elapsed();
@@ -222,6 +225,7 @@ fn run_scale(rows: usize) {
             direction: None,
             search: Some("kgw-definitely-not-present-fragment"),
             limit: Some(100),
+            offset: None,
         })
         .expect("free substring miss search");
     let substring_elapsed = substring_started.elapsed();
@@ -237,6 +241,7 @@ fn run_scale(rows: usize) {
             direction: None,
             search: Some("qpsender"),
             limit: Some(100),
+            offset: None,
         })
         .expect("common free substring search");
     let common_substring_elapsed = common_substring_started.elapsed();
@@ -252,6 +257,7 @@ fn run_scale(rows: usize) {
             direction: None,
             search: None,
             limit: Some(10_000),
+            offset: None,
         })
         .expect("day summaries");
     let day_elapsed = day_started.elapsed();

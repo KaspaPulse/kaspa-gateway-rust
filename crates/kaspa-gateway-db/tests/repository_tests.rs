@@ -264,6 +264,7 @@ fn transactions_repository_filters_and_summarizes_through_address_relations() {
         direction: Some("incoming"),
         search: Some("tx-filter"),
         limit: Some(10),
+        offset: None,
     };
 
     assert_eq!(
@@ -287,6 +288,69 @@ fn transactions_repository_filters_and_summarizes_through_address_relations() {
     assert_eq!(summaries.len(), 1);
     assert_eq!(summaries[0].count, 1);
     assert_eq!(summaries[0].incoming_sompi, 123);
+}
+
+#[test]
+fn transaction_filter_offset_paginates_without_overlap() {
+    let manager = test_manager("transactions_filter_offset");
+    let repository = manager
+        .transactions_repository()
+        .expect("transactions repository must open");
+    let address = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g";
+
+    for index in 0..5_i64 {
+        let mut record = TransactionRecord::new(
+            format!("tx-page-{index:03}"),
+            address,
+            "transfer",
+            "incoming",
+            100 + index,
+        )
+        .expect("transaction valid");
+        record.timestamp_ms = index * 1_000;
+        record.raw_json = Some(format!(r#"{{"txid":"tx-page-{index:03}"}}"#));
+        repository.upsert(&record).expect("upsert");
+    }
+
+    let page = |offset| {
+        repository
+            .filter_for_address(TransactionFilter {
+                address,
+                start_ms: None,
+                end_ms: None,
+                tx_type: None,
+                direction: None,
+                search: None,
+                limit: Some(2),
+                offset: Some(offset),
+            })
+            .expect("page")
+    };
+
+    let first = page(0);
+    let second = page(2);
+    let third = page(4);
+
+    assert_eq!(first.len(), 2);
+    assert_eq!(second.len(), 2);
+    assert_eq!(third.len(), 1);
+
+    let txids = first
+        .iter()
+        .chain(second.iter())
+        .chain(third.iter())
+        .map(|row| row.txid.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        txids,
+        vec![
+            "tx-page-004",
+            "tx-page-003",
+            "tx-page-002",
+            "tx-page-001",
+            "tx-page-000",
+        ]
+    );
 }
 
 #[test]
@@ -739,6 +803,7 @@ fn sqlite_fts5_trigram_search_stays_consistent_across_mutations() {
                 direction: None,
                 search: Some(term),
                 limit: Some(100),
+                offset: None,
             })
             .expect("substring search")
     };
@@ -825,6 +890,7 @@ fn sqlite_fts5_index_rebuilds_from_known_good_relations_when_missing() {
             direction: None,
             search: Some("rebuildneedle"),
             limit: Some(100),
+            offset: None,
         })
         .expect("search rebuilt index");
     assert_eq!(found.len(), 1);

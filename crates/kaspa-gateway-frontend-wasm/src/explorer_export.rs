@@ -748,23 +748,42 @@ async fn build_raw_export_table(section: &JsValue) -> Result<JsValue, JsValue> {
             raw_rows.push(normalized);
         }
     } else {
+        const MAX_EXPORT_DAY_PAGES: u32 = 10_000;
+        let page_size = crate::explorer_runtime::DAY_TRANSACTION_PAGE_SIZE;
         for day in &summary_days {
-            let day_rows = crate::explorer_runtime::explorer_clean2_load_day_transactions(
-                root.clone(),
-                JsValue::from_str(&address),
-                day.clone(),
-            )
-            .await?;
-            if !Array::is_array(&day_rows) {
-                continue;
-            }
-            for row in Array::from(&day_rows).iter() {
-                let normalized = raw_export_normalize_tx(&row);
-                let txid = js_string(&property(&normalized, "txid"));
-                if txid.is_empty() || !seen_txids.insert(txid) {
-                    continue;
+            let mut completed = false;
+            for page_index in 0..MAX_EXPORT_DAY_PAGES {
+                let offset = page_index.saturating_mul(page_size);
+                let day_rows = crate::explorer_runtime::explorer_clean2_load_day_transaction_page(
+                    root.clone(),
+                    JsValue::from_str(&address),
+                    day.clone(),
+                    offset,
+                )
+                .await?;
+                if !Array::is_array(&day_rows) {
+                    completed = true;
+                    break;
                 }
-                raw_rows.push(normalized);
+                let page = Array::from(&day_rows);
+                let page_len = page.length();
+                for row in page.iter() {
+                    let normalized = raw_export_normalize_tx(&row);
+                    let txid = js_string(&property(&normalized, "txid"));
+                    if txid.is_empty() || !seen_txids.insert(txid) {
+                        continue;
+                    }
+                    raw_rows.push(normalized);
+                }
+                if page_len < page_size {
+                    completed = true;
+                    break;
+                }
+            }
+            if !completed {
+                return Err(js_error(
+                    "Explorer raw export exceeded the bounded per-day page limit.",
+                ));
             }
         }
     }

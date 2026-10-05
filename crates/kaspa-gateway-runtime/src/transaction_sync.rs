@@ -49,6 +49,8 @@ use tokio_util::sync::CancellationToken;
 
 const PAGE_LIMIT: usize = 500;
 const MAX_PAGES: usize = 10_000;
+const LOCAL_TRANSACTION_PAGE_DEFAULT: usize = 250;
+const LOCAL_TRANSACTION_PAGE_MAX: usize = 500;
 const TX_VERBOSE_ITEM_LOGS: bool = false;
 
 // Progress emission is currently a single process-wide callback, so concurrency
@@ -392,6 +394,9 @@ pub struct TransactionListRequest {
     pub direction: Option<String>,
     pub search_query: Option<String>,
     pub limit: Option<usize>,
+
+    #[serde(default)]
+    pub offset: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -503,6 +508,7 @@ async fn sync_transactions_with_config(
                 direction: request.direction.as_deref(),
                 search: request.search_query.as_deref(),
                 limit: None,
+                offset: None,
             })
             .map_err(|error| error.to_string())?;
 
@@ -1250,6 +1256,15 @@ async fn sync_transactions_with_config(
     })
 }
 
+fn local_transaction_page(limit: Option<usize>, offset: Option<usize>) -> (usize, usize) {
+    (
+        limit
+            .unwrap_or(LOCAL_TRANSACTION_PAGE_DEFAULT)
+            .clamp(1, LOCAL_TRANSACTION_PAGE_MAX),
+        offset.unwrap_or(0),
+    )
+}
+
 pub fn list_transactions_grouped_by_day(
     repo: &TransactionsRepository,
     request: TransactionListRequest,
@@ -1263,6 +1278,8 @@ pub fn list_transactions_grouped_by_day(
         return Err("start date cannot be after end date".to_string());
     }
 
+    let (page_limit, page_offset) = local_transaction_page(request.limit, request.offset);
+
     let records = repo
         .filter_for_address(TransactionFilter {
             address: &address,
@@ -1271,7 +1288,8 @@ pub fn list_transactions_grouped_by_day(
             tx_type: request.tx_type.as_deref(),
             direction: request.direction.as_deref(),
             search: request.search_query.as_deref(),
-            limit: request.limit.or(Some(1_000_000)),
+            limit: Some(page_limit),
+            offset: Some(page_offset),
         })
         .map_err(|error| error.to_string())?;
 
@@ -1729,6 +1747,17 @@ mod tests {
         fn drop(&mut self) {
             SYNC_TEST_SERIAL.store(false, std::sync::atomic::Ordering::SeqCst);
         }
+    }
+
+    #[test]
+    fn local_transaction_page_defaults_caps_and_preserves_offset() {
+        assert_eq!(local_transaction_page(None, None), (250, 0));
+        assert_eq!(local_transaction_page(Some(0), Some(7)), (1, 7));
+        assert_eq!(local_transaction_page(Some(500), Some(19)), (500, 19));
+        assert_eq!(
+            local_transaction_page(Some(1_000_000), Some(250_000)),
+            (500, 250_000)
+        );
     }
 
     #[test]
