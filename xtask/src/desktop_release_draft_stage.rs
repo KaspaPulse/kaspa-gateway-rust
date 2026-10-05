@@ -70,6 +70,13 @@ fn is_lower_hex40(value: &str) -> bool {
             .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
 }
 
+fn is_lower_hex64(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase())
+}
+
 fn is_digits(value: &str) -> bool {
     !value.is_empty() && value.bytes().all(|b| b.is_ascii_digit())
 }
@@ -449,6 +456,33 @@ fn require_markers(path: &Path, markers: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+fn require_lower_hex64_marker(path: &Path, key: &str) -> Result<String, String> {
+    let text = fs::read_to_string(path).map_err(|error| {
+        format!(
+            "desktop release draft stage: read {}: {error}",
+            path.display()
+        )
+    })?;
+    let prefix = format!("{key}=");
+    let value = text
+        .lines()
+        .find_map(|line| line.strip_prefix(&prefix))
+        .ok_or_else(|| {
+            format!(
+                "desktop release draft stage: {} omitted marker {key}",
+                path.display()
+            )
+        })?
+        .trim();
+    if !is_lower_hex64(value) {
+        return Err(format!(
+            "desktop release draft stage: {} has invalid {key}",
+            path.display()
+        ));
+    }
+    Ok(value.to_owned())
+}
+
 fn verify_attestation(
     ctx: &Context,
     subject: &Path,
@@ -533,6 +567,8 @@ fn verify_qualified_artifacts(ctx: &Context, win: &Path, mac: &Path) -> Result<Q
             "TESTNET13_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL".to_owned(),
         ],
     )?;
+    let _installed_payload_sha256 =
+        require_lower_hex64_marker(&win_smoke, "WINDOWS_INSTALLED_EXE_SHA256")?;
     require_markers(
         &mac_smoke,
         &[
@@ -790,6 +826,12 @@ mod tests {
         assert!(!is_version("1.2.3-beta"));
         assert!(is_lower_hex40("0123456789abcdef0123456789abcdef01234567"));
         assert!(!is_lower_hex40("0123456789ABCDEF0123456789abcdef01234567"));
+        assert!(is_lower_hex64(
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        ));
+        assert!(!is_lower_hex64(
+            "0123456789ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef"
+        ));
         assert!(is_digits("123456"));
         assert!(!is_digits("12a"));
     }

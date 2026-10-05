@@ -329,6 +329,7 @@ fn validate_rust_owner(stage: &str) -> Result<(), String> {
         "windows_signature_status",
         "KASPA_GATEWAY_DATA_DIR",
         "WINDOWS_CODE_SIGNING=UNSIGNED_NOT_CONFIGURED",
+        "WINDOWS_INSTALLED_EXE_SHA256",
         "WINDOWS_INSTALLER_SMOKE=PASS",
         "MACOS_NOTARIZATION=NOT_CONFIGURED",
         "MACOS_ARCHITECTURE_PROOF=UNIVERSAL_ARM64_X86_64",
@@ -414,6 +415,7 @@ mod tests {
             "windows_signature_status",
             "KASPA_GATEWAY_DATA_DIR",
             "WINDOWS_CODE_SIGNING=UNSIGNED_NOT_CONFIGURED",
+            "WINDOWS_INSTALLED_EXE_SHA256",
             "WINDOWS_INSTALLER_SMOKE=PASS",
             "MACOS_NOTARIZATION=NOT_CONFIGURED",
             "MACOS_ARCHITECTURE_PROOF=UNIVERSAL_ARM64_X86_64",
@@ -473,6 +475,12 @@ mod tests {
 
         let mut input = fixture();
         input.stage_source = input.stage_source.replace("SPDX-2.3", "");
+        assert!(validate(&input).is_err());
+
+        let mut input = fixture();
+        input.stage_source = input
+            .stage_source
+            .replace("WINDOWS_INSTALLED_EXE_SHA256", "");
         assert!(validate(&input).is_err());
     }
 
