@@ -2,6 +2,7 @@ use crate::e2e_native_webdriver::{NativeWebDriverHarness, WebDriverSession};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::fs;
+use std::net::{Ipv4Addr, TcpListener};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -58,7 +59,7 @@ pub(crate) fn run_cli(
         let output = args
             .output_directory
             .join(format!("node-recovery-{index:02}"));
-        let port = checked_port(args.webdriver_port_base, index)?;
+        let port = checked_available_port(args.webdriver_port_base, index, 1)?;
         let mut inner = common_args(&args, &output, port);
         inner.extend(["--network".to_owned(), "all".to_owned()]);
         let rendered = crate::e2e_lifecycle_recovery::run_cli(&mut inner.into_iter(), root)
@@ -70,7 +71,7 @@ pub(crate) fn run_cli(
     let mut bridge_runs = Vec::with_capacity(BRIDGE_RUNS);
     for index in 0..BRIDGE_RUNS {
         let output = args.output_directory.join(format!("bridge-{index:02}"));
-        let port = checked_port(bridge_base, index)?;
+        let port = checked_available_port(bridge_base, index, 1)?;
         let mut inner = common_args(&args, &output, port);
         inner.extend(["--network".to_owned(), "all".to_owned()]);
         let rendered = crate::e2e_bridge_inprocess::run_cli(&mut inner.into_iter(), root)
@@ -84,14 +85,14 @@ pub(crate) fn run_cli(
         let output = args
             .output_directory
             .join(format!("app-relaunch-{index:02}"));
-        let port = checked_port(relaunch_base, index * 2)?;
+        let port = checked_available_port(relaunch_base, index * 2, 2)?;
         let inner = common_args(&args, &output, port);
         let rendered = crate::e2e_app_close_relaunch::run_cli(&mut inner.into_iter(), root)
             .map_err(|error| format!("lifecycle-stress: app relaunch run {index}: {error}"))?;
         app_relaunch_runs.push(parse_passed_json(&rendered, "app relaunch", index)?);
     }
 
-    let tab_port = checked_port(args.webdriver_port_base, 70)?;
+    let tab_port = checked_available_port(args.webdriver_port_base, 70, 1)?;
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -215,6 +216,45 @@ fn checked_port(base: u16, offset: usize) -> Result<u16, String> {
     base.checked_add(offset)
         .filter(|port| *port <= 65534)
         .ok_or_else(|| "lifecycle-stress: WebDriver port range overflow".to_owned())
+}
+
+fn span_is_available(start: u16, width: u16) -> bool {
+    if width == 0 {
+        return false;
+    }
+    let Some(last) = start.checked_add(width.saturating_sub(1)) else {
+        return false;
+    };
+    if last > 65534 {
+        return false;
+    }
+
+    let mut listeners = Vec::with_capacity(width as usize);
+    for offset in 0..width {
+        let Some(port) = start.checked_add(offset) else {
+            return false;
+        };
+        match TcpListener::bind((Ipv4Addr::LOCALHOST, port)) {
+            Ok(listener) => listeners.push(listener),
+            Err(_) => return false,
+        }
+    }
+    true
+}
+
+fn checked_available_port(base: u16, offset: usize, width: u16) -> Result<u16, String> {
+    let nominal = checked_port(base, offset)?;
+    for delta in 0..=128_u16 {
+        let Some(candidate) = nominal.checked_add(delta) else {
+            break;
+        };
+        if span_is_available(candidate, width) {
+            return Ok(candidate);
+        }
+    }
+    Err(format!(
+        "lifecycle-stress: no free WebDriver port span width={width} at/after {nominal}"
+    ))
 }
 
 fn parse_passed_json(rendered: &str, label: &str, index: usize) -> Result<Value, String> {
@@ -396,6 +436,35 @@ mod tests {
         .into_iter();
         let args = parse_args(&mut valid).expect("valid args");
         assert_eq!(args.webdriver_port_base, 4600);
+    }
+
+    #[test]
+    fn port_allocator_skips_occupied_listener() {
+        let (occupied, _listener) = (43000_u16..44000)
+            .find_map(|port| {
+                TcpListener::bind((Ipv4Addr::LOCALHOST, port))
+                    .ok()
+                    .map(|listener| (port, listener))
+            })
+            .expect("test requires one free loopback port");
+        assert!(!span_is_available(occupied, 1));
+        let selected = checked_available_port(occupied, 0, 1).expect("find replacement port");
+        assert_ne!(selected, occupied);
+        assert!(span_is_available(selected, 1));
+    }
+
+    #[test]
+    fn port_allocator_reserves_relaunch_pair() {
+        let (occupied, _listener) = (44000_u16..45000)
+            .find_map(|port| {
+                TcpListener::bind((Ipv4Addr::LOCALHOST, port))
+                    .ok()
+                    .map(|listener| (port, listener))
+            })
+            .expect("test requires one free loopback port");
+        let selected = checked_available_port(occupied, 0, 2).expect("find replacement pair");
+        assert_ne!(selected, occupied);
+        assert!(span_is_available(selected, 2));
     }
 
     #[test]
