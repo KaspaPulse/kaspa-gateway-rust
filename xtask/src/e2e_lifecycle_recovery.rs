@@ -284,7 +284,17 @@ const nextValue = String(arguments[1]);
 const node = Array.from(document.querySelectorAll("[data-testid]"))
   .find((item) => item.getAttribute("data-testid") === wanted);
 if (!node) return { ok: false, reason: "missing" };
-if (node.disabled || node.readOnly) return { ok: false, reason: "not-editable" };
+if (node.disabled || node.readOnly) {
+  return {
+    ok: false,
+    reason: "not-editable",
+    disabled: Boolean(node.disabled),
+    readOnly: Boolean(node.readOnly),
+    title: String(node.title || ""),
+    ariaReadOnly: String(node.getAttribute("aria-readonly") || ""),
+    dataset: { ...node.dataset },
+  };
+}
 node.value = nextValue;
 node.dispatchEvent(new Event("input", { bubbles: true }));
 node.dispatchEvent(new Event("change", { bubbles: true }));
@@ -306,7 +316,7 @@ return { ok: true, value: String(node.value || "") };
             .and_then(Value::as_str)
             .unwrap_or("unknown");
         if !matches!(reason, "missing" | "not-editable") || Instant::now() >= deadline {
-            return Err(format!("unable to set {test_id}: {reason}"));
+            return Err(format!("unable to set {test_id}: {reason}; state={result}"));
         }
         sleep(POLL_FAST).await;
     }
