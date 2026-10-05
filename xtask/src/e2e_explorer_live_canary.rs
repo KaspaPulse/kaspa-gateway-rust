@@ -158,27 +158,52 @@ fn assert_address(value: &Value, expected: &str, label: &str) -> Result<(), Stri
     Ok(())
 }
 
-fn assert_nonempty_page(page: &Value, expected: &str) -> Result<String, String> {
-    assert_address(page, expected, "explorer_transactions_page")?;
-    if page.get("limit").and_then(Value::as_u64) != Some(10) {
-        return Err(format!("page limit mismatch: {page}"));
-    }
-    let rows = page
-        .get("rows")
-        .and_then(Value::as_array)
-        .ok_or_else(|| format!("page rows missing: {page}"))?;
+fn grouped_rows<'a>(groups: &'a Value, expected: &str) -> Result<Vec<&'a Value>, String> {
+    let groups = groups
+        .as_array()
+        .ok_or_else(|| format!("grouped transaction response is not an array: {groups}"))?;
+    let rows = groups
+        .iter()
+        .flat_map(|group| {
+            group
+                .get("transactions")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+        })
+        .collect::<Vec<_>>();
     if rows.is_empty() || rows.len() > 10 {
         return Err(format!(
-            "page must contain 1..=10 real rows; observed {}",
+            "grouped read must contain 1..=10 real rows; observed {}",
             rows.len()
         ));
     }
+    for row in &rows {
+        assert_address(row, expected, "explorer_list_transactions_grouped_rust.row")?;
+    }
+    Ok(rows)
+}
+
+fn first_grouped_txid(groups: &Value, expected: &str) -> Result<String, String> {
+    let rows = grouped_rows(groups, expected)?;
     rows[0]
         .get("txid")
         .and_then(Value::as_str)
         .filter(|txid| !txid.trim().is_empty())
         .map(str::to_owned)
-        .ok_or_else(|| format!("first page row is missing txid: {}", rows[0]))
+        .ok_or_else(|| format!("first grouped row is missing txid: {}", rows[0]))
+}
+
+fn grouped_contains_exact_txid(
+    groups: &Value,
+    expected_address: &str,
+    expected_txid: &str,
+) -> Result<bool, String> {
+    Ok(grouped_rows(groups, expected_address)?.iter().any(|row| {
+        row.get("txid")
+            .and_then(Value::as_str)
+            .is_some_and(|txid| txid.eq_ignore_ascii_case(expected_txid))
+    }))
 }
 
 fn verify_isolation(args: &Args) -> Result<(), String> {
@@ -229,7 +254,11 @@ async fn run_native(root: &Path, args: &Args) -> Result<Value, String> {
         )
         .await?;
         assert_address(&balance, &args.address, "explorer_fetch_balance")?;
-        if balance.get("balance_sompi").and_then(Value::as_u64).is_none() {
+        if balance
+            .get("balance_sompi")
+            .and_then(Value::as_u64)
+            .is_none()
+        {
             return Err(format!("balance_sompi is missing or invalid: {balance}"));
         }
 
@@ -262,7 +291,9 @@ async fn run_native(root: &Path, args: &Args) -> Result<Value, String> {
             .and_then(Value::as_u64)
             .ok_or_else(|| format!("summary.pages missing: {summary}"))?;
         if pages > 1 {
-            return Err(format!("bounded canary exceeded max_pages=1: pages={pages}"));
+            return Err(format!(
+                "bounded canary exceeded max_pages=1: pages={pages}"
+            ));
         }
         let db_rows_after = sync
             .get("db_rows_after")
@@ -272,42 +303,45 @@ async fn run_native(root: &Path, args: &Args) -> Result<Value, String> {
             return Err("live canary fetched no persistent Explorer rows".to_owned());
         }
 
-        let page = invoke(
+        let grouped = invoke(
             session,
-            "explorer_transactions_page",
+            "explorer_list_transactions_grouped_rust",
             json!({
                 "request": {
                     "address": args.address,
+                    "start_ts": null,
+                    "end_ts": null,
+                    "tx_type": null,
+                    "direction": null,
+                    "search_query": null,
                     "limit": 10,
-                    "offset": 0,
-                    "direction_filter": null,
-                    "type_filter": null,
-                    "query": null
+                    "offset": 0
                 }
             }),
         )
         .await?;
-        let txid = assert_nonempty_page(&page, &args.address)?;
+        let txid = first_grouped_txid(&grouped, &args.address)?;
 
         let search = invoke(
             session,
-            "explorer_transactions_page",
+            "explorer_list_transactions_grouped_rust",
             json!({
                 "request": {
                     "address": args.address,
+                    "start_ts": null,
+                    "end_ts": null,
+                    "tx_type": null,
+                    "direction": null,
+                    "search_query": txid,
                     "limit": 10,
-                    "offset": 0,
-                    "direction_filter": null,
-                    "type_filter": null,
-                    "query": txid
+                    "offset": 0
                 }
             }),
         )
         .await?;
-        let search_txid = assert_nonempty_page(&search, &args.address)?;
-        if !search_txid.eq_ignore_ascii_case(&txid) {
+        if !grouped_contains_exact_txid(&search, &args.address, &txid)? {
             return Err(format!(
-                "exact transaction search returned unexpected first txid: expected={txid}; actual={search_txid}"
+                "exact transaction search did not return txid={txid}"
             ));
         }
 
@@ -320,7 +354,7 @@ async fn run_native(root: &Path, args: &Args) -> Result<Value, String> {
             "address": args.address,
             "balance": balance,
             "sync": sync,
-            "page": page,
+            "grouped": grouped,
             "search": search,
             "searchedTxid": txid,
             "fullHistoryClaimed": false,
@@ -386,21 +420,24 @@ mod tests {
     }
 
     #[test]
-    fn page_validation_requires_real_rows_and_exact_address() {
-        let page = json!({
-            "address": DEFAULT_ADDRESS,
-            "limit": 10,
-            "rows": [{ "txid": "abc123" }]
-        });
+    fn grouped_validation_requires_real_rows_exact_address_and_txid() {
+        let groups = json!([{
+            "day": "2026-10-05",
+            "transactions": [{
+                "txid": "abc123",
+                "address": DEFAULT_ADDRESS
+            }]
+        }]);
         assert_eq!(
-            assert_nonempty_page(&page, DEFAULT_ADDRESS).unwrap(),
+            first_grouped_txid(&groups, DEFAULT_ADDRESS).unwrap(),
             "abc123"
         );
-        let empty = json!({
-            "address": DEFAULT_ADDRESS,
-            "limit": 10,
-            "rows": []
-        });
-        assert!(assert_nonempty_page(&empty, DEFAULT_ADDRESS).is_err());
+        assert!(grouped_contains_exact_txid(&groups, DEFAULT_ADDRESS, "abc123").unwrap());
+
+        let empty = json!([{
+            "day": "2026-10-05",
+            "transactions": []
+        }]);
+        assert!(first_grouped_txid(&empty, DEFAULT_ADDRESS).is_err());
     }
 }
