@@ -4527,7 +4527,6 @@ dependencies = [
 name = "kaspa-gateway-frontend-wasm"
 version = "0.1.0"
 dependencies = [
- "gloo-timers",
  "js-sys",
  "wasm-bindgen",
  "wasm-bindgen-futures",

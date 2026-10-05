@@ -906,7 +906,7 @@ fn kgw_open_exported_file_v1(path: String) -> Result<(), String> {
 }
 
 pub fn run() {
-    use tauri::Manager;
+    use tauri::{Emitter, Manager};
 
     app_logger::init_tracing_bridge();
     let builder = tauri::Builder::default()
@@ -1142,6 +1142,24 @@ pub fn run() {
         ])
         .setup(|app| {
             kgw_set_runtime_main_window_icon(app)?;
+
+            let app_handle = app.handle().clone();
+            std::thread::Builder::new()
+                .name("kgw-runtime-refresh-pulse".to_string())
+                .spawn(move || {
+                    let mut sequence = 0_u64;
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_millis(700));
+                        sequence = sequence.saturating_add(1);
+                        if app_handle
+                            .emit("kgw://runtime/live-refresh", sequence)
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
+                })?;
+
             Ok(())
         })
         .on_window_event(|window, event| {

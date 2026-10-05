@@ -1,4 +1,3 @@
-use gloo_timers::future::TimeoutFuture;
 use js_sys::{Array, Date, Function, Object, Promise, Reflect, Set};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -9,7 +8,7 @@ const LOCK_GLOBAL: &str = "__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E";
 const LOCK_EVENT: &str = "kgw-bridge-owned-node-lock-r65e";
 const LOCK_SOURCE: &str = "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E";
 const LOCK_MESSAGE: &str = "This network is display-only because Bridge in-process mode owns the node runtime. Stop the bridge first.";
-const LIVE_REFRESH_MS: f64 = 700.0;
+const LIVE_REFRESH_EVENT: &str = "kgw://runtime/live-refresh";
 
 thread_local! {
     static LAST_STATUS: RefCell<BTreeMap<String, String>> = const { RefCell::new(BTreeMap::new()) };
@@ -21,6 +20,8 @@ thread_local! {
     static ACTIONS_IN_FLIGHT: RefCell<BTreeSet<String>> = const { RefCell::new(BTreeSet::new()) };
     static LIVE_REFRESH_GENERATION: RefCell<u64> = const { RefCell::new(0) };
     static LIVE_REFRESH_ACTIVE_GENERATION: RefCell<u64> = const { RefCell::new(0) };
+    static LIVE_REFRESH_LISTENER_INSTALLING: RefCell<bool> = const { RefCell::new(false) };
+    static LIVE_REFRESH_LISTENER_READY: RefCell<bool> = const { RefCell::new(false) };
     static LIVE_REFRESH_TICKS: RefCell<u64> = const { RefCell::new(0) };
     static LIVE_REFRESH_LAST_MS: RefCell<f64> = const { RefCell::new(0.0) };
 }
@@ -1217,6 +1218,46 @@ fn refresh_all(reason: &str) {
     hydrate(&format!("{reason}-after-refresh"));
 }
 
+async fn install_live_refresh_listener() -> Result<(), JsValue> {
+    let win = window();
+    let event_api = property(&property(&win, "__TAURI__"), "event");
+    let Some(listen) = function(&event_api, "listen") else {
+        LIVE_REFRESH_LISTENER_INSTALLING.with(|value| *value.borrow_mut() = false);
+        return Err(JsValue::from_str(
+            "Tauri runtime refresh event API is unavailable",
+        ));
+    };
+
+    let callback = Closure::wrap(Box::new(move |_event: JsValue| {
+        refresh_all("poll");
+    }) as Box<dyn FnMut(JsValue)>);
+    let result = match listen.call2(
+        &event_api,
+        &JsValue::from_str(LIVE_REFRESH_EVENT),
+        callback.as_ref().unchecked_ref(),
+    ) {
+        Ok(value) => value,
+        Err(error) => {
+            LIVE_REFRESH_LISTENER_INSTALLING.with(|value| *value.borrow_mut() = false);
+            return Err(error);
+        }
+    };
+    callback.forget();
+
+    match JsFuture::from(Promise::resolve(&result)).await {
+        Ok(_) => {
+            LIVE_REFRESH_LISTENER_READY.with(|value| *value.borrow_mut() = true);
+            LIVE_REFRESH_LISTENER_INSTALLING.with(|value| *value.borrow_mut() = false);
+            Ok(())
+        }
+        Err(error) => {
+            LIVE_REFRESH_LISTENER_READY.with(|value| *value.borrow_mut() = false);
+            LIVE_REFRESH_LISTENER_INSTALLING.with(|value| *value.borrow_mut() = false);
+            Err(error)
+        }
+    }
+}
+
 fn start_live_refresh() {
     let generation = LIVE_REFRESH_GENERATION.with(|value| {
         let mut generation = value.borrow_mut();
@@ -1226,16 +1267,32 @@ fn start_live_refresh() {
     LIVE_REFRESH_ACTIVE_GENERATION.with(|value| *value.borrow_mut() = generation);
 
     refresh_all("initial");
-    spawn_local(async move {
-        loop {
-            TimeoutFuture::new(LIVE_REFRESH_MS as u32).await;
-            let active_generation = LIVE_REFRESH_ACTIVE_GENERATION.with(|value| *value.borrow());
-            if active_generation != generation {
-                break;
+
+    let should_install = LIVE_REFRESH_LISTENER_READY.with(|ready| {
+        LIVE_REFRESH_LISTENER_INSTALLING.with(|installing| {
+            if *ready.borrow() || *installing.borrow() {
+                false
+            } else {
+                *installing.borrow_mut() = true;
+                true
             }
-            refresh_all("poll");
-        }
+        })
     });
+
+    if should_install {
+        spawn_local(async {
+            if let Err(error) = install_live_refresh_listener().await {
+                let console = property(&global(), "console");
+                if let Some(warn) = function(&console, "warn") {
+                    let _ = warn.call2(
+                        &console,
+                        &JsValue::from_str("[KGW Node] native refresh listener install failed"),
+                        &error,
+                    );
+                }
+            }
+        });
+    }
 }
 
 fn dangerous_warning(net: &str) -> String {
@@ -2439,13 +2496,34 @@ pub fn node_live_refresh_diagnostics() -> JsValue {
     let output = Object::new();
     let generation = LIVE_REFRESH_GENERATION.with(|value| *value.borrow());
     let active_generation = LIVE_REFRESH_ACTIVE_GENERATION.with(|value| *value.borrow());
-    let loop_active = generation != 0 && active_generation == generation;
+    let listener_installing = LIVE_REFRESH_LISTENER_INSTALLING.with(|value| *value.borrow());
+    let listener_ready = LIVE_REFRESH_LISTENER_READY.with(|value| *value.borrow());
+    let loop_active = generation != 0 && active_generation == generation && listener_ready;
     let ticks = LIVE_REFRESH_TICKS.with(|value| *value.borrow());
     let last_tick_ms = LIVE_REFRESH_LAST_MS.with(|value| *value.borrow());
     let status_in_flight = STATUS_IN_FLIGHT.with(|items| items.borrow().len());
     let logs_in_flight = LOGS_IN_FLIGHT.with(|items| items.borrow().len());
     set(output.as_ref(), "timerPresent", &JsValue::FALSE);
-    set(output.as_ref(), "callbackPresent", &JsValue::FALSE);
+    set(
+        output.as_ref(),
+        "callbackPresent",
+        &JsValue::from_bool(listener_ready),
+    );
+    set(
+        output.as_ref(),
+        "listenerInstalling",
+        &JsValue::from_bool(listener_installing),
+    );
+    set(
+        output.as_ref(),
+        "listenerReady",
+        &JsValue::from_bool(listener_ready),
+    );
+    set(
+        output.as_ref(),
+        "eventName",
+        &JsValue::from_str(LIVE_REFRESH_EVENT),
+    );
     set(
         output.as_ref(),
         "loopActive",
@@ -2511,7 +2589,7 @@ mod tests {
 
     #[test]
     fn constants_preserve_live_refresh_contract() {
-        assert_eq!(LIVE_REFRESH_MS, 700.0);
+        assert_eq!(LIVE_REFRESH_EVENT, "kgw://runtime/live-refresh");
         assert_eq!(LOCK_EVENT, "kgw-bridge-owned-node-lock-r65e");
         assert_eq!(LOCK_SOURCE, "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E");
     }
