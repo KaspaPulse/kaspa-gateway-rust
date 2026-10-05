@@ -399,23 +399,51 @@ fn sqlite_v1_transaction_rows_are_backfilled_into_address_relations() {
     }
 
     let manager = DatabaseManager::new(paths);
-    let repository = manager
-        .transactions_repository()
-        .expect("v2 repository opens and migrates");
+    for attempt in 0..3 {
+        let repository = manager
+            .transactions_repository()
+            .unwrap_or_else(|error| panic!("migration relaunch {attempt} failed: {error}"));
 
-    assert_eq!(
-        repository
-            .count_for_address(address)
-            .expect("backfilled count"),
-        1
-    );
-    assert_eq!(
-        repository
-            .list_for_address(address, 10)
-            .expect("backfilled list")[0]
-            .txid,
-        "legacy-tx"
-    );
+        assert_eq!(
+            repository
+                .count_for_address(address)
+                .expect("backfilled count"),
+            1
+        );
+        assert_eq!(
+            repository
+                .list_for_address(address, 10)
+                .expect("backfilled list")[0]
+                .txid,
+            "legacy-tx"
+        );
+        drop(repository);
+    }
+
+    let raw =
+        rusqlite::Connection::open(&manager.paths().transactions_sqlite).expect("reopen migrated");
+    let migration_rows: i64 = raw
+        .query_row(
+            "SELECT COUNT(*) FROM schema_migrations WHERE version = ?1",
+            rusqlite::params![kaspa_gateway_db::schema_version()],
+            |row| row.get(0),
+        )
+        .expect("migration row count");
+    let relation_rows: i64 = raw
+        .query_row("SELECT COUNT(*) FROM address_transactions", [], |row| {
+            row.get(0)
+        })
+        .expect("relation count");
+    let search_rows: i64 = raw
+        .query_row("SELECT COUNT(*) FROM address_transactions_fts", [], |row| {
+            row.get(0)
+        })
+        .expect("search count");
+    assert_eq!(migration_rows, 1);
+    assert_eq!(relation_rows, 1);
+    assert_eq!(search_rows, 1);
+    drop(raw);
+    let _ = std::fs::remove_dir_all(manager.paths().root.clone());
 }
 
 #[test]
@@ -479,6 +507,96 @@ fn force_refresh_staging_preserves_known_good_until_atomic_promote() {
         0
     );
     assert_eq!(repository.total_count().expect("old orphan removed"), 1);
+}
+
+#[test]
+fn interrupted_force_refresh_promotion_rolls_back_to_known_good() {
+    let manager = test_manager("transactions_force_refresh_interrupt");
+    let path = manager.paths().transactions_sqlite.clone();
+    let repository = manager
+        .transactions_repository()
+        .expect("transactions repository must open");
+    let address = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g";
+
+    let mut old = TransactionRecord::new("interrupt-old", address, "transfer", "incoming", 10)
+        .expect("old valid");
+    old.timestamp_ms = 1_000;
+    old.raw_json = Some(r#"{"txid":"interrupt-old"}"#.to_string());
+    repository.upsert(&old).expect("old upsert");
+
+    repository
+        .begin_force_refresh_stage(address)
+        .expect("stage begins");
+    let mut replacement =
+        TransactionRecord::new("interrupt-new", address, "transfer", "incoming", 20)
+            .expect("replacement valid");
+    replacement.timestamp_ms = 2_000;
+    replacement.raw_json = Some(r#"{"txid":"interrupt-new"}"#.to_string());
+    repository
+        .stage_force_refresh_many(&[replacement])
+        .expect("stage replacement");
+
+    {
+        let injector = rusqlite::Connection::open(&path).expect("injector connection");
+        injector
+            .execute_batch(
+                "CREATE TRIGGER kgw_test_abort_promote
+                 BEFORE INSERT ON address_transactions
+                 WHEN NEW.txid = 'interrupt-new'
+                 BEGIN
+                    SELECT RAISE(ABORT, 'injected promote interruption');
+                 END;",
+            )
+            .expect("install injected promotion failure");
+    }
+
+    let error = repository
+        .promote_force_refresh(address)
+        .expect_err("injected mid-promotion failure must abort");
+    assert!(
+        error.to_string().contains("injected promote interruption"),
+        "unexpected injected failure: {error}"
+    );
+
+    let after_failure = repository
+        .list_for_address(address, 10)
+        .expect("known-good remains after rollback");
+    assert_eq!(after_failure.len(), 1);
+    assert_eq!(after_failure[0].txid, "interrupt-old");
+    assert_eq!(
+        repository
+            .total_count()
+            .expect("canonical count after rollback"),
+        1
+    );
+    assert_eq!(
+        repository
+            .force_refresh_staged_count(address)
+            .expect("stage survives failed promotion"),
+        1
+    );
+
+    {
+        let injector = rusqlite::Connection::open(&path).expect("injector reopen");
+        injector
+            .execute_batch("DROP TRIGGER kgw_test_abort_promote;")
+            .expect("remove injected promotion failure");
+    }
+
+    assert_eq!(
+        repository
+            .promote_force_refresh(address)
+            .expect("promotion succeeds after fault removed"),
+        1
+    );
+    let after_recovery = repository
+        .list_for_address(address, 10)
+        .expect("replacement visible after recovery");
+    assert_eq!(after_recovery.len(), 1);
+    assert_eq!(after_recovery[0].txid, "interrupt-new");
+
+    drop(repository);
+    let _ = std::fs::remove_dir_all(manager.paths().root.clone());
 }
 
 #[test]
@@ -561,6 +679,197 @@ fn sqlite_newer_schema_version_fails_closed_without_downgrade() {
         .expect("future version remains");
     assert_eq!(version, 999);
     drop(connection);
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn sqlite_locked_is_observable_and_recovers_after_statement_release() {
+    let root = unique_test_dir("sqlite_locked");
+    std::fs::create_dir_all(&root).expect("root");
+    let path = root.join("locked.sqlite");
+    let connection = rusqlite::Connection::open(&path).expect("open lock probe");
+    connection
+        .execute_batch(
+            "CREATE TABLE lock_probe(id INTEGER PRIMARY KEY);
+             INSERT INTO lock_probe(id) VALUES (1);",
+        )
+        .expect("seed lock probe");
+
+    let mut statement = connection
+        .prepare("SELECT id FROM lock_probe")
+        .expect("prepare active reader");
+    let mut rows = statement.query([]).expect("open active reader");
+    assert!(rows.next().expect("first row").is_some());
+
+    let error = connection
+        .execute_batch("DROP TABLE lock_probe;")
+        .expect_err("active statement must surface SQLITE_LOCKED");
+    match error {
+        rusqlite::Error::SqliteFailure(code, _) => {
+            assert_eq!(code.code, rusqlite::ffi::ErrorCode::DatabaseLocked);
+        }
+        other => panic!("expected SQLITE_LOCKED, got {other}"),
+    }
+
+    drop(rows);
+    drop(statement);
+    connection
+        .execute_batch("DROP TABLE lock_probe;")
+        .expect("schema mutation succeeds after reader release");
+    drop(connection);
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn sqlite_wal_checkpoint_recovers_after_pinned_reader_release() {
+    let manager = test_manager("sqlite_wal_checkpoint");
+    let path = manager.paths().transactions_sqlite.clone();
+    let address = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g";
+
+    {
+        let repository = manager.transactions_repository().expect("seed repository");
+        let mut first = TransactionRecord::new("wal-first", address, "transfer", "incoming", 1)
+            .expect("first row");
+        first.raw_json = Some("{}".to_string());
+        repository.upsert(&first).expect("first upsert");
+    }
+
+    let reader = rusqlite::Connection::open(&path).expect("pinned reader");
+    reader
+        .execute_batch("BEGIN;")
+        .expect("begin read transaction");
+    let initial_count: i64 = reader
+        .query_row("SELECT COUNT(*) FROM address_transactions", [], |row| {
+            row.get(0)
+        })
+        .expect("pin read snapshot");
+    assert_eq!(initial_count, 1);
+
+    {
+        let repository = manager
+            .transactions_repository()
+            .expect("writer repository");
+        let mut second = TransactionRecord::new("wal-second", address, "transfer", "incoming", 2)
+            .expect("second row");
+        second.timestamp_ms = 2;
+        second.raw_json = Some("{}".to_string());
+        repository.upsert(&second).expect("second upsert");
+    }
+
+    let checkpoint = rusqlite::Connection::open(&path).expect("checkpoint connection");
+    checkpoint
+        .busy_timeout(Duration::from_millis(50))
+        .expect("bounded checkpoint timeout");
+    let blocked: (i64, i64, i64) = checkpoint
+        .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        })
+        .expect("blocked checkpoint result");
+    assert!(
+        blocked.0 != 0 || blocked.2 < blocked.1,
+        "pinned reader unexpectedly allowed complete truncating checkpoint: {blocked:?}"
+    );
+
+    reader
+        .execute_batch("ROLLBACK;")
+        .expect("release read snapshot");
+    drop(reader);
+
+    let recovered: (i64, i64, i64) = checkpoint
+        .query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        })
+        .expect("recovered checkpoint");
+    assert_eq!(recovered.0, 0, "checkpoint must no longer be busy");
+
+    let repository = manager
+        .transactions_repository()
+        .expect("repository after checkpoint");
+    assert_eq!(repository.count_for_address(address).expect("count"), 2);
+    drop(repository);
+
+    let integrity: String = checkpoint
+        .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+        .expect("integrity after checkpoint");
+    assert_eq!(integrity, "ok");
+    drop(checkpoint);
+    let _ = std::fs::remove_dir_all(manager.paths().root.clone());
+}
+
+#[test]
+fn missing_transactions_database_and_directory_reinitialize_cleanly() {
+    let root = unique_test_dir("missing_transactions_paths");
+    let paths = DatabasePaths::new(&root).expect("paths");
+    let db_path = paths.transactions_sqlite.clone();
+    let manager = DatabaseManager::new(paths);
+    let address = "kaspa:qz0yqq8z3twwgg7lq2mjzg6w4edqys45w2wslz7tym2tc6s84580vvx9zr44g";
+
+    assert!(!root.exists());
+    {
+        let repository = manager
+            .transactions_repository()
+            .expect("missing directory is created");
+        assert!(root.exists());
+        assert!(db_path.exists());
+        let mut row =
+            TransactionRecord::new("missing-path-seed", address, "transfer", "incoming", 1)
+                .expect("seed");
+        row.raw_json = Some("{}".to_string());
+        repository.upsert(&row).expect("seed upsert");
+        assert_eq!(repository.count_for_address(address).expect("count"), 1);
+    }
+
+    std::fs::remove_dir_all(&root).expect("remove complete database directory");
+    assert!(!root.exists());
+    {
+        let repository = manager
+            .transactions_repository()
+            .expect("missing directory reinitializes");
+        assert!(root.exists());
+        assert!(db_path.exists());
+        assert_eq!(
+            repository.count_for_address(address).expect("fresh count"),
+            0
+        );
+    }
+
+    for candidate in [
+        db_path.clone(),
+        PathBuf::from(format!("{}-wal", db_path.display())),
+        PathBuf::from(format!("{}-shm", db_path.display())),
+    ] {
+        if candidate.exists() {
+            std::fs::remove_file(&candidate).expect("remove database file/sidecar");
+        }
+    }
+    assert!(root.exists());
+    assert!(!db_path.exists());
+
+    {
+        let repository = manager
+            .transactions_repository()
+            .expect("missing database file reinitializes");
+        assert!(db_path.exists());
+        assert_eq!(
+            repository
+                .count_for_address(address)
+                .expect("fresh file count"),
+            0
+        );
+    }
+
+    let raw = rusqlite::Connection::open(&db_path).expect("schema verification connection");
+    let version: i64 = raw
+        .query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
+            row.get(0)
+        })
+        .expect("schema version");
+    assert_eq!(version, kaspa_gateway_db::schema_version());
+    let integrity: String = raw
+        .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+        .expect("integrity");
+    assert_eq!(integrity, "ok");
+    drop(raw);
     let _ = std::fs::remove_dir_all(root);
 }
 
