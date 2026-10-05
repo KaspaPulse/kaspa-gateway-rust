@@ -23,6 +23,7 @@ mod e2e_lifecycle_stress;
 mod e2e_native_webdriver;
 mod e2e_owned_process;
 mod e2e_static_smokes;
+mod e2e_uninstall_reinstall;
 mod e2e_upgrade_acceptance;
 mod e2e_wasm_codegen;
 mod e2e_wasm_codegen_tauri_app;
@@ -123,6 +124,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- e2e-explorer-live-canary --app-binary <path> --output-directory <path> --data-directory <absolute-path> [--address <kaspa-address>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-explorer-ui-responsiveness --app-binary <path> --output-directory <path> --data-directory <absolute-path> [--rows <1..1000000>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-installed-nsis --installer <path> --output-directory <absolute-path> --expected-installer-sha256 <hex> --expected-installed-sha256 <hex> --expected-version <X.Y.Z> [--startup-timeout-seconds <n>]
+  cargo run -p xtask -- e2e-uninstall-reinstall --installer <path> --output-directory <absolute-path> --expected-installer-sha256 <hex> --expected-installed-sha256 <hex> --version <X.Y.Z> [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-upgrade-acceptance --baseline-installer <path> --target-installer <path> --output-directory <absolute-path> --expected-baseline-installer-sha256 <hex> --expected-baseline-installed-sha256 <hex> --expected-target-installer-sha256 <hex> --expected-target-installed-sha256 <hex> --baseline-version <X.Y.Z> --target-version <X.Y.Z> [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-app-close-relaunch --app-binary <path> --output-directory <path> [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-bridge-inprocess --app-binary <path> --output-directory <path> [--network <all|mainnet|testnet10>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
@@ -409,6 +411,12 @@ fn run() -> Result<(), CliError> {
         }
         "e2e-upgrade-acceptance" => {
             let message = e2e_upgrade_acceptance::run_cli(&mut args, &repo_root()?)
+                .map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "e2e-uninstall-reinstall" => {
+            let message = e2e_uninstall_reinstall::run_cli(&mut args, &repo_root()?)
                 .map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
