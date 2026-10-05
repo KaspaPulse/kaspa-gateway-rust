@@ -1,3 +1,4 @@
+use gloo_timers::future::TimeoutFuture;
 use js_sys::{Array, Date, Function, Object, Promise, Reflect, Set};
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -18,8 +19,8 @@ thread_local! {
     static STATUS_IN_FLIGHT: RefCell<BTreeMap<String, Promise>> = const { RefCell::new(BTreeMap::new()) };
     static LOGS_IN_FLIGHT: RefCell<BTreeMap<String, Promise>> = const { RefCell::new(BTreeMap::new()) };
     static ACTIONS_IN_FLIGHT: RefCell<BTreeSet<String>> = const { RefCell::new(BTreeSet::new()) };
-    static LIVE_TIMER: RefCell<JsValue> = const { RefCell::new(JsValue::UNDEFINED) };
-    static LIVE_REFRESH_CALLBACK: RefCell<Option<Closure<dyn FnMut()>>> = RefCell::new(None);
+    static LIVE_REFRESH_GENERATION: RefCell<u64> = const { RefCell::new(0) };
+    static LIVE_REFRESH_ACTIVE_GENERATION: RefCell<u64> = const { RefCell::new(0) };
     static LIVE_REFRESH_TICKS: RefCell<u64> = const { RefCell::new(0) };
     static LIVE_REFRESH_LAST_MS: RefCell<f64> = const { RefCell::new(0.0) };
 }
@@ -1217,31 +1218,24 @@ fn refresh_all(reason: &str) {
 }
 
 fn start_live_refresh() {
-    LIVE_TIMER.with(|timer| {
-        let existing = timer.borrow().clone();
-        if present(&existing) {
-            let _ = call1(&window(), "clearInterval", &existing);
-        }
-        *timer.borrow_mut() = JsValue::UNDEFINED;
+    let generation = LIVE_REFRESH_GENERATION.with(|value| {
+        let mut generation = value.borrow_mut();
+        *generation = generation.saturating_add(1);
+        *generation
     });
-    LIVE_REFRESH_CALLBACK.with(|callback| {
-        callback.borrow_mut().take();
-    });
+    LIVE_REFRESH_ACTIVE_GENERATION.with(|value| *value.borrow_mut() = generation);
 
     refresh_all("initial");
-    let callback = Closure::wrap(Box::new(move || refresh_all("poll")) as Box<dyn FnMut()>);
-    let timer = call2(
-        &window(),
-        "setInterval",
-        callback.as_ref(),
-        &JsValue::from_f64(LIVE_REFRESH_MS),
-    )
-    .unwrap_or(JsValue::UNDEFINED);
-
-    if present(&timer) {
-        LIVE_TIMER.with(|value| *value.borrow_mut() = timer);
-        LIVE_REFRESH_CALLBACK.with(|value| *value.borrow_mut() = Some(callback));
-    }
+    spawn_local(async move {
+        loop {
+            TimeoutFuture::new(LIVE_REFRESH_MS as u32).await;
+            let active_generation = LIVE_REFRESH_ACTIVE_GENERATION.with(|value| *value.borrow());
+            if active_generation != generation {
+                break;
+            }
+            refresh_all("poll");
+        }
+    });
 }
 
 fn dangerous_warning(net: &str) -> String {
@@ -2443,21 +2437,29 @@ pub fn node_set_runtime_buttons(
 #[wasm_bindgen(js_name = nodeLiveRefreshDiagnostics)]
 pub fn node_live_refresh_diagnostics() -> JsValue {
     let output = Object::new();
-    let timer_present = LIVE_TIMER.with(|value| present(&value.borrow()));
-    let callback_present = LIVE_REFRESH_CALLBACK.with(|value| value.borrow().is_some());
+    let generation = LIVE_REFRESH_GENERATION.with(|value| *value.borrow());
+    let active_generation = LIVE_REFRESH_ACTIVE_GENERATION.with(|value| *value.borrow());
+    let loop_active = generation != 0 && active_generation == generation;
     let ticks = LIVE_REFRESH_TICKS.with(|value| *value.borrow());
     let last_tick_ms = LIVE_REFRESH_LAST_MS.with(|value| *value.borrow());
     let status_in_flight = STATUS_IN_FLIGHT.with(|items| items.borrow().len());
     let logs_in_flight = LOGS_IN_FLIGHT.with(|items| items.borrow().len());
+    set(output.as_ref(), "timerPresent", &JsValue::FALSE);
+    set(output.as_ref(), "callbackPresent", &JsValue::FALSE);
     set(
         output.as_ref(),
-        "timerPresent",
-        &JsValue::from_bool(timer_present),
+        "loopActive",
+        &JsValue::from_bool(loop_active),
     );
     set(
         output.as_ref(),
-        "callbackPresent",
-        &JsValue::from_bool(callback_present),
+        "generation",
+        &JsValue::from_f64(generation as f64),
+    );
+    set(
+        output.as_ref(),
+        "activeGeneration",
+        &JsValue::from_f64(active_generation as f64),
     );
     set(output.as_ref(), "ticks", &JsValue::from_f64(ticks as f64));
     set(
