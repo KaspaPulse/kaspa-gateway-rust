@@ -121,7 +121,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- e2e-config-codegen <check|write>
   cargo run -p xtask -- e2e-explorer-live-canary --app-binary <path> --output-directory <path> --data-directory <absolute-path> [--address <kaspa-address>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-explorer-ui-responsiveness --app-binary <path> --output-directory <path> --data-directory <absolute-path> [--rows <1..1000000>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
-  cargo run -p xtask -- e2e-installed-nsis --installer <path> --output-directory <absolute-path> --expected-installer-sha256 <hex> --expected-installed-sha256 <hex> --expected-version <X.Y.Z> [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
+  cargo run -p xtask -- e2e-installed-nsis --installer <path> --output-directory <absolute-path> --expected-installer-sha256 <hex> --expected-installed-sha256 <hex> --expected-version <X.Y.Z> [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-app-close-relaunch --app-binary <path> --output-directory <path> [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-bridge-inprocess --app-binary <path> --output-directory <path> [--network <all|mainnet|testnet10>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-lifecycle-recovery --app-binary <path> --output-directory <path> [--network <all|mainnet|testnet10>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]

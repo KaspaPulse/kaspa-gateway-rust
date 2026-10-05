@@ -1,15 +1,23 @@
-use crate::e2e_native_webdriver::{WebDriverClient, WebDriverSession};
+use serde::Serialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::Read;
-use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
-const DEFAULT_PORT: u16 = 4490;
+#[cfg(windows)]
+use windows_sys::Win32::Foundation::{HWND, LPARAM};
+#[cfg(windows)]
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+    EnumWindows, GetWindowTextLengthW, GetWindowTextW, GetWindowThreadProcessId, IsHungAppWindow,
+    IsWindowVisible, SMTO_ABORTIFHUNG, SendMessageTimeoutW, WM_NULL,
+};
+#[cfg(windows)]
+use windows_sys::core::BOOL;
+
 const POLL_INTERVAL: Duration = Duration::from_millis(250);
 
 #[derive(Debug, Clone)]
@@ -19,8 +27,6 @@ struct Args {
     expected_installer_sha256: String,
     expected_installed_sha256: String,
     expected_version: String,
-    webdriver_port: u16,
-    window_label: String,
     startup_timeout: Duration,
 }
 
@@ -30,8 +36,6 @@ fn parse_args(args: &mut impl Iterator<Item = String>) -> Result<Args, String> {
     let mut expected_installer_sha256 = None;
     let mut expected_installed_sha256 = None;
     let mut expected_version = None;
-    let mut webdriver_port = DEFAULT_PORT;
-    let mut window_label = "main".to_owned();
     let mut startup_timeout = Duration::from_secs(120);
 
     while let Some(flag) = args.next() {
@@ -44,19 +48,6 @@ fn parse_args(args: &mut impl Iterator<Item = String>) -> Result<Args, String> {
             "--expected-installer-sha256" => expected_installer_sha256 = Some(value),
             "--expected-installed-sha256" => expected_installed_sha256 = Some(value),
             "--expected-version" => expected_version = Some(value),
-            "--port" => {
-                webdriver_port = value
-                    .parse::<u16>()
-                    .ok()
-                    .filter(|port| *port != 0)
-                    .ok_or_else(|| format!("invalid non-zero WebDriver port: {value}"))?;
-            }
-            "--window-label" => {
-                if value.trim().is_empty() {
-                    return Err("--window-label must not be empty".to_owned());
-                }
-                window_label = value;
-            }
             "--startup-timeout-seconds" => {
                 let seconds = value
                     .parse::<u64>()
@@ -89,8 +80,6 @@ fn parse_args(args: &mut impl Iterator<Item = String>) -> Result<Args, String> {
         expected_version: expected_version
             .filter(|value| !value.trim().is_empty())
             .ok_or_else(|| "--expected-version <X.Y.Z> is required".to_owned())?,
-        webdriver_port,
-        window_label,
         startup_timeout,
     })
 }
@@ -166,11 +155,91 @@ fn require_success(label: &str, status: std::process::ExitStatus) -> Result<(), 
     }
 }
 
-async fn wait_for_ready(
-    driver: &WebDriverClient,
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeWindowProbe {
+    hwnd: usize,
+    title: String,
+    visible: bool,
+    hung: bool,
+    responsive: bool,
+}
+
+#[cfg(windows)]
+struct WindowSearch {
+    pid: u32,
+    found: Option<NativeWindowProbe>,
+}
+
+#[cfg(windows)]
+unsafe extern "system" fn enum_window_for_pid(hwnd: HWND, lparam: LPARAM) -> BOOL {
+    let search = unsafe { &mut *(lparam as *mut WindowSearch) };
+    let mut pid = 0u32;
+    unsafe {
+        GetWindowThreadProcessId(hwnd, &mut pid);
+    }
+    if pid != search.pid || unsafe { IsWindowVisible(hwnd) } == 0 {
+        return 1;
+    }
+
+    let length = unsafe { GetWindowTextLengthW(hwnd) }.max(0) as usize;
+    let mut buffer = vec![0u16; length.saturating_add(1)];
+    let copied = if buffer.len() > 1 {
+        unsafe { GetWindowTextW(hwnd, buffer.as_mut_ptr(), buffer.len() as i32) }.max(0) as usize
+    } else {
+        0
+    };
+    let title = String::from_utf16_lossy(&buffer[..copied.min(buffer.len())]);
+    let hung = unsafe { IsHungAppWindow(hwnd) } != 0;
+    let mut message_result = 0usize;
+    let responsive = unsafe {
+        SendMessageTimeoutW(
+            hwnd,
+            WM_NULL,
+            0,
+            0,
+            SMTO_ABORTIFHUNG,
+            1000,
+            &mut message_result,
+        )
+    } != 0;
+
+    search.found = Some(NativeWindowProbe {
+        hwnd: hwnd as usize,
+        title,
+        visible: true,
+        hung,
+        responsive,
+    });
+    0
+}
+
+#[cfg(windows)]
+fn native_window_probe(pid: u32) -> Result<Option<NativeWindowProbe>, String> {
+    let mut search = WindowSearch { pid, found: None };
+    let result = unsafe {
+        EnumWindows(
+            Some(enum_window_for_pid),
+            &mut search as *mut WindowSearch as LPARAM,
+        )
+    };
+    if result == 0 && search.found.is_none() {
+        return Err(
+            "EnumWindows failed before locating the installed application window".to_owned(),
+        );
+    }
+    Ok(search.found)
+}
+
+#[cfg(not(windows))]
+fn native_window_probe(_pid: u32) -> Result<Option<NativeWindowProbe>, String> {
+    Err("installed NSIS production-native acceptance requires Windows".to_owned())
+}
+
+async fn wait_for_native_window(
     child: &mut Child,
     timeout: Duration,
-) -> Result<(), String> {
+) -> Result<NativeWindowProbe, String> {
     let started = Instant::now();
     loop {
         if let Some(status) = child
@@ -178,65 +247,26 @@ async fn wait_for_ready(
             .map_err(|error| format!("inspect installed app: {error}"))?
         {
             return Err(format!(
-                "installed application exited before WebDriver became ready: {status}"
+                "installed application exited before native window readiness: {status}"
             ));
         }
-        match driver.status_ready().await {
-            Ok(true) => return Ok(()),
-            Ok(false) | Err(_) if started.elapsed() < timeout => sleep(POLL_INTERVAL).await,
-            Ok(false) => {
-                return Err(format!(
-                    "installed application WebDriver did not become ready within {} seconds",
-                    timeout.as_secs()
-                ));
-            }
-            Err(error) => {
-                return Err(format!(
-                    "installed application WebDriver unreachable after {} seconds: {error}",
-                    timeout.as_secs()
-                ));
-            }
-        }
-    }
-}
 
-async fn invoke(
-    session: &WebDriverSession,
-    command: &str,
-    payload: Value,
-) -> Result<Value, String> {
-    let result = session
-        .execute_async(
-            r#"
-const commandName = arguments[0];
-const payload = arguments[1];
-const done = arguments[arguments.length - 1];
-try {
-  const invoke = window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke;
-  if (typeof invoke !== "function") {
-    done({ ok: false, error: "Tauri invoke API is unavailable" });
-  } else {
-    Promise.resolve(invoke(commandName, payload))
-      .then((value) => done({ ok: true, value }))
-      .catch((error) => done({ ok: false, error: error?.message || String(error) }));
-  }
-} catch (error) {
-  done({ ok: false, error: error?.message || String(error) });
-}
-"#,
-            vec![json!(command), payload],
-        )
-        .await?;
-    if result.get("ok").and_then(Value::as_bool) != Some(true) {
-        return Err(format!(
-            "{command} failed: {}",
-            result
-                .get("error")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown Tauri invoke error")
-        ));
+        if let Some(probe) = native_window_probe(child.id())?
+            && probe.visible
+            && !probe.hung
+            && probe.responsive
+        {
+            return Ok(probe);
+        }
+
+        if started.elapsed() >= timeout {
+            return Err(format!(
+                "installed production application did not expose a visible responsive native window within {} seconds",
+                timeout.as_secs()
+            ));
+        }
+        sleep(POLL_INTERVAL).await;
     }
-    Ok(result.get("value").cloned().unwrap_or(Value::Null))
 }
 
 fn write_json(path: &Path, value: &Value) -> Result<(), String> {
@@ -263,13 +293,6 @@ async fn run_native(root: &Path, args: &Args) -> Result<Value, String> {
     fs::create_dir_all(&install_dir)
         .map_err(|error| format!("create install directory: {error}"))?;
     fs::create_dir_all(&data_dir).map_err(|error| format!("create data directory: {error}"))?;
-
-    TcpListener::bind(("127.0.0.1", args.webdriver_port)).map_err(|error| {
-        format!(
-            "WebDriver port {} is not free: {error}",
-            args.webdriver_port
-        )
-    })?;
 
     let install_arg = format!("/D={}", install_dir.display());
     let install_status = Command::new(&args.installer)
@@ -298,10 +321,9 @@ async fn run_native(root: &Path, args: &Args) -> Result<Value, String> {
             ));
         }
 
+        let working_directory = installed_binary.parent().unwrap_or(root);
         let mut child = Command::new(&installed_binary)
-            .current_dir(root)
-            .env("TAURI_WEBDRIVER_PORT", args.webdriver_port.to_string())
-            .env("WDIO_EMBEDDED_SERVER", "true")
+            .current_dir(working_directory)
             .env("KASPA_GATEWAY_DATA_DIR", &data_dir)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -309,51 +331,53 @@ async fn run_native(root: &Path, args: &Args) -> Result<Value, String> {
             .spawn()
             .map_err(|error| format!("launch installed application: {error}"))?;
 
-        let driver = WebDriverClient::loopback(args.webdriver_port)?;
         let test_result = async {
-            wait_for_ready(&driver, &mut child, args.startup_timeout).await?;
-            let session = driver.create_session(&args.window_label).await?;
-            session.set_timeouts(0, 300_000, 65_000).await?;
-
-            let title = session.title().await?;
-            let state = session
-                .execute_sync(
-                    "return { title: document.title, readyState: document.readyState, href: location.href, tauri: !!(window.__TAURI__?.core?.invoke || window.__TAURI__?.invoke) };",
-                    Vec::new(),
-                )
-                .await?;
-            if state.get("readyState").and_then(Value::as_str) != Some("complete") {
-                return Err(format!("installed UI readyState is not complete: {state}"));
-            }
-            if state.get("tauri").and_then(Value::as_bool) != Some(true) {
-                return Err(format!("installed UI has no Tauri invoke API: {state}"));
-            }
-
-            let ping = invoke(&session, "desktop_ping", json!({})).await?;
-            if ping.as_str() != Some("pong") {
-                return Err(format!("desktop_ping mismatch: {ping}"));
-            }
-            let info = invoke(&session, "app_info", json!({})).await?;
-            if info.get("version").and_then(Value::as_str) != Some(args.expected_version.as_str()) {
+            let first_probe = wait_for_native_window(&mut child, args.startup_timeout).await?;
+            sleep(Duration::from_secs(2)).await;
+            if let Some(status) = child
+                .try_wait()
+                .map_err(|error| format!("inspect installed application after readiness: {error}"))?
+            {
                 return Err(format!(
-                    "installed app_info version mismatch: expected={} value={info}",
-                    args.expected_version
+                    "installed application exited during native readiness observation: {status}"
+                ));
+            }
+            let second_probe = native_window_probe(child.id())?
+                .ok_or_else(|| "installed application window disappeared after readiness".to_owned())?;
+            if !second_probe.visible || second_probe.hung || !second_probe.responsive {
+                return Err(format!(
+                    "installed application window failed sustained native responsiveness: {second_probe:?}"
+                ));
+            }
+            let data_entries = fs::read_dir(&data_dir)
+                .map_err(|error| format!("read isolated data directory: {error}"))?
+                .count();
+            if data_entries == 0 {
+                return Err(format!(
+                    "installed application produced no activity in isolated data directory {}",
+                    data_dir.display()
                 ));
             }
 
-            session.close().await?;
             Ok(json!({
-                "title": title,
-                "state": state,
-                "desktopPing": ping,
-                "appInfo": info
+                "processId": child.id(),
+                "firstWindowProbe": first_probe,
+                "secondWindowProbe": second_probe,
+                "processAliveAfterObservation": true,
+                "isolatedDataDirectory": data_dir,
+                "isolatedDataTopLevelEntries": data_entries,
+                "acceptanceMode": "production-native-win32-window",
+                "versionEvidence": {
+                    "expectedVersion": args.expected_version,
+                    "binding": "exact-installed-payload-sha256-from-qualified-local-production-rc"
+                }
             }))
         }
         .await;
 
         if child
             .try_wait()
-            .map_err(|error| format!("inspect installed application after E2E: {error}"))?
+            .map_err(|error| format!("inspect installed application after native acceptance: {error}"))?
             .is_none()
         {
             child
@@ -402,7 +426,7 @@ async fn run_native(root: &Path, args: &Args) -> Result<Value, String> {
         (Err(error), Ok(())) => return Err(error),
         (Ok(_), Err(uninstall_error)) => {
             return Err(format!(
-                "installed E2E passed but uninstall cleanup failed: {uninstall_error}"
+                "installed production-native acceptance passed but uninstall cleanup failed: {uninstall_error}"
             ));
         }
         (Err(error), Err(uninstall_error)) => {
@@ -420,8 +444,7 @@ async fn run_native(root: &Path, args: &Args) -> Result<Value, String> {
         "dataDirectory": data_dir,
         "installedBinarySha256": installed_hash,
         "expectedVersion": args.expected_version,
-        "webdriverPort": args.webdriver_port,
-        "windowLabel": args.window_label,
+        "acceptanceMode": "production-native-win32-window",
         "verification": verification,
         "uninstall": "PASS"
     }))

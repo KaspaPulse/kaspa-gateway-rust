@@ -33,7 +33,7 @@ tempfile.workspace = true
 tokio.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { workspace = true, features = ["Win32_NetworkManagement_IpHelper"] }
+windows-sys = { workspace = true, features = ["Win32_NetworkManagement_IpHelper", "Win32_UI_WindowsAndMessaging"] }
 
 [[bin]]
 name = "kgw-workflow-lint"
