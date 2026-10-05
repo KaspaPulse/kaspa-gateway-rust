@@ -708,6 +708,11 @@ async fn run_native(root: &Path, args: &Args) -> Result<Value, String> {
 
     let result = async {
         let session = harness.session();
+        let preflight_cleanup = shutdown_all_runtime_workers(session).await?;
+        write_json(
+            &args.output_directory.join("preflight-shutdown-all.json"),
+            &preflight_cleanup,
+        )?;
         let mut cases = Vec::new();
         for network in &args.networks {
             let ports = match *network {
