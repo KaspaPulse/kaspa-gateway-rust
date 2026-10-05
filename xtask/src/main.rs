@@ -44,6 +44,7 @@ mod production_trust;
 mod program_unified;
 mod raw_log_clipboard_capture;
 mod raw_log_provenance;
+mod release_admission;
 mod restore_latest_frontend_regressions;
 mod runtime_automation_claims;
 mod runtime_repository_binding;
@@ -126,6 +127,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- frontend-template-codegen <check|write>
   cargo run -p xtask -- frontend-wasm-codegen <check|write>
   cargo run -p xtask -- full-local-gate [--repository <path>] [--reuse-successful-e2e-artifact <path>] [--commit-on-success]
+  cargo run -p xtask -- release-admission local --version <X.Y.Z> [--repository <path>]
   cargo run -p xtask -- global-owner-gate [--strict] [--json] [--owner <name>] [--changed-files <files...>]
   cargo run -p xtask -- i18n-contract-gate
   cargo run -p xtask -- i18n-locale-coverage-gate
@@ -454,6 +456,13 @@ fn run() -> Result<(), CliError> {
         "full-local-gate" => {
             let root = repo_root()?;
             let message = full_local_gate::run_cli(&mut args, &root).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "release-admission" => {
+            let root = repo_root()?;
+            let message =
+                release_admission::run_cli(&mut args, &root).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }
