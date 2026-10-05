@@ -16,6 +16,7 @@ mod e2e_bridge_inprocess;
 mod e2e_clipboard;
 mod e2e_config_codegen;
 mod e2e_explorer_live_canary;
+mod e2e_explorer_ui_responsiveness;
 mod e2e_lifecycle_recovery;
 mod e2e_lifecycle_stress;
 mod e2e_native_webdriver;
@@ -118,6 +119,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- e2e-clipboard <read|write|preflight> [--value <text>] [--output-path <path>]
   cargo run -p xtask -- e2e-config-codegen <check|write>
   cargo run -p xtask -- e2e-explorer-live-canary --app-binary <path> --output-directory <path> --data-directory <absolute-path> [--address <kaspa-address>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
+  cargo run -p xtask -- e2e-explorer-ui-responsiveness --app-binary <path> --output-directory <path> --data-directory <absolute-path> [--rows <1..1000000>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-app-close-relaunch --app-binary <path> --output-directory <path> [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-bridge-inprocess --app-binary <path> --output-directory <path> [--network <all|mainnet|testnet10>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-lifecycle-recovery --app-binary <path> --output-directory <path> [--network <all|mainnet|testnet10>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
@@ -385,6 +387,12 @@ fn run() -> Result<(), CliError> {
         }
         "e2e-explorer-live-canary" => {
             let message = e2e_explorer_live_canary::run_cli(&mut args, &repo_root()?)
+                .map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "e2e-explorer-ui-responsiveness" => {
+            let message = e2e_explorer_ui_responsiveness::run_cli(&mut args, &repo_root()?)
                 .map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
