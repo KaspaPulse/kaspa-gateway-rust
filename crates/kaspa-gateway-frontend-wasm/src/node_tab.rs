@@ -19,6 +19,7 @@ thread_local! {
     static LOGS_IN_FLIGHT: RefCell<BTreeMap<String, Promise>> = const { RefCell::new(BTreeMap::new()) };
     static ACTIONS_IN_FLIGHT: RefCell<BTreeSet<String>> = const { RefCell::new(BTreeSet::new()) };
     static LIVE_TIMER: RefCell<JsValue> = const { RefCell::new(JsValue::UNDEFINED) };
+    static LIVE_REFRESH_CALLBACK: RefCell<Option<Closure<dyn FnMut()>>> = RefCell::new(None);
     static LIVE_REFRESH_TICKS: RefCell<u64> = const { RefCell::new(0) };
     static LIVE_REFRESH_LAST_MS: RefCell<f64> = const { RefCell::new(0.0) };
 }
@@ -1221,7 +1222,12 @@ fn start_live_refresh() {
         if present(&existing) {
             let _ = call1(&window(), "clearInterval", &existing);
         }
+        *timer.borrow_mut() = JsValue::UNDEFINED;
     });
+    LIVE_REFRESH_CALLBACK.with(|callback| {
+        callback.borrow_mut().take();
+    });
+
     refresh_all("initial");
     let callback = Closure::wrap(Box::new(move || refresh_all("poll")) as Box<dyn FnMut()>);
     let timer = call2(
@@ -1231,8 +1237,11 @@ fn start_live_refresh() {
         &JsValue::from_f64(LIVE_REFRESH_MS),
     )
     .unwrap_or(JsValue::UNDEFINED);
-    LIVE_TIMER.with(|value| *value.borrow_mut() = timer);
-    callback.forget();
+
+    if present(&timer) {
+        LIVE_TIMER.with(|value| *value.borrow_mut() = timer);
+        LIVE_REFRESH_CALLBACK.with(|value| *value.borrow_mut() = Some(callback));
+    }
 }
 
 fn dangerous_warning(net: &str) -> String {
@@ -2435,6 +2444,7 @@ pub fn node_set_runtime_buttons(
 pub fn node_live_refresh_diagnostics() -> JsValue {
     let output = Object::new();
     let timer_present = LIVE_TIMER.with(|value| present(&value.borrow()));
+    let callback_present = LIVE_REFRESH_CALLBACK.with(|value| value.borrow().is_some());
     let ticks = LIVE_REFRESH_TICKS.with(|value| *value.borrow());
     let last_tick_ms = LIVE_REFRESH_LAST_MS.with(|value| *value.borrow());
     let status_in_flight = STATUS_IN_FLIGHT.with(|items| items.borrow().len());
@@ -2443,6 +2453,11 @@ pub fn node_live_refresh_diagnostics() -> JsValue {
         output.as_ref(),
         "timerPresent",
         &JsValue::from_bool(timer_present),
+    );
+    set(
+        output.as_ref(),
+        "callbackPresent",
+        &JsValue::from_bool(callback_present),
     );
     set(output.as_ref(), "ticks", &JsValue::from_f64(ticks as f64));
     set(
