@@ -1,9 +1,9 @@
-use crate::e2e_native_webdriver::NativeWebDriverHarness;
+use crate::e2e_native_webdriver::{NativeWebDriverHarness, WebDriverSession};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const NODE_RECOVERY_RUNS: usize = 4;
 const BRIDGE_RUNS: usize = 10;
@@ -228,6 +228,89 @@ fn parse_passed_json(rendered: &str, label: &str, index: usize) -> Result<Value,
     Ok(value)
 }
 
+async fn activate_top_tab(
+    session: &WebDriverSession,
+    test_id: &str,
+    tab: &str,
+) -> Result<(), String> {
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let state = session
+            .execute_sync(
+                r#"
+const wanted = arguments[0];
+const node = document.querySelector('[data-testid="' + wanted + '"]');
+return {
+  present: Boolean(node),
+  bound: Boolean(node?.dataset?.kgwBound === "true"),
+  disabled: Boolean(node?.disabled || node?.getAttribute("aria-disabled") === "true"),
+};
+"#,
+                vec![json!(test_id)],
+            )
+            .await?;
+        let ready = state.get("present").and_then(Value::as_bool) == Some(true)
+            && state.get("bound").and_then(Value::as_bool) == Some(true)
+            && state.get("disabled").and_then(Value::as_bool) == Some(false);
+        if ready {
+            break;
+        }
+        if Instant::now() >= deadline {
+            return Err(format!(
+                "lifecycle-stress: tab {test_id} did not become bound/enabled: {state}"
+            ));
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+
+    let clicked = session
+        .execute_sync(
+            r#"
+const wanted = arguments[0];
+const node = document.querySelector('[data-testid="' + wanted + '"]');
+if (!node) return false;
+node.click();
+return true;
+"#,
+            vec![json!(test_id)],
+        )
+        .await?;
+    if clicked.as_bool() != Some(true) {
+        return Err(format!(
+            "lifecycle-stress: tab {test_id} click was not dispatched"
+        ));
+    }
+
+    loop {
+        let state = session
+            .execute_sync(
+                r#"
+const expected = arguments[0];
+const active = document.querySelector("[data-tab].active")?.getAttribute("data-tab") || "";
+const panel = document.getElementById(expected);
+return {
+  active,
+  panelExists: Boolean(panel),
+  panelRendered: Boolean(panel && String(panel.innerHTML || "").trim().length > 0),
+};
+"#,
+                vec![json!(tab)],
+            )
+            .await?;
+        let active = state.get("active").and_then(Value::as_str) == Some(tab);
+        let rendered = state.get("panelRendered").and_then(Value::as_bool) == Some(true);
+        if active && rendered {
+            return Ok(());
+        }
+        if Instant::now() >= deadline {
+            return Err(format!(
+                "lifecycle-stress: tab {test_id} did not become active/rendered for {tab}: {state}"
+            ));
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+}
+
 async fn tab_switch_stress(
     root: &Path,
     app_binary: &Path,
@@ -245,31 +328,14 @@ async fn tab_switch_stress(
     let result = async {
         let session = harness.session();
         for index in 0..TAB_SWITCHES {
-            let test_id = if index % 2 == 0 {
-                "kgw-tab-kaspa-node"
+            let (test_id, tab) = if index % 2 == 0 {
+                ("kgw-tab-kaspa-node", "kaspa-node")
             } else {
-                "kgw-tab-kaspa-bridge"
+                ("kgw-tab-kaspa-bridge", "kaspa-bridge")
             };
-            let value = session
-                .execute_sync(
-                    r#"
-const wanted = arguments[0];
-const node = document.querySelector('[data-testid="' + wanted + '"]');
-if (!node) return { ok: false, reason: "missing" };
-node.click();
-return {
-  ok: true,
-  active: Boolean(node.classList.contains("active") || node.getAttribute("aria-selected") === "true"),
-};
-"#,
-                    vec![json!(test_id)],
-                )
-                .await?;
-            if value.get("ok").and_then(Value::as_bool) != Some(true) {
-                return Err(format!(
-                    "lifecycle-stress: tab switch {index} failed: {value}"
-                ));
-            }
+            activate_top_tab(session, test_id, tab)
+                .await
+                .map_err(|error| format!("lifecycle-stress: tab switch {index}: {error}"))?;
         }
         Ok(json!({"passed":true,"switches":TAB_SWITCHES}))
     }

@@ -346,8 +346,75 @@ return { ok: true, value: String(node.value || "") };
     }
 }
 
+async fn activate_top_tab(
+    session: &WebDriverSession,
+    test_id: &str,
+    tab: &str,
+) -> Result<(), String> {
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let result = session
+            .execute_sync(
+                r#"
+const wanted = arguments[0];
+const node = Array.from(document.querySelectorAll("[data-testid]"))
+  .find((item) => item.getAttribute("data-testid") === wanted);
+return {
+  present: Boolean(node),
+  bound: Boolean(node?.dataset?.kgwBound === "true"),
+  disabled: Boolean(node?.disabled || node?.getAttribute("aria-disabled") === "true"),
+};
+"#,
+                vec![json!(test_id)],
+            )
+            .await?;
+        let ready = result.get("present").and_then(Value::as_bool) == Some(true)
+            && result.get("bound").and_then(Value::as_bool) == Some(true)
+            && result.get("disabled").and_then(Value::as_bool) == Some(false);
+        if ready {
+            break;
+        }
+        if Instant::now() >= deadline {
+            return Err(format!(
+                "top tab {test_id} did not become bound and enabled: {result}"
+            ));
+        }
+        sleep(POLL_FAST).await;
+    }
+
+    click_test_id(session, test_id).await?;
+    loop {
+        let result = session
+            .execute_sync(
+                r#"
+const expected = arguments[0];
+const active = document.querySelector("[data-tab].active")?.getAttribute("data-tab") || "";
+const panel = document.getElementById(expected);
+return {
+  active,
+  panelExists: Boolean(panel),
+  panelRendered: Boolean(panel && String(panel.innerHTML || "").trim().length > 0),
+};
+"#,
+                vec![json!(tab)],
+            )
+            .await?;
+        let active = result.get("active").and_then(Value::as_str) == Some(tab);
+        let rendered = result.get("panelRendered").and_then(Value::as_bool) == Some(true);
+        if active && rendered {
+            return Ok(());
+        }
+        if Instant::now() >= deadline {
+            return Err(format!(
+                "top tab {test_id} did not become active/rendered for {tab}: {result}"
+            ));
+        }
+        sleep(POLL_FAST).await;
+    }
+}
+
 async fn open_bridge_settings(session: &WebDriverSession, network: &str) -> Result<(), String> {
-    click_test_id(session, "kgw-tab-kaspa-bridge").await?;
+    activate_top_tab(session, "kgw-tab-kaspa-bridge", "kaspa-bridge").await?;
     if let Err(error) = click_test_id(session, &format!("kgw-bridge-network-{network}")).await {
         let diagnostics = session
             .execute_sync(
