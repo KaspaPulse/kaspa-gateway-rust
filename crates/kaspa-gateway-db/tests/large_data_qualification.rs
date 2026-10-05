@@ -1,9 +1,19 @@
 use kaspa_gateway_db::{DatabaseManager, DatabasePaths, TransactionFilter};
 use std::path::PathBuf;
+use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::{Duration, Instant};
 
 const ADDRESS: &str = "kaspa:qq2avyvncscg5dtsk8u4uwjhlr3799dhaqj8k9y6q5y9hpwfxjy6u00pep7vg";
 const COUNTERPARTY: &str = "kaspa:qpsender";
+
+static LARGE_DATA_SERIAL: OnceLock<Mutex<()>> = OnceLock::new();
+
+fn large_data_serial_guard() -> MutexGuard<'static, ()> {
+    LARGE_DATA_SERIAL
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+}
 
 struct CleanupDir(PathBuf);
 
@@ -366,6 +376,7 @@ fn run_scale(rows: usize) {
 #[test]
 #[ignore = "release-admission large-data qualification; run explicitly"]
 fn explorer_large_data_release_admission_matrix() {
+    let _serial = large_data_serial_guard();
     for rows in [1_000_usize, 10_000, 100_000, 1_000_000] {
         run_scale(rows);
     }
@@ -374,5 +385,6 @@ fn explorer_large_data_release_admission_matrix() {
 #[test]
 #[ignore = "release-admission 1M focused qualification; run explicitly"]
 fn explorer_large_data_1m_focused() {
+    let _serial = large_data_serial_guard();
     run_scale(1_000_000);
 }
