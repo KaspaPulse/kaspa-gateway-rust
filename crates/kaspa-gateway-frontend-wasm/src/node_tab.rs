@@ -19,6 +19,8 @@ thread_local! {
     static LOGS_IN_FLIGHT: RefCell<BTreeMap<String, Promise>> = const { RefCell::new(BTreeMap::new()) };
     static ACTIONS_IN_FLIGHT: RefCell<BTreeSet<String>> = const { RefCell::new(BTreeSet::new()) };
     static LIVE_TIMER: RefCell<JsValue> = const { RefCell::new(JsValue::UNDEFINED) };
+    static LIVE_REFRESH_TICKS: RefCell<u64> = const { RefCell::new(0) };
+    static LIVE_REFRESH_LAST_MS: RefCell<f64> = const { RefCell::new(0.0) };
 }
 
 fn global() -> JsValue {
@@ -1199,6 +1201,13 @@ fn install_lock_hydration() {
 }
 
 fn refresh_all(reason: &str) {
+    if reason == "poll" {
+        LIVE_REFRESH_TICKS.with(|value| {
+            let mut ticks = value.borrow_mut();
+            *ticks = ticks.saturating_add(1);
+        });
+        LIVE_REFRESH_LAST_MS.with(|value| *value.borrow_mut() = Date::now());
+    }
     hydrate(&format!("{reason}-before-refresh"));
     for net in node_keys() {
         spawn_local(refresh_one_impl(net));
@@ -2420,6 +2429,38 @@ pub fn node_set_runtime_buttons(
         &runtime_error,
         &status_text,
     );
+}
+
+#[wasm_bindgen(js_name = nodeLiveRefreshDiagnostics)]
+pub fn node_live_refresh_diagnostics() -> JsValue {
+    let output = Object::new();
+    let timer_present = LIVE_TIMER.with(|value| present(&value.borrow()));
+    let ticks = LIVE_REFRESH_TICKS.with(|value| *value.borrow());
+    let last_tick_ms = LIVE_REFRESH_LAST_MS.with(|value| *value.borrow());
+    let status_in_flight = STATUS_IN_FLIGHT.with(|items| items.borrow().len());
+    let logs_in_flight = LOGS_IN_FLIGHT.with(|items| items.borrow().len());
+    set(
+        output.as_ref(),
+        "timerPresent",
+        &JsValue::from_bool(timer_present),
+    );
+    set(output.as_ref(), "ticks", &JsValue::from_f64(ticks as f64));
+    set(
+        output.as_ref(),
+        "lastTickMs",
+        &JsValue::from_f64(last_tick_ms),
+    );
+    set(
+        output.as_ref(),
+        "statusInFlight",
+        &JsValue::from_f64(status_in_flight as f64),
+    );
+    set(
+        output.as_ref(),
+        "logsInFlight",
+        &JsValue::from_f64(logs_in_flight as f64),
+    );
+    output.into()
 }
 
 #[wasm_bindgen(js_name = nodeRefreshOne)]
