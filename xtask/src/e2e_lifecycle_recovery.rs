@@ -327,36 +327,141 @@ async fn set_control_checked(
     test_id: &str,
     checked: bool,
 ) -> Result<(), String> {
-    let result = session
-        .execute_sync(
-            r#"
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let result = session
+            .execute_sync(
+                r#"
 const wanted = arguments[0];
 const nextChecked = Boolean(arguments[1]);
 const node = Array.from(document.querySelectorAll("[data-testid]"))
   .find((item) => item.getAttribute("data-testid") === wanted);
 if (!node) return { ok: false, reason: "missing" };
-if (node.disabled || node.readOnly) return { ok: false, reason: "not-editable" };
+if (node.disabled || node.readOnly) {
+  return {
+    ok: false,
+    reason: "not-editable",
+    disabled: Boolean(node.disabled),
+    readOnly: Boolean(node.readOnly),
+    title: String(node.title || ""),
+  };
+}
 node.checked = nextChecked;
 node.dispatchEvent(new Event("input", { bubbles: true }));
 node.dispatchEvent(new Event("change", { bubbles: true }));
-return { ok: true, checked: Boolean(node.checked) };
+return {
+  ok: true,
+  checked: Boolean(node.checked),
+  disabled: Boolean(node.disabled),
+  readOnly: Boolean(node.readOnly),
+};
 "#,
-            vec![json!(test_id), json!(checked)],
-        )
-        .await?;
-    if result.get("ok").and_then(Value::as_bool) != Some(true) {
-        return Err(format!(
-            "unable to set {test_id}: {}",
-            result
-                .get("reason")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown")
-        ));
+                vec![json!(test_id), json!(checked)],
+            )
+            .await?;
+
+        if result.get("ok").and_then(Value::as_bool) == Some(true) {
+            if result.get("checked").and_then(Value::as_bool) == Some(checked) {
+                return Ok(());
+            }
+            return Err(format!(
+                "{test_id} did not retain checked={checked}; state={result}"
+            ));
+        }
+
+        let reason = result
+            .get("reason")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        if !matches!(reason, "missing" | "not-editable") || Instant::now() >= deadline {
+            return Err(format!(
+                "unable to set {test_id} checked={checked}: {reason}; state={result}"
+            ));
+        }
+        sleep(POLL_FAST).await;
     }
-    if result.get("checked").and_then(Value::as_bool) != Some(checked) {
-        return Err(format!("{test_id} did not retain checked={checked}"));
+}
+
+async fn wait_for_dependency_editable(
+    session: &WebDriverSession,
+    network: &str,
+    parent_name: &str,
+    child_name: &str,
+) -> Result<Value, String> {
+    let deadline = Instant::now() + Duration::from_secs(30);
+    let parent_test_id = format!("kgw-node-field-{network}-{parent_name}");
+    let child_test_id = format!("kgw-node-field-{network}-{child_name}");
+    loop {
+        let state = session
+            .execute_sync(
+                r#"
+const parentId = arguments[0];
+const childId = arguments[1];
+const parents = Array.from(document.querySelectorAll("[data-testid]"))
+  .filter((item) => item.getAttribute("data-testid") === parentId);
+const children = Array.from(document.querySelectorAll("[data-testid]"))
+  .filter((item) => item.getAttribute("data-testid") === childId);
+const panels = Array.from(document.querySelectorAll("[data-node-network-panel]"));
+const roots = Array.from(document.querySelectorAll("[id='kaspa-node']"));
+const parent = parents[0] || null;
+const child = children[0] || null;
+const panelInfo = (node) => {
+  const panel = node?.closest?.("[data-node-network-panel]") || null;
+  const root = node?.closest?.("[id='kaspa-node']") || null;
+  return {
+    elementId: String(node?.id || ""),
+    connected: Boolean(node?.isConnected),
+    panelNetwork: String(panel?.dataset?.nodeNetworkPanel || ""),
+    panelHidden: Boolean(panel?.hidden),
+    panelClass: String(panel?.className || ""),
+    rootId: String(root?.id || ""),
+    rootReady: String(root?.dataset?.kgwNodeV6Ready || ""),
+    settingsOwner: String(root?.dataset?.kgwSettingsOwnerV19 || ""),
+    commandOwner: String(root?.dataset?.kgwNodeCommandComposerInlineOwnerR7 || ""),
+  };
+};
+return {
+  parentCount: parents.length,
+  childCount: children.length,
+  panelCount: panels.length,
+  rootCount: roots.length,
+  parentExists: Boolean(parent),
+  parentChecked: Boolean(parent?.checked),
+  parentDisabled: Boolean(parent?.disabled),
+  parentReadOnly: Boolean(parent?.readOnly),
+  childExists: Boolean(child),
+  childDisabled: Boolean(child?.disabled),
+  childReadOnly: Boolean(child?.readOnly),
+  childTitle: String(child?.title || ""),
+  parentIdentity: panelInfo(parent),
+  childIdentity: panelInfo(child),
+  panels: panels.map((panel) => ({
+    network: String(panel?.dataset?.nodeNetworkPanel || ""),
+    hidden: Boolean(panel?.hidden),
+    className: String(panel?.className || ""),
+    connected: Boolean(panel?.isConnected),
+  })),
+};
+"#,
+                vec![json!(parent_test_id), json!(child_test_id)],
+            )
+            .await?;
+
+        let ready = state.get("parentExists").and_then(Value::as_bool) == Some(true)
+            && state.get("parentChecked").and_then(Value::as_bool) == Some(true)
+            && state.get("childExists").and_then(Value::as_bool) == Some(true)
+            && state.get("childDisabled").and_then(Value::as_bool) == Some(false)
+            && state.get("childReadOnly").and_then(Value::as_bool) == Some(false);
+        if ready {
+            return Ok(state);
+        }
+        if Instant::now() >= deadline {
+            return Err(format!(
+                "{network} dependency {parent_name}->{child_name} did not become editable: {state}"
+            ));
+        }
+        sleep(POLL_FAST).await;
     }
-    Ok(())
 }
 
 async fn open_node_settings(session: &WebDriverSession, network: &str) -> Result<(), String> {
@@ -469,61 +574,124 @@ async fn wait_port(
     }
 }
 
-async fn wait_node_ui(
-    session: &WebDriverSession,
-    network: &str,
-    expected_running: bool,
-) -> Result<UiState, String> {
-    let deadline = Instant::now() + Duration::from_secs(45);
-    loop {
-        open_node_settings(session, network).await?;
-        let value = session
-            .execute_sync(
-                r#"
+async fn node_ui_snapshot(session: &WebDriverSession, network: &str) -> Result<Value, String> {
+    session
+        .execute_sync(
+            r#"
 const net = arguments[0];
 const start = document.querySelector('[data-testid="kgw-node-start-' + net + '"]');
 const stop = document.querySelector('[data-testid="kgw-node-stop-' + net + '"]');
+const policy = document.getElementById('node-' + net + '-policyStatus');
+const monitor = document.getElementById('node-' + net + '-monitorState');
+const runtimeError = document.getElementById('node-' + net + '-runtimeError');
 return {
   startExists: Boolean(start),
   stopExists: Boolean(stop),
   startDisabled: Boolean(start?.disabled || start?.getAttribute("aria-disabled") === "true"),
   stopDisabled: Boolean(stop?.disabled || stop?.getAttribute("aria-disabled") === "true"),
+  startTitle: start?.getAttribute("title") || "",
+  stopTitle: stop?.getAttribute("title") || "",
+  policyText: policy?.textContent || "",
+  policyState: policy?.dataset?.state || "",
+  monitorText: monitor?.textContent || "",
+  runtimeErrorText: runtimeError?.textContent || "",
+  runtimeErrorSource: runtimeError?.dataset?.runtimeErrorSource || "",
 };
 "#,
-                vec![json!(network)],
-            )
-            .await?;
-        let state = UiState {
-            start_exists: value
-                .get("startExists")
-                .and_then(Value::as_bool)
-                .unwrap_or(false),
-            stop_exists: value
-                .get("stopExists")
-                .and_then(Value::as_bool)
-                .unwrap_or(false),
-            start_disabled: value
-                .get("startDisabled")
-                .and_then(Value::as_bool)
-                .unwrap_or(false),
-            stop_disabled: value
-                .get("stopDisabled")
-                .and_then(Value::as_bool)
-                .unwrap_or(false),
-        };
-        let matches = state.start_exists
-            && state.stop_exists
-            && if expected_running {
-                state.start_disabled && !state.stop_disabled
-            } else {
-                !state.start_disabled && state.stop_disabled
-            };
-        if matches {
+            vec![json!(network)],
+        )
+        .await
+}
+
+fn ui_state_from_snapshot(value: &Value) -> UiState {
+    UiState {
+        start_exists: value
+            .get("startExists")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        stop_exists: value
+            .get("stopExists")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        start_disabled: value
+            .get("startDisabled")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        stop_disabled: value
+            .get("stopDisabled")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+    }
+}
+
+fn ui_matches_running(state: &UiState, expected_running: bool) -> bool {
+    state.start_exists
+        && state.stop_exists
+        && if expected_running {
+            state.start_disabled && !state.stop_disabled
+        } else {
+            !state.start_disabled && state.stop_disabled
+        }
+}
+
+async fn diagnostic_live_refresh(session: &WebDriverSession) -> Result<Value, String> {
+    session
+        .execute_async(
+            r#"
+const done = arguments[arguments.length - 1];
+import('./generated/kgw_frontend_wasm/kgw_frontend_wasm.js')
+  .then((module) => done({
+    ok: true,
+    diagnostics: module.nodeLiveRefreshDiagnostics(),
+  }))
+  .catch((error) => done({
+    ok: false,
+    error: error && error.message ? error.message : String(error),
+  }));
+"#,
+            vec![],
+        )
+        .await
+}
+
+async fn diagnostic_manual_node_refresh(
+    session: &WebDriverSession,
+    network: &str,
+) -> Result<Value, String> {
+    session
+        .execute_async(
+            r#"
+const net = arguments[0];
+const done = arguments[arguments.length - 1];
+import('./generated/kgw_frontend_wasm/kgw_frontend_wasm.js')
+  .then((module) => Promise.resolve(module.nodeRefreshOne(net, 'r9-diagnostic-manual-refresh')))
+  .then(() => done({ ok: true }))
+  .catch((error) => done({
+    ok: false,
+    error: error && error.message ? error.message : String(error),
+  }));
+"#,
+            vec![json!(network)],
+        )
+        .await
+}
+
+async fn wait_node_ui(
+    session: &WebDriverSession,
+    network: &str,
+    expected_running: bool,
+) -> Result<UiState, String> {
+    open_node_settings(session, network).await?;
+    let deadline = Instant::now() + Duration::from_secs(45);
+    loop {
+        let value = node_ui_snapshot(session, network).await?;
+        let state = ui_state_from_snapshot(&value);
+        if ui_matches_running(&state, expected_running) {
             return Ok(state);
         }
         if Instant::now() >= deadline {
             return Err(format!(
-                "node UI {network} did not reach running={expected_running}: {state:?}"
+                "node UI {network} did not reach running={expected_running}: {state:?}; snapshot={value}"
             ));
         }
         sleep(Duration::from_millis(500)).await;
@@ -556,6 +724,7 @@ async fn configure_and_start_node(
         true,
     )
     .await?;
+    let _ = wait_for_dependency_editable(session, network, "listenEnabled", "listenHost").await?;
     set_control_value(
         session,
         &format!("kgw-node-field-{network}-listenHost"),
@@ -667,13 +836,68 @@ async fn exercise_recovery(
     let reconciled = wait_for_stopped(session, network, Duration::from_secs(60)).await?;
     wait_port("127.0.0.1", ports.rpc_port, false, Duration::from_secs(60)).await?;
     wait_port("127.0.0.1", ports.p2p_port, false, Duration::from_secs(60)).await?;
-    let ui_after_crash = wait_node_ui(session, network, false).await?;
+
+    open_node_settings(session, network).await?;
+    sleep(Duration::from_secs(3)).await;
+    let auto_snapshot = node_ui_snapshot(session, network).await?;
+    let auto_ui = ui_state_from_snapshot(&auto_snapshot);
+    let auto_reconciled = ui_matches_running(&auto_ui, false);
+    let live_refresh_diagnostic = diagnostic_live_refresh(session).await?;
+
+    let (manual_refresh, manual_snapshot, manual_ui, manual_reconciled) = if auto_reconciled {
+        (
+            json!({ "skipped": true, "reason": "automatic-reconciliation-succeeded" }),
+            auto_snapshot.clone(),
+            auto_ui.clone(),
+            true,
+        )
+    } else {
+        let refresh = diagnostic_manual_node_refresh(session, network).await?;
+        sleep(Duration::from_secs(1)).await;
+        let snapshot = node_ui_snapshot(session, network).await?;
+        let state = ui_state_from_snapshot(&snapshot);
+        let reconciled = ui_matches_running(&state, false);
+        (refresh, snapshot, state, reconciled)
+    };
+
+    write_json(
+        &output_directory.join("crash-ui-diagnostic.json"),
+        &json!({
+            "killedPid": second.pid,
+            "backendReconciled": reconciled,
+            "liveRefresh": live_refresh_diagnostic,
+            "auto": {
+                "reconciled": auto_reconciled,
+                "ui": auto_ui,
+                "snapshot": auto_snapshot,
+            },
+            "manualRefresh": manual_refresh,
+            "afterManual": {
+                "reconciled": manual_reconciled,
+                "ui": manual_ui,
+                "snapshot": manual_snapshot,
+            },
+        }),
+    )?;
+
+    if !auto_reconciled {
+        return Err(if manual_reconciled {
+            format!(
+                "{network} automatic UI reconciliation stayed stale after forced crash, but one explicit nodeRefreshOne repaired it; live refresh scheduling/polling is defective"
+            )
+        } else {
+            format!(
+                "{network} UI reconciliation stayed stale after forced crash and explicit nodeRefreshOne did not repair it; status-to-UI application path is defective"
+            )
+        });
+    }
+
     write_json(
         &output_directory.join("crash-reconciled.json"),
         &json!({
             "killedPid": second.pid,
             "reconciled": reconciled,
-            "ui": ui_after_crash,
+            "ui": auto_ui,
         }),
     )?;
 
