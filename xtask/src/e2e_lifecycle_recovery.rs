@@ -639,15 +639,30 @@ async fn diagnostic_live_refresh(session: &WebDriverSession) -> Result<Value, St
         .execute_async(
             r#"
 const done = arguments[arguments.length - 1];
-import('./generated/kgw_frontend_wasm/kgw_frontend_wasm.js')
-  .then((module) => done({
-    ok: true,
-    diagnostics: module.nodeLiveRefreshDiagnostics(),
-  }))
-  .catch((error) => done({
-    ok: false,
-    error: error && error.message ? error.message : String(error),
-  }));
+const startedAt = Date.now();
+let jsTicks = 0;
+const jsTimer = window.setInterval(() => {
+  jsTicks += 1;
+}, 100);
+window.setTimeout(() => {
+  window.clearInterval(jsTimer);
+  import('./generated/kgw_frontend_wasm/kgw_frontend_wasm.js')
+    .then((module) => done({
+      ok: true,
+      control: {
+        jsTicks,
+        elapsedMs: Date.now() - startedAt,
+        visibilityState: document.visibilityState,
+        hidden: document.hidden,
+        setIntervalType: typeof window.setInterval,
+      },
+      diagnostics: module.nodeLiveRefreshDiagnostics(),
+    }))
+    .catch((error) => done({
+      ok: false,
+      error: error && error.message ? error.message : String(error),
+    }));
+}, 1200);
 "#,
             vec![],
         )
