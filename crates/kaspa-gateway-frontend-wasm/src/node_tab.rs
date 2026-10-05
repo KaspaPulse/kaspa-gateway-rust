@@ -1578,7 +1578,19 @@ async fn run_integrated_action(action: String, net: String) -> bool {
 }
 
 fn normalize_net(value: &str) -> String {
-    crate::node_frontend_helpers::node_normalize_network(JsValue::from_str(value))
+    let normalized = value.trim();
+    match normalized {
+        "mainnet" | "testnet10" | "testnet13" => normalized.to_owned(),
+        _ => String::new(),
+    }
+}
+
+fn first_normalized_net<'a>(values: impl IntoIterator<Item = &'a str>) -> String {
+    values
+        .into_iter()
+        .map(normalize_net)
+        .find(|net| !net.is_empty())
+        .unwrap_or_default()
 }
 
 fn net_from_element(element: &JsValue) -> String {
@@ -1609,7 +1621,7 @@ fn net_from_element(element: &JsValue) -> String {
             values.push(value);
         }
     }
-    normalize_net(&values.join(" "))
+    first_normalized_net(values.iter().map(String::as_str))
 }
 
 fn scoped_update(net: &str, reason: &str) {
@@ -2444,5 +2456,43 @@ mod tests {
         assert_eq!(LIVE_REFRESH_MS, 700.0);
         assert_eq!(LOCK_EVENT, "kgw-bridge-owned-node-lock-r65e");
         assert_eq!(LOCK_SOURCE, "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E");
+    }
+
+    #[test]
+    fn network_resolution_returns_first_exact_candidate_without_context_concatenation() {
+        assert_eq!(
+            first_normalized_net(["", "mainnet", "mainnet-node-settings node-command-option",]),
+            "mainnet"
+        );
+        assert_eq!(
+            first_normalized_net([
+                "not-a-network",
+                " testnet10 ",
+                "node-testnet10-commandSettings",
+            ]),
+            "testnet10"
+        );
+        assert_eq!(
+            first_normalized_net([
+                "kgw-node-panel testnet13 extra-noise",
+                "testnet13",
+                "ignored-after-valid",
+            ]),
+            "testnet13"
+        );
+    }
+
+    #[test]
+    fn network_resolution_fails_closed_when_only_noisy_context_exists() {
+        assert_eq!(
+            first_normalized_net([
+                "node-mainnet-commandSettings",
+                "settings-panel testnet10",
+                "node-testnet13-listenHost",
+            ]),
+            ""
+        );
+        assert_eq!(normalize_net(" mainnet "), "mainnet");
+        assert_eq!(normalize_net("mainnet extra"), "");
     }
 }
