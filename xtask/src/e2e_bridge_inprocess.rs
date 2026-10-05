@@ -309,9 +309,11 @@ async fn set_control_value(
     selector: &str,
     value: &str,
 ) -> Result<(), String> {
-    let result = session
-        .execute_sync(
-            r#"
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let result = session
+            .execute_sync(
+                r#"
 const selector = arguments[0];
 const nextValue = String(arguments[1]);
 const node = document.querySelector(selector);
@@ -322,24 +324,26 @@ node.dispatchEvent(new Event("input", { bubbles: true }));
 node.dispatchEvent(new Event("change", { bubbles: true }));
 return { ok: true, value: String(node.value || "") };
 "#,
-            vec![json!(selector), json!(value)],
-        )
-        .await?;
-    if result.get("ok").and_then(Value::as_bool) != Some(true) {
-        return Err(format!(
-            "unable to set {selector}: {}",
-            result
-                .get("reason")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown")
-        ));
+                vec![json!(selector), json!(value)],
+            )
+            .await?;
+        if result.get("ok").and_then(Value::as_bool) == Some(true) {
+            if result.get("value").and_then(Value::as_str) != Some(value) {
+                return Err(format!(
+                    "{selector} did not retain requested value {value:?}"
+                ));
+            }
+            return Ok(());
+        }
+        let reason = result
+            .get("reason")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        if !matches!(reason, "missing" | "not-editable") || Instant::now() >= deadline {
+            return Err(format!("unable to set {selector}: {reason}"));
+        }
+        sleep(POLL_FAST).await;
     }
-    if result.get("value").and_then(Value::as_str) != Some(value) {
-        return Err(format!(
-            "{selector} did not retain requested value {value:?}"
-        ));
-    }
-    Ok(())
 }
 
 async fn open_bridge_settings(session: &WebDriverSession, network: &str) -> Result<(), String> {

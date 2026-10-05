@@ -274,9 +274,11 @@ async fn set_control_value(
     test_id: &str,
     value: &str,
 ) -> Result<(), String> {
-    let result = session
-        .execute_sync(
-            r#"
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        let result = session
+            .execute_sync(
+                r#"
 const wanted = arguments[0];
 const nextValue = String(arguments[1]);
 const node = Array.from(document.querySelectorAll("[data-testid]"))
@@ -288,24 +290,26 @@ node.dispatchEvent(new Event("input", { bubbles: true }));
 node.dispatchEvent(new Event("change", { bubbles: true }));
 return { ok: true, value: String(node.value || "") };
 "#,
-            vec![json!(test_id), json!(value)],
-        )
-        .await?;
-    if result.get("ok").and_then(Value::as_bool) != Some(true) {
-        return Err(format!(
-            "unable to set {test_id}: {}",
-            result
-                .get("reason")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown")
-        ));
+                vec![json!(test_id), json!(value)],
+            )
+            .await?;
+        if result.get("ok").and_then(Value::as_bool) == Some(true) {
+            if result.get("value").and_then(Value::as_str) != Some(value) {
+                return Err(format!(
+                    "{test_id} did not retain requested value {value:?}"
+                ));
+            }
+            return Ok(());
+        }
+        let reason = result
+            .get("reason")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        if !matches!(reason, "missing" | "not-editable") || Instant::now() >= deadline {
+            return Err(format!("unable to set {test_id}: {reason}"));
+        }
+        sleep(POLL_FAST).await;
     }
-    if result.get("value").and_then(Value::as_str) != Some(value) {
-        return Err(format!(
-            "{test_id} did not retain requested value {value:?}"
-        ));
-    }
-    Ok(())
 }
 
 async fn set_control_checked(
