@@ -410,8 +410,63 @@ fn initialize_sqlite_transaction_search(connection: &sqlite::Connection) -> Resu
     Ok(())
 }
 
+fn sqlite_current_transaction_schema_ready(connection: &sqlite::Connection) -> Result<bool> {
+    let fts5_enabled: i64 = connection.query_row(
+        "SELECT sqlite_compileoption_used('ENABLE_FTS5')",
+        [],
+        |row| row.get(0),
+    )?;
+    if fts5_enabled != 1 {
+        return Err(DbError::InvalidRecord(
+            "bundled SQLite is missing required ENABLE_FTS5 support".to_string(),
+        ));
+    }
+
+    if !sqlite_address_relations_have_timestamp(connection)? {
+        return Ok(false);
+    }
+
+    let required_objects: i64 = connection.query_row(
+        r#"
+        SELECT COUNT(*)
+        FROM sqlite_master
+        WHERE
+            (type = 'table' AND name IN (
+                'transactions',
+                'address_transactions',
+                'address_transactions_fts'
+            ))
+            OR (type = 'trigger' AND name IN (
+                'address_transactions_fts_ai',
+                'address_transactions_fts_ad',
+                'address_transactions_fts_au'
+            ))
+            OR (type = 'index' AND name IN (
+                'idx_transactions_address_time',
+                'idx_transactions_address_type',
+                'idx_transactions_address_direction',
+                'idx_transactions_address_txid',
+                'idx_address_transactions_address',
+                'idx_address_transactions_address_txid',
+                'idx_address_transactions_address_type',
+                'idx_address_transactions_address_direction',
+                'idx_address_transactions_address_time',
+                'idx_address_transactions_address_counterparty',
+                'idx_address_transactions_address_from',
+                'idx_address_transactions_address_to'
+            ))
+        "#,
+        [],
+        |row| row.get(0),
+    )?;
+
+    Ok(required_objects == 18)
+}
+
 fn initialize_sqlite_transactions_schema(connection: &sqlite::Connection) -> Result<()> {
-    if let Some(existing_version) = sqlite_existing_schema_version(connection)?
+    let existing_version = sqlite_existing_schema_version(connection)?;
+
+    if let Some(existing_version) = existing_version
         && existing_version > DATABASE_SCHEMA_VERSION
     {
         return Err(DbError::InvalidRecord(format!(
@@ -420,12 +475,20 @@ fn initialize_sqlite_transactions_schema(connection: &sqlite::Connection) -> Res
     }
 
     connection.execute_batch(
-        r#"
-        PRAGMA journal_mode = WAL;
-        PRAGMA synchronous = NORMAL;
-        PRAGMA foreign_keys = ON;
-        PRAGMA busy_timeout = 5000;
+        "PRAGMA journal_mode = WAL;
+         PRAGMA synchronous = NORMAL;
+         PRAGMA foreign_keys = ON;
+         PRAGMA busy_timeout = 5000;",
+    )?;
 
+    if existing_version == Some(DATABASE_SCHEMA_VERSION)
+        && sqlite_current_transaction_schema_ready(connection)?
+    {
+        return Ok(());
+    }
+
+    connection.execute_batch(
+        r#"
         CREATE TABLE IF NOT EXISTS schema_migrations(
             version INTEGER PRIMARY KEY,
             name TEXT NOT NULL,

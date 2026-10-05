@@ -149,7 +149,9 @@ fn run_scale(rows: usize) {
     raw.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;")
         .expect("restore product journal mode");
 
+    let reopen_started = Instant::now();
     let repository = manager.transactions_repository().expect("repository");
+    let reopen_elapsed = reopen_started.elapsed();
 
     let count_started = Instant::now();
     let count = repository.count_for_address(ADDRESS).expect("count");
@@ -325,9 +327,10 @@ fn run_scale(rows: usize) {
         .unwrap_or(0);
 
     println!(
-        "KGW_LARGE_DATA rows={} seed_ms={} count_ms={} list100_ms={} exact_txid_ms={} prefix_ms={} exact_address_ms={} substring_miss_ms={} substring_common_ms={} day_summary_ms={} days={} db_bytes={} plan_list={:?} plan_exact={:?}",
+        "KGW_LARGE_DATA rows={} seed_ms={} reopen_ms={} count_ms={} list100_ms={} exact_txid_ms={} prefix_ms={} exact_address_ms={} substring_miss_ms={} substring_common_ms={} day_summary_ms={} days={} db_bytes={} plan_list={:?} plan_exact={:?}",
         rows,
         seed_elapsed.as_millis(),
+        reopen_elapsed.as_millis(),
         count_elapsed.as_millis(),
         list_elapsed.as_millis(),
         exact_elapsed.as_millis(),
@@ -342,6 +345,10 @@ fn run_scale(rows: usize) {
         plan_exact
     );
 
+    assert!(
+        reopen_elapsed < Duration::from_secs(5),
+        "repository reopen is not interactive at {rows} rows"
+    );
     assert!(
         count_elapsed < Duration::from_secs(5),
         "count is not interactive at {rows} rows"
