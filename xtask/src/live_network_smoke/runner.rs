@@ -491,6 +491,32 @@ fn prepared_build_environment() -> Result<Vec<(&'static str, PathBuf)>> {
     }
     Ok(values)
 }
+fn normalized_mount_text(path: &Path) -> String {
+    let mut text = path
+        .to_string_lossy()
+        .replace('/', "\\")
+        .to_ascii_lowercase();
+    if let Some(rest) = text.strip_prefix(r"\\?\unc\") {
+        text = format!(r"\\{rest}");
+    } else if let Some(rest) = text.strip_prefix(r"\\?\") {
+        text = rest.to_owned();
+    }
+    text
+}
+
+fn path_is_within_mount(root: &Path, mount: &Path) -> bool {
+    let root = normalized_mount_text(root);
+    let mount = normalized_mount_text(mount);
+    if root == mount {
+        return true;
+    }
+    if mount.ends_with('\\') {
+        return root.starts_with(&mount);
+    }
+    root.strip_prefix(&mount)
+        .is_some_and(|suffix| suffix.starts_with('\\'))
+}
+
 fn preflight(root: &Path) -> Result<Value> {
     let mut system = sysinfo::System::new();
     system.refresh_cpu_all();
@@ -498,13 +524,10 @@ fn preflight(root: &Path) -> Result<Value> {
     let cores = system.cpus().len();
     let memory = round_tenth(system.total_memory() as f64 / 1073741824.0);
     let disks = sysinfo::Disks::new_with_refreshed_list();
-    let root_text = root.to_string_lossy().to_ascii_lowercase();
     let disk = disks
         .list()
         .iter()
-        .filter(|disk| {
-            root_text.starts_with(&disk.mount_point().to_string_lossy().to_ascii_lowercase())
-        })
+        .filter(|disk| path_is_within_mount(root, disk.mount_point()))
         .max_by_key(|disk| disk.mount_point().as_os_str().len())
         .ok_or("Cannot identify the repository's disk for preflight")?;
     let free = round_tenth(disk.available_space() as f64 / 1073741824.0);
@@ -669,6 +692,30 @@ pub(super) fn run(options: Options) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mount_matching_accepts_windows_verbatim_and_unc_paths() {
+        assert!(path_is_within_mount(
+            Path::new(r"\\?\C:\Users\abuha\repo"),
+            Path::new(r"C:\")
+        ));
+        assert!(path_is_within_mount(
+            Path::new(r"C:\Users\abuha\repo"),
+            Path::new(r"C:\")
+        ));
+        assert!(path_is_within_mount(
+            Path::new(r"\\?\UNC\server\share\repo"),
+            Path::new(r"\\server\share")
+        ));
+        assert!(!path_is_within_mount(
+            Path::new(r"D:\repo"),
+            Path::new(r"C:\")
+        ));
+        assert!(!path_is_within_mount(
+            Path::new(r"C:\foobar"),
+            Path::new(r"C:\foo")
+        ));
+    }
     #[test]
     fn parent_and_probe_arguments_keep_same_executable_contract_and_path_boundaries() {
         let profile = Profile {
