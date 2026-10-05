@@ -144,6 +144,23 @@ fn aud001_incompatible_selected_schema_is_rejected() {
     assert!(restore_latest(&root).is_err());
     assert_eq!(values(&root), ["NEW", "NEW", "999", "999"]);
 }
+
+#[test]
+fn aud001_unknown_sqlite_table_is_rejected_without_weakening_fts_allowlist() {
+    let (root, old) = prepared();
+    let sqlite = rusqlite::Connection::open(old.join("Transactions.sqlite")).unwrap();
+    sqlite
+        .execute_batch("CREATE TABLE unexpected_restore_payload(id INTEGER PRIMARY KEY)")
+        .unwrap();
+    drop(sqlite);
+
+    let error = restore_latest(&root).unwrap_err();
+    assert!(
+        error.to_string().contains("incompatible SQLite table set"),
+        "{error}"
+    );
+    assert_eq!(values(&root), ["NEW", "NEW", "999", "999"]);
+}
 #[test]
 fn aud001_disappeared_target_is_not_reselected() {
     let (root, old) = prepared();

@@ -98,6 +98,20 @@ fn tables(name: &str) -> &'static [&'static str] {
         _ => &["schema_migrations", "transactions"],
     }
 }
+
+fn sqlite_expected_tables() -> &'static [&'static str] {
+    &[
+        "address_transactions",
+        "address_transactions_fts",
+        "address_transactions_fts_config",
+        "address_transactions_fts_content",
+        "address_transactions_fts_data",
+        "address_transactions_fts_docsize",
+        "address_transactions_fts_idx",
+        "schema_migrations",
+        "transactions",
+    ]
+}
 fn native_backup(source: &Path, destination: &Path, name: &str) -> Result<()> {
     if name.ends_with(".sqlite") {
         let connection = rusqlite::Connection::open_with_flags(
@@ -180,8 +194,11 @@ fn sqlite_signature(connection: &rusqlite::Connection, alias: &str) -> Result<Ve
     let actual = statement
         .query_map([], |row| row.get::<_, String>(0))?
         .collect::<std::result::Result<Vec<_>, _>>()?;
-    if actual != tables("Transactions.sqlite") {
-        return Err(invalid("incompatible SQLite table set"));
+    if actual != sqlite_expected_tables() {
+        return Err(invalid(format!(
+            "incompatible SQLite table set: expected {:?}, found {actual:?}",
+            sqlite_expected_tables()
+        )));
     }
     let mut signature = Vec::new();
     for table in tables("Transactions.sqlite") {
