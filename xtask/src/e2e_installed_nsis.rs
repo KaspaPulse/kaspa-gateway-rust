@@ -84,7 +84,7 @@ fn parse_args(args: &mut impl Iterator<Item = String>) -> Result<Args, String> {
     })
 }
 
-fn normalize_sha256(value: &str) -> Result<String, String> {
+pub(crate) fn normalize_sha256(value: &str) -> Result<String, String> {
     let value = value.trim().to_ascii_lowercase();
     if value.len() != 64 || !value.bytes().all(|byte| byte.is_ascii_hexdigit()) {
         return Err(format!("invalid SHA-256 hex value: {value:?}"));
@@ -92,7 +92,7 @@ fn normalize_sha256(value: &str) -> Result<String, String> {
     Ok(value)
 }
 
-fn sha256_file(path: &Path) -> Result<String, String> {
+pub(crate) fn sha256_file(path: &Path) -> Result<String, String> {
     let mut file =
         fs::File::open(path).map_err(|error| format!("open {}: {error}", path.display()))?;
     let mut hasher = Sha256::new();
@@ -109,7 +109,7 @@ fn sha256_file(path: &Path) -> Result<String, String> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
-fn ensure_fresh_directory(path: &Path) -> Result<(), String> {
+pub(crate) fn ensure_fresh_directory(path: &Path) -> Result<(), String> {
     if path.exists() {
         let mut entries =
             fs::read_dir(path).map_err(|error| format!("read {}: {error}", path.display()))?;
@@ -125,7 +125,10 @@ fn ensure_fresh_directory(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn find_files(root: &Path, predicate: &impl Fn(&Path) -> bool) -> Result<Vec<PathBuf>, String> {
+pub(crate) fn find_files(
+    root: &Path,
+    predicate: &impl Fn(&Path) -> bool,
+) -> Result<Vec<PathBuf>, String> {
     let mut found = Vec::new();
     if !root.exists() {
         return Ok(found);
@@ -147,7 +150,7 @@ fn find_files(root: &Path, predicate: &impl Fn(&Path) -> bool) -> Result<Vec<Pat
     Ok(found)
 }
 
-fn require_success(label: &str, status: std::process::ExitStatus) -> Result<(), String> {
+pub(crate) fn require_success(label: &str, status: std::process::ExitStatus) -> Result<(), String> {
     if status.success() {
         Ok(())
     } else {
@@ -157,7 +160,7 @@ fn require_success(label: &str, status: std::process::ExitStatus) -> Result<(), 
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct NativeWindowProbe {
+pub(crate) struct NativeWindowProbe {
     hwnd: usize,
     title: String,
     visible: bool,
@@ -215,7 +218,7 @@ unsafe extern "system" fn enum_window_for_pid(hwnd: HWND, lparam: LPARAM) -> BOO
 }
 
 #[cfg(windows)]
-fn native_window_probe(pid: u32) -> Result<Option<NativeWindowProbe>, String> {
+pub(crate) fn native_window_probe(pid: u32) -> Result<Option<NativeWindowProbe>, String> {
     let mut search = WindowSearch { pid, found: None };
     let result = unsafe {
         EnumWindows(
@@ -232,11 +235,11 @@ fn native_window_probe(pid: u32) -> Result<Option<NativeWindowProbe>, String> {
 }
 
 #[cfg(not(windows))]
-fn native_window_probe(_pid: u32) -> Result<Option<NativeWindowProbe>, String> {
+pub(crate) fn native_window_probe(_pid: u32) -> Result<Option<NativeWindowProbe>, String> {
     Err("installed NSIS production-native acceptance requires Windows".to_owned())
 }
 
-async fn wait_for_native_window(
+pub(crate) async fn wait_for_native_window(
     child: &mut Child,
     timeout: Duration,
 ) -> Result<NativeWindowProbe, String> {
