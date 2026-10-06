@@ -15,7 +15,7 @@ This file records intentionally accepted or currently unavoidable RustSec and np
 
 Last automated review: **2026-10-03**
 
-Last npm dependency-policy review: **2026-09-10**; next mandatory review: **2026-10-10**.
+Last npm dependency-policy review: **2026-10-06**; next mandatory review: **2026-10-10**.
 
 ### 2026-10-03 Rust dependency review evidence
 
@@ -77,6 +77,12 @@ The E2E install currently emits exactly two accepted upstream deprecation warnin
 Action: remove each deprecation exception immediately when the supported upstream dependency graph no longer emits it.
 
 ## npm findings remediated
+
+### GHSA-r4xh-jqrq-34v2 — `smol-toml`
+
+Status: remediated on 2026-10-06.
+
+The final local release security precheck detected `smol-toml` 1.7.1 as a new Moderate-severity transitive finding through `@wdio/native-utils` 2.5.0. The owning package declares `smol-toml ^1.6.0`, so pinning the compatible fixed release 1.9.0 in the E2E overrides removes the Moderate finding without changing WebdriverIO or product runtime semantics. The dependency policy now requires `node_modules/smol-toml` to remain exactly 1.9.0 and will fail closed on lockfile regression.
 
 ### GHSA-2883-xcg3-v3hh — `js-yaml`
 
