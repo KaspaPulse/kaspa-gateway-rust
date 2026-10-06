@@ -14,7 +14,7 @@ default = []
 ksss = ["dep:flate2", "dep:pyo3", "dep:tar", "time/parsing"]
 
 [dependencies]
-xml-rs = "=0.8.29"
+xml-rs = "=1.0.0"
 kaspa-gateway-e2e-wasm = { path = "../crates/kaspa-gateway-e2e-wasm" }
 kaspa-gateway-db = { path = "../crates/kaspa-gateway-db" }
 rusqlite = { version = "0.37.0", features = ["bundled"] }
