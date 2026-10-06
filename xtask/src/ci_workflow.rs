@@ -559,6 +559,19 @@ fn forbid(text: &str, marker: &str) -> Result<(), String> {
     }
 }
 
+fn require_job_marker(text: &str, job: &str, next_job: &str, marker: &str) -> Result<(), String> {
+    let start = format!("  {job}:");
+    let end = format!("\n  {next_job}:");
+    let (_, after_start) = text
+        .split_once(&start)
+        .ok_or_else(|| format!("ci workflow contract: missing job {job}"))?;
+    let (block, _) = after_start
+        .split_once(&end)
+        .ok_or_else(|| format!("ci workflow contract: missing job boundary {next_job}"))?;
+    require(block, marker)
+        .map_err(|_| format!("ci workflow contract: job {job} is missing required marker {marker}"))
+}
+
 pub fn run_gate(root: &Path) -> Result<String, String> {
     let workflow = fs::read_to_string(root.join(CI_PATH))
         .map_err(|error| format!("ci workflow contract: read {CI_PATH}: {error}"))?;
@@ -578,6 +591,7 @@ pub fn run_gate(root: &Path) -> Result<String, String> {
     ] {
         require(&workflow, marker)?;
     }
+    require_job_marker(&workflow, "ksss-adoption", "msrv", "timeout-minutes: 30")?;
     for marker in [
         "run: |",
         "run: >",
@@ -637,6 +651,18 @@ mod tests {
         ] {
             assert!(require(marker, marker).is_ok());
         }
+    }
+
+    #[test]
+    fn ksss_job_requires_bounded_cold_build_timeout() {
+        let workflow =
+            "jobs:\n  ksss-adoption:\n    timeout-minutes: 30\n  msrv:\n    timeout-minutes: 60\n";
+        assert!(
+            require_job_marker(workflow, "ksss-adoption", "msrv", "timeout-minutes: 30").is_ok()
+        );
+        assert!(
+            require_job_marker(workflow, "ksss-adoption", "msrv", "timeout-minutes: 10").is_err()
+        );
     }
 
     #[test]
