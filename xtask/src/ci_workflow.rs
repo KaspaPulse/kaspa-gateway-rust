@@ -572,6 +572,15 @@ fn require_job_marker(text: &str, job: &str, next_job: &str, marker: &str) -> Re
         .map_err(|_| format!("ci workflow contract: job {job} is missing required marker {marker}"))
 }
 
+fn require_last_job_marker(text: &str, job: &str, marker: &str) -> Result<(), String> {
+    let start = format!("  {job}:");
+    let (_, block) = text
+        .split_once(&start)
+        .ok_or_else(|| format!("ci workflow contract: missing job {job}"))?;
+    require(block, marker)
+        .map_err(|_| format!("ci workflow contract: job {job} is missing required marker {marker}"))
+}
+
 pub fn run_gate(root: &Path) -> Result<String, String> {
     let workflow = fs::read_to_string(root.join(CI_PATH))
         .map_err(|error| format!("ci workflow contract: read {CI_PATH}: {error}"))?;
@@ -592,6 +601,11 @@ pub fn run_gate(root: &Path) -> Result<String, String> {
         require(&workflow, marker)?;
     }
     require_job_marker(&workflow, "ksss-adoption", "msrv", "timeout-minutes: 30")?;
+    require_last_job_marker(
+        &workflow,
+        "node-current-compatibility",
+        "timeout-minutes: 30",
+    )?;
     for marker in [
         "run: |",
         "run: >",

@@ -254,7 +254,7 @@ mod tests {
             "persist-credentials: false",
             "name: actionlint",
             "runs-on: ubuntu-24.04",
-            "timeout-minutes: 10",
+            "timeout-minutes: 30",
             "cancel-in-progress: true",
             "\"xtask/**\"",
             "workflow_dispatch:",

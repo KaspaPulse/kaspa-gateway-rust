@@ -157,7 +157,8 @@ jobs:
   node-current-compatibility:
     name: Node.js 26 compatibility (non-blocking)
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # Cold-cache Rust-owned compatibility tooling can exceed 10 minutes on main; retain a bounded budget without cancelling the compatibility signal.
+    timeout-minutes: 30
     continue-on-error: true
     steps:
       - name: Checkout repository
