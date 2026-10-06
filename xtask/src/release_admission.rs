@@ -737,7 +737,7 @@ fn smoke_value(smoke: &BTreeMap<String, String>, key: &str) -> Result<String, St
 fn sha256_file(path: &Path) -> Result<String, String> {
     let mut file = File::open(path).map_err(|error| format!("open {}: {error}", path.display()))?;
     let mut hasher = Sha256::new();
-    let mut buffer = [0_u8; 1024 * 1024];
+    let mut buffer = vec![0_u8; 1024 * 1024];
     loop {
         let read = file
             .read(&mut buffer)
@@ -955,5 +955,16 @@ mod tests {
         ] {
             assert!(!is_non_product_post_artifact_path(bad), "{bad}");
         }
+    }
+
+    #[test]
+    fn sha256_file_streams_from_heap_and_matches_known_digest() {
+        let root = tempfile::tempdir().expect("tempdir");
+        let path = root.path().join("payload.bin");
+        fs::write(&path, b"abc").expect("write payload");
+        assert_eq!(
+            sha256_file(&path).expect("sha256"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
     }
 }
