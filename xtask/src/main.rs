@@ -15,10 +15,16 @@ mod e2e_app_close_relaunch;
 mod e2e_bridge_inprocess;
 mod e2e_clipboard;
 mod e2e_config_codegen;
+mod e2e_explorer_live_canary;
+mod e2e_explorer_ui_responsiveness;
+mod e2e_installed_nsis;
 mod e2e_lifecycle_recovery;
+mod e2e_lifecycle_stress;
 mod e2e_native_webdriver;
 mod e2e_owned_process;
 mod e2e_static_smokes;
+mod e2e_uninstall_reinstall;
+mod e2e_upgrade_acceptance;
 mod e2e_wasm_codegen;
 mod e2e_wasm_codegen_tauri_app;
 mod e2e_wasm_codegen_windows;
@@ -44,6 +50,7 @@ mod production_trust;
 mod program_unified;
 mod raw_log_clipboard_capture;
 mod raw_log_provenance;
+mod release_admission;
 mod restore_latest_frontend_regressions;
 mod runtime_automation_claims;
 mod runtime_repository_binding;
@@ -114,9 +121,15 @@ fn usage() -> &'static str {
   cargo run -p xtask -- effective-node-settings-gate
   cargo run -p xtask -- e2e-clipboard <read|write|preflight> [--value <text>] [--output-path <path>]
   cargo run -p xtask -- e2e-config-codegen <check|write>
+  cargo run -p xtask -- e2e-explorer-live-canary --app-binary <path> --output-directory <path> --data-directory <absolute-path> [--address <kaspa-address>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
+  cargo run -p xtask -- e2e-explorer-ui-responsiveness --app-binary <path> --output-directory <path> --data-directory <absolute-path> [--rows <1..1000000>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
+  cargo run -p xtask -- e2e-installed-nsis --installer <path> --output-directory <absolute-path> --expected-installer-sha256 <hex> --expected-installed-sha256 <hex> --expected-version <X.Y.Z> [--startup-timeout-seconds <n>]
+  cargo run -p xtask -- e2e-uninstall-reinstall --installer <path> --output-directory <absolute-path> --expected-installer-sha256 <hex> --expected-installed-sha256 <hex> --version <X.Y.Z> [--startup-timeout-seconds <n>]
+  cargo run -p xtask -- e2e-upgrade-acceptance --baseline-installer <path> --target-installer <path> --output-directory <absolute-path> --expected-baseline-installer-sha256 <hex> --expected-baseline-installed-sha256 <hex> --expected-target-installer-sha256 <hex> --expected-target-installed-sha256 <hex> --baseline-version <X.Y.Z> --target-version <X.Y.Z> [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-app-close-relaunch --app-binary <path> --output-directory <path> [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-bridge-inprocess --app-binary <path> --output-directory <path> [--network <all|mainnet|testnet10>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-lifecycle-recovery --app-binary <path> --output-directory <path> [--network <all|mainnet|testnet10>] [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
+  cargo run -p xtask -- e2e-lifecycle-stress --app-binary <path> --output-directory <path> [--port-base <n>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-native-webdriver-smoke --app-binary <path> [--port <n>] [--window-label <label>] [--startup-timeout-seconds <n>]
   cargo run -p xtask -- e2e-owned-process <kill|wait> --process-id <pid> --expected-executable <path> --expected-start-time <unix-seconds> --output-path <path> [--timeout-seconds <n>]
   cargo run -p xtask -- e2e-static-smokes
@@ -126,6 +139,7 @@ fn usage() -> &'static str {
   cargo run -p xtask -- frontend-template-codegen <check|write>
   cargo run -p xtask -- frontend-wasm-codegen <check|write>
   cargo run -p xtask -- full-local-gate [--repository <path>] [--reuse-successful-e2e-artifact <path>] [--commit-on-success]
+  cargo run -p xtask -- release-admission local --version <X.Y.Z> [--repository <path>]
   cargo run -p xtask -- global-owner-gate [--strict] [--json] [--owner <name>] [--changed-files <files...>]
   cargo run -p xtask -- i18n-contract-gate
   cargo run -p xtask -- i18n-locale-coverage-gate
@@ -377,6 +391,36 @@ fn run() -> Result<(), CliError> {
             println!("{message}");
             Ok(())
         }
+        "e2e-explorer-live-canary" => {
+            let message = e2e_explorer_live_canary::run_cli(&mut args, &repo_root()?)
+                .map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "e2e-explorer-ui-responsiveness" => {
+            let message = e2e_explorer_ui_responsiveness::run_cli(&mut args, &repo_root()?)
+                .map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "e2e-installed-nsis" => {
+            let message =
+                e2e_installed_nsis::run_cli(&mut args, &repo_root()?).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "e2e-upgrade-acceptance" => {
+            let message = e2e_upgrade_acceptance::run_cli(&mut args, &repo_root()?)
+                .map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "e2e-uninstall-reinstall" => {
+            let message = e2e_uninstall_reinstall::run_cli(&mut args, &repo_root()?)
+                .map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
         "e2e-app-close-relaunch" => {
             let message = e2e_app_close_relaunch::run_cli(&mut args, &repo_root()?)
                 .map_err(CliError::failure)?;
@@ -391,6 +435,12 @@ fn run() -> Result<(), CliError> {
         }
         "e2e-lifecycle-recovery" => {
             let message = e2e_lifecycle_recovery::run_cli(&mut args, &repo_root()?)
+                .map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "e2e-lifecycle-stress" => {
+            let message = e2e_lifecycle_stress::run_cli(&mut args, &repo_root()?)
                 .map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
@@ -454,6 +504,13 @@ fn run() -> Result<(), CliError> {
         "full-local-gate" => {
             let root = repo_root()?;
             let message = full_local_gate::run_cli(&mut args, &root).map_err(CliError::failure)?;
+            println!("{message}");
+            Ok(())
+        }
+        "release-admission" => {
+            let root = repo_root()?;
+            let message =
+                release_admission::run_cli(&mut args, &root).map_err(CliError::failure)?;
             println!("{message}");
             Ok(())
         }

@@ -288,6 +288,22 @@ export async function waitForOwnerStatus({ network, runtimeRole, timeoutMs = 120
   });
 }
 
+export async function waitForSemanticReadiness({ network, runtimeRole, timeoutMs = 180000 }) {
+  return await waitUntil(`semantic readiness ${runtimeRole}/${network}`, timeoutMs, 750, async () => {
+    const status = String(await invoke("kgw_runtime_owner_status_v1", { network, runtimeRole }, 30000));
+    const pid = pidFromStatus(status);
+    const fields = parseKeyValueLine(status);
+    if (!pid) return false;
+    if (String(fields.network || "").toLowerCase() && String(fields.network || "").toLowerCase() !== network) return false;
+    if (String(fields.role || fields.runtime_role || fields.runtimeRole || "").toLowerCase() && String(fields.role || fields.runtime_role || fields.runtimeRole || "").toLowerCase() !== runtimeRole) return false;
+    if (String(fields.semantic_readiness || "").toUpperCase() !== "READY") return false;
+    if (String(fields.observation_state || "").toLowerCase() !== "fresh") return false;
+    if (String(fields.rpc_ready || "").toLowerCase() !== "true") return false;
+    if (String(fields.synced || "").toLowerCase() !== "true") return false;
+    return { status, pid, fields };
+  });
+}
+
 export async function waitForStopped({ network, runtimeRole, timeoutMs = 30000 }) {
   return await waitUntil(`stopped status ${runtimeRole}/${network}`, timeoutMs, 500, async () => {
     const status = String(await invoke("kgw_runtime_owner_status_v1", { network, runtimeRole }, 30000));

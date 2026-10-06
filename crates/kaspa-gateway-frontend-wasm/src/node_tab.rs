@@ -8,7 +8,7 @@ const LOCK_GLOBAL: &str = "__KGW_BRIDGE_OWNED_NODE_LOCKS_R65E";
 const LOCK_EVENT: &str = "kgw-bridge-owned-node-lock-r65e";
 const LOCK_SOURCE: &str = "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E";
 const LOCK_MESSAGE: &str = "This network is display-only because Bridge in-process mode owns the node runtime. Stop the bridge first.";
-const LIVE_REFRESH_MS: f64 = 700.0;
+const LIVE_REFRESH_EVENT: &str = "kgw://runtime/live-refresh";
 
 thread_local! {
     static LAST_STATUS: RefCell<BTreeMap<String, String>> = const { RefCell::new(BTreeMap::new()) };
@@ -18,7 +18,12 @@ thread_local! {
     static STATUS_IN_FLIGHT: RefCell<BTreeMap<String, Promise>> = const { RefCell::new(BTreeMap::new()) };
     static LOGS_IN_FLIGHT: RefCell<BTreeMap<String, Promise>> = const { RefCell::new(BTreeMap::new()) };
     static ACTIONS_IN_FLIGHT: RefCell<BTreeSet<String>> = const { RefCell::new(BTreeSet::new()) };
-    static LIVE_TIMER: RefCell<JsValue> = const { RefCell::new(JsValue::UNDEFINED) };
+    static LIVE_REFRESH_GENERATION: RefCell<u64> = const { RefCell::new(0) };
+    static LIVE_REFRESH_ACTIVE_GENERATION: RefCell<u64> = const { RefCell::new(0) };
+    static LIVE_REFRESH_LISTENER_INSTALLING: RefCell<bool> = const { RefCell::new(false) };
+    static LIVE_REFRESH_LISTENER_READY: RefCell<bool> = const { RefCell::new(false) };
+    static LIVE_REFRESH_TICKS: RefCell<u64> = const { RefCell::new(0) };
+    static LIVE_REFRESH_LAST_MS: RefCell<f64> = const { RefCell::new(0.0) };
 }
 
 fn global() -> JsValue {
@@ -496,28 +501,36 @@ fn set_runtime_buttons(
     let presentation =
         crate::settings_runtime::runtime_presentation(state.into()).unwrap_or(JsValue::UNDEFINED);
     let runtime_state = text(&property(&presentation, "process"));
+    let fields =
+        crate::node_frontend_helpers::node_parse_runtime_fields(JsValue::from_str(status_text));
+    let readiness = crate::settings_runtime::runtime_semantic_readiness(
+        &fields,
+        running,
+        &transition,
+        !runtime_error.is_empty(),
+        "node",
+    )
+    .unwrap_or("Awaiting telemetry");
 
     if present(&policy_status) {
         set(
             &policy_status,
             "textContent",
-            &JsValue::from_str(&format!("Node: {runtime_state}")),
+            &JsValue::from_str(&format!("Node: {runtime_state} | Readiness: {readiness}")),
         );
         set(
             &dataset(&policy_status),
             "state",
             &JsValue::from_str(&runtime_state.to_lowercase()),
         );
-        let _ = crate::apply_status_tone(policy_status.clone(), JsValue::from_str(&runtime_state));
+        let _ = crate::apply_status_tone(policy_status.clone(), JsValue::from_str(readiness));
     }
 
     let summary = crate::node_frontend_helpers::node_by_id(
         crate::node_frontend_helpers::node_element_id(net.to_owned(), "monitorState".to_owned()),
     );
-    let fields =
-        crate::node_frontend_helpers::node_parse_runtime_fields(JsValue::from_str(status_text));
     let observation = crate::settings_runtime::runtime_observation_summary(
-        fields,
+        fields.clone(),
         JsValue::from_bool(running),
         JsValue::FALSE,
     )
@@ -526,13 +539,7 @@ fn set_runtime_buttons(
         "{} | Profile: {} | Startup readiness: {} | {}",
         text(&property(&presentation, "processLabel")),
         text(&property(&presentation, "profile")),
-        if running {
-            "Verified"
-        } else if !transition.is_empty() {
-            "Pending"
-        } else {
-            "Not ready"
-        },
+        readiness,
         observation
     );
     let _ = crate::render_status_summary(summary, JsValue::from_str(&summary_text));
@@ -1197,6 +1204,13 @@ fn install_lock_hydration() {
 }
 
 fn refresh_all(reason: &str) {
+    if reason == "poll" {
+        LIVE_REFRESH_TICKS.with(|value| {
+            let mut ticks = value.borrow_mut();
+            *ticks = ticks.saturating_add(1);
+        });
+        LIVE_REFRESH_LAST_MS.with(|value| *value.borrow_mut() = Date::now());
+    }
     hydrate(&format!("{reason}-before-refresh"));
     for net in node_keys() {
         spawn_local(refresh_one_impl(net));
@@ -1204,24 +1218,81 @@ fn refresh_all(reason: &str) {
     hydrate(&format!("{reason}-after-refresh"));
 }
 
-fn start_live_refresh() {
-    LIVE_TIMER.with(|timer| {
-        let existing = timer.borrow().clone();
-        if present(&existing) {
-            let _ = call1(&window(), "clearInterval", &existing);
+async fn install_live_refresh_listener() -> Result<(), JsValue> {
+    let win = window();
+    let event_api = property(&property(&win, "__TAURI__"), "event");
+    let Some(listen) = function(&event_api, "listen") else {
+        LIVE_REFRESH_LISTENER_INSTALLING.with(|value| *value.borrow_mut() = false);
+        return Err(JsValue::from_str(
+            "Tauri runtime refresh event API is unavailable",
+        ));
+    };
+
+    let callback = Closure::wrap(Box::new(move |_event: JsValue| {
+        refresh_all("poll");
+    }) as Box<dyn FnMut(JsValue)>);
+    let result = match listen.call2(
+        &event_api,
+        &JsValue::from_str(LIVE_REFRESH_EVENT),
+        callback.as_ref().unchecked_ref(),
+    ) {
+        Ok(value) => value,
+        Err(error) => {
+            LIVE_REFRESH_LISTENER_INSTALLING.with(|value| *value.borrow_mut() = false);
+            return Err(error);
         }
-    });
-    refresh_all("initial");
-    let callback = Closure::wrap(Box::new(move || refresh_all("poll")) as Box<dyn FnMut()>);
-    let timer = call2(
-        &window(),
-        "setInterval",
-        callback.as_ref(),
-        &JsValue::from_f64(LIVE_REFRESH_MS),
-    )
-    .unwrap_or(JsValue::UNDEFINED);
-    LIVE_TIMER.with(|value| *value.borrow_mut() = timer);
+    };
     callback.forget();
+
+    match JsFuture::from(Promise::resolve(&result)).await {
+        Ok(_) => {
+            LIVE_REFRESH_LISTENER_READY.with(|value| *value.borrow_mut() = true);
+            LIVE_REFRESH_LISTENER_INSTALLING.with(|value| *value.borrow_mut() = false);
+            Ok(())
+        }
+        Err(error) => {
+            LIVE_REFRESH_LISTENER_READY.with(|value| *value.borrow_mut() = false);
+            LIVE_REFRESH_LISTENER_INSTALLING.with(|value| *value.borrow_mut() = false);
+            Err(error)
+        }
+    }
+}
+
+fn start_live_refresh() {
+    let generation = LIVE_REFRESH_GENERATION.with(|value| {
+        let mut generation = value.borrow_mut();
+        *generation = generation.saturating_add(1);
+        *generation
+    });
+    LIVE_REFRESH_ACTIVE_GENERATION.with(|value| *value.borrow_mut() = generation);
+
+    refresh_all("initial");
+
+    let should_install = LIVE_REFRESH_LISTENER_READY.with(|ready| {
+        LIVE_REFRESH_LISTENER_INSTALLING.with(|installing| {
+            if *ready.borrow() || *installing.borrow() {
+                false
+            } else {
+                *installing.borrow_mut() = true;
+                true
+            }
+        })
+    });
+
+    if should_install {
+        spawn_local(async {
+            if let Err(error) = install_live_refresh_listener().await {
+                let console = property(&global(), "console");
+                if let Some(warn) = function(&console, "warn") {
+                    let _ = warn.call2(
+                        &console,
+                        &JsValue::from_str("[KGW Node] native refresh listener install failed"),
+                        &error,
+                    );
+                }
+            }
+        });
+    }
 }
 
 fn dangerous_warning(net: &str) -> String {
@@ -1576,7 +1647,19 @@ async fn run_integrated_action(action: String, net: String) -> bool {
 }
 
 fn normalize_net(value: &str) -> String {
-    crate::node_frontend_helpers::node_normalize_network(JsValue::from_str(value))
+    let normalized = value.trim();
+    match normalized {
+        "mainnet" | "testnet10" | "testnet13" => normalized.to_owned(),
+        _ => String::new(),
+    }
+}
+
+fn first_normalized_net<'a>(values: impl IntoIterator<Item = &'a str>) -> String {
+    values
+        .into_iter()
+        .map(normalize_net)
+        .find(|net| !net.is_empty())
+        .unwrap_or_default()
 }
 
 fn net_from_element(element: &JsValue) -> String {
@@ -1607,7 +1690,7 @@ fn net_from_element(element: &JsValue) -> String {
             values.push(value);
         }
     }
-    normalize_net(&values.join(" "))
+    first_normalized_net(values.iter().map(String::as_str))
 }
 
 fn scoped_update(net: &str, reason: &str) {
@@ -2408,6 +2491,73 @@ pub fn node_set_runtime_buttons(
     );
 }
 
+#[wasm_bindgen(js_name = nodeLiveRefreshDiagnostics)]
+pub fn node_live_refresh_diagnostics() -> JsValue {
+    let output = Object::new();
+    let generation = LIVE_REFRESH_GENERATION.with(|value| *value.borrow());
+    let active_generation = LIVE_REFRESH_ACTIVE_GENERATION.with(|value| *value.borrow());
+    let listener_installing = LIVE_REFRESH_LISTENER_INSTALLING.with(|value| *value.borrow());
+    let listener_ready = LIVE_REFRESH_LISTENER_READY.with(|value| *value.borrow());
+    let loop_active = generation != 0 && active_generation == generation && listener_ready;
+    let ticks = LIVE_REFRESH_TICKS.with(|value| *value.borrow());
+    let last_tick_ms = LIVE_REFRESH_LAST_MS.with(|value| *value.borrow());
+    let status_in_flight = STATUS_IN_FLIGHT.with(|items| items.borrow().len());
+    let logs_in_flight = LOGS_IN_FLIGHT.with(|items| items.borrow().len());
+    set(output.as_ref(), "timerPresent", &JsValue::FALSE);
+    set(
+        output.as_ref(),
+        "callbackPresent",
+        &JsValue::from_bool(listener_ready),
+    );
+    set(
+        output.as_ref(),
+        "listenerInstalling",
+        &JsValue::from_bool(listener_installing),
+    );
+    set(
+        output.as_ref(),
+        "listenerReady",
+        &JsValue::from_bool(listener_ready),
+    );
+    set(
+        output.as_ref(),
+        "eventName",
+        &JsValue::from_str(LIVE_REFRESH_EVENT),
+    );
+    set(
+        output.as_ref(),
+        "loopActive",
+        &JsValue::from_bool(loop_active),
+    );
+    set(
+        output.as_ref(),
+        "generation",
+        &JsValue::from_f64(generation as f64),
+    );
+    set(
+        output.as_ref(),
+        "activeGeneration",
+        &JsValue::from_f64(active_generation as f64),
+    );
+    set(output.as_ref(), "ticks", &JsValue::from_f64(ticks as f64));
+    set(
+        output.as_ref(),
+        "lastTickMs",
+        &JsValue::from_f64(last_tick_ms),
+    );
+    set(
+        output.as_ref(),
+        "statusInFlight",
+        &JsValue::from_f64(status_in_flight as f64),
+    );
+    set(
+        output.as_ref(),
+        "logsInFlight",
+        &JsValue::from_f64(logs_in_flight as f64),
+    );
+    output.into()
+}
+
 #[wasm_bindgen(js_name = nodeRefreshOne)]
 pub async fn node_refresh_one(net: String, _reason: String) {
     refresh_one_impl(net).await;
@@ -2439,8 +2589,46 @@ mod tests {
 
     #[test]
     fn constants_preserve_live_refresh_contract() {
-        assert_eq!(LIVE_REFRESH_MS, 700.0);
+        assert_eq!(LIVE_REFRESH_EVENT, "kgw://runtime/live-refresh");
         assert_eq!(LOCK_EVENT, "kgw-bridge-owned-node-lock-r65e");
         assert_eq!(LOCK_SOURCE, "KGW_BRIDGE_OWNED_NODE_DISPLAY_ONLY_LOCK_R65E");
+    }
+
+    #[test]
+    fn network_resolution_returns_first_exact_candidate_without_context_concatenation() {
+        assert_eq!(
+            first_normalized_net(["", "mainnet", "mainnet-node-settings node-command-option",]),
+            "mainnet"
+        );
+        assert_eq!(
+            first_normalized_net([
+                "not-a-network",
+                " testnet10 ",
+                "node-testnet10-commandSettings",
+            ]),
+            "testnet10"
+        );
+        assert_eq!(
+            first_normalized_net([
+                "kgw-node-panel testnet13 extra-noise",
+                "testnet13",
+                "ignored-after-valid",
+            ]),
+            "testnet13"
+        );
+    }
+
+    #[test]
+    fn network_resolution_fails_closed_when_only_noisy_context_exists() {
+        assert_eq!(
+            first_normalized_net([
+                "node-mainnet-commandSettings",
+                "settings-panel testnet10",
+                "node-testnet13-listenHost",
+            ]),
+            ""
+        );
+        assert_eq!(normalize_net(" mainnet "), "mainnet");
+        assert_eq!(normalize_net("mainnet extra"), "");
     }
 }

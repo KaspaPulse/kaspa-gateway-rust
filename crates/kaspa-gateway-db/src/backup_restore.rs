@@ -94,8 +94,23 @@ fn tables(name: &str) -> &'static [&'static str] {
             "user_state",
         ],
         "Addresses.duckdb" => &["addresses", "schema_migrations"],
+        "Transactions.sqlite" => &["address_transactions", "schema_migrations", "transactions"],
         _ => &["schema_migrations", "transactions"],
     }
+}
+
+fn sqlite_expected_tables() -> &'static [&'static str] {
+    &[
+        "address_transactions",
+        "address_transactions_fts",
+        "address_transactions_fts_config",
+        "address_transactions_fts_content",
+        "address_transactions_fts_data",
+        "address_transactions_fts_docsize",
+        "address_transactions_fts_idx",
+        "schema_migrations",
+        "transactions",
+    ]
 }
 fn native_backup(source: &Path, destination: &Path, name: &str) -> Result<()> {
     if name.ends_with(".sqlite") {
@@ -179,8 +194,11 @@ fn sqlite_signature(connection: &rusqlite::Connection, alias: &str) -> Result<Ve
     let actual = statement
         .query_map([], |row| row.get::<_, String>(0))?
         .collect::<std::result::Result<Vec<_>, _>>()?;
-    if actual != tables("Transactions.sqlite") {
-        return Err(invalid("incompatible SQLite table set"));
+    if actual != sqlite_expected_tables() {
+        return Err(invalid(format!(
+            "incompatible SQLite table set: expected {:?}, found {actual:?}",
+            sqlite_expected_tables()
+        )));
     }
     let mut signature = Vec::new();
     for table in tables("Transactions.sqlite") {
@@ -228,10 +246,24 @@ fn operate(live: &Path, snapshot: &Path, name: &str, action: Action) -> Result<(
             connection.execute_batch("BEGIN IMMEDIATE;")?;
         }
         let result = (|| -> Result<()> {
-            for table in tables(name) {
-                if action == Action::Replace {
-                    connection.execute_batch(&format!("DELETE FROM main.{0}; INSERT INTO main.{0} SELECT * FROM aud_snapshot.{0};", identifier(table)))?;
+            if action == Action::Replace {
+                // Delete dependent relations before canonical transactions so
+                // ON DELETE CASCADE cannot remove rows restored later.
+                for table in ["address_transactions", "transactions", "schema_migrations"] {
+                    connection
+                        .execute_batch(&format!("DELETE FROM main.{};", identifier(table)))?;
                 }
+
+                // Restore canonical/independent rows before dependent relations.
+                for table in ["schema_migrations", "transactions", "address_transactions"] {
+                    connection.execute_batch(&format!(
+                        "INSERT INTO main.{0} SELECT * FROM aud_snapshot.{0};",
+                        identifier(table)
+                    ))?;
+                }
+            }
+
+            for table in tables(name) {
                 let count: i64 =
                     connection
                         .query_row(&difference_sql("main", table, false), [], |row| row.get(0))?;

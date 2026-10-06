@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 
-pub const DATABASE_SCHEMA_VERSION: i64 = 1;
+pub const DATABASE_SCHEMA_VERSION: i64 = 3;
 
 #[derive(Debug, Error)]
 pub enum DbError {
@@ -285,14 +285,210 @@ pub fn initialize_addresses_schema(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
-fn initialize_sqlite_transactions_schema(connection: &sqlite::Connection) -> Result<()> {
+fn sqlite_existing_schema_version(connection: &sqlite::Connection) -> Result<Option<i64>> {
+    let migration_table_count: i64 = connection.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_migrations'",
+        [],
+        |row| row.get(0),
+    )?;
+
+    if migration_table_count == 0 {
+        return Ok(None);
+    }
+
+    let version: Option<i64> =
+        connection.query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
+            row.get(0)
+        })?;
+
+    Ok(version)
+}
+
+fn sqlite_address_relations_have_timestamp(connection: &sqlite::Connection) -> Result<bool> {
+    let mut statement = connection.prepare("PRAGMA table_info(address_transactions)")?;
+    let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
+
+    for column in columns {
+        if column?.eq_ignore_ascii_case("timestamp_ms") {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
+}
+
+fn initialize_sqlite_transaction_search(connection: &sqlite::Connection) -> Result<()> {
+    let fts5_enabled: i64 = connection.query_row(
+        "SELECT sqlite_compileoption_used('ENABLE_FTS5')",
+        [],
+        |row| row.get(0),
+    )?;
+
+    if fts5_enabled != 1 {
+        return Err(DbError::InvalidRecord(
+            "bundled SQLite is missing required ENABLE_FTS5 support".to_string(),
+        ));
+    }
+
     connection.execute_batch(
         r#"
-        PRAGMA journal_mode = WAL;
-        PRAGMA synchronous = NORMAL;
-        PRAGMA foreign_keys = ON;
-        PRAGMA busy_timeout = 5000;
+        CREATE VIRTUAL TABLE IF NOT EXISTS address_transactions_fts USING fts5(
+            address UNINDEXED,
+            txid UNINDEXED,
+            search_text,
+            tokenize = 'trigram'
+        );
 
+        CREATE TRIGGER IF NOT EXISTS address_transactions_fts_ai
+        AFTER INSERT ON address_transactions
+        BEGIN
+            INSERT INTO address_transactions_fts(rowid, address, txid, search_text)
+            VALUES(
+                new.rowid,
+                new.address,
+                new.txid,
+                COALESCE(new.txid, '') || ' ' ||
+                COALESCE(new.from_address, '') || ' ' ||
+                COALESCE(new.to_address, '') || ' ' ||
+                COALESCE(new.counterparty, '')
+            );
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS address_transactions_fts_ad
+        AFTER DELETE ON address_transactions
+        BEGIN
+            DELETE FROM address_transactions_fts WHERE rowid = old.rowid;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS address_transactions_fts_au
+        AFTER UPDATE ON address_transactions
+        BEGIN
+            UPDATE address_transactions_fts
+            SET
+                address = new.address,
+                txid = new.txid,
+                search_text =
+                    COALESCE(new.txid, '') || ' ' ||
+                    COALESCE(new.from_address, '') || ' ' ||
+                    COALESCE(new.to_address, '') || ' ' ||
+                    COALESCE(new.counterparty, '')
+            WHERE rowid = old.rowid;
+        END;
+        "#,
+    )?;
+
+    let relation_count: i64 =
+        connection.query_row("SELECT COUNT(*) FROM address_transactions", [], |row| {
+            row.get(0)
+        })?;
+    let search_count: i64 =
+        connection.query_row("SELECT COUNT(*) FROM address_transactions_fts", [], |row| {
+            row.get(0)
+        })?;
+
+    if relation_count != search_count {
+        let transaction = connection.unchecked_transaction()?;
+        transaction.execute("DELETE FROM address_transactions_fts", [])?;
+        transaction.execute(
+            r#"
+            INSERT INTO address_transactions_fts(rowid, address, txid, search_text)
+            SELECT
+                rowid,
+                address,
+                txid,
+                COALESCE(txid, '') || ' ' ||
+                COALESCE(from_address, '') || ' ' ||
+                COALESCE(to_address, '') || ' ' ||
+                COALESCE(counterparty, '')
+            FROM address_transactions
+            "#,
+            [],
+        )?;
+        transaction.commit()?;
+    }
+
+    Ok(())
+}
+
+fn sqlite_current_transaction_schema_ready(connection: &sqlite::Connection) -> Result<bool> {
+    let fts5_enabled: i64 = connection.query_row(
+        "SELECT sqlite_compileoption_used('ENABLE_FTS5')",
+        [],
+        |row| row.get(0),
+    )?;
+    if fts5_enabled != 1 {
+        return Err(DbError::InvalidRecord(
+            "bundled SQLite is missing required ENABLE_FTS5 support".to_string(),
+        ));
+    }
+
+    if !sqlite_address_relations_have_timestamp(connection)? {
+        return Ok(false);
+    }
+
+    let required_objects: i64 = connection.query_row(
+        r#"
+        SELECT COUNT(*)
+        FROM sqlite_master
+        WHERE
+            (type = 'table' AND name IN (
+                'transactions',
+                'address_transactions',
+                'address_transactions_fts'
+            ))
+            OR (type = 'trigger' AND name IN (
+                'address_transactions_fts_ai',
+                'address_transactions_fts_ad',
+                'address_transactions_fts_au'
+            ))
+            OR (type = 'index' AND name IN (
+                'idx_transactions_address_time',
+                'idx_transactions_address_type',
+                'idx_transactions_address_direction',
+                'idx_transactions_address_txid',
+                'idx_address_transactions_address',
+                'idx_address_transactions_address_txid',
+                'idx_address_transactions_address_type',
+                'idx_address_transactions_address_direction',
+                'idx_address_transactions_address_time',
+                'idx_address_transactions_address_counterparty',
+                'idx_address_transactions_address_from',
+                'idx_address_transactions_address_to'
+            ))
+        "#,
+        [],
+        |row| row.get(0),
+    )?;
+
+    Ok(required_objects == 18)
+}
+
+fn initialize_sqlite_transactions_schema(connection: &sqlite::Connection) -> Result<()> {
+    let existing_version = sqlite_existing_schema_version(connection)?;
+
+    if let Some(existing_version) = existing_version
+        && existing_version > DATABASE_SCHEMA_VERSION
+    {
+        return Err(DbError::InvalidRecord(format!(
+            "transactions database schema version {existing_version} is newer than supported version {DATABASE_SCHEMA_VERSION}"
+        )));
+    }
+
+    connection.execute_batch(
+        "PRAGMA journal_mode = WAL;
+         PRAGMA synchronous = NORMAL;
+         PRAGMA foreign_keys = ON;
+         PRAGMA busy_timeout = 5000;",
+    )?;
+
+    if existing_version == Some(DATABASE_SCHEMA_VERSION)
+        && sqlite_current_transaction_schema_ready(connection)?
+    {
+        return Ok(());
+    }
+
+    connection.execute_batch(
+        r#"
         CREATE TABLE IF NOT EXISTS schema_migrations(
             version INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
@@ -326,8 +522,88 @@ fn initialize_sqlite_transactions_schema(connection: &sqlite::Connection) -> Res
 
         CREATE INDEX IF NOT EXISTS idx_transactions_address_txid
             ON transactions(address, txid);
+
+        CREATE TABLE IF NOT EXISTS address_transactions(
+            address TEXT NOT NULL,
+            txid TEXT NOT NULL,
+            tx_type TEXT NOT NULL,
+            direction TEXT NOT NULL,
+            amount_sompi INTEGER NOT NULL,
+            from_address TEXT,
+            to_address TEXT,
+            counterparty TEXT,
+            created_at_ms INTEGER NOT NULL,
+            updated_at_ms INTEGER NOT NULL,
+            PRIMARY KEY(address, txid),
+            FOREIGN KEY(txid) REFERENCES transactions(txid) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_address_transactions_address
+            ON address_transactions(address);
+
+        CREATE INDEX IF NOT EXISTS idx_address_transactions_address_txid
+            ON address_transactions(address, txid);
+
+        CREATE INDEX IF NOT EXISTS idx_address_transactions_address_type
+            ON address_transactions(address, tx_type);
+
+        CREATE INDEX IF NOT EXISTS idx_address_transactions_address_direction
+            ON address_transactions(address, direction);
+
         "#,
     )?;
+
+    if !sqlite_address_relations_have_timestamp(connection)? {
+        connection.execute_batch(
+            "ALTER TABLE address_transactions
+             ADD COLUMN timestamp_ms INTEGER NOT NULL DEFAULT 0;",
+        )?;
+
+        connection.execute(
+            r#"
+            UPDATE address_transactions
+            SET timestamp_ms = COALESCE(
+                (SELECT t.timestamp_ms FROM transactions t WHERE t.txid = address_transactions.txid),
+                0
+            )
+            "#,
+            [],
+        )?;
+    }
+
+    connection.execute_batch(
+        r#"
+        CREATE INDEX IF NOT EXISTS idx_address_transactions_address_time
+            ON address_transactions(address, timestamp_ms DESC, txid);
+
+        CREATE INDEX IF NOT EXISTS idx_address_transactions_address_counterparty
+            ON address_transactions(address, counterparty);
+
+        CREATE INDEX IF NOT EXISTS idx_address_transactions_address_from
+            ON address_transactions(address, from_address);
+
+        CREATE INDEX IF NOT EXISTS idx_address_transactions_address_to
+            ON address_transactions(address, to_address);
+        "#,
+    )?;
+
+    connection.execute(
+        r#"
+        INSERT OR IGNORE INTO address_transactions(
+            address, txid, tx_type, direction, amount_sompi,
+            from_address, to_address, counterparty, created_at_ms, updated_at_ms,
+            timestamp_ms
+        )
+        SELECT
+            address, txid, tx_type, direction, amount_sompi,
+            from_address, to_address, counterparty, created_at_ms, updated_at_ms,
+            timestamp_ms
+        FROM transactions
+        "#,
+        [],
+    )?;
+
+    initialize_sqlite_transaction_search(connection)?;
 
     connection.execute(
         r#"
@@ -339,7 +615,7 @@ fn initialize_sqlite_transactions_schema(connection: &sqlite::Connection) -> Res
         "#,
         rusqlite::params![
             DATABASE_SCHEMA_VERSION,
-            "transactions_sqlite_schema",
+            "transactions_sqlite_schema_v3_address_search_index",
             now_ms()
         ],
     )?;
@@ -677,6 +953,108 @@ pub struct TransactionsRepository {
     connection: sqlite::Connection,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum TransactionSearch {
+    ExactTxid(String),
+    TxidPrefix(String),
+    ExactAddress(String),
+    Substring(String),
+}
+
+fn classify_transaction_search(search: Option<&str>) -> Option<TransactionSearch> {
+    let trimmed = search?.trim();
+
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    let is_hex = trimmed.bytes().all(|byte| byte.is_ascii_hexdigit());
+
+    if trimmed.len() == 64 && is_hex {
+        return Some(TransactionSearch::ExactTxid(trimmed.to_ascii_lowercase()));
+    }
+
+    if (8..64).contains(&trimmed.len()) && is_hex {
+        return Some(TransactionSearch::TxidPrefix(trimmed.to_ascii_lowercase()));
+    }
+
+    if (trimmed.starts_with("kaspa:") || trimmed.starts_with("kaspatest:"))
+        && !trimmed.contains(char::is_whitespace)
+    {
+        return Some(TransactionSearch::ExactAddress(trimmed.to_string()));
+    }
+
+    Some(TransactionSearch::Substring(trimmed.to_string()))
+}
+
+fn escape_like_literal(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len());
+
+    for character in value.chars() {
+        match character {
+            '\\' | '%' | '_' => {
+                escaped.push('\\');
+                escaped.push(character);
+            }
+            _ => escaped.push(character),
+        }
+    }
+
+    escaped
+}
+
+fn fts5_literal_phrase(value: &str) -> String {
+    format!("\"{}\"", value.replace('"', "\"\""))
+}
+
+fn append_transaction_search_filter(
+    query: &mut String,
+    params: &mut Vec<Box<dyn rusqlite::ToSql>>,
+    address: &str,
+    search: Option<&str>,
+) {
+    match classify_transaction_search(search) {
+        None => {}
+        Some(TransactionSearch::ExactTxid(txid)) => {
+            query.push_str(" AND r.txid = ?");
+            params.push(Box::new(txid));
+        }
+        Some(TransactionSearch::TxidPrefix(prefix)) => {
+            query.push_str(" AND r.txid GLOB ?");
+            params.push(Box::new(format!("{prefix}*")));
+        }
+        Some(TransactionSearch::ExactAddress(address)) => {
+            query.push_str(" AND (r.counterparty = ? OR r.from_address = ? OR r.to_address = ?)");
+            params.push(Box::new(address.clone()));
+            params.push(Box::new(address.clone()));
+            params.push(Box::new(address));
+        }
+        Some(TransactionSearch::Substring(value)) => {
+            params.push(Box::new(address.to_string()));
+
+            if value.chars().count() >= 3 {
+                query.push_str(
+                    " AND r.rowid IN (
+                        SELECT rowid
+                        FROM address_transactions_fts
+                        WHERE address = ? AND address_transactions_fts MATCH ?
+                    )",
+                );
+                params.push(Box::new(fts5_literal_phrase(&value)));
+            } else {
+                query.push_str(
+                    " AND r.rowid IN (
+                        SELECT rowid
+                        FROM address_transactions_fts
+                        WHERE address = ? AND search_text LIKE ? ESCAPE '\\'
+                    )",
+                );
+                params.push(Box::new(format!("%{}%", escape_like_literal(&value))));
+            }
+        }
+    }
+}
+
 impl TransactionsRepository {
     pub fn new(connection: sqlite::Connection) -> Self {
         Self { connection }
@@ -694,12 +1072,13 @@ impl TransactionsRepository {
         let mut statement = self.connection.prepare(
             r#"
             SELECT
-                txid, address, tx_type, direction, amount_sompi,
-                from_address, to_address, counterparty, block_height,
-                timestamp_ms, raw_json, created_at_ms, updated_at_ms
-            FROM transactions
-            WHERE address = ?1
-            ORDER BY timestamp_ms DESC
+                t.txid, r.address, r.tx_type, r.direction, r.amount_sompi,
+                r.from_address, r.to_address, r.counterparty, t.block_height,
+                t.timestamp_ms, t.raw_json, r.created_at_ms, r.updated_at_ms
+            FROM address_transactions r INDEXED BY idx_address_transactions_address_time
+            JOIN transactions t ON t.txid = r.txid
+            WHERE r.address = ?1
+            ORDER BY r.timestamp_ms DESC
             LIMIT ?2
             "#,
         )?;
@@ -723,7 +1102,7 @@ impl TransactionsRepository {
 
         self.connection
             .query_row(
-                "SELECT COUNT(*) FROM transactions WHERE address = ?1",
+                "SELECT COUNT(*) FROM address_transactions WHERE address = ?1",
                 rusqlite::params![address],
                 |row| row.get(0),
             )
@@ -739,108 +1118,309 @@ impl TransactionsRepository {
     pub fn upsert_many(&self, records: &[TransactionRecord]) -> Result<usize> {
         let started = std::time::Instant::now();
 
-        eprintln!(
-            "[KGW][transactions][SQLITE-WRITER] upsert_many start records={} first_txid={} last_txid={}",
-            records.len(),
-            records
-                .first()
-                .map(|record| record.txid.as_str())
-                .unwrap_or("<none>"),
-            records
-                .last()
-                .map(|record| record.txid.as_str())
-                .unwrap_or("<none>")
-        );
-
         if records.is_empty() {
-            eprintln!("[KGW][transactions][SQLITE-WRITER] upsert_many empty batch");
             return Ok(0);
         }
 
-        for (index, record) in records.iter().enumerate() {
+        for record in records {
             validate_non_empty("txid", &record.txid)?;
             validate_non_empty("address", &record.address)?;
 
             if record.amount_sompi < 0 {
-                eprintln!(
-                    "[KGW][transactions][SQLITE-WRITER][ERROR] invalid negative amount index={} txid={} amount_sompi={}",
-                    index, record.txid, record.amount_sompi
-                );
-
                 return Err(DbError::InvalidRecord(
                     "amount_sompi must be non-negative".to_string(),
                 ));
             }
         }
 
-        let mut statement = self.connection.prepare(
+        // One API page is one SQLite transaction. A failure cannot leave a
+        // partially written page or a canonical tx without its address relation.
+        let transaction = self.connection.unchecked_transaction()?;
+
+        {
+            let mut canonical = transaction.prepare(
+                r#"
+                INSERT INTO transactions(
+                    txid, address, tx_type, direction, amount_sompi,
+                    from_address, to_address, counterparty, block_height,
+                    timestamp_ms, raw_json, created_at_ms, updated_at_ms
+                )
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                ON CONFLICT(txid) DO UPDATE SET
+                    block_height = excluded.block_height,
+                    timestamp_ms = excluded.timestamp_ms,
+                    raw_json = excluded.raw_json,
+                    updated_at_ms = excluded.updated_at_ms
+                "#,
+            )?;
+
+            let mut relation = transaction.prepare(
+                r#"
+                INSERT INTO address_transactions(
+                    address, txid, tx_type, direction, amount_sompi,
+                    from_address, to_address, counterparty, created_at_ms, updated_at_ms,
+                    timestamp_ms
+                )
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+                ON CONFLICT(address, txid) DO UPDATE SET
+                    tx_type = excluded.tx_type,
+                    direction = excluded.direction,
+                    amount_sompi = excluded.amount_sompi,
+                    from_address = excluded.from_address,
+                    to_address = excluded.to_address,
+                    counterparty = excluded.counterparty,
+                    updated_at_ms = excluded.updated_at_ms,
+                    timestamp_ms = excluded.timestamp_ms
+                "#,
+            )?;
+
+            for record in records {
+                canonical.execute(rusqlite::params![
+                    &record.txid,
+                    &record.address,
+                    &record.tx_type,
+                    &record.direction,
+                    record.amount_sompi,
+                    &record.from_address,
+                    &record.to_address,
+                    &record.counterparty,
+                    &record.block_height,
+                    record.timestamp_ms,
+                    &record.raw_json,
+                    record.created_at_ms,
+                    record.updated_at_ms,
+                ])?;
+
+                relation.execute(rusqlite::params![
+                    &record.address,
+                    &record.txid,
+                    &record.tx_type,
+                    &record.direction,
+                    record.amount_sompi,
+                    &record.from_address,
+                    &record.to_address,
+                    &record.counterparty,
+                    record.created_at_ms,
+                    record.updated_at_ms,
+                    record.timestamp_ms,
+                ])?;
+            }
+        }
+
+        transaction.commit()?;
+
+        eprintln!(
+            "[KGW][transactions][SQLITE-WRITER] upsert_many committed records={} elapsed_ms={}",
+            records.len(),
+            started.elapsed().as_millis()
+        );
+
+        Ok(records.len())
+    }
+
+    fn ensure_force_refresh_stage(&self) -> Result<()> {
+        self.connection.execute_batch(
+            r#"
+            CREATE TEMP TABLE IF NOT EXISTS kgw_force_refresh_stage(
+                address TEXT NOT NULL,
+                txid TEXT NOT NULL,
+                tx_type TEXT NOT NULL,
+                direction TEXT NOT NULL,
+                amount_sompi INTEGER NOT NULL,
+                from_address TEXT,
+                to_address TEXT,
+                counterparty TEXT,
+                block_height INTEGER,
+                timestamp_ms INTEGER NOT NULL,
+                raw_json TEXT,
+                created_at_ms INTEGER NOT NULL,
+                updated_at_ms INTEGER NOT NULL,
+                PRIMARY KEY(address, txid)
+            );
+            "#,
+        )?;
+        Ok(())
+    }
+
+    pub fn begin_force_refresh_stage(&self, address: &str) -> Result<()> {
+        validate_non_empty("address", address)?;
+        self.ensure_force_refresh_stage()?;
+        self.connection.execute(
+            "DELETE FROM temp.kgw_force_refresh_stage WHERE address = ?1",
+            rusqlite::params![address],
+        )?;
+        Ok(())
+    }
+
+    pub fn stage_force_refresh_many(&self, records: &[TransactionRecord]) -> Result<usize> {
+        if records.is_empty() {
+            return Ok(0);
+        }
+
+        for record in records {
+            validate_non_empty("txid", &record.txid)?;
+            validate_non_empty("address", &record.address)?;
+
+            if record.amount_sompi < 0 {
+                return Err(DbError::InvalidRecord(
+                    "amount_sompi must be non-negative".to_string(),
+                ));
+            }
+        }
+
+        self.ensure_force_refresh_stage()?;
+        let transaction = self.connection.unchecked_transaction()?;
+
+        {
+            let mut statement = transaction.prepare(
+                r#"
+                INSERT INTO temp.kgw_force_refresh_stage(
+                    address, txid, tx_type, direction, amount_sompi,
+                    from_address, to_address, counterparty, block_height,
+                    timestamp_ms, raw_json, created_at_ms, updated_at_ms
+                )
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                ON CONFLICT(address, txid) DO UPDATE SET
+                    tx_type = excluded.tx_type,
+                    direction = excluded.direction,
+                    amount_sompi = excluded.amount_sompi,
+                    from_address = excluded.from_address,
+                    to_address = excluded.to_address,
+                    counterparty = excluded.counterparty,
+                    block_height = excluded.block_height,
+                    timestamp_ms = excluded.timestamp_ms,
+                    raw_json = excluded.raw_json,
+                    updated_at_ms = excluded.updated_at_ms
+                "#,
+            )?;
+
+            for record in records {
+                statement.execute(rusqlite::params![
+                    &record.address,
+                    &record.txid,
+                    &record.tx_type,
+                    &record.direction,
+                    record.amount_sompi,
+                    &record.from_address,
+                    &record.to_address,
+                    &record.counterparty,
+                    &record.block_height,
+                    record.timestamp_ms,
+                    &record.raw_json,
+                    record.created_at_ms,
+                    record.updated_at_ms,
+                ])?;
+            }
+        }
+
+        transaction.commit()?;
+        Ok(records.len())
+    }
+
+    pub fn force_refresh_staged_count(&self, address: &str) -> Result<usize> {
+        validate_non_empty("address", address)?;
+        self.ensure_force_refresh_stage()?;
+        let count: i64 = self.connection.query_row(
+            "SELECT COUNT(*) FROM temp.kgw_force_refresh_stage WHERE address = ?1",
+            rusqlite::params![address],
+            |row| row.get(0),
+        )?;
+        Ok(usize::try_from(count.max(0)).unwrap_or(usize::MAX))
+    }
+
+    pub fn discard_force_refresh_stage(&self, address: &str) -> Result<()> {
+        validate_non_empty("address", address)?;
+        self.ensure_force_refresh_stage()?;
+        self.connection.execute(
+            "DELETE FROM temp.kgw_force_refresh_stage WHERE address = ?1",
+            rusqlite::params![address],
+        )?;
+        Ok(())
+    }
+
+    pub fn promote_force_refresh(&self, address: &str) -> Result<usize> {
+        validate_non_empty("address", address)?;
+        self.ensure_force_refresh_stage()?;
+
+        let transaction = self.connection.unchecked_transaction()?;
+        let staged: i64 = transaction.query_row(
+            "SELECT COUNT(*) FROM temp.kgw_force_refresh_stage WHERE address = ?1",
+            rusqlite::params![address],
+            |row| row.get(0),
+        )?;
+
+        transaction.execute(
             r#"
             INSERT INTO transactions(
                 txid, address, tx_type, direction, amount_sompi,
                 from_address, to_address, counterparty, block_height,
                 timestamp_ms, raw_json, created_at_ms, updated_at_ms
             )
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+            SELECT
+                txid, address, tx_type, direction, amount_sompi,
+                from_address, to_address, counterparty, block_height,
+                timestamp_ms, raw_json, created_at_ms, updated_at_ms
+            FROM temp.kgw_force_refresh_stage
+            WHERE address = ?1
             ON CONFLICT(txid) DO UPDATE SET
-                address = excluded.address,
+                block_height = excluded.block_height,
+                timestamp_ms = excluded.timestamp_ms,
+                raw_json = excluded.raw_json,
+                updated_at_ms = excluded.updated_at_ms
+            "#,
+            rusqlite::params![address],
+        )?;
+
+        transaction.execute(
+            "DELETE FROM address_transactions WHERE address = ?1",
+            rusqlite::params![address],
+        )?;
+
+        transaction.execute(
+            r#"
+            INSERT INTO address_transactions(
+                address, txid, tx_type, direction, amount_sompi,
+                from_address, to_address, counterparty, created_at_ms, updated_at_ms,
+                timestamp_ms
+            )
+            SELECT
+                address, txid, tx_type, direction, amount_sompi,
+                from_address, to_address, counterparty, created_at_ms, updated_at_ms,
+                timestamp_ms
+            FROM temp.kgw_force_refresh_stage
+            WHERE address = ?1
+            ON CONFLICT(address, txid) DO UPDATE SET
                 tx_type = excluded.tx_type,
                 direction = excluded.direction,
                 amount_sompi = excluded.amount_sompi,
                 from_address = excluded.from_address,
                 to_address = excluded.to_address,
                 counterparty = excluded.counterparty,
-                block_height = excluded.block_height,
-                timestamp_ms = excluded.timestamp_ms,
-                raw_json = excluded.raw_json,
-                updated_at_ms = excluded.updated_at_ms
+                updated_at_ms = excluded.updated_at_ms,
+                timestamp_ms = excluded.timestamp_ms
             "#,
+            rusqlite::params![address],
         )?;
 
-        let mut stored = 0usize;
+        transaction.execute(
+            r#"
+            DELETE FROM transactions
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM address_transactions r
+                WHERE r.txid = transactions.txid
+            )
+            "#,
+            [],
+        )?;
 
-        for (index, record) in records.iter().enumerate() {
-            let item_no = index + 1;
-            let item_started = std::time::Instant::now();
-            statement.execute(rusqlite::params![
-                &record.txid,
-                &record.address,
-                &record.tx_type,
-                &record.direction,
-                record.amount_sompi,
-                &record.from_address,
-                &record.to_address,
-                &record.counterparty,
-                &record.block_height,
-                record.timestamp_ms,
-                &record.raw_json,
-                record.created_at_ms,
-                record.updated_at_ms,
-            ])?;
+        transaction.execute(
+            "DELETE FROM temp.kgw_force_refresh_stage WHERE address = ?1",
+            rusqlite::params![address],
+        )?;
 
-            stored += 1;
-
-            let elapsed = item_started.elapsed().as_millis();
-
-            if elapsed > 250 {
-                eprintln!(
-                    "[KGW][transactions][SQLITE-WRITER] upsert item done item={}/{} txid={} stored={} elapsed_ms={}",
-                    item_no,
-                    records.len(),
-                    record.txid,
-                    stored,
-                    elapsed
-                );
-            }
-        }
-
-        eprintln!(
-            "[KGW][transactions][SQLITE-WRITER] upsert_many done records={} stored={} elapsed_ms={}",
-            records.len(),
-            stored,
-            started.elapsed().as_millis()
-        );
-
-        Ok(stored)
+        transaction.commit()?;
+        Ok(usize::try_from(staged.max(0)).unwrap_or(usize::MAX))
     }
 
     pub fn existing_txids_for_address(&self, address: &str) -> Result<Vec<String>> {
@@ -848,7 +1428,7 @@ impl TransactionsRepository {
 
         let mut statement = self
             .connection
-            .prepare("SELECT txid FROM transactions WHERE address = ?1")?;
+            .prepare("SELECT txid FROM address_transactions WHERE address = ?1")?;
 
         let rows =
             statement.query_map(rusqlite::params![address], |row| row.get::<_, String>(0))?;
@@ -881,7 +1461,7 @@ impl TransactionsRepository {
                 .join(",");
 
             let query = format!(
-                "SELECT txid FROM transactions INDEXED BY idx_transactions_address_txid WHERE address = ? AND txid IN ({})",
+                "SELECT txid FROM address_transactions INDEXED BY idx_address_transactions_address_txid WHERE address = ? AND txid IN ({})",
                 placeholders
             );
 
@@ -905,10 +1485,24 @@ impl TransactionsRepository {
     pub fn delete_for_address(&self, address: &str) -> Result<i64> {
         validate_non_empty("address", address)?;
 
-        let affected = self.connection.execute(
-            "DELETE FROM transactions WHERE address = ?1",
+        let transaction = self.connection.unchecked_transaction()?;
+        let affected = transaction.execute(
+            "DELETE FROM address_transactions WHERE address = ?1",
             rusqlite::params![address],
         )?;
+
+        transaction.execute(
+            r#"
+            DELETE FROM transactions
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM address_transactions r
+                WHERE r.txid = transactions.txid
+            )
+            "#,
+            [],
+        )?;
+        transaction.commit()?;
 
         Ok(i64::try_from(affected).unwrap_or(i64::MAX))
     }
@@ -930,8 +1524,8 @@ impl TransactionsRepository {
         let mut query = String::from(
             r#"
             SELECT COUNT(*)
-            FROM transactions
-            WHERE address = ?
+            FROM address_transactions r
+            WHERE r.address = ?
             "#,
         );
 
@@ -939,44 +1533,30 @@ impl TransactionsRepository {
         params.push(Box::new(filter.address.to_string()));
 
         if let Some(start_ms) = filter.start_ms {
-            query.push_str(" AND timestamp_ms >= ?");
+            query.push_str(" AND r.timestamp_ms >= ?");
             params.push(Box::new(start_ms));
         }
 
         if let Some(end_ms) = filter.end_ms {
-            query.push_str(" AND timestamp_ms <= ?");
+            query.push_str(" AND r.timestamp_ms <= ?");
             params.push(Box::new(end_ms));
         }
 
         if let Some(tx_type) = filter.tx_type
             && !tx_type.eq_ignore_ascii_case("ALL")
         {
-            query.push_str(" AND tx_type = ?");
+            query.push_str(" AND r.tx_type = ?");
             params.push(Box::new(tx_type.to_string()));
         }
 
         if let Some(direction) = filter.direction
             && !direction.eq_ignore_ascii_case("ALL")
         {
-            query.push_str(" AND direction = ?");
+            query.push_str(" AND r.direction = ?");
             params.push(Box::new(direction.to_string()));
         }
 
-        if let Some(search) = filter.search {
-            let trimmed = search.trim();
-
-            if !trimmed.is_empty() {
-                query.push_str(
-                    " AND (txid LIKE ? OR counterparty LIKE ? OR from_address LIKE ? OR to_address LIKE ?)",
-                );
-
-                let pattern = format!("%{trimmed}%");
-                params.push(Box::new(pattern.clone()));
-                params.push(Box::new(pattern.clone()));
-                params.push(Box::new(pattern.clone()));
-                params.push(Box::new(pattern));
-            }
-        }
+        append_transaction_search_filter(&mut query, &mut params, filter.address, filter.search);
 
         let borrowed = params
             .iter()
@@ -999,12 +1579,12 @@ impl TransactionsRepository {
         let mut query = String::from(
             r#"
             SELECT
-                strftime('%Y-%m-%d', timestamp_ms / 1000, 'unixepoch') AS day,
+                strftime('%Y-%m-%d', r.timestamp_ms / 1000, 'unixepoch') AS day,
                 COUNT(*) AS tx_count,
-                COALESCE(SUM(CASE WHEN lower(direction) = 'incoming' THEN ABS(amount_sompi) ELSE 0 END), 0) AS incoming_sompi,
-                COALESCE(SUM(CASE WHEN lower(direction) = 'outgoing' THEN ABS(amount_sompi) ELSE 0 END), 0) AS outgoing_sompi
-            FROM transactions
-            WHERE address = ?
+                COALESCE(SUM(CASE WHEN lower(r.direction) = 'incoming' THEN ABS(r.amount_sompi) ELSE 0 END), 0) AS incoming_sompi,
+                COALESCE(SUM(CASE WHEN lower(r.direction) = 'outgoing' THEN ABS(r.amount_sompi) ELSE 0 END), 0) AS outgoing_sompi
+            FROM address_transactions r
+            WHERE r.address = ?
             "#,
         );
 
@@ -1012,44 +1592,30 @@ impl TransactionsRepository {
         params.push(Box::new(filter.address.to_string()));
 
         if let Some(start_ms) = filter.start_ms {
-            query.push_str(" AND timestamp_ms >= ?");
+            query.push_str(" AND r.timestamp_ms >= ?");
             params.push(Box::new(start_ms));
         }
 
         if let Some(end_ms) = filter.end_ms {
-            query.push_str(" AND timestamp_ms <= ?");
+            query.push_str(" AND r.timestamp_ms <= ?");
             params.push(Box::new(end_ms));
         }
 
         if let Some(tx_type) = filter.tx_type
             && !tx_type.eq_ignore_ascii_case("ALL")
         {
-            query.push_str(" AND tx_type = ?");
+            query.push_str(" AND r.tx_type = ?");
             params.push(Box::new(tx_type.to_string()));
         }
 
         if let Some(direction) = filter.direction
             && !direction.eq_ignore_ascii_case("ALL")
         {
-            query.push_str(" AND direction = ?");
+            query.push_str(" AND r.direction = ?");
             params.push(Box::new(direction.to_string()));
         }
 
-        if let Some(search) = filter.search {
-            let trimmed = search.trim();
-
-            if !trimmed.is_empty() {
-                query.push_str(
-                    " AND (txid LIKE ? OR counterparty LIKE ? OR from_address LIKE ? OR to_address LIKE ?)",
-                );
-
-                let pattern = format!("%{trimmed}%");
-                params.push(Box::new(pattern.clone()));
-                params.push(Box::new(pattern.clone()));
-                params.push(Box::new(pattern.clone()));
-                params.push(Box::new(pattern));
-            }
-        }
+        append_transaction_search_filter(&mut query, &mut params, filter.address, filter.search);
 
         query.push_str(
             r#"
@@ -1098,11 +1664,12 @@ impl TransactionsRepository {
         let mut query = String::from(
             r#"
             SELECT
-                txid, address, tx_type, direction, amount_sompi,
-                from_address, to_address, counterparty, block_height,
-                timestamp_ms, raw_json, created_at_ms, updated_at_ms
-            FROM transactions
-            WHERE address = ?
+                t.txid, r.address, r.tx_type, r.direction, r.amount_sompi,
+                r.from_address, r.to_address, r.counterparty, t.block_height,
+                t.timestamp_ms, t.raw_json, r.created_at_ms, r.updated_at_ms
+            FROM address_transactions r
+            JOIN transactions t ON t.txid = r.txid
+            WHERE r.address = ?
             "#,
         );
 
@@ -1110,58 +1677,46 @@ impl TransactionsRepository {
         params.push(Box::new(filter.address.to_string()));
 
         if let Some(start_ms) = filter.start_ms {
-            query.push_str(" AND timestamp_ms >= ?");
+            query.push_str(" AND r.timestamp_ms >= ?");
             params.push(Box::new(start_ms));
         }
 
         if let Some(end_ms) = filter.end_ms {
-            query.push_str(" AND timestamp_ms <= ?");
+            query.push_str(" AND r.timestamp_ms <= ?");
             params.push(Box::new(end_ms));
         }
 
         if let Some(tx_type) = filter.tx_type
             && !tx_type.eq_ignore_ascii_case("ALL")
         {
-            query.push_str(" AND tx_type = ?");
+            query.push_str(" AND r.tx_type = ?");
             params.push(Box::new(tx_type.to_string()));
         }
 
         if let Some(direction) = filter.direction
             && !direction.eq_ignore_ascii_case("ALL")
         {
-            query.push_str(" AND direction = ?");
+            query.push_str(" AND r.direction = ?");
             params.push(Box::new(direction.to_string()));
         }
 
-        if let Some(search) = filter.search {
-            let search = search.trim();
+        append_transaction_search_filter(&mut query, &mut params, filter.address, filter.search);
 
-            if !search.is_empty() {
-                query.push_str(
-                    r#"
-                    AND (
-                        txid LIKE ?
-                        OR COALESCE(from_address, '') LIKE ?
-                        OR COALESCE(to_address, '') LIKE ?
-                        OR COALESCE(counterparty, '') LIKE ?
-                    )
-                    "#,
-                );
-
-                let pattern = format!("%{search}%");
-                params.push(Box::new(pattern.clone()));
-                params.push(Box::new(pattern.clone()));
-                params.push(Box::new(pattern.clone()));
-                params.push(Box::new(pattern));
-            }
-        }
-
-        query.push_str(" ORDER BY timestamp_ms DESC");
+        query.push_str(" ORDER BY r.timestamp_ms DESC");
 
         if let Some(limit) = filter.limit {
             query.push_str(" LIMIT ?");
             let limit = i64::try_from(limit.clamp(1, 1_000_000)).unwrap_or(1_000_000);
             params.push(Box::new(limit));
+            if let Some(offset) = filter.offset {
+                query.push_str(" OFFSET ?");
+                let offset = i64::try_from(offset).unwrap_or(i64::MAX);
+                params.push(Box::new(offset));
+            }
+        } else if let Some(offset) = filter.offset {
+            query.push_str(" LIMIT -1 OFFSET ?");
+            let offset = i64::try_from(offset).unwrap_or(i64::MAX);
+            params.push(Box::new(offset));
         }
 
         let borrowed = params
@@ -1210,6 +1765,7 @@ pub struct TransactionFilter<'a> {
     pub direction: Option<&'a str>,
     pub search: Option<&'a str>,
     pub limit: Option<usize>,
+    pub offset: Option<usize>,
 }
 #[derive(Debug)]
 pub struct AppSettingsRepository {

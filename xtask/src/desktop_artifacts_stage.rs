@@ -499,6 +499,7 @@ fn run_windows(root: &Path) -> Result<(), String> {
             installed.len()
         ));
     }
+    let installed_hash = sha256_file(&installed[0])?;
     verify_windows_runtime(
         &installed[0],
         &artifact_dir.join("installed-runtime-dependencies.json"),
@@ -556,7 +557,7 @@ fn run_windows(root: &Path) -> Result<(), String> {
     fs::write(
         artifact_dir.join("WINDOWS_INSTALLER_SMOKE.txt"),
         format!(
-            "REQUESTED_COMMIT_SHA={requested}\nWINDOWS_PRIMARY_FORMAT=NSIS_EXE\nWINDOWS_ARCHITECTURE=X86_64\nWINDOWS_CODE_SIGNING=UNSIGNED_NOT_CONFIGURED\nWINDOWS_AUTHENTICODE_STATUS={signature}\nWINDOWS_INSTALLER_SMOKE=PASS\nWINDOWS_LAUNCH_OBSERVATION_SECONDS=15\nWINDOWS_UNINSTALL_SMOKE=PASS\nTESTNET13_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL\n"
+            "REQUESTED_COMMIT_SHA={requested}\nWINDOWS_PRIMARY_FORMAT=NSIS_EXE\nWINDOWS_ARCHITECTURE=X86_64\nWINDOWS_CODE_SIGNING=UNSIGNED_NOT_CONFIGURED\nWINDOWS_AUTHENTICODE_STATUS={signature}\nWINDOWS_INSTALLED_EXE_SHA256={installed_hash}\nWINDOWS_INSTALLER_SMOKE=PASS\nWINDOWS_LAUNCH_OBSERVATION_SECONDS=15\nWINDOWS_UNINSTALL_SMOKE=PASS\nTESTNET13_LIVE_SMOKE=NOT_RUN_EXPERIMENTAL\n"
         ),
     )
     .map_err(|error| format!("desktop artifacts: write Windows smoke report: {error}"))?;

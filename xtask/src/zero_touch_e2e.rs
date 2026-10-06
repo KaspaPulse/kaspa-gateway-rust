@@ -249,9 +249,11 @@ fn restore_generated_schemas_if_newly_dirty(
 }
 
 pub(crate) fn run(root: &Path) -> Result<String, String> {
-    let root = root
-        .canonicalize()
-        .map_err(|e| format!("repository path: {e}"))?;
+    let root = external_tool_path(
+        &root
+            .canonicalize()
+            .map_err(|e| format!("repository path: {e}"))?,
+    );
     let config_path = root.join(E2E_CONFIG);
     let lock_path = root.join(E2E_LOCK);
     if !config_path.is_file() {
@@ -847,14 +849,32 @@ fn stage_from_error(error: &str) -> String {
         .to_owned()
 }
 
+#[cfg(windows)]
+fn external_tool_path(path: &Path) -> PathBuf {
+    let text = path.to_string_lossy();
+    if let Some(stripped) = text.strip_prefix(r"\\?\UNC\") {
+        return PathBuf::from(format!(r"\\{stripped}"));
+    }
+    if let Some(stripped) = text.strip_prefix(r"\\?\") {
+        return PathBuf::from(stripped);
+    }
+    path.to_path_buf()
+}
+
+#[cfg(not(windows))]
+fn external_tool_path(path: &Path) -> PathBuf {
+    path.to_path_buf()
+}
+
 fn absolute(path: &Path) -> Result<PathBuf, String> {
-    if path.is_absolute() {
-        Ok(path.to_path_buf())
+    let absolute = if path.is_absolute() {
+        path.to_path_buf()
     } else {
         std::env::current_dir()
             .map(|p| p.join(path))
-            .map_err(|e| e.to_string())
-    }
+            .map_err(|e| e.to_string())?
+    };
+    Ok(external_tool_path(&absolute))
 }
 
 fn now() -> Result<String, String> {
@@ -866,6 +886,23 @@ fn now() -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    #[test]
+    fn external_tool_path_strips_windows_verbatim_prefixes() {
+        assert_eq!(
+            external_tool_path(Path::new(r"\\?\C:\work\repo")),
+            PathBuf::from(r"C:\work\repo")
+        );
+        assert_eq!(
+            external_tool_path(Path::new(r"\\?\UNC\server\share\repo")),
+            PathBuf::from(r"\\server\share\repo")
+        );
+        assert_eq!(
+            external_tool_path(Path::new(r"C:\work\repo")),
+            PathBuf::from(r"C:\work\repo")
+        );
+    }
 
     #[test]
     fn stage_error_preserves_legacy_stage_prefix() {

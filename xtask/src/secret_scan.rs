@@ -362,12 +362,17 @@ mod tests {
     fn adopted_secret_workflow_preserves_full_history_and_exact_result_policy() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
         let source = fs::read_to_string(root.join(".github/workflows/secret-scan.yml")).unwrap();
+        let binary = fs::read_to_string(root.join("xtask/src/bin/kgw-secret-scan.rs")).unwrap();
+        assert!(
+            binary.contains("#[path = \"../trufflehog_policy.rs\"]")
+                && binary.contains("mod trufflehog_policy;"),
+            "kgw-secret-scan binary must compile and execute the exact TruffleHog policy tests"
+        );
         for required in [
+            "timeout-minutes: 30",
             "fetch-depth: 0",
             "persist-credentials: false",
             "contents: read",
-            "name: Validate exact historical false-positive policy",
-            "cargo test --locked -p xtask trufflehog_policy::tests::",
             "cargo test --locked -p xtask --features secret-scan --bin kgw-secret-scan",
             "cargo run --locked -p xtask --features secret-scan --bin kgw-secret-scan -- --root .",
         ] {
@@ -385,6 +390,9 @@ mod tests {
             "mktemp",
             "trap ",
             "continue-on-error",
+            "timeout-minutes: 15",
+            "name: Validate exact historical false-positive policy",
+            "cargo test --locked -p xtask trufflehog_policy::tests::",
             "--verify-only",
             "--archive",
         ] {

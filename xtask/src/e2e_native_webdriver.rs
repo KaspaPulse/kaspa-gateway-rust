@@ -381,7 +381,13 @@ impl NativeWebDriverHarness {
     ) -> Result<Self, String> {
         let driver = WebDriverClient::loopback(port)?;
         let mut app = EmbeddedApp::spawn(root, app_binary, port)?;
-        wait_for_ready(&driver, &mut app, startup_timeout).await?;
+        if let Err(error) = wait_for_ready(&driver, &mut app, startup_timeout).await {
+            let cleanup = app.terminate();
+            return Err(match cleanup {
+                Ok(()) => error,
+                Err(cleanup_error) => format!("{error}; cleanup failure: {cleanup_error}"),
+            });
+        }
         let session = match driver.create_session(window_label).await {
             Ok(session) => session,
             Err(error) => {

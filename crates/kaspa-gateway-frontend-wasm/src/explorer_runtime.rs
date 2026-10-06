@@ -282,7 +282,7 @@ fn filter_trace_impl(label: &JsValue, payload: &JsValue) {
 }
 
 const DAY_SUMMARY_LIMIT: u32 = 10_000;
-const DAY_TRANSACTION_LIMIT: u32 = 1_000_000;
+pub(crate) const DAY_TRANSACTION_PAGE_SIZE: u32 = 250;
 
 fn document() -> JsValue {
     property(&global(), "document")
@@ -456,7 +456,13 @@ pub fn explorer_legacy_list_request(
     start_ts: JsValue,
     end_ts: JsValue,
 ) -> JsValue {
-    legacy_list_request_impl(&section, address, start_ts, end_ts, DAY_TRANSACTION_LIMIT)
+    legacy_list_request_impl(
+        &section,
+        address,
+        start_ts,
+        end_ts,
+        DAY_TRANSACTION_PAGE_SIZE,
+    )
 }
 
 #[wasm_bindgen(js_name = explorerLoadTransactionDaySummariesFromDb)]
@@ -480,8 +486,13 @@ pub async fn explorer_load_transactions_for_single_day_from_db(
     let Some((start_ts, end_ts)) = day_range(&day, false) else {
         return Ok(Array::new().into());
     };
-    let request =
-        legacy_list_request_impl(&section, address, start_ts, end_ts, DAY_TRANSACTION_LIMIT);
+    let request = legacy_list_request_impl(
+        &section,
+        address,
+        start_ts,
+        end_ts,
+        DAY_TRANSACTION_PAGE_SIZE,
+    );
     let groups = explorer_invoke_grouped_transactions(request).await?;
     let result = Object::new();
     set(result.as_ref(), "groups", &groups)?;
@@ -511,7 +522,7 @@ pub async fn explorer_load_transactions_for_day(
         address,
         start_ts,
         end_ts,
-        JsValue::from_f64(DAY_TRANSACTION_LIMIT as f64),
+        JsValue::from_f64(DAY_TRANSACTION_PAGE_SIZE as f64),
     );
 
     let request_trace = Object::new();
@@ -622,11 +633,11 @@ pub async fn explorer_clean2_load_summaries(
     Ok(rows)
 }
 
-#[wasm_bindgen(js_name = explorerClean2LoadDayTransactions)]
-pub async fn explorer_clean2_load_day_transactions(
+pub(crate) async fn explorer_clean2_load_day_transaction_page(
     section: JsValue,
     address: JsValue,
     day: String,
+    offset: u32,
 ) -> Result<JsValue, JsValue> {
     let Some((start_ts, end_ts)) = day_range(&day, true) else {
         return Ok(Array::new().into());
@@ -636,8 +647,9 @@ pub async fn explorer_clean2_load_day_transactions(
         address,
         start_ts,
         end_ts,
-        JsValue::from_f64(DAY_TRANSACTION_LIMIT as f64),
+        JsValue::from_f64(DAY_TRANSACTION_PAGE_SIZE as f64),
     );
+    let _ = set(&request, "offset", &JsValue::from_f64(offset as f64));
     let started = performance_now();
     let groups = explorer_invoke_grouped_transactions(request).await?;
     let result = Object::new();
@@ -649,6 +661,11 @@ pub async fn explorer_clean2_load_day_transactions(
     let _ = set(details.as_ref(), "day", &JsValue::from_str(&day));
     let _ = set(
         details.as_ref(),
+        "offset",
+        &JsValue::from_f64(offset as f64),
+    );
+    let _ = set(
+        details.as_ref(),
         "elapsedMs",
         &JsValue::from_f64((performance_now() - started).round()),
     );
@@ -657,8 +674,17 @@ pub async fn explorer_clean2_load_day_transactions(
         "rows",
         &JsValue::from_f64(array.length() as f64),
     );
-    clean2_log_impl("day transactions loaded", details.as_ref());
+    clean2_log_impl("day transaction page loaded", details.as_ref());
     Ok(rows)
+}
+
+#[wasm_bindgen(js_name = explorerClean2LoadDayTransactions)]
+pub async fn explorer_clean2_load_day_transactions(
+    section: JsValue,
+    address: JsValue,
+    day: String,
+) -> Result<JsValue, JsValue> {
+    explorer_clean2_load_day_transaction_page(section, address, day, 0).await
 }
 
 #[wasm_bindgen(js_name = explorerInvokeUnifiedFetch)]

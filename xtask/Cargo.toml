@@ -16,6 +16,8 @@ ksss = ["dep:flate2", "dep:pyo3", "dep:tar", "time/parsing"]
 [dependencies]
 xml-rs = "=0.8.29"
 kaspa-gateway-e2e-wasm = { path = "../crates/kaspa-gateway-e2e-wasm" }
+kaspa-gateway-db = { path = "../crates/kaspa-gateway-db" }
+rusqlite = { version = "0.37.0", features = ["bundled"] }
 regex.workspace = true
 reqwest.workspace = true
 serde.workspace = true
@@ -31,7 +33,7 @@ tempfile.workspace = true
 tokio.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { workspace = true, features = ["Win32_NetworkManagement_IpHelper"] }
+windows-sys = { workspace = true, features = ["Win32_NetworkManagement_IpHelper", "Win32_UI_WindowsAndMessaging"] }
 
 [[bin]]
 name = "kgw-workflow-lint"

@@ -169,6 +169,7 @@ pub async fn explorer_transaction_day_summaries_rust(
                     direction: request.direction.as_deref(),
                     search: request.search_query.as_deref(),
                     limit: request.limit.or(Some(10_000)),
+                    offset: None,
                 })
                 .map_err(|error| error.to_string())?;
 

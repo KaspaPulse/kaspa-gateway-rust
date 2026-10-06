@@ -46,8 +46,7 @@
 use crate::{app_logger, db_state};
 use kaspa_gateway_core::KaspaAddress;
 use kaspa_gateway_runtime::transaction_sync::{
-    TransactionDayGroup, TransactionListRequest, TransactionSyncRequest, TransactionSyncSummary,
-    list_transactions_grouped_by_day, request_transaction_sync_cancel,
+    TransactionSyncRequest, TransactionSyncSummary, request_transaction_sync_cancel,
     set_transaction_sync_progress_callback, sync_transactions,
 };
 use serde::Serialize;
@@ -58,15 +57,10 @@ use tauri::{AppHandle, Emitter};
 #[derive(Debug, Clone, Serialize)]
 pub struct ExplorerUnifiedTransactionsReport {
     pub summary: TransactionSyncSummary,
-    pub groups: Vec<TransactionDayGroup>,
     pub rows: usize,
     pub db_rows_before: usize,
     pub db_rows_after: usize,
     pub source: String,
-}
-
-fn count_rows(groups: &[TransactionDayGroup]) -> usize {
-    groups.iter().map(|group| group.transactions.len()).sum()
 }
 
 #[tauri::command]
@@ -170,68 +164,46 @@ pub async fn explorer_transactions(
             ),
         );
 
-        app_logger::log_info(
-            "transactions",
-            &format!(
-                "unified read phase start address={} start_ts={:?} end_ts={:?} tx_type={:?} direction={:?} search={:?}",
-                summary.address,
-                request_for_worker.start_ts,
-                request_for_worker.end_ts,
-                request_for_worker.tx_type,
-                request_for_worker.direction,
-                request_for_worker.search_query
-            ),
-        );
-
-        let groups = db_state::with_database_manager(
-            "explorer.transactions.unified.read_after_write",
+        let db_rows_before = summary.local_loaded;
+        let db_rows_after = db_state::with_database_manager(
+            "explorer.transactions.unified.count_after_write",
             |manager| {
                 let repo = manager
                     .transactions_repository()
                     .map_err(|error| error.to_string())?;
-
-                let list_request = TransactionListRequest {
-                    address: summary.address.clone(),
-                    start_ts: request_for_worker.start_ts,
-                    end_ts: request_for_worker.end_ts,
-                    tx_type: request_for_worker.tx_type.clone(),
-                    direction: request_for_worker.direction.clone(),
-                    search_query: request_for_worker.search_query.clone(),
-                    limit: Some(1_000_000),
-                };
-
-                list_transactions_grouped_by_day(&repo, list_request)
+                usize::try_from(
+                    repo.count_for_address(&summary.address)
+                        .map_err(|error| error.to_string())?
+                        .max(0),
+                )
+                .map_err(|_| "transaction row count does not fit usize".to_string())
             },
         )?;
-
-        let rows = count_rows(&groups);
 
         app_logger::log_info(
             "transactions",
             &format!(
-                "Fetch done ({} ms), stored={}, fetched={}, accepted={}, pages={}, local={}, deleted={}, stopped_existing={}, stopped_start={}, stop={}, groups={}, rows={}",
+                "Fetch done ({} ms), stored={}, fetched={}, accepted={}, pages={}, local_before={}, local_after={}, deleted_before_fetch={}, stopped_existing={}, stopped_start={}, stop={}",
                 started.elapsed().as_millis(),
                 summary.stored,
                 summary.fetched_from_api,
                 summary.accepted_for_range,
                 summary.pages,
-                summary.local_loaded,
+                db_rows_before,
+                db_rows_after,
                 summary.deleted_before_fetch,
                 summary.stopped_by_existing_txid,
                 summary.stopped_by_start_date,
-                summary.stop_reason,
-                groups.len(),
-                rows
+                summary.stop_reason
             ),
         );
 
         Ok(ExplorerUnifiedTransactionsReport {
             summary,
-            groups,
-            rows,
-            db_rows_before: 0,
-            db_rows_after: rows,
-            source: "transactions_db_after_sync_split_connection".to_string(),
+            rows: db_rows_after,
+            db_rows_before,
+            db_rows_after,
+            source: "transactions_db_after_sync_compact".to_string(),
         })
     })
     .await

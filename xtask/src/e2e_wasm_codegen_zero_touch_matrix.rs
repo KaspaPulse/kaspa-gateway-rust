@@ -24,7 +24,6 @@ import {
   waitUntil,
   waitForPort,
   waitForClipboardShaToFile,
-  writeClipboardSentinel,
 } from "../helpers/windows.mjs";
 import {
   clickTestId,
@@ -187,6 +186,33 @@ async function waitForNativeClipboardTrace({ network, runtimeRole, bridgeInstanc
   });
 }
 
+async function waitForFreshRpcObservation({ network, runtimeRole, timeoutMs = 120000 }) {
+  const owner = await waitForOwnerStatus({ network, runtimeRole, timeoutMs });
+  return await waitUntil(`fresh RPC observation ${runtimeRole}/${network}`, timeoutMs, 750, async () => {
+    const status = String(await invoke("kgw_runtime_owner_status_v1", { network, runtimeRole }, 30000));
+    const fields = parseKeyValueLine(status);
+    if (String(fields.observation_state || "").toLowerCase() !== "fresh") return false;
+    if (String(fields.rpc_ready || "").toLowerCase() !== "true") return false;
+
+    const synced = String(fields.synced || "").toLowerCase();
+    if (synced !== "true" && synced !== "false") return false;
+    const semanticReadiness = String(fields.semantic_readiness || "").toUpperCase();
+    const expectedSemanticReadiness = synced === "true" ? "READY" : "SYNCING";
+    assert.equal(
+      semanticReadiness,
+      expectedSemanticReadiness,
+      `${runtimeRole}/${network} semantic readiness must reflect synchronized state`,
+    );
+    assert.equal(
+      String(fields.readiness_scope || "").toLowerCase(),
+      "startup_process_only",
+      `${runtimeRole}/${network} process readiness must remain explicitly scoped`,
+    );
+
+    return { status, pid: owner.pid, fields };
+  });
+}
+
 async function startNodeFromSettings(network, settings) {
   await openNodeSettings(network);
   await setControlValueByTestId(`kgw-node-field-${network}-rpcListenHost`, "127.0.0.1");
@@ -205,7 +231,7 @@ async function startNodeFromSettings(network, settings) {
     await setControlValueByTestId(`kgw-node-field-${network}-listenPort`, String(settings.p2pPort));
   }
   await clickTestId(`kgw-node-start-${network}`);
-  const status = await waitForOwnerStatus({ network, runtimeRole: "node", timeoutMs: 180000 });
+  const status = await waitForFreshRpcObservation({ network, runtimeRole: "node", timeoutMs: 120000 });
   recordPid(network, "node", status.pid);
   await writeJson(path.join(settings.outputDirectory, "node-owner-status.json"), status);
   await waitForPort("127.0.0.1", settings.rpcPort, 180000);
@@ -245,7 +271,7 @@ async function startBridgeFromSettings(network, settings) {
     profileBridgePort: settings.bridgePort || null,
   });
   await clickTestId(`kgw-bridge-start-${network}`);
-  const status = await waitForOwnerStatus({ network, runtimeRole: "bridge", timeoutMs: 180000 });
+  const status = await waitForFreshRpcObservation({ network, runtimeRole: "bridge", timeoutMs: 120000 });
   recordPid(network, "bridge", status.pid);
   await writeJson(path.join(settings.outputDirectory, "bridge-owner-status.json"), status);
   if (externalBridgeListeners) {
@@ -261,32 +287,27 @@ async function startBridgeFromSettings(network, settings) {
 }
 
 async function copyAndVerify({ outputDirectory, network, runtimeRole, bridgeInstanceId = "", testId, visibleTestId, mustMatch = [], mustNotMatch = [] }) {
-  const sentinel = `kgw-zero-touch-${runtimeRole}-${network}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  const sentinelSha = sha256Hex(sentinel);
-  await writeClipboardSentinel(sentinel);
   await waitForRawLogOutput(visibleTestId, 60000);
   const visibleBefore = await readByTestId(visibleTestId);
   const normalizedVisible = normalizeClipboardText(visibleBefore);
 
   const copyStartedAt = Date.now() - 1000;
   await clickTestId(testId);
-  const clipboardPath = path.join(outputDirectory, "clipboard.raw.txt");
-  const clipboard = await waitForClipboardShaToFile({
-    outputPath: clipboardPath,
-    rejectedSha: sentinelSha,
-    timeoutMs: 30000,
-  });
   const event = await waitForNativeClipboardTrace({
     network,
     runtimeRole,
     bridgeInstanceId,
-    sha256: clipboard.sha256,
     afterTimestamp: copyStartedAt,
+    timeoutMs: 30000,
+  });
+  const clipboardPath = path.join(outputDirectory, "clipboard.raw.txt");
+  const clipboard = await waitForClipboardShaToFile({
+    outputPath: clipboardPath,
+    expectedSha: event.resultSha256,
     timeoutMs: 30000,
   });
   await writeJson(path.join(outputDirectory, "clipboard-capture.json"), { event, clipboard });
 
-  assert.notEqual(clipboard.sha256, sentinelSha, "clipboard still contains the sentinel");
   assert.equal(event.expectedSha256, event.resultSha256, "expected and observed clipboard SHA-256 differ");
   assert.equal(clipboard.sha256, event.resultSha256, "Windows clipboard SHA-256 differs from observed result");
   assert.equal(clipboard.line_count, event.lineCount, "Windows clipboard line count differs from event");
@@ -489,7 +510,6 @@ async function exerciseTestnet13Policy() {
   const slug = "testnet13-policy";
   const outputDirectory = await ensureDir(caseDir(slug));
   observed.cases.push({ slug, network: "testnet13", runtimeRole: "policy", outputDirectory });
-  await writeClipboardSentinel(`kgw-zero-touch-policy-testnet13-${Date.now()}`);
 
   await openNodeSettings("testnet13");
   const nodeEnabled = await browser.execute(() => {
@@ -616,7 +636,10 @@ mod tests {
         assert!(source.contains("describe("));
         assert!(source.contains("zero-touch"));
         assert!(source.contains("shutdownAllRuntimeWorkers"));
-        assert!(source.contains("writeClipboardSentinel"));
+        assert!(source.contains("waitForOwnerStatus"));
+        assert!(source.contains("fresh RPC observation"));
+        assert!(source.contains("expectedSemanticReadiness"));
+        assert!(!source.contains("writeClipboardSentinel"));
         assert!(source.contains("node listen controls editable"));
     }
 }

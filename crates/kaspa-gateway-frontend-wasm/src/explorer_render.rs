@@ -219,9 +219,23 @@ fn transaction_cache() -> JsValue {
     map_value
 }
 
-fn reset_transaction_cache() {
+fn page_offsets() -> JsValue {
+    let win = window();
+    let existing = property(&win, "__kgwExplorerDayPageOffsets");
+    if present(&existing) {
+        return existing;
+    }
     let map_value: JsValue = Map::new().into();
-    set(&window(), "__kgwExplorerDayTransactionCache", &map_value);
+    set(&win, "__kgwExplorerDayPageOffsets", &map_value);
+    map_value
+}
+
+fn reset_transaction_cache() {
+    let cache: JsValue = Map::new().into();
+    let offsets: JsValue = Map::new().into();
+    let win = window();
+    set(&win, "__kgwExplorerDayTransactionCache", &cache);
+    set(&win, "__kgwExplorerDayPageOffsets", &offsets);
 }
 
 fn set_has(set_value: &JsValue, key: &str) -> bool {
@@ -246,6 +260,139 @@ fn map_get(map_value: &JsValue, key: &str) -> JsValue {
 
 fn map_set(map_value: &JsValue, key: &str, value: &JsValue) {
     let _ = call2(map_value, "set", &JsValue::from_str(key), value);
+}
+
+fn map_u32(map_value: &JsValue, key: &str) -> u32 {
+    let value = map_get(map_value, key);
+    crate::js_number(&value)
+        .max(0.0)
+        .floor()
+        .min(u32::MAX as f64) as u32
+}
+
+fn map_set_u32(map_value: &JsValue, key: &str, value: u32) {
+    map_set(map_value, key, &JsValue::from_f64(value as f64));
+}
+
+fn page_cache_key(day: &str, offset: u32) -> String {
+    format!("{day}:{offset}")
+}
+
+fn selected_address(root: &JsValue) -> String {
+    let current_state = state();
+    let selected = js_text(&property(&current_state, "selectedAddress"));
+    if !selected.is_empty() {
+        return selected;
+    }
+    let input = query(root, "#explorerAddress");
+    crate::explorer_addresses::explorer_normalize_address(property(&input, "value"))
+}
+
+fn spawn_day_page_load(root: JsValue, status_text: String, day: String, offset: u32) {
+    spawn_local(async move {
+        let address = selected_address(&root);
+        let key = page_cache_key(&day, offset);
+        let loaded = crate::explorer_runtime::explorer_clean2_load_day_transaction_page(
+            root.clone(),
+            JsValue::from_str(&address),
+            day.clone(),
+            offset,
+        )
+        .await;
+
+        let cache = transaction_cache();
+        match loaded {
+            Ok(rows) if Array::is_array(&rows) => {
+                map_set(&cache, &key, &rows);
+            }
+            Ok(_) => {
+                let empty: JsValue = Array::new().into();
+                map_set(&cache, &key, &empty);
+            }
+            Err(error) => {
+                console_error(&format!(
+                    "[KGW Explorer][clean2] day transaction page load failed: {}",
+                    js_text(&error),
+                ));
+                let empty: JsValue = Array::new().into();
+                map_set(&cache, &key, &empty);
+            }
+        }
+
+        let rows = property(&state(), "rows");
+        let _ = render_summaries_impl(root, rows, status_text);
+    });
+}
+
+fn append_day_pager(fragment: &JsValue, day: &str, total_count: u32, offset: u32, rows_len: u32) {
+    if total_count <= rows_len && offset == 0 {
+        return;
+    }
+
+    let pager = create_element("tr");
+    set(
+        &pager,
+        "className",
+        &JsValue::from_str("kgw-transaction-page-controls"),
+    );
+    let cell = create_element("td");
+    let _ = call2(
+        &cell,
+        "setAttribute",
+        &JsValue::from_str("colspan"),
+        &JsValue::from_str("6"),
+    );
+
+    let prev = create_element("button");
+    set(&prev, "type", &JsValue::from_str("button"));
+    set(&prev, "textContent", &JsValue::from_str("Previous"));
+    set(
+        &property(&prev, "dataset"),
+        "kgwPageAction",
+        &JsValue::from_str("prev"),
+    );
+    set(
+        &property(&prev, "dataset"),
+        "kgwPageDay",
+        &JsValue::from_str(day),
+    );
+    set(&prev, "disabled", &JsValue::from_bool(offset == 0));
+
+    let start = if rows_len == 0 { 0 } else { offset + 1 };
+    let end = offset.saturating_add(rows_len).min(total_count);
+    let label = create_element("span");
+    set(
+        &label,
+        "textContent",
+        &JsValue::from_str(&format!(
+            " Transactions {}-{} of {} ",
+            locale_number(start as f64),
+            locale_number(end as f64),
+            locale_number(total_count as f64),
+        )),
+    );
+
+    let next = create_element("button");
+    set(&next, "type", &JsValue::from_str("button"));
+    set(&next, "textContent", &JsValue::from_str("Next"));
+    set(
+        &property(&next, "dataset"),
+        "kgwPageAction",
+        &JsValue::from_str("next"),
+    );
+    set(
+        &property(&next, "dataset"),
+        "kgwPageDay",
+        &JsValue::from_str(day),
+    );
+    let no_next = rows_len == 0 || offset.saturating_add(rows_len) >= total_count;
+    set(&next, "disabled", &JsValue::from_bool(no_next));
+
+    append(&cell, &prev);
+    append(&cell, &label);
+    append(&cell, &next);
+    append(&pager, &cell);
+    append(fragment, &pager);
 }
 
 fn locale_number(value: f64) -> String {
@@ -367,7 +514,17 @@ fn render_summaries_impl(
             continue;
         }
 
-        if !map_has(&cache, &day) {
+        let offsets = page_offsets();
+        let total_count = count.max(0.0).floor().min(u32::MAX as f64) as u32;
+        let page_size = crate::explorer_runtime::DAY_TRANSACTION_PAGE_SIZE;
+        let mut page_offset = map_u32(&offsets, &day);
+        if total_count > 0 && page_offset >= total_count {
+            page_offset = ((total_count - 1) / page_size) * page_size;
+            map_set_u32(&offsets, &day, page_offset);
+        }
+        let cache_key = page_cache_key(&day, page_offset);
+
+        if !map_has(&cache, &cache_key) {
             let loading = create_element("tr");
             set(
                 &loading,
@@ -378,7 +535,13 @@ fn render_summaries_impl(
                 &loading,
                 "innerHTML",
                 &JsValue::from_str(&format!(
-                    "<td colspan=\"6\" class=\"muted\">Loading transactions for {}...</td>",
+                    "<td colspan=\"6\" class=\"muted\">Loading transactions {}-{} for {}...</td>",
+                    locale_number(page_offset.saturating_add(1) as f64),
+                    locale_number(
+                        page_offset
+                            .saturating_add(page_size)
+                            .min(total_count.max(page_size)) as f64
+                    ),
                     safe_text(&day),
                 )),
             );
@@ -386,7 +549,7 @@ fn render_summaries_impl(
             continue;
         }
 
-        let cached = map_get(&cache, &day);
+        let cached = map_get(&cache, &cache_key);
         if !Array::is_array(&cached) {
             continue;
         }
@@ -435,6 +598,13 @@ fn render_summaries_impl(
             set(&tx_tr, "innerHTML", &JsValue::from_str(&tx_html));
             append(&fragment, &tx_tr);
         }
+        append_day_pager(
+            &fragment,
+            &day,
+            total_count,
+            page_offset,
+            cached_rows.length(),
+        );
     }
 
     append(&body, &fragment);
@@ -465,55 +635,63 @@ fn render_summaries_impl(
             let rows = property(&state(), "rows");
             let _ = render_summaries_impl(root_for_click.clone(), rows, status_for_click.clone());
 
+            let offsets = page_offsets();
+            let offset = map_u32(&offsets, &day);
             let cache = transaction_cache();
-            if map_has(&cache, &day) {
+            let cache_key = page_cache_key(&day, offset);
+            if map_has(&cache, &cache_key) {
                 return;
             }
 
-            let root_async = root_for_click.clone();
-            let status_async = status_for_click.clone();
-            spawn_local(async move {
-                let current_state = state();
-                let selected = js_text(&property(&current_state, "selectedAddress"));
-                let address = if selected.is_empty() {
-                    let input = query(&root_async, "#explorerAddress");
-                    crate::explorer_addresses::explorer_normalize_address(property(&input, "value"))
-                } else {
-                    selected
-                };
-
-                let loaded = crate::explorer_runtime::explorer_clean2_load_day_transactions(
-                    root_async.clone(),
-                    JsValue::from_str(&address),
-                    day.clone(),
-                )
-                .await;
-
-                let cache = transaction_cache();
-                match loaded {
-                    Ok(rows) if Array::is_array(&rows) => {
-                        map_set(&cache, &day, &rows);
-                    }
-                    Ok(_) => {
-                        let empty: JsValue = Array::new().into();
-                        map_set(&cache, &day, &empty);
-                    }
-                    Err(error) => {
-                        console_error(&format!(
-                            "[KGW Explorer][clean2] day transactions load failed: {}",
-                            js_text(&error),
-                        ));
-                        let empty: JsValue = Array::new().into();
-                        map_set(&cache, &day, &empty);
-                    }
-                }
-
-                let rows = property(&state(), "rows");
-                let _ = render_summaries_impl(root_async, rows, status_async);
-            });
+            spawn_day_page_load(
+                root_for_click.clone(),
+                status_for_click.clone(),
+                day,
+                offset,
+            );
         }) as Box<dyn FnMut(JsValue)>);
         let _ = call2(
             &row,
+            "addEventListener",
+            &JsValue::from_str("click"),
+            callback.as_ref().unchecked_ref(),
+        );
+        callback.forget();
+    }
+
+    for button in query_all(&body, "[data-kgw-page-action]") {
+        let root_for_click = root.clone();
+        let status_for_click = status_text.clone();
+        let button_for_click = button.clone();
+        let callback = Closure::wrap(Box::new(move |_event: JsValue| {
+            let dataset = property(&button_for_click, "dataset");
+            let day = js_text(&property(&dataset, "kgwPageDay"));
+            let action = js_text(&property(&dataset, "kgwPageAction"));
+            if day.is_empty() || (action != "prev" && action != "next") {
+                return;
+            }
+
+            let offsets = page_offsets();
+            let current = map_u32(&offsets, &day);
+            let step = crate::explorer_runtime::DAY_TRANSACTION_PAGE_SIZE;
+            let next = if action == "prev" {
+                current.saturating_sub(step)
+            } else {
+                current.saturating_add(step)
+            };
+            map_set_u32(&offsets, &day, next);
+
+            let rows = property(&state(), "rows");
+            let _ = render_summaries_impl(root_for_click.clone(), rows, status_for_click.clone());
+
+            let cache = transaction_cache();
+            let cache_key = page_cache_key(&day, next);
+            if !map_has(&cache, &cache_key) {
+                spawn_day_page_load(root_for_click.clone(), status_for_click.clone(), day, next);
+            }
+        }) as Box<dyn FnMut(JsValue)>);
+        let _ = call2(
+            &button,
             "addEventListener",
             &JsValue::from_str("click"),
             callback.as_ref().unchecked_ref(),

@@ -761,7 +761,11 @@ fn stop_if_cancelled(section: &JsValue, force: bool, stage: &str) -> bool {
             ("stage", JsValue::from_str(stage)),
         ]),
     );
-    clear_table(section, "Fetch cancelled. Table cleared.", true);
+    set_status(
+        section,
+        "Fetch cancelled. Existing local transaction data was preserved.",
+        "info",
+    );
     true
 }
 
@@ -777,11 +781,11 @@ async fn fetch_body(
         crate::explorer_force_ui::explorer_force_reset_display_filters_to_all(section.clone());
         crate::explorer_force_ui::explorer_force_set_table_message(
             section.clone(),
-            "Force fetch is running... deleting old transactions, then running the normal accepted-transactions fetch.".to_owned(),
+            "Force refresh is running... staging replacement history while current local data remains available until verified promotion.".to_owned(),
         );
         set_status(
             &section,
-            "Force fetch is running... deleting old local database transactions.",
+            "Force refresh is running... current local history is preserved until the replacement is complete.",
             "info",
         );
     } else {
@@ -896,7 +900,8 @@ async fn fetch_body(
 
     let result = crate::explorer_runtime::explorer_invoke_unified_fetch(request.into()).await?;
     crate::explorer_runtime::explorer_clean2_log(
-        "fetch result ignored for table".to_owned(),
+        "compact sync result received; table reloads bounded summaries from local database"
+            .to_owned(),
         result,
     );
 
