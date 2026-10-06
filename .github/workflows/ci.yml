@@ -97,7 +97,8 @@ jobs:
     needs: ksss-adoption
     name: quality (rust + npm)
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # A true cold Rust cache must compile native workspace dependencies before Clippy/tests can reuse them. The observed 60-minute budget cancelled an active all-targets check with no product-test failure, so retain a bounded 120-minute cold-cache budget.
+    timeout-minutes: 120
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -157,7 +158,8 @@ jobs:
   node-current-compatibility:
     name: Node.js 26 compatibility (non-blocking)
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    # Cold-cache Rust-owned compatibility tooling can exceed 10 minutes on main; retain a bounded budget without cancelling the compatibility signal.
+    timeout-minutes: 30
     continue-on-error: true
     steps:
       - name: Checkout repository
