@@ -119,6 +119,11 @@ fn status_to_log(
     stdout_path: &Path,
     stderr_path: Option<&Path>,
 ) -> Result<ExitStatus, String> {
+    println!(
+        "CI_RUN {program} {} -> {}",
+        args.join(" "),
+        stdout_path.display()
+    );
     let stdout = File::create(stdout_path)
         .map_err(|error| format!("ci workflow: create {}: {error}", stdout_path.display()))?;
     let stderr = match stderr_path {
@@ -601,6 +606,12 @@ pub fn run_gate(root: &Path) -> Result<String, String> {
         require(&workflow, marker)?;
     }
     require_job_marker(&workflow, "ksss-adoption", "msrv", "timeout-minutes: 30")?;
+    require_job_marker(
+        &workflow,
+        "quality",
+        "node-current-compatibility",
+        "timeout-minutes: 120",
+    )?;
     require_last_job_marker(
         &workflow,
         "node-current-compatibility",
@@ -676,6 +687,29 @@ mod tests {
         );
         assert!(
             require_job_marker(workflow, "ksss-adoption", "msrv", "timeout-minutes: 10").is_err()
+        );
+    }
+
+    #[test]
+    fn quality_job_requires_bounded_cold_cache_timeout() {
+        let workflow = "jobs:\n  quality:\n    timeout-minutes: 120\n  node-current-compatibility:\n    timeout-minutes: 30\n";
+        assert!(
+            require_job_marker(
+                workflow,
+                "quality",
+                "node-current-compatibility",
+                "timeout-minutes: 120"
+            )
+            .is_ok()
+        );
+        assert!(
+            require_job_marker(
+                workflow,
+                "quality",
+                "node-current-compatibility",
+                "timeout-minutes: 60"
+            )
+            .is_err()
         );
     }
 
