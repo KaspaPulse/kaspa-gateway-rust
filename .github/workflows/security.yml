@@ -48,7 +48,7 @@ jobs:
         run: cargo run --locked -p xtask -- check-security-advisories --max-age-days 45
 
       - name: Install supply-chain tools
-        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.87.22
+        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-audit,cargo-deny,cargo-machete
           fallback: none
@@ -62,7 +62,7 @@ jobs:
 
       - name: Upload cargo-deny diagnostics
         if: failure() && steps.cargo-deny.outcome == 'failure'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cargo-deny-diagnostics
           path: cargo-deny.log
@@ -74,7 +74,7 @@ jobs:
 
       - name: Upload cargo-machete diagnostics
         if: failure() && steps.cargo-machete.outcome == 'failure'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cargo-machete-diagnostics
           path: cargo-machete.log
