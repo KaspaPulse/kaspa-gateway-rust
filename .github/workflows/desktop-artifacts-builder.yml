@@ -100,7 +100,7 @@ jobs:
   macos-universal-dmg:
     name: macOS Universal DMG package and smoke
     runs-on: macos-15-intel
-    timeout-minutes: 180
+    timeout-minutes: 300
     permissions:
       contents: read
       id-token: write

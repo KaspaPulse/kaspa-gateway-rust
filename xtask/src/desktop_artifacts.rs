@@ -250,7 +250,9 @@ fn validate_builder_workflow(workflow: &str) -> Result<(), String> {
         "attestations: write",
         "artifact-metadata: write",
         "runs-on: windows-2022",
+        "timeout-minutes: 150",
         "runs-on: macos-15-intel",
+        "timeout-minutes: 300",
         "ref: ${{ inputs.commit_sha }}",
         "targets: x86_64-pc-windows-msvc,wasm32-unknown-unknown",
         "targets: aarch64-apple-darwin,x86_64-apple-darwin,wasm32-unknown-unknown",
@@ -382,6 +384,7 @@ mod tests {
         let mut builder_workflow = String::from(
             "workflow_call:\ncommit_sha:\ncontents: read\nid-token: write\nattestations: write\nartifact-metadata: write\nruns-on: windows-2022\nruns-on: macos-15-intel\nref: ${{ inputs.commit_sha }}\n",
         );
+        builder_workflow.push_str("timeout-minutes: 150\ntimeout-minutes: 300\n");
         builder_workflow.push_str(
             "toolchain: 1.99.0\ntoolchain: 1.99.0\ntargets: x86_64-pc-windows-msvc,wasm32-unknown-unknown\ntargets: aarch64-apple-darwin,x86_64-apple-darwin,wasm32-unknown-unknown\n",
         );
@@ -492,6 +495,15 @@ mod tests {
 
         let mut input = fixture();
         input.macos_config["bundle"]["macOS"]["hardenedRuntime"] = Value::Bool(true);
+        assert!(validate(&input).is_err());
+    }
+
+    #[test]
+    fn macos_cold_cache_timeout_budget_is_protected() {
+        let mut input = fixture();
+        input.builder_workflow = input
+            .builder_workflow
+            .replace("timeout-minutes: 300", "timeout-minutes: 180");
         assert!(validate(&input).is_err());
     }
 
