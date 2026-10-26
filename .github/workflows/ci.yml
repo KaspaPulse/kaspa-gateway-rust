@@ -51,9 +51,23 @@ jobs:
         with:
           cosign-release: "v3.0.6"
 
-      - name: Run Rust-owned KSSS adoption stage
+      - name: Resolve exact KSSS base commit
+        shell: bash
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          EVENT_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_BASE_SHA" =~ ^[0-9a-f]{40}$ ]] && [[ "$EVENT_BASE_SHA" != "0000000000000000000000000000000000000000" ]]; then
+            BASE_SHA="$EVENT_BASE_SHA"
+          else
+            BASE_SHA="$(git merge-base HEAD refs/remotes/origin/main)"
+          fi
+          [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          git cat-file -e "$BASE_SHA^{commit}"
+          git merge-base --is-ancestor "$BASE_SHA" HEAD
+          printf 'BASE_SHA=%s\n' "$BASE_SHA" >> "$GITHUB_ENV"
+
+      - name: Run Rust-owned KSSS adoption stage
         run: cargo run --locked -p xtask --features ksss -- ci-workflow-stage ksss-adoption
 
       - name: Retain KSSS evaluation evidence
