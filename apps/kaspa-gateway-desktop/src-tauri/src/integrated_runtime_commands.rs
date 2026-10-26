@@ -2281,6 +2281,25 @@ fn kgw_runtime_listener_preflight_v1(
     settings: &kaspa_gateway_rk_node::NodeSettings,
     bridge_node_mode: &str,
 ) -> Result<(), String> {
+    if role == "bridge"
+        && std::env::var("KGW_E2E_REQUIRE_LOOPBACK_BRIDGE")
+            .ok()
+            .as_deref()
+            == Some("1")
+    {
+        let effective = settings.effective_bridge.as_ref().ok_or_else(|| {
+            "start_blocked=true;block_reason=bridge-e2e-effective-settings-missing".to_string()
+        })?;
+        kaspa_gateway_rk_bridge::validate_isolated_bridge_worker_listeners_v1(
+            effective,
+            &settings.stratum_listen,
+        )
+        .map_err(|error| {
+            format!(
+                "start_blocked=true;block_reason=bridge-e2e-effective-worker-mismatch;error={error}"
+            )
+        })?;
+    }
     let mut endpoints: Vec<(&str, String)> = Vec::new();
     if role == "node" || (role == "bridge" && bridge_node_mode == "inprocess") {
         endpoints.push(("gRPC", settings.rpc_endpoint.clone()));
@@ -2315,6 +2334,24 @@ fn kgw_runtime_listener_preflight_v1(
     }
     let mut reservations = Vec::new();
     for (label, endpoint) in endpoints {
+        // The opt-in isolated Bridge E2E mode must never reserve a wildcard or
+        // non-loopback listener. The native worker still needs its own guard.
+        if role == "bridge"
+            && matches!(label, "Stratum" | "Prometheus")
+            && std::env::var("KGW_E2E_REQUIRE_LOOPBACK_BRIDGE")
+                .ok()
+                .as_deref()
+                == Some("1")
+        {
+            let address: std::net::SocketAddr = endpoint.parse().map_err(|_| {
+                format!("start_blocked=true;block_reason=bridge-e2e-listener-not-numeric-loopback;listener={label}")
+            })?;
+            if !address.ip().is_loopback() || address.port() < 1024 {
+                return Err(format!(
+                    "start_blocked=true;block_reason=bridge-e2e-listener-not-loopback;listener={label}"
+                ));
+            }
+        }
         let endpoint = if endpoint.starts_with(':') {
             format!("0.0.0.0{endpoint}")
         } else {

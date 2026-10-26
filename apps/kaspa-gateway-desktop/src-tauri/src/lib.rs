@@ -26,6 +26,7 @@ mod export_commands;
 mod export_system;
 mod i18n_commands;
 mod integrated_runtime_commands;
+mod kcv_native_commands;
 mod live_metrics;
 mod transaction_commands;
 mod transaction_routes;
@@ -976,6 +977,7 @@ pub fn run() {
         .manage(commands::DesktopRuntimeState::default())
         .manage(diagnostics::LogState::default())
         .invoke_handler(tauri::generate_handler![
+            kcv_native_commands::kgw_kcv_verify_native_genesis_v1,
             integrated_runtime_commands::kgw_runtime_owner_summary_v1,
             integrated_runtime_commands::kgw_runtime_owner_status_v1,
             integrated_runtime_commands::kgw_runtime_owner_plan_v1,
@@ -2447,6 +2449,20 @@ fn kgw_run_bridge_self_worker(
         .unwrap_or_else(|| "external".to_string())
         .trim()
         .to_ascii_lowercase();
+
+    // Revalidate the deserialized settings at the worker boundary, before any
+    // in-process node or bridge listener starts. CLI --stratum alone is not authoritative.
+    if std::env::var("KGW_E2E_REQUIRE_LOOPBACK_BRIDGE")
+        .ok()
+        .as_deref()
+        == Some("1")
+    {
+        kaspa_gateway_rk_bridge::validate_isolated_bridge_worker_listeners_v1(
+            &effective_bridge_settings,
+            stratum,
+        )
+        .map_err(|error| format!("bridge worker loopback policy rejected: {error}"))?;
+    }
 
     let bridge_cpu_miner_enabled = args.iter().any(|arg| arg == "--internal-cpu-miner");
     let bridge_cpu_miner_address = kgw_self_worker_arg_value(args, "--internal-cpu-miner-address");

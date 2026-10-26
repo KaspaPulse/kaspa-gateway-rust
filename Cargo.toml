@@ -6,6 +6,8 @@ members = [
     "crates/kaspa-gateway-security",
     "crates/kaspa-gateway-rk-node",
     "crates/kaspa-gateway-rk-bridge",
+    "crates/kcv-types",
+    "crates/kcv-core",
     "crates/kaspa-gateway-api",
     "crates/kaspa-gateway-db",
     "crates/kaspa-gateway-node",

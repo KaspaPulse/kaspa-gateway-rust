@@ -347,6 +347,190 @@ impl Default for EffectiveBridgeSettings {
     }
 }
 
+/// Strict, opt-in E2E boundary shared by desktop preflight and the actual worker.
+/// The worker creates listeners from EffectiveBridgeSettings, not from --stratum.
+pub fn validate_isolated_bridge_worker_listeners_v1(
+    effective: &EffectiveBridgeSettings,
+    worker_stratum: &str,
+) -> Result<(), BridgeRuntimeError> {
+    fn checked(label: &str, endpoint: &str) -> Result<std::net::SocketAddr, BridgeRuntimeError> {
+        let addr = endpoint.parse::<std::net::SocketAddr>().map_err(|_| {
+            BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+                "isolated Bridge {label} requires an explicit numeric SocketAddr"
+            ))
+        })?;
+        if !addr.ip().is_loopback() || addr.port() < 1024 {
+            return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(format!(
+                "isolated Bridge {label} must bind loopback at a nonprivileged port"
+            )));
+        }
+        Ok(addr)
+    }
+
+    let primary = effective.instances.first().ok_or_else(|| {
+        BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+            "isolated Bridge requires an effective Stratum instance".to_string(),
+        )
+    })?;
+    let cli = checked("worker Stratum", worker_stratum)?;
+    let primary_addr = checked("effective primary Stratum", &primary.stratum_listen)?;
+    if cli != primary_addr {
+        return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+            "isolated Bridge worker Stratum differs from effective primary Stratum".to_string(),
+        ));
+    }
+    // All effective listeners are distinct OS bind sockets. An identical
+    // SocketAddr in another instance, Prometheus, or global endpoint would
+    // compete for the same TCP port even when both endpoints are loopback.
+    // Do not count the compatibility --stratum mirror of the primary instance.
+    let mut listeners = std::collections::HashSet::new();
+    for instance in &effective.instances {
+        let stratum = checked("effective Stratum", &instance.stratum_listen)?;
+        if !listeners.insert(stratum) {
+            return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+                "isolated Bridge effective listeners contain a duplicate bind address".to_string(),
+            ));
+        }
+        if let Some(endpoint) = instance.prometheus_listen.as_deref() {
+            let prometheus = checked("effective Prometheus", endpoint)?;
+            if !listeners.insert(prometheus) {
+                return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+                    "isolated Bridge effective listeners contain a duplicate bind address"
+                        .to_string(),
+                ));
+            }
+        }
+    }
+    for (label, endpoint) in [
+        (
+            "health check",
+            effective.global.health_check_listen.as_deref(),
+        ),
+        (
+            "web dashboard",
+            effective.global.web_dashboard_listen.as_deref(),
+        ),
+    ] {
+        if let Some(endpoint) = endpoint {
+            let global = checked(label, endpoint)?;
+            if !listeners.insert(global) {
+                return Err(BridgeRuntimeError::InvalidEffectiveBridgeSettings(
+                    "isolated Bridge effective listeners contain a duplicate bind address"
+                        .to_string(),
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod isolated_bridge_listener_policy_tests {
+    use super::*;
+
+    fn safe() -> EffectiveBridgeSettings {
+        let mut settings = EffectiveBridgeSettings::for_network(BridgeRuntimeNetwork::Mainnet);
+        settings.instances[0].stratum_listen = "127.0.0.1:5555".into();
+        settings.instances[0].prometheus_listen = Some("127.0.0.1:2212".into());
+        settings
+    }
+
+    #[test]
+    fn actual_primary_and_prometheus_loopback_accept() {
+        let settings = safe();
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "127.0.0.1:5555").is_ok());
+    }
+
+    #[test]
+    fn safe_preflight_cannot_hide_unsafe_worker_cli() {
+        let settings = safe();
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "0.0.0.0:5555").is_err());
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "127.0.0.1:5556").is_err());
+    }
+
+    #[test]
+    fn reject_wildcards_lan_privileged_and_implicit() {
+        for unsafe_listener in [
+            ":5555",
+            "0.0.0.0:5555",
+            "[::]:5555",
+            "192.168.1.2:5555",
+            "127.0.0.1:80",
+            "localhost:5555",
+        ] {
+            let mut settings = safe();
+            settings.instances[0].stratum_listen = unsafe_listener.into();
+            assert!(
+                validate_isolated_bridge_worker_listeners_v1(&settings, "127.0.0.1:5555").is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn reject_unsafe_secondary_prometheus_and_globals() {
+        let mut settings = safe();
+        let mut secondary = settings.instances[0].clone();
+        secondary.instance_id = "bridge-2".into();
+        secondary.stratum_listen = "0.0.0.0:5556".into();
+        settings.instances.push(secondary);
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "127.0.0.1:5555").is_err());
+        settings.instances.pop();
+        settings.instances[0].prometheus_listen = Some("[::]:2212".into());
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "127.0.0.1:5555").is_err());
+        settings.instances[0].prometheus_listen = Some("127.0.0.1:2212".into());
+        settings.global.web_dashboard_listen = Some("0.0.0.0:8080".into());
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "127.0.0.1:5555").is_err());
+    }
+
+    #[test]
+    fn reject_duplicate_effective_listener_bind_addresses() {
+        let mut settings = safe();
+        settings.instances[0].prometheus_listen = Some("127.0.0.1:5555".into());
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "127.0.0.1:5555").is_err());
+
+        let mut settings = safe();
+        let mut secondary = settings.instances[0].clone();
+        secondary.instance_id = "bridge-2".into();
+        secondary.stratum_listen = "127.0.0.1:5555".into();
+        secondary.prometheus_listen = None;
+        settings.instances.push(secondary);
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "127.0.0.1:5555").is_err());
+
+        let mut settings = safe();
+        settings.global.health_check_listen = Some("127.0.0.1:2212".into());
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "127.0.0.1:5555").is_err());
+
+        let mut settings = safe();
+        settings.global.web_dashboard_listen = Some("127.0.0.1:8080".into());
+        settings.global.health_check_listen = Some("127.0.0.1:8080".into());
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "127.0.0.1:5555").is_err());
+    }
+
+    #[test]
+    fn accept_distinct_secondary_and_global_loopback_listeners() {
+        let mut settings = safe();
+        let mut secondary = settings.instances[0].clone();
+        secondary.instance_id = "bridge-2".into();
+        secondary.stratum_listen = "127.0.0.1:5556".into();
+        secondary.prometheus_listen = Some("127.0.0.1:2213".into());
+        settings.instances.push(secondary);
+        settings.global.health_check_listen = Some("127.0.0.1:8081".into());
+        settings.global.web_dashboard_listen = Some("127.0.0.1:8082".into());
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "127.0.0.1:5555").is_ok());
+    }
+
+    #[test]
+    fn reject_missing_instances_and_accept_ipv6_loopback() {
+        let mut settings = safe();
+        settings.instances.clear();
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "127.0.0.1:5555").is_err());
+        let mut settings = safe();
+        settings.instances[0].stratum_listen = "[::1]:5555".into();
+        settings.instances[0].prometheus_listen = Some("[::1]:2212".into());
+        assert!(validate_isolated_bridge_worker_listeners_v1(&settings, "[::1]:5555").is_ok());
+    }
+}
+
 impl EffectiveBridgeSettings {
     pub fn for_network(network: BridgeRuntimeNetwork) -> Self {
         Self {

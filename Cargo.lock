@@ -4495,6 +4495,8 @@ dependencies = [
  "kaspa-gateway-rk-bridge",
  "kaspa-gateway-rk-node",
  "kaspa-gateway-runtime",
+ "kcv-core",
+ "kcv-types",
  "printpdf",
  "reqwest 0.12.28",
  "serde",
@@ -6192,6 +6194,19 @@ dependencies = [
  "toml 0.8.23",
  "workflow-log",
 ]
+
+[[package]]
+name = "kcv-core"
+version = "0.0.0-local"
+dependencies = [
+ "hex",
+ "kaspa-consensus-core 2.1.0",
+ "kcv-types",
+]
+
+[[package]]
+name = "kcv-types"
+version = "0.0.0-local"
 
 [[package]]
 name = "keccak"
