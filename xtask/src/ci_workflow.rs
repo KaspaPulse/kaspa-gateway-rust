@@ -202,6 +202,38 @@ fn npm_ci(workspace: &Path, log: &Path) -> Result<(), String> {
     require_success("npm ci --ignore-scripts", result)
 }
 
+fn exact_ksss_base_sha(candidate: &str) -> bool {
+    candidate.len() == 40
+        && candidate != "0000000000000000000000000000000000000000"
+        && candidate
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+}
+
+fn resolve_ksss_base(root: &Path, configured: &str) -> Result<String, String> {
+    let base = if configured.trim().is_empty()
+        || configured == "0000000000000000000000000000000000000000"
+    {
+        output(
+            root,
+            "git",
+            &["merge-base", "HEAD", "refs/remotes/origin/main"],
+        )?
+    } else {
+        configured.to_owned()
+    };
+    if !exact_ksss_base_sha(&base) {
+        return Err("KSSS_BASE_MUST_BE_EXACT_COMMIT".to_owned());
+    }
+    status(
+        root,
+        "git",
+        &["cat-file", "-e", &format!("{base}^{{commit}}")],
+    )?;
+    status(root, "git", &["merge-base", "--is-ancestor", &base, "HEAD"])?;
+    Ok(base)
+}
+
 fn run_ksss(root: &Path) -> Result<(), String> {
     let temp = env::var_os("RUNNER_TEMP")
         .map(PathBuf::from)
@@ -209,7 +241,7 @@ fn run_ksss(root: &Path) -> Result<(), String> {
     let trust = temp.join("kgw-ksss-trust.json");
     let check = temp.join("kgw-ksss-check.json");
     let evaluation = temp.join("kgw-ksss-evaluation.json");
-    let base = env::var("BASE_SHA").unwrap_or_default();
+    let base = resolve_ksss_base(root, &env::var("BASE_SHA").unwrap_or_default())?;
     xtask(
         root,
         &[
@@ -618,6 +650,24 @@ pub fn run_gate(root: &Path) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn exact_ksss_base_requires_lowercase_full_nonzero_commit() {
+        assert!(exact_ksss_base_sha(
+            "49f717eabb27d23a1d4171ea45da432aab3f998b"
+        ));
+        assert!(!exact_ksss_base_sha(""));
+        assert!(!exact_ksss_base_sha("607ad018"));
+        assert!(!exact_ksss_base_sha(
+            "0000000000000000000000000000000000000000"
+        ));
+        assert!(!exact_ksss_base_sha(
+            "49F717EABB27D23A1D4171EA45DA432AAB3F998B"
+        ));
+        assert!(!exact_ksss_base_sha(
+            "49f717eabb27d23a1d4171ea45da432aab3f998z"
+        ));
+    }
 
     #[test]
     fn stage_parser_is_fail_closed() {
