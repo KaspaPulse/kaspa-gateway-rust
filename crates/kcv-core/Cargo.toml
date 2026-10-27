@@ -1,0 +1,17 @@
+[package]
+name = "kcv-core"
+version = "0.0.0-local"
+edition = "2024"
+rust-version.workspace = true
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+kcv-types = { path = "../kcv-types", version = "=0.0.0-local" }
+kaspa-consensus-core = { version = "=2.1.0", git = "https://github.com/kaspanet/rusty-kaspa.git", rev = "01b532e8b553523216471682649693af92f0fd16", default-features = false }
+
+[dev-dependencies]
+hex = "=0.4.3"
+
+[lints.rust]
+unsafe_code = "forbid"
